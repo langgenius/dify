@@ -14,6 +14,14 @@ import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import HumanInputFormList from '../human-input-form-list'
 
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
+  },
+}))
+
 const mockNodes: Array<{
   id: string
   type: string
@@ -70,6 +78,7 @@ const createFormData = (overrides: Partial<HumanInputFormData> = {}): HumanInput
 
 describe('HumanInputFormList', () => {
   beforeEach(() => {
+    releaseGate.enabled = true
     vi.clearAllMocks()
     mockNodes.splice(0, mockNodes.length)
   })
@@ -127,6 +136,7 @@ describe('HumanInputFormList', () => {
     expect(screen.getByText('Need Approval')).toBeInTheDocument()
     expect(screen.queryByText('Hidden Form')).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('prefill')).toBeInTheDocument()
+    expect(screen.getByText('workflow.common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
     expect(screen.getByText('workflow.common.humanInputWebappTip')).toBeInTheDocument()
 
     await user.clear(screen.getByDisplayValue('prefill'))
@@ -137,6 +147,44 @@ describe('HumanInputFormList', () => {
       inputs: {
         reason: 'updated reason',
       },
+      action: 'approve',
+    })
+  })
+
+  it('submits same-Tool forms with separate tokens and preserves the remaining draft', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const first = createFormData({ node_id: 'tool', node_title: 'First approval' })
+    const second = createFormData({
+      node_id: 'tool',
+      form_id: 'form-2',
+      form_token: 'token-2',
+      node_title: 'Second approval',
+    })
+    const { rerender } = render(
+      <HumanInputFormList
+        humanInputFormDataList={[first, second]}
+        onHumanInputFormSubmit={onSubmit}
+      />,
+    )
+    const inputs = screen.getAllByRole('textbox')
+    await user.clear(inputs[0]!)
+    await user.type(inputs[0]!, 'first decision')
+    await user.clear(inputs[1]!)
+    await user.type(inputs[1]!, 'second decision')
+    await user.click(screen.getAllByRole('button', { name: 'Approve' })[0]!)
+    expect(onSubmit).toHaveBeenCalledWith('token-1', {
+      inputs: { reason: 'first decision' },
+      action: 'approve',
+    })
+
+    rerender(
+      <HumanInputFormList humanInputFormDataList={[second]} onHumanInputFormSubmit={onSubmit} />,
+    )
+    expect(screen.getByRole('textbox')).toHaveValue('second decision')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(onSubmit).toHaveBeenLastCalledWith('token-2', {
+      inputs: { reason: 'second decision' },
       action: 'approve',
     })
   })
@@ -152,7 +200,7 @@ describe('HumanInputFormList', () => {
 
     render(<HumanInputFormList humanInputFormDataList={[createFormData()]} />)
 
-    expect(screen.queryByTestId('tips')).not.toBeInTheDocument()
+    expect(screen.queryByText(/workflow\.common\.humanInput.*Tip/)).not.toBeInTheDocument()
   })
 
   it('should reset inputs when the same node produces a new form', async () => {
@@ -170,5 +218,26 @@ describe('HumanInputFormList', () => {
     )
 
     expect(screen.getByRole('textbox')).toHaveValue('prefill')
+  })
+  it('keeps legacy form submission and blocks V2 forms when disabled', async () => {
+    releaseGate.enabled = false
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(
+      <HumanInputFormList
+        humanInputFormDataList={[
+          createFormData({ form_version: '1' }),
+          createFormData({ form_version: '2', form_id: 'v2-form', form_token: 'v2-token' }),
+        ]}
+        onHumanInputFormSubmit={onSubmit}
+      />,
+    )
+    expect(screen.getByText('share.humanInputV2.unavailable')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Approve' })).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith('token-1', {
+      inputs: { reason: 'prefill' },
+      action: 'approve',
+    })
   })
 })

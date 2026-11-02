@@ -53,6 +53,8 @@
   "modelProvider.card.usageLabel": "Uso",
   "modelProvider.card.usagePriority": "Prioridade de uso",
   "modelProvider.card.usagePriorityTip": "Defina qual recurso usar primeiro ao executar modelos.",
+  "modelProvider.clearDefaultModel.description": "Esta alteração entra em vigor ao salvar. Limpar este modelo padrão pode causar falhas nos fluxos de trabalho que dependem dele.",
+  "modelProvider.clearDefaultModel.title": "Limpar {{modelType}}?",
   "modelProvider.configureTip": "Configure a chave de API ou adicione o modelo a ser usado",
   "modelProvider.confirmDelete": "confirmar exclusão?",
   "modelProvider.defaultConfig": "Configuração padrão",

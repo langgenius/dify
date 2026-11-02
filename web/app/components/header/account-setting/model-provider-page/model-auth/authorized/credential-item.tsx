@@ -64,7 +64,7 @@ const CredentialItem = ({
         </span>
       </span>
       {isUnavailable && (
-        <span className="ml-2 shrink-0 pr-1 system-xs-medium text-text-destructive">
+        <span className="ms-2 shrink-0 pe-1 system-xs-medium text-text-destructive">
           {t(($) => $['modelProvider.card.unavailable'], { ns: 'modelProvider' })}
         </span>
       )}
@@ -82,7 +82,7 @@ const CredentialItem = ({
       {canSelect ? (
         <button
           type="button"
-          className="flex h-full min-w-0 grow cursor-pointer items-center rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+          className="flex h-full min-w-0 grow cursor-pointer items-center rounded-md text-start focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
           disabled={disabled}
           aria-pressed={
             showSelectedIcon ? selectedCredentialId === credential.credential_id : undefined
@@ -101,7 +101,7 @@ const CredentialItem = ({
       )}
       {!canSelect && credential.from_enterprise && <Badge className="shrink-0">Enterprise</Badge>}
       {showAction && !credential.from_enterprise && !isUnavailable && (
-        <div className="ml-2 flex shrink-0 items-center opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+        <div className="ms-2 flex shrink-0 items-center opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
           {!disableEdit && (
             <Tooltip>
               <TooltipTrigger

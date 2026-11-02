@@ -51,6 +51,7 @@ from models.dataset import (
     DocumentSegment,
     ExternalKnowledgeBindings,
     Pipeline,
+    build_built_in_field_values,
 )
 from models.enums import (
     DatasetRuntimeMode,
@@ -150,7 +151,7 @@ class DatasetService:
         tag_ids=None,
         include_all=False,
         accessible_dataset_ids: list[str] | None = None,
-        include_own_datasets: bool = False,
+        creator_ids: list[str] | None = None,
         *,
         tags: TagTargetQuery,
     ):
@@ -159,7 +160,7 @@ class DatasetService:
 
         if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
-            if include_own_datasets and user:
+            if user:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             query = query.where(accessible_filter)
 
@@ -228,6 +229,9 @@ class DatasetService:
             escaped_search = helper.escape_like_pattern(search)
             query = query.where(Dataset.name.ilike(f"%{escaped_search}%", escape="\\"))
 
+        if creator_ids:
+            query = query.where(Dataset.created_by.in_(creator_ids))
+
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
             if tenant_id is not None:
@@ -271,7 +275,6 @@ class DatasetService:
         tenant_id: str,
         user=None,
         accessible_dataset_ids: list[str] | None = None,
-        include_own_datasets: bool = False,
         *,
         session: Session,
     ):
@@ -286,7 +289,7 @@ class DatasetService:
                 dataset_id for dataset_id in accessible_dataset_ids if dataset_id in requested_dataset_ids
             ]
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
-            if include_own_datasets and user:
+            if user:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             stmt = stmt.where(accessible_filter)
 
@@ -475,12 +478,12 @@ class DatasetService:
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
                 )
-            except LLMBadRequestError:
+            except LLMBadRequestError as caught_error:
                 raise ValueError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-                )
+                ) from caught_error
             except ProviderTokenNotInitError as ex:
-                raise ValueError(f"The dataset is unavailable, due to: {ex.description}")
+                raise ValueError(f"The dataset is unavailable, due to: {ex.description}") from ex
 
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
@@ -492,12 +495,12 @@ class DatasetService:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=embedding_model,
             )
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
 
     @staticmethod
     def check_is_multimodal_model(tenant_id: str, model_provider: str, model: str):
@@ -514,8 +517,10 @@ class DatasetService:
             if not model_schema:
                 raise ValueError("Model schema not found")
             return bool(model_schema.features and ModelFeature.VISION in model_schema.features)
-        except LLMBadRequestError:
-            raise ValueError("No Model available. Please configure a valid provider in the Settings -> Model Provider.")
+        except LLMBadRequestError as caught_error:
+            raise ValueError(
+                "No Model available. Please configure a valid provider in the Settings -> Model Provider."
+            ) from caught_error
 
     @staticmethod
     def check_reranking_model_setting(tenant_id: str, reranking_model_provider: str, reranking_model: str):
@@ -527,12 +532,12 @@ class DatasetService:
                 model_type=ModelType.RERANK,
                 model=reranking_model,
             )
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Rerank Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
 
     @staticmethod
     def update_dataset(dataset_id, data, user, *, session: Session):
@@ -896,12 +901,12 @@ class DatasetService:
                 session,
             )
             filtered_data["collection_binding_id"] = dataset_collection_binding.id
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
 
     @staticmethod
     def _handle_embedding_model_update_when_technique_unchanged(dataset, data, filtered_data, session: Session):
@@ -979,12 +984,12 @@ class DatasetService:
             if current_provider_str != new_provider_str or data["embedding_model"] != dataset.embedding_model:
                 DatasetService._apply_new_embedding_settings(dataset, data, filtered_data, session)
                 return "update"
-        except LLMBadRequestError:
+        except LLMBadRequestError as caught_error:
             raise ValueError(
                 "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
-            )
+            ) from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ValueError(ex.description)
+            raise ValueError(ex.description) from ex
         return None
 
     @staticmethod
@@ -1165,13 +1170,13 @@ class DatasetService:
                         dataset.is_multimodal = is_multimodal
                         dataset.collection_binding_id = dataset_collection_binding.id
                         dataset.indexing_technique = IndexTechniqueType(knowledge_configuration.indexing_technique)
-                    except LLMBadRequestError:
+                    except LLMBadRequestError as caught_error:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
                             "in the Settings -> Model Provider."
-                        )
+                        ) from caught_error
                     except ProviderTokenNotInitError as ex:
-                        raise ValueError(ex.description)
+                        raise ValueError(ex.description) from ex
             else:
                 # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
                 # Skip embedding model checks if not provided in the update request
@@ -1229,13 +1234,13 @@ class DatasetService:
                                         knowledge_configuration.embedding_model,
                                     )
                                     dataset.is_multimodal = is_multimodal
-                    except LLMBadRequestError:
+                    except LLMBadRequestError as caught_error:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
                             "in the Settings -> Model Provider."
-                        )
+                        ) from caught_error
                     except ProviderTokenNotInitError as ex:
-                        raise ValueError(ex.description)
+                        raise ValueError(ex.description) from ex
                 elif dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                     if dataset.keyword_number != knowledge_configuration.keyword_number:
                         dataset.keyword_number = knowledge_configuration.keyword_number
@@ -1720,7 +1725,7 @@ class DocumentService:
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
         except NoPermissionError as e:
-            raise Forbidden(str(e))
+            raise Forbidden(str(e)) from e
 
         upload_files_by_document_id = DocumentService._get_upload_files_by_document_id_for_zip_download(
             dataset_id=dataset_id,
@@ -1935,22 +1940,27 @@ class DocumentService:
 
     @staticmethod
     def delete_document(document, session: Session):
-        # trigger document_was_deleted signal
         file_id = None
         if document.data_source_type == DataSourceType.UPLOAD_FILE:
             if document.data_source_info:
                 data_source_info = document.data_source_info_dict
                 if data_source_info and "upload_file_id" in data_source_info:
                     file_id = data_source_info["upload_file_id"]
-        document_was_deleted.send(
-            document.id,
-            dataset_id=document.dataset_id,
-            doc_form=document.doc_form,
-            file_id=file_id,
-        )
+        # Read everything cleanup needs before the row is deleted and expired.
+        document_id, dataset_id, doc_form = document.id, document.dataset_id, document.doc_form
 
         session.delete(document)
         session.commit()
+
+        # Dispatch cleanup only after the deletion commits, as bulk deletion does. An
+        # in-flight indexing run either sees the document gone and discards what it
+        # wrote, or finished writing before the commit, so cleanup still finds it.
+        document_was_deleted.send(
+            document_id,
+            dataset_id=dataset_id,
+            doc_form=doc_form,
+            file_id=file_id,
+        )
 
     @staticmethod
     def delete_documents(
@@ -2148,7 +2158,7 @@ class DocumentService:
         knowledge_config: KnowledgeConfig,
         account: Account | Any,
         dataset_process_rule: DatasetProcessRule | None = None,
-        created_from: str = DocumentCreatedFrom.WEB,
+        created_from: DocumentCreatedFrom = DocumentCreatedFrom.WEB,
         *,
         session: Session,
     ) -> tuple[list[Document], str]:
@@ -2415,7 +2425,7 @@ class DocumentService:
                     if knowledge_config.duplicate and document:
                         document.dataset_process_rule_id = dataset_process_rule.id
                         document.updated_at = naive_utc_now()
-                        document.created_from = created_from
+                        document.created_from = DocumentCreatedFrom(created_from)
                         document.doc_form = IndexStructureType(knowledge_config.doc_form)
                         document.doc_language = knowledge_config.doc_language
                         document.data_source_info = json.dumps(data_source_info)
@@ -2462,6 +2472,8 @@ class DocumentService:
                 )
                 if documents:
                     for document in documents:
+                        if document.data_source_info is None:
+                            raise ValueError("Notion document data source information is missing.")
                         data_source_info = json.loads(document.data_source_info)
                         exist_page_ids.append(data_source_info["notion_page_id"])
                         exist_document[data_source_info["notion_page_id"]] = document.id
@@ -2863,32 +2875,33 @@ class DocumentService:
         if dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True:
             need_summary = True
 
+        document_data_source_type: DataSourceType = DataSourceType(data_source_type)
+        document_created_from: DocumentCreatedFrom = DocumentCreatedFrom(created_from)
+        document_form_type: IndexStructureType = IndexStructureType(document_form)
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=position,
-            data_source_type=data_source_type,
+            data_source_type=document_data_source_type,
             data_source_info=json.dumps(data_source_info),
             dataset_process_rule_id=process_rule_id,
             batch=batch,
             name=name,
-            created_from=created_from,
+            created_from=document_created_from,
             created_by=account.id,
-            doc_form=document_form,
+            doc_form=document_form_type,
             doc_language=document_language,
             need_summary=need_summary,
         )
-        doc_metadata = {}
         if dataset.built_in_field_enabled:
-            doc_metadata = {
-                BuiltInField.document_name: name,
-                BuiltInField.uploader: account.name,
-                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.source: data_source_type,
-            }
-        if doc_metadata:
-            document.doc_metadata = doc_metadata
+            now = naive_utc_now()
+            document.doc_metadata = build_built_in_field_values(
+                document_name=name,
+                uploader=account.name,
+                upload_date=now,
+                last_update_date=now,
+                data_source_type=data_source_type,
+            )
         return document
 
     @staticmethod
@@ -3028,7 +3041,10 @@ class DocumentService:
                             "only_main_content": website_info.only_main_content,
                             "mode": "crawl",
                         }
-            document.data_source_type = document_data.data_source.info_list.data_source_type
+            updated_data_source_type: DataSourceType = DataSourceType(
+                document_data.data_source.info_list.data_source_type
+            )
+            document.data_source_type = updated_data_source_type
             document.data_source_info = json.dumps(data_source_info)
             document.name = file_name
 
@@ -3043,8 +3059,10 @@ class DocumentService:
         document.cleaning_completed_at = None
         document.splitting_completed_at = None
         document.updated_at = naive_utc_now()
-        document.created_from = created_from
-        document.doc_form = IndexStructureType(document_data.doc_form)
+        updated_created_from: DocumentCreatedFrom = DocumentCreatedFrom(created_from)
+        updated_doc_form: IndexStructureType = IndexStructureType(document_data.doc_form)
+        document.created_from = updated_created_from
+        document.doc_form = updated_doc_form
         session.add(document)
         session.commit()
         # update document segment
@@ -3204,9 +3222,6 @@ class DocumentService:
 
             unique_pre_processing_rule_dicts = {}
             for pre_processing_rule in knowledge_config.process_rule.rules.pre_processing_rules:
-                if not pre_processing_rule.id:
-                    raise ValueError("Process rule pre_processing_rules id is required")
-
                 if not isinstance(pre_processing_rule.enabled, bool):
                     raise ValueError("Process rule pre_processing_rules enabled is invalid")
 

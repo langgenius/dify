@@ -7,11 +7,13 @@ from typing import cast
 from flask import Blueprint, current_app, got_request_exception
 from flask_restx import Namespace
 
+from controllers.common.app_access_error import register_app_access_error_metadata
 from controllers.common.errors import (
     InternalServerError,
     InvalidArgumentError,
     NotFoundError,
     UnauthorizedError,
+    register_credential_refresh_error_handler,
     register_permission_error_handler,
 )
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
@@ -26,6 +28,7 @@ from services.retention.workflow_run.archive_log_service import (
 )
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
+register_app_access_error_metadata(bp, surface="console")
 
 api = ExternalApi(
     bp,
@@ -34,6 +37,7 @@ api = ExternalApi(
     description="Console management APIs for app configuration, monitoring, and administration",
 )
 register_permission_error_handler(api)
+register_credential_refresh_error_handler(api)
 # Errors the Console client handles centrally (bootstrap redirects, forced logout, malformed
 # input); any operation may answer with them, so no operation lists them. The shared
 # ``not_found``, ``unauthorized`` and ``internal_server_error`` codes are the ones Werkzeug's own
@@ -151,6 +155,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     )
     from .agent import composer as agent_composer
     from .agent import roster as agent_roster
+    from .agent import tracing as agent_tracing
+    from .agent import tracing_runs as agent_tracing_runs
 
     # Import app controllers
     from .app import (
@@ -177,6 +183,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         workflow_app_log,
         workflow_comment,
         workflow_draft_variable,
+        workflow_human_input_v2,
         workflow_node_output_inspector,
         workflow_run,
         workflow_statistic,
@@ -228,6 +235,11 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         saved_message,
         trial,
     )
+    from .human_input_v2 import channel as human_input_channel
+    from .human_input_v2 import contact as human_input_contact
+    from .human_input_v2 import form as human_input_v2_form
+    from .knowledge_fs import features as knowledge_fs_features
+    from .knowledge_fs import resources as knowledge_fs_resources
     from .snippets import snippet_workflow, snippet_workflow_draft_variable
     from .socketio import workflow as socketio_workflow
 
@@ -243,6 +255,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         members,
         model_providers,
         models,
+        network_access_group,
         plugin,
         rbac,
         skills,
@@ -257,6 +270,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         extension,
         feature,
         human_input_form,
+        human_input_channel,
+        human_input_v2_form,
         init_validate,
         notification,
         onboarding,
@@ -267,6 +282,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         workflow_run_archive,
         agent_composer,
         agent_roster,
+        agent_tracing,
+        agent_tracing_runs,
         advanced_prompt_template,
         agent,
         agent_app_access,
@@ -290,6 +307,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         workflow_app_log,
         workflow_comment,
         workflow_draft_variable,
+        workflow_human_input_v2,
         workflow_node_output_inspector,
         workflow_run,
         workflow_statistic,
@@ -325,6 +343,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         recommended_app,
         saved_message,
         trial,
+        knowledge_fs_features,
+        knowledge_fs_resources,
         snippet_workflow,
         snippet_workflow_draft_variable,
         socketio_workflow,
@@ -332,10 +352,12 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         account,
         agent_providers,
         endpoint,
+        human_input_contact,
         load_balancing_config,
         members,
         model_providers,
         models,
+        network_access_group,
         plugin,
         rbac,
         skills,
@@ -351,6 +373,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     extension,
     feature,
     human_input_form,
+    human_input_channel,
+    human_input_v2_form,
     init_validate,
     notification,
     onboarding,
@@ -361,6 +385,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     workflow_run_archive,
     agent_composer,
     agent_roster,
+    agent_tracing,
+    agent_tracing_runs,
     advanced_prompt_template,
     agent,
     agent_app_access,
@@ -384,6 +410,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     workflow_app_log,
     workflow_comment,
     workflow_draft_variable,
+    workflow_human_input_v2,
     workflow_node_output_inspector,
     workflow_run,
     workflow_statistic,
@@ -419,6 +446,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     recommended_app,
     saved_message,
     trial,
+    knowledge_fs_features,
+    knowledge_fs_resources,
     snippet_workflow,
     snippet_workflow_draft_variable,
     socketio_workflow,
@@ -426,10 +455,12 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     account,
     agent_providers,
     endpoint,
+    human_input_contact,
     load_balancing_config,
     members,
     model_providers,
     models,
+    network_access_group,
     plugin,
     rbac,
     skills,
@@ -453,6 +484,8 @@ __all__ = [
     "agent_config_inspector",
     "agent_providers",
     "agent_roster",
+    "agent_tracing",
+    "agent_tracing_runs",
     "annotation",
     "api",
     "apikey",
@@ -482,9 +515,14 @@ __all__ = [
     "forgot_password",
     "generator",
     "hit_testing",
+    "human_input_channel",
+    "human_input_contact",
     "human_input_form",
+    "human_input_v2_form",
     "init_validate",
     "installed_app",
+    "knowledge_fs_features",
+    "knowledge_fs_resources",
     "load_balancing_config",
     "login",
     "mcp_server",
@@ -494,6 +532,7 @@ __all__ = [
     "model_config",
     "model_providers",
     "models",
+    "network_access_group",
     "notification",
     "oauth",
     "oauth_server",
@@ -529,6 +568,7 @@ __all__ = [
     "workflow_app_log",
     "workflow_comment",
     "workflow_draft_variable",
+    "workflow_human_input_v2",
     "workflow_node_output_inspector",
     "workflow_run",
     "workflow_run_archive",

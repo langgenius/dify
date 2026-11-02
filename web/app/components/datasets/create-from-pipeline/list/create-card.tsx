@@ -7,13 +7,14 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 const CreateCard = () => {
   const { t } = useTranslation(['datasetPipeline'])
   const { push } = useRouter()
 
   const { mutateAsync: createEmptyDataset } = useMutation(
-    consoleQuery.rag.pipeline.emptyDataset.post.mutationOptions(),
+    consoleQuery.rag.pipeline.emptyDataset.post.mutationOptions({ context: { silent: true } }),
   )
   const queryClient = useQueryClient()
   const invalidDatasetList = useCallback(() => {
@@ -33,8 +34,10 @@ const CreateCard = () => {
           push(`/datasets/${id}/pipeline`)
         }
       },
-      onError: () => {
-        toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ?? t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }),
+        )
       },
     })
   }, [createEmptyDataset, push, invalidDatasetList, t])

@@ -1,3 +1,4 @@
+import type { HumanInputV2NodeType } from '@/app/components/workflow/nodes/human-input-v2/types'
 import { ORPCError } from '@orpc/client'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
@@ -9,9 +10,18 @@ import {
 import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleClient } from '@/service/console'
 import useOneStepRun from '../use-one-step-run'
+
+const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return mockHitlIm.enabled
+  },
+}))
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -44,7 +54,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
-  render(createElement(AppToastHost))
+  render(createElement(AppToaster))
   const nodes = [
     createStartNode({ id: 'start', data: { variables: [] } }),
     createNode({ id: 'if-else-node', data: { type, title: 'Test node' } }),
@@ -78,6 +88,7 @@ const originalUrl = window.location.href
 
 describe('useOneStepRun single-run input vars', () => {
   beforeEach(() => {
+    mockHitlIm.enabled = true
     runTrigger.mockReset()
     window.history.replaceState(null, '', '/app/app-id/workflow')
   })
@@ -167,6 +178,28 @@ describe('useOneStepRun single-run input vars', () => {
     },
   )
 
+  it.each([BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'reports a %s business failure once before stopping the run',
+    async (type) => {
+      runTrigger.mockResolvedValueOnce({
+        id: 'execution-1',
+        status: 'error',
+        message: 'Trigger rejected',
+      })
+      const notifyError = vi.spyOn(toast, 'error')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { result, store } = renderUseOneStepRun(type)
+
+      await act(async () => {
+        expect(await result.current.handleRun({})).toBe(false)
+      })
+
+      expect(await screen.findByText('Trigger rejected')).toBeInTheDocument()
+      expect(notifyError).toHaveBeenCalledExactlyOnceWith('Trigger rejected')
+      expect(store.getState().isListening).toBe(false)
+    },
+  )
+
   it('preserves the plugin request error and metadata when reporting a failed run', async () => {
     const error = new ORPCError('forbidden', {
       status: 403,
@@ -187,4 +220,39 @@ describe('useOneStepRun single-run input vars', () => {
     expect(await screen.findByText('Plugin access denied')).toBeInTheDocument()
     expect(reportError).toHaveBeenCalledWith(error)
   })
+  it.each([true, false])(
+    'validates a V2 human-input step against the release gate (enabled: %s)',
+    (enabled) => {
+      mockHitlIm.enabled = enabled
+      const { result } = renderHook(() =>
+        useOneStepRun<HumanInputV2NodeType>({
+          id: 'human-v2',
+          resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+
+          data: {
+            type: BlockEnum.HumanInput,
+            title: 'Review',
+            desc: '',
+            version: '2',
+            recipients_spec: [{ type: 'initiator' }],
+            message_template: { subject: 'Review request', body: 'Please review {{#url#}}' },
+            debug_mode: { enabled: false, channels: [] },
+            form_content: 'Please approve',
+            inputs: [],
+            user_actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+            timeout: 36,
+            timeout_unit: 'hour',
+          },
+          defaultRunInputData: {},
+          isRunAfterSingleRun: false,
+          isPaused: false,
+        }),
+      )
+      expect(result.current.checkValid()).toEqual(
+        enabled
+          ? { isValid: true, errorMessage: '' }
+          : { isValid: false, errorMessage: 'workflow.nodes.humanInputV2.disabled' },
+      )
+    },
+  )
 })

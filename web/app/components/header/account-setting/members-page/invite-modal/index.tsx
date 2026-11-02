@@ -3,6 +3,7 @@ import type { MemberInviteResponse } from '@dify/contracts/api/console/workspace
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { Ref } from 'react'
 import type { EmailRecipient } from './email-recipients'
+import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -22,6 +23,9 @@ import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
+import { useOptionalMemberInviteContactUpgrade } from '@/features/contacts/management/hooks'
+import { MemberInviteContactUpgradeDialog } from '@/features/contacts/management/member-invite-contact-upgrade-dialog'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { InviteButton } from '../invite-button'
@@ -33,6 +37,9 @@ type InviteModalProps = {
   isEmailSetup: boolean
   onSend: (invitationResults: MemberInviteResponse['invitation_results']) => void
 }
+
+type InviteSubmission = { emails: string[]; role: string }
+type PendingUpgradeConfirmation = { contactIds: string[]; submission: InviteSubmission }
 
 type InviteFieldName = 'emails' | 'role'
 type InviteFormValues = {
@@ -115,12 +122,11 @@ function InviteForm({
     >
       <DialogBody className="grid gap-5">
         {!isEmailSetup && (
-          <div className="flex items-start gap-1.5 rounded-lg bg-state-warning-hover p-2 text-text-warning">
-            <span aria-hidden="true" className="i-ri-error-warning-fill size-4 shrink-0" />
-            <span className="system-xs-medium text-text-primary">
+          <Alert type="warning">
+            <AlertTitle>
               {t(($) => $['members.emailNotSetup'], { ns: 'workspaceMembers' })}
-            </span>
-          </div>
+            </AlertTitle>
+          </Alert>
         )}
         <EmailRecipientsField
           recipients={recipients}
@@ -132,20 +138,17 @@ function InviteForm({
         />
         <RoleSelector hasServerError={Boolean(fieldErrors?.role)} disabled={isPending} />
         {exceedsRemainingSeats && (
-          <div
-            role="status"
-            className="flex items-start gap-1.5 rounded-lg bg-state-warning-hover p-2 body-xs-regular text-text-warning"
-          >
-            <span aria-hidden="true" className="i-ri-error-warning-line size-4 shrink-0" />
-            <span>
+          <Alert type="warning">
+            <AlertTitle>
               {t(($) => $['members.seatsRemaining'], {
                 ns: 'workspaceMembers',
                 count: remainingSeats,
               })}
-              <span aria-hidden="true"> · </span>
+            </AlertTitle>
+            <AlertDescription>
               {t(($) => $['members.recipientCountExceedsSeats'], { ns: 'workspaceMembers' })}
-            </span>
-          </div>
+            </AlertDescription>
+          </Alert>
         )}
         {formError && (
           <div role="alert" className="body-xs-regular text-text-destructive">
@@ -179,63 +182,126 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
   const queryClient = useQueryClient()
   const actionsRef = useRef<DialogActions>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const contactUpgrade = useOptionalMemberInviteContactUpgrade()
+  const [pendingUpgradeConfirmation, setPendingUpgradeConfirmation] =
+    useState<PendingUpgradeConfirmation | null>(null)
+  const [preparationFailed, setPreparationFailed] = useState(false)
   const { mutate, reset, isPending, error } = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
       context: { silent: true },
-      onSuccess: (response) => {
-        // The request alone decides success; seat and member refreshes run in the background.
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.current.members.get.key(),
-        })
-        onSend(response.invitation_results)
-        actionsRef.current?.close()
-      },
     }),
   )
 
+  const isBusy = isPending || contactUpgrade.isChecking || contactUpgrade.isUpgrading
+  const submitInvitation = (submission: InviteSubmission, contactIds: string[] = []) => {
+    mutate(
+      { body: { ...submission, language: locale } },
+      {
+        onSuccess: async (response) => {
+          void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+          if (contactIds.length > 0) await contactUpgrade.upgradeContacts({ contactIds })
+          setPendingUpgradeConfirmation(null)
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.workspaces.current.members.get.key(),
+          })
+          onSend(response.invitation_results)
+          actionsRef.current?.close()
+        },
+        onError: () => setPendingUpgradeConfirmation(null),
+      },
+    )
+  }
+  const handleSubmit = async (emails: string[], role: string) => {
+    if (isBusy) return
+    reset()
+    setPreparationFailed(false)
+    const submission = { emails, role }
+    if (isContactsManagementEnabled() && contactUpgrade.available) {
+      try {
+        const conflicts = await contactUpgrade.findConflicts({ emails })
+        if (conflicts.length > 0) {
+          setPendingUpgradeConfirmation({
+            contactIds: conflicts.map((contact) => contact.id),
+            submission,
+          })
+          return
+        }
+      } catch {
+        setPreparationFailed(true)
+        return
+      }
+    }
+    submitInvitation(submission)
+  }
+
   return (
-    <Dialog
-      actionsRef={actionsRef}
-      onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && isPending && details.reason !== 'imperative-action') details.cancel()
-      }}
-      onOpenChangeComplete={(open) => {
-        // A failure stays visible through the exit transition and ends with the session.
-        if (!open) reset()
-      }}
-    >
-      <DialogTrigger render={<InviteButton />} />
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        initialFocus={() => {
-          const emailInput = formRef.current?.elements.namedItem('emails')
-          return emailInput instanceof HTMLInputElement ? emailInput : true
+    <>
+      <Dialog
+        actionsRef={actionsRef}
+        onOpenChange={(nextOpen, details) => {
+          if (!nextOpen && isBusy && details.reason !== 'imperative-action') details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          // A failure stays visible through the exit transition and ends with the session.
+          if (!open) {
+            reset()
+            setPreparationFailed(false)
+            setPendingUpgradeConfirmation(null)
+          }
         }}
       >
-        <DialogHeader>
-          <DialogTitle>
-            {t(($) => $['members.inviteTeamMember'], { ns: 'workspaceMembers' })}
-          </DialogTitle>
-          <DialogDescription>
-            {t(($) => $['members.inviteTeamMemberTip'], { ns: 'workspaceMembers' })}
-          </DialogDescription>
-          <DialogHeaderCloseButton
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            disabled={isPending}
+        <DialogTrigger render={<InviteButton />} />
+        <DialogContent
+          backdropProps={{ forceRender: true }}
+          initialFocus={() => {
+            const emailInput = formRef.current?.elements.namedItem('emails')
+            return emailInput instanceof HTMLInputElement ? emailInput : true
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {t(($) => $['members.inviteTeamMember'], { ns: 'workspaceMembers' })}
+            </DialogTitle>
+            <DialogDescription>
+              {t(($) => $['members.inviteTeamMemberTip'], { ns: 'workspaceMembers' })}
+            </DialogDescription>
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              disabled={isBusy}
+            />
+          </DialogHeader>
+          <InviteForm
+            ref={formRef}
+            isEmailSetup={isEmailSetup}
+            isPending={isBusy}
+            // The link marks a documented code as defined, so `error.code` narrows to the invite contract.
+            errorCode={isDefinedError(error) ? error.code : null}
+            hasError={!!error || preparationFailed}
+            onSubmit={(emails, role) => {
+              void handleSubmit(emails, role)
+            }}
+            onDismissError={() => {
+              reset()
+              setPreparationFailed(false)
+            }}
           />
-        </DialogHeader>
-        <InviteForm
-          ref={formRef}
-          isEmailSetup={isEmailSetup}
-          isPending={isPending}
-          // The link marks a documented code as defined, so `error.code` narrows to the invite contract.
-          errorCode={isDefinedError(error) ? error.code : null}
-          hasError={!!error}
-          onSubmit={(emails, role) => mutate({ body: { emails, role, language: locale } })}
-          onDismissError={reset}
-        />
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+      <MemberInviteContactUpgradeDialog
+        conflictCount={pendingUpgradeConfirmation?.contactIds.length ?? 0}
+        open={Boolean(pendingUpgradeConfirmation)}
+        pending={isPending || contactUpgrade.isUpgrading}
+        onOpenChange={(open) => {
+          if (!open && !isBusy) setPendingUpgradeConfirmation(null)
+        }}
+        onConfirm={() => {
+          if (pendingUpgradeConfirmation && !isBusy)
+            submitInvitation(
+              pendingUpgradeConfirmation.submission,
+              pendingUpgradeConfirmation.contactIds,
+            )
+        }}
+      />
+    </>
   )
 }

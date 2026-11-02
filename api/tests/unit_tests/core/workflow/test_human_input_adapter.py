@@ -8,6 +8,9 @@ from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
+    InstantMessageDeliveryMethod,
+    InstantMessageProvider,
+    InstantMessageRecipientType,
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
     adapt_human_input_node_data_for_graph,
@@ -19,6 +22,90 @@ from core.workflow.human_input_adapter import (
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime import VariablePool
+
+
+def test_render_body_template_replaces_variable_values():
+    config = EmailDeliveryConfig(
+        recipients=EmailRecipients(),
+        subject="Subject",
+        body="Hello {{#node1.value#}} {{#url#}}",
+    )
+    variable_pool = VariablePool()
+    variable_pool.add(["node1", "value"], "World")
+
+    result = config.render_body_template(body=config.body, url="https://example.com", variable_pool=variable_pool)
+
+    assert result == "Hello World https://example.com"
+
+
+def test_render_markdown_body_renders_markdown_to_html():
+    rendered = EmailDeliveryConfig.render_markdown_body("**Bold** and [link](https://example.com)")
+
+    assert "<strong>Bold</strong>" in rendered
+    assert '<a href="https://example.com">link</a>' in rendered
+
+
+def test_render_markdown_body_sanitizes_unsafe_html():
+    rendered = EmailDeliveryConfig.render_markdown_body(
+        '<script>alert("xss")</script><a href="javascript:alert(1)" onclick="alert(2)">Click</a>'
+    )
+
+    assert "<script" not in rendered
+    assert "<a" not in rendered
+    assert "onclick" not in rendered
+    assert "javascript:" not in rendered
+    assert "Click" in rendered
+
+
+def test_render_markdown_body_sanitizes_markdown_link_with_javascript_href():
+    rendered = EmailDeliveryConfig.render_markdown_body("[bad](javascript:alert(1)) and [ok](https://example.com)")
+
+    assert "javascript:" not in rendered
+    assert "<a>bad</a>" in rendered
+    assert '<a href="https://example.com">ok</a>' in rendered
+
+
+def test_render_markdown_body_does_not_allow_raw_html_tags():
+    rendered = EmailDeliveryConfig.render_markdown_body("<b>raw html</b> and **markdown**")
+
+    assert "<b>" not in rendered
+    assert "raw html" in rendered
+    assert "<strong>markdown</strong>" in rendered
+
+
+def test_render_markdown_body_supports_table_syntax():
+    rendered = EmailDeliveryConfig.render_markdown_body("| h1 | h2 |\n| --- | ---: |\n| v1 | v2 |")
+
+    assert "<table>" in rendered
+    assert "<thead>" in rendered
+    assert "<tbody>" in rendered
+    assert 'align="right"' in rendered
+    assert "style=" not in rendered
+
+
+def test_sanitize_subject_removes_crlf():
+    sanitized = EmailDeliveryConfig.sanitize_subject("Notice\r\nBCC:attacker@example.com")
+
+    assert "\r" not in sanitized
+    assert "\n" not in sanitized
+    assert sanitized == "Notice BCC:attacker@example.com"
+
+
+def test_sanitize_subject_removes_html_tags():
+    sanitized = EmailDeliveryConfig.sanitize_subject("<b>Alert</b><img src=x onerror=1>")
+
+    assert "<" not in sanitized
+    assert ">" not in sanitized
+    assert sanitized == "Alert"
+
+
+def test_adapt_legacy_variable_aggregator_without_changing_saved_data() -> None:
+    data = {"type": "variable-assigner", "output_type": "string", "variables": [["source", "value"]]}
+
+    normalized = adapt_node_data_for_graph(data)
+
+    assert normalized == {**data, "type": "variable-aggregator"}
+    assert data["type"] == "variable-assigner"
 
 
 def test_email_delivery_config_helpers_render_and_sanitize_text() -> None:
@@ -89,6 +176,35 @@ def test_parse_human_input_delivery_methods_normalizes_legacy_recipient_keys() -
 
 def test_parse_human_input_delivery_methods_returns_empty_for_non_lists() -> None:
     assert parse_human_input_delivery_methods({"delivery_methods": None}) == []
+
+
+def test_parse_human_input_delivery_methods_accepts_instant_message_config() -> None:
+    methods = parse_human_input_delivery_methods(
+        {
+            "delivery_methods": [
+                {
+                    "type": DeliveryMethodType.IM,
+                    "config": {
+                        "provider": "slack",
+                        "message": "Review {{#node.value#}}",
+                        "recipients": {
+                            "items": [
+                                {"type": "channel", "channel_id": "C123"},
+                                {"type": "user", "user_id": "U123"},
+                            ]
+                        },
+                    },
+                }
+            ]
+        }
+    )
+
+    assert len(methods) == 1
+    method = methods[0]
+    assert isinstance(method, InstantMessageDeliveryMethod)
+    assert method.config.provider == InstantMessageProvider.SLACK
+    assert method.config.recipients.items[0].type == InstantMessageRecipientType.CHANNEL
+    assert method.config.recipients.items[1].type == InstantMessageRecipientType.USER
 
 
 def test_is_human_input_webapp_enabled_checks_enabled_delivery_methods() -> None:

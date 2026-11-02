@@ -38,7 +38,7 @@ class NacosSettingsSource(RemoteSettingsSource):
         try:
             return parse_config(content)
         except Exception as e:
-            raise RuntimeError(f"Failed to parse config: {e}")
+            raise RuntimeError(f"Failed to parse config: {e}") from e
 
     @override
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:

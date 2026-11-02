@@ -19,7 +19,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { formatForDisplay, HotkeysProvider, useHotkey } from '@tanstack/react-hotkeys'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
@@ -29,6 +29,7 @@ import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigat
 import { useGetLanguage } from '@/context/i18n'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { useMarketplace, useMarketplacePluginSearch } from '@/features/marketplace/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
@@ -41,7 +42,7 @@ import { slashCommandRegistry } from './actions/commands/catalog'
 import { createSlashAction } from './actions/commands/slash'
 import { useCommandContext } from './actions/commands/use-command-context'
 import { knowledgeSearchQueryOptions } from './actions/knowledge'
-import { pluginSearchQueryOptions } from './actions/plugin'
+import { parsePluginSearchResults } from './actions/plugin'
 import { skillSearchQueryOptions } from './actions/skill'
 import { isCommandOption, useCommandOptions } from './command-options'
 import { EmptyState } from './components/empty-state'
@@ -134,6 +135,12 @@ function groupSearchResults(results: SearchResult[]) {
   }, {})
 }
 
+function SearchDialogHotkeys() {
+  // Keep the browser from claiming Mod+K while the global opener is suspended.
+  useHotkey(GOTO_ANYTHING_HOTKEY, () => {})
+  return null
+}
+
 export function GotoAnything() {
   const { t } = useTranslation(['app', 'common', 'skill', 'modelProvider', 'agentRoster'])
   const pathname = usePathname()
@@ -147,6 +154,7 @@ export function GotoAnything() {
   )
   const agentsAvailable = isAgentV2Enabled()
   const skillsAvailable = enableSkill === true && !isCurrentWorkspaceDatasetOperator
+  const pluginsAvailable = useMarketplace() !== null
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)
   const isRagPipelinePage = ragPipelinePathPattern.test(pathname)
@@ -155,14 +163,23 @@ export function GotoAnything() {
   const [activePlugin, setActivePlugin] = useState<Plugin>()
   const inputRef = useRef<HTMLInputElement>(null)
   const searchHintId = useId()
+  const hotkeyScopeId = useId()
   const commandContext = useCommandContext(agentsAvailable, skillsAvailable, isWorkflowPage)
   const actions = useMemo(
     () =>
       createActions(createSlashAction(commandContext), isWorkflowPage, isRagPipelinePage, {
         agents: agentsAvailable,
+        plugins: pluginsAvailable,
         skills: skillsAvailable,
       }),
-    [agentsAvailable, commandContext, isWorkflowPage, isRagPipelinePage, skillsAvailable],
+    [
+      agentsAvailable,
+      commandContext,
+      isWorkflowPage,
+      isRagPipelinePage,
+      pluginsAvailable,
+      skillsAvailable,
+    ],
   )
   const { commandOptions, scopeOptions } = useCommandOptions(actions, searchQuery, commandContext)
   const trimmedSearchQuery = searchQuery.trim()
@@ -183,7 +200,9 @@ export function GotoAnything() {
   const knowledgeSearchEnabled =
     remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@knowledge')
   const pluginSearchEnabled =
-    remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@plugin')
+    remoteSearchEnabled &&
+    pluginsAvailable &&
+    (!debouncedAction || debouncedAction.key === '@plugin')
   const skillSearchEnabled =
     remoteSearchEnabled && skillsAvailable && (!debouncedAction || debouncedAction.key === '@skill')
   const agentSearchEnabled =
@@ -202,12 +221,10 @@ export function GotoAnything() {
       placeholderData: keepPreviousData,
     }),
   )
-  const pluginSearchQuery = useQuery(
-    pluginSearchQueryOptions(debouncedSearchTerm, defaultLocale, {
-      enabled: pluginSearchEnabled,
-      placeholderData: keepPreviousData,
-    }),
-  )
+  const pluginSearchQuery = useMarketplacePluginSearch(debouncedSearchTerm, {
+    enabled: pluginSearchEnabled,
+    select: (plugins) => parsePluginSearchResults(plugins, defaultLocale),
+  })
   const skillSearchQuery = useQuery(
     skillSearchQueryOptions(debouncedSearchTerm, {
       enabled: skillSearchEnabled,
@@ -435,137 +452,141 @@ export function GotoAnything() {
           className="w-160 data-open:transition-none"
           backdropProps={{ className: 'bg-background-overlay-alt data-open:transition-none' }}
         >
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[url('/marketplace/hero-gradient-noise.svg')] bg-cover bg-center opacity-18 dark:opacity-28"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-components-panel-bg/20 via-components-panel-bg/70 to-components-panel-bg"
-          />
-          <DialogTitle className="sr-only">
-            {t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-          </DialogTitle>
-          <Autocomplete<GotoAnythingOption>
-            items={visibleOptions}
-            value={searchQuery}
-            onValueChange={handleAutocompleteValueChange}
-            itemToStringValue={optionToInputValue}
-            filter={null}
-            grid={isCommandsMode}
-            open
-            inline
-            autoHighlight="always"
-            keepHighlight
-            loopFocus
-          >
-            <AutocompleteInputGroup
-              size="medium"
-              className="h-auto shrink-0 gap-3 rounded-none border-0 bg-components-panel-bg-blur px-4 py-3 has-[input:focus]:ring-0"
+          <HotkeysProvider scope={hotkeyScopeId} exclusive>
+            <SearchDialogHotkeys />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[url('/marketplace/hero-gradient-noise.svg')] bg-cover bg-center opacity-18 dark:opacity-28"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-components-panel-bg/20 via-components-panel-bg/70 to-components-panel-bg"
+            />
+            <DialogTitle className="sr-only">
+              {t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
+            </DialogTitle>
+            <Autocomplete<GotoAnythingOption>
+              items={visibleOptions}
+              value={searchQuery}
+              onValueChange={handleAutocompleteValueChange}
+              itemToStringValue={optionToInputValue}
+              filter={null}
+              grid={isCommandsMode}
+              open
+              inline
+              autoHighlight="always"
+              keepHighlight
+              loopFocus
             >
-              <span aria-hidden className="i-ri-search-line size-4 text-text-quaternary" />
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <AutocompleteInput
-                  ref={inputRef}
-                  size="medium"
-                  aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                  placeholder={t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' })}
-                  aria-describedby={searchHintId}
-                  className="px-0"
-                />
-              </div>
-              <KbdGroup className="hidden sm:flex">
-                {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
-                  <Kbd key={key}>{key}</Kbd>
-                ))}
-              </KbdGroup>
-            </AutocompleteInputGroup>
-            <p id={searchHintId} className="sr-only">
-              {t(($) => $['gotoAnything.searchHint'], { ns: 'app' })}
-            </p>
-
-            <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
-
-            <ScrollArea className="h-120 min-h-0 shrink overflow-hidden border-t border-divider-subtle">
-              <ScrollAreaViewport
-                tabIndex={-1}
-                aria-busy={isLoading || undefined}
-                className="scroll-pt-10 scroll-pb-1 overscroll-contain"
+              <AutocompleteInputGroup
+                size="medium"
+                // oxlint-disable-next-line shadcn/no-restyle -- The inline command palette keeps focus in search and indicates navigation on the active descendant.
+                className="h-auto shrink-0 gap-3 rounded-none border-0 bg-components-panel-bg-blur px-4 py-3 has-[input:focus]:ring-0"
               >
-                <ScrollAreaContent
-                  className="min-h-full w-full max-w-full"
-                  style={{ minWidth: '100%' }}
+                <span aria-hidden className="i-ri-search-line size-4 text-text-quaternary" />
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <AutocompleteInput
+                    ref={inputRef}
+                    size="medium"
+                    aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
+                    placeholder={t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' })}
+                    aria-describedby={searchHintId}
+                    className="px-0"
+                  />
+                </div>
+                <KbdGroup className="hidden sm:flex">
+                  {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+                    <Kbd key={key}>{key}</Kbd>
+                  ))}
+                </KbdGroup>
+              </AutocompleteInputGroup>
+              <p id={searchHintId} className="sr-only">
+                {t(($) => $['gotoAnything.searchHint'], { ns: 'app' })}
+              </p>
+
+              <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
+
+              <ScrollArea className="h-120 min-h-0 shrink overflow-hidden border-t border-divider-subtle">
+                <ScrollAreaViewport
+                  tabIndex={-1}
+                  aria-busy={isLoading || undefined}
+                  className="scroll-pt-10 scroll-pb-1 overscroll-contain"
                 >
-                  {emptyStateVariant === 'loading' && <EmptyState variant="loading" />}
+                  <ScrollAreaContent
+                    className="min-h-full w-full max-w-full"
+                    style={{ minWidth: '100%' }}
+                  >
+                    {emptyStateVariant === 'loading' && <EmptyState variant="loading" />}
 
-                  {emptyStateVariant === 'error' && <EmptyState variant="error" error={error} />}
+                    {emptyStateVariant === 'error' && <EmptyState variant="error" error={error} />}
 
-                  {emptyStateVariant === 'no-results' && isCommandsMode && (
-                    <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
-                      <div>
-                        <div className="text-sm font-medium text-text-tertiary">
-                          {t(($) => $['gotoAnything.noMatchingCommands'], { ns: 'app' })}
-                        </div>
-                        <div className="mt-1 text-xs text-text-quaternary">
-                          {t(($) => $['gotoAnything.tryDifferentSearch'], { ns: 'app' })}
+                    {emptyStateVariant === 'no-results' && isCommandsMode && (
+                      <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
+                        <div>
+                          <div className="text-sm font-medium text-text-tertiary">
+                            {t(($) => $['gotoAnything.noMatchingCommands'], { ns: 'app' })}
+                          </div>
+                          <div className="mt-1 text-xs text-text-quaternary">
+                            {t(($) => $['gotoAnything.tryDifferentSearch'], { ns: 'app' })}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {emptyStateVariant === 'no-results' && !isCommandsMode && (
-                    <EmptyState
-                      variant={emptyStateVariant}
-                      searchMode={searchMode}
-                      actions={actions}
-                    />
-                  )}
+                    {emptyStateVariant === 'no-results' && !isCommandsMode && (
+                      <EmptyState
+                        variant={emptyStateVariant}
+                        searchMode={searchMode}
+                        actions={actions}
+                      />
+                    )}
 
-                  {isCommandsMode ? (
-                    <CommandGrid
-                      groups={optionGroups}
-                      label={
-                        isHome
-                          ? t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })
-                          : optionGroups[0]!.label
-                      }
-                      onSelect={selectOption}
-                    />
-                  ) : (
-                    <ResultList
-                      groups={[
-                        {
-                          id: 'commands',
-                          label: getGroupLabel('command'),
-                          items: optionSuggestions,
-                        },
-                        ...Object.entries(groupedResults).map(([type, items]) => ({
-                          id: type,
-                          label: getGroupLabel(type),
-                          items,
-                        })),
-                      ]}
-                      label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                      onSelect={selectOption}
-                    />
-                  )}
-                </ScrollAreaContent>
-              </ScrollAreaViewport>
-              <ScrollAreaScrollbar>
-                <ScrollAreaThumb />
-              </ScrollAreaScrollbar>
-            </ScrollArea>
+                    {isCommandsMode ? (
+                      <CommandGrid
+                        groups={optionGroups}
+                        label={
+                          isHome
+                            ? t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })
+                            : optionGroups[0]!.label
+                        }
+                        onSelect={selectOption}
+                      />
+                    ) : (
+                      <ResultList
+                        groups={[
+                          {
+                            id: 'commands',
+                            label: getGroupLabel('command'),
+                            items: optionSuggestions,
+                          },
+                          ...Object.entries(groupedResults).map(([type, items]) => ({
+                            id: type,
+                            label: getGroupLabel(type),
+                            items,
+                          })),
+                        ]}
+                        label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
+                        onSelect={selectOption}
+                      />
+                    )}
+                  </ScrollAreaContent>
+                </ScrollAreaViewport>
+                <ScrollAreaScrollbar>
+                  <ScrollAreaThumb />
+                </ScrollAreaScrollbar>
+              </ScrollArea>
 
-            <Footer
-              onSelectMode={changeSearchQuery}
-              resultCount={trimmedSearchQuery ? autocompleteResultCount : null}
-              isLoading={isLoading}
-              hasPartialFailure={hasUnavailableServices && !isError}
-            />
-          </Autocomplete>
-          <DialogClose tabIndex={-1} className="sr-only">
-            {t(($) => $['operation.close'], { ns: 'common' })}
-          </DialogClose>
+              <Footer
+                onSelectMode={changeSearchQuery}
+                resultCount={trimmedSearchQuery ? autocompleteResultCount : null}
+                isLoading={isLoading}
+                hasPartialFailure={hasUnavailableServices && !isError}
+              />
+            </Autocomplete>
+            <DialogClose tabIndex={-1} className="sr-only">
+              {t(($) => $['operation.close'], { ns: 'common' })}
+            </DialogClose>
+          </HotkeysProvider>
         </DialogContent>
       </Dialog>
 

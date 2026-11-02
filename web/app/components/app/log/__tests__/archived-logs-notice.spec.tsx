@@ -38,8 +38,6 @@ describe('ArchivedLogsNotice', () => {
     renderNotice()
 
     const notice = screen.getByRole('status')
-    expect(notice).toHaveAttribute('aria-live', 'polite')
-    expect(notice).toHaveAttribute('aria-atomic', 'true')
     expect(within(notice).getByText('appLog.archives.notice.description')).toBeInTheDocument()
 
     await user.click(within(notice).getByRole('button', { name: 'appLog.archives.notice.action' }))

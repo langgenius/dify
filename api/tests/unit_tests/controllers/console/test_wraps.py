@@ -49,7 +49,9 @@ from models import Account, DifySetup
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import RateLimitLog
 from services.entities.feature_entities import LicenseStatus
-from tests.unit_tests.config_override import config_overrides_context
+from services.errors.billing import BillingUpstreamUnavailableError
+from tests.helpers import billing_builders as builders
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 @pytest.fixture(autouse=True)
@@ -814,7 +816,7 @@ class TestBillingPaidPlanRequired:
         def paid_view():
             return "paid_success"
 
-        billing_info = {"subscription": {"plan": plan}}
+        billing_info = builders.subscription_info(plan)
         with (
             patch(
                 "controllers.console.wraps.current_account_with_tenant",
@@ -835,7 +837,9 @@ class TestBillingPaidPlanRequired:
         def paid_view():
             return "paid_success"
 
-        billing_info = {"subscription": {"plan": plan}}
+        billing_info = builders.subscription_info(
+            subscription=builders.subscription_plan().model_copy(update={"plan": plan})
+        )
         with app.test_request_context():
             with (
                 patch(
@@ -849,6 +853,30 @@ class TestBillingPaidPlanRequired:
 
         assert exc_info.value.code == 403
         assert "requires a paid plan" in str(exc_info.value.description)
+
+    def test_should_return_service_unavailable_when_billing_lookup_fails(self) -> None:
+        app = create_app_with_login()
+
+        @cloud_edition_billing_paid_plan_required
+        def paid_view() -> str:
+            return "paid_success"
+
+        with app.test_request_context():
+            with (
+                patch(
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(MockUser("test_user"), "tenant123"),
+                ),
+                patch(
+                    "controllers.console.wraps.BillingService.get_info",
+                    side_effect=BillingUpstreamUnavailableError("billing unavailable"),
+                ),
+                pytest.raises(HTTPException) as exc_info,
+            ):
+                paid_view()
+
+        assert exc_info.value.code == 503
+        assert "temporarily unavailable" in str(exc_info.value.description)
 
 
 class TestBillingResourceLimits:

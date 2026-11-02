@@ -35,12 +35,14 @@ function ConfigurationError({ messages }: { messages: string[] }) {
 export function DeploymentConfigurationContent({
   compact = false,
   configurationValues,
+  onConfigurationChange,
   queryState,
   request,
   version,
 }: {
   compact?: boolean
   configurationValues: DeploymentConfigurationValuesController
+  onConfigurationChange: () => void
   queryState: DeploymentConfigurationQueryState
   request: DeploymentDialogRequest
   version: DeploymentVersion
@@ -58,7 +60,7 @@ export function DeploymentConfigurationContent({
     precheckError,
   } = queryState
   const {
-    credentials,
+    getCredential,
     getEnvironmentVariableSelection,
     setCredential,
     setEnvironmentVariableSelection,
@@ -129,16 +131,22 @@ export function DeploymentConfigurationContent({
           <>
             <CredentialsSection
               credentialSlots={deploymentOptions?.credential_slots ?? []}
-              credentials={credentials}
+              getCredential={getCredential}
               horizontalPaddingClassName={horizontalPaddingClassName}
-              onChange={setCredential}
+              onChange={(key, value) => {
+                setCredential(key, value)
+                onConfigurationChange()
+              }}
             />
             <EnvironmentVariablesSection
               environmentVariableGroups={deploymentOptions?.environment_variable_groups ?? []}
               getEnvironmentVariableSelection={getEnvironmentVariableSelection}
               hasCredentialSlots={hasCredentialSlots}
               horizontalPaddingClassName={horizontalPaddingClassName}
-              setEnvironmentVariableSelection={setEnvironmentVariableSelection}
+              setEnvironmentVariableSelection={(workflowId, key, value) => {
+                setEnvironmentVariableSelection(workflowId, key, value)
+                onConfigurationChange()
+              }}
             />
           </>
         )}
