@@ -46,6 +46,34 @@ _compact_json_dumps = functools.partial(json.dumps, separators=(",", ":"))
 
 
 class TestVariableTruncatorCases:
+    @pytest.mark.parametrize("value", ["abcdefgh", "你好世界你好世界"])
+    @pytest.mark.parametrize("spare_budget", [0, 1])
+    def test_string_fitting_estimated_budget_is_preserved(self, value: str, spare_budget: int) -> None:
+        budget = VariableTruncator.calculate_json_size(value) + spare_budget
+        truncator = VariableTruncator(string_length_limit=budget, max_size_bytes=budget)
+
+        result = truncator.truncate(StringSegment(value=value))
+
+        assert result.result == StringSegment(value=value)
+        assert result.truncated is False
+
+    @pytest.mark.parametrize("value", ["", "abcdefgh"])
+    @pytest.mark.parametrize("as_segment", [False, True])
+    def test_mapping_value_fitting_budget_is_preserved(self, value: str, as_segment: bool) -> None:
+        mapping = {"value": StringSegment(value=value) if as_segment else value}
+        budget = VariableTruncator.calculate_json_size("value") + VariableTruncator.calculate_json_size(value)
+
+        result, truncated = VariableTruncator(max_size_bytes=budget).truncate_variable_mapping(mapping)
+
+        assert result == mapping
+        assert truncated is False
+
+    def test_string_exceeding_estimated_budget_is_truncated(self) -> None:
+        result = VariableTruncator(string_length_limit=10, max_size_bytes=10).truncate(StringSegment(value="abcdefghi"))
+
+        assert result.result == StringSegment(value="abcde...")
+        assert result.truncated is True
+
     @staticmethod
     @pytest.fixture
     def file() -> File:
@@ -910,7 +938,8 @@ class TestVariableTruncatorAdditionalCases:
             truncator = VariableTruncator(string_length_limit=8, max_size_bytes=30)
             mapping = {"s": StringSegment(value="long-content")}
 
-            result = truncator._truncate_object(mapping, 20)
+            # The estimated object size is 20; use a smaller budget to exercise truncation.
+            result = truncator._truncate_object(mapping, 19)
 
             assert result.truncated is True
             assert isinstance(result.value["s"], StringSegment)
