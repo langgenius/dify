@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "Usuń zduplikowanych odbiorców",
   "nodes.humanInputV2.error.recipientInvalid": "Popraw nieprawidłową konfigurację odbiorców",
   "nodes.humanInputV2.error.recipientRequired": "Dodaj co najmniej jednego odbiorcę",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "Nie udało się zweryfikować odbiorców z kontaktów",
   "nodes.humanInputV2.error.requestURLDuplicate": "Treść wiadomości może zawierać tylko jeden adres URL wniosku.",
   "nodes.humanInputV2.error.requestURLRequired": "Wstaw adres URL wniosku w treści wiadomości.",
   "nodes.humanInputV2.error.subjectRequired": "Temat wiadomości jest wymagany",

@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "Odstranite podvojene prejemnike",
   "nodes.humanInputV2.error.recipientInvalid": "Popravite neveljavne nastavitve prejemnikov",
   "nodes.humanInputV2.error.recipientRequired": "Dodajte vsaj enega prejemnika",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "Prejemnikov iz stikov ni bilo mogoče preveriti",
   "nodes.humanInputV2.error.requestURLDuplicate": "Besedilo sporočila lahko vsebuje samo en URL zahteve.",
   "nodes.humanInputV2.error.requestURLRequired": "V besedilo sporočila vstavite URL zahteve.",
   "nodes.humanInputV2.error.subjectRequired": "Zadeva sporočila je obvezna",

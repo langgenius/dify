@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "Verwijder dubbele ontvangers",
   "nodes.humanInputV2.error.recipientInvalid": "Herstel de ongeldige configuratie van ontvangers",
   "nodes.humanInputV2.error.recipientRequired": "Voeg ten minste één ontvanger toe",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "Contactontvangers konden niet worden gecontroleerd",
   "nodes.humanInputV2.error.requestURLDuplicate": "De berichttekst mag maar één aanvraag-URL bevatten.",
   "nodes.humanInputV2.error.requestURLRequired": "Voeg een aanvraag-URL in de berichttekst in.",
   "nodes.humanInputV2.error.subjectRequired": "Het berichtonderwerp is vereist",

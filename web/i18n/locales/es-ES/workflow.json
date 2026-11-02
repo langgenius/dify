@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "Elimina los destinatarios duplicados",
   "nodes.humanInputV2.error.recipientInvalid": "Corrige la configuración de destinatarios no válida",
   "nodes.humanInputV2.error.recipientRequired": "Añade al menos un destinatario",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "No se pudieron verificar los destinatarios de contactos",
   "nodes.humanInputV2.error.requestURLDuplicate": "El cuerpo del mensaje solo puede contener una URL de solicitud.",
   "nodes.humanInputV2.error.requestURLRequired": "Inserte una URL de solicitud en el cuerpo del mensaje.",
   "nodes.humanInputV2.error.subjectRequired": "El asunto del mensaje es obligatorio",

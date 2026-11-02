@@ -6125,6 +6125,7 @@ export default interface Resources {
     'nodes.humanInputV2.error.recipientDuplicate': 'Remove duplicate recipients'
     'nodes.humanInputV2.error.recipientInvalid': 'Repair invalid recipient configuration'
     'nodes.humanInputV2.error.recipientRequired': 'Add at least one recipient'
+    'nodes.humanInputV2.error.recipientVerificationFailed': "Couldn't verify contact recipients"
     'nodes.humanInputV2.error.requestURLDuplicate': 'The message body can contain only one Request URL.'
     'nodes.humanInputV2.error.requestURLRequired': 'Insert a Request URL in the message body.'
     'nodes.humanInputV2.error.subjectRequired': 'Message subject is required'

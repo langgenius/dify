@@ -186,14 +186,14 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const workspaceId = useAtomValue(currentWorkspaceIdAtom)
   const contactIds = useMemo(() => getHumanInputContactIds(nodes), [nodes])
   const contactQuery = useQuery(getContactRecipientQueryOptions(workspaceId, contactIds))
-  const resolvedContactIds = useMemo(
-    () =>
-      contactQuery.isPending
-        ? undefined
-        : new Set(
-            contactQuery.isSuccess ? contactQuery.data.data.map((contact) => contact.id) : [],
-          ),
-    [contactQuery.data, contactQuery.isPending, contactQuery.isSuccess],
+  const contactLookup = useMemo(
+    () => ({
+      resolvedContactIds: contactQuery.isSuccess
+        ? new Set(contactQuery.data.data.map((contact) => contact.id))
+        : undefined,
+      contactLookupFailed: contactQuery.isError,
+    }),
+    [contactQuery.data, contactQuery.isError, contactQuery.isSuccess],
   )
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: buildInTools } = useQuery(
@@ -463,7 +463,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         }
       }
 
-      if (isHumanInputV2NodeData(node!.data)) moreDataForCheckValid = { resolvedContactIds }
+      if (isHumanInputV2NodeData(node!.data)) moreDataForCheckValid = contactLookup
 
       if (node!.type === CUSTOM_NODE) {
         const checkData = getCheckData(node!.data)
@@ -648,7 +648,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     inlineAgentConfigurationIssues,
     inlineAgentToolPresentation.toolDisplayNameById,
     resourceKind,
-    resolvedContactIds,
+    contactLookup,
   ])
 
   useEffect(() => {
@@ -816,25 +816,25 @@ export const useChecklistBeforePublish = () => {
       return datasetsDetail || []
     }
 
-    const fetchLatestContactIds = async () => {
+    const fetchLatestContactLookup = async () => {
       const contactIds = getHumanInputContactIds(filteredNodes)
-      if (!contactIds.length || !workspaceId) return new Set<string>()
+      if (!contactIds.length) return { resolvedContactIds: new Set<string>() }
+      if (!workspaceId) return { contactLookupFailed: true }
 
       try {
         const response = await queryClient.query(
           getContactRecipientQueryOptions(workspaceId, contactIds),
         )
-        return new Set(response.data.map((contact) => contact.id))
+        return { resolvedContactIds: new Set(response.data.map((contact) => contact.id)) }
       } catch {
-        // Unverified recipients must not pass publication using an older cached response.
-        return new Set<string>()
+        return { contactLookupFailed: true }
       }
     }
 
-    const [embeddingProviderModelMap, datasets, resolvedContactIds] = await Promise.all([
+    const [embeddingProviderModelMap, datasets, contactLookup] = await Promise.all([
       fetchKnowledgeBaseProviderModelMap(),
       fetchLatestDatasets(),
-      fetchLatestContactIds(),
+      fetchLatestContactLookup(),
     ])
 
     if (datasets === null) return false
@@ -906,7 +906,7 @@ export const useChecklistBeforePublish = () => {
         }
       }
 
-      if (isHumanInputV2NodeData(node!.data)) moreDataForCheckValid = { resolvedContactIds }
+      if (isHumanInputV2NodeData(node!.data)) moreDataForCheckValid = contactLookup
 
       const checkData = getCheckData(node!.data, datasets, embeddingProviderModelMap)
       const validator = resolveNodeValidator(node!.data, nodesExtraData)

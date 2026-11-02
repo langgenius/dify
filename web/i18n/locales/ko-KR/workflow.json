@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "중복된 수신자를 삭제하세요",
   "nodes.humanInputV2.error.recipientInvalid": "유효하지 않은 수신자 설정을 수정하세요",
   "nodes.humanInputV2.error.recipientRequired": "수신자를 한 명 이상 추가하세요",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "연락처 수신자를 확인할 수 없습니다",
   "nodes.humanInputV2.error.requestURLDuplicate": "메시지 본문에는 요청 URL을 하나만 포함할 수 있습니다.",
   "nodes.humanInputV2.error.requestURLRequired": "메시지 본문에 요청 URL을 삽입하세요.",
   "nodes.humanInputV2.error.subjectRequired": "메시지 제목은 필수입니다",

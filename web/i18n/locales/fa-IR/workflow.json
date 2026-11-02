@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "گیرندگان تکراری را حذف کنید",
   "nodes.humanInputV2.error.recipientInvalid": "پیکربندی نامعتبر گیرندگان را اصلاح کنید",
   "nodes.humanInputV2.error.recipientRequired": "حداقل یک گیرنده اضافه کنید",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "تأیید گیرندگان از مخاطبان ممکن نشد",
   "nodes.humanInputV2.error.requestURLDuplicate": "متن پیام فقط می‌تواند شامل یک نشانی درخواست باشد.",
   "nodes.humanInputV2.error.requestURLRequired": "یک نشانی درخواست در متن پیام درج کنید.",
   "nodes.humanInputV2.error.subjectRequired": "موضوع پیام الزامی است",

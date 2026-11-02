@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "Удалите повторяющихся получателей",
   "nodes.humanInputV2.error.recipientInvalid": "Исправьте недопустимые настройки получателей",
   "nodes.humanInputV2.error.recipientRequired": "Добавьте хотя бы одного получателя",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "Не удалось проверить получателей из контактов",
   "nodes.humanInputV2.error.requestURLDuplicate": "Текст сообщения может содержать только один URL запроса.",
   "nodes.humanInputV2.error.requestURLRequired": "Вставьте URL запроса в текст сообщения.",
   "nodes.humanInputV2.error.subjectRequired": "Тема сообщения обязательна",

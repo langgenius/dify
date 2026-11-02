@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "請移除重複的收件人",
   "nodes.humanInputV2.error.recipientInvalid": "請修正無效的收件人設定",
   "nodes.humanInputV2.error.recipientRequired": "請至少新增一位收件人",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "無法驗證聯絡人收件人",
   "nodes.humanInputV2.error.requestURLDuplicate": "內文只能包含一個請求 URL。",
   "nodes.humanInputV2.error.requestURLRequired": "請在內文中插入請求 URL。",
   "nodes.humanInputV2.error.subjectRequired": "訊息主旨為必填項",

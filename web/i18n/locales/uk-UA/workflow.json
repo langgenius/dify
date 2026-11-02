@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "Видаліть дублікати одержувачів",
   "nodes.humanInputV2.error.recipientInvalid": "Виправте недійсні налаштування одержувачів",
   "nodes.humanInputV2.error.recipientRequired": "Додайте принаймні одного одержувача",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "Не вдалося перевірити одержувачів із контактів",
   "nodes.humanInputV2.error.requestURLDuplicate": "Текст повідомлення може містити лише один URL запиту.",
   "nodes.humanInputV2.error.requestURLRequired": "Вставте URL запиту в текст повідомлення.",
   "nodes.humanInputV2.error.subjectRequired": "Тема повідомлення обов'язкова",

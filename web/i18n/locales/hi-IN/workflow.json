@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "डुप्लिकेट प्राप्तकर्ता हटाएँ",
   "nodes.humanInputV2.error.recipientInvalid": "अमान्य प्राप्तकर्ता कॉन्फ़िगरेशन ठीक करें",
   "nodes.humanInputV2.error.recipientRequired": "कम से कम एक प्राप्तकर्ता जोड़ें",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "संपर्क प्राप्तकर्ताओं को सत्यापित नहीं किया जा सका",
   "nodes.humanInputV2.error.requestURLDuplicate": "संदेश के मुख्य भाग में केवल एक अनुरोध URL हो सकता है।",
   "nodes.humanInputV2.error.requestURLRequired": "संदेश के मुख्य भाग में अनुरोध URL डालें।",
   "nodes.humanInputV2.error.subjectRequired": "संदेश का विषय आवश्यक है",

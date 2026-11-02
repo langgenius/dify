@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "Yinelenen alıcıları kaldırın",
   "nodes.humanInputV2.error.recipientInvalid": "Geçersiz alıcı yapılandırmasını düzeltin",
   "nodes.humanInputV2.error.recipientRequired": "En az bir alıcı ekleyin",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "Kişi alıcıları doğrulanamadı",
   "nodes.humanInputV2.error.requestURLDuplicate": "Mesaj gövdesi yalnızca bir istek URL’si içerebilir.",
   "nodes.humanInputV2.error.requestURLRequired": "Mesaj gövdesine bir istek URL’si ekleyin.",
   "nodes.humanInputV2.error.subjectRequired": "İleti konusu gerekli",

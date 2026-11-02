@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "ลบผู้รับที่ซ้ำกัน",
   "nodes.humanInputV2.error.recipientInvalid": "แก้ไขการกำหนดค่าผู้รับที่ไม่ถูกต้อง",
   "nodes.humanInputV2.error.recipientRequired": "เพิ่มผู้รับอย่างน้อยหนึ่งราย",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "ไม่สามารถตรวจสอบผู้รับจากรายชื่อผู้ติดต่อได้",
   "nodes.humanInputV2.error.requestURLDuplicate": "เนื้อหาข้อความมี URL คำขอได้เพียงหนึ่งรายการเท่านั้น",
   "nodes.humanInputV2.error.requestURLRequired": "โปรดแทรก URL คำขอในเนื้อหาข้อความ",
   "nodes.humanInputV2.error.subjectRequired": "ต้องระบุหัวเรื่องข้อความ",

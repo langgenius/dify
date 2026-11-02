@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "Hapus penerima duplikat",
   "nodes.humanInputV2.error.recipientInvalid": "Perbaiki konfigurasi penerima yang tidak valid",
   "nodes.humanInputV2.error.recipientRequired": "Tambahkan setidaknya satu penerima",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "Tidak dapat memverifikasi penerima kontak",
   "nodes.humanInputV2.error.requestURLDuplicate": "Isi pesan hanya boleh memuat satu URL permintaan.",
   "nodes.humanInputV2.error.requestURLRequired": "Sisipkan URL permintaan di isi pesan.",
   "nodes.humanInputV2.error.subjectRequired": "Subjek pesan wajib diisi",

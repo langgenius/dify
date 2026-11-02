@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "重複する受信者を削除してください",
   "nodes.humanInputV2.error.recipientInvalid": "無効な受信者の設定を修正してください",
   "nodes.humanInputV2.error.recipientRequired": "受信者を少なくとも1件追加してください",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "連絡先の受信者を確認できませんでした",
   "nodes.humanInputV2.error.requestURLDuplicate": "本文に含められるリクエスト URL は 1 つだけです。",
   "nodes.humanInputV2.error.requestURLRequired": "本文にリクエスト URL を挿入してください。",
   "nodes.humanInputV2.error.subjectRequired": "メッセージの件名は必須です",

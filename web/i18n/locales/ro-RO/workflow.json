@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "Elimină destinatarii duplicați",
   "nodes.humanInputV2.error.recipientInvalid": "Corectează configurația nevalidă a destinatarilor",
   "nodes.humanInputV2.error.recipientRequired": "Adaugă cel puțin un destinatar",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "Destinatarii din contacte nu au putut fi verificați",
   "nodes.humanInputV2.error.requestURLDuplicate": "Corpul mesajului poate conține un singur URL al cererii.",
   "nodes.humanInputV2.error.requestURLRequired": "Inserează un URL al cererii în corpul mesajului.",
   "nodes.humanInputV2.error.subjectRequired": "Subiectul mesajului este obligatoriu",

@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "Xóa những người nhận trùng lặp",
   "nodes.humanInputV2.error.recipientInvalid": "Sửa cấu hình người nhận không hợp lệ",
   "nodes.humanInputV2.error.recipientRequired": "Thêm ít nhất một người nhận",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "Không thể xác minh người nhận từ danh bạ",
   "nodes.humanInputV2.error.requestURLDuplicate": "Nội dung tin nhắn chỉ được chứa một URL yêu cầu.",
   "nodes.humanInputV2.error.requestURLRequired": "Chèn URL yêu cầu vào nội dung tin nhắn.",
   "nodes.humanInputV2.error.subjectRequired": "Tiêu đề tin nhắn là bắt buộc",

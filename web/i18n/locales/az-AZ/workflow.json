@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "Təkrarlanan alıcıları silin",
   "nodes.humanInputV2.error.recipientInvalid": "Etibarsız alıcı konfiqurasiyasını düzəldin",
   "nodes.humanInputV2.error.recipientRequired": "Ən azı bir alıcı əlavə edin",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "Kontakt alıcılarını yoxlamaq mümkün olmadı",
   "nodes.humanInputV2.error.requestURLDuplicate": "Mesajın mətnində yalnız bir sorğu URL-si ola bilər.",
   "nodes.humanInputV2.error.requestURLRequired": "Mesajın mətninə sorğu URL-si əlavə edin.",
   "nodes.humanInputV2.error.subjectRequired": "Mesajın mövzusu tələb olunur",

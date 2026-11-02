@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "أزل المستلمين المكرّرين",
   "nodes.humanInputV2.error.recipientInvalid": "أصلح إعداد المستلمين غير الصالح",
   "nodes.humanInputV2.error.recipientRequired": "أضف مستلمًا واحدًا على الأقل",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "تعذّر التحقق من المستلمين من جهات الاتصال",
   "nodes.humanInputV2.error.requestURLDuplicate": "لا يمكن أن يحتوي نص الرسالة إلا على رابط طلب واحد.",
   "nodes.humanInputV2.error.requestURLRequired": "أدرج رابط الطلب في نص الرسالة.",
   "nodes.humanInputV2.error.subjectRequired": "موضوع الرسالة مطلوب",

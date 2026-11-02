@@ -927,14 +927,21 @@ describe('HITL contact recipient availability', () => {
     await waitFor(() => expect(result.current.run.hasValidationErrors).toBe(false))
   })
 
-  it('blocks publication on a failed recipient lookup and allows a successful retry', async () => {
+  it('reports a failed recipient lookup as unverified, blocks publication, and allows a successful retry', async () => {
     resolveContacts.mockRejectedValue(new Error('Contact lookup unavailable'))
     const { result } = renderRecipientValidation([{ type: 'contact', contact_id: 'existing' }])
 
     await act(async () => {
       expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
     })
-    expect(result.current.run.hasValidationErrors).toBe(true)
+    await waitFor(() =>
+      expect(result.current.run.warningNodes).toEqual([
+        expect.objectContaining({
+          id: 'review',
+          errorMessages: ['workflow.nodes.humanInputV2.error.recipientVerificationFailed'],
+        }),
+      ]),
+    )
 
     resolveContacts.mockResolvedValue({ data: [existingContact] })
     await act(async () => {

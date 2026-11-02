@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "Entfernen Sie doppelte Empfänger",
   "nodes.humanInputV2.error.recipientInvalid": "Korrigieren Sie die ungültige Empfängerkonfiguration",
   "nodes.humanInputV2.error.recipientRequired": "Fügen Sie mindestens einen Empfänger hinzu",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "Kontaktempfänger konnten nicht überprüft werden",
   "nodes.humanInputV2.error.requestURLDuplicate": "Der Nachrichtentext darf nur eine Anfrage-URL enthalten.",
   "nodes.humanInputV2.error.requestURLRequired": "Fügen Sie eine Anfrage-URL in den Nachrichtentext ein.",
   "nodes.humanInputV2.error.subjectRequired": "Nachrichtenbetreff ist erforderlich",

@@ -425,6 +425,7 @@
   "nodes.humanInputV2.error.recipientDuplicate": "ລຶບຜູ້ຮັບທີ່ຊ້ຳກັນ",
   "nodes.humanInputV2.error.recipientInvalid": "ແກ້ໄຂການຕັ້ງຄ່າຜູ້ຮັບທີ່ບໍ່ຖືກຕ້ອງ",
   "nodes.humanInputV2.error.recipientRequired": "ເພີ່ມຜູ້ຮັບຢ່າງໜ້ອຍໜຶ່ງຄົນ",
+  "nodes.humanInputV2.error.recipientVerificationFailed": "ບໍ່ສາມາດກວດສອບຜູ້ຮັບຈາກລາຍຊື່ຕິດຕໍ່ໄດ້",
   "nodes.humanInputV2.error.requestURLDuplicate": "ເນື້ອຫາຂໍ້ຄວາມສາມາດມີ URL ຄຳຮ້ອງຂໍໄດ້ພຽງໜຶ່ງລາຍການເທົ່ານັ້ນ.",
   "nodes.humanInputV2.error.requestURLRequired": "ກະລຸນາແຊກ URL ຄຳຮ້ອງຂໍໃນເນື້ອຫາຂໍ້ຄວາມ.",
   "nodes.humanInputV2.error.subjectRequired": "ຈຳເປັນຕ້ອງມີຫົວຂໍ້ຂໍ້ຄວາມ",
