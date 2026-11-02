@@ -150,22 +150,23 @@ const DifyBuilderComposer = () => {
   const operation = useAtomValue(difyBuilderTaskControlOperationAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
   const controlStatusId = useId()
-  const controlStatus =
-    control?.phase === 'unknown'
-      ? t(($) => $['taskControl.unknown'])
-      : control?.phase === 'saving'
-        ? t(($) => $['taskControl.saving'])
-        : control
-          ? control.operation === 'stop'
-            ? t(($) => $['taskControl.stopping'])
-            : t(($) => $['taskControl.resuming'])
-          : operation === 'stop'
-            ? t(($) => $['taskControl.running'])
-            : operation === 'resume'
-              ? canvasReady
-                ? t(($) => $['taskControl.paused'])
-                : t(($) => $['taskControl.syncing'])
-              : null
+  let controlStatus: string | null = null
+  if (control?.phase === 'unknown') {
+    controlStatus = t(($) => $['taskControl.unknown'])
+  } else if (control?.phase === 'saving') {
+    controlStatus = t(($) => $['taskControl.saving'])
+  } else if (control) {
+    controlStatus =
+      control.operation === 'stop'
+        ? t(($) => $['taskControl.stopping'])
+        : t(($) => $['taskControl.resuming'])
+  } else if (operation === 'stop') {
+    controlStatus = t(($) => $['taskControl.running'])
+  } else if (operation === 'resume') {
+    controlStatus = canvasReady
+      ? t(($) => $['taskControl.paused'])
+      : t(($) => $['taskControl.syncing'])
+  }
   const descriptionId =
     [showStatus && statusId, controlStatus && controlStatusId].filter(Boolean).join(' ') ||
     undefined

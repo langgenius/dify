@@ -54,7 +54,7 @@ export const difyBuilderAppIdAtom = atom((get) => get(difyBuilderRuntimeAtom)?.a
 const difyBuilderFixMutationKeyAtom = atom((get) => [
   'dify-builder',
   'start-fix',
-  get(difyBuilderRuntimeAtom)?.appId,
+  get(difyBuilderAppIdAtom),
 ])
 const difyBuilderStartFixMutationAtom = atomWithMutation((get) => ({
   mutationKey: get(difyBuilderFixMutationKeyAtom),

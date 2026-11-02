@@ -18,6 +18,7 @@ export const ResourceCard = memo(
     const resources = item.payload.recommended ?? []
     const resourceListId = useId()
     const [selected, setSelected] = useState(() => resources.map((resource) => resource.id))
+    const selectedIds = new Set(selected)
     const emitPayload = (resourceIds: string[]) => {
       onActionPayloadChange('confirm_resources', {
         resource_ids: resourceIds,
@@ -52,7 +53,7 @@ export const ResourceCard = memo(
               <Checkbox
                 aria-labelledby={labelId}
                 aria-describedby={descriptionId}
-                checked={selected.includes(resource.id)}
+                checked={selectedIds.has(resource.id)}
                 disabled={busy}
                 className="focus-visible:ring-0"
                 onCheckedChange={(checked) => {
