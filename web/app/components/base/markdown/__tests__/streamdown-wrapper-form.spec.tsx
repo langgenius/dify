@@ -13,14 +13,14 @@ describe('StreamdownWrapper Markdown form field names', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
-    document.body.setAttribute(
+    document.documentElement.setAttribute(
       'data-markdown-form-field-name-extra-chars',
       '。.;；+=—()!*&（）！＊＆－',
     )
   })
 
   afterEach(() => {
-    document.body.removeAttribute('data-markdown-form-field-name-extra-chars')
+    document.documentElement.removeAttribute('data-markdown-form-field-name-extra-chars')
   })
 
   it('should preserve and submit field names containing configured punctuation', async () => {

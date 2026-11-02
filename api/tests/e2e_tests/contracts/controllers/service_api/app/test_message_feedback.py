@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
 from constants.resource_access_token import ResourceAccessTokenResourceType
-from controllers.service_api.app.message import AppGetFeedbacksApi, MessageFeedbackApi
+from controllers.service_api.app.message import AppGetFeedbacksApi, MessageFeedbackApi, MessageListApi
 from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_database import db
@@ -163,6 +163,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
     app.extensions["application_services"] = services
     api = ExternalApi(app)
     api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
+    api.add_resource(MessageListApi, "/messages")
     api.add_resource(AppGetFeedbacksApi, "/app/feedbacks")
     yield _Harness(
         app,
@@ -258,6 +259,40 @@ def test_invalid_authorization_is_rejected(harness: _Harness, authorization: str
     assert response.get_json()["code"] == "unauthorized"
     assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
     assert harness.sessions == []
+
+
+def test_app_only_list_rejects_a_key_from_another_workspace(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        foreign_tenant = Tenant(name="Other API key workspace")
+        session.add(foreign_tenant)
+        token = session.scalar(select(ApiToken).where(ApiToken.token == "feedback-test-token"))
+        assert token is not None
+        token.tenant_id = foreign_tenant.id
+
+    response = harness.get("?user=must-not-be-provisioned")
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.get_json() == {
+        "code": "app_not_found",
+        "message": "The app no longer exists.",
+        "status": HTTPStatus.FORBIDDEN,
+    }
+    assert harness.end_user_queries == []
+    harness.assert_closed()
+
+
+def test_app_only_list_accepts_a_historical_key_without_workspace(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        token = session.scalar(select(ApiToken).where(ApiToken.token == "feedback-test-token"))
+        assert token is not None
+        token.tenant_id = None
+
+    response = harness.get("?user=must-not-be-provisioned")
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() == {"data": []}
+    assert harness.end_user_queries == []
+    harness.assert_closed()
 
 
 def test_invalid_rating_is_rejected(harness: _Harness) -> None:
@@ -443,7 +478,7 @@ def test_multiple_app_resource_token_list_requires_app_header(harness: _Harness)
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.get_json() == {
-        "code": "bad_request",
+        "code": "invalid_param",
         "message": "App ID is required when a resource access token is bound to multiple apps.",
         "status": 400,
     }

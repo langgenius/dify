@@ -146,22 +146,18 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
             )
 
     @override
-    def has_service_api_owner(self, tenant_id: str) -> bool:
+    def get_service_api_owner_id(self, tenant_id: str) -> str | None:
         with self._session_factory() as session:
-            return bool(
-                session.scalar(
-                    select(
-                        select(Account.id)
-                        .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
-                        .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
-                        .where(
-                            Tenant.id == tenant_id,
-                            Tenant.status == TenantStatus.NORMAL,
-                            TenantAccountJoin.role == TenantAccountRole.OWNER,
-                        )
-                        .exists()
-                    )
+            return session.scalar(
+                select(Account.id)
+                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
+                .where(
+                    Tenant.id == tenant_id,
+                    Tenant.status == TenantStatus.NORMAL,
+                    TenantAccountJoin.role == TenantAccountRole.OWNER,
                 )
+                .limit(1)
             )
 
     @override

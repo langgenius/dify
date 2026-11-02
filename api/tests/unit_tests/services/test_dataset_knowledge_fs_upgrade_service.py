@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.entities.model_entities import ModelStatus
 from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
@@ -19,7 +20,6 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetMetadata, DatasetPermissionEnum, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.knowledge_fs import (
-    KnowledgeFSAppSpaceJoinType,
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpacePermissionRole,
     KnowledgeFSControlSpaceState,
@@ -42,8 +42,12 @@ from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeConflictError,
     KnowledgeFSUpgradeDocumentReconciler,
     KnowledgeFSUpgradeError,
+    KnowledgeFSUpgradeModelPreferences,
+    KnowledgeFSUpgradeModelResolver,
+    KnowledgeFSUpgradeModelsUnavailableError,
     KnowledgeFSUpgradeNotFoundError,
     KnowledgeFSUpgradeNotReadyError,
+    KnowledgeFSUpgradeResolvedModels,
     KnowledgeFSUpgradeRunner,
     KnowledgeFSUpgradeSnapshotService,
 )
@@ -53,7 +57,6 @@ from services.knowledge_fs.initial_source_import import (
     KnowledgeFSInitialSourceSubmission,
 )
 from services.knowledge_fs.product_dto import (
-    KnowledgeFSAppBindingPayload,
     KnowledgeFSBackgroundTaskListResponse,
     KnowledgeFSBackgroundTaskResponse,
     KnowledgeFSDocumentAvailabilityPayload,
@@ -66,10 +69,13 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSMetadataFieldCreatePayload,
     KnowledgeFSMetadataFieldListResponse,
+    KnowledgeFSModelIntent,
     KnowledgeFSResolvedDocumentReferenceResponse,
     KnowledgeFSSpaceCreatePayload,
     KnowledgeFSSpaceCreateResponse,
     KnowledgeFSStagedUploadResponse,
+    KnowledgeFSUpgradeModelChoice,
+    KnowledgeFSUpgradeModelsPayload,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFoundError
 from tests.helpers.unit.services.knowledge_fs_services_a_fakes import CallRecorder, RecordedCall, UnusedSessionFactory
@@ -180,6 +186,8 @@ class FakeModelProvider:
 class FakeActiveModel:
     provider: FakeModelProvider
     model: str
+    status: ModelStatus = ModelStatus.ACTIVE
+    deprecated: bool = False
 
 
 @dataclass
@@ -187,8 +195,8 @@ class FakeProviderConfigurations:
     models_by_type: Mapping[ModelType, list[FakeActiveModel]]
 
     def get_models(self, *, model_type: ModelType, only_active: bool) -> list[FakeActiveModel]:
-        assert only_active is True
-        return self.models_by_type[model_type]
+        models = self.models_by_type[model_type]
+        return [model for model in models if model.status is ModelStatus.ACTIVE] if only_active else models
 
 
 @dataclass
@@ -655,19 +663,40 @@ def test_snapshot_is_immutable_after_the_legacy_dataset_changes(
         owner_id = owner.id
         dataset_id = dataset.id
 
+    models = KnowledgeFSUpgradeResolvedModels(
+        embedding=KnowledgeFSModelIntent(plugin_id="langgenius/openai", provider="openai", model="selected-embedding"),
+        rerank=KnowledgeFSModelIntent(plugin_id="langgenius/cohere", provider="cohere", model="selected-rerank"),
+        reasoning=KnowledgeFSModelIntent(plugin_id="langgenius/anthropic", provider="anthropic", model="selected-llm"),
+    )
     job = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory).create(
         tenant_id=tenant_id,
         dataset_id=dataset_id,
         requested_by_account_id=owner_id,
         idempotency_key="immutable-snapshot",
+        models=models,
     )
     replayed = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory).create(
         tenant_id=tenant_id,
         dataset_id=dataset_id,
         requested_by_account_id=owner_id,
         idempotency_key="immutable-snapshot",
+        models=models,
     )
     assert replayed.id == job.id
+    with pytest.raises(KnowledgeFSUpgradeConflictError, match="model selection"):
+        KnowledgeFSUpgradeSnapshotService(sqlite_session_factory).create(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            requested_by_account_id=owner_id,
+            idempotency_key="immutable-snapshot",
+            models=KnowledgeFSUpgradeResolvedModels(
+                embedding=models.embedding,
+                rerank=models.rerank,
+                reasoning=KnowledgeFSModelIntent(
+                    plugin_id="langgenius/anthropic", provider="anthropic", model="different-llm"
+                ),
+            ),
+        )
     with sqlite_session_factory.begin() as session:
         persisted_dataset = session.get(Dataset, dataset_id)
         persisted_document = session.get(Document, document.id)
@@ -688,6 +717,16 @@ def test_snapshot_is_immutable_after_the_legacy_dataset_changes(
         assert persisted_job.config_snapshot["embedding_model"] == "text-embedding-3-large"
         assert persisted_job.config_snapshot["embedding_model_provider"] == "openai"
         assert persisted_job.config_snapshot["retrieval_model"] == {"top_k": 8, "reranking_enable": True}
+        assert persisted_job.resolved_configuration is not None
+        embedding_config = persisted_job.resolved_configuration["embedding"]
+        retrieval_config = persisted_job.resolved_configuration["retrieval"]
+        assert isinstance(embedding_config, dict)
+        assert isinstance(retrieval_config, dict)
+        reasoning_model = retrieval_config["reasoningModel"]
+        assert isinstance(reasoning_model, dict)
+        assert embedding_config["model"] == "selected-embedding"
+        assert reasoning_model["model"] == "selected-llm"
+        assert retrieval_config["topK"] == 8
         assert persisted_job.config_snapshot["enable_api"] is True
         assert persisted_job.config_snapshot["metadata_fields"] == [{"name": "department", "type": "string"}]
         assert snapshot_document.desired_enabled is False
@@ -950,6 +989,190 @@ def _active_model(provider: str, model: str) -> FakeActiveModel:
     return FakeActiveModel(provider=FakeModelProvider(provider=provider), model=model)
 
 
+def test_upgrade_model_recommendations_preserve_legacy_priority_and_show_unavailable_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    embedding = _active_model("langgenius/openai/openai", "legacy-embedding")
+    rerank = _active_model("langgenius/cohere/cohere", "default-rerank")
+    reasoning = FakeActiveModel(
+        provider=FakeModelProvider(provider="langgenius/anthropic/anthropic"),
+        model="default-llm",
+        status=ModelStatus.CREDENTIAL_REMOVED,
+    )
+    manager = FakeProviderManager(
+        configurations=FakeProviderConfigurations(
+            {
+                ModelType.TEXT_EMBEDDING: [embedding],
+                ModelType.RERANK: [rerank],
+                ModelType.LLM: [reasoning],
+            }
+        ),
+        defaults={},
+    )
+    monkeypatch.setattr(upgrade_module, "create_plugin_provider_manager", lambda **_kwargs: manager)
+    resolver = KnowledgeFSUpgradeModelResolver(tenant_id=_TENANT_ID)
+    preferences = KnowledgeFSUpgradeModelPreferences(
+        embedding=KnowledgeFSUpgradeModelChoice(provider="openai", model="legacy-embedding"),
+        rerank=KnowledgeFSUpgradeModelChoice(provider="cohere", model="old-rerank"),
+        defaults={
+            ModelType.TEXT_EMBEDDING: KnowledgeFSUpgradeModelChoice(provider="openai", model="default-embedding"),
+            ModelType.RERANK: KnowledgeFSUpgradeModelChoice(provider="cohere", model="default-rerank"),
+            ModelType.LLM: KnowledgeFSUpgradeModelChoice(provider="anthropic", model="default-llm"),
+        },
+    )
+
+    recommendations = resolver.recommend(preferences)
+
+    assert recommendations.embedding.value == preferences.embedding
+    assert recommendations.embedding.source == "legacy"
+    assert recommendations.rerank.value == preferences.defaults[ModelType.RERANK]
+    assert recommendations.rerank.source == "workspace_default"
+    assert recommendations.reasoning.available is False
+    assert recommendations.reasoning.unavailable_reason == "credential-removed"
+    with pytest.raises(KnowledgeFSUpgradeModelsUnavailableError) as error:
+        resolver.resolve_recommendations(preferences)
+    assert [(issue.field, issue.reason) for issue in error.value.issues] == [("reasoning", "credential-removed")]
+
+
+def test_upgrade_model_recommendations_resolve_active_workspace_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    models = {
+        ModelType.TEXT_EMBEDDING: _active_model("langgenius/openai/openai", "default-embedding"),
+        ModelType.RERANK: _active_model("langgenius/cohere/cohere", "default-rerank"),
+        ModelType.LLM: _active_model("langgenius/anthropic/anthropic", "default-reasoning"),
+    }
+    manager = FakeProviderManager(
+        configurations=FakeProviderConfigurations({model_type: [model] for model_type, model in models.items()}),
+        defaults=models,
+    )
+    monkeypatch.setattr(upgrade_module, "create_plugin_provider_manager", lambda **_kwargs: manager)
+    preferences = KnowledgeFSUpgradeModelPreferences(
+        embedding=None,
+        rerank=None,
+        defaults={
+            model_type: KnowledgeFSUpgradeModelChoice(provider=model.provider.provider, model=model.model)
+            for model_type, model in models.items()
+        },
+    )
+
+    resolved = KnowledgeFSUpgradeModelResolver(tenant_id=_TENANT_ID).resolve_recommendations(preferences)
+
+    assert resolved.embedding.model == "default-embedding"
+    assert resolved.rerank.model == "default-rerank"
+    assert resolved.reasoning.model == "default-reasoning"
+
+
+@pytest.mark.parametrize(
+    ("status", "expected_reason"),
+    [
+        (ModelStatus.NO_CONFIGURE, "no-configure"),
+        (ModelStatus.NO_PERMISSION, "no-permission"),
+        (ModelStatus.DISABLED, "disabled"),
+    ],
+)
+def test_upgrade_model_validation_reports_unavailable_provider_status(
+    monkeypatch: pytest.MonkeyPatch, status: ModelStatus, expected_reason: str
+) -> None:
+    embedding = FakeActiveModel(
+        provider=FakeModelProvider(provider="langgenius/openai/openai"), model="embedding", status=status
+    )
+    manager = FakeProviderManager(
+        configurations=FakeProviderConfigurations(
+            {
+                ModelType.TEXT_EMBEDDING: [embedding],
+                ModelType.RERANK: [_active_model("langgenius/cohere/cohere", "rerank")],
+                ModelType.LLM: [_active_model("langgenius/anthropic/anthropic", "reasoning")],
+            }
+        ),
+        defaults={},
+    )
+    monkeypatch.setattr(upgrade_module, "create_plugin_provider_manager", lambda **_kwargs: manager)
+    choices = KnowledgeFSUpgradeModelsPayload(
+        embedding=KnowledgeFSUpgradeModelChoice(provider="openai", model="embedding"),
+        rerank=KnowledgeFSUpgradeModelChoice(provider="cohere", model="rerank"),
+        reasoning=KnowledgeFSUpgradeModelChoice(provider="anthropic", model="reasoning"),
+    )
+
+    with pytest.raises(KnowledgeFSUpgradeModelsUnavailableError) as error:
+        KnowledgeFSUpgradeModelResolver(tenant_id=_TENANT_ID).validate(choices)
+
+    assert [(issue.field, issue.reason) for issue in error.value.issues] == [("embedding", expected_reason)]
+
+
+def test_upgrade_model_validation_reports_each_unavailable_field(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    embedding = _active_model("langgenius/openai/openai", "embedding")
+    rerank = FakeActiveModel(
+        provider=FakeModelProvider(provider="langgenius/cohere/cohere"), model="rerank", deprecated=True
+    )
+    reasoning = FakeActiveModel(
+        provider=FakeModelProvider(provider="langgenius/anthropic/anthropic"),
+        model="reasoning",
+        status=ModelStatus.QUOTA_EXCEEDED,
+    )
+    manager = FakeProviderManager(
+        configurations=FakeProviderConfigurations(
+            {
+                ModelType.TEXT_EMBEDDING: [embedding],
+                ModelType.RERANK: [rerank],
+                ModelType.LLM: [reasoning],
+            }
+        ),
+        defaults={},
+    )
+    monkeypatch.setattr(upgrade_module, "create_plugin_provider_manager", lambda **_kwargs: manager)
+    resolver = KnowledgeFSUpgradeModelResolver(tenant_id=_TENANT_ID)
+
+    with pytest.raises(KnowledgeFSUpgradeModelsUnavailableError) as error:
+        resolver.validate(
+            KnowledgeFSUpgradeModelsPayload(
+                embedding=KnowledgeFSUpgradeModelChoice(provider="langgenius/cohere/cohere", model="rerank"),
+                rerank=KnowledgeFSUpgradeModelChoice(provider="cohere", model="rerank"),
+                reasoning=KnowledgeFSUpgradeModelChoice(provider="anthropic", model="reasoning"),
+            )
+        )
+
+    assert [(issue.field, issue.reason) for issue in error.value.issues] == [
+        ("embedding", "not_found"),
+        ("rerank", "deprecated"),
+        ("reasoning", "quota-exceeded"),
+    ]
+
+
+def test_upgrade_model_validation_keeps_the_explicit_active_choices(monkeypatch: pytest.MonkeyPatch) -> None:
+    manager = FakeProviderManager(
+        configurations=FakeProviderConfigurations(
+            {
+                ModelType.TEXT_EMBEDDING: [_active_model("langgenius/openai/openai", "chosen-embedding")],
+                ModelType.RERANK: [_active_model("langgenius/cohere/cohere", "chosen-rerank")],
+                ModelType.LLM: [_active_model("langgenius/anthropic/anthropic", "chosen-llm")],
+            }
+        ),
+        defaults={},
+    )
+    monkeypatch.setattr(upgrade_module, "create_plugin_provider_manager", lambda **_kwargs: manager)
+
+    resolved = KnowledgeFSUpgradeModelResolver(tenant_id=_TENANT_ID).validate(
+        KnowledgeFSUpgradeModelsPayload(
+            embedding=KnowledgeFSUpgradeModelChoice(provider="openai", model="chosen-embedding"),
+            rerank=KnowledgeFSUpgradeModelChoice(provider="cohere", model="chosen-rerank"),
+            reasoning=KnowledgeFSUpgradeModelChoice(provider="anthropic", model="chosen-llm"),
+        )
+    )
+
+    assert resolved.embedding == KnowledgeFSModelIntent(
+        plugin_id="langgenius/openai", provider="openai", model="chosen-embedding"
+    )
+    assert resolved.rerank == KnowledgeFSModelIntent(
+        plugin_id="langgenius/cohere", provider="cohere", model="chosen-rerank"
+    )
+    assert resolved.reasoning == KnowledgeFSModelIntent(
+        plugin_id="langgenius/anthropic", provider="anthropic", model="chosen-llm"
+    )
+
+
 def test_configuration_prefers_active_legacy_models_and_uses_default_reasoning(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1078,7 +1301,7 @@ def test_configuration_fails_when_workspace_default_reasoning_model_is_missing(
         upgrade_module._resolve_configuration(job)
 
 
-def test_access_migration_maps_visibility_members_apps_api_and_tags(
+def test_access_migration_maps_visibility_members_channels_api_and_tags_without_app_bindings(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     viewer_id = "00000000-0000-0000-0000-000000000030"
@@ -1129,12 +1352,7 @@ def test_access_migration_maps_visibility_members_apps_api_and_tags(
     assert external_access.agent_enabled is True
     assert external_access.workflow_enabled is True
     assert external_access.mcp_enabled is False
-    binding_payloads = [call.kwargs["payload"] for call in app_bindings.upsert.calls]
-    assert all(isinstance(payload, KnowledgeFSAppBindingPayload) for payload in binding_payloads)
-    assert [cast(KnowledgeFSAppBindingPayload, payload).caller_kind for payload in binding_payloads] == [
-        KnowledgeFSAppSpaceJoinType.AGENT,
-        KnowledgeFSAppSpaceJoinType.WORKFLOW,
-    ]
+    assert app_bindings.upsert.calls == []
     assert space_tags.replace_tags.last.kwargs["tag_ids"] == job.tag_ids_snapshot
     with sqlite_session_factory() as session:
         persisted = session.get(KnowledgeFSUpgradeJob, job.id)
@@ -1261,6 +1479,7 @@ def test_runner_creates_space_and_advances_after_activation(
         stage=KnowledgeFSUpgradeStage.VALIDATING,
         total_sources=1,
         config_snapshot={"name": "Legacy", "description": "Description", "icon": "book"},
+        resolved_configuration=_resolved_configuration(),
     )
     with sqlite_session_factory.begin() as session:
         session.add(job)
@@ -1275,7 +1494,7 @@ def test_runner_creates_space_and_advances_after_activation(
             )
         )
     )
-    monkeypatch.setattr(upgrade_module, "_resolve_configuration", lambda _job: _resolved_configuration())
+    monkeypatch.setattr(upgrade_module, "_resolve_configuration", lambda _job: pytest.fail("models were reselected"))
     monkeypatch.setattr(
         upgrade_module,
         "get_knowledge_fs_runtime",

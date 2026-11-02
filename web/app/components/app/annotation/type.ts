@@ -13,4 +13,5 @@ export type AnnotationEnableStatus =
 
 export const JobStatus = {
   completed: 'completed',
+  error: 'error',
 } as const

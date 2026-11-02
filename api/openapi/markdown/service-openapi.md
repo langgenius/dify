@@ -573,6 +573,37 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
+Delete a logical document and its historical revisions. Use the logical document ID and its rowVersion as expectedRevision; the accepted deletion job runs asynchronously.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSLogicalDocumentDeletePayload](#knowledgefslogicaldocumentdeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base logical document deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
 #### Parameters
 
@@ -1747,7 +1778,7 @@ Retrieve a paginated list of all feedback submitted for messages in this applica
 | 200 | A list of application feedbacks. | **application/json**: [AppFeedbackListResponse](#appfeedbacklistresponse)<br> |
 | 400 | `app_unavailable`: App is no longer available. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /messages/{message_id}/feedbacks
@@ -1774,7 +1805,7 @@ Submit feedback for a message. End users can rate messages as `like` or `dislike
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | `message_feedback_rating_required`: Cannot revoke feedback that does not exist. `app_unavailable`: App is no longer available. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1803,8 +1834,11 @@ Enables or disables the annotation reply feature. Requires embedding model confi
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Annotation reply settings task initiated. | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `invalid_param` : Invalid action or app selection. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | `unauthorized` : Invalid API credential or workspace owner unavailable. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : App no longer exists. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 422 | `unprocessable_entity` : Invalid annotation reply payload. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/annotation-reply/{action}/status/{job_id}
@@ -1824,9 +1858,10 @@ Retrieves the status of an asynchronous annotation reply configuration job start
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved task status. | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
-| 400 | `invalid_param` : The specified job does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `invalid_param` : Invalid action or app selection. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | `unauthorized` : Invalid API credential or workspace owner unavailable. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : The specified job does not belong to this app or no longer exists. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/annotations
@@ -1847,8 +1882,11 @@ Retrieves a paginated list of annotations for the application. Supports keyword 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved annotation list. | **application/json**: [AnnotationList](#annotationlist)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `invalid_param` : Invalid app selection. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | `unauthorized` : Invalid API credential or workspace owner unavailable. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : App no longer exists. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 422 | `unprocessable_entity` : Invalid pagination query. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/annotations
@@ -1867,8 +1905,11 @@ Creates a new annotation. Annotations provide predefined question-answer pairs t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Annotation created successfully. | **application/json**: [Annotation](#annotation)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `invalid_param` : Invalid app selection. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | `unauthorized` : Invalid API credential or workspace owner unavailable. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : App no longer exists. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 422 | `unprocessable_entity` : Invalid annotation payload. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/annotations/{annotation_id}
@@ -1887,9 +1928,10 @@ Deletes an annotation and its associated hit history.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Annotation deleted successfully. |  |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | `forbidden` : Insufficient permissions to edit annotations. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | `not_found` : Annotation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `invalid_param` : Invalid app selection. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | `unauthorized` : Invalid API credential or workspace owner unavailable. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : API credential scope, app, or workspace access denied. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : App or annotation no longer exists. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/annotations/{annotation_id}
@@ -1914,9 +1956,11 @@ Updates the question and answer of an existing annotation.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Annotation updated successfully. | **application/json**: [Annotation](#annotation)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | `forbidden` : Insufficient permissions to edit annotations. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | `not_found` : Annotation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `invalid_param` : Invalid app selection. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | `unauthorized` : Invalid API credential or workspace owner unavailable. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : API credential scope, app, or workspace access denied. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : App or annotation no longer exists. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 422 | `unprocessable_entity` : Invalid annotation payload. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
@@ -2041,7 +2085,7 @@ Get next question suggestions for the current message. If no usable model can be
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
 | 400 | - `not_chat_app` : App mode does not match the API route. - `app_unavailable` : App is no longer available. - `completion_request_error` : Model invocation failed while counting history tokens. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | - `forbidden` : Token scope does not allow access. - `app_not_found` : The token's app no longer exists. - `app_abnormal_status` : App status does not allow API access. - `app_api_disabled` : The app's API service has been disabled. - `workspace_not_found` : The app's workspace no longer exists. - `workspace_archived` : The app's workspace is archived. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | - `forbidden` : Token scope does not allow access. - `app_not_found` : The token's app no longer exists. - `app_abnormal_status` : App status does not allow API access. - `app_api_disabled` : The app's API service has been disabled. - `workspace_not_found` : The app's workspace no longer exists. - `workspace_archived` : The app's workspace is archived. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | - `not_found` : End user, message, or conversation does not exist. - `agent_version_not_found_error` : Agent config version does not exist. | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2194,7 +2238,7 @@ Get next question suggestions for the current message. If no usable model can be
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
 | 400 | - `not_chat_app` : App mode does not match the API route. - `app_unavailable` : App is no longer available. - `completion_request_error` : Model invocation failed while counting history tokens. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | - `forbidden` : Token scope does not allow access. - `app_not_found` : The token's app no longer exists. - `app_abnormal_status` : App status does not allow API access. - `app_api_disabled` : The app's API service has been disabled. - `workspace_not_found` : The app's workspace no longer exists. - `workspace_archived` : The app's workspace is archived. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | - `forbidden` : Token scope does not allow access. - `app_not_found` : The token's app no longer exists. - `app_abnormal_status` : App status does not allow API access. - `app_api_disabled` : The app's API service has been disabled. - `workspace_not_found` : The app's workspace no longer exists. - `workspace_archived` : The app's workspace is archived. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | - `not_found` : End user, message, or conversation does not exist. - `agent_version_not_found_error` : Agent config version does not exist. | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2273,11 +2317,12 @@ Retrieve the conversation list for the current user, ordered by most recently ac
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successfully retrieved conversations list. | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | `not_found` : Last conversation does not exist (invalid `last_id`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 200 | Conversations retrieved successfully. | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
+| 400 | Invalid app selection or app mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid API credentials. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | API credential, app or workspace access is unavailable. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_cursor_not_found`: Cursor is outside the current list. `conversation_not_found`: The app or user is no longer available. | **application/json**: [ConversationCursorNotFoundError](#conversationcursornotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid conversation list query. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /conversations/{conversation_id}
@@ -2302,10 +2347,10 @@ Delete a conversation.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Conversation deleted successfully. |  |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid app selection or app mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid API credentials. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | API credential, app or workspace access is unavailable. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /conversations/{conversation_id}/name
@@ -2329,11 +2374,12 @@ Rename a conversation or auto-generate a name. The conversation name is used for
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation renamed successfully. | **application/json**: [SimpleConversation](#simpleconversation)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 200 | Conversation renamed successfully; model failure preserves the existing name. | **application/json**: [SimpleConversation](#simpleconversation)<br> |
+| 400 | Invalid app selection or app mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid API credentials. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | API credential, app or workspace access is unavailable. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist. `conversation_first_message_not_found`: No first message is available for automatic naming. | **application/json**: [ConversationFirstMessageNotFoundError](#conversationfirstmessagenotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid conversation rename payload. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /conversations/{conversation_id}/variables
@@ -2355,11 +2401,12 @@ Retrieve variables from a specific conversation.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successfully retrieved conversation variables. | **application/json**: [ConversationVariableInfiniteScrollPaginationResponse](#conversationvariableinfinitescrollpaginationresponse)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 200 | Conversation variables retrieved successfully. | **application/json**: [ConversationVariableInfiniteScrollPaginationResponse](#conversationvariableinfinitescrollpaginationresponse)<br> |
+| 400 | Invalid app selection or app mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid API credentials. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | API credential, app or workspace access is unavailable. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. `conversation_variable_not_found`: Cursor variable is outside the current list. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ConversationVariableNotFoundError](#conversationvariablenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid conversation variables query. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /conversations/{conversation_id}/variables/{variable_id}
@@ -2385,10 +2432,11 @@ Update the value of a specific conversation variable. The value must match the e
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable updated successfully. | **application/json**: [ConversationVariableResponse](#conversationvariableresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Variable value type mismatch. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | - `not_found` : Conversation does not exist. - `not_found` : Conversation variable does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid app selection or app mode does not match the API route. `conversation_variable_type_mismatch`: Value does not match the variable's expected type. `invalid_param`: Value violates variable constraints, including the size limit. | **application/json**: [ConversationVariableTypeMismatchError](#conversationvariabletypemismatcherror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid API credentials. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | API credential, app or workspace access is unavailable. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. `conversation_variable_not_found`: Variable does not exist for this conversation. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ConversationVariableNotFoundError](#conversationvariablenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid conversation variable update payload. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages
@@ -2410,9 +2458,9 @@ Returns historical chat records in a scrolling load format, with the first page 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved conversation history. | **application/json**: [MessageInfiniteScrollPagination](#messageinfinitescrollpagination)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | `not_chat_app` : App mode does not match the API route. `app_unavailable` : App is no longer available. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | - `not_found` : Conversation does not exist. - `not_found` : First message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -4509,6 +4557,22 @@ Condition detail
 | name | string | Metadata field name to compare against. | Yes |
 | value | string<br>[ string ]<br>number | Value to compare against. Type depends on `comparison_operator`: string for most string operators, array of strings for `in` and `not in`, number for numeric operators, and omit or use `null` for `empty` and `not empty`. | No |
 
+#### ConversationCursorNotFoundError
+
+The conversation cursor is not in the current list. Refresh the list and try again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationCursorNotFoundError |  | The conversation cursor is not in the current list. Refresh the list and try again. |  |
+
+#### ConversationFirstMessageNotFoundError
+
+The conversation has no message from which to generate a name.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationFirstMessageNotFoundError |  | The conversation has no message from which to generate a name. |  |
+
 #### ConversationInfiniteScrollPagination
 
 | Name | Type | Description | Required |
@@ -4524,6 +4588,14 @@ Condition detail
 | last_id | string | The ID of the last record on the current page. Used to fetch the next page. | No |
 | limit | integer, <br>**Default:** 20 | Number of records to return. | No |
 | sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | Sorting field. Use the `-` prefix for descending order.<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
+
+#### ConversationNotFoundError
+
+The conversation was not found for this user and app.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationNotFoundError |  | The conversation was not found for this user and app. |  |
 
 #### ConversationRenamePayload
 
@@ -4548,6 +4620,14 @@ Condition detail
 | has_more | boolean |  | Yes |
 | limit | integer |  | Yes |
 
+#### ConversationVariableNotFoundError
+
+The conversation variable was not found for this conversation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationVariableNotFoundError |  | The conversation variable was not found for this conversation. |  |
+
 #### ConversationVariableResponse
 
 | Name | Type | Description | Required |
@@ -4560,18 +4640,26 @@ Condition detail
 | value | string |  | No |
 | value_type | string |  | Yes |
 
+#### ConversationVariableTypeMismatchError
+
+The new value does not match the conversation variable's type.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationVariableTypeMismatchError |  | The new value does not match the conversation variable's type. |  |
+
 #### ConversationVariableUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| value |  | The new value for the variable. Must match the variable's expected type. | Yes |
+| value | [JsonValue](#jsonvalue) | The new value for the variable. Must match the variable's expected type. | Yes |
 
 #### ConversationVariableUpdatePayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | No |
-| value |  | The new value for the variable. Must match the variable's expected type. | Yes |
+| value | [JsonValue](#jsonvalue) | The new value for the variable. Must match the variable's expected type. | Yes |
 
 #### ConversationVariablesQuery
 
@@ -5298,6 +5386,14 @@ The specified filename does not exist.
 | ---- | ---- | ----------- | -------- |
 | FilenameNotExistsError |  | The specified filename does not exist. |  |
 
+#### ForbiddenError
+
+You don't have the permission to access the requested resource.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ForbiddenError |  | You don't have the permission to access the requested resource. |  |
+
 #### FormInputConfig
 
 | Name | Type | Description | Required |
@@ -5415,6 +5511,7 @@ The specified filename does not exist.
 | form_content | string |  | Yes |
 | form_id | string |  | Yes |
 | form_token | string |  | No |
+| form_version | string, <br>**Available values:** "1", "2", <br>**Default:** 1 | *Enum:* `"1"`, `"2"` | No |
 | inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
@@ -5449,12 +5546,16 @@ The specified filename does not exist.
 
 #### HumanInputFormSubmitPayload
 
+Legacy Human Input v1 submit payload shared by existing runtime surfaces.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### HumanInputFormSubmitPayloadWithUser
+
+Legacy Human Input v1 submit payload shared by existing runtime surfaces.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -6032,6 +6133,12 @@ The metadata content is incorrect. Please check and verify.
 | provider | string |  | Yes |
 | revision | integer |  | No |
 | vector_space_id | string |  | No |
+
+#### KnowledgeFSLogicalDocumentDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedRevision | integer |  | Yes |
 
 #### KnowledgeFSLogicalDocumentListResponse
 

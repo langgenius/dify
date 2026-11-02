@@ -393,9 +393,12 @@ it.each(['publish', 'create'] as const)(
         screen.queryByRole('dialog', { name: 'navigation.common.workflowAsTool' }),
       ).not.toBeInTheDocument(),
     )
-    expect(api.createTool).toHaveBeenCalledWith({
-      body: expect.objectContaining({ workflow_app_id: 'app-1', name: 'workflow_tool' }),
-    })
+    expect(api.createTool).toHaveBeenCalledWith(
+      {
+        body: expect.objectContaining({ workflow_app_id: 'app-1', name: 'workflow_tool' }),
+      },
+      { context: { silent: true } },
+    )
     expect(success).toHaveBeenCalledOnce()
   },
 )
@@ -444,7 +447,10 @@ it('opens the marketplace redirect after a successful submission', async () => {
       '_blank',
     ),
   )
-  expect(api.marketplace).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'app-1' } })
+  expect(api.marketplace).toHaveBeenCalledExactlyOnceWith(
+    { params: { app_id: 'app-1' } },
+    { context: { silent: true } },
+  )
 })
 
 it('shows a marketplace error and lets the user retry', async () => {
@@ -454,9 +460,7 @@ it('shows a marketplace error and lets the user retry', async () => {
   renderPublisher({ systemFeatures: { enable_creators_platform: true } })
   await user.click(trigger())
   await user.click(screen.getByRole('button', { name: 'workflow.common.publishToMarketplace' }))
-  await waitFor(() =>
-    expect(error).toHaveBeenCalledWith('workflow.common.publishToMarketplaceFailed'),
-  )
+  await waitFor(() => expect(error).toHaveBeenCalledWith('network error'))
   expect(window.open).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: 'workflow.common.publishToMarketplace' }))
   await waitFor(() => expect(window.open).toHaveBeenCalledOnce())

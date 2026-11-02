@@ -39,7 +39,7 @@ from services.agent.roster_package_importer import RosterAgentPackageImportResul
 from services.app.console_gateway import AppTransferGateway, EnterpriseConsoleAppAccess
 from services.app_dsl_service import AppDslService, PendingData
 from services.app_package_service import AppPackageService, PreparedAppPackage
-from services.billing_service import BillingService, _BillingHTTPStatusError
+from services.billing_client import transport
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import AppImportPackage, AppImportParams, DslImportWarning, Import, ImportStatus
 from services.entities.feature_entities import FeatureModel, LimitationModel
@@ -562,7 +562,7 @@ class TestRosterPackageRoutesCases:
     ) -> None:
         imports.status = status
         dsl = "kind: app\nversion: 99.0.0\napp:\n  mode: workflow\n"
-        with AppPackageService().export(dsl=dsl, name="Workflow") as package:
+        with AppPackageService().export(dsl=dsl, name="Workflow", workflow_tools=[]) as package:
             form: dict[str, object] = {"file": (package.archive, "workflow.ifpkg"), "name": "Renamed"}
             if app_id:
                 form["app_id"] = app_id
@@ -606,7 +606,9 @@ class TestRosterPackageRoutesCases:
             lambda app_id, access_mode: access_updates.append((app_id, access_mode)),
         )
         app_id = "app-1" if overwrite else None
-        with AppPackageService().export(dsl="kind: app\napp:\n  mode: workflow\n", name="Workflow") as package:
+        with AppPackageService().export(
+            dsl="kind: app\napp:\n  mode: workflow\n", name="Workflow", workflow_tools=[]
+        ) as package:
             if from_url:
                 _mock_download(monkeypatch, package.archive.read())
                 _data, code = _post(
@@ -799,7 +801,9 @@ class TestRosterPackageRoutesCases:
         )
         features = FeatureModel(apps=LimitationModel(size=1, limit=1))
         monkeypatch.setattr("services.app_dsl_service.FeatureService.get_features", lambda *_a, **_k: features)
-        with AppPackageService().export(dsl="kind: app\napp: {mode: workflow}\n", name="Workflow") as package:
+        with AppPackageService().export(
+            dsl="kind: app\napp: {mode: workflow}\n", name="Workflow", workflow_tools=[]
+        ) as package:
             with pytest.raises(Forbidden):
                 _post(app, imports, data={"file": (package.archive, "workflow.ifpkg")})
         assert imports.dsl_calls == []
@@ -865,14 +869,14 @@ class TestAppImportQuotaCases:
             )
         else:
 
-            def failed_billing(*_args: object, **_kwargs: object) -> dict[str, str]:
+            def failed_billing(*_args: object, **_kwargs: object) -> httpx.Response:
                 if failure == "timeout":
                     raise httpx.ReadTimeout("Private billing timeout details")
                 if failure == "upstream_503":
-                    raise _BillingHTTPStatusError("Private billing failure details", 503)
-                return {"subscription": "Private invalid billing response"}
+                    return httpx.Response(503, text="Private billing failure details")
+                return httpx.Response(200, json={"subscription": "Private invalid billing response"})
 
-            monkeypatch.setattr(BillingService, "_send_request", failed_billing)
+            monkeypatch.setattr(transport, "_send", failed_billing)
 
         app = Flask(__name__)
         app.config["TESTING"] = True

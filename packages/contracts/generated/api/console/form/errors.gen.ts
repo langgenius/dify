@@ -10,6 +10,38 @@ const zErrorResponse = /* @__PURE__ */ (() =>
     status: z.int(),
   }))()
 
+const zAlreadySubmittedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('already_submitted'),
+      status: z.literal(409),
+    }),
+  ))()
+
+const zExpiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('expired'),
+      status: z.literal(410),
+    }),
+  ))()
+
+const zInvalidInputError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('invalid_input'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zWorkflowNotActiveError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('workflow_not_active'),
+      status: z.literal(409),
+    }),
+  ))()
+
 const zHumanInputFormSubmittedError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -35,10 +67,22 @@ const zHumanInputFormExpiredError = /* @__PURE__ */ (() =>
   ))()
 
 export const getErrors = {
-  human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+  already_submitted: { status: 409, data: zAlreadySubmittedError },
+  expired: { status: 410, data: zExpiredError },
 }
 
 export const postErrors = {
+  already_submitted: { status: 409, data: zAlreadySubmittedError },
+  expired: { status: 410, data: zExpiredError },
+  invalid_input: { status: 400, data: zInvalidInputError },
+  workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
+}
+
+export const get2Errors = {
+  human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+}
+
+export const post2Errors = {
   human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
   human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
   invalid_form_data: { status: 400, data: zInvalidFormDataError },

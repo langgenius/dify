@@ -1,4 +1,5 @@
 {
+  "activateFailed": "Impossible d'activer votre réduction éducation. Votre vérification éducative actuelle est peut-être encore active, ou cette adresse e-mail n'est plus éligible.",
   "applied.activeSubscription.description": "Vous avez un abonnement actif. Vous pouvez utiliser la remise éducative après l'expiration de votre abonnement. Confirmez votre abonnement dans <stripeLink>Stripe</stripeLink>.",
   "applied.noPaymentPermission.description": "Vous n'avez pas la permission de payer dans cet espace de travail. Veuillez passer à un espace de travail où vous pouvez gérer la facturation pour utiliser la remise éducative.",
   "applied.noPaymentPermission.returnHome": "Retour à Dify",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "coupon exclusif 100%",
   "toVerifiedTip.end": "pour le Plan Professionnel Dify.",
   "toVerifiedTip.front": "Vous êtes maintenant éligible pour le statut Vérifié en Éducation. Veuillez entrer vos informations éducatives ci-dessous pour compléter le processus et recevoir un",
-  "useEducationDiscount": "Utiliser la remise éducative"
+  "tooManyAttempts": "Trop de tentatives. Veuillez réessayer plus tard.",
+  "useEducationDiscount": "Utiliser la remise éducative",
+  "verifyFailed": "Impossible de vérifier votre statut éducatif. Si vous vous êtes vérifié récemment, votre vérification éducative actuelle est peut-être encore active. Sinon, veuillez réessayer plus tard."
 }

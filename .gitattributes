@@ -10,6 +10,13 @@
 # `pnpm tree:check` in CI does not trip on CRLF rewrites.
 *.generated.ts  text eol=lf
 
+# The billing client is generated from the billing service OpenAPI; its
+# `--check` compares bytes, so keep LF. transport.py and __init__.py are hand-written.
+/api/services/billing_client/billing.openapi.json  text eol=lf
+/api/services/billing_client/saas.openapi.json     text eol=lf
+/api/services/billing_client/billing.py            text eol=lf
+/api/services/billing_client/saas.py               text eol=lf
+
 # Skill scripts run on every platform, so keep LF line endings.
 /skills/**      text=auto eol=lf
 
@@ -18,3 +25,7 @@
 /api/openapi/markdown/**          linguist-generated
 *.generated.ts                    linguist-generated
 /oxlint-suppressions.json         linguist-generated
+/api/services/billing_client/billing.openapi.json  linguist-generated
+/api/services/billing_client/saas.openapi.json     linguist-generated
+/api/services/billing_client/billing.py            linguist-generated
+/api/services/billing_client/saas.py               linguist-generated

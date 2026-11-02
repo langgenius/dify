@@ -37,11 +37,14 @@ export function RenameDocumentForm({
 
     setSaveLoadingTrue()
     try {
-      await renameDocumentName({
-        datasetId,
-        documentId,
-        name: newName,
-      })
+      await renameDocumentName(
+        {
+          datasetId,
+          documentId,
+          name: newName,
+        },
+        { silent: true },
+      )
       onSaved()
       onClose()
     } catch (error) {

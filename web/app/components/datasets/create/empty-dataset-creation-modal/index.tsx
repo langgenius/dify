@@ -1,9 +1,8 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
+  DialogClose,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -22,13 +21,17 @@ import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { createEmptyDataset } from '@/service/datasets'
+import { getErrorMessage } from '@/utils/error-message'
 import s from './index.module.css'
 
-type IProps = {
-  show: boolean
-  onHide: () => void
+type EmptyDatasetCreationContentProps = {
+  onCreated: () => void
+  onPendingChange: (pending: boolean) => void
 }
-const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
+const EmptyDatasetCreationContent = ({
+  onCreated,
+  onPendingChange,
+}: EmptyDatasetCreationContentProps) => {
   const [inputValue, setInputValue] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { t } = useTranslation(['common', 'datasetCreation'])
@@ -48,63 +51,60 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
       toast.error(t(($) => $['stepOne.modal.nameLengthInvalid'], { ns: 'datasetCreation' }))
       return
     }
+    onPendingChange(true)
     setIsSubmitting(true)
     try {
-      const dataset = await createEmptyDataset({ name: inputValue })
+      const dataset = await createEmptyDataset({ name: inputValue }, { silent: true })
       invalidDatasetList()
       trackEvent('create_empty_datasets', {
         name: inputValue,
         dataset_id: dataset.id,
       })
-      onHide()
+      onCreated()
       router.push(`/datasets/${dataset.id}/documents`)
-    } catch {
-      toast.error(t(($) => $['stepOne.modal.failed'], { ns: 'datasetCreation' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['stepOne.modal.failed'], { ns: 'datasetCreation' }),
+      )
     } finally {
+      onPendingChange(false)
       setIsSubmitting(false)
     }
   }
   return (
-    <Dialog
-      open={show}
-      onOpenChange={(open) => {
-        if (!open) onHide()
-      }}
-    >
-      <DialogContent className="w-130">
-        <DialogHeader>
-          <DialogTitle>{t(($) => $['stepOne.modal.title'], { ns: 'datasetCreation' })}</DialogTitle>
-          <DialogDescription>
-            {t(($) => $['stepOne.modal.tip'], { ns: 'datasetCreation' })}
-          </DialogDescription>
-          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
-        </DialogHeader>
-        <Form className="contents" onFormSubmit={() => void submit()}>
-          <DialogBody>
-            <Field name="datasetName">
-              <FieldLabel className={s.label}>
-                {t(($) => $['stepOne.modal.input'], { ns: 'datasetCreation' })}
-              </FieldLabel>
-              <Input
-                value={inputValue}
-                placeholder={
-                  t(($) => $['stepOne.modal.placeholder'], { ns: 'datasetCreation' }) || ''
-                }
-                onValueChange={setInputValue}
-              />
-            </Field>
-          </DialogBody>
-          <DialogFooter>
-            <Button type="button" className="w-24" onClick={onHide}>
-              {t(($) => $['stepOne.modal.cancelButton'], { ns: 'datasetCreation' })}
-            </Button>
-            <Button type="submit" className="w-24" variant="primary" loading={isSubmitting}>
-              {t(($) => $['stepOne.modal.confirmButton'], { ns: 'datasetCreation' })}
-            </Button>
-          </DialogFooter>
-        </Form>
-      </DialogContent>
-    </Dialog>
+    <>
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['stepOne.modal.title'], { ns: 'datasetCreation' })}</DialogTitle>
+        <DialogDescription>
+          {t(($) => $['stepOne.modal.tip'], { ns: 'datasetCreation' })}
+        </DialogDescription>
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
+      <Form className="contents" onFormSubmit={() => void submit()}>
+        <DialogBody>
+          <Field name="datasetName">
+            <FieldLabel className={s.label}>
+              {t(($) => $['stepOne.modal.input'], { ns: 'datasetCreation' })}
+            </FieldLabel>
+            <Input
+              value={inputValue}
+              placeholder={
+                t(($) => $['stepOne.modal.placeholder'], { ns: 'datasetCreation' }) || ''
+              }
+              onValueChange={setInputValue}
+            />
+          </Field>
+        </DialogBody>
+        <DialogFooter>
+          <DialogClose render={<Button type="button" className="w-24" />}>
+            {t(($) => $['stepOne.modal.cancelButton'], { ns: 'datasetCreation' })}
+          </DialogClose>
+          <Button type="submit" className="w-24" variant="primary" loading={isSubmitting}>
+            {t(($) => $['stepOne.modal.confirmButton'], { ns: 'datasetCreation' })}
+          </Button>
+        </DialogFooter>
+      </Form>
+    </>
   )
 }
-export default EmptyDatasetCreationModal
+export default EmptyDatasetCreationContent

@@ -243,6 +243,16 @@ export const zAgentVersionNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * AlreadySubmittedError
+ */
+export const zAlreadySubmittedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('already_submitted'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * AppMoreLikeThisDisabledError
  *
  * The 'More like this' feature is disabled. Please refresh your page.
@@ -315,6 +325,42 @@ export const zCompletionRequestError = zErrorResponse.and(
 )
 
 /**
+ * ConversationCursorNotFoundError
+ *
+ * The conversation cursor is not in the current list. Refresh the list and try again.
+ */
+export const zConversationCursorNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_cursor_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationFirstMessageNotFoundError
+ *
+ * The conversation has no message from which to generate a name.
+ */
+export const zConversationFirstMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_first_message_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationNotFoundError
+ *
+ * The conversation was not found for this user and app.
+ */
+export const zConversationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * EmailCodeError
  *
  * Email code is invalid or expired.
@@ -359,6 +405,16 @@ export const zEventStreamResponse = z.string()
  * ExecutionContentType
  */
 export const zExecutionContentType = z.enum(['human_input'])
+
+/**
+ * ExpiredError
+ */
+export const zExpiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('expired'),
+    status: z.literal(410),
+  }),
+)
 
 /**
  * FileExtensionBlockedError
@@ -421,6 +477,19 @@ export const zFileTransferMethod = z.enum([
 export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
 
 /**
+ * FileInput
+ *
+ * Resolved single-file input constraints.
+ */
+export const zFileInput = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  output_variable_name: z.string(),
+  type: z.literal('file_input').optional().default('file_input'),
+})
+
+/**
  * FileInputConfig
  */
 export const zFileInputConfig = z.object({
@@ -429,6 +498,20 @@ export const zFileInputConfig = z.object({
   allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
   output_variable_name: z.string(),
   type: z.literal('file').optional().default('file'),
+})
+
+/**
+ * FileListInput
+ *
+ * Resolved multi-file input constraints and effective number limit.
+ */
+export const zFileListInput = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  number_limits: z.int(),
+  output_variable_name: z.string(),
+  type: z.literal('file_list_input').optional().default('file_list_input'),
 })
 
 /**
@@ -496,6 +579,74 @@ export const zForgotPasswordSendPayload = z.object({
 })
 
 /**
+ * FormAccessRequestResponse
+ *
+ * Response body returned after creating one OTP challenge.
+ */
+export const zFormAccessRequestResponse = z.object({
+  challenge_token: z.string(),
+  expires_in_seconds: z.int(),
+  resend_after_seconds: z.int(),
+})
+
+/**
+ * FormSubmitResponse
+ *
+ * Empty response body returned after a Human Input v2 form submission.
+ */
+export const zFormSubmitResponse = z.record(z.string(), z.unknown())
+
+/**
+ * FormUploadTokenResponse
+ *
+ * Response body returned when issuing a Human Input v2 upload token.
+ */
+export const zFormUploadTokenResponse = z.object({
+  expires_at: z.int(),
+  upload_token: z.string(),
+})
+
+/**
+ * HumanInputAccessDeliveryFailedError
+ */
+export const zHumanInputAccessDeliveryFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_access_delivery_failed'),
+    status: z.literal(503),
+  }),
+)
+
+/**
+ * HumanInputAccessRateLimitExceededError
+ */
+export const zHumanInputAccessRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_access_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * HumanInputChallengeExpiredError
+ */
+export const zHumanInputChallengeExpiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_challenge_expired'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * HumanInputChallengeStaleError
+ */
+export const zHumanInputChallengeStaleError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_challenge_stale'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * HumanInputFileUploadFormPayload
  *
  * Parsed multipart form fields for HITL uploads.
@@ -515,19 +666,37 @@ export const zHumanInputFormExpiredError = zErrorResponse.and(
 )
 
 /**
+ * HumanInputFormNotFoundError
+ */
+export const zHumanInputFormNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
 
 /**
  * HumanInputFormSubmittedError
- *
- * This form has already been submitted by another user, form_id={form_id}
  */
 export const zHumanInputFormSubmittedError = zErrorResponse.and(
   z.object({
     code: z.literal('human_input_form_submitted'),
     status: z.literal(412),
+  }),
+)
+
+/**
+ * HumanInputInvalidOtpError
+ */
+export const zHumanInputInvalidOtpError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_invalid_otp'),
+    status: z.literal(400),
   }),
 )
 
@@ -538,6 +707,23 @@ export const zHumanInputUploadTokenResponse = z.object({
   expires_at: z.int(),
   upload_token: z.string(),
 })
+
+/**
+ * HumanInputV2RemoteUploadPayload
+ */
+export const zHumanInputV2RemoteUploadPayload = z.object({
+  url: z.url().min(1).max(2083),
+})
+
+/**
+ * HumanInputV2UnavailableError
+ */
+export const zHumanInputV2UnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_v2_unavailable'),
+    status: z.literal(503),
+  }),
+)
 
 /**
  * InvalidEmailError
@@ -557,6 +743,16 @@ export const zInvalidEmailError = zErrorResponse.and(
 export const zInvalidFormDataError = zErrorResponse.and(
   z.object({
     code: z.literal('invalid_form_data'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidInputError
+ */
+export const zInvalidInputError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_input'),
     status: z.literal(400),
   }),
 )
@@ -613,10 +809,24 @@ export const zHumanInputFormSubmissionData = z.object({
 
 /**
  * HumanInputFormSubmitPayload
+ *
+ * Legacy Human Input v1 submit payload shared by existing runtime surfaces.
  */
 export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),
   inputs: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * HumanInputV2FormSubmitRequest
+ *
+ * Public Human Input v2 submit payload, independent from the v1 form contract.
+ */
+export const zHumanInputV2FormSubmitRequest = z.object({
+  action: z.string(),
+  challenge_token: z.string().nullish(),
+  inputs: z.record(z.string(), zJsonValue),
+  otp_code: z.string().nullish(),
 })
 
 /**
@@ -687,6 +897,16 @@ export const zMalformedUploadTokenError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
+
+/**
+ * MarkdownFragment
+ *
+ * One source-ordered Markdown fragment in a resolved form.
+ */
+export const zMarkdownFragment = z.object({
+  text: z.string(),
+  type: z.literal('markdown_fragment').optional().default('markdown_fragment'),
+})
 
 /**
  * MessageFeedbackPayload
@@ -810,6 +1030,17 @@ export const zNotWorkflowAppError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
+
+/**
+ * ParagraphInput
+ *
+ * Resolved multiline text input.
+ */
+export const zParagraphInput = z.object({
+  default_value: z.string().nullable(),
+  output_variable_name: z.string(),
+  type: z.literal('paragraph_input').optional().default('paragraph_input'),
+})
 
 /**
  * PassportAccessTokenResponse
@@ -1060,6 +1291,26 @@ export const zSavedMessageListQuery = z.object({
   last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
+
+/**
+ * SelectInput
+ *
+ * Resolved single-choice input with immutable concrete options.
+ */
+export const zSelectInput = z.object({
+  default_value: z.string().nullable(),
+  options: z.array(z.string()),
+  output_variable_name: z.string(),
+  type: z.literal('select_input').optional().default('select_input'),
+})
+
+export const zFormPart = z.discriminatedUnion('type', [
+  zMarkdownFragment,
+  zParagraphInput,
+  zSelectInput,
+  zFileInput,
+  zFileListInput,
+])
 
 export const zShallowJsonValue = z
   .union([
@@ -1586,6 +1837,29 @@ export const zUploadTokenRequiredError = zErrorResponse.and(
 )
 
 /**
+ * UserAction
+ *
+ * Resolved action values required for presentation and submission validation.
+ */
+export const zUserAction = z.object({
+  button_style: zButtonStyle,
+  id: z.string(),
+  title: z.string(),
+})
+
+/**
+ * ResolvedForm
+ *
+ * Immutable authoritative presentation snapshot for one v2 form.
+ */
+export const zResolvedForm = z.object({
+  actions: z.array(zUserAction),
+  legacy_form_content: z.string(),
+  parts: z.array(zFormPart),
+  title: z.string(),
+})
+
+/**
  * UserActionConfig
  *
  * User action configuration.
@@ -1655,6 +1929,19 @@ export const zFormInputConfig = z.discriminatedUnion('type', [
 ])
 
 /**
+ * FormDefinitionResponse
+ *
+ * Response body containing a resolved human-input form definition.
+ */
+export const zFormDefinitionResponse = z.object({
+  expiration_time: z.int(),
+  form_content: z.string().nullish(),
+  inputs: z.array(zFormInputConfig).optional(),
+  resolved_default_values: z.record(z.string(), z.string()).optional(),
+  user_actions: z.array(zUserActionConfig).optional(),
+})
+
+/**
  * HumanInputFormDefinition
  */
 export const zHumanInputFormDefinition = z.object({
@@ -1664,6 +1951,7 @@ export const zHumanInputFormDefinition = z.object({
   form_content: z.string(),
   form_id: z.string(),
   form_token: z.string().nullish(),
+  form_version: z.enum(['1', '2']).optional().default('1'),
   inputs: z.array(zFormInputConfig).optional(),
   node_id: z.string(),
   node_title: z.string(),
@@ -1755,6 +2043,27 @@ export const zWebAppCustomConfigResponse = z.object({
   remove_webapp_brand: z.boolean(),
   replace_webapp_logo: z.string().nullish(),
 })
+
+/**
+ * WebAppHumanInputV2FormDefinitionResponse
+ */
+export const zWebAppHumanInputV2FormDefinitionResponse = z.object({
+  expiration_time: z.int(),
+  resolved_form: zResolvedForm,
+})
+
+/**
+ * WebAppHumanInputV2SubmitPayload
+ */
+export const zWebAppHumanInputV2SubmitPayload = z.object({
+  action: z.string(),
+  inputs: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * WebAppHumanInputV2SubmitResponse
+ */
+export const zWebAppHumanInputV2SubmitResponse = z.record(z.string(), z.unknown())
 
 /**
  * WebFormRateLimitExceededError
@@ -1870,6 +2179,16 @@ export const zHumanInputFormDefinitionResponse = z.object({
 })
 
 /**
+ * WorkflowNotActiveError
+ */
+export const zWorkflowNotActiveError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_not_active'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
@@ -1911,6 +2230,13 @@ export const zWorkflowRunPayload = z.object({
 })
 
 /**
+ * FormSubmitResponse
+ *
+ * Empty response body returned after a Human Input v2 form submission.
+ */
+export const zFormSubmitResponseWritable = z.record(z.string(), z.unknown())
+
+/**
  * GeneratedAppResponse
  */
 export const zGeneratedAppResponseWritable = zShallowJsonValue
@@ -1919,6 +2245,11 @@ export const zGeneratedAppResponseWritable = zShallowJsonValue
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unknown())
+
+/**
+ * WebAppHumanInputV2SubmitResponse
+ */
+export const zWebAppHumanInputV2SubmitResponseWritable = z.record(z.string(), z.unknown())
 
 /**
  * WebMessageListItem
@@ -2031,7 +2362,7 @@ export const zPostConversationsByCIdNameQuery = z.object({
 })
 
 /**
- * Conversation renamed successfully
+ * Conversation renamed successfully; model failure preserves the existing name.
  */
 export const zPostConversationsByCIdNameResponse = zSimpleConversation
 
@@ -2093,6 +2424,65 @@ export const zPostForgotPasswordValidityBody = zForgotPasswordCheckPayload
  */
 export const zPostForgotPasswordValidityResponse = zVerificationTokenResponse
 
+export const zGetFormHumanInputV2PublicByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Form definition
+ */
+export const zGetFormHumanInputV2PublicByFormTokenResponse = zFormDefinitionResponse
+
+export const zPostFormHumanInputV2PublicByFormTokenBody = zHumanInputV2FormSubmitRequest
+
+export const zPostFormHumanInputV2PublicByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Form submitted
+ */
+export const zPostFormHumanInputV2PublicByFormTokenResponse = zFormSubmitResponse
+
+export const zPostFormHumanInputV2PublicByFormTokenAccessRequestPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostFormHumanInputV2PublicByFormTokenAccessRequestResponse =
+  zFormAccessRequestResponse
+
+export const zPostFormHumanInputV2PublicByFormTokenUploadTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse = zFormUploadTokenResponse
+
+export const zGetFormHumanInputV2ByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Form retrieved
+ */
+export const zGetFormHumanInputV2ByFormTokenResponse = zWebAppHumanInputV2FormDefinitionResponse
+
+export const zPostFormHumanInputV2ByFormTokenBody = zWebAppHumanInputV2SubmitPayload
+
+export const zPostFormHumanInputV2ByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Approval accepted
+ */
+export const zPostFormHumanInputV2ByFormTokenResponse = zWebAppHumanInputV2SubmitResponse
+
 export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),
 })
@@ -2126,6 +2516,31 @@ export const zPostFormHumanInputByFormTokenUploadTokenResponse = zHumanInputUplo
  * File uploaded successfully
  */
 export const zPostHumanInputFormsFilesResponse = zFileResponse
+
+export const zPostHumanInputV2FilesBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File).optional(),
+  url: z.string().optional(),
+})
+
+export const zPostHumanInputV2FilesHeaders = z.object({
+  Authorization: z.string(),
+})
+
+/**
+ * File uploaded
+ */
+export const zPostHumanInputV2FilesResponse = zFileWithSignedUrl
+
+export const zPostHumanInputV2FilesRemoteBody = zHumanInputV2RemoteUploadPayload
+
+export const zPostHumanInputV2FilesRemoteHeaders = z.object({
+  Authorization: z.string(),
+})
+
+/**
+ * File uploaded
+ */
+export const zPostHumanInputV2FilesRemoteResponse = zFileWithSignedUrl
 
 export const zPostLoginBody = zLoginPayload
 

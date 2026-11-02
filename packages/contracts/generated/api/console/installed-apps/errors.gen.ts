@@ -394,6 +394,7 @@ export const get3Errors = {
 
 export const get4Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
   conversation_not_found: { status: 404, data: zConversationNotFoundError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   message_cursor_not_found: { status: 404, data: zMessageCursorNotFoundError },

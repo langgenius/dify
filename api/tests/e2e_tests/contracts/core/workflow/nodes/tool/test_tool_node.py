@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import sys
-import types
 from collections.abc import Generator
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,13 +15,11 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.nodes.tool.entities import ToolNodeData
+from graphon.nodes.tool.tool_node import ToolNode
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
 from graphon.runtime import RuntimeState
 from graphon.variables.segments import ArrayFileSegment
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
-
-if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
-    from graphon.nodes.tool.tool_node import ToolNode
 
 
 class _StubToolRuntime:
@@ -66,16 +62,7 @@ class _StubToolRuntime:
 
 
 @pytest.fixture
-def tool_node(monkeypatch) -> ToolNode:
-    module_name = "core.ops.ops_trace_manager"
-    if module_name not in sys.modules:
-        ops_stub = types.ModuleType(module_name)
-        ops_stub.TraceQueueManager = object  # pragma: no cover - stub attribute
-        ops_stub.TraceTask = object  # pragma: no cover - stub attribute
-        monkeypatch.setitem(sys.modules, module_name, ops_stub)
-
-    from graphon.nodes.tool.tool_node import ToolNode
-
+def tool_node() -> ToolNode:
     graph_config: dict[str, Any] = {
         "nodes": [
             {

@@ -10,7 +10,7 @@ from core.trigger.utils import endpoint
 
 
 class TestGeneratePluginTriggerEndpointUrl:
-    def test_builds_correct_url(self):
+    def test_builds_correct_url(self) -> None:
         with patch.object(endpoint, "base_url", URL("https://api.example.com")):
             url = endpoint.generate_plugin_trigger_endpoint_url("endpoint-123")
 
@@ -18,13 +18,13 @@ class TestGeneratePluginTriggerEndpointUrl:
 
 
 class TestGenerateWebhookTriggerEndpoint:
-    def test_non_debug_url(self):
+    def test_non_debug_url(self) -> None:
         with patch.object(endpoint, "base_url", URL("https://api.example.com")):
             url = endpoint.generate_webhook_trigger_endpoint("sub-456", debug=False)
 
         assert url == "https://api.example.com/triggers/webhook/sub-456"
 
-    def test_debug_url(self):
+    def test_debug_url(self) -> None:
         with patch.object(endpoint, "base_url", URL("https://api.example.com")):
             url = endpoint.generate_webhook_trigger_endpoint("sub-456", debug=True)
 

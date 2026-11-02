@@ -15,18 +15,31 @@ from copy import deepcopy
 from typing import NamedTuple, cast
 
 from pydantic import JsonValue
-from sqlalchemy import select
+from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import AppMode, InstalledApp, MessageFeedback, load_annotation_reply_config
+from repositories.message_projection import snapshot_console_message, snapshot_message
 from services.app_definition_query_service import AppDefinitionUnavailableError
-from services.entities.message_entities import MessageAccount, MessageActor
+from services.entities.message_entities import (
+    ConsoleMessageRecord,
+    MessageAccount,
+    MessageActor,
+    MessagePage,
+    MessageRecord,
+    MessageSource,
+)
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import FeedbackRatingRequiredError, MessageActorNotFoundError, MessageNotExistsError
+from services.errors.message import (
+    FeedbackRatingRequiredError,
+    FirstMessageNotExistsError,
+    MessageActorNotFoundError,
+    MessageNotExistsError,
+)
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.message_feedback_service import MessageFeedbackRecord
 from services.message_more_like_this_service import (
@@ -45,6 +58,193 @@ class SuggestedQuestionsRecords(NamedTuple):
 class MessageRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
+
+    def get_message_page(
+        self,
+        *,
+        app_id: str,
+        app_owner_tenant_id: str,
+        actor: MessageActor,
+        conversation_id: str,
+        first_id: str | None,
+        limit: int,
+        installed_app: InstalledAppRef | None,
+    ) -> MessagePage[MessageSource[MessageRecord]]:
+        """Read an actor's live conversation as detached database snapshots."""
+        with self._session_factory() as session:
+            self._require_page_app(
+                session, app_id=app_id, app_owner_tenant_id=app_owner_tenant_id, installed_app=installed_app
+            )
+            self._require_page_actor(session, app_id=app_id, tenant_id=app_owner_tenant_id, actor=actor)
+            if not conversation_id:
+                return MessagePage(limit=limit, has_more=False, data=())
+            self._require_page_conversation(session, app_id=app_id, conversation_id=conversation_id, actor=actor)
+            statement = self._page_statement(
+                session,
+                app_id=app_id,
+                conversation_id=conversation_id,
+                first_id=first_id,
+                use_id_tiebreaker=installed_app is not None,
+            )
+            messages = list(session.scalars(statement.limit(limit + 1)))
+            has_more = len(messages) > limit
+            return MessagePage(
+                limit=limit,
+                has_more=has_more,
+                data=tuple(
+                    snapshot_message(message=message, session=session) for message in reversed(messages[:limit])
+                ),
+            )
+
+    def get_console_message_page(
+        self,
+        *,
+        app_id: str,
+        app_owner_tenant_id: str,
+        account_id: str,
+        conversation_id: str,
+        first_id: str | None,
+        limit: int,
+    ) -> MessagePage[MessageSource[ConsoleMessageRecord]]:
+        """Read Console history; Agent conversations remain account-owned."""
+        with self._session_factory() as session:
+            app = self._require_page_app(
+                session, app_id=app_id, app_owner_tenant_id=app_owner_tenant_id, installed_app=None
+            )
+            actor = MessageAccount(account_id=account_id)
+            self._require_page_actor(session, app_id=app_id, tenant_id=app_owner_tenant_id, actor=actor)
+            self._require_page_conversation(
+                session,
+                app_id=app_id,
+                conversation_id=conversation_id,
+                actor=actor if app.mode == AppMode.AGENT else None,
+            )
+            statement = self._page_statement(
+                session,
+                app_id=app_id,
+                conversation_id=conversation_id,
+                first_id=first_id,
+                use_id_tiebreaker=False,
+            )
+            messages = list(session.scalars(statement.limit(limit)))
+            # Console's legacy has_more checks for a strictly older timestamp;
+            # actor pages instead count the extra row, including timestamp ties.
+            has_more = bool(
+                len(messages) == limit
+                and messages
+                and session.scalar(select(statement.where(Message.created_at < messages[-1].created_at).exists()))
+            )
+            return MessagePage(
+                limit=limit,
+                has_more=has_more,
+                data=tuple(
+                    snapshot_console_message(message=message, session=session) for message in reversed(messages)
+                ),
+            )
+
+    def get_console_message(
+        self,
+        *,
+        app_id: str,
+        app_owner_tenant_id: str,
+        account_id: str,
+        message_id: str,
+    ) -> MessageSource[ConsoleMessageRecord]:
+        """Read an admitted Console app's message, including other users' history.
+
+        Detail access is app-wide even for Agent apps and deleted conversations;
+        only the Agent list endpoint limits reads to the caller's conversation.
+        """
+        with self._session_factory() as session:
+            self._require_page_app(session, app_id=app_id, app_owner_tenant_id=app_owner_tenant_id, installed_app=None)
+            self._require_page_actor(
+                session, app_id=app_id, tenant_id=app_owner_tenant_id, actor=MessageAccount(account_id=account_id)
+            )
+            message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app_id))
+            if message is None:
+                raise MessageNotExistsError(f"Message {message_id} is unavailable for app {app_id}")
+            return snapshot_console_message(message=message, session=session)
+
+    def _require_page_app(
+        self,
+        session: Session,
+        *,
+        app_id: str,
+        app_owner_tenant_id: str,
+        installed_app: InstalledAppRef | None,
+    ) -> App:
+        if installed_app is None:
+            app = self._get_app(session, app_id=app_id, tenant_id=app_owner_tenant_id)
+            if app is None:
+                raise AppDefinitionUnavailableError(f"App {app_id} is unavailable in tenant {app_owner_tenant_id}")
+            return app
+        app = session.scalar(
+            select(App)
+            .join(InstalledApp, InstalledApp.app_id == App.id)
+            .where(
+                App.id == app_id,
+                App.tenant_id == app_owner_tenant_id,
+                App.tenant_id == installed_app.app_owner_tenant_id,
+                InstalledApp.id == installed_app.id,
+                InstalledApp.tenant_id == installed_app.tenant_id,
+                InstalledApp.app_id == installed_app.app_id,
+                InstalledApp.app_owner_tenant_id == installed_app.app_owner_tenant_id,
+            )
+        )
+        if app is None:
+            raise InstalledAppNotFoundError(f"Installed app {installed_app.id} no longer exists")
+        return app
+
+    def _require_page_actor(self, session: Session, *, app_id: str, tenant_id: str, actor: MessageActor) -> None:
+        if not self._actor_exists(
+            session,
+            app_id=app_id,
+            tenant_id=tenant_id,
+            account_id=actor.account_id if isinstance(actor, MessageAccount) else None,
+            end_user_id=None if isinstance(actor, MessageAccount) else actor.end_user_id,
+        ):
+            raise MessageActorNotFoundError(f"Message actor is unavailable for app {app_id}")
+
+    @staticmethod
+    def _require_page_conversation(
+        session: Session, *, app_id: str, conversation_id: str, actor: MessageActor | None
+    ) -> None:
+        statement = select(Conversation.id).where(Conversation.id == conversation_id, Conversation.app_id == app_id)
+        if actor is not None:
+            statement = statement.where(
+                Conversation.from_source == ("console" if isinstance(actor, MessageAccount) else "api"),
+                Conversation.from_account_id == (actor.account_id if isinstance(actor, MessageAccount) else None),
+                Conversation.from_end_user_id == (None if isinstance(actor, MessageAccount) else actor.end_user_id),
+                Conversation.is_deleted.is_(False),
+            )
+        if session.scalar(statement) is None:
+            raise ConversationNotExistsError(f"Conversation {conversation_id} is unavailable for this app and actor")
+
+    @staticmethod
+    def _page_statement(
+        session: Session, *, app_id: str, conversation_id: str, first_id: str | None, use_id_tiebreaker: bool
+    ) -> Select[tuple[Message]]:
+        statement = select(Message).where(Message.app_id == app_id, Message.conversation_id == conversation_id)
+        if first_id:
+            first_message = session.scalar(statement.where(Message.id == first_id))
+            if first_message is None:
+                raise FirstMessageNotExistsError(
+                    f"The first_id cursor {first_id} does not belong to conversation {conversation_id}"
+                )
+            if use_id_tiebreaker:
+                statement = statement.where(
+                    or_(
+                        Message.created_at < first_message.created_at,
+                        and_(Message.created_at == first_message.created_at, Message.id < first_message.id),
+                    )
+                )
+            else:
+                statement = statement.where(
+                    Message.created_at < first_message.created_at, Message.id != first_message.id
+                )
+        # Explore already uses an ID tiebreaker; the other entrypoints retain timestamp-only cursors.
+        statement = statement.order_by(Message.created_at.desc())
+        return statement.order_by(Message.id.desc()) if use_id_tiebreaker else statement
 
     def set_feedback(
         self,

@@ -8,7 +8,7 @@ from controllers.common.access_response import register_auth_error_response
 
 # Register response/query models BEFORE importing controller modules so that
 # @openapi_ns.response / @openapi_ns.expect decorators can resolve model names.
-from controllers.common.fields import EventStreamResponse, SimpleResultResponse
+from controllers.common.fields import BinaryFileResponse, EventStreamResponse, SimpleResultResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.openapi._catalog import attach_catalog
 from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
@@ -125,6 +125,18 @@ from controllers.openapi._models import (
     SessionListQuery,
     SessionListResponse,
     SessionRow,
+    SkillDescribeResponse,
+    SkillExportQuery,
+    SkillImportPayload,
+    SkillImportResponse,
+    SkillListQuery,
+    SkillListResponse,
+    SkillPublishPayload,
+    SkillPublishResponse,
+    SkillRow,
+    SkillVersionListQuery,
+    SkillVersionListResponse,
+    SkillVersionRow,
     TaskStopResponse,
     ToolCredentialCreatePayload,
     ToolCredentialUpdatePayload,
@@ -245,12 +257,18 @@ register_schema_models(
     PublishPayload,
     RunListQuery,
     SessionListQuery,
+    SkillExportQuery,
+    SkillImportPayload,
+    SkillListQuery,
+    SkillPublishPayload,
+    SkillVersionListQuery,
     VersionListQuery,
     WorkflowRunPayload,
     WorkspaceListQuery,
 )
 register_response_schema_models(
     openapi_ns,
+    BinaryFileResponse,
     ErrorBody,
     EventStreamResponse,
     SimpleResultResponse,
@@ -343,6 +361,13 @@ register_response_schema_models(
     KnowledgeRetrievalFragment,
     LlmModelBlock,
     MultipleRetrievalFragment,
+    SkillRow,
+    SkillImportResponse,
+    SkillListResponse,
+    SkillVersionRow,
+    SkillDescribeResponse,
+    SkillVersionListResponse,
+    SkillPublishResponse,
     ToolProviderDetailResponse,
     ToolProviderRow,
 )
@@ -375,6 +400,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         oauth_device,
         oauth_device_sso,
         plugins,
+        skills,
         tool_providers,
         workflow_events,
         workspaces,
@@ -401,6 +427,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         oauth_device,
         oauth_device_sso,
         plugins,
+        skills,
         tool_providers,
         workflow_events,
         workspaces,
@@ -428,6 +455,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     oauth_device,
     oauth_device_sso,
     plugins,
+    skills,
     tool_providers,
     workflow_events,
     workspaces,
@@ -456,6 +484,7 @@ __all__ = [
     "oauth_device",
     "oauth_device_sso",
     "plugins",
+    "skills",
     "tool_providers",
     "workflow_events",
     "workspaces",
