@@ -42,7 +42,7 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
   const renderedFormInputs = getRenderedFormInputs(data.inputs, data.form_content)
   const defaultInputs = initializeInputs(renderedFormInputs, data.resolved_default_values || {})
   const [inputs, setInputs] = useState(defaultInputs)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submission, setSubmission] = useState<'idle' | 'submitting' | 'failed'>('idle')
 
   const handleInputsChange = (name: string, value: HumanInputFieldValue) => {
     setInputs((prev) => ({
@@ -54,13 +54,12 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
   const hasEmptySelectOrFileInput = hasInvalidSelectOrFileInput(renderedFormInputs, inputs)
 
   const submit = async (actionID: string) => {
-    setIsSubmitting(true)
+    setSubmission('submitting')
     try {
       await onSubmit?.({ inputs, action: actionID })
+      setSubmission('idle')
     } catch {
-      // Request failures are reported by the Console transport.
-    } finally {
-      setIsSubmitting(false)
+      setSubmission('failed')
     }
   }
 
@@ -101,11 +100,16 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
             onInputChange={handleInputsChange}
           />
         ))}
+        {submission === 'failed' && (
+          <p role="alert" className="system-sm-regular text-text-destructive">
+            {t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
+        )}
         <div className="flex flex-wrap gap-1 py-1">
           {data.actions.map((action: UserAction) => (
             <Button
               key={action.id}
-              disabled={isSubmitting || hasEmptySelectOrFileInput}
+              disabled={submission === 'submitting' || hasEmptySelectOrFileInput}
               variant={getButtonStyle(action.button_style)}
               onClick={() => submit(action.id)}
             >
