@@ -35,11 +35,13 @@ from services.entities.model_billing_mapping import MappingTarget as MappingTarg
 from services.entities.model_billing_mapping import ModelMapping as ModelMapping  # noqa: PLC0414
 from services.entities.model_billing_mapping import ParameterAdapter as ParameterAdapter  # noqa: PLC0414
 from services.model_billing_mapping_service import (
+    SelectedSourceVariant,
     SourceParameterContract,
     TTSVoiceContract,
     additional_model_is_authorized,
     build_source_adapter_contract,
     hosted_migration_sources,
+    hosted_source_variant_fact,
     managed_source_schemas,
     mapping_supports_installed_plugin,
     mappings_for_revision,
@@ -48,11 +50,15 @@ from services.model_billing_mapping_service import (
     partition_hosted_migration_sources,
     partition_known_unavailable_sources,
     resolve_source_capability_policy,
+    resolve_source_mapping,
     restore_source_parameter_contract,
     retirement_policy_for_revision,
+    source_mapping_revision,
     source_parameter_marker,
     source_parameter_public_settings,
     uses_published_tokener_balance,
+    uses_stable_dependency_inventory,
+    validate_frozen_mapping_evidence,
 )
 from services.model_billing_mapping_service import normalize_tts_voice as normalize_tts_voice  # noqa: PLC0414
 
@@ -185,6 +191,15 @@ def model_mappings(mapping_version: str) -> dict[tuple[str, ModelType, str], Mod
 
 
 @dataclass(frozen=True, slots=True)
+class SourceVariantInvocationBinding:
+    """Per-variant evidence, absent for V1 logical siblings and old V1 plans."""
+
+    registry_digest: str
+    variant_id: str
+    source_settings_digest: str
+
+
+@dataclass(frozen=True, slots=True)
 class FrozenModelInvocation:
     tenant_id: str
     route_id: str
@@ -201,6 +216,10 @@ class FrozenModelInvocation:
     settlement_backend: str = "tokener"
     tts_voice_contract: TTSVoiceContract | None = None
     source_parameter_contract: SourceParameterContract | None = None
+    source_variant_binding: SourceVariantInvocationBinding | None = None
+    # None is historical pure V1 only. A V2 selected revision pins every
+    # logical model, including identity/adapter records with the V1 shape.
+    mapping_revision_digest: str | None = None
 
     @property
     def cache_identity(self) -> str:
@@ -240,6 +259,16 @@ class FrozenModelInvocation:
                 # Old contract tokens are unchanged; new reviewed split-boundary
                 # profiles additionally pin their exact source runtime schema.
                 identity.append(self.source_parameter_contract.source_runtime_schema_digest)
+        if self.mapping_revision_digest is not None:
+            identity.append(self.mapping_revision_digest)
+        if self.source_variant_binding is not None:
+            identity.extend(
+                [
+                    self.source_variant_binding.registry_digest,
+                    self.source_variant_binding.variant_id or "",
+                    self.source_variant_binding.source_settings_digest or "",
+                ]
+            )
         return hashlib.sha256(json.dumps(identity, separators=(",", ":")).encode()).hexdigest()
 
 
@@ -352,6 +381,93 @@ def validate_invocation_admission(
         or not uses_published_tokener_balance(state)
     ):
         raise ModelInvocationReprepare
+    else:
+        _validate_source_variant_admission(credentials.plan, state)
+
+
+def _validate_source_variant_admission(plan: FrozenModelInvocation, state: dict[str, Any]) -> None:
+    """Recheck config/public facts before reservation, without daemon RPC/SQL.
+
+    Fresh immutable bindings are attested at preparation/configuration. The
+    protected install lifecycle, cohort boot freeze and old-task drain remain
+    required; this is not a cross-daemon atomicity claim. Reserved invocations
+    do not re-enter admission and keep their already frozen source semantics.
+    """
+    from extensions import ext_hosting_provider
+
+    pin = plan.source_variant_binding
+    persisted_digest = state.get("source_variant_registry_digest")
+    has_new_evidence = persisted_digest is not None or plan.mapping_revision_digest is not None or pin is not None
+    try:
+        registry = source_mapping_revision(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, plan.mapping_revision)
+    except Exception:
+        if has_new_evidence:
+            raise ModelInvocationReprepare from None
+        # Preserve historical pure-V1 admission semantics when no new state
+        # authority or evidence exists. This never bypasses a persisted V2 pin.
+        return
+    if not registry.has_variants:
+        if has_new_evidence:
+            raise ModelInvocationReprepare
+        return
+    try:
+        if (
+            registry.digest != plan.mapping_revision_digest
+            or persisted_digest != plan.mapping_revision_digest
+            or not uses_stable_dependency_inventory(dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, state)
+        ):
+            raise ValueError("Source variant registry changed")
+        identity = (plan.logical_provider, plan.model_type, plan.logical_model)
+        declaration = registry.declarations.get(identity)
+        if isinstance(declaration, ModelMapping):
+            if pin is not None:
+                raise ValueError("Unexpected source variant evidence")
+            validate_frozen_mapping_evidence(
+                declaration,
+                provider=plan.logical_provider,
+                model=plan.logical_model,
+                model_type=plan.model_type,
+                target_model=plan.target_model,
+                operations=plan.operations,
+                source_contract=plan.source_parameter_contract,
+                tts_contract=plan.tts_voice_contract,
+            )
+            return
+        contract = plan.source_parameter_contract
+        if contract is None or pin is None or pin.registry_digest != plan.mapping_revision_digest:
+            raise ValueError("Missing source variant profile")
+        hosting = ext_hosting_provider.hosting_configuration.provider_map.get(plan.logical_provider)
+        if hosting is None or not hosting.enabled:
+            raise ValueError("Source settings unavailable")
+        selected = resolve_source_mapping(
+            registry,
+            identity,
+            source_uid=contract.source_plugin_unique_identifier,
+            fact=hosted_source_variant_fact(
+                provider=plan.logical_provider,
+                source_uid=contract.source_plugin_unique_identifier,
+                models=(),
+                credentials=hosting.credentials,
+            ),
+        )
+        if (
+            not isinstance(selected, SelectedSourceVariant)
+            or selected.variant.variant_id != pin.variant_id
+            or canonical_hash(selected.variant.source_settings.model_dump(mode="json")) != pin.source_settings_digest
+        ):
+            raise ValueError("Source variant settings changed")
+        validate_frozen_mapping_evidence(
+            selected,
+            provider=plan.logical_provider,
+            model=plan.logical_model,
+            model_type=plan.model_type,
+            target_model=plan.target_model,
+            operations=plan.operations,
+            source_contract=plan.source_parameter_contract,
+            tts_contract=plan.tts_voice_contract,
+        )
+    except (KeyError, TypeError, ValueError):
+        raise ModelInvocationReprepare from None
 
 
 def routed_credentials(
@@ -379,12 +495,39 @@ def routed_credentials(
     mapping_version = state.get("model_mapping_version")
     if not isinstance(mapping_version, str):
         raise ModelRouteUnmapped
-    mapping = model_mappings(mapping_version).get((provider, model_type, model))
-    if mapping is None:
-        raise ModelRouteUnmapped
+    registry = None
+    try:
+        source_uid = getattr(configuration.provider, "plugin_unique_identifier", "")
+        if state.get("source_variant_registry_digest") is None:
+            # Preserve the V1 dispatch owner and its exact legacy semantics.
+            # A V2 declaration cannot pass this V1-only parser without a pin.
+            mapping = model_mappings(mapping_version).get((provider, model_type, model))
+            if mapping is None or state.get("model_mapping_version") != mapping.mapping_revision:
+                raise ValueError("Unmapped source identity")
+            source_schemas = managed_source_schemas(configuration.system_configuration, configuration.provider)
+        else:
+            registry = source_mapping_revision(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, mapping_version)
+            if (
+                not registry.has_variants
+                or not uses_stable_dependency_inventory(dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, state)
+                or state.get("source_variant_registry_digest") != registry.digest
+            ):
+                raise ValueError("Source variant revision is not pinned")
+            source_schemas = managed_source_schemas(configuration.system_configuration, configuration.provider)
+            matching_sources = [
+                schema for schema in source_schemas if (schema.model_type, schema.model) == (model_type, model)
+            ]
+            mapping = resolve_source_mapping(
+                registry,
+                (provider, model_type, model),
+                source_uid=source_uid,
+                fact=configuration.system_configuration._tokener_source_variant_fact,
+                schema=matching_sources[0] if len(matching_sources) == 1 else None,
+            )
+    except (KeyError, TypeError, ValueError):
+        raise ModelRouteUnmapped from None
     if state.get("model_mapping_version") != mapping.mapping_revision:
         raise ModelRouteUnmapped
-    source_schemas = managed_source_schemas(configuration.system_configuration, configuration.provider)
     if not additional_model_is_authorized(
         system=configuration.system_configuration,
         installed_models=source_schemas,
@@ -401,7 +544,7 @@ def routed_credentials(
         if len(matching_sources) != 1 or not isinstance(source_uid, str):
             raise ModelRouteUnmapped
         source_settings = configuration.system_configuration.credentials
-        if mapping.parameter_adapter.id == "openai_chat_source_v1":
+        if mapping.parameter_adapter.id == "openai_chat_source_v1" and not isinstance(mapping, SelectedSourceVariant):
             fact = configuration.system_configuration._tokener_source_protocol_fact
             if (
                 fact is None
@@ -465,6 +608,16 @@ def routed_credentials(
             operations=tuple(mapping.operations),
             tts_voice_contract=tts_voice_contract,
             source_parameter_contract=source_parameter_contract,
+            source_variant_binding=(
+                SourceVariantInvocationBinding(
+                    registry.digest,
+                    mapping.variant.variant_id,
+                    canonical_hash(mapping.variant.source_settings.model_dump(mode="json")),
+                )
+                if registry is not None and isinstance(mapping, SelectedSourceVariant)
+                else None
+            ),
+            mapping_revision_digest=registry.digest if registry is not None else None,
         )
     return RoutedModelCredentials(plan)
 

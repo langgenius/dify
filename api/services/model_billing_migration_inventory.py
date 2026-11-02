@@ -43,6 +43,8 @@ class SavedDependencySourceEvidence:
     source_ownership: Mapping[str, object]
     unavailable_sources: tuple[Mapping[str, object], ...] = ()
     source_policy_digest: str | None = None
+    source_variant_registry_digest: str | None = None
+    prospective_variants: tuple[Mapping[str, object], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -202,6 +204,13 @@ class ModelBillingMigrationInventory:
             "unavailable_sources": list(evidence.unavailable_sources),
             "source_capability_policy_digest": evidence.source_policy_digest,
         }
+        if evidence.source_variant_registry_digest is not None:
+            if policy.inventory_policy != "saved_system_dependencies_v2":
+                raise ModelDependencyInventoryError("source_variants_require_stable_saved_policy")
+            payload["source_variant_registry_digest"] = evidence.source_variant_registry_digest
+            # Prospective declarations are not installed source evidence and
+            # never contribute to the selected saved-model exact-set check.
+            payload["prospective_variants"] = list(evidence.prospective_variants)
         result: dict[str, object] = {
             **payload,
             "inventory_hash": _hash(payload),

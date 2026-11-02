@@ -299,7 +299,7 @@ class ModelBillingMigrationService:
         )
         if credential is None or not credential.encrypted_config:
             raise MigrationError("readiness_changed")
-        return {
+        binding = {
             "tenant_id": row.tenant_id,
             "migration_id": row.migration_id,
             "plugin_unique_identifier": integration.plugin_unique_identifier or "",
@@ -311,6 +311,20 @@ class ModelBillingMigrationService:
             "billing_preparation_ref": row.state["billing_preparation_ref"],
             "source_ownership_hash": canonical_hash(row.state["source_ownership"]),
         }
+        variant_digest = row.state.get("source_variant_registry_digest")
+        if variant_digest is not None:
+            from services.model_billing_mapping_service import source_mapping_revision
+
+            try:
+                registry = source_mapping_revision(
+                    dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, row.state["model_mapping_version"]
+                )
+                if not registry.has_variants or registry.digest != variant_digest:
+                    raise ValueError("Source variant registry changed")
+            except ValueError:
+                raise MigrationError("readiness_changed") from None
+            binding["source_variant_registry_digest"] = variant_digest
+        return binding
 
     @classmethod
     def complete_preparation(
@@ -320,6 +334,7 @@ class ModelBillingMigrationService:
         *,
         source_ownership: dict[str, Any],
         expected_credential_fingerprint: str,
+        source_variant_registry_digest: str | None = None,
     ) -> None:
         ownership = TypeAdapter(
             dict[str, MigrationSourceProviderOwnership | StableMigrationSourceProviderOwnership]
@@ -331,6 +346,26 @@ class ModelBillingMigrationService:
                 return
             row.state = copy.deepcopy(row.state)
             row.state["source_ownership"] = snapshot
+            from services.model_billing_migration_inventory import saved_dependency_inventory_policy
+
+            if (
+                saved_dependency_inventory_policy(
+                    dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, row.state["model_mapping_version"]
+                )
+                == "saved_system_dependencies_v2"
+            ):
+                from services.model_billing_mapping_service import source_mapping_revision
+
+                try:
+                    registry = source_mapping_revision(
+                        dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, row.state["model_mapping_version"]
+                    )
+                    if registry.has_variants != (source_variant_registry_digest is not None):
+                        raise ValueError("Source variant pin is missing or unexpected")
+                except ValueError:
+                    raise MigrationError("readiness_changed") from None
+            if source_variant_registry_digest is not None:
+                row.state["source_variant_registry_digest"] = source_variant_registry_digest
             binding = cls._binding(session, row)
             if binding["credential_fingerprint"] != expected_credential_fingerprint:
                 raise MigrationError("readiness_changed")

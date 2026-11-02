@@ -12,9 +12,9 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
 from packaging.version import InvalidVersion, Version
-from pydantic import TypeAdapter
 
 from core.entities.provider_entities import (
+    HostedSourceVariantFact,
     ProviderQuotaType,
     QuotaConfiguration,
     QuotaUnit,
@@ -25,7 +25,8 @@ from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.provider_ids import ModelProviderID
-from services.entities.model_billing_mapping import ModelMapping
+from services.entities.model_billing_mapping import ModelMapping, SourceVariantSettings
+from services.entities.model_billing_mapping import SelectedSourceVariant as SelectedSourceVariant  # noqa: PLC0414
 from services.entities.model_billing_mapping import SourceParameterContract as SourceParameterContract  # noqa: PLC0414
 from services.entities.model_billing_mapping import model_schema_digest as model_schema_digest  # noqa: PLC0414
 from services.entities.model_billing_migration import StableMigrationSourceProviderOwnership
@@ -42,11 +43,25 @@ from services.model_billing_openai_chat_adapter import (
     openai_chat_source_marker,
     restore_openai_chat_source_contract,
 )
+from services.model_billing_openai_provider110_adapter import (
+    OpenAI110SourceSettings,
+    OpenAIProvider110SourceContract,
+    build_openai_provider110_source_contract,
+    openai_provider110_source_marker,
+    restore_openai_provider110_source_contract,
+)
 from services.model_billing_retirement_policy import ModelRetirementPolicy, resolve_retirement_policy
 from services.model_billing_source_capability_policy import SourceCapabilityDeclaration, UnavailableSourceEvidence
 from services.model_billing_source_capability_policy import (
     resolve_source_capability_policy as resolve_source_capability_policy,  # noqa: PLC0414
 )
+from services.model_billing_source_variants import (
+    MappingDeclaration,
+    ModelMappingRevision,
+    SelectedModelMapping,
+    SourceVariantContext,
+)
+from services.model_billing_source_variants import source_mapping_revision as parse_source_mapping_revision
 from services.model_billing_tts_adapter import TTSVoiceContract as TTSVoiceContract  # noqa: PLC0414
 from services.model_billing_tts_adapter import build_tts_voice_contract as build_tts_voice_contract  # noqa: PLC0414
 from services.model_billing_tts_adapter import normalize_tts_voice as normalize_tts_voice  # noqa: PLC0414
@@ -57,7 +72,7 @@ type SchemaLookup = Callable[[ModelType, str, dict[str, Any]], AIModelEntity | N
 
 
 def build_source_adapter_contract(
-    mapping: ModelMapping,
+    mapping: SelectedModelMapping,
     *,
     source_provider: str,
     source_plugin_unique_identifier: str,
@@ -76,6 +91,29 @@ def build_source_adapter_contract(
         "source_plugin_unique_identifier": source_plugin_unique_identifier,
         "expected_source_schema_digest": mapping.source_schema_digest,
     }
+    if isinstance(mapping, SelectedSourceVariant):
+        settings = mapping.variant.source_settings
+        if mapping.parameter_adapter.id == "openai_provider110_source_v1":
+            contract: SourceParameterContract = build_openai_provider110_source_contract(
+                **arguments,
+                source_schema=source_schema,
+                target_model=mapping.target.model,
+                source_settings=OpenAI110SourceSettings(
+                    protocol_selector=settings.protocol_selector,
+                    source_base_is_set=settings.source_base_is_set,
+                    request_metadata_enabled=settings.request_metadata_enabled,
+                ),
+            )
+        else:
+            contract = build_openai_chat_source_contract(
+                **arguments,
+                source_schema=source_schema,
+                target_model=mapping.target.model,
+                source_api_protocol=None if settings.protocol_selector == "absent" else settings.protocol_selector,
+            )
+        if contract != restore_variant_source_contract(mapping):
+            raise ValueError("Source variant evidence changed")
+        return contract
     if mapping.parameter_adapter.id == "anthropic_source_v1":
         return build_anthropic_source_contract(
             **arguments, source_schema=source_schema, target_model=mapping.target.model
@@ -108,6 +146,8 @@ def source_parameter_marker(
     }
     if isinstance(contract, OpenAIChatSourceContract):
         return openai_chat_source_marker(contract, **arguments, model_type=model_type)
+    if isinstance(contract, OpenAIProvider110SourceContract):
+        return openai_provider110_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, AnthropicSourceContract):
         return anthropic_source_marker(contract, **arguments, model_type=model_type)
     raise ValueError("Unsupported source parameter adapter family")
@@ -251,7 +291,7 @@ def has_finite_hosted_credit_pool(hosting: HostingProvider) -> bool:
 
 
 def additional_model_is_authorized(
-    *, system: SystemConfiguration, installed_models: Sequence[AIModelEntity], mapping: ModelMapping
+    *, system: SystemConfiguration, installed_models: Sequence[AIModelEntity], mapping: SelectedModelMapping
 ) -> bool:
     """Require the narrowed, typed availability contract even on direct API calls."""
     quota = next(
@@ -270,7 +310,7 @@ def additional_model_is_authorized(
     return len(schemas) == 1 and source_schema_matches_mapping(schemas[0], mapping)
 
 
-def source_schema_matches_mapping(schema: AIModelEntity, mapping: ModelMapping) -> bool:
+def source_schema_matches_mapping(schema: AIModelEntity, mapping: SelectedModelMapping) -> bool:
     return (
         (schema.model_type, schema.model) == (mapping.source.model_type, mapping.source.model)
         and model_schema_digest(schema) == mapping.source_schema_digest
@@ -302,13 +342,19 @@ def managed_source_schemas(system: SystemConfiguration, provider: ProviderEntity
 
 @dataclass(frozen=True)
 class HostedSourceSchemaCandidate:
-    mapping: ModelMapping
+    mapping: SelectedModelMapping
     # None preserves original provider credentials, rather than inventing a deployment.
     base_model_name: str | None
 
 
 def mapped_dynamic_source_candidates(
-    *, provider: ProviderEntity, hosting: HostingProvider, raw_registry: str, revision: str
+    *,
+    provider: ProviderEntity,
+    hosting: HostingProvider,
+    raw_registry: str,
+    revision: str,
+    source_fact: HostedSourceVariantFact | None = None,
+    allow_source_variants: bool = False,
 ) -> tuple[HostedSourceSchemaCandidate, ...]:
     """Plan bounded source lookups; this policy never performs RPC or inference."""
     if (
@@ -318,12 +364,23 @@ def mapped_dynamic_source_candidates(
     ):
         return ()
     try:
-        registry = mappings_for_revision(raw_registry, revision)
+        registry = source_mapping_revision(raw_registry, revision)
+        if registry.has_variants and not allow_source_variants:
+            return ()
     except ValueError:
         return ()
     installed = {(schema.model_type, schema.model) for schema in provider.models}
     candidates = []
-    for (provider_id, kind, model), rule in registry.items():
+    for provider_id, kind, model in registry.declarations:
+        try:
+            rule = resolve_source_mapping(
+                registry,
+                (provider_id, kind, model),
+                source_uid=getattr(provider, "plugin_unique_identifier", ""),
+                fact=source_fact,
+            )
+        except ValueError:
+            continue
         if (
             provider_id != str(ModelProviderID(provider.provider))
             or (kind, model) in installed
@@ -351,7 +408,7 @@ def mapped_dynamic_source_candidates(
     return tuple(candidates)
 
 
-def mapping_has_required_operations(mapping: ModelMapping) -> bool:
+def mapping_has_required_operations(mapping: SelectedModelMapping) -> bool:
     required = {"model/schema", f"{mapping.source.model_type.value}/invoke"}
     if mapping.source.model_type == ModelType.LLM:
         required.add("llm/num_tokens")
@@ -361,7 +418,7 @@ def mapping_has_required_operations(mapping: ModelMapping) -> bool:
     return required <= set(mapping.operations)
 
 
-def mapping_supports_installed_plugin(mapping: ModelMapping, plugin_unique_identifier: str) -> bool:
+def mapping_supports_installed_plugin(mapping: SelectedModelMapping, plugin_unique_identifier: str) -> bool:
     try:
         plugin_id, version_and_hash = plugin_unique_identifier.split(":", 1)
         version = version_and_hash.split("@", 1)[0]
@@ -506,6 +563,9 @@ def additional_hosted_availability(
     published_balance: bool = False,
     preserve_independent_pool: ProviderQuotaType | None = None,
     preserve_independent_units: bool = False,
+    source_uid: str = "",
+    source_fact: HostedSourceVariantFact | None = None,
+    allow_source_variants: bool = False,
 ) -> HostedCompatibilityAvailability | None:
     """Build trusted hosted availability using explicit, frozen contracts.
 
@@ -531,9 +591,11 @@ def additional_hosted_availability(
         and quota.quota_unit not in {QuotaUnit.CREDITS, QuotaUnit.TIMES}
     ]
     try:
-        registry = mappings_for_revision(raw_registry, revision)
+        registry = source_mapping_revision(raw_registry, revision)
+        if registry.has_variants and not allow_source_variants:
+            registry = None
     except ValueError:
-        registry = {}
+        registry = None
     provider_id = str(ModelProviderID(provider))
     quotas = list(independent)
     if hosting.quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES}:
@@ -547,7 +609,23 @@ def additional_hosted_availability(
                 continue
             restrictions: list[RestrictModel] = []
             for schema in installed_models:
-                rule = registry.get((provider_id, schema.model_type, schema.model))
+                try:
+                    rule = (
+                        resolve_source_mapping(
+                            registry,
+                            (provider_id, schema.model_type, schema.model),
+                            source_uid=source_uid,
+                            fact=source_fact,
+                            schema=schema,
+                        )
+                        if registry is not None
+                        else None
+                    )
+                except ValueError:
+                    # SYSTEM is constructed before choosing CUSTOM. A bad
+                    # managed variant may close only its shared availability,
+                    # never an unrelated independent/BYOK configuration.
+                    rule = None
                 if (
                     rule is None
                     or not published_balance
@@ -633,21 +711,178 @@ def additional_hosted_availability(
     return None
 
 
+def source_mapping_revision(raw_registry: str, revision: str) -> ModelMappingRevision:
+    """Keep provider alias/framework adaptation outside the pure registry."""
+    return parse_source_mapping_revision(
+        raw_registry, revision, normalize_provider=lambda value: str(ModelProviderID(value))
+    )
+
+
 def mappings_for_revision(raw_registry: str, revision: str) -> dict[MappingIdentity, ModelMapping]:
     """Validate every revision, then select exactly one; no implicit latest."""
-    if not revision:
-        raise ValueError("Missing mapping revision")
-    records = TypeAdapter(list[ModelMapping]).validate_json(raw_registry)
-    versions: dict[str, dict[MappingIdentity, ModelMapping]] = {}
-    for record in records:
-        identity = (str(ModelProviderID(record.source.provider_id)), record.source.model_type, record.source.model)
-        version = versions.setdefault(record.mapping_revision, {})
-        if identity in version or record.target.model_type != record.source.model_type:
-            raise ValueError("Duplicate source within revision or incompatible model type")
-        version[identity] = record
-    if revision not in versions:
-        raise ValueError("Unknown mapping revision")
-    return versions[revision]
+    registry = source_mapping_revision(raw_registry, revision)
+    if registry.has_variants:
+        raise ValueError("Source variants require explicit saved dependency policy")
+    return {key: item for key, item in registry.declarations.items() if isinstance(item, ModelMapping)}
+
+
+def hosted_source_variant_fact(
+    *, provider: str, source_uid: str, models: Sequence[AIModelEntity], credentials: object
+) -> HostedSourceVariantFact | None:
+    """Capture derived public facts only from an actual SYSTEM dictionary."""
+    if str(ModelProviderID(provider)) != "langgenius/openai/openai" or not isinstance(credentials, dict):
+        return None
+    protocol = credentials.get("api_protocol")
+    if protocol is not None and protocol not in ("chat", "responses"):
+        return None
+    return HostedSourceVariantFact(
+        provider=str(ModelProviderID(provider)),
+        plugin_unique_identifier=source_uid,
+        catalog_schema_digests=tuple((item.model_type, item.model, model_schema_digest(item)) for item in models),
+        selector="absent" if protocol is None else protocol,
+        source_base_is_set=bool(credentials.get("openai_api_base")),
+        request_metadata_enabled=credentials.get("enable_request_metadata") == "enabled",
+    )
+
+
+def source_variant_context(
+    fact: HostedSourceVariantFact | None, *, provider: str, source_uid: str, schema: AIModelEntity | None = None
+) -> SourceVariantContext | None:
+    if fact is None or fact.provider != str(ModelProviderID(provider)) or fact.plugin_unique_identifier != source_uid:
+        return None
+    if schema is not None and [
+        digest
+        for kind, model, digest in fact.catalog_schema_digests
+        if (kind, model) == (schema.model_type, schema.model)
+    ] != [model_schema_digest(schema)]:
+        return None
+    return SourceVariantContext(
+        source_uid,
+        SourceVariantSettings(
+            protocol_selector=fact.selector,
+            source_base_is_set=fact.source_base_is_set,
+            request_metadata_enabled=fact.request_metadata_enabled,
+        ),
+    )
+
+
+def restore_variant_source_contract(mapping: SelectedSourceVariant) -> SourceParameterContract:
+    variant = mapping.variant
+    marker = {
+        "schema_version": 1,
+        "profile_id": variant.source_profile_id,
+        "source_plugin_uid": variant.source_plugin_uid,
+        "source_model": mapping.source.model,
+        "source_schema_digest": variant.source_schema_digest,
+        "rules_digest": variant.parameter_adapter.rules_digest,
+    }
+    arguments = {
+        "source_provider": str(ModelProviderID(mapping.source.provider_id)),
+        "source_model": mapping.source.model,
+        "model_type": mapping.source.model_type,
+        "target_model": mapping.target.model,
+    }
+    settings = variant.source_settings
+    if settings.source_base_is_set or settings.request_metadata_enabled:
+        # Both initial V2 families were reviewed only for these derived
+        # False/False facts. The V1 042 factory deliberately remains unchanged.
+        raise ValueError("Unreviewed V2 source public settings")
+    if variant.parameter_adapter.id == "openai_chat_source_v1":
+        if settings.protocol_selector not in {"absent", "chat"}:
+            raise ValueError("Unreviewed source protocol")
+        contract: SourceParameterContract = restore_openai_chat_source_contract(
+            marker, **arguments, source_api_protocol=None if settings.protocol_selector == "absent" else "chat"
+        )
+    else:
+        contract = restore_openai_provider110_source_contract(
+            marker,
+            **arguments,
+            source_settings=OpenAI110SourceSettings(
+                protocol_selector=settings.protocol_selector,
+                source_base_is_set=settings.source_base_is_set,
+                request_metadata_enabled=settings.request_metadata_enabled,
+            ),
+        )
+    if (
+        contract.source_runtime_schema_digest != variant.source_runtime_schema_digest
+        or contract.adapter_id != variant.parameter_adapter.id
+        or contract.algorithm_revision != variant.parameter_adapter.revision
+        or contract.target_model != mapping.target.model
+    ):
+        raise ValueError("Source variant profile mismatch")
+    return contract
+
+
+def validate_frozen_mapping_evidence(
+    mapping: SelectedModelMapping,
+    *,
+    provider: str,
+    model: str,
+    model_type: ModelType,
+    target_model: str,
+    operations: tuple[str, ...],
+    source_contract: SourceParameterContract | None,
+    tts_contract: TTSVoiceContract | None,
+) -> None:
+    """V2 revision admission, including legacy-shaped logical siblings.
+
+    Reuse each adapter owner's immutable evidence validator; no schema RPC or
+    original vendor credential is needed on this pre-reservation boundary.
+    Historical pure-V1 admission deliberately never calls this new guard.
+    """
+    if (
+        str(ModelProviderID(mapping.source.provider_id)) != provider
+        or (mapping.source.model_type, mapping.source.model) != (model_type, model)
+        or (mapping.target.model_type, mapping.target.model) != (model_type, target_model)
+        or tuple(mapping.operations) != operations
+    ):
+        raise ValueError("Frozen mapping identity or target changed")
+    adapter = mapping.parameter_adapter
+    if adapter.id == "identity_v1":
+        if source_contract is not None or tts_contract is not None:
+            raise ValueError("Unexpected source adapter evidence")
+        return
+    if adapter.id == "tts_source_voice_v1":
+        if source_contract is not None or tts_contract is None:
+            raise ValueError("Missing TTS source evidence")
+        normalize_tts_voice(tts_contract, tts_contract.default_voice)
+        if (
+            tts_contract.source_provider != provider
+            or tts_contract.source_model != model
+            or tts_contract.source_schema_digest != mapping.source_schema_digest
+            or (tts_contract.adapter_id, tts_contract.algorithm_revision, tts_contract.rules_digest)
+            != (adapter.id, adapter.revision, adapter.rules_digest)
+        ):
+            raise ValueError("TTS source mapping changed")
+        return
+    if source_contract is None or tts_contract is not None:
+        raise ValueError("Missing source parameter evidence")
+    source_parameter_marker(
+        source_contract, source_provider=provider, source_model=model, model_type=model_type, target_model=target_model
+    )
+    if (
+        source_contract.source_schema_digest != mapping.source_schema_digest
+        or (source_contract.adapter_id, source_contract.algorithm_revision, source_contract.rules_digest)
+        != (adapter.id, adapter.revision, adapter.rules_digest)
+        or isinstance(mapping, SelectedSourceVariant)
+        and source_contract != restore_variant_source_contract(mapping)
+    ):
+        raise ValueError("Source parameter mapping changed")
+
+
+def resolve_source_mapping(
+    registry: ModelMappingRevision,
+    identity: MappingIdentity,
+    *,
+    source_uid: str,
+    fact: HostedSourceVariantFact | None,
+    schema: AIModelEntity | None = None,
+) -> SelectedModelMapping:
+    context = source_variant_context(fact, provider=identity[0], source_uid=source_uid, schema=schema)
+    selected = registry.resolve(identity, context=context, schema=schema)
+    if isinstance(selected, SelectedSourceVariant):
+        restore_variant_source_contract(selected)
+    return selected
 
 
 @dataclass
@@ -819,7 +1054,9 @@ def partition_known_unavailable_sources(
 
 
 def retirement_policy_for_revision(
-    raw_policy: str, revision: str, mappings: dict[MappingIdentity, ModelMapping]
+    raw_policy: str,
+    revision: str,
+    mappings: dict[MappingIdentity, ModelMapping] | dict[MappingIdentity, MappingDeclaration],
 ) -> ModelRetirementPolicy:
     policy = resolve_retirement_policy(raw_policy, revision)
     if policy.identities.intersection(mappings):

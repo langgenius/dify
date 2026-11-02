@@ -1,5 +1,5 @@
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import cast
@@ -179,6 +179,200 @@ def setup_gateway(
         selections=selections, records=ModelBillingDependencyRepository(session_factory=factory)
     )
     return gateway, metadata, installations, selections
+
+
+@pytest.mark.parametrize(
+    ("selected", "all_sources", "current_selector"),
+    [
+        (False, False, None),
+        (True, False, None),
+        (False, True, None),
+        (True, True, None),
+        (True, True, "absent"),
+        (True, True, "chat"),
+        (True, True, "responses"),
+    ],
+)
+def test_variant_readiness_separates_saved_exact_set_from_prospective_target_only_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    selected: bool,
+    all_sources: bool,
+    current_selector: str | None,
+) -> None:
+    from tests.unit_tests.services.test_model_billing_openai_chat_adapter import RUNTIME_PROFILE, build_inputs
+    from tests.unit_tests.services.test_model_billing_source_variants import (
+        REVISION,
+        current_source_schemas,
+        full_variant_record,
+        variant_record,
+    )
+
+    gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    inputs = build_inputs(runtime=True)
+    uid = inputs["source_plugin_unique_identifier"]
+    catalog = inputs["source_schema"]
+    runtime042 = AIModelEntity.model_validate(RUNTIME_PROFILE["source_schema"])
+    catalog110, runtime110 = current_source_schemas()
+    if current_selector is not None:
+        from services.model_billing_openai_provider110_adapter import _REVIEWED_CONTRACTS
+
+        uid = _REVIEWED_CONTRACTS[0].source_plugin_unique_identifier
+        catalog = catalog110
+        metadata.bindings[0].version = "1.1.0"
+        hosting = module.ext_hosting_provider.hosting_configuration.provider_map[PROVIDER]
+        assert hosting.credentials is not None
+        if current_selector != "absent":
+            hosting.credentials["api_protocol"] = current_selector
+    metadata.bindings[0].plugin_unique_identifier = uid
+    metadata.catalogs[0].plugin_unique_identifier = uid
+    metadata.catalogs[0].declaration.models = [catalog]
+    metadata.dynamic = runtime110 if current_selector is not None else runtime042
+    metadata.target = metadata.dynamic.model_copy(deep=True)
+    initial_target = metadata.target
+    selections.value = replace(
+        selections.value, providers=(replace(selections.value.providers[0], source_plugin_unique_identifier=uid),)
+    )
+    monkeypatch.setattr(
+        module.dify_config,
+        "TOKENER_LEGACY_MODEL_MAPPING_JSON",
+        json.dumps([full_variant_record() if all_sources else variant_record()]),
+    )
+    if all_sources:
+        original_lookup = metadata.get_model_schema
+
+        def source_or_target(
+            tenant_id: str,
+            user_id: str | None,
+            plugin_id: str,
+            provider: str,
+            model_type: str,
+            model: str,
+            credentials: dict[str, object],
+            *,
+            plugin_unique_identifier: str | None = None,
+        ) -> AIModelEntity | None:
+            if isinstance(credentials, RoutedModelCredentials):
+                contract = credentials.plan.source_parameter_contract
+                assert contract is not None
+                if metadata.target is not initial_target:
+                    return metadata.target
+                return runtime110 if "openai-110-" in contract.profile_id else runtime042
+            return original_lookup(
+                tenant_id,
+                user_id,
+                plugin_id,
+                provider,
+                model_type,
+                model,
+                credentials,
+                plugin_unique_identifier=plugin_unique_identifier,
+            )
+
+        monkeypatch.setattr(metadata, "get_model_schema", source_or_target)
+    required = (RequiredSavedCreditModel(PROVIDER, "llm", "gpt-4o-mini", ("paid",)),) if selected else ()
+    evidence = gateway.sources("tenant", REVISION, required, inventory_policy="saved_system_dependencies_v2")
+    assert len(evidence.models) == int(selected)
+    assert len(evidence.prospective_variants) == (5 if all_sources else 2)
+    assert all(item["evidence"] == "reviewed_target_profile_only" for item in evidence.prospective_variants)
+    assert metadata.dynamic_uid == (uid if selected else None)
+    if selected:
+        assert evidence.models[0]["source_plugin_uid"] == uid
+        assert evidence.models[0]["source_runtime_schema_digest"] == module.model_schema_digest(metadata.dynamic)
+        if current_selector is not None:
+            selection = evidence.models[0]["source_variant"]
+            assert isinstance(selection, dict)
+            assert selection["variant_id"] == "openai110-" + current_selector
+    expected = "sha256:" + "a" * 64
+    monkeypatch.setattr(
+        gateway._records,
+        "managed_target_binding",
+        lambda _tenant: ManagedModelReadinessBinding("credential", "langgenius/tokener:9.9.9@" + "c" * 64, expected),
+    )
+    monkeypatch.setattr(
+        module,
+        "migration_routing_state",
+        lambda _tenant: {
+            "provisioned_binding": {
+                "tenant_id": "tenant",
+                "provider_name": "langgenius/tokener/tokener",
+                "provider_credential_id": "credential",
+                "credential_fingerprint": expected,
+            }
+        },
+    )
+    inventory: dict[str, object] = {
+        "models": list(evidence.models),
+        "prospective_variants": list(evidence.prospective_variants),
+        "source_variant_registry_digest": evidence.source_variant_registry_digest,
+    }
+    assert gateway.validate_target("tenant", REVISION, inventory) == expected
+    if selected:
+        for changed_source in (
+            {**evidence.models[0], "source_plugin_uid": "untrusted"},
+            {**evidence.models[0], "source_parameter_contract": {"schema_version": True}},
+            {**evidence.models[0], "source_parameter_settings": {"api_protocol": "default_chat"}},
+        ):
+            with pytest.raises(ModelRouteUnmapped):
+                gateway.validate_target("tenant", REVISION, {**inventory, "models": [changed_source]})
+    altered_sets: tuple[Sequence[Mapping[str, object]], ...] = (
+        (),
+        (*evidence.prospective_variants, evidence.prospective_variants[0]),
+    )
+    for altered in altered_sets:
+        with pytest.raises(ModelRouteUnmapped):
+            gateway.validate_target("tenant", REVISION, {**inventory, "prospective_variants": altered})
+    with pytest.raises(ModelRouteUnmapped):
+        gateway.validate_target(
+            "tenant", REVISION, {**inventory, "source_variant_registry_digest": "sha256:" + "f" * 64}
+        )
+    metadata.target = catalog  # Catalog is not the source runtime/schema handshake.
+    with pytest.raises(ModelRouteUnmapped):
+        gateway.validate_target("tenant", REVISION, inventory)
+
+
+def test_variant_sources_require_explicit_stable_saved_policy(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    from tests.unit_tests.services.test_model_billing_source_variants import REVISION, variant_record
+
+    gateway, _, _, _ = setup_gateway(monkeypatch, sqlite_session_factory)
+    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", json.dumps([variant_record()]))
+    with pytest.raises(ModelRouteUnmapped):
+        gateway.sources("tenant", REVISION, ())
+
+
+@pytest.mark.parametrize("credentials", [None, "malformed", [], True])
+def test_variant_sources_do_not_turn_missing_or_malformed_original_settings_into_absent_fact(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session], credentials: object
+) -> None:
+    from tests.unit_tests.services.test_model_billing_openai_chat_adapter import build_inputs
+    from tests.unit_tests.services.test_model_billing_source_variants import REVISION, variant_record
+
+    gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    inputs = build_inputs(runtime=True)
+    uid = inputs["source_plugin_unique_identifier"]
+    metadata.bindings[0].plugin_unique_identifier = uid
+    metadata.catalogs[0].plugin_unique_identifier = uid
+    metadata.catalogs[0].declaration.models = [inputs["source_schema"]]
+    selections.value = replace(
+        selections.value, providers=(replace(selections.value.providers[0], source_plugin_unique_identifier=uid),)
+    )
+    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", json.dumps([variant_record()]))
+    hosting = module.ext_hosting_provider.hosting_configuration.provider_map[PROVIDER]
+    monkeypatch.setitem(
+        module.ext_hosting_provider.hosting_configuration.provider_map,
+        PROVIDER,
+        hosting.model_copy(update={"credentials": credentials}),
+    )
+    with pytest.raises(ModelRouteUnmapped):
+        gateway.sources(
+            "tenant",
+            REVISION,
+            (RequiredSavedCreditModel(PROVIDER, "llm", "gpt-4o-mini", ("paid",)),),
+            inventory_policy="saved_system_dependencies_v2",
+        )
+    assert metadata.dynamic_uid is None
 
 
 def test_only_saved_required_model_is_checked_even_if_other_catalog_models_have_no_mapping(

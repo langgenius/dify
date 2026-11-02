@@ -31,6 +31,7 @@ def get_routing_state(tenant_id: str) -> dict[str, Any] | None:
                     model.state["preparation"].label("preparation"),
                     model.state["provisioned_binding"].label("provisioned_binding"),
                     model.state["source_ownership"].label("source_ownership"),
+                    model.state["source_variant_registry_digest"].as_string().label("source_variant_registry_digest"),
                     model.state["ever_activated"].as_boolean().label("ever_activated"),
                     TenantModelBillingProfile.model_billing_source.label("persisted_model_billing_source"),
                 )
@@ -47,6 +48,8 @@ def get_routing_state(tenant_id: str) -> dict[str, Any] | None:
         result["provisioned_binding"] = result["provisioned_binding"] or {}
         result["source_ownership"] = result["source_ownership"] or {}
         result["ever_activated"] = bool(result["ever_activated"])
+        if result["source_variant_registry_digest"] is None:
+            result.pop("source_variant_registry_digest")
         if result["claimed_at"] is not None:
             result["claimed_at"] = result["claimed_at"].replace(microsecond=0).isoformat() + "Z"
         return result

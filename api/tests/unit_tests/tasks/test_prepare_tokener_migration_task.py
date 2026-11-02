@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Tenant
 from models.model_billing import TenantModelBillingProfile
@@ -27,6 +27,119 @@ class HistoricalReadinessQuery:
         from core.model_invocation_routing import validate_migration_readiness
 
         return validate_migration_readiness(tenant_id, revision, eligibility_policy_version=eligibility_policy_version)
+
+
+@pytest.mark.parametrize("pin_kind", ["valid", "missing", "wrong"])
+def test_variant_readiness_pin_flows_internally_worker_sql_claim_and_narrow_runtime_projection(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    pin_kind: str,
+) -> None:
+    from core.repositories import model_billing_migration_repository
+    from services.model_billing_mapping_service import source_mapping_revision
+    from services.model_billing_migration_service import MigrationError
+    from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
+    from tests.unit_tests.services.test_model_billing_source_variants import REVISION, variant_record
+
+    tenant = Tenant(name="New source-variant internal preparation")
+    sqlite_session.add(tenant)
+    sqlite_session.commit()
+    raw = json.dumps([variant_record()])
+    registry = source_mapping_revision(raw, REVISION)
+    apply_config_overrides(
+        monkeypatch,
+        TOKENER_LEGACY_MIGRATION_ENABLED=True,
+        TOKENER_LEGACY_MIGRATION_ALLOWLIST=tenant.id,
+        TOKENER_PLUGIN_UNIQUE_IDENTIFIER="langgenius/tokener:0.1.3@fixture",
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=raw,
+        TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=json.dumps(
+            [{"schema_version": 1, "mapping_revision": REVISION, "inventory_policy": "saved_system_dependencies_v2"}]
+        ),
+    )
+    monkeypatch.setattr(ModelBillingMigrationService, "enqueue_prepare", lambda *_args: None)
+    inventory_hash = "sha256:" + "1" * 64
+    payload = PrepareMigrationPayload(
+        api_version=1,
+        operation_id=str(uuid4()),
+        expected_revision=0,
+        migration_id=str(uuid4()),
+        batch_id="variant-internal",
+        eligibility_policy_version="paid-v1",
+        model_mapping_version=REVISION,
+        inventory_hash=inventory_hash,
+        billing_preparation_ref="existing-internal-binding",
+    )
+    ModelBillingMigrationService.prepare(tenant.id, payload)
+    credential = ProviderCredential(
+        tenant_id=tenant.id,
+        provider_name="langgenius/tokener/tokener",
+        credential_name="managed-test",
+        encrypted_config='{"api_key":"encrypted-test-only"}',
+    )
+    sqlite_session.add(credential)
+    sqlite_session.flush()
+    integration = sqlite_session.scalar(
+        select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant.id)
+    )
+    assert integration is not None
+    integration.status = TenantTokenerIntegrationStatus.READY
+    integration.provider_credential_id = credential.id
+    sqlite_session.commit()
+    monkeypatch.setattr(module, "_begin_attempt", lambda _tenant: object())
+    monkeypatch.setattr(module, "_ensure_plugin_installed", lambda _snapshot: None)
+    monkeypatch.setattr(module, "_find_bound_credential", lambda _tenant: credential.id)
+    monkeypatch.setattr(module, "_update_integration", lambda *_args, **_kwargs: None)
+
+    class Readiness:
+        def readiness(
+            self, tenant_id: str, revision: str, *, eligibility_policy_version: str | None = None
+        ) -> dict[str, object]:
+            assert tenant_id == tenant.id
+            assert revision == REVISION
+            assert eligibility_policy_version == "paid-v1"
+            result: dict[str, object] = {
+                "inventory_hash": inventory_hash,
+                "source_ownership": {},
+                "credential_fingerprint": canonical_hash({"encrypted_config": credential.encrypted_config}),
+            }
+            if pin_kind != "missing":
+                result["source_variant_registry_digest"] = (
+                    registry.digest if pin_kind == "valid" else "sha256:" + "f" * 64
+                )
+            return result
+
+    if pin_kind != "valid":
+        with pytest.raises(MigrationError, match="readiness_changed"):
+            module._run_preparation(tenant.id, payload.migration_id, readiness_query=Readiness())
+        sqlite_session.expire_all()
+        unchanged = sqlite_session.get(TenantModelBillingMigration, tenant.id)
+        assert unchanged is not None
+        assert unchanged.phase == "preparing"
+        assert "source_variant_registry_digest" not in unchanged.state
+        return
+    module._run_preparation(tenant.id, payload.migration_id, readiness_query=Readiness())
+    sqlite_session.expire_all()
+    row = sqlite_session.get(TenantModelBillingMigration, tenant.id)
+    assert row is not None
+    assert row.phase == "prepared"
+    assert row.state["source_variant_registry_digest"] == registry.digest
+    assert row.state["preparation"]["source_variant_registry_digest"] == registry.digest
+    monkeypatch.setattr(model_billing_migration_repository.session_factory, "create_session", sqlite_session_factory)
+    projected = model_billing_migration_repository.get_routing_state(tenant.id)
+    assert projected is not None
+    assert projected["source_variant_registry_digest"] == registry.digest
+    assert "manifest" not in projected
+    ModelBillingMigrationService.assert_claim_readiness(
+        sqlite_session, row, module.naive_utc_now(), row.state["preparation_binding_hash"]
+    )
+    changed = variant_record()
+    changed["pool_types"] = ["paid"]
+    with config_overrides_context(TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps([changed])):
+        with pytest.raises(MigrationError, match="readiness_changed"):
+            ModelBillingMigrationService.assert_claim_readiness(
+                sqlite_session, row, module.naive_utc_now(), row.state["preparation_binding_hash"]
+            )
 
 
 @pytest.mark.parametrize("policy", ["paid-legacy-v1", "free-legacy-v1", "unknown-policy"])

@@ -35,10 +35,11 @@ from services.model_billing_dependency_provenance import (
 )
 from services.model_billing_mapping_service import (
     additional_hosted_availability,
-    mappings_for_revision,
+    hosted_source_variant_fact,
     provider_has_prepared_ownership,
     published_original_quotas,
     retirement_policy_for_revision,
+    source_mapping_revision,
     uses_published_tokener_balance,
     uses_stable_dependency_inventory,
 )
@@ -49,9 +50,9 @@ class RevisionModelDependencyRetirements:
     def identities(self, mapping_revision: str | None) -> frozenset[tuple[str, str, str]]:
         if mapping_revision is None:
             return frozenset()
-        registry = mappings_for_revision(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, mapping_revision)
+        registry = source_mapping_revision(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, mapping_revision)
         policy = retirement_policy_for_revision(
-            dify_config.TOKENER_LEGACY_RETIRED_MODELS_JSON, mapping_revision, registry
+            dify_config.TOKENER_LEGACY_RETIRED_MODELS_JSON, mapping_revision, dict(registry.declarations)
         )
         return frozenset((provider, kind.value, model) for provider, kind, model in policy.identities)
 
@@ -223,6 +224,14 @@ class SavedModelSelectionRuntimeQuery:
                             published_balance=published,
                             preserve_independent_pool=preserve,
                             preserve_independent_units=stable_inventory,
+                            source_uid=declaration.plugin_unique_identifier,
+                            source_fact=hosted_source_variant_fact(
+                                provider=name,
+                                source_uid=declaration.plugin_unique_identifier,
+                                models=declaration.declaration.models,
+                                credentials=hosting.credentials,
+                            ),
+                            allow_source_variants=stable_inventory,
                         )
                         if available is not None:
                             quotas, current = available.quotas, available.current_quota_type

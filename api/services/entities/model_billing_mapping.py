@@ -100,3 +100,127 @@ class ModelMapping(_StrictModel):
             if self.parameter_adapter.revision not in {"1", "2"}:
                 raise ValueError("Unsupported OpenAI Chat source adapter revision")
         return self
+
+
+class SourceVariantSettings(_StrictModel):
+    """Positive public facts, not defaults inferred from missing credentials."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    protocol_selector: Literal["absent", "chat", "responses"]
+    source_base_is_set: bool
+    request_metadata_enabled: bool
+
+
+class SourceVariantAdapter(_StrictModel):
+    """V2 has its own closed adapter family; V1 validation is unchanged."""
+
+    id: Literal["openai_chat_source_v1", "openai_provider110_source_v1"]
+    revision: str = Field(min_length=1)
+    rules_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+
+
+class SourceMappingVariant(_StrictModel):
+    variant_id: str = Field(min_length=1)
+    source_plugin_uid: str = Field(pattern=r"^langgenius/openai:[^@\s]+@[0-9a-f]{64}$")
+    source_settings: SourceVariantSettings
+    source_schema_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    source_runtime_schema_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    source_profile_id: str = Field(min_length=1)
+    parameter_adapter: SourceVariantAdapter
+    target: MappingTarget
+    operations: list[str] = Field(min_length=1)
+    conformance_fixture_ids: list[str] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def closed_operations(self) -> Self:
+        if (
+            self.target.model_type != ModelType.LLM
+            or self.target.model != "gpt-4o-mini"
+            or set(self.operations) != {"model/schema", "llm/invoke", "llm/num_tokens"}
+            or len(self.operations) != 3
+            or len(set(self.conformance_fixture_ids)) != len(self.conformance_fixture_ids)
+        ):
+            raise ValueError("Invalid bounded source variant contract")
+        return self
+
+
+class SourceVariantSelection(_StrictModel):
+    variant_id: str = Field(min_length=1)
+    source_plugin_uid: str = Field(pattern=r"^langgenius/openai:[^@\s]+@[0-9a-f]{64}$")
+    source_settings: SourceVariantSettings
+    source_schema_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    source_runtime_schema_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    registry_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+
+
+class SourceVariantMapping(_StrictModel):
+    """Finite exact-source variants for one logical identity in a new revision."""
+
+    schema_version: Literal[2]
+    mapping_revision: str = Field(min_length=1)
+    source: MappingSource
+    settlement_owner: Literal["shared_credit_pool"]
+    pool_types: list[Literal["paid", "trial"]] = Field(min_length=1)
+    variants: list[SourceMappingVariant] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def finite_source_variants(self) -> Self:
+        if (
+            self.source.provider_id != "langgenius/openai/openai"
+            or self.source.model_type != ModelType.LLM
+            or self.source.model != "gpt-4o-mini"
+            or self.source.mode != "chat"
+            or len(set(self.pool_types)) != len(self.pool_types)
+            or len({item.variant_id for item in self.variants}) != len(self.variants)
+        ):
+            raise ValueError("Invalid bounded source variant mapping")
+        selectors = {(item.source_plugin_uid, item.source_settings.model_dump_json()) for item in self.variants}
+        if len(selectors) != len(self.variants):
+            raise ValueError("Ambiguous source variant selector")
+        return self
+
+
+@dataclass(frozen=True, slots=True)
+class SelectedSourceVariant:
+    """A server-selected immutable route, never a client routing instruction."""
+
+    envelope: SourceVariantMapping
+    variant: SourceMappingVariant
+    registry_digest: str
+
+    @property
+    def mapping_revision(self) -> str:
+        return self.envelope.mapping_revision
+
+    @property
+    def source(self) -> MappingSource:
+        return self.envelope.source
+
+    @property
+    def settlement_owner(self) -> Literal["shared_credit_pool"]:
+        return self.envelope.settlement_owner
+
+    @property
+    def pool_types(self) -> list[Literal["paid", "trial"]]:
+        return self.envelope.pool_types
+
+    @property
+    def source_schema_digest(self) -> str:
+        return self.variant.source_schema_digest
+
+    @property
+    def parameter_adapter(self) -> SourceVariantAdapter:
+        return self.variant.parameter_adapter
+
+    @property
+    def target(self) -> MappingTarget:
+        return self.variant.target
+
+    @property
+    def operations(self) -> list[str]:
+        return self.variant.operations
+
+    @property
+    def conformance_fixture_ids(self) -> list[str]:
+        return self.variant.conformance_fixture_ids

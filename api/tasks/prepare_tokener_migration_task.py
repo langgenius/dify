@@ -250,6 +250,11 @@ def _run_preparation(tenant_id: str, migration_id: str, *, readiness_query: Mode
         migration_id,
         source_ownership=cast(dict[str, Any], readiness["source_ownership"]),
         expected_credential_fingerprint=cast(str, readiness["credential_fingerprint"]),
+        **(
+            {"source_variant_registry_digest": cast(str, readiness["source_variant_registry_digest"])}
+            if "source_variant_registry_digest" in readiness
+            else {}
+        ),
     )
 
 

@@ -1576,6 +1576,7 @@ class ProviderManager:
         from services.model_billing_mapping_service import (
             additional_hosted_availability,
             has_finite_hosted_credit_pool,
+            hosted_source_variant_fact,
             mapped_dynamic_source_candidates,
             model_schema_digest,
             provider_has_prepared_ownership,
@@ -1711,12 +1712,20 @@ class ProviderManager:
 
                 raise ModelRouteUnavailable from None
         resolved_source_schemas = []
+        variant_fact = hosted_source_variant_fact(
+            provider=provider_entity.provider,
+            source_uid=plugin_provider_entity.plugin_unique_identifier,
+            models=provider_entity.models,
+            credentials=provider_hosting_configuration.credentials,
+        )
         if published_balance and routing_state is not None:
             for candidate in mapped_dynamic_source_candidates(
                 provider=provider_entity,
                 hosting=provider_hosting_configuration,
                 raw_registry=dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON,
                 revision=routing_state.get("model_mapping_version", ""),
+                source_fact=variant_fact,
+                allow_source_variants=stable_inventory,
             ):
                 source_credentials = dict(provider_hosting_configuration.credentials or {})
                 if candidate.base_model_name is not None:
@@ -1737,6 +1746,12 @@ class ProviderManager:
                 finally:
                     source_credentials.clear()
         if additional_provider or published_balance:
+            variant_fact = hosted_source_variant_fact(
+                provider=provider_entity.provider,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                models=[*provider_entity.models, *resolved_source_schemas],
+                credentials=provider_hosting_configuration.credentials,
+            )
             availability = additional_hosted_availability(
                 provider=provider_entity.provider,
                 hosting=provider_hosting_configuration,
@@ -1747,6 +1762,9 @@ class ProviderManager:
                 published_balance=published_balance,
                 preserve_independent_pool=preserve_independent_pool,
                 preserve_independent_units=stable_inventory,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                source_fact=variant_fact,
+                allow_source_variants=stable_inventory,
             )
             if availability is None:
                 return SystemConfiguration(enabled=False)
@@ -1841,6 +1859,7 @@ class ProviderManager:
         result._tokener_source_schemas = tuple(resolved_source_schemas)
         result._tokener_source_plugin_unique_identifier = plugin_provider_entity.plugin_unique_identifier
         result._tokener_source_protocol_fact = source_protocol_fact
+        result._tokener_source_variant_fact = variant_fact
         return result
 
     @staticmethod

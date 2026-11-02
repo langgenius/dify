@@ -39,7 +39,7 @@ from extensions import ext_hosting_provider
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from models.provider_ids import ModelProviderID
 from repositories.model_billing_dependency_repository import ModelBillingDependencyRepository
-from services.entities.model_billing_mapping import SourceParameterContract
+from services.entities.model_billing_mapping import SelectedSourceVariant, SourceParameterContract
 from services.model_billing_dependency_inventory import DependencyInventoryPolicy, SavedModelReference
 from services.model_billing_dependency_provenance import (
     ModelDependencySelectionQuery,
@@ -49,16 +49,20 @@ from services.model_billing_dependency_provenance import (
 )
 from services.model_billing_mapping_service import (
     build_source_adapter_contract,
+    hosted_source_variant_fact,
     mapping_has_required_operations,
-    mappings_for_revision,
     model_schema_digest,
     partition_known_unavailable_sources,
     resolve_source_capability_policy,
+    resolve_source_mapping,
     restore_source_parameter_contract,
+    restore_variant_source_contract,
+    source_mapping_revision,
     source_parameter_marker,
     source_parameter_public_settings,
 )
 from services.model_billing_migration_inventory import RequiredSavedCreditModel, SavedDependencySourceEvidence
+from services.model_billing_source_variants import selection_payload
 
 
 class RedirectCapabilities(BaseModel):
@@ -117,7 +121,9 @@ class SavedDependencyMigrationEvidenceGateway:
         inventory_policy: DependencyInventoryPolicy = "saved_system_dependencies_v1",
         source_ownership_providers: tuple[str, ...] = (),
     ) -> SavedDependencySourceEvidence:
-        registry = mappings_for_revision(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, revision)
+        registry = source_mapping_revision(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, revision)
+        if registry.has_variants and inventory_policy != "saved_system_dependencies_v2":
+            raise ModelRouteUnmapped
         policy = resolve_source_capability_policy(dify_config.TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON, revision)
         snapshot = self._selections.selection_snapshot(tenant_id)
         references = tuple(
@@ -216,7 +222,10 @@ class SavedDependencyMigrationEvidenceGateway:
             hosting = ext_hosting_provider.hosting_configuration.provider_map.get(provider)
             if hosting is None or not hosting.enabled:
                 raise ModelRouteUnavailable
-            credentials = dict(hosting.credentials or {})
+            actual_system_settings = hosting.credentials if isinstance(hosting.credentials, dict) else None
+            credentials = (
+                dict(actual_system_settings or {}) if registry.has_variants else dict(hosting.credentials or {})
+            )
             restricted = [
                 item
                 for pool in hosting.quotas
@@ -289,10 +298,23 @@ class SavedDependencyMigrationEvidenceGateway:
                     plugin_unique_identifier=binding.plugin_unique_identifier,
                 )
             )
-            mapping = registry.get((provider, kind, model))
+            try:
+                mapping = resolve_source_mapping(
+                    registry,
+                    (provider, kind, model),
+                    source_uid=binding.plugin_unique_identifier,
+                    fact=hosted_source_variant_fact(
+                        provider=provider,
+                        source_uid=binding.plugin_unique_identifier,
+                        models=[schema] if schema is not None else [],
+                        credentials=credentials if actual_system_settings is not None else None,
+                    ),
+                    schema=schema,
+                )
+            except ValueError:
+                raise ModelRouteUnmapped from None
             if (
                 schema is None
-                or mapping is None
                 or not set(required.pool_types) <= set(mapping.pool_types)
                 or not mapping_has_required_operations(mapping)
                 or model_schema_digest(schema) != mapping.source_schema_digest
@@ -310,6 +332,8 @@ class SavedDependencyMigrationEvidenceGateway:
                 "target_model": mapping.target.model,
                 "source_mode": mapping.source.mode,
             }
+            if isinstance(mapping, SelectedSourceVariant):
+                item["source_variant"] = selection_payload(mapping).model_dump(mode="json")
             if kind == ModelType.TEXT_EMBEDDING:
                 item["embedding_dimensions"] = embedding_dimensions_contract(schema)
             if mapping.parameter_adapter.id != "identity_v1":
@@ -345,12 +369,33 @@ class SavedDependencyMigrationEvidenceGateway:
                         model_type=kind,
                         target_model=mapping.target.model,
                     )
-                    settings = source_parameter_public_settings(contract, source_credentials=credentials)
+                    settings = (
+                        None
+                        if isinstance(mapping, SelectedSourceVariant)
+                        else source_parameter_public_settings(contract, source_credentials=credentials)
+                    )
                     if settings is not None:
                         item["source_parameter_settings"] = settings
             credentials.clear()
             result.append(item)
-        return SavedDependencySourceEvidence(tuple(result), ownership, tuple(unavailable), policy.digest)
+        prospective = tuple(
+            {
+                "provider": str(ModelProviderID(item.source.provider_id)),
+                "model_type": item.source.model_type.value,
+                "model": item.source.model,
+                "source_variant": selection_payload(item).model_dump(mode="json"),
+                "evidence": "reviewed_target_profile_only",
+            }
+            for item in registry.selected_prospective()
+        )
+        return SavedDependencySourceEvidence(
+            tuple(result),
+            ownership,
+            tuple(unavailable),
+            policy.digest,
+            registry.digest if registry.has_variants else None,
+            prospective,
+        )
 
     def validate_target(self, tenant_id: str, revision: str, inventory: Mapping[str, object]) -> str:
         try:
@@ -375,20 +420,77 @@ class SavedDependencyMigrationEvidenceGateway:
         expected = _pinned_credential_fingerprint(state, tenant_id, binding.credential_id, allow_provisioned=True)
         if not hmac.compare_digest(expected, binding.credential_fingerprint):
             raise ModelRouteUnavailable
-        registry = mappings_for_revision(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, revision)
+        registry = source_mapping_revision(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, revision)
+        if registry.has_variants and inventory.get("source_variant_registry_digest") != registry.digest:
+            raise ModelRouteUnmapped
         actual_version = binding.plugin_unique_identifier.split(":", 1)[-1].split("@", 1)[0]
         operations = set(capabilities.operations)
         sources = cast(Sequence[Mapping[str, object]], inventory["models"])
-        for source in sources:
+        prospective = cast(Sequence[Mapping[str, object]], inventory.get("prospective_variants", ()))
+        if registry.has_variants:
+            expected_variants = {
+                (
+                    str(ModelProviderID(item.source.provider_id)),
+                    item.source.model_type.value,
+                    item.source.model,
+                    selection_payload(item).model_dump_json(),
+                )
+                for item in registry.selected_prospective()
+            }
+            # Compare typed canonical declarations, not selected-source counts.
+            observed: set[tuple[str, str, str, str]] = set()
+            for item in prospective:
+                selected = registry.restore_selection(
+                    (str(item["provider"]), ModelType(item["model_type"]), str(item["model"])),
+                    item.get("source_variant"),
+                )
+                if (
+                    not isinstance(selected, SelectedSourceVariant)
+                    or item.get("evidence") != "reviewed_target_profile_only"
+                ):
+                    raise ModelRouteUnmapped
+                observed.add(
+                    (
+                        str(item["provider"]),
+                        str(item["model_type"]),
+                        str(item["model"]),
+                        selection_payload(selected).model_dump_json(),
+                    )
+                )
+            if observed != expected_variants or len(observed) != len(prospective):
+                raise ModelRouteUnmapped
+        elif prospective:
+            raise ModelRouteUnmapped
+        for source in (*sources, *prospective):
             provider, model = str(source["provider"]), str(source["model"])
             kind = ModelType(source["model_type"])
-            mapping = registry[(provider, kind, model)]
+            mapping = registry.restore_selection((provider, kind, model), source.get("source_variant"))
             if not set(mapping.operations) <= operations or Version(actual_version) < Version(
                 mapping.target.minimum_plugin_version
             ):
                 raise ModelRouteUnavailable
             contract = None
-            if mapping.parameter_adapter.id not in {"identity_v1", "tts_source_voice_v1"}:
+            if isinstance(mapping, SelectedSourceVariant):
+                contract = restore_variant_source_contract(mapping)
+                if source.get("evidence") != "reviewed_target_profile_only":
+                    marker = source.get("source_parameter_contract")
+                    if (
+                        source.get("source_plugin_uid") != mapping.variant.source_plugin_uid
+                        or source.get("source_schema_digest") != mapping.source_schema_digest
+                        or source.get("source_parameter_settings") is not None
+                        or not isinstance(marker, dict)
+                        or type(marker.get("schema_version")) is not int
+                        or marker
+                        != source_parameter_marker(
+                            contract,
+                            source_provider=provider,
+                            source_model=model,
+                            model_type=kind,
+                            target_model=mapping.target.model,
+                        )
+                    ):
+                        raise ModelRouteUnmapped
+            elif mapping.parameter_adapter.id not in {"identity_v1", "tts_source_voice_v1"}:
                 contract = restore_source_parameter_contract(
                     source.get("source_parameter_contract"),
                     mapping=mapping,
@@ -424,6 +526,7 @@ class SavedDependencyMigrationEvidenceGateway:
             if contract is not None:
                 if (
                     contract.source_runtime_schema_digest is not None
+                    and source.get("evidence") != "reviewed_target_profile_only"
                     and source.get("source_runtime_schema_digest") != contract.source_runtime_schema_digest
                 ):
                     raise ModelRouteUnmapped

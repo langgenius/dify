@@ -96,6 +96,18 @@ class HostedSourceProtocolFact:
     selector: Literal["absent", "chat", "responses"]
 
 
+@dataclass(frozen=True, slots=True)
+class HostedSourceVariantFact:
+    """New V2-only public settings; absence of this record proves nothing."""
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    selector: Literal["absent", "chat", "responses"]
+    source_base_is_set: bool
+    request_metadata_enabled: bool
+
+
 class SystemConfiguration(BaseModel):
     """
     Model class for provider system configuration.
@@ -110,6 +122,7 @@ class SystemConfiguration(BaseModel):
     _tokener_source_schemas: tuple[AIModelEntity, ...] = PrivateAttr(default=())
     _tokener_source_plugin_unique_identifier: str | None = PrivateAttr(default=None)
     _tokener_source_protocol_fact: HostedSourceProtocolFact | None = PrivateAttr(default=None)
+    _tokener_source_variant_fact: HostedSourceVariantFact | None = PrivateAttr(default=None)
 
 
 class CustomProviderConfiguration(BaseModel):

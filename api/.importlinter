@@ -1391,6 +1391,40 @@ forbidden_modules =
     tasks
     werkzeug
 
+[importlinter:contract:model-billing-source-variants-pure]
+name = Source variant registry is pure and infrastructure independent
+type = forbidden
+source_modules =
+    services.model_billing_source_variants
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:model-billing-openai110-source-adapter-pure]
+name = Source OpenAI 1.1.0 adapter is pure and infrastructure independent
+type = forbidden
+source_modules =
+    services.model_billing_openai_provider110_adapter
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
 [importlinter:contract:model-billing-free-migration-controller-boundary]
 name = Migration control transport reaches persistence through application owners
 type = forbidden
