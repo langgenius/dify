@@ -1,10 +1,51 @@
+import i18next from 'i18next'
 import { describe, expect, it } from 'vitest'
+import { loadI18nResource } from '@/i18n/load-resource'
+import { supportedLocales } from '@/i18n/locale'
 import enUS from '@/i18n/locales/en-US/workflow.json'
 import zhHans from '@/i18n/locales/zh-Hans/workflow.json'
 
 const MIGRATION_PREFIX = 'nodes.humanInputMigration.'
+const HUMAN_INPUT_KEYS = Object.keys(enUS).filter(
+  (key) =>
+    [
+      'blocks.human-input-v2',
+      'blocksAbout.human-input-v2',
+      'changeHistory.humanInputMigration',
+    ].includes(key) ||
+    ['nodes.humanInput.output.', MIGRATION_PREFIX, 'nodes.humanInputV2.'].some((prefix) =>
+      key.startsWith(prefix),
+    ),
+)
 
 describe('Human Input migration locales', () => {
+  it.each(supportedLocales)('loads every Human Input workflow string in %s', async (locale) => {
+    const [{ default: workflow }, { default: workflowHumanInput }] = await Promise.all([
+      loadI18nResource(locale, 'workflow'),
+      loadI18nResource(locale, 'workflowHumanInput'),
+    ])
+    const i18n = i18next.createInstance()
+    await i18n.init({
+      lng: locale,
+      fallbackLng: false,
+      keySeparator: false,
+      resources: { [locale]: { workflow, workflowHumanInput } },
+    })
+
+    for (const key of HUMAN_INPUT_KEYS)
+      expect(i18n.getResource(locale, 'workflow', key), key).toEqual(expect.stringMatching(/\S/))
+
+    expect(
+      i18n.getResource(locale, 'workflowHumanInput', 'nodes.humanInput.userActions.defaultTitle'),
+    ).toEqual(expect.stringMatching(/\S/))
+    expect(
+      i18n.t(($) => $['nodes.humanInput.userActions.defaultTitle'], {
+        ns: 'workflowHumanInput',
+        index: 3,
+      }),
+    ).toContain('3')
+  })
+
   it('defines every migration string in English and Simplified Chinese', () => {
     const englishKeys = Object.keys(enUS)
       .filter((key) => key.startsWith(MIGRATION_PREFIX))
