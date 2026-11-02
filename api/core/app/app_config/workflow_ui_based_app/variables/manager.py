@@ -1,16 +1,23 @@
 import contextlib
 import json
 import re
-from typing import Any
+from collections.abc import Mapping, Sequence
+from typing import Any, Protocol
 
 from core.app.app_config.entities import RagPipelineVariableEntity
 from graphon.variables.input_entities import VariableEntity
-from models.workflow import Workflow
+
+
+class WorkflowVariableSource(Protocol):
+    @property
+    def graph_dict(self) -> Mapping[str, Any]: ...
+
+    def user_input_form(self, to_old_structure: bool = False) -> list[Any]: ...
 
 
 class WorkflowVariablesConfigManager:
     @classmethod
-    def convert(cls, workflow: Workflow) -> list[VariableEntity]:
+    def convert(cls, workflow: WorkflowVariableSource) -> list[VariableEntity]:
         """
         Convert workflow start variables to variables
 
@@ -48,16 +55,22 @@ class WorkflowVariablesConfigManager:
                 variable["json_schema"] = json.loads(json_schema)
 
     @classmethod
-    def convert_rag_pipeline_variable(cls, workflow: Workflow, start_node_id: str) -> list[RagPipelineVariableEntity]:
+    def convert_rag_pipeline_variable(
+        cls,
+        workflow: WorkflowVariableSource,
+        start_node_id: str,
+        *,
+        rag_pipeline_variables: Sequence[dict[str, Any]],
+    ) -> list[RagPipelineVariableEntity]:
         """
         Convert workflow start variables to variables
 
         :param workflow: workflow instance
+        :param rag_pipeline_variables: stored RAG pipeline variable definitions
         """
         variables = []
 
         # get second step node
-        rag_pipeline_variables = workflow.rag_pipeline_variables
         if not rag_pipeline_variables:
             return []
         variables_map = {item["variable"]: item for item in rag_pipeline_variables}

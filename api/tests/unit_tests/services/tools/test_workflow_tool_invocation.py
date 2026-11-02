@@ -5,8 +5,7 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.orm import Session
 
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolParameter
@@ -14,9 +13,11 @@ from models import Account
 from models.model import App, AppMode, EndUser
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
+from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.tools.workflow.tool import WorkflowTool
 from services.workflow.contracts import WorkflowSnapshot
+from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.execution.ports import WorkflowRuntime
 from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 
@@ -57,6 +58,7 @@ class _WorkflowQueries:
 
 @dataclass(frozen=True)
 class _GenerateCall:
+    execution_identity: WorkflowExecutionIdentity
     app_model: App
     workflow: WorkflowSnapshot
     user: Account | EndUser
@@ -68,7 +70,7 @@ class _GenerateCall:
     allow_human_input: bool
 
 
-def test_public_invoke_passes_explicit_session_and_uses_available_workflow_generator(
+def test_public_invoke_passes_explicit_session_and_injects_service_generator_dependencies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = make_app(mode=AppMode.WORKFLOW)
@@ -80,8 +82,9 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
     workflow_runtime: WorkflowRuntime = Mock(spec=WorkflowRuntime, execution_driver=execution_driver)
 
     def generate(
-        _generator: WorkflowAppGenerator,
+        generator: WorkflowAppGenerator,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: WorkflowSnapshot,
         user: Account | EndUser,
@@ -92,9 +95,10 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
         pause_state_config: object | None,
         allow_human_input: bool,
     ) -> dict[str, object]:
-        generators.append(_generator)
+        generators.append(generator)
         calls.append(
             _GenerateCall(
+                execution_identity=execution_identity,
                 app_model=app_model,
                 workflow=workflow,
                 user=user,
@@ -148,6 +152,7 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
 
     assert calls == [
         _GenerateCall(
+            execution_identity=WorkflowExecutionIdentity(user_id=actor.id, user_from=UserFrom.ACCOUNT),
             app_model=app,
             workflow=workflow_snapshot(workflow),
             user=actor,
@@ -160,7 +165,9 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
         )
     ]
     assert len(generators) == 1
+    assert generators[0]._runtime is workflow_runtime
     assert generators[0]._execution_driver is execution_driver
+    assert generators[0].draft_variable_saver is None
     assert [message.type for message in messages] == [
         ToolInvokeMessage.MessageType.VARIABLE,
         ToolInvokeMessage.MessageType.TEXT,
