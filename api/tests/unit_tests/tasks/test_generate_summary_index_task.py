@@ -6,7 +6,7 @@ for each document segment and can occupy all worker slots for hours, blocking
 document indexing tasks.
 """
 
-from typing import Protocol, cast
+from typing import Protocol, runtime_checkable
 
 import pytest
 
@@ -17,6 +17,7 @@ SUMMARY_QUEUE = "dataset_summary"
 INDEXING_QUEUE = "dataset"
 
 
+@runtime_checkable
 class _Queue(Protocol):
     name: str
 
@@ -39,6 +40,7 @@ class _CeleryApp(Protocol):
     amqp: _Amqp
 
 
+@runtime_checkable
 class _RoutableTask(Protocol):
     name: str
     app: _CeleryApp
@@ -47,11 +49,14 @@ class _RoutableTask(Protocol):
 
 
 def _routed_queue(task: object) -> str | None:
-    routable = cast(_RoutableTask, task)
-    options = routable._get_exec_options()
-    routed = routable.app.amqp.router.route(options, routable.name, args=(), kwargs={})
+    assert isinstance(task, _RoutableTask), "Expected a Celery task with routing metadata"
+    options = task._get_exec_options()
+    routed = task.app.amqp.router.route(options, task.name, args=(), kwargs={})
     queue = routed.get("queue")
-    return cast(_Queue, queue).name if queue is not None else None
+    if queue is None:
+        return None
+    assert isinstance(queue, _Queue), "Expected a routed queue with a name"
+    return queue.name
 
 
 @pytest.mark.parametrize(
