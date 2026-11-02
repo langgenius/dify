@@ -16,13 +16,13 @@ import { Markdown } from '@/app/components/base/markdown'
 import { toast } from '@/app/notifications'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
+import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   fetchMoreLikeThis,
   submitHumanInputForm,
   updateFeedback,
 } from '@/service/share'
-import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import GenerationActionGroups from './action-groups'
 import {
@@ -195,17 +195,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }, [workflowProcessData])
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
-      const form = workflowProcessData?.humanInputFormDataList?.find(
-        (item) => item.form_token === formToken,
-      )
+      const { form_version: formVersion, ...submission } = formData
       if (appSourceType === AppSourceType.installedApp) {
-        await submitHumanInputFormService(formToken, formData, form?.form_version)
-      } else if (appSourceType === AppSourceType.webApp) {
-        if (prepareHumanInputSubmission && !(await prepareHumanInputSubmission())) return
-        await submitWebAppHumanInputForm(formToken, formData, form?.form_version)
-      } else await submitHumanInputForm(formToken, formData)
+        await submitHumanInputFormService(formToken, submission, formVersion)
+      } else {
+        if (appSourceType === AppSourceType.webApp && prepareHumanInputSubmission)
+          await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+        await submitHumanInputForm(formToken, submission, formVersion)
+      }
     },
-    [appSourceType, prepareHumanInputSubmission, workflowProcessData?.humanInputFormDataList],
+    [appSourceType, prepareHumanInputSubmission],
   )
 
   return (

@@ -1,8 +1,8 @@
-import { act, screen } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createNode } from '../../../../__tests__/fixtures'
 import { renderWorkflowComponent } from '../../../../__tests__/workflow-test-env'
-import FormContentPreview from '../form-content-preview'
+import FormContentPreview, { FormContentPreviewTrigger } from '../form-content-preview'
 
 const preview = vi.hoisted(() => vi.fn())
 vi.mock('@/service/console', async (importOriginal) => {
@@ -27,13 +27,20 @@ const renderPreview = (
   options: Parameters<typeof renderWorkflowComponent>[1] = {},
   readOnly = false,
 ) =>
-  renderWorkflowComponent(<FormContentPreview {...props} readOnly={readOnly} />, {
-    ...options,
-    initialStoreState: {
-      panelWidth: 320,
-      nodes: [createNode({ id: 'node-1', data: { title: 'Classifier' } })],
+  renderWorkflowComponent(
+    readOnly ? (
+      <FormContentPreview {...props} readOnly />
+    ) : (
+      <FormContentPreviewTrigger {...props} />
+    ),
+    {
+      ...options,
+      initialStoreState: {
+        panelWidth: 320,
+        nodes: [createNode({ id: 'node-1', data: { title: 'Classifier' } })],
+      },
     },
-  })
+  )
 
 it('waits for the saved workflow before displaying the real server markdown', async () => {
   let finishSave!: () => void
@@ -42,16 +49,31 @@ it('waits for the saved workflow before displaying the real server markdown', as
   })
   preview.mockResolvedValue({ form_content: 'Resolved server preview', inputs: [], actions: [] })
   renderPreview({ hooksStoreProps: { doSyncWorkflowDraft: () => saving } })
-  expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+  const status = screen.getByRole('status')
+  expect(status).toBeEmptyDOMElement()
+  await userEvent.setup().click(
+    screen.getByRole('button', {
+      name: 'workflowHumanInput.nodes.humanInput.formContent.preview',
+    }),
+  )
+  expect(status).toHaveTextContent('common.loading')
+  expect(within(status).queryByRole('button')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeEnabled()
   expect(preview).not.toHaveBeenCalled()
   expect(screen.queryByText(props.content)).not.toBeInTheDocument()
   await act(async () => finishSave())
-  expect(await screen.findByText('Resolved server preview')).toBeInTheDocument()
+  expect(
+    await screen.findByText('Resolved server preview', {}, { timeout: 5000 }),
+  ).toBeInTheDocument()
   expect(screen.queryByText(props.content)).not.toBeInTheDocument()
-  expect(preview).toHaveBeenCalledExactlyOnceWith({
-    params: { app_id: 'app-1', node_id: 'node-1' },
-    body: { inputs: {} },
-  })
+  expect(preview).toHaveBeenCalledExactlyOnceWith(
+    {
+      params: { app_id: 'app-1', node_id: 'node-1' },
+      body: { inputs: {} },
+    },
+    { context: { silent: true } },
+  )
+  expect(status).toBeEmptyDOMElement()
 })
 
 it('shows a server failure and retries without presenting local content as the result', async () => {
@@ -62,7 +84,10 @@ it('shows a server failure and retries without presenting local content as the r
   renderPreview({
     hooksStoreProps: { doSyncWorkflowDraft: async () => ({ hash: 'saved', updatedAt: 1 }) },
   })
-  expect(await screen.findByText('Server preview failed')).toBeInTheDocument()
+  await user.click(
+    screen.getByRole('button', { name: 'workflowHumanInput.nodes.humanInput.formContent.preview' }),
+  )
+  expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
   expect(screen.queryByText(props.content)).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
   expect(await screen.findByText('Retried preview')).toBeInTheDocument()
