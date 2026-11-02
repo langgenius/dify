@@ -499,3 +499,46 @@ def test_skills_off_is_503_before_membership_and_permission_checks(
             session=sqlite_session,
             call=never_reached,
         )
+
+
+def test_import_assigns_actor_as_maintainer_through_real_service() -> None:
+    """A new OpenAPI import persists the admitted actor as creator and maintainer."""
+    from core.db.session_factory import session_factory
+    from models.skill import Skill
+
+    response, status = _import({"SKILL.md": b"---\nname: expense-sop\ndescription: Expenses\n---\n"})
+    assert status == 201
+    with session_factory.create_session() as session:
+        skill = session.get(Skill, response.id)
+        assert skill is not None
+        assert skill.tenant_id == WORKSPACE_ID
+        assert skill.maintainer == _context().account_id
+        assert skill.created_by == _context().account_id
+
+
+@pytest.mark.parametrize("maintainer", ["original-owner", None])
+def test_overwrite_keeps_maintainer_through_real_service(maintainer: str | None) -> None:
+    """OpenAPI draft replacement changes content without taking over maintainership."""
+    from core.db.session_factory import session_factory
+    from models.skill import Skill
+
+    response, _ = _import({"SKILL.md": b"---\nname: expense-sop\ndescription: Expenses\n---\n"})
+    with session_factory.create_session() as session, session.begin():
+        skill = session.get(Skill, response.id)
+        assert skill is not None
+        skill.maintainer = maintainer
+        skill.created_by = "original-creator"
+    updated, status = _import(
+        {"SKILL.md": b"---\nname: expense-sop\ndescription: Updated expenses\n---\n"},
+        skill_id=response.id,
+        draft_hash=response.draft_hash,
+    )
+    assert status == 200
+    assert updated.id == response.id
+    with session_factory.create_session() as session:
+        skill = session.get(Skill, response.id)
+        assert skill is not None
+        assert skill.maintainer == maintainer
+        assert skill.created_by == "original-creator"
+        assert skill.updated_by == _context().account_id
+        assert skill.description == "Updated expenses"
