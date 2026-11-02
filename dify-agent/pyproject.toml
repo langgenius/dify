@@ -67,7 +67,7 @@ include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
 
 [tool.uv.sources]
 # shortcut: pin the 0.9.0 integration fixes until Graphon publishes them to PyPI.
-graphon = { git = "https://github.com/langgenius/graphon", rev = "fa5d67b45739a445bb17e45291b5b71766825873" }
+graphon = { git = "https://github.com/langgenius/graphon", rev = "0805016c70a7fadded9fd10c851046a725b187d9" }
 
 [tool.uv]
 # unstructured caps filelock<4; Agent FileLock/WeakFileLock compatibility was verified with 4.2.1.
