@@ -8,7 +8,6 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from constants.oauth_bearer import TokenType
-from controllers.common.fields import SimpleResultResponse
 from controllers.openapi import model_providers
 from controllers.openapi._models import (
     CredentialWriteResponse,
@@ -316,10 +315,6 @@ def test_describe_asks_for_credentials_only_while_the_provider_is_not_configured
     assert response.configured is (status == CustomConfigurationStatus.ACTIVE)
 
 
-class _DeleteView(Protocol):
-    __handler__: Callable[..., SimpleResultResponse]
-
-
 def test_delete_model(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     deleted: list[tuple[str, str, str, str]] = []
 
@@ -332,7 +327,7 @@ def test_delete_model(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_sessio
     with app.test_request_context(
         "/openapi/v1/workspaces/ws/model-providers/x/models?model=llama3&model_type=llm", method="DELETE"
     ):
-        response = cast(_DeleteView, api.delete).__handler__(api, _context(sqlite_session), "ws", _OLLAMA, query=query)
+        response = api.delete.__handler__(api, _context(sqlite_session), "ws", _OLLAMA, query=query)
 
     assert response.result == "success"
     assert deleted == [("ws", _OLLAMA, "llm", "llama3")]
@@ -353,9 +348,7 @@ def test_delete_model_credential(app: Flask, monkeypatch: pytest.MonkeyPatch, sq
         "/openapi/v1/workspaces/ws/model-providers/x/models/credentials/cred-1?model=llama3&model_type=llm",
         method="DELETE",
     ):
-        response = cast(_DeleteView, api.delete).__handler__(
-            api, _context(sqlite_session), "ws", _OLLAMA, "cred-1", query=query
-        )
+        response = api.delete.__handler__(api, _context(sqlite_session), "ws", _OLLAMA, "cred-1", query=query)
 
     assert response.result == "success"
     assert deleted == [("ws", _OLLAMA, "llm", "llama3", "cred-1")]
