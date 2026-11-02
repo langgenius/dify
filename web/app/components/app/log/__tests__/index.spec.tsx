@@ -1,5 +1,5 @@
 import type { CloudSandboxPlanState } from '../cloud-sandbox-retention'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -170,6 +170,54 @@ describe('Logs', () => {
         }),
       }),
     )
+  })
+
+  it('should start each period on the current date after the page stays open past midnight', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+    try {
+      const user = userEvent.setup()
+      getChatConversations.mockResolvedValue({
+        total: 0,
+        data: [],
+        page: 1,
+        limit: APP_PAGE_LIMIT,
+        has_more: false,
+      })
+      render(
+        <Logs
+          appDetail={createAppDetailFixture({ id: 'app-past-midnight', mode: 'chat' as const })}
+        />,
+      )
+      const selectPeriod = async (current: string, next: string) => {
+        await user.click(
+          await screen.findByRole('combobox', {
+            name: new RegExp(`appLog\\.filter\\.period\\.${current}`),
+          }),
+        )
+        await user.click(await screen.findByText(new RegExp(`appLog\\.filter\\.period\\.${next}`)))
+      }
+      const expectStart = (start: string) =>
+        waitFor(() =>
+          expect(getChatConversations.mock.calls.at(-1)?.[0]).toEqual(
+            expect.objectContaining({ query: expect.objectContaining({ start }) }),
+          ),
+        )
+
+      // The page has been open since earlier days; each request uses the date of the request.
+      vi.setSystemTime(new Date(2026, 11, 1, 9))
+      await selectPeriod('last7days', 'monthToDate')
+      await expectStart('2026-12-01 00:00')
+      await selectPeriod('monthToDate', 'quarterToDate')
+      await expectStart('2026-10-01 00:00')
+      await selectPeriod('quarterToDate', 'last3months')
+      await expectStart('2026-09-01 00:00')
+
+      vi.setSystemTime(new Date(2027, 0, 1, 9))
+      await selectPeriod('last3months', 'yearToDate')
+      await expectStart('2027-01-01 00:00')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('should use today when a cached period is unavailable to a Sandbox workspace', async () => {
