@@ -21,13 +21,23 @@ const createWeeklyData = (
   visual_config: { time: '9:00 AM', weekdays: selectedDays },
 })
 
-const wallTime = (date: Date) => [
-  date.getFullYear(),
-  date.getMonth() + 1,
-  date.getDate(),
-  date.getHours(),
-  date.getMinutes(),
-]
+// Runs are real instants, so read the wall time in the schedule's timezone, not the test machine's.
+const wallTimeIn = (date: Date, timeZone: string) => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((item) => item.type === type)?.value)
+  return [part('year'), part('month'), part('day'), part('hour'), part('minute')]
+}
+
+const wallTime = (date: Date) => wallTimeIn(date, 'Asia/Seoul')
 
 describe('weekly schedule execution preview', () => {
   afterEach(() => vi.useRealTimers())
@@ -116,8 +126,10 @@ describe('weekly schedule execution preview', () => {
       }
 
       expect(
-        getNextExecutionTimes(createWeeklyData(selectedDays, timezone), 5).map(wallTime),
-      ).toEqual(getNextExecutionTimes(cronData, 5).map(wallTime))
+        getNextExecutionTimes(createWeeklyData(selectedDays, timezone), 5).map((date) =>
+          wallTimeIn(date, timezone),
+        ),
+      ).toEqual(getNextExecutionTimes(cronData, 5).map((date) => wallTimeIn(date, timezone)))
     }
   })
 
