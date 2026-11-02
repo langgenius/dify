@@ -11,14 +11,16 @@ import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { WorkflowWithInnerContext } from '@/app/components/workflow'
+import { Workflow } from '@/app/components/workflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import { HooksStoreContextProvider } from '@/app/components/workflow/hooks-store'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
+import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -529,19 +531,22 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
 
   return (
     <div ref={containerRef} className="relative size-full">
-      <WorkflowWithInnerContext
-        nodes={nodes}
-        edges={edges}
-        viewport={viewport}
-        onWorkflowDataUpdate={handleWorkflowDataUpdate}
-        hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
-        isCollaborationEnabled={isCollaborationEnabled}
-        cursors={filteredCursors}
-        myUserId={myUserId}
-        onlineUsers={onlineUsers}
-      >
-        <WorkflowChildren />
-      </WorkflowWithInnerContext>
+      <HooksStoreContextProvider {...(hooksStore as unknown as Partial<HooksStoreShape>)}>
+        <HumanInputMigrationProvider canEdit={appACLCapabilities.canEdit}>
+          <Workflow
+            nodes={nodes}
+            edges={edges}
+            viewport={viewport}
+            onWorkflowDataUpdate={handleWorkflowDataUpdate}
+            isCollaborationEnabled={isCollaborationEnabled}
+            cursors={filteredCursors}
+            myUserId={myUserId}
+            onlineUsers={onlineUsers}
+          >
+            <WorkflowChildren />
+          </Workflow>
+        </HumanInputMigrationProvider>
+      </HooksStoreContextProvider>
       {isCollaborationEnabled &&
         (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
           <div

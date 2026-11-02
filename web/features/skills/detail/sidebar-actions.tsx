@@ -23,7 +23,9 @@ import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillArchiveBlob } from '../client'
+import { getSkillErrorCode } from '../error'
 import { SkillReferencesList, SkillReferencesListSkeleton } from './skill-metadata'
 
 function invalidateSkillListQueries(queryClient: ReturnType<typeof useQueryClient>) {
@@ -53,7 +55,9 @@ function SkillDetailDeleteDialog({
   const queryClient = useQueryClient()
   const router = useRouter()
   const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
@@ -96,8 +100,8 @@ function SkillDetailDeleteDialog({
           onOpenChange(false)
           router.push('/skills')
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.deleteFailed']))
+        onError: (error) => {
+          toast.error(getErrorMessage(error) ?? t(($) => $['skillManagement.deleteFailed']))
         },
       },
     )
@@ -212,15 +216,17 @@ export function SkillDetailSidebarActions({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const router = useRouter()
   const duplicateMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const exportMutation = useMutation({
     mutationFn: () => fetchSkillArchiveBlob(detail.id),
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${detail.name}.zip` })
     },
-    onError: () => {
-      toast.error(tCommon(($) => $['operation.downloadFailed']))
+    onError: (error) => {
+      toast.error(getErrorMessage(error) ?? tCommon(($) => $['operation.downloadFailed']))
     },
   })
 
@@ -238,8 +244,12 @@ export function SkillDetailSidebarActions({
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.duplicateFailed']))
+        onError: (error) => {
+          toast.error(
+            getSkillErrorCode(error) === 'skill_limit_exceeded'
+              ? t(($) => $['skillManagement.errors.workspaceLimit'])
+              : (getErrorMessage(error) ?? t(($) => $['skillManagement.duplicateFailed'])),
+          )
         },
       },
     )

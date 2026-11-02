@@ -9,10 +9,13 @@ import pytest
 from sqlalchemy import Engine, delete
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole
-from models.workflow import WorkflowNodeExecutionModel
+from models.enums import CreatorUserRole, ExecutionOffLoadType
+from models.model import UploadFile
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
@@ -36,7 +39,7 @@ def _create_node_execution(
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=workflow_id,
-        triggered_from="workflow-run",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         workflow_run_id=workflow_run_id,
         index=index,
         predecessor_node_id=None,
@@ -76,13 +79,39 @@ class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
         db_session_with_containers: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        execution = WorkflowNodeExecutionModel(process_data="{}")
-        execution.offload_data = []
-        monkeypatch.setattr(
-            WorkflowNodeExecutionModel,
-            "load_full_process_data",
-            lambda _self, _session, _storage: {"__dify_retry_history": [{"retry_index": 1}]},
+        tenant_id = str(uuid4())
+        file = UploadFile(
+            tenant_id=tenant_id,
+            storage_type=StorageType.LOCAL,
+            key=f"offloaded-process-data/{uuid4()}.json",
+            name="process-data.json",
+            size=45,
+            extension="json",
+            mime_type="application/json",
+            created_by=str(uuid4()),
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_at=naive_utc_now(),
+            used=True,
         )
+        file_id, file_key = file.id, file.key
+        db_session_with_containers.add(file)
+        db_session_with_containers.commit()
+        execution = WorkflowNodeExecutionModel(tenant_id=tenant_id, process_data="{}")
+        execution.offload_data = [
+            WorkflowNodeExecutionOffload(
+                tenant_id=tenant_id,
+                app_id=str(uuid4()),
+                node_execution_id=str(uuid4()),
+                type_=ExecutionOffLoadType.PROCESS_DATA,
+                file_id=file_id,
+            )
+        ]
+
+        def load_storage(key: str) -> bytes:
+            assert key == file_key
+            return b'{"__dify_retry_history": [{"retry_index": 1}]}'
+
+        monkeypatch.setattr(storage, "load", load_storage)
         engine = db_session_with_containers.get_bind()
         assert isinstance(engine, Engine)
         repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sessionmaker(bind=engine, expire_on_commit=False))

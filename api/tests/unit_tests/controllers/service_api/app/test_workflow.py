@@ -5,10 +5,13 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import Literal
 from unittest.mock import MagicMock, Mock
 
+import httpx
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
@@ -40,6 +43,7 @@ from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from services.app_generate_service import AppGenerateService
+from services.billing_client import transport
 from services.billing_service import BillingService
 from services.errors.app import (
     IsDraftWorkflowError,
@@ -48,8 +52,10 @@ from services.errors.app import (
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
+from services.errors.billing import BillingUpstreamInvalidResponseError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from tests.helpers import billing_builders as builders
 
 """
 Unit tests for Service API Workflow controllers.
@@ -239,14 +245,14 @@ class TestWorkflowCases:
     class TestWorkflowRunPayload:
         """Test suite for WorkflowRunPayload Pydantic model."""
 
-        def test_payload_with_required_inputs(self):
+        def test_payload_with_required_inputs(self) -> None:
             """Test payload with required inputs field."""
             payload = WorkflowRunPayload(inputs={"key": "value"})
             assert payload.inputs == {"key": "value"}
             assert payload.files is None
             assert payload.response_mode is None
 
-        def test_payload_with_all_fields(self):
+        def test_payload_with_all_fields(self) -> None:
             """Test payload with all fields populated."""
             files = [{"type": "image", "url": "http://example.com/img.png"}]
             payload = WorkflowRunPayload(
@@ -256,12 +262,12 @@ class TestWorkflowCases:
             assert payload.files == files
             assert payload.response_mode == "streaming"
 
-        def test_payload_response_mode_blocking(self):
+        def test_payload_response_mode_blocking(self) -> None:
             """Test payload with blocking response mode."""
             payload = WorkflowRunPayload(inputs={}, response_mode="blocking")
             assert payload.response_mode == "blocking"
 
-        def test_payload_with_complex_inputs(self):
+        def test_payload_with_complex_inputs(self) -> None:
             """Test payload with nested complex inputs."""
             complex_inputs = {
                 "config": {"nested": {"value": 123}},
@@ -271,12 +277,12 @@ class TestWorkflowCases:
             payload = WorkflowRunPayload(inputs=complex_inputs)
             assert payload.inputs == complex_inputs
 
-        def test_payload_with_empty_inputs(self):
+        def test_payload_with_empty_inputs(self) -> None:
             """Test payload with empty inputs dict."""
             payload = WorkflowRunPayload(inputs={})
             assert payload.inputs == {}
 
-        def test_payload_with_multiple_files(self):
+        def test_payload_with_multiple_files(self) -> None:
             """Test payload with multiple file attachments."""
             files = [
                 {"type": "image", "url": "http://example.com/img1.png"},
@@ -290,7 +296,7 @@ class TestWorkflowCases:
     class TestWorkflowLogQuery:
         """Test suite for WorkflowLogQuery Pydantic model."""
 
-        def test_query_with_defaults(self):
+        def test_query_with_defaults(self) -> None:
             """Test query with default values."""
             query = WorkflowLogQuery()
             assert query.keyword is None
@@ -302,7 +308,7 @@ class TestWorkflowCases:
             assert query.page == 1
             assert query.limit == 20
 
-        def test_query_with_all_filters(self):
+        def test_query_with_all_filters(self) -> None:
             """Test query with all filter fields populated."""
             query = WorkflowLogQuery(
                 keyword="search term",
@@ -324,12 +330,12 @@ class TestWorkflowCases:
             assert query.limit == 50
 
         @pytest.mark.parametrize("status", ["succeeded", "failed", "stopped"])
-        def test_query_valid_status_values(self, status):
+        def test_query_valid_status_values(self, status: Literal["succeeded", "failed", "stopped"]) -> None:
             """Test all valid status values."""
             query = WorkflowLogQuery(status=status)
             assert query.status == status
 
-        def test_query_pagination_limits(self):
+        def test_query_pagination_limits(self) -> None:
             """Test query pagination boundaries."""
             query_min_page = WorkflowLogQuery(page=1)
             assert query_min_page.page == 1
@@ -343,12 +349,12 @@ class TestWorkflowCases:
             query_max_limit = WorkflowLogQuery(limit=100)
             assert query_max_limit.limit == 100
 
-        def test_query_with_keyword_search(self):
+        def test_query_with_keyword_search(self) -> None:
             """Test query with keyword filter."""
             query = WorkflowLogQuery(keyword="workflow execution")
             assert query.keyword == "workflow execution"
 
-        def test_query_with_date_filters(self):
+        def test_query_with_date_filters(self) -> None:
             """Test query with before/after date filters."""
             query = WorkflowLogQuery(
                 created_at__before="2024-12-31T23:59:59Z", created_at__after="2024-01-01T00:00:00Z"
@@ -357,7 +363,7 @@ class TestWorkflowCases:
             assert query.created_at__after == "2024-01-01T00:00:00Z"
 
     class TestWorkflowRunResponse:
-        def test_validates_workflow_run_object_shape_and_clears_paused_outputs(self):
+        def test_validates_workflow_run_object_shape_and_clears_paused_outputs(self) -> None:
             run = _make_workflow_run(run_id="run-paused")
             run.status = WorkflowExecutionStatus.PAUSED
             run.outputs = json.dumps({"should": "not leak"})
@@ -382,7 +388,7 @@ class TestWorkflowCases:
         """Test workflow run repository interface."""
 
         @pytest.mark.parametrize("sqlite_session", [(WorkflowRun,)], indirect=True)
-        def test_workflow_run_repository_get_by_id(self, sqlite_engine: Engine, sqlite_session: Session):
+        def test_workflow_run_repository_get_by_id(self, sqlite_engine: Engine, sqlite_session: Session) -> None:
             """Test repository lookup against committed tenant-scoped state."""
             run = _make_workflow_run(run_id=str(uuid.uuid4()))
             sqlite_session.add(run)
@@ -457,6 +463,7 @@ class TestWorkflowCases:
             self,
             app: Flask,
             monkeypatch: pytest.MonkeyPatch,
+            mocker: MockerFixture,
             sqlite_session: Session,
             config_overrides: Callable[..., None],
             api_class: type[WorkflowRunApi | WorkflowRunByIdApi],
@@ -466,9 +473,7 @@ class TestWorkflowCases:
             error_code: str,
         ) -> None:
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-            monkeypatch.setattr(
-                BillingService, "get_info", Mock(return_value={"subscription": {"plan": CloudPlan.PROFESSIONAL}})
-            )
+            mocker.patch.object(BillingService, "get_info", return_value=builders.subscription_info("professional"))
             generate = Mock(side_effect=source_error("rate limit reached"))
             monkeypatch.setattr(AppGenerateService, "generate", generate)
 
@@ -519,15 +524,17 @@ class TestWorkflowCases:
             self,
             app: Flask,
             monkeypatch: pytest.MonkeyPatch,
+            mocker: MockerFixture,
             sqlite_session: Session,
             config_overrides: Callable[..., None],
         ) -> None:
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
             sys.modules["controllers.service_api.app.workflow"]
 
-            billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
+            billing_get_info = mocker.patch.object(
+                BillingService, "get_info", return_value=builders.subscription_info("sandbox")
+            )
             generate = Mock(return_value={"result": "ok"})
-            monkeypatch.setattr(BillingService, "get_info", billing_get_info)
             monkeypatch.setattr(AppGenerateService, "generate", generate)
 
             api = WorkflowRunApi()
@@ -546,6 +553,36 @@ class TestWorkflowCases:
             generate.assert_called_once()
 
     class TestWorkflowRunByIdApi:
+        def test_missing_billing_plan_cannot_bypass_sandbox_restriction(
+            self,
+            app: Flask,
+            monkeypatch: pytest.MonkeyPatch,
+            sqlite_session: Session,
+            config_overrides: Callable[..., None],
+        ) -> None:
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, BILLING_API_URL="http://billing/v1")
+            payload = builders.subscription_info().model_dump()
+            del payload["subscription"]["plan"]
+
+            def unexpected_generation(*_args: object, **_kwargs: object) -> None:
+                pytest.fail("Invalid billing data must be rejected before workflow execution")
+
+            monkeypatch.setattr(AppGenerateService, "generate", unexpected_generation)
+            api = WorkflowRunByIdApi()
+            with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
+                monkeypatch.setattr(transport, "_http_client", client)
+                with (
+                    app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}),
+                    pytest.raises(BillingUpstreamInvalidResponseError),
+                ):
+                    unwrap(api.post)(
+                        api,
+                        session=sqlite_session,
+                        app_model=_make_app_model(),
+                        end_user=_make_end_user(),
+                        workflow_id="w1",
+                    )
+
         def test_trigger_workflow_version_returns_stable_unavailable_error(
             self,
             app: Flask,
@@ -577,15 +614,17 @@ class TestWorkflowCases:
             self,
             app: Flask,
             monkeypatch: pytest.MonkeyPatch,
+            mocker: MockerFixture,
             sqlite_session: Session,
             config_overrides: Callable[..., None],
         ) -> None:
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
             sys.modules["controllers.service_api.app.workflow"]
 
-            billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
+            billing_get_info = mocker.patch.object(
+                BillingService, "get_info", return_value=builders.subscription_info("sandbox")
+            )
             generate = Mock()
-            monkeypatch.setattr(BillingService, "get_info", billing_get_info)
             monkeypatch.setattr(AppGenerateService, "generate", generate)
 
             api = WorkflowRunByIdApi()
@@ -627,6 +666,7 @@ class TestWorkflowCases:
             self,
             app: Flask,
             monkeypatch: pytest.MonkeyPatch,
+            mocker: MockerFixture,
             deployment_edition: DeploymentEdition,
             plan: CloudPlan,
             sqlite_session: Session,
@@ -634,9 +674,10 @@ class TestWorkflowCases:
         ) -> None:
             config_overrides(DEPLOYMENT_EDITION=deployment_edition)
 
-            billing_get_info = Mock(return_value={"subscription": {"plan": plan}})
+            billing_get_info = mocker.patch.object(
+                BillingService, "get_info", return_value=builders.subscription_info(plan)
+            )
             generate = Mock(return_value={"result": "ok"})
-            monkeypatch.setattr(BillingService, "get_info", billing_get_info)
             monkeypatch.setattr(AppGenerateService, "generate", generate)
 
             api = WorkflowRunByIdApi()
@@ -799,7 +840,7 @@ class TestWorkflowCases:
             monkeypatch: pytest.MonkeyPatch,
             sqlite_engine: Engine,
             sqlite_session: Session,
-        ):
+        ) -> None:
             """Test successful workflow run detail retrieval."""
             run = _make_workflow_run(
                 run_id="run-1",
@@ -833,7 +874,7 @@ class TestWorkflowCases:
                 "elapsed_time": 0.1,
             }
 
-        def test_get_workflow_run_wrong_app_mode(self, app: Flask):
+        def test_get_workflow_run_wrong_app_mode(self, app: Flask) -> None:
             """Test NotWorkflowAppError when app mode is not workflow or advanced_chat."""
             from controllers.service_api.app.workflow import WorkflowRunDetailApi
 
@@ -855,7 +896,7 @@ class TestWorkflowCases:
             app: Flask,
             workflow_app: App,
             monkeypatch: pytest.MonkeyPatch,
-        ):
+        ) -> None:
             """Test successful workflow log retrieval."""
             _stub_workflow_app_logs(monkeypatch)
 

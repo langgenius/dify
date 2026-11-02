@@ -49,9 +49,9 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm.model_access import resolve_model_context_window
-from core.ops.base_trace_instance import application_tracing_hooks
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
+from extensions.tracing import application_tracing_hooks
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
 from graphon.variables.template_resolution import convert_template

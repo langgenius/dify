@@ -3,7 +3,7 @@ from unittest.mock import patch
 from events.event_handlers.clean_when_document_deleted import handle
 
 
-def test_handler_dispatches_cleanup_task():
+def test_handler_dispatches_cleanup_task() -> None:
     with patch("events.event_handlers.clean_when_document_deleted.clean_document_task.delay") as delay:
         handle(
             "document-1",
