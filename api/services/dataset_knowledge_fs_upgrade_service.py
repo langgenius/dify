@@ -14,7 +14,7 @@ from hashlib import sha256
 from typing import Any, cast
 
 import sqlalchemy as sa
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
@@ -280,7 +280,7 @@ def upgrade_job_matches_models(job: KnowledgeFSUpgradeJob, models: KnowledgeFSUp
         resolved = job.resolved_configuration
         embedding = KnowledgeFSModelIntent.model_validate(resolved["embedding"])
         retrieval = KnowledgeFSRetrievalProfileIntent.model_validate(resolved["retrieval"])
-    except (KeyError, TypeError, ValueError, ValidationError):
+    except (KeyError, TypeError, ValueError):
         return False
     return (
         embedding == models.embedding
@@ -406,7 +406,7 @@ class KnowledgeFSUpgradeSnapshotService:
             config_snapshot = _config_snapshot(session, dataset)
             try:
                 resolved_configuration = _build_resolved_configuration(config_snapshot, models) if models else None
-            except (ValueError, ValidationError, TypeError) as error:
+            except (ValueError, TypeError) as error:
                 raise KnowledgeFSUpgradeConflictError("Legacy retrieval settings cannot be upgraded") from error
             job = KnowledgeFSUpgradeJob(
                 tenant_id=tenant_id,
