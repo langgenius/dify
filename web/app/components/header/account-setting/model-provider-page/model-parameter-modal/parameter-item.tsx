@@ -171,6 +171,11 @@ function ParameterItem({
       numberInputRef.current.value = `${renderValue}`
   }, [value, parameterRule.type, renderValue])
 
+  useEffect(() => {
+    if (!isNullOrUndefined(value))
+      setLocalValue(value)
+  }, [value])
+
   const renderInput = () => {
     const numberInputWithSlide =
       (parameterRule.type === 'int' || parameterRule.type === 'float') &&

@@ -228,6 +228,44 @@ describe('ParameterItem', () => {
     expect(input)!.toHaveValue(1)
   })
 
+  it('should preserve preset value when disabled and re-enabled', async () => {
+    const user = userEvent.setup()
+    const onSwitch = vi.fn()
+    const { rerender } = render(
+      <ParameterItem
+        parameterRule={createRule({ type: 'float', min: 0, max: 1, default: 0.7 })}
+        value={0.7}
+        onSwitch={onSwitch}
+      />,
+    )
+
+    // Preset selection updates parent value prop to 0.2
+    rerender(
+      <ParameterItem
+        parameterRule={createRule({ type: 'float', min: 0, max: 1, default: 0.7 })}
+        value={0.2}
+        onSwitch={onSwitch}
+      />,
+    )
+
+    // User toggles switch off -> parent sets value to undefined
+    const switchEl = screen.getByRole('switch', { name: 'Temperature' })
+    await user.click(switchEl)
+    expect(onSwitch).toHaveBeenCalledWith(false, 0.2)
+
+    rerender(
+      <ParameterItem
+        parameterRule={createRule({ type: 'float', min: 0, max: 1, default: 0.7 })}
+        value={undefined}
+        onSwitch={onSwitch}
+      />,
+    )
+
+    // User toggles switch back on -> should restore preset value 0.2
+    await user.click(switchEl)
+    expect(onSwitch).toHaveBeenLastCalledWith(true, 0.2)
+  })
+
   describe('workflow variable reference', () => {
     const mockNodesOutputVars: NodeOutPutVar[] = [{ nodeId: 'node1', title: 'LLM Node', vars: [] }]
     const mockAvailableNodes: Node[] = [
