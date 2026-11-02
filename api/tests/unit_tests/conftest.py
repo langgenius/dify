@@ -64,7 +64,7 @@ redis_mock.incr = MagicMock(return_value=1)
 # method there, so a test that patches one leaves it in place for the tests after it.
 for _name in {*dir(ext_redis.RedisClientWrapper), *dir(Redis)}:
     if not _name.startswith("_"):
-        setattr(redis_mock, _name, getattr(redis_mock, _name))
+        setattr(redis_mock, _name, getattr(redis_mock, _name))  # guard-ignore: no-new-getattr -- names come from dir()
 
 if TYPE_CHECKING:
     from extensions.application_services.app import AppServices
