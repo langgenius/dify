@@ -166,6 +166,7 @@ class WorkflowEntry:
             command_channel=command_channel,
             workers=dify_config.GRAPH_ENGINE_MAX_WORKERS,
             file_runtime=file_runtime,
+            emit_frame_events=False,
             container_handler_factories=(
                 partial(
                     WorkflowToolNestedContainerHandler,

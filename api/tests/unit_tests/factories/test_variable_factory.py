@@ -718,46 +718,6 @@ class TestBuildSegmentWithType:
         assert result.value == [{"a": 1}, {"b": 2}]
         assert result.value_type == SegmentType.ARRAY_OBJECT
 
-    def test_type_mismatch_string_to_number(self) -> None:
-        """Test type mismatch when expecting number but getting string."""
-        with pytest.raises(TypeMismatchError) as exc_info:
-            build_segment_with_type(SegmentType.NUMBER, "not_a_number")
-
-        assert "Type mismatch" in str(exc_info.value)
-        assert "expected number" in str(exc_info.value)
-        assert "str" in str(exc_info.value)
-
-    def test_type_mismatch_number_to_string(self) -> None:
-        """Test type mismatch when expecting string but getting number."""
-        with pytest.raises(TypeMismatchError) as exc_info:
-            build_segment_with_type(SegmentType.STRING, 123)
-
-        assert "Type mismatch" in str(exc_info.value)
-        assert "expected string" in str(exc_info.value)
-        assert "int" in str(exc_info.value)
-
-    def test_type_mismatch_none_to_string(self) -> None:
-        """Test type mismatch when expecting string but getting None."""
-        with pytest.raises(TypeMismatchError) as exc_info:
-            build_segment_with_type(SegmentType.STRING, None)
-
-        assert "expected string, but got None" in str(exc_info.value)
-
-    def test_type_mismatch_empty_list_to_non_array(self) -> None:
-        """Test type mismatch when expecting non-array type but getting empty list."""
-        with pytest.raises(TypeMismatchError) as exc_info:
-            build_segment_with_type(SegmentType.STRING, [])
-
-        assert "expected string, but got empty list" in str(exc_info.value)
-
-    def test_type_mismatch_object_to_array(self) -> None:
-        """Test type mismatch when expecting array but getting object."""
-        with pytest.raises(TypeMismatchError) as exc_info:
-            build_segment_with_type(SegmentType.ARRAY_STRING, {"key": "value"})
-
-        assert "Type mismatch" in str(exc_info.value)
-        assert "expected array[string]" in str(exc_info.value)
-
     def test_compatible_number_types(self) -> None:
         """Test that int and float are both compatible with NUMBER type."""
         # Integer should work
@@ -801,6 +761,8 @@ class TestBuildSegmentWithType:
             (SegmentType.OBJECT, "not_an_object"),
             (SegmentType.ARRAY_STRING, "not_an_array"),
             (SegmentType.STRING, None),
+            (SegmentType.STRING, []),
+            (SegmentType.ARRAY_STRING, {"key": "value"}),
             (SegmentType.NUMBER, None),
         ],
     )
@@ -846,9 +808,6 @@ class TestBuildSegmentValueErrors:
                 name="unsupported_set_type",
                 description="set (unsupported collection type)",
                 test_value={1, 2, 3},
-            ),
-            self.ValueErrorTestCase(
-                name="unsupported_tuple_type", description="tuple (unsupported type)", test_value=(1, 2, 3)
             ),
             self.ValueErrorTestCase(
                 name="unsupported_bytes_type",

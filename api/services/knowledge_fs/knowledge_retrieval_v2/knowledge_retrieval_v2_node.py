@@ -25,7 +25,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.rerank_entities import RerankResult
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
-from graphon.variables import ArrayFileSegment, FileSegment, StringSegment
+from graphon.variables import ArrayFileSegment, FileSegment, SecretSegment, StringSegment
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from graphon.variables.template_resolution import convert_template
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
@@ -274,7 +274,10 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         }
 
     def _resolve_query(self) -> str:
-        """Return the bound query text, or an empty string when the node relies on query images."""
+        """Read a string or secret query without mutating the pool; absent text returns an empty string.
+
+        Unsupported types and queries exceeding 16,000 characters raise a configuration error.
+        """
 
         selector = self._node_data.query_variable_selector
         if not selector:
@@ -282,7 +285,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         variable = self.runtime_state.variable_pool.get(selector)
         if variable is None:
             return ""
-        if not isinstance(variable, StringSegment):
+        if not isinstance(variable, (StringSegment, SecretSegment)):
             raise KnowledgeFSRetrievalConfigurationError("Agent Knowledge Base query variable must be a string")
         query = variable.value.strip()
         if len(query) > 16_000:

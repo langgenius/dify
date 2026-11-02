@@ -119,6 +119,7 @@ class TestSegmentTypeGetZeroValue:
             SegmentType.ARRAY_NUMBER,
             SegmentType.ARRAY_OBJECT,
             SegmentType.ARRAY_BOOLEAN,
+            SegmentType.ARRAY_FILE,
         ]
 
         for seg_type in array_types:
@@ -132,11 +133,12 @@ class TestSegmentTypeGetZeroValue:
         assert result.value == {}
         assert result.value_type == SegmentType.OBJECT
 
-    def test_string_returns_empty_string(self) -> None:
-        """Test that STRING type returns empty string segment."""
-        result = SegmentType.get_zero_value(SegmentType.STRING)
+    @pytest.mark.parametrize("segment_type", [SegmentType.STRING, SegmentType.SECRET])
+    def test_text_types_return_empty_string(self, segment_type: SegmentType) -> None:
+        """Empty text retains its declared type, including secrets."""
+        result = SegmentType.get_zero_value(segment_type)
         assert result.value == ""
-        assert result.value_type == SegmentType.STRING
+        assert result.value_type == segment_type
 
     def test_integer_returns_zero(self) -> None:
         """Test that INTEGER type returns zero segment."""
@@ -169,11 +171,9 @@ class TestSegmentTypeGetZeroValue:
     def test_unsupported_types_raise_value_error(self) -> None:
         """Test that unsupported types raise ValueError."""
         unsupported_types = [
-            SegmentType.SECRET,
             SegmentType.FILE,
             SegmentType.NONE,
             SegmentType.GROUP,
-            SegmentType.ARRAY_FILE,
         ]
 
         for seg_type in unsupported_types:
@@ -185,7 +185,7 @@ class TestSegmentTypeInferSegmentType:
     @pytest.mark.parametrize(
         ("value", "expected"),
         [
-            ([], SegmentType.ARRAY_NUMBER),
+            ([], SegmentType.ARRAY_ANY),
             ([1, 2, 3], SegmentType.ARRAY_NUMBER),
             ([1, 2.5], SegmentType.ARRAY_NUMBER),
             (["a", "b"], SegmentType.ARRAY_STRING),

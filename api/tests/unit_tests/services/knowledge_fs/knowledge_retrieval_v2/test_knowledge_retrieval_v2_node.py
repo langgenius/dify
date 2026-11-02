@@ -21,7 +21,7 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from graphon.runtime import RuntimeState, VariablePool
-from graphon.variables import FileSegment, StringSegment
+from graphon.variables import FileSegment, SecretVariable, StringSegment
 from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
 from services.knowledge_fs import query_images as query_image_dependencies
 from services.knowledge_fs.app_admission_service import (
@@ -496,6 +496,19 @@ def _node(
         rerank_model_manager=rerank_model_manager or RecordingRerankModelManager(),  # type: ignore[arg-type]
         metadata_filter_extractor=metadata_filter_extractor,
     )
+
+
+def test_query_accepts_secret_environment_variable() -> None:
+    runtime_state = _runtime_state()
+    runtime_state.variable_pool.add(["env", "query"], SecretVariable(name="query", value="  camera  "))
+    node = KnowledgeRetrievalV2Node(
+        node_id="retrieval-v2",
+        data=KnowledgeRetrievalV2NodeData.model_validate(_node_data(query_variable_selector=["env", "query"])),
+        init_params=build_test_graph_init_params(),
+        runtime_state=runtime_state,
+    )
+
+    assert node._resolve_query() == "camera"
 
 
 def test_node_data_normalizes_space_ids_and_rejects_auto_or_unbounded_spaces() -> None:

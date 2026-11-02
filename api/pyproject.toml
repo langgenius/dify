@@ -57,7 +57,7 @@ dependencies = [
     "botbuilder-schema>=4.17.0,<5.0.0",
     "botframework-connector>=4.17.0,<5.0.0",
     "fastopenapi[flask]==0.7.0",
-    "graphon==0.8.0",
+    "graphon==0.9.0",
     "httpx-sse==0.4.3",
     "json-repair==0.60.1",
     "lark-oapi==1.7.2",
@@ -79,8 +79,8 @@ exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 [tool.uv.sources]
 dify-agent = { path = "../dify-agent", editable = true }
 flask-restx = { git = "https://github.com/asukaminato0721/flask-restx", rev = "e44a2861b854" }
-# shortcut: pin the 0.8.0 container-type fix until a release includes graphon#344.
-graphon = { git = "https://github.com/langgenius/graphon", rev = "4fa22141774dff80e90e4dfa98ea3e6fbf0421bb" }
+# shortcut: pin the 0.9.0 integration fixes until Graphon publishes them to PyPI.
+graphon = { git = "https://github.com/langgenius/graphon", rev = "fa5d67b45739a445bb17e45291b5b71766825873" }
 dify-vdb-alibabacloud-mysql = { workspace = true }
 dify-vdb-analyticdb = { workspace = true }
 dify-vdb-baidu = { workspace = true }

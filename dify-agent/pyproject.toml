@@ -22,7 +22,7 @@ server = [
     "pillow>=13.0.0,<14",
     "e2b>=2.55.1,<3.0.0",
     "fastapi==0.136.0",
-    "graphon==0.8.0",
+    "graphon==0.9.0",
     # Explicit constraint because this package imports grpc directly for the
     # generated openshell stubs.
     "grpcio>=1.60.0,<2.0.0",
@@ -64,6 +64,10 @@ markers = ["integration: requires a real external service or exercises multiple 
 line-length = 120
 target-version = "py312"
 include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
+
+[tool.uv.sources]
+# shortcut: pin the 0.9.0 integration fixes until Graphon publishes them to PyPI.
+graphon = { git = "https://github.com/langgenius/graphon", rev = "fa5d67b45739a445bb17e45291b5b71766825873" }
 
 [tool.uv]
 # unstructured caps filelock<4; Agent FileLock/WeakFileLock compatibility was verified with 4.2.1.
