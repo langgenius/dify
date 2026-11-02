@@ -32,7 +32,7 @@ from models.base import TypeBase
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
-from tests.unit_tests.model_factories import make_account, make_app, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 
 
 @pytest.fixture

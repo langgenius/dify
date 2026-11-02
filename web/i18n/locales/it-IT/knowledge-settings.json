@@ -16,6 +16,8 @@
   "settings.membersRequired": "Seleziona almeno un membro del team.",
   "settings.nameRequired": "Il nome della base di conoscenza Agent è obbligatorio.",
   "settings.pageDescription": "Gestisci le informazioni di base, l’accesso API e il recupero.",
+  "settings.reasoningChangeConfirm": "Conferma modifica",
+  "settings.reasoningChangeWarning": "La modifica del modello di ragionamento di sistema comporterà la rielaborazione dei documenti indicizzati e l’aggiornamento dei relativi indici di recupero. Questa operazione richiede tempo e comporta costi aggiuntivi per l’utilizzo del modello.",
   "settings.reloadLatest": "Ricarica le impostazioni",
   "settings.rerankModelRequired": "Seleziona un modello di reranking.",
   "settings.retrievalDepth": "Profondità di recupero",

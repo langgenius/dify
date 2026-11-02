@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { toast } from '@/app/notifications'
 import { createExternalAPI } from '@/service/datasets'
-import Form from './Form'
+import ExternalAPIForm from './Form'
 
 type AddExternalAPIModalProps = {
   data?: CreateExternalAPIReq
@@ -192,10 +192,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                       </button>
                     }
                   />
-                  <PopoverContent
-                    placement="bottom"
-                    className="flex w-[320px] items-center self-stretch px-3 py-2"
-                  >
+                  <PopoverContent className="flex w-[320px] items-center self-stretch px-3 py-2">
                     <div className="p-1">
                       <div className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2">
                         <div className="system-xs-medium-uppercase text-text-tertiary">{`${datasetBindings?.length} ${t(($) => $.editExternalAPITooltipTitle, { ns: 'dataset' })}`}</div>
@@ -218,7 +215,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
           <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
-          <Form
+          <ExternalAPIForm
             id={formId}
             value={formData}
             onChange={handleDataChange}

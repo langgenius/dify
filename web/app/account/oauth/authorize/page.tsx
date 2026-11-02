@@ -90,7 +90,7 @@ export default function OAuthAuthorize() {
     }),
   )
   const { mutateAsync: authorize, isPending: authorizing } = useMutation(
-    consoleQuery.oauth.provider.authorize.post.mutationOptions(),
+    consoleQuery.oauth.provider.authorize.post.mutationOptions({ context: { silent: true } }),
   )
   const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
   const signInUrl = `/signin?redirect_url=${encodeURIComponent(returnUrl)}`

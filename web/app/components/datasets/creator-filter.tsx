@@ -135,7 +135,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
         )}
       </div>
       <ComboboxPortal>
-        <ComboboxPositioner placement="bottom-start" sideOffset={4}>
+        <ComboboxPositioner>
           <ComboboxPopup
             aria-label={label}
             className="w-[min(17.5rem,var(--available-width))] min-w-[min(var(--anchor-width),var(--available-width))]"

@@ -3,7 +3,6 @@
 import type { ComponentRenderFn, HTMLProps } from '@base-ui/react/types'
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
-import type { Placement } from '../internal/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -16,7 +15,6 @@ import {
   floatingSeparatorClassName,
   positionerClassName,
 } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 type SelectActions = BaseSelect.Root.Actions
@@ -83,10 +81,9 @@ const selectTriggerVariants = cva(
     variants: {
       size: {
         // The text sits 4px further in than the icon: 8px around the control, 4px more for text.
-        // Physical padding, so callers' `px-*`/`pl-*`/`pr-*` overrides keep replacing it.
-        small: 'h-6 gap-px rounded-md py-1 pr-1 pl-2 system-xs-regular',
-        medium: 'h-8 gap-0.5 rounded-lg py-2 pr-2 pl-3 system-sm-regular',
-        large: 'h-9 gap-0.5 rounded-[10px] py-2 pr-3 pl-4 system-md-regular',
+        small: 'h-6 gap-px rounded-md py-1 ps-2 pe-1 system-xs-regular',
+        medium: 'h-8 gap-0.5 rounded-lg py-2 ps-3 pe-2 system-sm-regular',
+        large: 'h-9 gap-0.5 rounded-[10px] py-2 ps-4 pe-3 system-md-regular',
       },
     },
     defaultVariants: {
@@ -156,26 +153,19 @@ function SelectSeparator({ className, ...props }: SelectSeparatorProps) {
 const SelectPortal = BaseSelect.Portal
 type SelectPortalProps = BaseSelect.Portal.Props
 
-type SelectPositionerProps = Omit<BaseSelect.Positioner.Props, 'side' | 'align'> & {
-  placement?: Placement
-}
+type SelectPositionerProps = BaseSelect.Positioner.Props
 
 function SelectPositioner({
-  placement = 'bottom-start',
+  align = 'start',
   sideOffset = 4,
-  alignOffset = 0,
   alignItemWithTrigger = false,
   className,
   ...props
 }: SelectPositionerProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BaseSelect.Positioner
-      side={side}
       align={align}
       sideOffset={sideOffset}
-      alignOffset={alignOffset}
       alignItemWithTrigger={alignItemWithTrigger}
       className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
@@ -217,21 +207,22 @@ function SelectList({ className, ...props }: SelectListProps) {
 }
 
 type SelectContentProps = Omit<SelectPopupProps, 'children'> &
-  Pick<SelectPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+  Pick<SelectPositionerProps, 'alignOffset' | 'side' | 'align' | 'sideOffset'> & {
     children: React.ReactNode
   }
 
 function SelectContent({
   children,
-  placement = 'bottom-start',
-  sideOffset = 4,
-  alignOffset = 0,
+  side,
+  align,
+  sideOffset,
+  alignOffset,
   className,
   ...props
 }: SelectContentProps) {
   return (
     <SelectPortal>
-      <SelectPositioner placement={placement} sideOffset={sideOffset} alignOffset={alignOffset}>
+      <SelectPositioner side={side} align={align} sideOffset={sideOffset} alignOffset={alignOffset}>
         <SelectPopup className={className} {...props}>
           <SelectList>{children}</SelectList>
         </SelectPopup>

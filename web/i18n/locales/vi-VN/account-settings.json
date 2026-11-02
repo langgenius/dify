@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "Tài nguyên",
   "resourceAccessToken.searchPlaceholder": "Tìm mã truy cập…",
   "resourceAccessToken.searchResourcesPlaceholder": "Tìm ứng dụng hoặc cơ sở tri thức…",
-  "resourceAccessToken.tabAll": "Tất cả",
+  "resourceAccessToken.tabAllTypes": "Tất cả các loại",
   "resourceAccessToken.tabApps": "Ứng dụng",
   "resourceAccessToken.tabKnowledgeBases": "Cơ sở tri thức",
   "resourceAccessToken.token": "Mã truy cập",

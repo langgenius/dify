@@ -2,8 +2,14 @@ import { getMarkdownImageURL, isValidUrl } from '../utils'
 
 vi.mock('@/config', () => ({
   ALLOW_UNSAFE_DATA_SCHEME: false,
-  MARKETPLACE_API_PREFIX: '/api/marketplace',
 }))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: { ...actual.env, NEXT_PUBLIC_MARKETPLACE_API_PREFIX: '/api/marketplace' },
+  }
+})
 
 afterEach(() => {
   vi.doUnmock('@/config')
@@ -58,7 +64,6 @@ describe('utils', () => {
       vi.resetModules()
       vi.doMock('@/config', () => ({
         ALLOW_UNSAFE_DATA_SCHEME: true,
-        MARKETPLACE_API_PREFIX: '/api/marketplace',
       }))
     })
 
@@ -105,10 +110,13 @@ describe('utils', () => {
   describe('getMarkdownImageURL with trailing slash prefix', () => {
     beforeEach(() => {
       vi.resetModules()
-      vi.doMock('@/config', () => ({
-        ALLOW_UNSAFE_DATA_SCHEME: false,
-        MARKETPLACE_API_PREFIX: '/api/marketplace/',
-      }))
+      vi.doMock('@/env', async (importOriginal) => {
+        const actual = await importOriginal<typeof import('@/env')>()
+        return {
+          ...actual,
+          env: { ...actual.env, NEXT_PUBLIC_MARKETPLACE_API_PREFIX: '/api/marketplace/' },
+        }
+      })
     })
 
     it('should not add extra slash when prefix ends with slash', async () => {

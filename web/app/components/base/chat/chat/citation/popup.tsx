@@ -13,6 +13,7 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import ProgressTooltip from './progress-tooltip'
 import Tooltip from './tooltip'
 
@@ -48,8 +49,11 @@ function LegacyKnowledgeFSOpenAction({ source }: { source: Resources['sources'][
           revision: citation.revision,
         }),
       )
-    } catch {
-      toast.error(t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ??
+          t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' }),
+      )
     } finally {
       setIsResolving(false)
     }
@@ -148,8 +152,8 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
         }
       />
       <PopoverContent
-        placement="top-start"
-        sideOffset={8}
+        side="top"
+        align="start"
         alignOffset={-2}
         className="border-none bg-transparent shadow-none"
       >

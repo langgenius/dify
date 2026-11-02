@@ -2,6 +2,10 @@ import { screen, within } from '@testing-library/react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import SignInLayout from '../layout'
 
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}))
+
 describe('SignInLayout landmarks', () => {
   it('separates the site header, sign-in content, and copyright', () => {
     render(

@@ -16,6 +16,8 @@
   "settings.membersRequired": "Wählen Sie mindestens ein Teammitglied aus.",
   "settings.nameRequired": "Der Name der Agent-Wissensdatenbank ist erforderlich.",
   "settings.pageDescription": "Grundinformationen, API-Zugriff und Abruf verwalten.",
+  "settings.reasoningChangeConfirm": "Änderung bestätigen",
+  "settings.reasoningChangeWarning": "Durch den Wechsel des System-Reasoning-Modells werden indexierte Dokumente erneut verarbeitet und ihre Abrufindizes aktualisiert. Dies dauert einige Zeit und verursacht zusätzliche Kosten für die Modellnutzung.",
   "settings.reloadLatest": "Aktuelle Einstellungen laden",
   "settings.rerankModelRequired": "Wählen Sie ein Rerank-Modell aus.",
   "settings.retrievalDepth": "Suchtiefe",

@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "संसाधन",
   "resourceAccessToken.searchPlaceholder": "टोकन खोजें…",
   "resourceAccessToken.searchResourcesPlaceholder": "ऐप या ज्ञान आधार खोजें…",
-  "resourceAccessToken.tabAll": "सभी",
+  "resourceAccessToken.tabAllTypes": "सभी प्रकार",
   "resourceAccessToken.tabApps": "ऐप्स",
   "resourceAccessToken.tabKnowledgeBases": "ज्ञान आधार",
   "resourceAccessToken.token": "टोकन",

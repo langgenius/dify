@@ -137,7 +137,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
                   className="inline-flex w-fit items-center text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 >
                   <span
-                    className="mr-1 i-custom-vender-line-education-book-open-01 size-3"
+                    className="me-1 i-custom-vender-line-education-book-open-01 size-3"
                     aria-hidden="true"
                   />
                   {t(($) => $['apiBasedExtension.link'], { ns: 'common' })}

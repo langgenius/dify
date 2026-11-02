@@ -133,7 +133,9 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
     null,
   )
 
-  const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription()
+  const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription({
+    silent: true,
+  })
   const { mutate: verifyCredentials, isPending: isVerifying } = useVerifyTriggerSubscription()
 
   const parametersSchema = useMemo<ParametersSchema[]>(

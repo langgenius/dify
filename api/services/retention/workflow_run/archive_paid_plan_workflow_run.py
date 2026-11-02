@@ -549,7 +549,7 @@ class WorkflowRunArchiver:
         # Filter to paid tenants (any plan except SANDBOX)
         paid = set()
         for tid, info in bulk_info.items():
-            if info and info.get("plan") in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM):
+            if info and info.plan in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM):
                 paid.add(tid)
 
         return paid

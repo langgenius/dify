@@ -14,6 +14,7 @@ os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
 os.environ.setdefault("STORAGE_TYPE", "opendal")
 
 import pytest
+from dify_trace_sdk.testing import RecordingEgress
 from flask import Flask
 from redis import Redis
 from sqlalchemy import create_engine
@@ -24,12 +25,13 @@ import core.db.session_factory as session_factory_module
 from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.rbac_fakes import RBACDomain, build_rbac_domain
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.rbac_fakes import RBACDomain, build_rbac_domain
+from tests.helpers.unit.services.tracing_ports import deployment_provider_configs
 
 if TYPE_CHECKING:
     from extensions.ext_application_services import ApplicationServices
-    from tests.unit_tests.account_domain import AccountDomain
+    from tests.helpers.unit.account_domain import AccountDomain
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -39,7 +41,11 @@ PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
 
 CACHED_APP = Flask(__name__)
 
-pytest_plugins = ("tests.unit_tests.audio_runtime_fixtures", "tests.unit_tests.agent_runtime_fixtures")
+pytest_plugins = (
+    "tests.helpers.unit.audio_runtime_fixtures",
+    "tests.helpers.unit.agent_runtime_fixtures",
+    "tests.helpers.unit.model_provider_fixtures",
+)
 
 # set global mock for Redis client
 redis_mock = MagicMock()
@@ -127,7 +133,7 @@ def reset_redis_mock(_patch_redis_clients: None) -> None:
     redis_mock.get.reset_mock()
     redis_mock.setex.reset_mock()
     redis_mock.setnx.reset_mock()
-    redis_mock.lock.reset_mock()
+    redis_mock.lock.reset_mock(return_value=True, side_effect=True)
     redis_mock.exists.reset_mock()
     redis_mock.set.reset_mock()
     redis_mock.expire.reset_mock()
@@ -305,7 +311,7 @@ def account_domain(
 
     from enums import DeploymentEdition
     from services.workspace import gateways
-    from tests.unit_tests.account_domain import build_account_domain
+    from tests.helpers.unit.account_domain import build_account_domain
 
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=False)
     monkeypatch.setattr(gateways, "generate_key_pair", lambda _workspace_id: "public-key")
@@ -355,7 +361,6 @@ def app_services(sqlite_session_factory: sessionmaker[Session], rbac_domain: RBA
     from extensions.ext_redis import redis_client
     from repositories.app.console_repository import ConsoleAppRepository
     from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
-    from services.app_tracing_config_gateway import OpsTraceManagerGateway
     from services.app_tracing_config_service import AppTracingConfigService
     from services.recommended_app_package_service import RecommendedAppPackageService
 
@@ -365,7 +370,8 @@ def app_services(sqlite_session_factory: sessionmaker[Session], rbac_domain: RBA
         rbac_members=rbac_domain.rbac.members,
         tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory),
-            provider=OpsTraceManagerGateway(),
+            # Unit tests never reach a tracing vendor; an unexpected request fails the test.
+            provider=deployment_provider_configs(RecordingEgress([], grpc_target=None)),
         ),
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),

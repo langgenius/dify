@@ -12,6 +12,7 @@ from configs import dify_config
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from enums import DeploymentEdition
 from graphon.enums import BuiltinNodeTypes, NodeType
+from libs.helper import escape_like_pattern
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, TagBinding
 from models.agent import (
@@ -233,8 +234,10 @@ class SnippetService:
         )
 
         if keyword:
+            escaped_keyword = escape_like_pattern(keyword)
             stmt = stmt.where(
-                CustomizedSnippet.name.ilike(f"%{keyword}%") | CustomizedSnippet.description.ilike(f"%{keyword}%")
+                CustomizedSnippet.name.ilike(f"%{escaped_keyword}%", escape="\\")
+                | CustomizedSnippet.description.ilike(f"%{escaped_keyword}%", escape="\\")
             )
 
         if is_published is not None:
@@ -578,14 +581,14 @@ class SnippetService:
             workflow = Workflow(
                 tenant_id=snippet.tenant_id,
                 app_id=snippet.id,
-                features="{}",
+                _features="{}",
                 type=WorkflowType.WORKFLOW,
                 kind=WorkflowKind.SNIPPET,
                 version="draft",
                 graph=json.dumps(graph),
                 created_by=account.id,
-                environment_variables=[],
-                conversation_variables=[],
+                _environment_variables=[],
+                _conversation_variables=[],
             )
         else:
             # Update existing draft workflow

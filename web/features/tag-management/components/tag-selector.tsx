@@ -1,11 +1,5 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
-import type {
-  ComboboxPopupProps,
-  ComboboxPortalProps,
-  ComboboxPositionerProps,
-  ComboboxProps,
-  ComboboxTriggerProps,
-} from '@langgenius/dify-ui/combobox'
+import type { ComboboxProps, ComboboxTriggerProps } from '@langgenius/dify-ui/combobox'
 import type { TagComboboxItem } from './tag-combobox-item'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -23,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
 import { getTagManagePermissionKey } from '../utils'
@@ -55,20 +50,7 @@ type TagSelectorRootProps = Omit<
   | 'onOpenChangeComplete'
   | 'children'
 >
-type TagSelectorContentProps = {
-  placement?: ComboboxPositionerProps['placement']
-  sideOffset?: ComboboxPositionerProps['sideOffset']
-  alignOffset?: ComboboxPositionerProps['alignOffset']
-  portalProps?: Omit<ComboboxPortalProps, 'children'>
-  positionerProps?: Omit<
-    ComboboxPositionerProps,
-    'alignOffset' | 'children' | 'placement' | 'sideOffset'
-  >
-  popupProps?: Omit<ComboboxPopupProps, 'children' | 'className'>
-  popupClassName?: string
-}
 export type TagSelectorProps = TagSelectorRootProps &
-  TagSelectorContentProps &
   Pick<ComboboxTriggerProps, 'className' | 'onClick'> & {
     targetId: string
     contextLabel?: string
@@ -95,13 +77,6 @@ export const TagSelector = ({
   onOpenTagManagement = () => {},
   onTagsChange,
   onApplyTags,
-  placement = 'bottom-start',
-  sideOffset = 4,
-  alignOffset = 0,
-  portalProps,
-  positionerProps,
-  popupProps,
-  popupClassName,
   ...rootProps
 }: TagSelectorProps) => {
   const { t } = useTranslation(['common'])
@@ -116,7 +91,7 @@ export const TagSelector = ({
 
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const { isPending: isCreatingTag, mutate: createTag } = useMutation(
-    consoleQuery.tags.post.mutationOptions(),
+    consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
   )
   const { data: tagList = [] } = useQuery(
     consoleQuery.tags.get.queryOptions({
@@ -221,9 +196,10 @@ export const TagSelector = ({
             },
           )
         },
-        onError: () => {
+        onError: (error) => {
           toast.error(
-            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+            getErrorMessage(error) ??
+              t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
             {
               id: toastId,
             },
@@ -274,8 +250,8 @@ export const TagSelector = ({
             toast.success(t(($) => $['tag.created'], { ns: 'common' }))
             setInputValue('')
           },
-          onError: () => {
-            toast.error(t(($) => $['tag.failed'], { ns: 'common' }))
+          onError: (error) => {
+            toast.error(getErrorMessage(error) ?? t(($) => $['tag.failed'], { ns: 'common' }))
           },
         },
       )
@@ -328,21 +304,12 @@ export const TagSelector = ({
           className="pointer-events-none absolute top-0 right-0 h-full w-20 bg-tag-selector-mask-bg group-hover/tag-area:hidden group-focus-visible/tag-area:hidden group-data-popup-open/tag-area:hidden"
         />
       </ComboboxTrigger>
-      <ComboboxPortal {...portalProps}>
-        <ComboboxPositioner
-          placement={placement}
-          sideOffset={sideOffset}
-          alignOffset={alignOffset}
-          {...positionerProps}
-        >
+      <ComboboxPortal>
+        <ComboboxPositioner>
           <ComboboxPopup
             onClick={(event) => event.stopPropagation()}
             aria-label={accessibleTriggerLabel}
-            {...popupProps}
-            className={cn(
-              'w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]',
-              popupClassName,
-            )}
+            className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
           >
             <TagSearchContent
               type={type}

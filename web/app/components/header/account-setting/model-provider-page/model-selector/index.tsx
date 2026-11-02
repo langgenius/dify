@@ -191,10 +191,7 @@ function ModelSelectorRoot({
         }
       />
       <PopoverPortal>
-        <PopoverPositioner
-          placement="bottom-start"
-          collisionAvoidance={MODEL_SELECTOR_COLLISION_AVOIDANCE}
-        >
+        <PopoverPositioner align="start" collisionAvoidance={MODEL_SELECTOR_COLLISION_AVOIDANCE}>
           <PopoverPopup
             className={cn(
               'flex max-h-[min(624px,var(--available-height,624px))] w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',

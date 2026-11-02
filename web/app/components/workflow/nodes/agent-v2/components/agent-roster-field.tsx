@@ -19,13 +19,8 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Suspense, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -205,21 +200,21 @@ function AgentRosterDrawer({
                   <div className="flex shrink-0 items-center gap-1 py-1">
                     {showInlineActions && (
                       <>
-                        <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger
-                            aria-label={t(($) => $[`${i18nPrefix}.roster.more`], {
-                              ns: 'workflowAgent',
-                            })}
-                            className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
-                          >
-                            <span aria-hidden className="i-ri-more-fill size-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            placement="bottom-end"
-                            sideOffset={4}
-                            className="w-max min-w-44"
-                          >
-                            <DropdownMenuItem
+                        <Menu modal={false}>
+                          <MenuTrigger
+                            render={
+                              <IconButton
+                                aria-label={t(($) => $[`${i18nPrefix}.roster.more`], {
+                                  ns: 'workflowAgent',
+                                })}
+                                className="data-popup-open:bg-state-base-hover"
+                              >
+                                <span aria-hidden className="i-ri-more-fill size-4" />
+                              </IconButton>
+                            }
+                          />
+                          <MenuContent align="end" className="w-max min-w-44">
+                            <MenuItem
                               className="gap-2 whitespace-nowrap"
                               onClick={onSaveInlineToRoster}
                             >
@@ -230,9 +225,9 @@ function AgentRosterDrawer({
                               <span>
                                 {t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}
                               </span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            </MenuItem>
+                          </MenuContent>
+                        </Menu>
                         <div className="flex h-3.5 items-start px-1">
                           <div className="h-full w-px bg-divider-regular" />
                         </div>
@@ -448,11 +443,7 @@ export function AgentRosterField({
           >
             {t(($) => $[`${i18nPrefix}.roster.change`], { ns: 'workflowAgent' })}
           </AgentSelectorMenuTrigger>
-          <AgentSelectorMenuContent
-            placement="bottom-end"
-            onSelect={onChange}
-            onStartFromScratch={onStartFromScratch}
-          />
+          <AgentSelectorMenuContent onSelect={onChange} onStartFromScratch={onStartFromScratch} />
         </AgentSelectorMenu>
       </div>
       {errorMessage ? (

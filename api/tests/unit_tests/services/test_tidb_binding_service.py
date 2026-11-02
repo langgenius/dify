@@ -4,7 +4,7 @@ from collections.abc import Callable, Generator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import TypedDict, Unpack
+from typing import Unpack
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -14,13 +14,14 @@ from redis.exceptions import LockError
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 
 from core.rag.embedding.embedding_base import Embeddings
 from models.account import Tenant
 from models.dataset import Dataset, TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 from services import tidb_binding_service as service
-from tests.unit_tests.knowledge_fs_core_fakes import RecordingCallable
+from tests.helpers.unit.knowledge_fs_core_fakes import RecordingCallable
 
 
 @dataclass(frozen=True)
@@ -42,13 +43,16 @@ class _Environment:
     get: MagicMock
 
 
-class _CredentialFields(TypedDict, total=False):
+class _CredentialFields(TypedDict, total=False, closed=True):
     account: str
     password: str
     qdrant_endpoint: str | None
 
 
-class _BindingFields(_CredentialFields, total=False):
+class _BindingFields(TypedDict, total=False, closed=True):
+    account: str
+    password: str
+    qdrant_endpoint: str | None
     active: bool
     status: TidbAuthBindingStatus
 

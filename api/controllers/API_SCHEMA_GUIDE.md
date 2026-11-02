@@ -365,7 +365,7 @@ through `application_services()` nor tell which branch of a shared translator an
 had to be corrected by hand anyway and it was dropped.
 
 One gate checks served responses. Every 4xx/5xx JSON response an `ExternalApi` serves in a controller unit test is
-checked against that API's generated document (`tests/unit_tests/controllers/error_contract.py`). The body must be
+checked against that API's generated document (`tests/helpers/unit/controllers/error_contract.py`). The body must be
 the standard error body, unless the status declares its own model, and its `code` must be one the operation documents
 for that status or one of the surface's generic codes (`ExternalApi.implicit_error_codes`). A new business error
 without a declaration fails there on every path a test exercises, so give a new error path a test that serves it.
@@ -410,7 +410,7 @@ For schema and documentation changes, run focused tests and generate Swagger JSO
 
 ```bash
 uv run --project api pytest api/tests/unit_tests/controllers/common/test_schema.py
-uv run --project api pytest api/tests/unit_tests/commands/test_generate_swagger_specs.py api/tests/unit_tests/controllers/test_swagger.py
+uv run --project api pytest api/tests/unit_tests/dev/test_generate_swagger_specs.py api/tests/unit_tests/controllers/service_api/test___init__.py
 uv run --project api python api/dev/generate_swagger_specs.py --output-dir /tmp/dify-openapi-check
 ```
 

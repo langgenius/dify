@@ -19,8 +19,8 @@ const InputHasSetMultipleValue: FC<Props> = ({ fieldId, onClear, readOnly }) => 
     <div className="h-6 grow rounded-md bg-components-input-bg-normal text-[0]">
       <div
         className={cn(
-          'inline-flex h-6 items-center space-x-0.5 rounded-[5px] border-[0.5px] border-components-panel-border bg-components-badge-white-to-dark pr-0.5 pl-1.5 shadow-xs',
-          readOnly && 'pr-1.5',
+          'inline-flex h-6 items-center space-x-0.5 rounded-[5px] border-[0.5px] border-components-panel-border bg-components-badge-white-to-dark ps-1.5 pe-0.5 shadow-xs',
+          readOnly && 'pe-1.5',
         )}
       >
         <div className="system-xs-regular text-text-secondary">

@@ -77,7 +77,7 @@ const OneMoreStep = () => {
     timezone: 'Asia/Shanghai',
   })
   const { mutateAsync: submitOneMoreStep, isPending } = useMutation(
-    consoleQuery.account.init.post.mutationOptions(),
+    consoleQuery.account.init.post.mutationOptions({ context: { silent: true } }),
   )
   const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === state.interface_language)
   const selectedTimezone = TIMEZONE_OPTIONS.find((item) => item.value === state.timezone)
@@ -107,6 +107,7 @@ const OneMoreStep = () => {
     } catch (error: unknown) {
       if (getHttpErrorStatus(error) === 400)
         toast.error(t(($) => $.invalidInvitationCode, { ns: 'login' }))
+      else if (error instanceof Error) toast.error(error.message)
     }
   }
 
@@ -144,7 +145,7 @@ const OneMoreStep = () => {
                   }
                 />
                 <PopoverContent
-                  placement="top"
+                  side="top"
                   className="w-[256px] px-3 py-2 text-xs font-medium text-text-tertiary"
                 >
                   <div>

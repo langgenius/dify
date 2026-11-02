@@ -344,8 +344,6 @@ class SQLAlchemyDocumentOperations:
     ) -> DocumentCreationDataset:
         with self._sessions() as session:
             dataset = _require_dataset(session, ref)
-            if not dataset.indexing_technique and not config.indexing_technique:
-                raise ValueError("indexing_technique is required.")
             self._actor(session, context)
             DatasetService.check_doc_form(dataset, config.doc_form, session=session)
             return DocumentCreationDataset(
@@ -542,7 +540,7 @@ class SQLAlchemyDocumentOperations:
                 DocumentService.batch_update_document_status(
                     dataset, [doc.id for doc in documents], action, account, session
                 )
-            except (ValueError, DocumentIndexingError) as error:
+            except ValueError as error:
                 raise DocumentInvalidActionError(str(error)) from error
 
     def sync_website(self, ref: DocumentRef) -> None:

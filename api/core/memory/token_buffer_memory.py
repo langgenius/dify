@@ -171,7 +171,7 @@ class TokenBufferMemory:
                 workflow = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
                 if not workflow:
                     raise ValueError(f"Workflow not found: {workflow_run.workflow_id}")
-                return FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
+                return FileUploadConfigManager.convert(workflow.normalized_features_dict, is_vision=False)
             case _:
                 raise AssertionError(f"Invalid app mode: {conversation.mode}")
 

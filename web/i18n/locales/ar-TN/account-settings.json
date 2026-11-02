@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "الموارد",
   "resourceAccessToken.searchPlaceholder": "ابحث عن الرموز…",
   "resourceAccessToken.searchResourcesPlaceholder": "ابحث عن التطبيقات أو قواعد المعرفة…",
-  "resourceAccessToken.tabAll": "الكل",
+  "resourceAccessToken.tabAllTypes": "كل الأنواع",
   "resourceAccessToken.tabApps": "تطبيقات",
   "resourceAccessToken.tabKnowledgeBases": "قواعد المعرفة",
   "resourceAccessToken.token": "الرمز",

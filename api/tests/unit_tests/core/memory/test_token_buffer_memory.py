@@ -164,8 +164,8 @@ def _persist_message(
         currency="USD",
         from_source=ConversationFromSource.API,
         workflow_run_id=workflow_run_id,
-        created_at=created_at or datetime.now(UTC).replace(tzinfo=None),
     )
+    message.created_at = created_at or datetime.now(UTC).replace(tzinfo=None)
     database.session.add(message)
     database.session.commit()
     return message
@@ -199,7 +199,7 @@ def _persist_workflow(database: Database, *, workflow_id: str) -> Workflow:
         type=WorkflowType.CHAT,
         version="1",
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account-1",
     )
     database.session.add(workflow)

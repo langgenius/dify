@@ -43,7 +43,7 @@ type PublisherContentProps = AppPublisherProps & {
 export function PublisherContent({
   appDetail,
   canViewAccessPoint,
-  crossAxisOffset = 0,
+  alignOffset,
   debugWithMultipleModel = false,
   disabled = false,
   draftUpdatedAt,
@@ -233,7 +233,7 @@ export function PublisherContent({
             onPublishToMarketplace: marketplace.publish,
           },
         }}
-        crossAxisOffset={crossAxisOffset}
+        alignOffset={alignOffset}
         disabled={disabled}
         environmentPublisher={{
           appId: appDetail.id,

@@ -2,6 +2,7 @@ import type { ThemeProviderProps } from 'next-themes'
 import type { Metadata, Viewport } from '@/next'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { HydrationBoundary } from '@tanstack/react-query'
+import { dir } from 'i18next'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
@@ -73,9 +74,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dehydratedState = errorDocument ? undefined : dehydrateSystemFeatures()
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} dir={dir(locale)} {...datasetMap} suppressHydrationWarning>
       <head>{!errorDocument && <ReactScanLoader />}</head>
-      <body className="bg-background-body" {...datasetMap}>
+      <body className="bg-background-body">
         {!errorDocument && <CloudAnalytics />}
         <div className="isolate">
           <JotaiProvider>

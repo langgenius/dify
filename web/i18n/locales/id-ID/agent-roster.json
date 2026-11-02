@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "mis. Asisten Riset",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Tindakan ini menghapus {{name}} secara permanen. Aplikasi web dan akses API miliknya, serta alur kerja yang menggunakannya, akan langsung berhenti berfungsi.",
+  "roster.deleteDialog.inputLabel": "Ketik <name>{{name}}</name> untuk mengonfirmasi",
+  "roster.deleteDialog.inputPlaceholder": "Masukkan nama agen",
   "roster.deleteDialog.title": "Hapus {{name}}?",
   "roster.deleteFailed": "Gagal menghapus agen.",
   "roster.duplicateDialog.description": "Buat salinan {{name}} dan sesuaikan identitas Agent-nya.",

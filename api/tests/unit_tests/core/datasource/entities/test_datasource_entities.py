@@ -1,5 +1,9 @@
-import pytest
+from collections.abc import Generator
 
+import pytest
+from pytest_mock import MockerFixture
+
+from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
     DatasourceIdentity,
@@ -30,6 +34,8 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolLabelEnum
+from graphon.node_events import StreamCompletedEvent
+from graphon.runtime import VariablePool
 
 
 def test_online_drive_remote_metadata_survives_runtime_serialization():
@@ -393,3 +399,42 @@ def test_datasource_message():
 
     msg_json = DatasourceMessage(type="json", message={"json_object": {"k": "v"}})
     assert msg_json.message.json_object == {"k": "v"}
+
+
+"""Unit coverage for datasource event-stream accumulation."""
+
+
+def _gen_var_stream() -> Generator[DatasourceMessage]:
+    # produce a streamed variable "a"="xy"
+    yield DatasourceMessage(
+        type=DatasourceMessage.MessageType.VARIABLE,
+        message=DatasourceMessage.VariableMessage(variable_name="a", variable_value="x", stream=True),
+        meta=None,
+    )
+    yield DatasourceMessage(
+        type=DatasourceMessage.MessageType.VARIABLE,
+        message=DatasourceMessage.VariableMessage(variable_name="a", variable_value="y", stream=True),
+        meta=None,
+    )
+
+
+def test_stream_node_events_accumulates_variables(mocker: MockerFixture) -> None:
+    mocker.patch.object(DatasourceManager, "stream_online_results", return_value=_gen_var_stream())
+    events = list(
+        DatasourceManager.stream_node_events(
+            node_id="A",
+            user_id="u",
+            datasource_name="ds",
+            datasource_type="online_document",
+            provider_id="p/x",
+            tenant_id="t",
+            parameters_for_log={},
+            datasource_info={"user_id": "u"},
+            variable_pool=VariablePool(),
+            datasource_param=None,
+            online_drive_request=None,
+            credentials={},
+        )
+    )
+    assert isinstance(events[-1], StreamCompletedEvent)
+    assert events[-1].node_run_result.outputs["a"] == "xy"

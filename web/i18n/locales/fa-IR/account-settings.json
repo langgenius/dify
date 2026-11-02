@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "منابع",
   "resourceAccessToken.searchPlaceholder": "جستجوی توکن‌ها…",
   "resourceAccessToken.searchResourcesPlaceholder": "جستجوی برنامه‌ها یا پایگاه‌های دانش…",
-  "resourceAccessToken.tabAll": "همه",
+  "resourceAccessToken.tabAllTypes": "همه انواع",
   "resourceAccessToken.tabApps": "برنامه‌ها",
   "resourceAccessToken.tabKnowledgeBases": "پایگاه‌های دانش",
   "resourceAccessToken.token": "توکن",

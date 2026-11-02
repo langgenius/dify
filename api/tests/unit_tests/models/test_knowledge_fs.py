@@ -20,7 +20,7 @@ from models.knowledge_fs import (
     KnowledgeFSStagedUpload,
     KnowledgeFSStagedUploadStatus,
 )
-from tests.unit_tests.services.knowledge_fs_fakes import reservation_summary
+from tests.helpers.unit.services.knowledge_fs_fakes import reservation_summary
 
 _KNOWLEDGE_FS_MODELS = (
     KnowledgeFSControlSpace,
