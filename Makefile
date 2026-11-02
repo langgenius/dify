@@ -2,18 +2,177 @@
 DOCKER_REGISTRY=langgenius
 WEB_IMAGE=$(DOCKER_REGISTRY)/dify-web
 API_IMAGE=$(DOCKER_REGISTRY)/dify-api
+SANDBOX_RUNTIME_IMAGE=$(DOCKER_REGISTRY)/dify-agent-local-sandbox
 VERSION=latest
+DOCKER_DIR=docker
+DOCKER_MIDDLEWARE_ENV=$(DOCKER_DIR)/middleware.env
+DOCKER_MIDDLEWARE_ENV_EXAMPLE=$(DOCKER_DIR)/envs/middleware.env.example
+DOCKER_MIDDLEWARE_PROJECT=dify-middlewares-dev
+
+# Default target - show help
+.DEFAULT_GOAL := help
+
+# Backend Development Environment Setup
+.PHONY: dev-setup prepare-docker prepare-web prepare-api
+
+# Dev setup target
+dev-setup: prepare-docker prepare-web prepare-api
+	@echo "✅ Backend development environment setup complete!"
+
+# Step 1: Prepare Docker middleware
+prepare-docker:
+	@echo "🐳 Setting up Docker middleware..."
+	@if [ ! -f "$(DOCKER_MIDDLEWARE_ENV)" ]; then \
+		cp "$(DOCKER_MIDDLEWARE_ENV_EXAMPLE)" "$(DOCKER_MIDDLEWARE_ENV)"; \
+		echo "Docker middleware.env created"; \
+	else \
+		echo "Docker middleware.env already exists"; \
+	fi
+	@cd $(DOCKER_DIR) && docker compose -f docker-compose.middleware.yaml --env-file middleware.env -p $(DOCKER_MIDDLEWARE_PROJECT) up -d
+	@echo "✅ Docker middleware started"
+
+# Step 2: Prepare web environment
+prepare-web:
+	@echo "🌐 Setting up web environment..."
+	@cp -n web/.env.example web/.env.local 2>/dev/null || echo "Web .env.local already exists"
+	@pnpm install
+	@echo "✅ Web environment prepared (not started)"
+
+# Step 3: Prepare API environment
+prepare-api:
+	@echo "🔧 Setting up API environment..."
+	@cp -n api/.env.example api/.env 2>/dev/null || echo "API .env already exists"
+	@cd api && uv sync --dev
+	@cd api && uv run flask db upgrade
+	@echo "✅ API environment prepared (not started)"
+
+# Clean dev environment
+dev-clean:
+	@echo "⚠️  Stopping Docker containers..."
+	@if [ -f "$(DOCKER_MIDDLEWARE_ENV)" ]; then \
+		cd $(DOCKER_DIR) && docker compose -f docker-compose.middleware.yaml --env-file middleware.env -p $(DOCKER_MIDDLEWARE_PROJECT) down; \
+	else \
+		echo "Docker middleware.env does not exist, skipping compose down"; \
+	fi
+	@echo "🗑️  Removing volumes..."
+	@rm -rf docker/volumes/db
+	@rm -rf docker/volumes/mysql
+	@rm -rf docker/volumes/redis
+	@rm -rf docker/volumes/plugin_daemon
+	@rm -rf docker/volumes/weaviate
+	@rm -rf docker/volumes/sandbox/dependencies
+	@rm -rf api/storage
+	@echo "✅ Cleanup complete"
+
+# Backend Code Quality Commands
+format:
+	@echo "🎨 Running ruff format..."
+	@uv run --project api --dev ruff format ./api
+	@echo "✅ Code formatting complete"
+
+check:
+	@echo "🔍 Running ruff check..."
+	@uv run --project api --dev ruff check ./api
+	@echo "✅ Code check complete"
+
+lint:
+	@echo "🔧 Running ruff format, check with fixes, response contract lint, import linter, and dotenv-linter..."
+	@uv run --project api --dev ruff format ./api
+	@uv run --project api --dev ruff check --fix ./api
+	@$(MAKE) api-contract-lint
+	@uv run --project api python scripts/check_no_spec_mock.py
+	@uv run --project api python scripts/check_no_new_base_model.py
+	@uv run --project api python scripts/check_no_new_constructor_bypass.py
+	@uv run --project api python scripts/check_no_new_cast.py
+	@uv run --directory api --dev lint-imports
+	@uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
+	@echo "✅ Linting complete"
+
+api-contract-lint:
+	@echo "🔎 Linting Flask response contracts..."
+	@uv run --project api --dev python api/dev/lint_response_contracts.py
+	@echo "✅ Response contract lint complete"
+
+type-check:
+	@echo "📝 Running type checks (pyrefly)..."
+	@./dev/pyrefly-check-local $(PATH_TO_CHECK)
+	@echo "✅ Type checks complete"
+
+type-check-core:
+	@echo "📝 Running core type checks (pyrefly)..."
+	@./dev/pyrefly-check-local $(PATH_TO_CHECK)
+	@echo "✅ Core type checks complete"
+
+test:
+	@echo "🧪 Running backend unit tests..."
+	@if [ -n "$(TARGET_TESTS)" ]; then \
+		echo "Target: $(TARGET_TESTS)"; \
+		uv run --project api --dev pytest $(TARGET_TESTS); \
+	else \
+		set -e; \
+		echo "Running backend unit tests"; \
+		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
+			api/tests/unit_tests \
+			api/tests/e2e_tests/contracts \
+			api/providers/vdb/*/tests/unit_tests \
+			api/providers/trace/*/tests/unit_tests \
+			--ignore=api/tests/unit_tests/controllers --ignore=api/tests/e2e_tests/contracts/controllers; \
+		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto --cov-append \
+			api/tests/unit_tests/controllers api/tests/e2e_tests/contracts/controllers; \
+	fi
+	@echo "✅ Unit tests complete"
+
+test-all:
+	@echo "🧪 Running full backend test suite..."
+	@if [ -n "$(TARGET_TESTS)" ]; then \
+		echo "Target: $(TARGET_TESTS)"; \
+		uv run --project api --dev pytest $(TARGET_TESTS); \
+	else \
+		set -e; \
+		echo "Running backend unit tests"; \
+		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
+			api/tests/unit_tests \
+			api/tests/e2e_tests/contracts \
+			api/providers/vdb/*/tests/unit_tests \
+			api/providers/trace/*/tests/unit_tests \
+			--ignore=api/tests/unit_tests/controllers --ignore=api/tests/e2e_tests/contracts/controllers; \
+		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto --cov-append \
+			api/tests/unit_tests/controllers api/tests/e2e_tests/contracts/controllers; \
+		echo "Running backend integration tests"; \
+		uv run --project api --dev pytest -p no:benchmark --start-middleware -n auto \
+			--timeout "$${PYTEST_TIMEOUT:-180}" \
+			--cov-append \
+			api/tests/e2e_tests/middleware/workflow \
+			api/tests/e2e_tests/middleware/tools \
+			api/tests/e2e_tests/containers; \
+		echo "Running VDB smoke tests"; \
+		uv run --project api --dev pytest --start-vdb \
+			--timeout "$${PYTEST_TIMEOUT:-180}" \
+			--cov-append \
+			api/providers/vdb/vdb-chroma/tests/e2e_tests \
+			api/providers/vdb/vdb-pgvector/tests/e2e_tests \
+			api/providers/vdb/vdb-qdrant/tests/e2e_tests \
+			api/providers/vdb/vdb-weaviate/tests/e2e_tests; \
+	fi
+	@echo "✅ Tests complete"
 
 # Build Docker images
 build-web:
 	@echo "Building web Docker image: $(WEB_IMAGE):$(VERSION)..."
-	docker build -t $(WEB_IMAGE):$(VERSION) ./web
+	docker build -f web/Dockerfile -t $(WEB_IMAGE):$(VERSION) .
 	@echo "Web Docker image built successfully: $(WEB_IMAGE):$(VERSION)"
 
 build-api:
 	@echo "Building API Docker image: $(API_IMAGE):$(VERSION)..."
-	docker build -t $(API_IMAGE):$(VERSION) ./api
+	docker build -t $(API_IMAGE):$(VERSION) -f api/Dockerfile .
 	@echo "API Docker image built successfully: $(API_IMAGE):$(VERSION)"
+
+build-sandbox-runtime:
+	@echo "Building sandbox runtime Docker image: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)..."
+	docker build -t $(SANDBOX_RUNTIME_IMAGE):$(VERSION) \
+		-f dify-agent-runtime/docker/Dockerfile \
+		dify-agent-runtime
+	@echo "Sandbox runtime Docker image built successfully: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)"
 
 # Push Docker images
 push-web:
@@ -26,18 +185,51 @@ push-api:
 	docker push $(API_IMAGE):$(VERSION)
 	@echo "API Docker image pushed successfully: $(API_IMAGE):$(VERSION)"
 
+push-sandbox-runtime:
+	@echo "Pushing sandbox runtime Docker image: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)..."
+	docker push $(SANDBOX_RUNTIME_IMAGE):$(VERSION)
+	@echo "Sandbox runtime Docker image pushed successfully: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)"
+
 # Build all images
-build-all: build-web build-api
+build-all: build-web build-api build-sandbox-runtime
 
 # Push all images
-push-all: push-web push-api
+push-all: push-web push-api push-sandbox-runtime
 
 build-push-api: build-api push-api
 build-push-web: build-web push-web
+build-push-sandbox-runtime: build-sandbox-runtime push-sandbox-runtime
 
 # Build and push all images
 build-push-all: build-all push-all
 	@echo "All Docker images have been built and pushed."
 
+# Help target
+help:
+	@echo "Development Setup Targets:"
+	@echo "  make dev-setup      - Run all setup steps for backend dev environment"
+	@echo "  make prepare-docker - Set up Docker middleware"
+	@echo "  make prepare-web    - Set up web environment"
+	@echo "  make prepare-api    - Set up API environment"
+	@echo "  make dev-clean      - Stop Docker middleware containers and remove dev data"
+	@echo ""
+	@echo "Backend Code Quality:"
+	@echo "  make format         - Format code with ruff"
+	@echo "  make check          - Check code with ruff"
+	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
+	@echo "  make api-contract-lint - Check Flask response docs against returned schemas"
+	@echo "  make type-check     - Run type checks (pyrefly)"
+	@echo "  make type-check-core - Run core type checks (pyrefly)"
+	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
+	@echo "  make test-all       - Run full backend tests, including Docker-backed suites"
+	@echo ""
+	@echo "Docker Build Targets:"
+	@echo "  make build-web      - Build web Docker image"
+	@echo "  make build-api      - Build API Docker image"
+	@echo "  make build-sandbox-runtime - Build sandbox runtime Docker image"
+	@echo "  make build-all      - Build all Docker images"
+	@echo "  make push-all       - Push all Docker images"
+	@echo "  make build-push-all - Build and push all Docker images"
+
 # Phony targets
-.PHONY: build-web build-api push-web push-api build-all push-all build-push-all
+.PHONY: build-web build-api build-sandbox-runtime push-web push-api push-sandbox-runtime build-all push-all build-push-all build-push-sandbox-runtime dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint api-contract-lint type-check test test-all

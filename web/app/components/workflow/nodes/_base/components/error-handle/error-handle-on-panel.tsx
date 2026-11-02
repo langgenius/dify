@@ -1,90 +1,80 @@
-import { useCallback } from 'react'
+import type { DefaultValueForm } from './types'
+import type { Node } from '@/app/components/workflow/types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import Collapse from '../collapse'
-import { ErrorHandleTypeEnum } from './types'
+import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
+import {
+  Collapse,
+  CollapseActions,
+  CollapseContent,
+  CollapseHeader,
+  CollapseIndicator,
+  CollapseTitle,
+  CollapseTrigger,
+} from '../collapse'
+import DefaultValue from './default-value'
 import ErrorHandleTypeSelector from './error-handle-type-selector'
 import FailBranchCard from './fail-branch-card'
-import DefaultValue from './default-value'
-import {
-  useDefaultValue,
-  useErrorHandle,
-} from './hooks'
-import type { DefaultValueForm } from './types'
-import type {
-  CommonNodeType,
-  Node,
-} from '@/app/components/workflow/types'
-import Tooltip from '@/app/components/base/tooltip'
+import { useDefaultValue, useErrorHandle } from './hooks'
+import { ErrorHandleTypeEnum } from './types'
 
 type ErrorHandleProps = Pick<Node, 'id' | 'data'>
-const ErrorHandle = ({
-  id,
-  data,
-}: ErrorHandleProps) => {
-  const { t } = useTranslation()
+
+const ErrorHandle = ({ id, data }: ErrorHandleProps) => {
+  const titleId = useId()
+
+  const { t } = useTranslation(['workflow'])
   const { error_strategy, default_value } = data
-  const {
-    collapsed,
-    setCollapsed,
-    handleErrorHandleTypeChange,
-  } = useErrorHandle(id, data)
+  const { collapsed, setCollapsed, handleErrorHandleTypeChange } = useErrorHandle(id, data)
   const { handleFormChange } = useDefaultValue(id)
 
-  const getHandleErrorHandleTypeChange = useCallback((data: CommonNodeType) => {
-    return (value: ErrorHandleTypeEnum) => {
-      handleErrorHandleTypeChange(value, data)
-    }
-  }, [handleErrorHandleTypeChange])
+  const handleTypeChange = (value: ErrorHandleTypeEnum) => {
+    handleErrorHandleTypeChange(value, data)
+  }
 
-  const getHandleFormChange = useCallback((data: CommonNodeType) => {
-    return (v: DefaultValueForm) => {
-      handleFormChange(v, data)
-    }
-  }, [handleFormChange])
+  const handleDefaultValueChange = (value: DefaultValueForm) => {
+    handleFormChange(value, data)
+  }
 
   return (
-    <>
-      <div className='py-4'>
-        <Collapse
-          disabled={!error_strategy}
-          collapsed={collapsed}
-          onCollapse={setCollapsed}
-          hideCollapseIcon
-          trigger={
-            collapseIcon => (
-              <div className='flex grow items-center justify-between pr-4'>
-                <div className='flex items-center'>
-                  <div className='system-sm-semibold-uppercase mr-0.5 text-text-secondary'>
-                    {t('workflow.nodes.common.errorHandle.title')}
-                  </div>
-                  <Tooltip popupContent={t('workflow.nodes.common.errorHandle.tip')} />
-                  {collapseIcon}
-                </div>
-                <ErrorHandleTypeSelector
-                  value={error_strategy || ErrorHandleTypeEnum.none}
-                  onSelected={getHandleErrorHandleTypeChange(data)}
-                />
-              </div>
+    <div className="py-4">
+      <Collapse disabled={!error_strategy} collapsed={collapsed} onCollapse={setCollapsed}>
+        <CollapseHeader>
+          <CollapseTrigger>
+            <CollapseTitle>
+              <span id={titleId}>
+                {t(($) => $['nodes.common.errorHandle.title'], { ns: 'workflow' })}
+              </span>
+            </CollapseTitle>
+            {!!error_strategy && <CollapseIndicator />}
+          </CollapseTrigger>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={titleId} />
+            <InfotipContent aria-labelledby={titleId}>
+              {t(($) => $['nodes.common.errorHandle.tip'], { ns: 'workflow' })}
+            </InfotipContent>
+          </Infotip>
+          <CollapseActions>
+            <div className="pr-4">
+              <ErrorHandleTypeSelector
+                value={error_strategy || ErrorHandleTypeEnum.none}
+                onSelected={handleTypeChange}
+                allowDefaultValue={!hasAgentV2OutputRoutes(data)}
+              />
+            </div>
+          </CollapseActions>
+        </CollapseHeader>
+        <CollapseContent>
+          {error_strategy === ErrorHandleTypeEnum.failBranch && !collapsed && <FailBranchCard />}
+          {error_strategy === ErrorHandleTypeEnum.defaultValue &&
+            !collapsed &&
+            !!default_value?.length && (
+              <DefaultValue forms={default_value} onFormChange={handleDefaultValueChange} />
             )}
-        >
-          <>
-            {
-              error_strategy === ErrorHandleTypeEnum.failBranch && !collapsed && (
-                <FailBranchCard />
-              )
-            }
-            {
-              error_strategy === ErrorHandleTypeEnum.defaultValue && !collapsed && !!default_value?.length && (
-                <DefaultValue
-                  forms={default_value}
-                  onFormChange={getHandleFormChange(data)}
-                />
-              )
-            }
-          </>
-        </Collapse>
-      </div>
-    </>
+        </CollapseContent>
+      </Collapse>
+    </div>
   )
 }
 

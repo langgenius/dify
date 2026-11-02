@@ -1,0 +1,87 @@
+import type { ScheduleFrequency } from '../types'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectGroupLabel,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
+import { useTranslation } from 'react-i18next'
+
+type FrequencyOption = {
+  value: ScheduleFrequency
+  name: string
+}
+
+type FrequencySelectorProps = {
+  disabled?: boolean
+  frequency: ScheduleFrequency
+  onChange: (frequency: ScheduleFrequency) => void
+}
+
+const FrequencySelector = ({ frequency, onChange, disabled }: FrequencySelectorProps) => {
+  const { t } = useTranslation(['workflow', 'workflowIntegrations'])
+  const groupLabel = t(($) => $['nodes.triggerSchedule.frequency.label'], {
+    ns: 'workflowIntegrations',
+  })
+  const fieldLabel = t(($) => $['nodes.triggerSchedule.frequencyLabel'], { ns: 'workflow' })
+
+  const frequencies: FrequencyOption[] = [
+    {
+      value: 'hourly',
+      name: t(($) => $['nodes.triggerSchedule.frequency.hourly'], { ns: 'workflowIntegrations' }),
+    },
+    {
+      value: 'daily',
+      name: t(($) => $['nodes.triggerSchedule.frequency.daily'], { ns: 'workflowIntegrations' }),
+    },
+    {
+      value: 'weekly',
+      name: t(($) => $['nodes.triggerSchedule.frequency.weekly'], { ns: 'workflowIntegrations' }),
+    },
+    {
+      value: 'monthly',
+      name: t(($) => $['nodes.triggerSchedule.frequency.monthly'], { ns: 'workflowIntegrations' }),
+    },
+  ]
+  const selectedFrequency = frequencies.find((item) => item.value === frequency)
+
+  const handleFrequencyChange = (value: string | null) => {
+    const selected = frequencies.find((item) => item.value === value)
+    if (selected) onChange(selected.value)
+  }
+
+  return (
+    <Select
+      disabled={disabled}
+      key={`${frequency}-${groupLabel}`}
+      value={frequency}
+      onValueChange={handleFrequencyChange}
+    >
+      <div className="flex flex-col">
+        <SelectLabel className="text-xs">{fieldLabel}</SelectLabel>
+        <SelectTrigger className="w-full py-2">
+          {selectedFrequency?.name ??
+            t(($) => $['nodes.triggerSchedule.selectFrequency'], { ns: 'workflowIntegrations' })}
+        </SelectTrigger>
+      </div>
+      <SelectContent>
+        <SelectGroup>
+          <SelectGroupLabel>{groupLabel}</SelectGroupLabel>
+          {frequencies.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              <SelectItemText>{item.name}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  )
+}
+
+export default FrequencySelector

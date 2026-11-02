@@ -1,0 +1,42 @@
+'use client'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { AuthCategory, PluginAuthInAgent } from '@/app/components/plugins/plugin-auth'
+import { CollectionType } from '@/app/components/tools/types'
+
+type ToolAuthorizationSectionProps = {
+  currentProvider?: ToolWithProvider
+  credentialId?: string
+  onAuthorizationItemClick: (id: string) => void
+}
+
+export function ToolAuthorizationSection({
+  currentProvider,
+  credentialId,
+  onAuthorizationItemClick,
+}: ToolAuthorizationSectionProps) {
+  // Only show for built-in providers that allow deletion
+  const shouldShow =
+    currentProvider &&
+    currentProvider.type === CollectionType.builtIn &&
+    currentProvider.allow_delete
+
+  if (!shouldShow) return null
+
+  return (
+    <>
+      <Separator className="my-1 h-[0.5px]" />
+      <div className="px-4 py-2">
+        <PluginAuthInAgent
+          pluginPayload={{
+            provider: currentProvider.name,
+            category: AuthCategory.tool,
+            providerType: currentProvider.type,
+          }}
+          credentialId={credentialId}
+          onAuthorizationItemClick={onAuthorizationItemClick}
+        />
+      </div>
+    </>
+  )
+}

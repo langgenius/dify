@@ -1,9 +1,24 @@
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
 
-from pydantic import BaseModel, ConfigDict
 
-from models.dataset import Document
-from models.model import UploadFile
+class UploadFileExtractionInput(BaseModel):
+    """Detached values required to extract one tenant-owned upload."""
+
+    id: str
+    tenant_id: str
+    key: str
+    created_by: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StoredDocumentExtractionInput(BaseModel):
+    """Detached document values needed to record a source's last edited time."""
+
+    id: str
+    tenant_id: str
+    dataset_id: str
+    data_source_info_dict: dict[str, object] | None
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NotionInfo(BaseModel):
@@ -11,23 +26,19 @@ class NotionInfo(BaseModel):
     Notion import info.
     """
 
-    notion_workspace_id: str
+    credential_id: str | None = None
+    notion_workspace_id: str | None = ""
     notion_obj_id: str
     notion_page_type: str
-    document: Optional[Document] = None
+    document: StoredDocumentExtractionInput | None = None
     tenant_id: str
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    def __init__(self, **data) -> None:
-        super().__init__(**data)
+    notion_access_token: str | None = Field(default=None, exclude=True, repr=False)
 
 
 class WebsiteInfo(BaseModel):
     """
     website import info.
     """
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     provider: str
     job_id: str
@@ -43,11 +54,7 @@ class ExtractSetting(BaseModel):
     """
 
     datasource_type: str
-    upload_file: Optional[UploadFile] = None
-    notion_info: Optional[NotionInfo] = None
-    website_info: Optional[WebsiteInfo] = None
-    document_model: Optional[str] = None
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    def __init__(self, **data) -> None:
-        super().__init__(**data)
+    upload_file: UploadFileExtractionInput | None = None
+    notion_info: NotionInfo | None = None
+    website_info: WebsiteInfo | None = None
+    document_model: str | None = None

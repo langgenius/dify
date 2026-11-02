@@ -1,7 +1,7 @@
 'use client'
-import classNames from '@/utils/classnames'
 import type { FC } from 'react'
-import React from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type IAppUnavailableProps = {
@@ -17,15 +17,24 @@ const AppUnavailable: FC<IAppUnavailableProps> = ({
   unknownReason,
   className,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
 
   return (
-    <div className={classNames('flex h-screen w-screen items-center justify-center', className)}>
-      <h1 className='mr-5 h-[50px] shrink-0 pr-5 text-[24px] font-medium leading-[50px]'
+    <div className={cn('flex h-screen w-screen items-center justify-center', className)}>
+      <h1
+        className="mr-5 h-12.5 shrink-0 pr-5 text-[24px] leading-12.5 font-medium"
         style={{
           borderRight: '1px solid rgba(0,0,0,.3)',
-        }}>{code}</h1>
-      <div className='text-sm'>{unknownReason || (isUnknownReason ? t('share.common.appUnknownError') : t('share.common.appUnavailable'))}</div>
+        }}
+      >
+        {code}
+      </h1>
+      <div className="text-sm">
+        {unknownReason ||
+          (isUnknownReason
+            ? t(($) => $['common.appUnknownError'], { ns: 'share' })
+            : t(($) => $['common.appUnavailable'], { ns: 'share' }))}
+      </div>
     </div>
   )
 }

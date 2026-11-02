@@ -1,54 +1,53 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { useDebounceFn } from 'ahooks'
-import type {
-  Plugin,
-} from '../types'
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
+  PluginsFromMarketplaceResponse,
   PluginsSearchParams,
-} from './types'
+} from '@dify/contracts/marketplace'
+import type { Plugin } from '../types'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useDebounceFn } from 'ahooks'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { postMarketplace } from '@/service/base'
+import { MARKETPLACE_CONTAINER_ID, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import {
   getFormattedPlugin,
   getMarketplaceCollectionsAndPlugins,
+  getMarketplacePluginsByCollectionId,
 } from './utils'
-import i18n from '@/i18n/i18next-config'
-import {
-  useMutationPluginsFromMarketplace,
-} from '@/service/use-plugins'
 
+/**
+ * @deprecated Use useMarketplaceCollectionsAndPlugins from query.ts instead
+ */
 export const useMarketplaceCollectionsAndPlugins = () => {
-  const [isLoading, setIsLoading] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
-  const [marketplaceCollections, setMarketplaceCollections] = useState<MarketplaceCollection[]>()
-  const [marketplaceCollectionPluginsMap, setMarketplaceCollectionPluginsMap] = useState<Record<string, Plugin[]>>()
+  const [queryParams, setQueryParams] = useState<CollectionsAndPluginsSearchParams>()
+  const [marketplaceCollectionsOverride, setMarketplaceCollections] =
+    useState<MarketplaceCollection[]>()
+  const [marketplaceCollectionPluginsMapOverride, setMarketplaceCollectionPluginsMap] =
+    useState<Record<string, Plugin[]>>()
 
-  const queryMarketplaceCollectionsAndPlugins = useCallback(async (query?: CollectionsAndPluginsSearchParams) => {
-    try {
-      setIsLoading(true)
-      setIsSuccess(false)
-      const { marketplaceCollections, marketplaceCollectionPluginsMap } = await getMarketplaceCollectionsAndPlugins(query)
-      setIsLoading(false)
-      setIsSuccess(true)
-      setMarketplaceCollections(marketplaceCollections)
-      setMarketplaceCollectionPluginsMap(marketplaceCollectionPluginsMap)
-    }
-    // eslint-disable-next-line unused-imports/no-unused-vars
-    catch (e) {
-      setIsLoading(false)
-      setIsSuccess(false)
-    }
-  }, [])
+  const { data, isFetching, isSuccess, isPending } = useQuery({
+    queryKey: ['marketplaceCollectionsAndPlugins', queryParams],
+    queryFn: ({ signal }) => getMarketplaceCollectionsAndPlugins(queryParams, { signal }),
+    enabled: queryParams !== undefined,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+    retry: false,
+  })
+
+  const queryMarketplaceCollectionsAndPlugins = useCallback(
+    (query?: CollectionsAndPluginsSearchParams) => {
+      setQueryParams(query ? { ...query } : {})
+    },
+    [],
+  )
+  const isLoading = !!queryParams && (isPending || (isFetching && !data))
 
   return {
-    marketplaceCollections,
+    marketplaceCollections: marketplaceCollectionsOverride ?? data?.marketplaceCollections,
     setMarketplaceCollections,
-    marketplaceCollectionPluginsMap,
+    marketplaceCollectionPluginsMap:
+      marketplaceCollectionPluginsMapOverride ?? data?.marketplaceCollectionPluginsMap,
     setMarketplaceCollectionPluginsMap,
     queryMarketplaceCollectionsAndPlugins,
     isLoading,
@@ -56,122 +55,192 @@ export const useMarketplaceCollectionsAndPlugins = () => {
   }
 }
 
-export const useMarketplacePlugins = () => {
-  const {
-    data,
-    mutateAsync,
-    reset,
-    isPending,
-  } = useMutationPluginsFromMarketplace()
-
-  const [prevPlugins, setPrevPlugins] = useState<Plugin[] | undefined>()
-  const resetPlugins = useCallback(() => {
-    reset()
-    setPrevPlugins(undefined)
-  }, [reset])
-  const handleUpdatePlugins = useCallback((pluginsSearchParams: PluginsSearchParams) => {
-    mutateAsync(pluginsSearchParams).then((res) => {
-      const currentPage = pluginsSearchParams.page || 1
-      const resPlugins = res.data.bundles || res.data.plugins
-      if (currentPage > 1) {
-        setPrevPlugins(prevPlugins => [...(prevPlugins || []), ...resPlugins.map((plugin) => {
-          return getFormattedPlugin(plugin)
-        })])
-      }
-      else {
-        setPrevPlugins(resPlugins.map((plugin) => {
-          return getFormattedPlugin(plugin)
-        }))
-      }
-    })
-  }, [mutateAsync])
-  const queryPlugins = useCallback((pluginsSearchParams: PluginsSearchParams) => {
-    handleUpdatePlugins(pluginsSearchParams)
-  }, [handleUpdatePlugins])
-
-  const { run: queryPluginsWithDebounced, cancel: cancelQueryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams: PluginsSearchParams) => {
-    handleUpdatePlugins(pluginsSearchParams)
-  }, {
-    wait: 500,
+export const useMarketplacePluginsByCollectionId = (
+  collectionId?: string,
+  query?: CollectionsAndPluginsSearchParams,
+) => {
+  const { data, isFetching, isSuccess, isPending } = useQuery({
+    queryKey: ['marketplaceCollectionPlugins', collectionId, query],
+    queryFn: ({ signal }) => {
+      if (!collectionId) return Promise.resolve<Plugin[]>([])
+      return getMarketplacePluginsByCollectionId(collectionId, query, { signal })
+    },
+    enabled: !!collectionId,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+    retry: false,
   })
 
   return {
-    plugins: prevPlugins,
-    total: data?.data?.total,
-    resetPlugins,
-    queryPlugins,
-    queryPluginsWithDebounced,
-    cancelQueryPluginsWithDebounced,
-    isLoading: isPending,
+    plugins: data || [],
+    isLoading: !!collectionId && (isPending || (isFetching && !data)),
+    isSuccess,
   }
 }
+/**
+ * @deprecated Use useMarketplacePlugins from query.ts instead
+ */
+export const useMarketplacePlugins = (enabled = true) => {
+  const [queryParams, setQueryParams] = useState<PluginsSearchParams>()
 
-export const useMixedTranslation = (localeFromOuter?: string) => {
-  let t = useTranslation().t
+  const normalizeParams = useCallback((pluginsSearchParams: PluginsSearchParams) => {
+    const page_size = pluginsSearchParams.page_size || 40
 
-  if (localeFromOuter)
-    t = i18n.getFixedT(localeFromOuter)
+    return {
+      ...pluginsSearchParams,
+      page_size,
+    }
+  }, [])
+
+  const marketplacePluginsQuery = useInfiniteQuery({
+    queryKey: ['marketplacePlugins', queryParams],
+    queryFn: async ({ pageParam = 1, signal }) => {
+      if (!queryParams) {
+        return {
+          plugins: [] as Plugin[],
+          total: 0,
+          page: 1,
+          page_size: 40,
+        }
+      }
+
+      const params = normalizeParams(queryParams)
+      const { query, sort_by, sort_order, category, tags, exclude, type, page_size } = params
+      const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
+
+      try {
+        const res = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>(
+          `/${pluginOrBundle}/search/advanced`,
+          {
+            body: {
+              page: pageParam,
+              page_size,
+              query,
+              sort_by,
+              sort_order,
+              category: category !== 'all' ? category : '',
+              tags,
+              exclude,
+              type,
+            },
+            signal,
+          },
+        )
+        const resPlugins = res.data.bundles || res.data.plugins || []
+
+        return {
+          plugins: resPlugins.map((plugin) => getFormattedPlugin(plugin)),
+          total: res.data.total,
+          page: pageParam,
+          page_size,
+        }
+      } catch {
+        return {
+          plugins: [],
+          total: 0,
+          page: pageParam,
+          page_size,
+        }
+      }
+    },
+    getNextPageParam: (lastPage) => {
+      const nextPage = lastPage.page + 1
+      const loaded = lastPage.page * lastPage.page_size
+      return loaded < (lastPage.total || 0) ? nextPage : undefined
+    },
+    initialPageParam: 1,
+    enabled: enabled && !!queryParams,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+    retry: false,
+  })
+
+  const resetQueryParams = useCallback(() => {
+    setQueryParams(undefined)
+  }, [])
+
+  const handleUpdatePlugins = useCallback(
+    (pluginsSearchParams: PluginsSearchParams) => {
+      setQueryParams(normalizeParams(pluginsSearchParams))
+    },
+    [normalizeParams],
+  )
+
+  const { run: queryPluginsWithDebounced, cancel: cancelQueryPluginsWithDebounced } = useDebounceFn(
+    (pluginsSearchParams: PluginsSearchParams) => {
+      handleUpdatePlugins(pluginsSearchParams)
+    },
+    {
+      wait: 500,
+    },
+  )
+
+  const hasQuery = !!queryParams
+  const hasData = marketplacePluginsQuery.data !== undefined
+  const plugins =
+    hasQuery && hasData
+      ? marketplacePluginsQuery.data.pages.flatMap((page) => page.plugins)
+      : undefined
+  const total = hasQuery && hasData ? marketplacePluginsQuery.data.pages?.[0]?.total : undefined
+  const isPluginsLoading =
+    enabled &&
+    hasQuery &&
+    (marketplacePluginsQuery.isPending ||
+      (marketplacePluginsQuery.isFetching && !marketplacePluginsQuery.data))
 
   return {
-    t,
+    plugins,
+    total,
+    resetQueryParams,
+    queryPlugins: handleUpdatePlugins,
+    queryPluginsWithDebounced,
+    cancelQueryPluginsWithDebounced,
+    isLoading: isPluginsLoading,
+    isFetchingNextPage: marketplacePluginsQuery.isFetchingNextPage,
+    hasNextPage: marketplacePluginsQuery.hasNextPage,
+    fetchNextPage: marketplacePluginsQuery.fetchNextPage,
+    page:
+      marketplacePluginsQuery.data?.pages?.length ||
+      (marketplacePluginsQuery.isPending && hasQuery ? 1 : 0),
   }
 }
 
 export const useMarketplaceContainerScroll = (
   callback: () => void,
-  scrollContainerId = 'marketplace-container',
+  scrollContainerId = MARKETPLACE_CONTAINER_ID,
 ) => {
-  const container = document.getElementById(scrollContainerId)
-
-  const handleScroll = useCallback((e: Event) => {
-    const target = e.target as HTMLDivElement
-    const {
-      scrollTop,
-      scrollHeight,
-      clientHeight,
-    } = target
-    if (scrollTop + clientHeight >= scrollHeight - 5 && scrollTop > 0)
-      callback()
-  }, [callback])
+  // The callback closes over isFetching, so its identity flips on every fetch
+  // boundary. Re-subscribing on each flip dropped the scroll events in that
+  // window; a ref keeps one listener for the container's lifetime.
+  const callbackRef = useRef(callback)
+  callbackRef.current = callback
 
   useEffect(() => {
-    if (container)
-      container.addEventListener('scroll', handleScroll)
+    const container = document.getElementById(scrollContainerId)
+    if (!container) return
+
+    // scrollTop/scrollHeight/clientHeight force a synchronous layout, so
+    // measuring per scroll event janks the scroll. Worse, every threshold hit
+    // calls fetchNextPage, which defaults to cancelRefetch: true — a burst
+    // aborts and restarts the in-flight page request, and the backend counts
+    // those aborts against its search circuit breaker. One measurement per
+    // frame is both smoother and quieter on the wire.
+    let frame = 0
+    const handleScroll = () => {
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        const { scrollTop, scrollHeight, clientHeight } = container
+        if (scrollTop > 0 && scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD)
+          callbackRef.current()
+      })
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
 
     return () => {
-      if (container)
-        container.removeEventListener('scroll', handleScroll)
+      if (frame) cancelAnimationFrame(frame)
+      container.removeEventListener('scroll', handleScroll)
     }
-  }, [container, handleScroll])
-}
-
-export const useSearchBoxAutoAnimate = (searchBoxAutoAnimate?: boolean) => {
-  const [searchBoxCanAnimate, setSearchBoxCanAnimate] = useState(true)
-
-  const handleSearchBoxCanAnimateChange = useCallback(() => {
-    if (!searchBoxAutoAnimate) {
-      const clientWidth = document.documentElement.clientWidth
-
-      if (clientWidth < 1400)
-        setSearchBoxCanAnimate(false)
-      else
-        setSearchBoxCanAnimate(true)
-    }
-  }, [searchBoxAutoAnimate])
-
-  useEffect(() => {
-    handleSearchBoxCanAnimateChange()
-  }, [handleSearchBoxCanAnimateChange])
-
-  useEffect(() => {
-    window.addEventListener('resize', handleSearchBoxCanAnimateChange)
-
-    return () => {
-      window.removeEventListener('resize', handleSearchBoxCanAnimateChange)
-    }
-  }, [handleSearchBoxCanAnimateChange])
-
-  return {
-    searchBoxCanAnimate,
-  }
+  }, [scrollContainerId])
 }

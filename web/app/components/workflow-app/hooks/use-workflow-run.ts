@@ -1,43 +1,136 @@
-import { useCallback } from 'react'
-import {
-  useReactFlow,
-  useStoreApi,
-} from 'reactflow'
-import produce from 'immer'
-import { v4 as uuidV4 } from 'uuid'
-import { usePathname } from 'next/navigation'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
-import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import type { HandleRunOptions } from './use-workflow-run-utils'
+import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
+import type { Node } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
-import { ssePost } from '@/service/base'
-import { stopWorkflowRun } from '@/service/workflow'
-import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { noop } from 'es-toolkit/function'
+import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
+import { useCallback, useRef } from 'react'
+import { useReactFlow, useStoreApi } from 'reactflow'
+import { v4 as uuidV4 } from 'uuid'
+import { trackEvent } from '@/app/components/base/amplitude'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import type { VersionHistory } from '@/types/workflow'
-import { noop } from 'lodash-es'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { useInvalidAllLastRun } from '@/service/use-workflow'
-import { useSetWorkflowVarsWithValue } from '../../workflow/hooks/use-fetch-workflow-inspect-vars'
-import { useConfigsMap } from './use-configs-map'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import {
+  editorResourceAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
+import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
+import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
+import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { usePathname } from '@/next/navigation'
+import { ssePost } from '@/service/base'
+import { consoleQuery } from '@/service/console'
+import { useInvalidateAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
+import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
+import {
+  createBaseWorkflowRunCallbacks,
+  createFinalWorkflowRunCallbacks,
+} from './use-workflow-run-callbacks'
+import {
+  applyRunningStateForMode,
+  applyStoppedState,
+  buildRunHistoryUrl,
+  buildTTSConfig,
+  buildWorkflowRunRequestBody,
+  clearListeningState,
+  clearWindowDebugControllers,
+  isDebuggableTriggerType,
+  mapPublishedWorkflowFeatures,
+  normalizePublishedWorkflowNodes,
+  resolveWorkflowRunUrl,
+  runTriggerDebug,
+  validateWorkflowRunRequest,
+} from './use-workflow-run-utils'
 
-export const useWorkflowRun = () => {
+type WorkflowRunParams = Record<string, unknown> & {
+  token?: string
+  appId?: string
+}
+
+type DebugAbortController = {
+  abort: () => void
+}
+
+type WorkflowDebugWindow = Window & {
+  __webhookDebugAbortController?: DebugAbortController
+  __pluginDebugAbortController?: DebugAbortController
+  __scheduleDebugAbortController?: DebugAbortController
+  __allTriggersDebugAbortController?: DebugAbortController
+}
+
+const WORKFLOW_DATA_CHUNK_SIZE = 900
+
+const stringifyWorkflowData = (workflowData: unknown) => {
+  if (!workflowData) return undefined
+
+  try {
+    return JSON.stringify(workflowData)
+  } catch {
+    return undefined
+  }
+}
+
+const chunkWorkflowData = (serializedWorkflowData: string) => {
+  const workflowDataChars = Array.from(serializedWorkflowData)
+  const chunks: string[] = []
+
+  for (let index = 0; index < workflowDataChars.length; index += WORKFLOW_DATA_CHUNK_SIZE)
+    chunks.push(workflowDataChars.slice(index, index + WORKFLOW_DATA_CHUNK_SIZE).join(''))
+
+  return chunks
+}
+
+const buildWorkflowDataTrackingProperties = (workflowData: unknown) => {
+  const serializedWorkflowData = stringifyWorkflowData(workflowData)
+  if (!serializedWorkflowData) return {}
+
+  return {
+    workflow_data_chunks: chunkWorkflowData(serializedWorkflowData),
+  }
+}
+
+const getWorkflowStatus = (workflowData: unknown) => {
+  if (typeof workflowData !== 'object' || workflowData === null) return undefined
+
+  const result = (workflowData as Record<string, unknown>).result
+  if (typeof result !== 'object' || result === null) return undefined
+
+  const status = (result as Record<string, unknown>).status
+  return typeof status === 'string' ? status : undefined
+}
+
+const getWorkflowTracingCount = (workflowData: unknown) => {
+  if (typeof workflowData !== 'object' || workflowData === null) return undefined
+
+  const tracing = (workflowData as Record<string, unknown>).tracing
+  return Array.isArray(tracing) ? tracing.length : undefined
+}
+
+type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
+
+const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const pathname = usePathname()
-  const appId = useAppStore.getState().appDetail?.id
-  const invalidAllLastRun = useInvalidAllLastRun(appId as string)
-  const configsMap = useConfigsMap()
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    flowId: appId as string,
-    ...configsMap,
-  })
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
+  const resource = useAtomValue(editorResourceAtom)
+  const invalidAllLastRun = useInvalidateAllLastRun(resource)
+  const invalidateRunHistory = useInvalidateWorkflowRunHistory()
+
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
+
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const {
     handleWorkflowStarted,
@@ -45,6 +138,9 @@ export const useWorkflowRun = () => {
     handleWorkflowFailed,
     handleWorkflowNodeStarted,
     handleWorkflowNodeFinished,
+    handleWorkflowNodeHumanInputRequired,
+    handleWorkflowNodeHumanInputFormFilled,
+    handleWorkflowNodeHumanInputFormTimeout,
     handleWorkflowNodeIterationStarted,
     handleWorkflowNodeIterationNext,
     handleWorkflowNodeIterationFinished,
@@ -55,19 +151,14 @@ export const useWorkflowRun = () => {
     handleWorkflowAgentLog,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
+    handleWorkflowReasoning,
+    handleWorkflowPaused,
   } = useWorkflowRunEvent()
 
   const handleBackupDraft = useCallback(() => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
+    const { getNodes, edges } = store.getState()
     const { getViewport } = reactflow
-    const {
-      backupDraft,
-      setBackupDraft,
-      environmentVariables,
-    } = workflowStore.getState()
+    const { backupDraft, setBackupDraft, environmentVariables } = workflowStore.getState()
     const { features } = featuresStore!.getState()
 
     if (!backupDraft) {
@@ -83,20 +174,10 @@ export const useWorkflowRun = () => {
   }, [reactflow, workflowStore, store, featuresStore, doSyncWorkflowDraft])
 
   const handleLoadBackupDraft = useCallback(() => {
-    const {
-      backupDraft,
-      setBackupDraft,
-      setEnvironmentVariables,
-    } = workflowStore.getState()
+    const { backupDraft, setBackupDraft, setEnvironmentVariables } = workflowStore.getState()
 
     if (backupDraft) {
-      const {
-        nodes,
-        edges,
-        viewport,
-        features,
-        environmentVariables,
-      } = backupDraft
+      const { nodes, edges, viewport, features, environmentVariables } = backupDraft
       handleUpdateWorkflowCanvas({
         nodes,
         edges,
@@ -108,241 +189,367 @@ export const useWorkflowRun = () => {
     }
   }, [handleUpdateWorkflowCanvas, workflowStore, featuresStore])
 
-  const handleRun = useCallback(async (
-    params: any,
-    callback?: IOtherOptions,
-  ) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
-      draft.forEach((node) => {
-        node.data.selected = false
-        node.data._runningStatus = undefined
+  const handleRun = useCallback(
+    async (
+      params: WorkflowRunParams | null | undefined,
+      callback?: IOtherOptions,
+      options?: HandleRunOptions,
+    ) => {
+      const runMode = options?.mode ?? TriggerType.UserInput
+      const resolvedParams: WorkflowRunParams = params ?? {}
+      const { getNodes, setNodes } = store.getState()
+      const newNodes = produce(getNodes(), (draft: Node[]) => {
+        draft.forEach((node) => {
+          node.data.selected = false
+          node.data._runningStatus = undefined
+        })
       })
-    })
-    setNodes(newNodes)
-    await doSyncWorkflowDraft()
+      setNodes(newNodes)
+      await doSyncWorkflowDraft()
 
-    const {
-      onWorkflowStarted,
-      onWorkflowFinished,
-      onNodeStarted,
-      onNodeFinished,
-      onIterationStart,
-      onIterationNext,
-      onIterationFinish,
-      onLoopStart,
-      onLoopNext,
-      onLoopFinish,
-      onNodeRetry,
-      onAgentLog,
-      onError,
-      ...restCallback
-    } = callback || {}
-    workflowStore.setState({ historyWorkflowData: undefined })
-    const appDetail = useAppStore.getState().appDetail
-    const workflowContainer = document.getElementById('workflow-container')
+      const {
+        onWorkflowStarted,
+        onWorkflowFinished,
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onAgentLog,
+        onError,
+        onWorkflowPaused,
+        onHumanInputRequired,
+        onHumanInputFormFilled,
+        onHumanInputFormTimeout,
+        onCompleted,
+        ...restCallback
+      } = callback || {}
+      workflowStore.setState({ historyWorkflowData: undefined })
+      const runHistoryUrl = buildRunHistoryUrl(appDetail)
+      const workflowContainer = document.getElementById('workflow-container')
 
-    const {
-      clientWidth,
-      clientHeight,
-    } = workflowContainer!
+      const { clientWidth, clientHeight } = workflowContainer!
 
-    const isInWorkflowDebug = appDetail?.mode === 'workflow'
+      const isInWorkflowDebug = appDetail.mode === 'workflow'
 
-    let url = ''
-    if (appDetail?.mode === 'advanced-chat')
-      url = `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
+      const url = resolveWorkflowRunUrl(appDetail, runMode, isInWorkflowDebug)
+      const requestBody = buildWorkflowRunRequestBody(runMode, resolvedParams, options)
 
-    if (isInWorkflowDebug)
-      url = `/apps/${appDetail.id}/workflows/draft/run`
+      if (!url) return
 
-    const {
-      setWorkflowRunningData,
-    } = workflowStore.getState()
-    setWorkflowRunningData({
-      result: {
-        status: WorkflowRunningStatus.Running,
-      },
-      tracing: [],
-      resultText: '',
-    })
+      const validationMessage = validateWorkflowRunRequest(runMode, options)
+      if (validationMessage) {
+        console.error(validationMessage)
+        return
+      }
 
-    let ttsUrl = ''
-    let ttsIsPublic = false
-    if (params.token) {
-      ttsUrl = '/text-to-audio'
-      ttsIsPublic = true
-    }
-    else if (params.appId) {
-      if (pathname.search('explore/installed') > -1)
-        ttsUrl = `/installed-apps/${params.appId}/text-to-audio`
-      else
-        ttsUrl = `/apps/${params.appId}/text-to-audio`
-    }
-    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = null
 
-    ssePost(
-      url,
-      {
-        body: params,
-      },
-      {
-        onWorkflowStarted: (params) => {
-          handleWorkflowStarted(params)
+      const {
+        setWorkflowRunningData,
+        setIsListening,
+        setShowVariableInspectPanel,
+        setListeningTriggerType,
+        setListeningTriggerNodeIds,
+        setListeningTriggerIsAll,
+        setListeningTriggerNodeId,
+      } = workflowStore.getState()
 
-          if (onWorkflowStarted)
-            onWorkflowStarted(params)
+      applyRunningStateForMode(
+        {
+          setWorkflowRunningData,
+          setIsListening,
+          setShowVariableInspectPanel,
+          setListeningTriggerType,
+          setListeningTriggerNodeIds,
+          setListeningTriggerIsAll,
+          setListeningTriggerNodeId,
         },
-        onWorkflowFinished: (params) => {
-          handleWorkflowFinished(params)
+        runMode,
+        options,
+      )
 
-          if (onWorkflowFinished)
-            onWorkflowFinished(params)
-          if (isInWorkflowDebug) {
-            fetchInspectVars()
-            invalidAllLastRun()
-          }
-        },
-        onError: (params) => {
-          handleWorkflowFailed()
-
-          if (onError)
-            onError(params)
-        },
-        onNodeStarted: (params) => {
-          handleWorkflowNodeStarted(
-            params,
-            {
-              clientWidth,
-              clientHeight,
-            },
+      const { ttsUrl, ttsIsPublic } = buildTTSConfig(resolvedParams, pathname)
+      // Lazy initialization: Only create AudioPlayer when TTS is actually needed
+      // This prevents opening audio channel unnecessarily
+      let player: AudioPlayer | null = null
+      const getOrCreatePlayer = () => {
+        if (!player)
+          player = AudioPlayerManager.getInstance().getAudioPlayer(
+            ttsUrl,
+            ttsIsPublic,
+            uuidV4(),
+            'none',
+            'none',
+            noop,
           )
 
-          if (onNodeStarted)
-            onNodeStarted(params)
-        },
-        onNodeFinished: (params) => {
-          handleWorkflowNodeFinished(params)
+        return player
+      }
 
-          if (onNodeFinished)
-            onNodeFinished(params)
-        },
-        onIterationStart: (params) => {
-          handleWorkflowNodeIterationStarted(
-            params,
-            {
-              clientWidth,
-              clientHeight,
-            },
-          )
+      const clearAbortController = () => {
+        abortControllerRef.current = null
+        clearWindowDebugControllers(window as unknown as Record<string, unknown>)
+      }
 
-          if (onIterationStart)
-            onIterationStart(params)
-        },
-        onIterationNext: (params) => {
-          handleWorkflowNodeIterationNext(params)
+      const clearListeningStateInStore = () => {
+        const state = workflowStore.getState()
+        clearListeningState({
+          setIsListening: state.setIsListening,
+          setListeningTriggerType: state.setListeningTriggerType,
+          setListeningTriggerNodeId: state.setListeningTriggerNodeId,
+          setListeningTriggerNodeIds: state.setListeningTriggerNodeIds,
+          setListeningTriggerIsAll: state.setListeningTriggerIsAll,
+        })
+      }
 
-          if (onIterationNext)
-            onIterationNext(params)
-        },
-        onIterationFinish: (params) => {
-          handleWorkflowNodeIterationFinished(params)
+      const workflowRunEventHandlers = {
+        handleWorkflowStarted,
+        handleWorkflowFinished,
+        handleWorkflowFailed,
+        handleWorkflowNodeStarted,
+        handleWorkflowNodeFinished,
+        handleWorkflowNodeHumanInputRequired,
+        handleWorkflowNodeHumanInputFormFilled,
+        handleWorkflowNodeHumanInputFormTimeout,
+        handleWorkflowNodeIterationStarted,
+        handleWorkflowNodeIterationNext,
+        handleWorkflowNodeIterationFinished,
+        handleWorkflowNodeLoopStarted,
+        handleWorkflowNodeLoopNext,
+        handleWorkflowNodeLoopFinished,
+        handleWorkflowNodeRetry,
+        handleWorkflowAgentLog,
+        handleWorkflowTextChunk,
+        handleWorkflowTextReplace,
+        handleWorkflowReasoning,
+        handleWorkflowPaused,
+      }
+      const userCallbacks = {
+        onWorkflowStarted,
+        onWorkflowFinished,
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onAgentLog,
+        onError,
+        onWorkflowPaused,
+        onHumanInputRequired,
+        onHumanInputFormFilled,
+        onHumanInputFormTimeout,
+        onCompleted,
+      }
 
-          if (onIterationFinish)
-            onIterationFinish(params)
-        },
-        onLoopStart: (params) => {
-          handleWorkflowNodeLoopStarted(
-            params,
-            {
-              clientWidth,
-              clientHeight,
-            },
-          )
+      const getWorkflowRunningData = () => workflowStore.getState().workflowRunningData
 
-          if (onLoopStart)
-            onLoopStart(params)
-        },
-        onLoopNext: (params) => {
-          handleWorkflowNodeLoopNext(params)
+      const trackWorkflowRunFailed = (eventParams: unknown, workflowData: unknown) => {
+        const payload =
+          typeof eventParams === 'object' && eventParams !== null
+            ? (eventParams as Record<string, unknown>)
+            : undefined
+        const reason =
+          typeof eventParams === 'string'
+            ? eventParams
+            : eventParams instanceof Error
+              ? eventParams.message
+              : typeof payload?.error === 'string'
+                ? payload.error
+                : undefined
+        const nodeType = typeof payload?.node_type === 'string' ? payload.node_type : undefined
+        const workflowDataTrackingProperties = buildWorkflowDataTrackingProperties(workflowData)
 
-          if (onLoopNext)
-            onLoopNext(params)
-        },
-        onLoopFinish: (params) => {
-          handleWorkflowNodeLoopFinished(params)
+        trackEvent('workflow_run_failed', {
+          workflow_id: appId,
+          reason,
+          node_type: nodeType,
+          data: {
+            workflow_status: getWorkflowStatus(workflowData),
+            workflow_tracing_count: getWorkflowTracingCount(workflowData),
+            ...workflowDataTrackingProperties,
+          },
+        })
+      }
 
-          if (onLoopFinish)
-            onLoopFinish(params)
-        },
-        onNodeRetry: (params) => {
-          handleWorkflowNodeRetry(params)
+      const baseSseOptions = createBaseWorkflowRunCallbacks({
+        clientWidth,
+        clientHeight,
+        runHistoryUrl,
+        isInWorkflowDebug,
+        fetchInspectVars,
+        invalidAllLastRun,
+        invalidateRunHistory,
+        clearAbortController,
+        clearListeningState: clearListeningStateInStore,
+        getWorkflowRunningData,
+        trackWorkflowRunFailed,
+        handlers: workflowRunEventHandlers,
+        callbacks: userCallbacks,
+        restCallback,
+        getOrCreatePlayer,
+      })
 
-          if (onNodeRetry)
-            onNodeRetry(params)
-        },
-        onAgentLog: (params) => {
-          handleWorkflowAgentLog(params)
+      if (isDebuggableTriggerType(runMode)) {
+        await runTriggerDebug({
+          debugType: runMode,
+          url,
+          requestBody,
+          baseSseOptions,
+          controllerTarget: window as unknown as Record<string, unknown>,
+          setAbortController: (controller) => {
+            abortControllerRef.current = controller
+          },
+          clearAbortController,
+          clearListeningState: clearListeningStateInStore,
+          setWorkflowRunningData,
+        })
+        return
+      }
 
-          if (onAgentLog)
-            onAgentLog(params)
+      const finalCallbacks = createFinalWorkflowRunCallbacks({
+        clientWidth,
+        clientHeight,
+        runHistoryUrl,
+        isInWorkflowDebug,
+        fetchInspectVars,
+        invalidAllLastRun,
+        invalidateRunHistory,
+        clearAbortController,
+        clearListeningState: clearListeningStateInStore,
+        getWorkflowRunningData,
+        trackWorkflowRunFailed,
+        handlers: workflowRunEventHandlers,
+        callbacks: userCallbacks,
+        restCallback,
+        baseSseOptions,
+        player,
+        setAbortController: (controller) => {
+          abortControllerRef.current = controller
         },
-        onTextChunk: (params) => {
-          handleWorkflowTextChunk(params)
+      })
+
+      ssePost(
+        url,
+        {
+          body: requestBody,
         },
-        onTextReplace: (params) => {
-          handleWorkflowTextReplace(params)
-        },
-        onTTSChunk: (messageId: string, audio: string) => {
-          if (!audio || audio === '')
-            return
-          player.playAudioWithAudio(audio, true)
-          AudioPlayerManager.getInstance().resetMsgId(messageId)
-        },
-        onTTSEnd: (messageId: string, audio: string) => {
-          player.playAudioWithAudio(audio, false)
-        },
-        ...restCallback,
-      },
-    )
-  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace],
+        finalCallbacks,
+      )
+    },
+    [
+      store,
+      doSyncWorkflowDraft,
+      workflowStore,
+      pathname,
+      appDetail,
+      handleWorkflowFailed,
+      appId,
+      handleWorkflowStarted,
+      handleWorkflowFinished,
+      fetchInspectVars,
+      invalidAllLastRun,
+      invalidateRunHistory,
+      handleWorkflowNodeStarted,
+      handleWorkflowNodeFinished,
+      handleWorkflowNodeIterationStarted,
+      handleWorkflowNodeIterationNext,
+      handleWorkflowNodeIterationFinished,
+      handleWorkflowNodeLoopStarted,
+      handleWorkflowNodeLoopNext,
+      handleWorkflowNodeLoopFinished,
+      handleWorkflowNodeRetry,
+      handleWorkflowAgentLog,
+      handleWorkflowTextChunk,
+      handleWorkflowTextReplace,
+      handleWorkflowReasoning,
+      handleWorkflowPaused,
+      handleWorkflowNodeHumanInputRequired,
+      handleWorkflowNodeHumanInputFormFilled,
+      handleWorkflowNodeHumanInputFormTimeout,
+    ],
   )
 
-  const handleStopRun = useCallback((taskId: string) => {
-    const appId = useAppStore.getState().appDetail?.id
+  const { mutate: stopRun } = useMutation(
+    consoleQuery.apps.byAppId.workflowRuns.tasks.byTaskId.stop.post.mutationOptions(),
+  )
 
-    stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
-  }, [])
+  const handleStopRun = useCallback(
+    (taskId: string) => {
+      const setStoppedState = () => {
+        const {
+          setWorkflowRunningData,
+          setIsListening,
+          setShowVariableInspectPanel,
+          setListeningTriggerType,
+          setListeningTriggerNodeId,
+        } = workflowStore.getState()
 
-  const handleRestoreFromPublishedWorkflow = useCallback((publishedWorkflow: VersionHistory) => {
-    const nodes = publishedWorkflow.graph.nodes.map(node => ({ ...node, selected: false, data: { ...node.data, selected: false } }))
-    const edges = publishedWorkflow.graph.edges
-    const viewport = publishedWorkflow.graph.viewport!
-    handleUpdateWorkflowCanvas({
-      nodes,
-      edges,
-      viewport,
-    })
-    const mappedFeatures = {
-      opening: {
-        enabled: !!publishedWorkflow.features.opening_statement || !!publishedWorkflow.features.suggested_questions.length,
-        opening_statement: publishedWorkflow.features.opening_statement,
-        suggested_questions: publishedWorkflow.features.suggested_questions,
-      },
-      suggested: publishedWorkflow.features.suggested_questions_after_answer,
-      text2speech: publishedWorkflow.features.text_to_speech,
-      speech2text: publishedWorkflow.features.speech_to_text,
-      citation: publishedWorkflow.features.retriever_resource,
-      moderation: publishedWorkflow.features.sensitive_word_avoidance,
-      file: publishedWorkflow.features.file_upload,
-    }
+        applyStoppedState({
+          setWorkflowRunningData,
+          setIsListening,
+          setShowVariableInspectPanel,
+          setListeningTriggerType,
+          setListeningTriggerNodeId,
+        })
+      }
 
-    featuresStore?.setState({ features: mappedFeatures })
-    workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])
-  }, [featuresStore, handleUpdateWorkflowCanvas, workflowStore])
+      if (taskId) {
+        stopRun({ params: { app_id: appId, task_id: taskId } })
+        setStoppedState()
+        return
+      }
+
+      // Try webhook debug controller from global variable first
+      const debugWindow = window as WorkflowDebugWindow
+
+      const webhookController = debugWindow.__webhookDebugAbortController
+      if (webhookController) webhookController.abort()
+
+      const pluginController = debugWindow.__pluginDebugAbortController
+      if (pluginController) pluginController.abort()
+
+      const scheduleController = debugWindow.__scheduleDebugAbortController
+      if (scheduleController) scheduleController.abort()
+
+      const allTriggerController = debugWindow.__allTriggersDebugAbortController
+      if (allTriggerController) allTriggerController.abort()
+
+      // Also try the ref
+      if (abortControllerRef.current) abortControllerRef.current.abort()
+
+      abortControllerRef.current = null
+      setStoppedState()
+    },
+    [appId, stopRun, workflowStore],
+  )
+
+  const handleRestoreFromPublishedWorkflow = useCallback(
+    (publishedWorkflow: FetchWorkflowDraftResponse) => {
+      const nodes = normalizePublishedWorkflowNodes(publishedWorkflow)
+      const edges = publishedWorkflow.graph.edges
+      const viewport = publishedWorkflow.graph.viewport!
+      handleUpdateWorkflowCanvas({
+        nodes,
+        edges,
+        viewport,
+      })
+      featuresStore?.setState({ features: mapPublishedWorkflowFeatures(publishedWorkflow) })
+      workflowStore
+        .getState()
+        .setEnvironmentVariables(publishedWorkflow.environment_variables || [])
+    },
+    [featuresStore, handleUpdateWorkflowCanvas, workflowStore],
+  )
 
   return {
     handleBackupDraft,
@@ -351,4 +558,16 @@ export const useWorkflowRun = () => {
     handleStopRun,
     handleRestoreFromPublishedWorkflow,
   }
+}
+
+export const useWorkflowRunByCanEdit = (canEdit: boolean) => {
+  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
+
+  return useWorkflowRunBase(doSyncWorkflowDraft)
+}
+
+export const useWorkflowRun = () => {
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+
+  return useWorkflowRunBase(doSyncWorkflowDraft)
 }

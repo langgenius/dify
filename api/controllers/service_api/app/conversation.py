@@ -1,126 +1,469 @@
-from flask_restful import Resource, marshal_with, reqparse
-from flask_restful.inputs import int_range
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from datetime import datetime
+from http import HTTPStatus
+from typing import Annotated, Any, Literal
+from uuid import UUID
+
+from flask_restx import Resource
+from pydantic import BaseModel, Field, JsonValue, WithJsonSchema, field_validator
 
 import services
-from controllers.service_api import api
+from controllers.common.controller_schemas import ConversationRenamePayload
+from controllers.common.errors import (
+    ConversationCursorNotFoundHTTPError,
+    ConversationFirstMessageNotFoundHTTPError,
+    ConversationNotFoundHTTPError,
+    ConversationVariableNotFoundHTTPError,
+    ConversationVariableTypeMismatchHTTPError,
+)
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
+from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
-from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
-from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
+from controllers.service_api.flask_admission import service_api_end_user_admission
+from controllers.service_api.schema import expect_user_json, expect_with_user
+from controllers.service_api.wraps import FetchUserArg, WhereisUserArg
+from extensions.ext_application_services import application_services
+from fields._value_type_serializer import serialize_value_type
+from fields.base import ResponseModel
 from fields.conversation_fields import (
-    conversation_delete_fields,
-    conversation_infinite_scroll_pagination_fields,
-    simple_conversation_fields,
+    ConversationInfiniteScrollPagination,
+    SimpleConversation,
 )
-from fields.conversation_variable_fields import (
-    conversation_variable_infinite_scroll_pagination_fields,
-)
-from libs.helper import uuid_value
-from models.model import App, AppMode, EndUser
-from services.conversation_service import ConversationService
+from graphon.variables.types import SegmentType
+from libs.external_api import error_responses
+from libs.helper import UUIDStrOrEmpty, dump_response, to_timestamp
+from machinery.context import ServiceApiEndUserContext
+from models.model import AppMode
+from services.entities.conversation_entities import EndUserConversationRef, EndUserConversationScope
+from services.errors.message import MessageNotExistsError
+
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
+Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
 
 
-class ConversationApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    @marshal_with(conversation_infinite_scroll_pagination_fields)
-    def get(self, app_model: App, end_user: EndUser):
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("last_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument(
-            "sort_by",
-            type=str,
-            choices=["created_at", "-created_at", "updated_at", "-updated_at"],
-            required=False,
-            default="-updated_at",
-            location="args",
-        )
-        args = parser.parse_args()
-
-        try:
-            with Session(db.engine) as session:
-                return ConversationService.pagination_by_last_id(
-                    session=session,
-                    app_model=app_model,
-                    user=end_user,
-                    last_id=args["last_id"],
-                    limit=args["limit"],
-                    invoke_from=InvokeFrom.SERVICE_API,
-                    sort_by=args["sort_by"],
-                )
-        except services.errors.conversation.LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+class ConversationListQuery(BaseModel):
+    last_id: UUIDStrOrEmpty | None = Field(
+        default=None,
+        description="The ID of the last record on the current page. Used to fetch the next page.",
+    )
+    limit: int = Field(default=20, ge=1, le=100, description="Number of records to return.")
+    sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = Field(
+        default="-updated_at",
+        description="Sorting field. Use the `-` prefix for descending order.",
+    )
 
 
-class ConversationDetailApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    @marshal_with(conversation_delete_fields)
-    def delete(self, app_model: App, end_user: EndUser, c_id):
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
+class ConversationVariablesQuery(BaseModel):
+    last_id: UUIDStrOrEmpty | None = Field(
+        default=None,
+        description="The ID of the last record on the current page. Used to fetch the next page.",
+    )
+    limit: int = Field(default=20, ge=1, le=100, description="Number of records to return.")
+    variable_name: str | None = Field(
+        default=None,
+        description="Filter variables by a specific name.",
+        min_length=1,
+        max_length=255,
+    )
 
-        conversation_id = str(c_id)
+    @field_validator("variable_name", mode="before")
+    @classmethod
+    def validate_variable_name(cls, v: str | None) -> str | None:
+        """
+        Validate variable_name to prevent injection attacks.
+        """
+        if v is None:
+            return v
 
-        try:
-            ConversationService.delete(app_model, conversation_id, end_user)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        return {"result": "success"}, 204
-
-
-class ConversationRenameApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    @marshal_with(simple_conversation_fields)
-    def post(self, app_model: App, end_user: EndUser, c_id):
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
-
-        conversation_id = str(c_id)
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=False, location="json")
-        parser.add_argument("auto_generate", type=bool, required=False, default=False, location="json")
-        args = parser.parse_args()
-
-        try:
-            return ConversationService.rename(app_model, conversation_id, end_user, args["name"], args["auto_generate"])
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-
-
-class ConversationVariablesApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    @marshal_with(conversation_variable_infinite_scroll_pagination_fields)
-    def get(self, app_model: App, end_user: EndUser, c_id):
-        # conversational variable only for chat app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
-
-        conversation_id = str(c_id)
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("last_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        args = parser.parse_args()
-
-        try:
-            return ConversationService.get_conversational_variable(
-                app_model, conversation_id, end_user, args["limit"], args["last_id"]
+        # Only allow safe characters: alphanumeric, underscore, hyphen, period
+        if not v.replace("-", "").replace("_", "").replace(".", "").isalnum():
+            raise ValueError(
+                "Variable name can only contain letters, numbers, hyphens (-), underscores (_), and periods (.)"
             )
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+
+        # Prevent SQL injection patterns
+        dangerous_patterns = ["'", '"', ";", "--", "/*", "*/", "xp_", "sp_"]
+        for pattern in dangerous_patterns:
+            if pattern in v.lower():
+                raise ValueError(f"Variable name contains invalid characters: {pattern}")
+
+        return v
 
 
-api.add_resource(ConversationRenameApi, "/conversations/<uuid:c_id>/name", endpoint="conversation_name")
-api.add_resource(ConversationApi, "/conversations")
-api.add_resource(ConversationDetailApi, "/conversations/<uuid:c_id>", endpoint="conversation_detail")
-api.add_resource(ConversationVariablesApi, "/conversations/<uuid:c_id>/variables", endpoint="conversation_variables")
+class ConversationVariableUpdatePayload(BaseModel):
+    value: JsonValue = Field(description="The new value for the variable. Must match the variable's expected type.")
+
+
+class ConversationVariableResponse(ResponseModel):
+    id: UUIDString
+    name: str
+    value_type: str
+    value: str | None = None
+    description: str | None = None
+    created_at: Int64 | None = None
+    updated_at: Int64 | None = None
+
+    @field_validator("value_type", mode="before")
+    @classmethod
+    def normalize_value_type(cls, value: Any) -> str:
+        exposed_type = getattr(value, "exposed_type", None)
+        if callable(exposed_type):
+            return str(exposed_type())
+        if isinstance(value, str):
+            try:
+                return str(SegmentType(value).exposed_type())
+            except ValueError:
+                return value
+        try:
+            return serialize_value_type(value)
+        except (AttributeError, TypeError, ValueError):
+            pass
+
+        try:
+            return serialize_value_type({"value_type": value})
+        except (AttributeError, TypeError, ValueError):
+            value_attr = getattr(value, "value", None)
+            if value_attr is not None:
+                return str(value_attr)
+            return str(value)
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def normalize_value(cls, value: Any | None) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(value)
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class ConversationVariableInfiniteScrollPaginationResponse(ResponseModel):
+    limit: int
+    has_more: bool
+    data: list[ConversationVariableResponse]
+
+
+register_schema_models(
+    service_api_ns,
+    ConversationListQuery,
+    ConversationRenamePayload,
+    ConversationVariablesQuery,
+    ConversationVariableUpdatePayload,
+)
+register_response_schema_models(
+    service_api_ns,
+    ConversationVariableResponse,
+    ConversationVariableInfiniteScrollPaginationResponse,
+    ConversationInfiniteScrollPagination,
+    SimpleConversation,
+)
+
+
+@service_api_ns.route("/conversations")
+class ConversationApi(Resource):
+    @error_responses(NotChatAppError, ConversationCursorNotFoundHTTPError, ConversationNotFoundHTTPError)
+    @service_api_ns.doc(
+        summary="List Conversations",
+        description="Retrieve the conversation list for the current user, ordered by most recently active.",
+        tags=["Conversations"],
+        responses={
+            HTTPStatus.OK: "Conversations retrieved successfully.",
+            HTTPStatus.BAD_REQUEST: "Invalid app selection or app mode does not match the API route.",
+            HTTPStatus.UNAUTHORIZED: "Invalid API credentials.",
+            HTTPStatus.FORBIDDEN: "API credential, app or workspace access is unavailable.",
+            HTTPStatus.NOT_FOUND: (
+                "`conversation_cursor_not_found`: Cursor is outside the current list. "
+                "`conversation_not_found`: The app or user is no longer available."
+            ),
+            HTTPStatus.UNPROCESSABLE_ENTITY: "Invalid conversation list query.",
+        },
+    )
+    @service_api_ns.doc("list_conversations")
+    @service_api_ns.doc(params=query_params_from_model(ConversationListQuery))
+    @service_api_ns.response(
+        HTTPStatus.OK,
+        "Conversations retrieved successfully",
+        service_api_ns.models[ConversationInfiniteScrollPagination.__name__],
+    )
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @model_validate(ConversationListQuery)
+    def get(self, query_args: ConversationListQuery, context: ServiceApiEndUserContext) -> dict[str, object]:
+        """List the current user's conversations, optionally continuing from a cursor."""
+        app_mode = AppMode.value_of(context.app_mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
+            raise NotChatAppError()
+
+        try:
+            pagination = application_services().conversation_queries.get_page(
+                scope=EndUserConversationScope(
+                    app_id=context.app_id,
+                    tenant_id=context.tenant_id,
+                    end_user_id=context.end_user_id,
+                ),
+                invoke_from="service-api",
+                last_id=query_args.last_id or None,
+                limit=query_args.limit,
+                pinned=None,
+                sort_by=query_args.sort_by,
+            )
+            return dump_response(ConversationInfiniteScrollPagination, pagination)
+        except services.errors.conversation.LastConversationNotExistsError as error:
+            raise ConversationCursorNotFoundHTTPError() from error
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+
+
+@service_api_ns.route("/conversations/<uuid:conversation_id>")
+class ConversationDetailApi(Resource):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError)
+    @service_api_ns.doc(
+        summary="Delete Conversation",
+        description="Delete a conversation.",
+        tags=["Conversations"],
+        responses={
+            HTTPStatus.NO_CONTENT: "Conversation deleted successfully.",
+            HTTPStatus.BAD_REQUEST: "Invalid app selection or app mode does not match the API route.",
+            HTTPStatus.UNAUTHORIZED: "Invalid API credentials.",
+            HTTPStatus.FORBIDDEN: "API credential, app or workspace access is unavailable.",
+            HTTPStatus.NOT_FOUND: "`conversation_not_found`: Conversation does not exist for this user and app.",
+        },
+    )
+    @expect_user_json(service_api_ns)
+    @service_api_ns.doc("delete_conversation")
+    @service_api_ns.doc(params={"conversation_id": "Conversation ID."})
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    def delete(self, context: ServiceApiEndUserContext, conversation_id: UUID) -> tuple[str, HTTPStatus]:
+        """Delete a specific conversation."""
+        app_mode = AppMode.value_of(context.app_mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
+            raise NotChatAppError()
+
+        try:
+            application_services().conversation_commands.delete(
+                ref=EndUserConversationRef(
+                    app_id=context.app_id,
+                    tenant_id=context.tenant_id,
+                    end_user_id=context.end_user_id,
+                    conversation_id=str(conversation_id),
+                )
+            )
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        return "", HTTPStatus.NO_CONTENT
+
+
+@service_api_ns.route("/conversations/<uuid:conversation_id>/name")
+class ConversationRenameApi(Resource):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError, ConversationFirstMessageNotFoundHTTPError)
+    @service_api_ns.doc(
+        summary="Rename Conversation",
+        description=(
+            "Rename a conversation or auto-generate a name. The conversation name is used for display on "
+            "clients that support multiple conversations."
+        ),
+        tags=["Conversations"],
+        responses={
+            HTTPStatus.OK: "Conversation renamed successfully; model failure preserves the existing name.",
+            HTTPStatus.BAD_REQUEST: "Invalid app selection or app mode does not match the API route.",
+            HTTPStatus.UNAUTHORIZED: "Invalid API credentials.",
+            HTTPStatus.FORBIDDEN: "API credential, app or workspace access is unavailable.",
+            HTTPStatus.NOT_FOUND: (
+                "`conversation_not_found`: Conversation does not exist. "
+                "`conversation_first_message_not_found`: No first message is available for automatic naming."
+            ),
+            HTTPStatus.UNPROCESSABLE_ENTITY: "Invalid conversation rename payload.",
+        },
+    )
+    @expect_with_user(service_api_ns, ConversationRenamePayload)
+    @service_api_ns.doc("rename_conversation")
+    @service_api_ns.doc(description="Rename a conversation or auto-generate a name")
+    @service_api_ns.doc(params={"conversation_id": "Conversation ID."})
+    @service_api_ns.response(
+        HTTPStatus.OK,
+        "Conversation renamed successfully",
+        service_api_ns.models[SimpleConversation.__name__],
+    )
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @model_validate(ConversationRenamePayload)
+    def post(
+        self, payload: ConversationRenamePayload, context: ServiceApiEndUserContext, conversation_id: UUID
+    ) -> dict[str, object]:
+        """Rename a conversation or auto-generate a name."""
+        app_mode = AppMode.value_of(context.app_mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
+            raise NotChatAppError()
+
+        conversation_id_str = str(conversation_id)
+
+        try:
+            conversation = application_services().conversation_names.rename(
+                ref=EndUserConversationRef(
+                    app_id=context.app_id,
+                    tenant_id=context.tenant_id,
+                    end_user_id=context.end_user_id,
+                    conversation_id=conversation_id_str,
+                ),
+                app_mode=context.app_mode,
+                name=payload.name,
+                auto_generate=payload.auto_generate,
+            )
+            return dump_response(SimpleConversation, conversation)
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        except MessageNotExistsError as error:
+            raise ConversationFirstMessageNotFoundHTTPError() from error
+
+
+@service_api_ns.route("/conversations/<uuid:conversation_id>/variables")
+class ConversationVariablesApi(Resource):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError, ConversationVariableNotFoundHTTPError)
+    @service_api_ns.doc(
+        summary="List Conversation Variables",
+        description="Retrieve variables from a specific conversation.",
+        tags=["Conversations"],
+        responses={
+            HTTPStatus.OK: "Conversation variables retrieved successfully.",
+            HTTPStatus.BAD_REQUEST: "Invalid app selection or app mode does not match the API route.",
+            HTTPStatus.UNAUTHORIZED: "Invalid API credentials.",
+            HTTPStatus.FORBIDDEN: "API credential, app or workspace access is unavailable.",
+            HTTPStatus.NOT_FOUND: (
+                "`conversation_not_found`: Conversation does not exist for this user and app. "
+                "`conversation_variable_not_found`: Cursor variable is outside the current list."
+            ),
+            HTTPStatus.UNPROCESSABLE_ENTITY: "Invalid conversation variables query.",
+        },
+    )
+    @service_api_ns.doc("list_conversation_variables")
+    @service_api_ns.doc(
+        params={"conversation_id": "Conversation ID.", **query_params_from_model(ConversationVariablesQuery)}
+    )
+    @service_api_ns.response(
+        HTTPStatus.OK,
+        "Variables retrieved successfully",
+        service_api_ns.models[ConversationVariableInfiniteScrollPaginationResponse.__name__],
+    )
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @model_validate(ConversationVariablesQuery)
+    def get(
+        self, query_args: ConversationVariablesQuery, context: ServiceApiEndUserContext, conversation_id: UUID
+    ) -> dict[str, object]:
+        """List the current user's conversation variables."""
+        app_mode = AppMode.value_of(context.app_mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            raise NotChatAppError()
+
+        try:
+            pagination = application_services().conversation_variables.get_page(
+                ref=EndUserConversationRef(
+                    app_id=context.app_id,
+                    tenant_id=context.tenant_id,
+                    end_user_id=context.end_user_id,
+                    conversation_id=str(conversation_id),
+                ),
+                last_id=query_args.last_id or None,
+                limit=query_args.limit,
+                variable_name=query_args.variable_name,
+            )
+            return dump_response(
+                ConversationVariableInfiniteScrollPaginationResponse,
+                {
+                    "limit": pagination.limit,
+                    "has_more": pagination.has_more,
+                    "data": [
+                        {
+                            "created_at": row.created_at,
+                            "updated_at": row.updated_at,
+                            **row.variable.model_dump(),
+                            "id": row.id,
+                        }
+                        for row in pagination.data
+                    ],
+                },
+            )
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        except services.errors.conversation.ConversationVariableNotExistsError as error:
+            raise ConversationVariableNotFoundHTTPError() from error
+
+
+@service_api_ns.route("/conversations/<uuid:conversation_id>/variables/<uuid:variable_id>")
+class ConversationVariableDetailApi(Resource):
+    @error_responses(
+        NotChatAppError,
+        ConversationNotFoundHTTPError,
+        ConversationVariableNotFoundHTTPError,
+        ConversationVariableTypeMismatchHTTPError,
+    )
+    @service_api_ns.doc(
+        summary="Update Conversation Variable",
+        description="Update the value of a specific conversation variable. The value must match the expected type.",
+        tags=["Conversations"],
+        responses={
+            HTTPStatus.OK: "Variable updated successfully.",
+            HTTPStatus.BAD_REQUEST: (
+                "Invalid app selection or app mode does not match the API route. "
+                "`conversation_variable_type_mismatch`: Value does not match the variable's expected type. "
+                "`invalid_param`: Value violates variable constraints, including the size limit."
+            ),
+            HTTPStatus.UNAUTHORIZED: "Invalid API credentials.",
+            HTTPStatus.FORBIDDEN: "API credential, app or workspace access is unavailable.",
+            HTTPStatus.NOT_FOUND: (
+                "`conversation_not_found`: Conversation does not exist for this user and app. "
+                "`conversation_variable_not_found`: Variable does not exist for this conversation."
+            ),
+            HTTPStatus.UNPROCESSABLE_ENTITY: "Invalid conversation variable update payload.",
+        },
+    )
+    @expect_with_user(service_api_ns, ConversationVariableUpdatePayload)
+    @service_api_ns.doc("update_conversation_variable")
+    @service_api_ns.doc(params={"conversation_id": "Conversation ID.", "variable_id": "Variable ID."})
+    @service_api_ns.response(
+        HTTPStatus.OK,
+        "Variable updated successfully",
+        service_api_ns.models[ConversationVariableResponse.__name__],
+    )
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @model_validate(ConversationVariableUpdatePayload)
+    def put(
+        self,
+        payload: ConversationVariableUpdatePayload,
+        context: ServiceApiEndUserContext,
+        conversation_id: UUID,
+        variable_id: UUID,
+    ) -> dict[str, object]:
+        """Update a value without changing the variable's identity, type, or metadata."""
+        app_mode = AppMode.value_of(context.app_mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            raise NotChatAppError()
+
+        try:
+            row = application_services().conversation_variable_commands.update_value(
+                ref=EndUserConversationRef(
+                    app_id=context.app_id,
+                    tenant_id=context.tenant_id,
+                    end_user_id=context.end_user_id,
+                    conversation_id=str(conversation_id),
+                ),
+                variable_id=str(variable_id),
+                new_value=payload.value,
+            )
+            return dump_response(
+                ConversationVariableResponse,
+                {
+                    "created_at": row.created_at,
+                    "updated_at": row.updated_at,
+                    **row.variable.model_dump(),
+                    "id": row.id,
+                },
+            )
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        except services.errors.conversation.ConversationVariableNotExistsError as error:
+            raise ConversationVariableNotFoundHTTPError() from error
+        except services.errors.conversation.ConversationVariableTypeMismatchError as error:
+            raise ConversationVariableTypeMismatchHTTPError(str(error)) from error

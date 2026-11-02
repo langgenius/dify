@@ -1,0 +1,86 @@
+import type { ComponentPropsWithRef } from 'react'
+import type {
+  CustomConfigurationModelFixedFields,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { memo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+  ConfigurationMethodEnum,
+  ModelModalModeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import Authorized from './authorized'
+import { getCustomModels } from './hooks'
+
+type ManageCustomModelCredentialsProps = {
+  provider: ModelProvider
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+const ManageCustomModelCredentials = ({
+  provider,
+  currentCustomConfigurationModelFixedFields,
+  isOpen,
+  onOpenChange,
+}: ManageCustomModelCredentialsProps) => {
+  const { t } = useTranslation(['common', 'modelProvider'])
+  const customModels = getCustomModels(provider)
+  const noModels = !customModels.length
+
+  const renderTrigger = useCallback(
+    (open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => {
+      const Item = (
+        <Button
+          {...triggerProps}
+          variant="ghost"
+          size="small"
+          className={cn('me-0.5 text-text-tertiary', open && 'bg-components-button-ghost-bg-hover')}
+        >
+          {t(($) => $['modelProvider.auth.manageCredentials'], { ns: 'modelProvider' })}
+        </Button>
+      )
+      return Item
+    },
+    [t],
+  )
+
+  if (noModels) return null
+
+  return (
+    <Authorized
+      provider={provider}
+      configurationMethod={ConfigurationMethodEnum.customizableModel}
+      currentCustomConfigurationModelFixedFields={currentCustomConfigurationModelFixedFields}
+      items={customModels.map((model) => ({
+        model,
+        credentials: model.available_model_credentials ?? [],
+        selectedCredential: model.current_credential_id
+          ? {
+              credential_id: model.current_credential_id,
+              credential_name: model.current_credential_name,
+            }
+          : undefined,
+      }))}
+      renderTrigger={renderTrigger}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      authParams={{
+        isModelCredential: true,
+        mode: ModelModalModeEnum.configModelCredential,
+      }}
+      hideAddAction
+      disableItemClick
+      popupTitle={t(($) => $['modelProvider.auth.customModelCredentials'], { ns: 'modelProvider' })}
+      showModelTitle
+      disableDeleteButShowAction
+      disableDeleteTip={t(($) => $['modelProvider.auth.customModelCredentialsDeleteTip'], {
+        ns: 'modelProvider',
+      })}
+    />
+  )
+}
+
+export default memo(ManageCustomModelCredentials)

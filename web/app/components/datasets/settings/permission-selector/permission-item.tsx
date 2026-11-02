@@ -1,0 +1,58 @@
+import type { ReactNode } from 'react'
+import type { PermissionLevel } from '@/models/permission'
+import { PopoverClose } from '@langgenius/dify-ui/popover'
+import { RadioItem } from '@langgenius/dify-ui/radio-group'
+
+type PermissionItemProps = {
+  value: PermissionLevel
+  leftIcon: ReactNode
+  text: string
+  isSelected: boolean
+  closeOnSelect?: boolean
+}
+
+const className =
+  'flex w-full touch-manipulation cursor-pointer items-center gap-x-1 rounded-lg border-none bg-transparent px-2 py-1 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+
+const PermissionItem = ({
+  value,
+  leftIcon,
+  text,
+  isSelected,
+  closeOnSelect = false,
+}: PermissionItemProps) => {
+  const content = (
+    <>
+      {leftIcon}
+      <div className="grow px-1 system-md-regular text-text-secondary">{text}</div>
+      {isSelected && (
+        <span aria-hidden="true" className="i-ri-check-line size-4 text-text-accent" />
+      )}
+    </>
+  )
+
+  if (closeOnSelect) {
+    return (
+      <PopoverClose
+        render={
+          <RadioItem<PermissionLevel>
+            value={value}
+            nativeButton
+            render={<button type="button" />}
+          />
+        }
+        className={className}
+      >
+        {content}
+      </PopoverClose>
+    )
+  }
+
+  return (
+    <RadioItem<PermissionLevel> value={value} className={className}>
+      {content}
+    </RadioItem>
+  )
+}
+
+export default PermissionItem

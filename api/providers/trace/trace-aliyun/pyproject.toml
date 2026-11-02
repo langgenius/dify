@@ -1,0 +1,13 @@
+[project]
+name = "dify-trace-aliyun"
+version = "0.0.1"
+dependencies = [
+    "dify-trace-sdk",
+]
+description = "Dify ops tracing provider (Aliyun)."
+
+[project.entry-points."dify.trace_providers"]
+aliyun = "dify_trace_aliyun.provider:AliyunProvider"
+
+[tool.setuptools.packages.find]
+where = ["src"]

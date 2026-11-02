@@ -1,76 +1,68 @@
-import { useCallback } from 'react'
-import dayjs from 'dayjs'
-import {
-  RiCalendarLine,
-  RiCloseCircleFill,
-} from '@remixicon/react'
-import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
-import cn from '@/utils/classnames'
-import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
-import useTimestamp from '@/hooks/use-timestamp'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import {
+  DateTimePicker,
+  DateTimePickerClear,
+  DateTimePickerContent,
+  DateTimePickerLabel,
+  DateTimePickerTrigger,
+  DateTimePickerValue,
+} from '@/app/components/base/date-time-picker/date-time-picker'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import useTimestamp from '@/hooks/use-timestamp'
 
-type Props = {
+type Props = Readonly<{
   className?: string
-  value?: number
+  label?: string
+  value?: number | null
+  readOnly?: boolean
   onChange: (date: number | null) => void
-}
-const WrappedDatePicker = ({
-  className,
-  value,
-  onChange,
-}: Props) => {
-  const { t } = useTranslation()
-  // const { userProfile: { timezone } } = useAppContext()
-  const { formatTime: formatTimestamp } = useTimestamp()
-
-  const handleDateChange = useCallback((date?: dayjs.Dayjs) => {
-    if (date)
-      onChange(date.unix())
-    else
-      onChange(null)
-  }, [onChange])
-
-  const renderTrigger = useCallback(({
-    handleClickTrigger,
-  }: TriggerProps) => {
-    return (
-      <div onClick={handleClickTrigger} className={cn('group flex items-center rounded-md bg-components-input-bg-normal', className)}>
-        <div
-          className={cn(
-            'grow',
-            value ? 'text-text-secondary' : 'text-text-tertiary',
-          )}
-        >
-          {value ? formatTimestamp(value, t('datasetDocuments.metadata.dateTimeFormat')) : t('dataset.metadata.chooseTime')}
-        </div>
-        <RiCloseCircleFill
-          className={cn(
-            'hidden h-4 w-4 cursor-pointer hover:text-components-input-text-filled group-hover:block',
-            value && 'text-text-quaternary',
-          )}
-          onClick={() => handleDateChange()}
-        />
-        <RiCalendarLine
-          className={cn(
-            'block h-4 w-4 shrink-0 group-hover:hidden',
-            value ? 'text-text-quaternary' : 'text-text-tertiary',
-          )}
+}>
+function WrappedDatePicker({ className, label, value, readOnly, onChange }: Props) {
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
+  const { data: timezone = 'UTC' } = useQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.timezone || 'UTC',
+  })
+  const { formatTime } = useTimestamp()
+  const placeholder = t(($) => $['metadata.chooseTime'], { ns: 'dataset' })
+  return (
+    <DateTimePicker
+      readOnly={readOnly}
+      placeholder={placeholder}
+      value={value == null ? null : new Date(value * 1000)}
+      timeZone={timezone}
+      onValueChange={(next) => onChange(next ? Math.floor(next.getTime() / 1000) : null)}
+    >
+      <DateTimePickerLabel className="sr-only">{label || placeholder}</DateTimePickerLabel>
+      <div
+        className={cn(
+          'flex h-8 w-full items-center rounded-md bg-components-input-bg-normal',
+          className,
+        )}
+      >
+        <DateTimePickerTrigger className="h-full min-w-0 flex-1 bg-transparent px-1 text-xs">
+          <DateTimePickerValue>
+            {value == null
+              ? placeholder
+              : formatTime(
+                  value,
+                  t(($) => $['metadata.dateTimeFormat'], { ns: 'datasetDocuments' }),
+                )}
+          </DateTimePickerValue>
+          <span
+            className="i-ri-calendar-line size-4 shrink-0 text-text-tertiary"
+            aria-hidden="true"
+          />
+        </DateTimePickerTrigger>
+        <DateTimePickerClear
+          className="size-4"
+          aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
         />
       </div>
-    )
-  }, [className, value, formatTimestamp, t, handleDateChange])
-
-  return (
-    <DatePicker
-      value={dayjs(value ? value * 1000 : Date.now())}
-      onChange={handleDateChange}
-      onClear={handleDateChange}
-      renderTrigger={renderTrigger}
-      triggerWrapClassName='w-full'
-      popupZIndexClassname='z-[1000]'
-    />
+      <DateTimePickerContent />
+    </DateTimePicker>
   )
 }
-
 export default WrappedDatePicker

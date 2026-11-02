@@ -1,60 +1,94 @@
+from typing import Literal
+
 from flask import request
-from flask_restful import Resource, reqparse
+from pydantic import BaseModel, Field, field_validator
 
-from configs import dify_config
-from libs.helper import StrLen, email, extract_remote_ip
+from controllers.fastopenapi import console_router
+from extensions.ext_application_services import application_services
+from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
-from models.model import DifySetup, db
-from services.account_service import RegisterService, TenantService
+from services.account.contracts import SetupInput
+from services.setup_service import InitializationValidationRequiredError, SetupAlreadyCompletedError
 
-from . import api
 from .error import AlreadySetupError, NotInitValidateError
-from .init_validate import get_init_validate_status
-from .wraps import only_edition_self_hosted
+from .init_validate import is_init_validated
+from .wraps import mark_setup_completed, only_edition_self_hosted
 
 
-class SetupApi(Resource):
-    def get(self):
-        if dify_config.EDITION == "SELF_HOSTED":
-            setup_status = get_setup_status()
-            if setup_status:
-                return {"step": "finished", "setup_at": setup_status.setup_at.isoformat()}
-            return {"step": "not_started"}
-        return {"step": "finished"}
+class SetupRequestPayload(BaseModel):
+    email: EmailStr = Field(..., description="Admin email address")
+    name: str = Field(..., max_length=30, description="Admin name (max 30 characters)")
+    password: str = Field(..., description="Admin password")
+    language: str | None = Field(default=None, description="Admin language")
 
-    @only_edition_self_hosted
-    def post(self):
-        # is set up
-        if get_setup_status():
-            raise AlreadySetupError()
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return valid_password(value)
 
-        # is tenant created
-        tenant_count = TenantService.get_tenant_count()
-        if tenant_count > 0:
-            raise AlreadySetupError()
 
-        if not get_init_validate_status():
-            raise NotInitValidateError()
+class SetupStatusResponse(BaseModel):
+    step: Literal["not_started", "finished"] = Field(description="Setup step status")
+    setup_at: str | None = Field(default=None, description="Setup completion time (ISO format)")
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("name", type=StrLen(30), required=True, location="json")
-        parser.add_argument("password", type=valid_password, required=True, location="json")
-        args = parser.parse_args()
 
-        # setup
-        RegisterService.setup(
-            email=args["email"], name=args["name"], password=args["password"], ip_address=extract_remote_ip(request)
+class SetupResponse(BaseModel):
+    result: str = Field(description="Setup result", examples=["success"])
+
+
+@console_router.get(
+    "/setup",
+    response_model=SetupStatusResponse,
+    tags=["console"],
+)
+def get_setup_status_api() -> SetupStatusResponse:
+    """Get system setup status.
+
+    NOTE: This endpoint is unauthenticated by design.
+
+    During first-time bootstrap there is no admin account yet, so frontend initialization must be
+    able to query setup progress before any login flow exists.
+
+    Only bootstrap-safe status information should be returned by this endpoint.
+    """
+    setup_status = application_services().setup.get_status()
+    if not setup_status.completed:
+        return SetupStatusResponse(step="not_started")
+
+    setup_at = setup_status.setup_at.isoformat() if setup_status.setup_at is not None else None
+    return SetupStatusResponse(step="finished", setup_at=setup_at)
+
+
+@console_router.post(
+    "/setup",
+    response_model=SetupResponse,
+    tags=["console"],
+    status_code=201,
+)
+@only_edition_self_hosted
+def setup_system(payload: SetupRequestPayload) -> SetupResponse:
+    """Initialize system setup with admin account.
+
+    NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
+    Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,
+    and init-password validation rather than user session authentication.
+    """
+    try:
+        application_services().setup.initialize(
+            SetupInput(
+                email=payload.email,
+                name=payload.name,
+                password=payload.password,
+                ip_address=extract_remote_ip(request),
+                language=payload.language,
+            ),
+            initialization_validated=is_init_validated(),
         )
+    except SetupAlreadyCompletedError:
+        raise AlreadySetupError() from None
+    except InitializationValidationRequiredError:
+        raise NotInitValidateError() from None
 
-        return {"result": "success"}, 201
+    mark_setup_completed()
 
-
-def get_setup_status():
-    if dify_config.EDITION == "SELF_HOSTED":
-        return db.session.query(DifySetup).first()
-    else:
-        return True
-
-
-api.add_resource(SetupApi, "/setup")
+    return SetupResponse(result="success")

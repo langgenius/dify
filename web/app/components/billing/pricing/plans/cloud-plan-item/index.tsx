@@ -1,0 +1,276 @@
+'use client'
+import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { useAtomValue } from 'jotai'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
+import { consoleClient } from '@/service/console'
+import { billingErrorMessageKey } from '../../../billing-error'
+import { ALL_PLANS } from '../../../config'
+import { useEducationDiscount } from '../../../hooks/use-education-discount'
+import Professional from '../../assets/professional'
+import Sandbox from '../../assets/sandbox'
+import Team from '../../assets/team'
+import { CloudPlanFeatures } from './list'
+
+const ICON_MAP = {
+  sandbox: <Sandbox />,
+  professional: <Professional />,
+  team: <Team />,
+}
+
+type CloudPlanItemProps = {
+  plan: CloudPlan
+  billingInterval: GetBillingSubscriptionData['query']['interval']
+  billing:
+    | {
+        currentPlan: CloudPlan
+        currentBillingInterval: string
+        isEducationDiscountEligible: boolean | undefined
+        isEducationDiscountActivated: boolean
+      }
+    | undefined
+}
+
+export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemProps) {
+  const currentPlan = billing?.currentPlan
+  const isEducationDiscountEligible = billing?.isEducationDiscountEligible
+  const { t } = useTranslation(['billing', 'common', 'education'])
+  const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const [isPlanActionPending, setIsPlanActionPending] = React.useState(false)
+  const isYearly = billingInterval === 'year'
+  const i18nPrefix = `plans.${plan}` as const
+  const isFreePlan = plan === 'sandbox'
+  const isMostPopularPlan = plan === 'professional'
+  const planInfo = ALL_PLANS[plan]
+  const isCurrent = plan === currentPlan
+  const isCurrentPaidPlan = isCurrent && !isFreePlan
+  const isCurrentSubscription =
+    isCurrentPaidPlan && billingInterval === billing?.currentBillingInterval
+  const isPlanDisabled =
+    !billing ||
+    (!isCurrentSubscription && billing.isEducationDiscountEligible === undefined) ||
+    (!isCurrentPaidPlan && planInfo.level <= ALL_PLANS[billing.currentPlan].level)
+  const isEducationDiscountSupportedPlan = plan === 'professional' && isYearly
+  const educationDiscountWarningText =
+    canManageBilling &&
+    isEducationDiscountEligible &&
+    !isFreePlan &&
+    !isEducationDiscountSupportedPlan
+      ? t(($) => $.planNotSupportEducationDiscount, { ns: 'education' })
+      : undefined
+  const openAsyncWindow = useAsyncWindowOpen()
+  const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
+  const [showEducationPricingConfirm, setShowEducationPricingConfirm] = React.useState(false)
+
+  const buttonLabel =
+    canManageBilling &&
+    isEducationDiscountEligible &&
+    isEducationDiscountSupportedPlan &&
+    !isCurrent
+      ? t(($) => $.useEducationDiscount, { ns: 'education' })
+      : isCurrent
+        ? t(($) => $['plansCommon.currentPlan'], { ns: 'billing' })
+        : {
+            sandbox: t(($) => $['plansCommon.startForFree'], { ns: 'billing' }),
+            professional: t(($) => $['plansCommon.startBuilding'], { ns: 'billing' }),
+            team: t(($) => $['plansCommon.getStarted'], { ns: 'billing' }),
+          }[plan]
+
+  const runPlanAction = async () => {
+    if (isPlanActionPending || isEducationDiscountLoading) return
+
+    if (!billing || isPlanDisabled) return
+
+    setIsPlanActionPending(true)
+    try {
+      if (isCurrentSubscription) {
+        if (!canManageBilling) {
+          toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
+          return
+        }
+
+        await openAsyncWindow(
+          async () => {
+            const { url } = await consoleClient.billing.invoices.get(undefined, {
+              context: { silent: true },
+            })
+            if (url) return url
+            throw new Error('Failed to open billing page')
+          },
+          {
+            onError: (error) => {
+              toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
+            },
+          },
+        )
+        return
+      }
+
+      if (isFreePlan) return
+
+      if (!canManageBilling) {
+        toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
+        return
+      }
+
+      if (isEducationDiscountEligible && isEducationDiscountSupportedPlan) {
+        await handleEducationDiscount()
+        return
+      }
+
+      const { url } = await consoleClient.billing.subscription.get(
+        { query: { plan, interval: billingInterval } },
+        { context: { silent: true } },
+      )
+      // Adb Block additional tracking block the gtag, so we need to redirect directly
+      window.location.href = url
+    } catch (error) {
+      toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
+    } finally {
+      setIsPlanActionPending(false)
+    }
+  }
+  const handlePlanButtonClick = async () => {
+    if (educationDiscountWarningText && !billing?.isEducationDiscountActivated && !isPlanDisabled) {
+      setShowEducationPricingConfirm(true)
+      return
+    }
+
+    await runPlanAction()
+  }
+  const handleUseEducationDiscount = async () => {
+    await handleEducationDiscount()
+  }
+  const handleContinueWithoutEducationDiscount = async () => {
+    await runPlanAction()
+    setShowEducationPricingConfirm(false)
+  }
+  return (
+    <div className="flex min-w-0 flex-1 flex-col pb-3">
+      <div className="flex flex-col px-5 py-4">
+        <div className="flex flex-col gap-y-6 px-1 pt-10">
+          {ICON_MAP[plan]}
+          <div className="flex min-h-26 flex-col gap-y-2">
+            <div className="flex items-center gap-x-2.5">
+              <h3 className="text-[30px] leading-[1.2] font-medium text-text-primary">
+                {t(($) => $[`${i18nPrefix}.name`], { ns: 'billing' })}
+              </h3>
+              {isMostPopularPlan && (
+                <div className="flex items-center justify-center bg-saas-dify-blue-static px-1.5 py-1">
+                  <span className="system-2xs-semibold-uppercase text-text-primary-on-surface">
+                    {t(($) => $['plansCommon.mostPopular'], { ns: 'billing' })}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="system-sm-regular text-text-secondary">
+              {t(($) => $[`${i18nPrefix}.description`], { ns: 'billing' })}
+            </div>
+          </div>
+        </div>
+        {/* Price */}
+        <div className="flex flex-wrap items-end gap-x-2 px-1 pt-4 pb-8">
+          {isFreePlan && (
+            <span className="title-4xl-semi-bold text-text-primary">
+              {t(($) => $['plansCommon.free'], { ns: 'billing' })}
+            </span>
+          )}
+          {!isFreePlan && (
+            <>
+              {isYearly && (
+                <span className="title-4xl-semi-bold text-text-quaternary line-through">
+                  <span className="sr-only">
+                    {t(($) => $['plansCommon.originalAnnualPrice'], { ns: 'billing' })}
+                  </span>
+                  ${planInfo.price * 12}
+                </span>
+              )}
+              <span className="title-4xl-semi-bold text-text-primary">
+                {isYearly && (
+                  <span className="sr-only">
+                    {t(($) => $['plansCommon.discountedAnnualPrice'], { ns: 'billing' })}
+                  </span>
+                )}
+                ${isYearly ? planInfo.price * 10 : planInfo.price}
+              </span>
+              <span className="pb-0.5 system-md-regular text-text-tertiary">
+                {t(($) => $['plansCommon.priceTip'], { ns: 'billing' })}
+                {t(($) => $[`plansCommon.${isYearly ? 'year' : 'month'}`], { ns: 'billing' })}
+              </span>
+            </>
+          )}
+        </div>
+        <div className="relative">
+          <Button
+            data-plan={plan}
+            variant="tertiary"
+            size={null}
+            disabled={isPlanDisabled}
+            className="h-auto w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 ps-5 pe-4 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-text-disabled data-disabled:hover:bg-components-button-tertiary-bg-disabled data-[plan=professional]:not-data-disabled:bg-saas-dify-blue-static data-[plan=professional]:not-data-disabled:text-text-primary-on-surface data-[plan=professional]:not-data-disabled:hover:bg-saas-dify-blue-static-hover data-[plan=team]:not-data-disabled:bg-saas-background-inverted data-[plan=team]:not-data-disabled:text-background-default data-[plan=team]:not-data-disabled:hover:bg-saas-background-inverted-hover xl:whitespace-nowrap"
+            onClick={handlePlanButtonClick}
+          >
+            <span className="min-w-0 grow text-start">{buttonLabel}</span>
+            {!isPlanDisabled && (
+              <span aria-hidden className="i-ri-arrow-right-line size-5 shrink-0" />
+            )}
+          </Button>
+          {educationDiscountWarningText && (
+            <div className="absolute inset-x-0 top-full mt-1.5 text-start system-2xs-medium text-text-tertiary">
+              {educationDiscountWarningText}
+            </div>
+          )}
+        </div>
+      </div>
+      <CloudPlanFeatures plan={plan} />
+      <Dialog open={showEducationPricingConfirm} onOpenChange={setShowEducationPricingConfirm}>
+        <DialogContent backdropProps={{ forceRender: true }} className="w-130">
+          <DialogHeader>
+            <DialogTitle>
+              {t(($) => $['educationPricingConfirm.title'], { ns: 'education' })}
+            </DialogTitle>
+            <DialogDescription>
+              {t(($) => $['educationPricingConfirm.description'], { ns: 'education' })}
+            </DialogDescription>
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              size="large"
+              onClick={handleContinueWithoutEducationDiscount}
+              disabled={isEducationDiscountLoading}
+              loading={isPlanActionPending}
+              className="min-w-38"
+            >
+              {t(($) => $['educationPricingConfirm.cancel'], { ns: 'education' })}
+            </Button>
+            <Button
+              variant="primary"
+              size="large"
+              onClick={handleUseEducationDiscount}
+              loading={isEducationDiscountLoading}
+              className="min-w-61"
+            >
+              {t(($) => $['educationPricingConfirm.continue'], { ns: 'education' })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

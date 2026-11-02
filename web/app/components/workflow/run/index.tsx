@@ -1,101 +1,170 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useContext } from 'use-context-selector'
+import type { WorkflowRunDetailResponse } from '@/models/log'
+import type { NodeTracing } from '@/types/workflow'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { fetchRunDetail, fetchTracingList } from '@/service/log'
+import { useStore } from '../store'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
+import StatusPanel from './status'
 import TracingPanel from './tracing-panel'
-import cn from '@/utils/classnames'
-import { ToastContext } from '@/app/components/base/toast'
-import Loading from '@/app/components/base/loading'
-import { fetchRunDetail, fetchTracingList } from '@/service/log'
-import type { NodeTracing } from '@/types/workflow'
-import type { WorkflowRunDetailResponse } from '@/models/log'
-import { useStore as useAppStore } from '@/app/components/app/store'
-export type RunProps = {
+
+type RunProps = {
+  appId?: string
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
-  runID: string
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
+  runDetailUrl: string
+  tracingListUrl: string
 }
 
-const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getResultCallback }) => {
-  const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
-  const [currentTab, setCurrentTab] = useState<string>(activeTab)
-  const appDetail = useAppStore(state => state.appDetail)
-  const [loading, setLoading] = useState<boolean>(true)
+type RunTab = NonNullable<RunProps['activeTab']>
+type RequestLifetime = {
+  active: boolean
+  detailRequest: number
+  tracingRequest: number
+  detailSettled: boolean
+  tracingSettled: boolean
+}
+
+const RunPanel: FC<RunProps> = ({
+  appId,
+  activeTab = 'RESULT',
+  hideResult,
+  getResultCallback,
+  runDetailUrl,
+  tracingListUrl,
+}) => {
+  const [currentTab, setCurrentTab] = useState<RunTab>(activeTab)
+  const isListening = useStore((s) => s.isListening)
+
+  useEffect(() => {
+    if (isListening) setCurrentTab('DETAIL')
+  }, [isListening])
+
+  return (
+    <RunSession
+      key={JSON.stringify([runDetailUrl, tracingListUrl])}
+      appId={appId}
+      hideResult={hideResult}
+      getResultCallback={getResultCallback}
+      runDetailUrl={runDetailUrl}
+      tracingListUrl={tracingListUrl}
+      currentTab={currentTab}
+      onTabChange={setCurrentTab}
+      isListening={isListening}
+    />
+  )
+}
+
+type RunSessionProps = Omit<RunProps, 'activeTab'> & {
+  currentTab: RunTab
+  onTabChange: (tab: RunTab) => void
+  isListening: boolean
+}
+
+function RunSession({
+  appId,
+  hideResult,
+  getResultCallback,
+  runDetailUrl,
+  tracingListUrl,
+  currentTab,
+  onTabChange,
+  isListening,
+}: RunSessionProps) {
+  const { t } = useTranslation(['runLog'])
+  const [loading, setLoading] = useState(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
   const [list, setList] = useState<NodeTracing[]>([])
+  const requestLifetimeRef = useRef<RequestLifetime | null>(null)
 
   const executor = useMemo(() => {
-    if (runDetail?.created_by_role === 'account')
-      return runDetail.created_by_account?.name || ''
+    if (runDetail?.created_by_role === 'account') return runDetail.created_by_account?.name || ''
     if (runDetail?.created_by_role === 'end_user')
       return runDetail.created_by_end_user?.session_id || ''
     return 'N/A'
   }, [runDetail])
 
-  const getResult = useCallback(async (appID: string, runID: string) => {
-    try {
-      const res = await fetchRunDetail({
-        appID,
-        runID,
-      })
-      setRunDetail(res)
-      if (getResultCallback)
-        getResultCallback(res)
-    }
-    catch (err) {
-      notify({
-        type: 'error',
-        message: `${err}`,
-      })
-    }
-  }, [notify, getResultCallback])
+  const getResult = useCallback(
+    async (lifetime: RequestLifetime) => {
+      const request = ++lifetime.detailRequest
+      try {
+        const res = await fetchRunDetail(runDetailUrl, { silent: true })
+        if (!lifetime.active || request !== lifetime.detailRequest) return
+        setRunDetail(res)
+        if (getResultCallback) getResultCallback(res)
+      } catch (err) {
+        if (lifetime.active && request === lifetime.detailRequest)
+          toast.error(err instanceof Error ? err.message : String(err))
+      } finally {
+        if (lifetime.active && request === lifetime.detailRequest) {
+          lifetime.detailSettled = true
+          if (lifetime.tracingSettled) setLoading(false)
+        }
+      }
+    },
+    [getResultCallback, runDetailUrl],
+  )
 
-  const getTracingList = useCallback(async (appID: string, runID: string) => {
-    try {
-      const { data: nodeList } = await fetchTracingList({
-        url: `/apps/${appID}/workflow-runs/${runID}/node-executions`,
-      })
-      setList(nodeList)
-    }
-    catch (err) {
-      notify({
-        type: 'error',
-        message: `${err}`,
-      })
-    }
-  }, [notify])
+  const getTracingList = useCallback(
+    async (lifetime: RequestLifetime) => {
+      const request = ++lifetime.tracingRequest
+      try {
+        const { data: nodeList } = await fetchTracingList({ url: tracingListUrl }, { silent: true })
+        if (lifetime.active && request === lifetime.tracingRequest) setList(nodeList)
+      } catch (err) {
+        if (lifetime.active && request === lifetime.tracingRequest)
+          toast.error(err instanceof Error ? err.message : String(err))
+      } finally {
+        if (lifetime.active && request === lifetime.tracingRequest) {
+          lifetime.tracingSettled = true
+          if (lifetime.detailSettled) setLoading(false)
+        }
+      }
+    },
+    [tracingListUrl],
+  )
 
-  const getData = async (appID: string, runID: string) => {
-    setLoading(true)
-    await getResult(appID, runID)
-    await getTracingList(appID, runID)
-    setLoading(false)
+  const switchTab = (tab: RunTab) => {
+    onTabChange(tab)
+    const lifetime = requestLifetimeRef.current
+    if (!lifetime?.active) return
+    if (tab === 'RESULT' && runDetailUrl) void getResult(lifetime)
+    if (tracingListUrl) void getTracingList(lifetime)
   }
 
-  const switchTab = async (tab: string) => {
-    setCurrentTab(tab)
-    if (tab === 'RESULT')
-      appDetail?.id && await getResult(appDetail.id, runID)
-    appDetail?.id && await getTracingList(appDetail.id, runID)
-  }
+  const loadRecord = useEffectEvent((lifetime: RequestLifetime) => {
+    void getResult(lifetime)
+    void getTracingList(lifetime)
+  })
 
   useEffect(() => {
-    // fetch data
-    if (appDetail && runID)
-      getData(appDetail.id, runID)
-  }, [appDetail, runID])
+    const lifetime: RequestLifetime = {
+      active: true,
+      detailRequest: 0,
+      tracingRequest: 0,
+      detailSettled: false,
+      tracingSettled: false,
+    }
+    requestLifetimeRef.current = lifetime
+    if (runDetailUrl && tracingListUrl) loadRecord(lifetime)
+    return () => {
+      lifetime.active = false
+    }
+  }, [runDetailUrl, tracingListUrl])
 
   const [height, setHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
 
   const adjustResultHeight = () => {
-    if (ref.current)
-      setHeight(ref.current?.clientHeight - 16 - 16 - 2 - 1)
+    if (ref.current) setHeight(ref.current?.clientHeight - 16 - 16 - 2 - 1)
   }
 
   useEffect(() => {
@@ -103,69 +172,105 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
   }, [loading])
 
   return (
-    <div className='relative flex grow flex-col'>
+    <Tabs
+      className="relative flex grow flex-col"
+      value={currentTab}
+      onValueChange={(value) => switchTab(value as RunTab)}
+    >
       {/* tab */}
-      <div className='flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4'>
+      <TabsList className="shrink-0 items-center gap-6 border-b-[0.5px] border-divider-subtle px-4">
         {!hideResult && (
-          <div
-            className={cn(
-              'system-sm-semibold-uppercase mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
-              currentTab === 'RESULT' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
-            )}
-            onClick={() => switchTab('RESULT')}
-          >{t('runLog.result')}</div>
+          <TabsTab
+            value="RESULT"
+            className="py-3 system-sm-semibold-uppercase!"
+            onClick={() => {
+              if (currentTab === 'RESULT') switchTab('RESULT')
+            }}
+          >
+            {t(($) => $.result, { ns: 'runLog' })}
+          </TabsTab>
         )}
-        <div
-          className={cn(
-            'system-sm-semibold-uppercase mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
-            currentTab === 'DETAIL' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
-          )}
-          onClick={() => switchTab('DETAIL')}
-        >{t('runLog.detail')}</div>
-        <div
-          className={cn(
-            'system-sm-semibold-uppercase mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
-            currentTab === 'TRACING' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
-          )}
-          onClick={() => switchTab('TRACING')}
-        >{t('runLog.tracing')}</div>
-      </div>
+        <TabsTab
+          value="DETAIL"
+          className="py-3 system-sm-semibold-uppercase!"
+          onClick={() => {
+            if (currentTab === 'DETAIL') switchTab('DETAIL')
+          }}
+        >
+          {t(($) => $.detail, { ns: 'runLog' })}
+        </TabsTab>
+        <TabsTab
+          value="TRACING"
+          className="py-3 system-sm-semibold-uppercase!"
+          onClick={() => {
+            if (currentTab === 'TRACING') switchTab('TRACING')
+          }}
+        >
+          {t(($) => $.tracing, { ns: 'runLog' })}
+        </TabsTab>
+      </TabsList>
       {/* panel detail */}
-      <div ref={ref} className={cn('relative h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg')}>
+      <div
+        ref={ref}
+        className="relative h-0 grow overflow-y-auto rounded-b-xl bg-components-panel-bg"
+      >
         {loading && (
-          <div className='flex h-full items-center justify-center bg-components-panel-bg'>
-            <Loading />
+          <div className="flex h-full items-center justify-center bg-components-panel-bg">
+            <LoadingPlaceholder />
           </div>
         )}
-        {!loading && currentTab === 'RESULT' && runDetail && (
-          <OutputPanel
-            outputs={runDetail.outputs}
-            error={runDetail.error}
-            height={height}
-          />
-        )}
-        {!loading && currentTab === 'DETAIL' && runDetail && (
-          <ResultPanel
-            inputs={runDetail.inputs}
-            outputs={runDetail.outputs}
-            status={runDetail.status}
-            error={runDetail.error}
-            elapsed_time={runDetail.elapsed_time}
-            total_tokens={runDetail.total_tokens}
-            created_at={runDetail.created_at}
-            created_by={executor}
-            steps={runDetail.total_steps}
-            exceptionCounts={runDetail.exceptions_count}
-          />
-        )}
-        {!loading && currentTab === 'TRACING' && (
-          <TracingPanel
-            className='bg-background-section-burn'
-            list={list}
-          />
-        )}
+        <TabsPanel value="RESULT">
+          {!loading && runDetail && (
+            <OutputPanel outputs={runDetail.outputs} error={runDetail.error} height={height} />
+          )}
+        </TabsPanel>
+        <TabsPanel value="DETAIL">
+          {!loading && runDetail && (
+            <ResultPanel
+              inputs={runDetail.inputs}
+              inputs_truncated={runDetail.inputs_truncated}
+              outputs={runDetail.outputs}
+              outputs_truncated={runDetail.outputs_truncated}
+              outputs_full_content={runDetail.outputs_full_content}
+              status={runDetail.status}
+              error={runDetail.error}
+              elapsed_time={runDetail.elapsed_time}
+              total_tokens={runDetail.total_tokens}
+              created_at={runDetail.created_at}
+              created_by={executor}
+              steps={runDetail.total_steps}
+              exceptionCounts={runDetail.exceptions_count}
+              isListening={isListening}
+              workflowRunId={runDetail.id}
+              externalTrace={
+                appId ? { appId, kind: 'workflow', workflowRunId: runDetail.id } : undefined
+              }
+              onOpenTracingTab={() => switchTab('TRACING')}
+            />
+          )}
+          {!loading && !runDetail && isListening && (
+            <StatusPanel status={WorkflowRunningStatus.Running} isListening={true} />
+          )}
+        </TabsPanel>
+        <TabsPanel value="TRACING">
+          {!loading && (
+            <TracingPanel
+              externalTraceRun={
+                appId && runDetail ? { appId, workflowRunId: runDetail.id } : undefined
+              }
+              key={runDetail?.id}
+              className="bg-background-section-burn"
+              list={list}
+              workflowRun={
+                appId && runDetail
+                  ? { appId, runId: runDetail.id, status: runDetail.status }
+                  : undefined
+              }
+            />
+          )}
+        </TabsPanel>
       </div>
-    </div>
+    </Tabs>
   )
 }
 

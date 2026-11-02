@@ -2,6 +2,8 @@ import logging
 import os
 import ssl
 import urllib.request
+from collections.abc import Mapping
+from typing import Any
 from urllib import parse
 from urllib.error import HTTPError
 
@@ -19,9 +21,9 @@ urllib.request.install_opener(opener)
 logger = logging.getLogger(__name__)
 
 
-def http_request(url, timeout, headers={}):
+def http_request(url: str, timeout: int | float, headers: Mapping[str, str] = {}) -> tuple[int, str | None]:
     try:
-        request = urllib.request.Request(url, headers=headers)
+        request = urllib.request.Request(url, headers=dict(headers))
         res = urllib.request.urlopen(request, timeout=timeout)
         body = res.read().decode("utf-8")
         return res.code, body
@@ -33,9 +35,9 @@ def http_request(url, timeout, headers={}):
         raise e
 
 
-def url_encode(params):
+def url_encode(params: dict[str, Any]) -> str:
     return parse.urlencode(params)
 
 
-def makedirs_wrapper(path):
+def makedirs_wrapper(path: str) -> None:
     os.makedirs(path, exist_ok=True)

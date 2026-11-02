@@ -1,36 +1,200 @@
 import json
 import logging
 import re
-from typing import Optional, cast
+from collections.abc import Sequence
+from typing import Any, Literal, Protocol, TypedDict, cast
 
 import json_repair
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ConversationNamed
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from core.app.app_config.entities import ModelConfig
+from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
+from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
-from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
     GENERATOR_QA_PROMPT,
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
+    LLM_MODIFY_CODE_SYSTEM,
+    LLM_MODIFY_PROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
-from core.model_manager import ModelManager
-from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.ops.utils import measure_time
+from core.model_context import with_credit_usage_created_by
+from core.model_manager import ModelInstance, ModelManager
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.telemetry import PromptGenerationEvent, TelemetryContext
+from core.telemetry import emit as telemetry_emit
+from extensions.ext_database import db
+from extensions.ext_storage import storage
+from graphon.enums import WorkflowNodeExecutionMetadataKey
+from graphon.model_runtime.entities.llm_entities import LLMResult
+from graphon.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeError
+from libs.datetime_utils import Timing, measure_time
+from models import App, Message, WorkflowNodeExecutionModel
+from models.workflow import Workflow
+
+logger = logging.getLogger(__name__)
+
+
+def _normalize_completion_params(completion_params: dict[str, object]) -> tuple[dict[str, object], list[str]]:
+    """
+    Normalize raw completion params into invocation parameters and stop sequences.
+
+    This mirrors the app-model access path by separating ``stop`` from provider
+    parameters before invocation, then drops non-positive token limits because
+    some plugin-backed models reject ``0`` after mapping ``max_tokens`` to their
+    provider-specific output-token field.
+    """
+    normalized_parameters = dict(completion_params)
+    stop_value = normalized_parameters.pop("stop", [])
+    stop = stop_value if isinstance(stop_value, list) and all(isinstance(item, str) for item in stop_value) else []
+
+    for token_limit_key in ("max_tokens", "max_output_tokens"):
+        token_limit = normalized_parameters.get(token_limit_key)
+        if isinstance(token_limit, int | float) and token_limit <= 0:
+            normalized_parameters.pop(token_limit_key, None)
+
+    return normalized_parameters, stop
+
+
+# ── Workflow instruction-suggestion tuning ────────────────────────────────
+# Suggestions are a soft, pre-model-pick enhancement: short, buildable example
+# instructions proposed from the tenant's DEFAULT model. Every failure path
+# degrades to an empty list, never an error.
+_SUGGESTION_MIN_COUNT = 1
+_SUGGESTION_MAX_COUNT = 6
+_SUGGESTION_MAX_TOKENS = 512
+_SUGGESTION_TEMPERATURE = 0.8
+# Bound the grounding context so the prompt stays small regardless of how many
+# knowledge bases / tools the tenant has installed.
+_SUGGESTION_KB_LIMIT = 10
+_SUGGESTION_TOOL_SAMPLE_LINES = 20
+
+_SUGGESTION_SYSTEM_PROMPT = (
+    "You help a user start building a Dify app by proposing example build instructions. "
+    "Each suggestion must be a SHORT (at most 8 words), concrete, and BUILDABLE instruction "
+    "describing an app to generate for the given app type. Make the suggestions diverse — cover "
+    "different use cases. When the listed knowledge bases or installed tools fit a suggestion, "
+    "prefer them, but NEVER invent tools or knowledge bases that are not listed. "
+    "Reply with ONLY a JSON array of strings and nothing else."
+)
+
+
+def _parse_string_list(text: str) -> list[str]:
+    """Extract a JSON array of strings from a (possibly noisy) LLM response.
+
+    Slices the first ``[...]`` span so surrounding prose / markdown fences are
+    tolerated, parses it with ``json`` and falls back to ``json_repair``, then
+    keeps only ``str`` items. Returns ``[]`` on any failure so callers can
+    treat parsing as best-effort.
+    """
+    match = re.search(r"\[.*\]", text.strip(), re.DOTALL)
+    if not match:
+        return []
+    raw = match.group(0)
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        try:
+            parsed = json_repair.loads(raw)
+        except Exception:
+            return []
+    if not isinstance(parsed, list):
+        return []
+    return [item for item in parsed if isinstance(item, str)]
+
+
+class WorkflowServiceInterface(Protocol):
+    def get_draft_workflow(self, app_model: App, *, session: Session) -> Workflow | None:
+        pass
+
+    def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
+        pass
+
+
+class CodeGenerateResultDict(TypedDict):
+    code: str
+    language: str
+    error: str
+
+
+class StructuredOutputResultDict(TypedDict):
+    output: str
+    error: str
 
 
 class LLMGenerator:
+    @staticmethod
+    def _emit_prompt_generation(
+        *,
+        tenant_id: str,
+        app_id: str | None = None,
+        operation_type: str,
+        instruction: str,
+        generated_output: str,
+        model_provider: str,
+        model_name: str,
+        timer: Timing,
+        result: LLMResult | None = None,
+        error: str | None = None,
+    ) -> None:
+        """Emit a PromptGenerationEvent via the core.telemetry facade."""
+        try:
+            usage = result.usage if result else None
+            telemetry_emit(
+                PromptGenerationEvent(
+                    context=TelemetryContext(
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                    ),
+                    payload={
+                        "tenant_id": tenant_id,
+                        "app_id": app_id,
+                        "operation_type": operation_type,
+                        "instruction": instruction,
+                        "generated_output": generated_output,
+                        "model_provider": model_provider,
+                        "model_name": model_name,
+                        "prompt_tokens": usage.prompt_tokens if usage else 0,
+                        "completion_tokens": usage.completion_tokens if usage else 0,
+                        "total_tokens": usage.total_tokens if usage else 0,
+                        "latency": (timer.ended_at - timer.started_at).total_seconds(),
+                        "total_price": float(usage.total_price) if usage and usage.total_price else None,
+                        "currency": usage.currency if usage else None,
+                        "error": error,
+                        "started_at": timer.started_at,
+                        "ended_at": timer.ended_at,
+                    },
+                )
+            )
+        except Exception:
+            logger.debug("Failed to emit prompt_generation telemetry", exc_info=True)
+
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.CONVERSATION_NAME)
     def generate_conversation_name(
-        cls, tenant_id: str, query, conversation_id: Optional[str] = None, app_id: Optional[str] = None
-    ):
+        cls,
+        tenant_id: str,
+        query: str,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+        *,
+        model_instance: ModelInstance | None = None,
+        trace_scope: TraceScope | None,
+    ) -> str:
+        """Generate with a resolved model, or resolve it for legacy background callers.
+
+        Passing a model lets the caller close its preparation session before invocation.
+        ``None`` retains inline resolution for the first-message naming worker.
+        """
         prompt = CONVERSATION_TITLE_PROMPT
 
         if len(query) > 2000:
@@ -40,135 +204,226 @@ class LLMGenerator:
 
         prompt += query + "\n"
 
-        model_manager = ModelManager()
-        model_instance = model_manager.get_default_model_instance(
-            tenant_id=tenant_id,
-            model_type=ModelType.LLM,
-        )
-        prompts = [UserPromptMessage(content=prompt)]
+        if model_instance is None:
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+            )
+        prompts: list[PromptMessage] = [UserPromptMessage(content=prompt)]
 
         with measure_time() as timer:
-            response = cast(
-                LLMResult,
-                model_instance.invoke_llm(
-                    prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
-                ),
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
             )
-        answer = cast(str, response.message.content)
-        cleaned_answer = re.sub(r"^.*(\{.*\}).*$", r"\1", answer, flags=re.DOTALL)
-        if cleaned_answer is None:
-            return ""
-        try:
-            result_dict = json.loads(cleaned_answer)
-            answer = result_dict["Your Output"]
-        except json.JSONDecodeError as e:
-            logging.exception("Failed to generate name after answer, use query instead")
+        answer = response.message.get_text_content()
+        if not answer.strip():
             answer = query
+        else:
+            try:
+                result_dict = json.loads(answer)
+            except json.JSONDecodeError:
+                result_dict = json_repair.loads(answer)
+
+            if not isinstance(result_dict, dict):
+                answer = query
+            else:
+                output = result_dict.get("Your Output")
+                answer = output.strip() if isinstance(output, str) and output.strip() else query
+
         name = answer.strip()
 
         if len(name) > 75:
             name = name[:75] + "..."
 
-        # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.GENERATE_NAME_TRACE,
-                conversation_id=conversation_id,
-                generate_conversation_name=name,
-                inputs=prompt,
-                timer=timer,
-                tenant_id=tenant_id,
+        if trace_scope is not None:
+            trace_scope.emit(
+                ConversationNamed(
+                    conversation_id=conversation_id,
+                    message_id=message_id,
+                    inputs=prompt,
+                    name=name,
+                    started_at=timer.started_at,
+                    ended_at=timer.ended_at,
+                )
             )
-        )
 
         return name
 
     @classmethod
-    def generate_suggested_questions_after_answer(cls, tenant_id: str, histories: str):
-        output_parser = SuggestedQuestionsAfterAnswerOutputParser()
-        format_instructions = output_parser.get_format_instructions()
+    @with_credit_usage_created_by(CreditUsageCreatedBy.WORKFLOW_INSTRUCTION_SUGGESTIONS)
+    def generate_workflow_instruction_suggestions(
+        cls,
+        tenant_id: str,
+        *,
+        mode: Literal["workflow", "advanced-chat"],
+        language: str | None = None,
+        count: int = 4,
+    ) -> list[str]:
+        """Propose short, buildable example instructions for the workflow generator.
 
-        prompt_template = PromptTemplateParser(template="{{histories}}\n{{format_instructions}}\nquestions:\n")
-
-        prompt = prompt_template.format({"histories": histories, "format_instructions": format_instructions})
+        Runs BEFORE the user picks a model, so it uses the tenant's DEFAULT LLM
+        only. Suggestions are a soft enhancement, never a blocker: every failure
+        path (no default model, KB / tool lookup error, LLM error, unparseable
+        output) is swallowed and surfaced as an empty list — a valid result the
+        caller renders as "no suggestions". This method NEVER raises.
+        """
+        count = max(_SUGGESTION_MIN_COUNT, min(count, _SUGGESTION_MAX_COUNT))
 
         try:
-            model_manager = ModelManager()
-            model_instance = model_manager.get_default_model_instance(
+            model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_default_model_instance(
                 tenant_id=tenant_id,
                 model_type=ModelType.LLM,
             )
-        except InvokeAuthorizationError:
+        except Exception:
+            logger.info("Workflow instruction suggestions: no default model for tenant %s", tenant_id)
             return []
 
-        prompt_messages = [UserPromptMessage(content=prompt)]
+        context_block = cls._build_suggestion_context(tenant_id)
+        app_type_label = (
+            "Workflow — single-shot automation" if mode == "workflow" else "Chatflow — conversational multi-turn"
+        )
+
+        user_lines = [
+            f"App type: {app_type_label}",
+            context_block,
+            f"Return exactly {count} distinct ideas as a JSON array of strings.",
+        ]
+        if language:
+            user_lines.append(f"Write every idea in this language: {language}.")
+        user_prompt = "\n".join(line for line in user_lines if line)
+
+        prompt_messages: list[PromptMessage] = [
+            SystemPromptMessage(content=_SUGGESTION_SYSTEM_PROMPT),
+            UserPromptMessage(content=user_prompt),
+        ]
 
         try:
-            response = cast(
-                LLMResult,
-                model_instance.invoke_llm(
-                    prompt_messages=list(prompt_messages),
-                    model_parameters={"max_tokens": 256, "temperature": 0},
-                    stream=False,
-                ),
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters={"max_tokens": _SUGGESTION_MAX_TOKENS, "temperature": _SUGGESTION_TEMPERATURE},
+                stream=False,
             )
-
-            questions = output_parser.parse(cast(str, response.message.content))
-        except InvokeError:
-            questions = []
         except Exception:
-            logging.exception("Failed to generate suggested questions after answer")
-            questions = []
+            logger.exception("Workflow instruction suggestions: LLM invocation failed")
+            return []
 
-        return questions
+        raw_suggestions = _parse_string_list(response.message.get_text_content() or "")
+
+        # Strip whitespace + surrounding quotes, drop empties, dedupe
+        # case-insensitively (preserving first-seen casing), cap to ``count``.
+        cleaned: list[str] = []
+        seen: set[str] = set()
+        for item in raw_suggestions:
+            idea = item.strip().strip("\"'").strip()
+            if not idea:
+                continue
+            key = idea.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            cleaned.append(idea)
+            if len(cleaned) >= count:
+                break
+        return cleaned
+
+    @staticmethod
+    def _build_suggestion_context(tenant_id: str) -> str:
+        """Assemble an optional grounding block naming the tenant's KBs and tools.
+
+        Best-effort: each section is isolated in its own try/except so a failure
+        enumerating one (DB hiccup, plugin daemon down) never blocks the other
+        or the suggestion call itself. Returns "" when nothing is available.
+        """
+        sections: list[str] = []
+
+        try:
+            from models.dataset import Dataset
+
+            names = db.session.scalars(
+                select(Dataset.name)
+                .where(Dataset.tenant_id == tenant_id)
+                .order_by(Dataset.created_at.desc())
+                .limit(_SUGGESTION_KB_LIMIT)
+            ).all()
+            kb_names = [name for name in names if name]
+            if kb_names:
+                sections.append("Knowledge bases:\n" + "\n".join(f"- {name}" for name in kb_names))
+        except Exception:
+            logger.info("Workflow instruction suggestions: failed to load knowledge bases", exc_info=True)
+
+        try:
+            from core.workflow.generator.tool_catalogue import build_tool_catalogue, format_tool_catalogue
+
+            tool_text = format_tool_catalogue(build_tool_catalogue(tenant_id))
+            if tool_text:
+                sample = "\n".join(tool_text.splitlines()[:_SUGGESTION_TOOL_SAMPLE_LINES])
+                sections.append("Installed tools:\n" + sample)
+        except Exception:
+            logger.info("Workflow instruction suggestions: failed to load tool catalogue", exc_info=True)
+
+        if not sections:
+            return ""
+        return "\n\n".join(sections) + "\n\n"
 
     @classmethod
-    def generate_rule_config(
-        cls, tenant_id: str, instruction: str, model_config: dict, no_variable: bool, rule_config_max_tokens: int = 512
-    ) -> dict:
+    @with_credit_usage_created_by(CreditUsageCreatedBy.RULE_CONFIG)
+    def generate_rule_config(cls, tenant_id: str, args: RuleGeneratePayload, *, app_id: str | None = None):
         output_parser = RuleConfigGeneratorOutputParser()
 
         error = ""
         error_step = ""
-        rule_config = {"prompt": "", "variables": [], "opening_statement": "", "error": ""}
-        model_parameters = {"max_tokens": rule_config_max_tokens, "temperature": 0.01}
-
-        if no_variable:
+        rule_config: dict[str, Any] = {"prompt": "", "variables": [], "opening_statement": "", "error": ""}
+        model_parameters = args.model_config_data.completion_params
+        if args.no_variable:
             prompt_template = PromptTemplateParser(WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE)
 
             prompt_generate = prompt_template.format(
                 inputs={
-                    "TASK_DESCRIPTION": instruction,
+                    "TASK_DESCRIPTION": args.instruction,
                 },
                 remove_template_variables=False,
             )
 
-            prompt_messages = [UserPromptMessage(content=prompt_generate)]
+            no_variable_prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt_generate)]
 
-            model_manager = ModelManager()
-
-            model_instance = model_manager.get_default_model_instance(
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+            model_instance = model_manager.get_model_instance(
                 tenant_id=tenant_id,
                 model_type=ModelType.LLM,
+                provider=args.model_config_data.provider,
+                model=args.model_config_data.name,
             )
 
-            try:
-                response = cast(
-                    LLMResult,
-                    model_instance.invoke_llm(
-                        prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                    ),
-                )
+            response: LLMResult | None = None
+            with measure_time() as timer:
+                try:
+                    response = model_instance.invoke_llm(
+                        prompt_messages=list(no_variable_prompt_messages),
+                        model_parameters=model_parameters,
+                        stream=False,
+                    )
+                    rule_config["prompt"] = response.message.get_text_content()
+                except InvokeError as e:
+                    error = str(e)
+                    error_step = "generate rule config"
+                except Exception as e:
+                    logger.exception("Failed to generate rule config, model: %s", args.model_config_data.name)
+                    error = str(e)
+                    error_step = "generate rule config"
 
-                rule_config["prompt"] = cast(str, response.message.content)
-
-            except InvokeError as e:
-                error = str(e)
-                error_step = "generate rule config"
-            except Exception as e:
-                logging.exception(f"Failed to generate rule config, model: {model_config.get('name')}")
-                rule_config["error"] = str(e)
+            cls._emit_prompt_generation(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                operation_type="rule_generate",
+                instruction=args.instruction,
+                generated_output=rule_config.get("prompt", ""),
+                model_provider=args.model_config_data.provider,
+                model_name=args.model_config_data.name,
+                timer=timer,
+                result=response,
+                error=error or None,
+            )
 
             rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
@@ -186,211 +441,470 @@ class LLMGenerator:
         # format the prompt_generate_prompt
         prompt_generate_prompt = prompt_template.format(
             inputs={
-                "TASK_DESCRIPTION": instruction,
+                "TASK_DESCRIPTION": args.instruction,
             },
             remove_template_variables=False,
         )
-        prompt_messages = [UserPromptMessage(content=prompt_generate_prompt)]
+        prompt_generate_messages: list[PromptMessage] = [UserPromptMessage(content=prompt_generate_prompt)]
 
         # get model instance
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
-            provider=model_config.get("provider", ""),
-            model=model_config.get("name", ""),
+            provider=args.model_config_data.provider,
+            model=args.model_config_data.name,
         )
 
-        try:
+        prompt_content: LLMResult | None = None
+        with measure_time() as timer:
             try:
-                # the first step to generate the task prompt
-                prompt_content = cast(
-                    LLMResult,
-                    model_instance.invoke_llm(
-                        prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                    ),
+                try:
+                    # the first step to generate the task prompt
+                    prompt_content = model_instance.invoke_llm(
+                        prompt_messages=list(prompt_generate_messages),
+                        model_parameters=model_parameters,
+                        stream=False,
+                    )
+                except InvokeError as e:
+                    error = str(e)
+                    error_step = "generate prefix prompt"
+                    rule_config["error"] = f"Failed to {error_step}. Error: {error}"
+                    return rule_config
+
+                rule_config["prompt"] = prompt_content.message.get_text_content()
+
+                parameter_generate_prompt = parameter_template.format(
+                    inputs={
+                        "INPUT_TEXT": prompt_content.message.get_text_content(),
+                    },
+                    remove_template_variables=False,
                 )
-            except InvokeError as e:
-                error = str(e)
-                error_step = "generate prefix prompt"
-                rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
-
-                return rule_config
-
-            rule_config["prompt"] = cast(str, prompt_content.message.content)
-
-            if not isinstance(prompt_content.message.content, str):
-                raise NotImplementedError("prompt content is not a string")
-            parameter_generate_prompt = parameter_template.format(
-                inputs={
-                    "INPUT_TEXT": prompt_content.message.content,
-                },
-                remove_template_variables=False,
-            )
-            parameter_messages = [UserPromptMessage(content=parameter_generate_prompt)]
-
-            # the second step to generate the task_parameter and task_statement
-            statement_generate_prompt = statement_template.format(
-                inputs={
-                    "TASK_DESCRIPTION": instruction,
-                    "INPUT_TEXT": prompt_content.message.content,
-                },
-                remove_template_variables=False,
-            )
-            statement_messages = [UserPromptMessage(content=statement_generate_prompt)]
-
-            try:
-                parameter_content = cast(
-                    LLMResult,
-                    model_instance.invoke_llm(
-                        prompt_messages=list(parameter_messages), model_parameters=model_parameters, stream=False
-                    ),
+                statement_generate_prompt = statement_template.format(
+                    inputs={
+                        "TASK_DESCRIPTION": args.instruction,
+                        "INPUT_TEXT": prompt_content.message.get_text_content(),
+                    },
+                    remove_template_variables=False,
                 )
-                rule_config["variables"] = re.findall(r'"\s*([^"]+)\s*"', cast(str, parameter_content.message.content))
-            except InvokeError as e:
-                error = str(e)
-                error_step = "generate variables"
 
-            try:
-                statement_content = cast(
-                    LLMResult,
-                    model_instance.invoke_llm(
-                        prompt_messages=list(statement_messages), model_parameters=model_parameters, stream=False
-                    ),
-                )
-                rule_config["opening_statement"] = cast(str, statement_content.message.content)
-            except InvokeError as e:
-                error = str(e)
-                error_step = "generate conversation opener"
+                try:
+                    parameter_content: LLMResult = model_instance.invoke_llm(
+                        prompt_messages=[UserPromptMessage(content=parameter_generate_prompt)],
+                        model_parameters=model_parameters,
+                        stream=False,
+                    )
+                    rule_config["variables"] = re.findall(
+                        r'"\s*([^"]+)\s*"', parameter_content.message.get_text_content()
+                    )
+                except InvokeError as e:
+                    error = str(e)
+                    error_step = "generate variables"
 
-        except Exception as e:
-            logging.exception(f"Failed to generate rule config, model: {model_config.get('name')}")
-            rule_config["error"] = str(e)
+                try:
+                    statement_content: LLMResult = model_instance.invoke_llm(
+                        prompt_messages=[UserPromptMessage(content=statement_generate_prompt)],
+                        model_parameters=model_parameters,
+                        stream=False,
+                    )
+                    rule_config["opening_statement"] = statement_content.message.get_text_content()
+                except InvokeError as e:
+                    error = str(e)
+                    error_step = "generate conversation opener"
+
+            except Exception as e:
+                logger.exception("Failed to generate rule config, model: %s", args.model_config_data.name)
+                error = str(e)
+                error_step = "handle unexpected exception"
+
+        cls._emit_prompt_generation(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            operation_type="rule_generate",
+            instruction=args.instruction,
+            generated_output=rule_config.get("prompt", ""),
+            model_provider=args.model_config_data.provider,
+            model_name=args.model_config_data.name,
+            timer=timer,
+            result=prompt_content,
+            error=error or None,
+        )
 
         rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
         return rule_config
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.CODE_GENERATION)
     def generate_code(
         cls,
         tenant_id: str,
-        instruction: str,
-        model_config: dict,
-        code_language: str = "javascript",
-        max_tokens: int = 1000,
-    ) -> dict:
-        if code_language == "python":
+        args: RuleCodeGeneratePayload,
+        *,
+        app_id: str | None = None,
+    ) -> CodeGenerateResultDict:
+        if args.code_language == "python":
             prompt_template = PromptTemplateParser(PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE)
         else:
             prompt_template = PromptTemplateParser(JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE)
 
         prompt = prompt_template.format(
             inputs={
-                "INSTRUCTION": instruction,
-                "CODE_LANGUAGE": code_language,
+                "INSTRUCTION": args.instruction,
+                "CODE_LANGUAGE": args.code_language,
             },
             remove_template_variables=False,
         )
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
-            provider=model_config.get("provider", ""),
-            model=model_config.get("name", ""),
+            provider=args.model_config_data.provider,
+            model=args.model_config_data.name,
         )
 
-        prompt_messages = [UserPromptMessage(content=prompt)]
-        model_parameters = {"max_tokens": max_tokens, "temperature": 0.01}
+        prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt)]
+        model_parameters = args.model_config_data.completion_params
 
-        try:
-            response = cast(
-                LLMResult,
-                model_instance.invoke_llm(
+        response: LLMResult | None = None
+        error: str | None = None
+        generated_code = ""
+        with measure_time() as timer:
+            try:
+                response = model_instance.invoke_llm(
                     prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                ),
-            )
+                )
+                generated_code = response.message.get_text_content()
+            except InvokeError as e:
+                error = str(e)
+            except Exception as e:
+                logger.exception(
+                    "Failed to invoke LLM model, model: %s, language: %s",
+                    args.model_config_data.name,
+                    args.code_language,
+                )
+                error = str(e)
 
-            generated_code = cast(str, response.message.content)
-            return {"code": generated_code, "language": code_language, "error": ""}
+        cls._emit_prompt_generation(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            operation_type="code_generate",
+            instruction=args.instruction,
+            generated_output=generated_code,
+            model_provider=args.model_config_data.provider,
+            model_name=args.model_config_data.name,
+            timer=timer,
+            result=response,
+            error=error,
+        )
 
-        except InvokeError as e:
-            error = str(e)
-            return {"code": "", "language": code_language, "error": f"Failed to generate code. Error: {error}"}
-        except Exception as e:
-            logging.exception(
-                f"Failed to invoke LLM model, model: {model_config.get('name')}, language: {code_language}"
-            )
-            return {"code": "", "language": code_language, "error": f"An unexpected error occurred: {str(e)}"}
+        if error:
+            return {"code": "", "language": args.code_language, "error": f"Failed to generate code. Error: {error}"}
+        return {"code": generated_code, "language": args.code_language, "error": ""}
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.QA_DOCUMENT)
     def generate_qa_document(cls, tenant_id: str, query, document_language: str):
         prompt = GENERATOR_QA_PROMPT.format(language=document_language)
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
         )
 
-        prompt_messages = [SystemPromptMessage(content=prompt), UserPromptMessage(content=query)]
+        prompt_messages: list[PromptMessage] = [SystemPromptMessage(content=prompt), UserPromptMessage(content=query)]
 
-        response = cast(
-            LLMResult,
-            model_instance.invoke_llm(
-                prompt_messages=prompt_messages,
-                model_parameters={"temperature": 0.01, "max_tokens": 2000},
-                stream=False,
-            ),
+        # Explicitly use the non-streaming overload
+        result = model_instance.invoke_llm(
+            prompt_messages=prompt_messages,
+            model_parameters={"temperature": 0.01, "max_tokens": 2000},
+            stream=False,
         )
 
-        answer = cast(str, response.message.content)
+        # Runtime type check for overload narrowing.
+        if not isinstance(result, LLMResult):
+            raise TypeError("Expected LLMResult when stream=False")
+        response = result
+
+        answer = response.message.get_text_content()
         return answer.strip()
 
     @classmethod
-    def generate_structured_output(cls, tenant_id: str, instruction: str, model_config: dict):
-        model_manager = ModelManager()
+    @with_credit_usage_created_by(CreditUsageCreatedBy.STRUCTURED_OUTPUT)
+    def generate_structured_output(
+        cls, tenant_id: str, args: RuleStructuredOutputPayload, *, app_id: str | None = None
+    ) -> StructuredOutputResultDict:
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
-            provider=model_config.get("provider", ""),
-            model=model_config.get("name", ""),
+            provider=args.model_config_data.provider,
+            model=args.model_config_data.name,
         )
 
-        prompt_messages = [
+        prompt_messages: list[PromptMessage] = [
             SystemPromptMessage(content=SYSTEM_STRUCTURED_OUTPUT_GENERATE),
-            UserPromptMessage(content=instruction),
+            UserPromptMessage(content=args.instruction),
         ]
-        model_parameters = model_config.get("model_parameters", {})
+        model_parameters = args.model_config_data.completion_params
 
-        try:
-            response = cast(
-                LLMResult,
-                model_instance.invoke_llm(
+        response: LLMResult | None = None
+        error: str | None = None
+        generated_output = ""
+        with measure_time() as timer:
+            try:
+                response = model_instance.invoke_llm(
                     prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-                ),
+                )
+                raw_content = response.message.get_text_content()
+                try:
+                    parsed_content = json.loads(raw_content)
+                except json.JSONDecodeError:
+                    parsed_content = json_repair.loads(raw_content)
+                if not isinstance(parsed_content, dict | list):
+                    raise ValueError(f"Failed to parse structured output from llm: {raw_content}")
+                generated_output = json.dumps(parsed_content, indent=2, ensure_ascii=False)
+            except InvokeError as e:
+                error = str(e)
+            except Exception as e:
+                logger.exception("Failed to invoke LLM model, model: %s", args.model_config_data.name)
+                error = str(e)
+
+        cls._emit_prompt_generation(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            operation_type="structured_output",
+            instruction=args.instruction,
+            generated_output=generated_output,
+            model_provider=args.model_config_data.provider,
+            model_name=args.model_config_data.name,
+            timer=timer,
+            result=response,
+            error=error,
+        )
+
+        if error:
+            return {"output": "", "error": f"Failed to generate JSON Schema. Error: {error}"}
+        return {"output": generated_output, "error": ""}
+
+    @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.INSTRUCTION_MODIFICATION)
+    def instruction_modify_legacy(
+        tenant_id: str,
+        flow_id: str,
+        current: str,
+        instruction: str,
+        model_config: ModelConfig,
+        ideal_output: str | None,
+        session: Session,
+    ):
+        last_run: Message | None = session.scalar(
+            select(Message)
+            .join(App, App.id == Message.app_id)
+            .where(Message.app_id == flow_id, App.tenant_id == tenant_id)
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
+        if not last_run:
+            return LLMGenerator.__instruction_modify_common(
+                tenant_id=tenant_id,
+                app_id=flow_id,
+                model_config=model_config,
+                last_run=None,
+                current=current,
+                error_message="",
+                instruction=instruction,
+                node_type="llm",
+                ideal_output=ideal_output,
+            )
+        last_run_dict = {
+            "query": last_run.query,
+            "answer": last_run.answer,
+            "error": last_run.error,
+        }
+        return LLMGenerator.__instruction_modify_common(
+            tenant_id=tenant_id,
+            app_id=flow_id,
+            model_config=model_config,
+            last_run=last_run_dict,
+            current=current,
+            error_message=str(last_run.error),
+            instruction=instruction,
+            node_type="llm",
+            ideal_output=ideal_output,
+        )
+
+    @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.INSTRUCTION_MODIFICATION)
+    def instruction_modify_workflow(
+        tenant_id: str,
+        flow_id: str,
+        node_id: str,
+        current: str,
+        instruction: str,
+        model_config: ModelConfig,
+        ideal_output: str | None,
+        workflow_service: WorkflowServiceInterface,
+        session: Session,
+    ):
+        app: App | None = session.scalar(select(App).where(App.id == flow_id, App.tenant_id == tenant_id).limit(1))
+        if not app:
+            raise ValueError("App not found.")
+        workflow = workflow_service.get_draft_workflow(app_model=app, session=session)
+        if not workflow:
+            raise ValueError("Workflow not found for the given app model.")
+        last_run = workflow_service.get_node_last_run(app_model=app, workflow=workflow, node_id=node_id)
+        try:
+            node_type = cast(WorkflowNodeExecutionModel, last_run).node_type
+        except Exception:
+            try:
+                node_type = [it for it in workflow.graph_dict["graph"]["nodes"] if it["id"] == node_id][0]["data"][
+                    "type"
+                ]
+            except Exception:
+                node_type = "llm"
+
+        if not last_run:  # Node is not executed yet
+            return LLMGenerator.__instruction_modify_common(
+                tenant_id=tenant_id,
+                app_id=flow_id,
+                model_config=model_config,
+                last_run=None,
+                current=current,
+                error_message="",
+                instruction=instruction,
+                node_type=node_type,
+                ideal_output=ideal_output,
             )
 
-            raw_content = response.message.content
+        def agent_log_of(node_execution: WorkflowNodeExecutionModel) -> Sequence:
+            raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG, [])
+            if not raw_agent_log:
+                return []
 
-            if not isinstance(raw_content, str):
-                raise ValueError(f"LLM response content must be a string, got: {type(raw_content)}")
+            return [
+                {
+                    "status": event["status"],
+                    "error": event["error"],
+                    "data": event["data"],
+                }
+                for event in raw_agent_log
+            ]
 
+        inputs = last_run.load_full_inputs(session, storage)
+        last_run_dict = {
+            "inputs": inputs,
+            "status": last_run.status,
+            "error": last_run.error,
+            "agent_log": agent_log_of(last_run),
+        }
+
+        return LLMGenerator.__instruction_modify_common(
+            tenant_id=tenant_id,
+            app_id=flow_id,
+            model_config=model_config,
+            last_run=last_run_dict,
+            current=current,
+            error_message=last_run.error,
+            instruction=instruction,
+            node_type=last_run.node_type,
+            ideal_output=ideal_output,
+        )
+
+    @staticmethod
+    def __instruction_modify_common(
+        tenant_id: str,
+        app_id: str | None,
+        model_config: ModelConfig,
+        last_run: dict[str, Any] | None,
+        current: str | None,
+        error_message: str | None,
+        instruction: str,
+        node_type: str,
+        ideal_output: str | None,
+    ):
+        last_run_type = "{{#last_run#}}"
+        current_type = "{{#current#}}"
+        error_message_type = "{{#error_message#}}"
+        injected_instruction = instruction
+        if last_run_type in injected_instruction:
+            injected_instruction = injected_instruction.replace(last_run_type, json.dumps(last_run))
+        if current_type in injected_instruction:
+            injected_instruction = injected_instruction.replace(current_type, current or "null")
+        if error_message_type in injected_instruction:
+            injected_instruction = injected_instruction.replace(error_message_type, error_message or "null")
+        model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=model_config.provider,
+            model=model_config.name,
+        )
+        match node_type:
+            case "llm" | "agent":
+                system_prompt = LLM_MODIFY_PROMPT_SYSTEM
+            case "code":
+                system_prompt = LLM_MODIFY_CODE_SYSTEM
+            case _:
+                system_prompt = LLM_MODIFY_PROMPT_SYSTEM
+        prompt_messages: list[PromptMessage] = [
+            SystemPromptMessage(content=system_prompt),
+            UserPromptMessage(
+                content=json.dumps(
+                    {
+                        "current": current,
+                        "last_run": last_run,
+                        "instruction": injected_instruction,
+                        "ideal_output": ideal_output,
+                    }
+                )
+            ),
+        ]
+        model_parameters, stop = _normalize_completion_params(model_config.completion_params)
+
+        response: LLMResult | None = None
+        error: str | None = None
+        generated_output = ""
+        data: dict = {}
+        with measure_time() as timer:
             try:
-                parsed_content = json.loads(raw_content)
-            except json.JSONDecodeError:
-                parsed_content = json_repair.loads(raw_content)
+                response = model_instance.invoke_llm(
+                    prompt_messages=list(prompt_messages),
+                    model_parameters=model_parameters,
+                    stop=stop,
+                    stream=False,
+                )
+                generated_raw = response.message.get_text_content()
+                first_brace = generated_raw.find("{")
+                last_brace = generated_raw.rfind("}")
+                if first_brace == -1 or last_brace == -1 or last_brace < first_brace:
+                    raise ValueError(f"Could not find a valid JSON object in response: {generated_raw}")
+                json_str = generated_raw[first_brace : last_brace + 1]
+                parsed = json_repair.loads(json_str)
+                if not isinstance(parsed, dict):
+                    raise TypeError(f"Expected a JSON object, but got {type(parsed).__name__}")
+                data = parsed
+                generated_output = json_str
+            except InvokeError as e:
+                error = str(e)
+            except Exception as e:
+                logger.exception("Failed to invoke LLM model, model: %s", json.dumps(model_config.name), exc_info=True)
+                error = str(e)
 
-            if not isinstance(parsed_content, dict | list):
-                raise ValueError(f"Failed to parse structured output from llm: {raw_content}")
+        LLMGenerator._emit_prompt_generation(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            operation_type="instruction_modify",
+            instruction=instruction,
+            generated_output=generated_output,
+            model_provider=model_config.provider,
+            model_name=model_config.name,
+            timer=timer,
+            result=response,
+            error=error,
+        )
 
-            generated_json_schema = json.dumps(parsed_content, indent=2, ensure_ascii=False)
-            return {"output": generated_json_schema, "error": ""}
-
-        except InvokeError as e:
-            error = str(e)
-            return {"output": "", "error": f"Failed to generate JSON Schema. Error: {error}"}
-        except Exception as e:
-            logging.exception(f"Failed to invoke LLM model, model: {model_config.get('name')}")
-            return {"output": "", "error": f"An unexpected error occurred: {str(e)}"}
+        if error:
+            return {"error": f"Failed to generate. Error: {error}"}
+        return data

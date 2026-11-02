@@ -1,8 +1,9 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useRef } from 'react'
-import cn from '@/utils/classnames'
 import { sleep } from '@/utils'
 
 type IProps = {
+  'aria-label'?: string
   placeholder?: string
   value: string
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
@@ -16,25 +17,24 @@ type IProps = {
   onKeyUp?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
 }
 
-const AutoHeightTextarea = (
-  {
-    ref: outerRef,
-    value,
-    onChange,
-    placeholder,
-    className,
-    wrapperClassName,
-    minHeight = 36,
-    maxHeight = 96,
-    autoFocus,
-    controlFocus,
-    onKeyDown,
-    onKeyUp,
-  }: IProps & {
-    ref: React.RefObject<unknown>;
-  },
-) => {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+const AutoHeightTextarea = ({
+  'aria-label': ariaLabel,
+  ref: outerRef,
+  value,
+  onChange,
+  placeholder,
+  className,
+  wrapperClassName,
+  minHeight = 36,
+  maxHeight = 96,
+  autoFocus,
+  controlFocus,
+  onKeyDown,
+  onKeyUp,
+}: IProps & {
+  ref?: React.RefObject<HTMLTextAreaElement>
+}) => {
+  // oxlint-disable-next-line react/rules-of-hooks
   const ref = outerRef || useRef<HTMLTextAreaElement>(null)
 
   const doFocus = () => {
@@ -51,35 +51,36 @@ const AutoHeightTextarea = (
       let hasFocus = false
       await sleep(100)
       hasFocus = doFocus()
-      if (!hasFocus)
-        focus()
+      if (!hasFocus) focus()
     }
   }
 
   useEffect(() => {
-    if (autoFocus)
-      focus()
+    if (autoFocus) focus()
   }, [])
   useEffect(() => {
-    if (controlFocus)
-      focus()
+    if (controlFocus) focus()
   }, [controlFocus])
 
   return (
-    (<div className={`relative ${wrapperClassName}`}>
-      <div className={cn(className, 'invisible overflow-y-auto whitespace-pre-wrap  break-all')} style={{
-        minHeight,
-        maxHeight,
-        paddingRight: (value && value.trim().length > 10000) ? 140 : 130,
-      }}>
+    <div className={`relative ${wrapperClassName}`}>
+      <div
+        className={cn(className, 'invisible overflow-y-auto break-all whitespace-pre-wrap')}
+        style={{
+          minHeight,
+          maxHeight,
+          paddingRight: value && value.trim().length > 10000 ? 140 : 130,
+        }}
+      >
         {!value ? placeholder : value.replace(/\n$/, '\n ')}
       </div>
       <textarea
         ref={ref}
+        aria-label={ariaLabel}
         autoFocus={autoFocus}
         className={cn(className, 'absolute inset-0 resize-none overflow-auto')}
         style={{
-          paddingRight: (value && value.trim().length > 10000) ? 140 : 130,
+          paddingRight: value && value.trim().length > 10000 ? 140 : 130,
         }}
         placeholder={placeholder}
         onChange={onChange}
@@ -87,7 +88,7 @@ const AutoHeightTextarea = (
         onKeyUp={onKeyUp}
         value={value}
       />
-    </div>)
+    </div>
   )
 }
 

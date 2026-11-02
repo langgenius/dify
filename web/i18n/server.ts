@@ -1,56 +1,57 @@
-import { cookies, headers } from 'next/headers'
-import Negotiator from 'negotiator'
+import type { Locale } from '.'
+import type { Namespace, NamespaceInFileName } from './resources'
 import { match } from '@formatjs/intl-localematcher'
-
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
+import Negotiator from 'negotiator'
+import { cache } from 'react'
 import { initReactI18next } from 'react-i18next/initReactI18next'
-import { i18n } from '.'
-import type { Locale } from '.'
+import { LOCALE_COOKIE_NAME } from '@/config'
+import { cookies, headers } from '@/next/headers'
+import { loadI18nResource } from './load-resource'
+import { canonicalizeLanguageTag, defaultLocale, supportedLocales } from './locale'
+import { getInitOptions } from './settings'
 
-// https://locize.com/blog/next-13-app-dir-i18n/
-const initI18next = async (lng: Locale, ns: string) => {
-  const i18nInstance = createInstance()
-  await i18nInstance
+const getOrCreateI18next = cache(async (lng: Locale) => {
+  const instance = createInstance()
+  await instance
     .use(initReactI18next)
-    .use(resourcesToBackend((language: string, namespace: string) => import(`./${language}/${namespace}.ts`)))
+    .use(
+      resourcesToBackend((language: Locale, namespace: Namespace | NamespaceInFileName) =>
+        loadI18nResource(language, namespace),
+      ),
+    )
     .init({
-      lng: lng === 'zh-Hans' ? 'zh-Hans' : lng,
-      ns,
-      fallbackLng: 'en-US',
+      ...getInitOptions([]),
+      lng,
     })
-  return i18nInstance
-}
+  return instance
+})
 
-export async function useTranslation(lng: Locale, ns = '', options: Record<string, any> = {}) {
-  const i18nextInstance = await initI18next(lng, ns)
+export async function getTranslation<
+  const T extends Namespace | readonly [Namespace, ...Namespace[]],
+>(lng: Locale, ns: T) {
+  const i18nextInstance = await getOrCreateI18next(lng)
+
+  await i18nextInstance.loadNamespaces(typeof ns === 'string' ? [ns] : [...ns])
+
   return {
-    t: i18nextInstance.getFixedT(lng, ns, options.keyPrefix),
+    t: i18nextInstance.getFixedT<T>(lng, ns),
     i18n: i18nextInstance,
   }
 }
 
-export const getLocaleOnServer = async (): Promise<Locale> => {
-  const locales: string[] = i18n.locales
+export const getLocaleOnServer = cache(async (): Promise<Locale> => {
+  const localeCookie = (await cookies()).get(LOCALE_COOKIE_NAME)
+  const requestedLanguages = localeCookie?.value
+    ? [localeCookie.value]
+    : new Negotiator({
+        headers: { 'accept-language': (await headers()).get('accept-language') ?? '' },
+      }).languages()
+  const languages = requestedLanguages.flatMap((language) => {
+    const canonical = canonicalizeLanguageTag(language)
+    return canonical ? [canonical] : []
+  })
 
-  let languages: string[] | undefined
-  // get locale from cookie
-  const localeCookie = (await cookies()).get('locale')
-  languages = localeCookie?.value ? [localeCookie.value] : []
-
-  if (!languages.length) {
-    // Negotiator expects plain object so we need to transform headers
-    const negotiatorHeaders: Record<string, string> = {};
-    (await headers()).forEach((value, key) => (negotiatorHeaders[key] = value))
-    // Use negotiator and intl-localematcher to get best locale
-    languages = new Negotiator({ headers: negotiatorHeaders }).languages()
-  }
-
-  // Validate languages
-  if (!Array.isArray(languages) || languages.length === 0 || !languages.every(lang => typeof lang === 'string' && /^[\w-]+$/.test(lang)))
-    languages = [i18n.defaultLocale]
-
-  // match locale
-  const matchedLocale = match(languages, locales, i18n.defaultLocale) as Locale
-  return matchedLocale
-}
+  return match(languages, supportedLocales, defaultLocale) as Locale
+})

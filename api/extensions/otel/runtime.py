@@ -1,0 +1,109 @@
+import logging
+import os
+import sys
+
+from celery.signals import worker_init
+from flask_login import user_loaded_from_request, user_logged_in
+from opentelemetry import metrics, trace
+from opentelemetry.propagate import set_global_textmap
+from opentelemetry.propagators.b3 import B3MultiFormat
+from opentelemetry.propagators.composite import CompositePropagator
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+
+from configs import dify_config
+from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
+from libs.helper import extract_tenant_id
+from models import Account, EndUser
+
+logger = logging.getLogger(__name__)
+
+
+def setup_context_propagation() -> None:
+    set_global_textmap(
+        CompositePropagator(
+            [
+                TraceContextTextMapPropagator(),
+                B3MultiFormat(),
+            ]
+        )
+    )
+
+
+def shutdown_tracer() -> None:
+    flush_telemetry()
+
+
+def flush_telemetry() -> None:
+    """
+    Best-effort flush for telemetry providers.
+
+    This is mainly used by short-lived command processes (e.g. Kubernetes CronJob)
+    so counters/histograms are exported before the process exits.
+    """
+    provider = trace.get_tracer_provider()
+    if hasattr(provider, "force_flush"):
+        try:
+            provider.force_flush()
+        except Exception:
+            logger.exception("otel: failed to flush trace provider")
+
+    metric_provider = metrics.get_meter_provider()
+    if hasattr(metric_provider, "force_flush"):
+        try:
+            metric_provider.force_flush()
+        except Exception:
+            logger.exception("otel: failed to flush metric provider")
+
+
+def is_celery_worker():
+    return "celery" in sys.argv[0].lower()
+
+
+@user_logged_in.connect
+@user_loaded_from_request.connect
+def on_user_loaded(_sender: object, user: Account | EndUser | None) -> None:
+    if dify_config.ENABLE_OTEL and user:
+        try:
+            if not trace.get_current_span().is_recording():
+                return
+            set_identity_span_attributes(tenant_id=extract_tenant_id(user), user_id=user.id)
+        except Exception:
+            logger.exception("Error setting tenant and user attributes")
+
+
+def set_identity_span_attributes(*, tenant_id: str | None, user_id: str) -> None:
+    """Enrich the recording span; a missing workspace (None) skips enrichment."""
+    if not dify_config.ENABLE_OTEL:
+        return
+    try:
+        current_span = trace.get_current_span()
+        if not current_span.is_recording() or not tenant_id:
+            return
+        current_span.set_attributes({DifySpanAttributes.TENANT_ID: tenant_id, GenAIAttributes.USER_ID: user_id})
+    except Exception:
+        logger.exception("Error setting tenant and user attributes")
+
+
+@worker_init.connect(weak=False)
+def init_celery_worker(*args: object, **kwargs: object):
+    if dify_config.ENABLE_OTEL:
+        from opentelemetry.metrics import get_meter_provider
+        from opentelemetry.trace import get_tracer_provider
+
+        from extensions.otel.celery_sqlcommenter import setup_celery_sqlcommenter
+
+        tracer_provider = get_tracer_provider()
+        metric_provider = get_meter_provider()
+        if dify_config.DEBUG:
+            logger.info("Initializing OpenTelemetry for Celery worker")
+        setup_celery_sqlcommenter(tracer_provider=tracer_provider, meter_provider=metric_provider)
+
+
+def is_instrument_flag_enabled() -> bool:
+    """
+    Check if external instrumentation is enabled via environment variable.
+
+    Third-party non-invasive instrumentation agents set this flag to coordinate
+    with Dify's manual OpenTelemetry instrumentation.
+    """
+    return os.getenv("ENABLE_OTEL_FOR_INSTRUMENT", "").strip().lower() == "true"

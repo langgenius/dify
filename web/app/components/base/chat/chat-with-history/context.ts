@@ -1,0 +1,93 @@
+'use client'
+
+import type { RefObject } from 'react'
+import type { ChatProps } from '../chat'
+import type { Theme } from '../embedded-chatbot/theme/theme'
+import type { Callback, ChatConfig, ChatItemInTree, OnFeedback } from '../types'
+import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
+import { noop } from 'es-toolkit/function'
+import { createContext, useContext } from 'use-context-selector'
+
+export type ChatWithHistoryContextValue = {
+  appMeta?: AppMeta | null
+  appData?: AppData | null
+  appParams?: ChatConfig
+  appChatListDataLoading?: boolean
+  currentConversationId: string
+  currentConversationItem?: ConversationItem
+  appPrevChatTree: ChatItemInTree[]
+  pinnedConversationList: AppConversationData['data']
+  conversationList: AppConversationData['data']
+  newConversationInputs: Record<string, any>
+  newConversationInputsRef: RefObject<Record<string, any>>
+  handleNewConversationInputsChange: (v: Record<string, any>) => void
+  inputsForms: any[]
+  handleNewConversation: () => void
+  handleStartChat: (callback?: () => void) => void
+  handleChangeConversation: (conversationId: string) => void
+  handlePinConversation: (conversationId: string) => void
+  handleUnpinConversation: (conversationId: string) => void
+  handleDeleteConversation: (conversationId: string, callback: Callback) => void
+  conversationRenaming: boolean
+  handleRenameConversation: (conversationId: string, newName: string, callback: Callback) => void
+  handleNewConversationCompleted: (newConversationId: string) => void
+  chatShouldReloadKey: string
+  isMobile: boolean
+  isInstalledApp: boolean
+  appId?: string
+  handleFeedback: OnFeedback
+  currentChatInstanceRef: RefObject<{ handleStop: () => void }>
+  theme?: Theme
+  sidebarCollapseState?: boolean
+  handleSidebarCollapse: (state: boolean) => void
+  clearChatList?: boolean
+  setClearChatList: (state: boolean) => void
+  isResponding?: boolean
+  setIsResponding: (state: boolean) => void
+  currentConversationInputs: Record<string, any> | null
+  setCurrentConversationInputs: (v: Record<string, any>) => void
+  allInputsHidden: boolean
+  initUserVariables?: {
+    name?: string
+    avatar_url?: string
+  }
+  isNewAgent?: boolean
+  renderAgentContent?: ChatProps['renderAgentContent']
+}
+
+export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
+  currentConversationId: '',
+  appPrevChatTree: [],
+  pinnedConversationList: [],
+  conversationList: [],
+  newConversationInputs: {},
+  newConversationInputsRef: { current: {} },
+  handleNewConversationInputsChange: noop,
+  inputsForms: [],
+  handleNewConversation: noop,
+  handleStartChat: noop,
+  handleChangeConversation: noop,
+  handlePinConversation: noop,
+  handleUnpinConversation: noop,
+  handleDeleteConversation: noop,
+  conversationRenaming: false,
+  handleRenameConversation: noop,
+  handleNewConversationCompleted: noop,
+  chatShouldReloadKey: '',
+  isMobile: false,
+  isInstalledApp: false,
+  handleFeedback: () => Promise.resolve(),
+  currentChatInstanceRef: { current: { handleStop: noop } },
+  sidebarCollapseState: false,
+  handleSidebarCollapse: noop,
+  clearChatList: false,
+  setClearChatList: noop,
+  isResponding: false,
+  setIsResponding: noop,
+  currentConversationInputs: {},
+  setCurrentConversationInputs: noop,
+  allInputsHidden: false,
+  initUserVariables: {},
+  isNewAgent: false,
+})
+export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

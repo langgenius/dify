@@ -1,18 +1,23 @@
 'use client'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useRouter, useSearchParams } from 'next/navigation'
-import cn from 'classnames'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
-import Button from '@/app/components/base/button'
-import { changeWebAppPasswordWithToken } from '@/service/common'
-import Toast from '@/app/components/base/toast'
-import Input from '@/app/components/base/input'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { validPassword } from '@/config'
+import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { changeWebAppPasswordWithToken } from '@/service/common'
 
 const ChangePasswordForm = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login', 'accountSettings'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
@@ -22,12 +27,14 @@ const ChangePasswordForm = () => {
   const [showSuccess, setShowSuccess] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  useDocumentTitle(
+    showSuccess
+      ? t(($) => $.passwordChangedTip, { ns: 'login' })
+      : t(($) => $.changePassword, { ns: 'login' }),
+  )
 
   const showErrorMessage = useCallback((message: string) => {
-    Toast.notify({
-      type: 'error',
-      message,
-    })
+    toast.error(message)
   }, [])
 
   const getSignInUrl = () => {
@@ -45,23 +52,22 @@ const ChangePasswordForm = () => {
 
   const valid = useCallback(() => {
     if (!password.trim()) {
-      showErrorMessage(t('login.error.passwordEmpty'))
+      showErrorMessage(t(($) => $['error.passwordEmpty'], { ns: 'login' }))
       return false
     }
     if (!validPassword.test(password)) {
-      showErrorMessage(t('login.error.passwordInvalid'))
+      showErrorMessage(t(($) => $['error.passwordInvalid'], { ns: 'login' }))
       return false
     }
     if (password !== confirmPassword) {
-      showErrorMessage(t('common.account.notEqual'))
+      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'accountSettings' }))
       return false
     }
     return true
   }, [password, confirmPassword, showErrorMessage, t])
 
   const handleChangePassword = useCallback(async () => {
-    if (!valid())
-      return
+    if (!valid()) return
     try {
       await changeWebAppPasswordWithToken({
         url: '/forgot-password/resets',
@@ -73,110 +79,119 @@ const ChangePasswordForm = () => {
       })
       setShowSuccess(true)
       setLeftTime(AUTO_REDIRECT_TIME)
-    }
-    catch (error) {
+    } catch (error) {
       console.error(error)
     }
   }, [password, token, valid, confirmPassword])
 
   return (
-    <div className={
-      cn(
-        'flex w-full grow flex-col items-center justify-center',
-        'px-6',
-        'md:px-[108px]',
-      )
-    }>
+    <div
+      className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
+    >
       {!showSuccess && (
-        <div className='flex flex-col md:w-[400px]'>
+        <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
-            <h2 className="title-4xl-semi-bold text-text-primary">
-              {t('login.changePassword')}
-            </h2>
-            <p className='body-md-regular mt-2 text-text-secondary'>
-              {t('login.changePasswordTip')}
+            <h1 className="title-4xl-semi-bold text-text-primary">
+              {t(($) => $.changePassword, { ns: 'login' })}
+            </h1>
+            <p className="mt-2 body-md-regular text-text-secondary">
+              {t(($) => $.changePasswordTip, { ns: 'login' })}
             </p>
           </div>
 
           <div className="mx-auto mt-6 w-full">
-            <div className="bg-white">
-              {/* Password */}
-              <div className='mb-5'>
-                <label htmlFor="password" className="system-md-semibold my-2 text-text-secondary">
-                  {t('common.account.newPassword')}
-                </label>
-                <div className='relative mt-1'>
-                  <Input
-                    id="password" type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder={t('login.passwordPlaceholder') || ''}
-                  />
-
-                  <div className="absolute inset-y-0 right-0 flex items-center">
-                    <Button
-                      type="button"
-                      variant='ghost'
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? '👀' : '😝'}
-                    </Button>
-                  </div>
+            <Form className="bg-white" onFormSubmit={() => void handleChangePassword()}>
+              <Field name="password" className="mb-5">
+                <div className="grid gap-0">
+                  <FieldLabel className="system-md-semibold">
+                    {t(($) => $['account.newPassword'], { ns: 'accountSettings' })}
+                  </FieldLabel>
+                  <InputGroup>
+                    <InputGroupInput
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      spellCheck={false}
+                      value={password}
+                      onValueChange={setPassword}
+                      placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
+                    />
+                    <InputGroupAddon align="inline-end">
+                      <IconButton
+                        aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
+                          ns: 'login',
+                        })}
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        <span
+                          className={
+                            showPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'
+                          }
+                          aria-hidden="true"
+                        />
+                      </IconButton>
+                    </InputGroupAddon>
+                  </InputGroup>
                 </div>
-                <div className='body-xs-regular mt-1 text-text-secondary'>{t('login.error.passwordInvalid')}</div>
-              </div>
-              {/* Confirm Password */}
-              <div className='mb-5'>
-                <label htmlFor="confirmPassword" className="system-md-semibold my-2 text-text-secondary">
-                  {t('common.account.confirmPassword')}
-                </label>
-                <div className='relative mt-1'>
-                  <Input
-                    id="confirmPassword"
+                <FieldDescription className="py-0 body-xs-regular text-text-secondary">
+                  {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                </FieldDescription>
+              </Field>
+              <Field name="confirmPassword" className="mb-5 gap-0">
+                <FieldLabel className="system-md-semibold">
+                  {t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
                     type={showConfirmPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    spellCheck={false}
                     value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    placeholder={t('login.confirmPasswordPlaceholder') || ''}
+                    onValueChange={setConfirmPassword}
+                    placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
                   />
-                  <div className="absolute inset-y-0 right-0 flex items-center">
-                    <Button
-                      type="button"
-                      variant='ghost'
+                  <InputGroupAddon align="inline-end">
+                    <IconButton
+                      aria-label={t(
+                        ($) => $[showConfirmPassword ? 'hidePassword' : 'showPassword'],
+                        { ns: 'login' },
+                      )}
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
-                      {showConfirmPassword ? '👀' : '😝'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <Button
-                  variant='primary'
-                  className='w-full'
-                  onClick={handleChangePassword}
-                >
-                  {t('login.changePasswordBtn')}
-                </Button>
-              </div>
-            </div>
+                      <span
+                        className={
+                          showConfirmPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'
+                        }
+                        aria-hidden="true"
+                      />
+                    </IconButton>
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
+              <Button type="submit" variant="primary" className="w-full">
+                {t(($) => $.changePasswordBtn, { ns: 'login' })}
+              </Button>
+            </Form>
           </div>
         </div>
       )}
       {showSuccess && (
-        <div className="flex flex-col md:w-[400px]">
+        <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
-            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
-              <RiCheckboxCircleFill className='h-6 w-6 text-text-success' />
+            <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
+              <RiCheckboxCircleFill aria-hidden="true" className="size-6 text-text-success" />
             </div>
-            <h2 className="title-4xl-semi-bold text-text-primary">
-              {t('login.passwordChangedTip')}
-            </h2>
+            <h1 className="title-4xl-semi-bold text-text-primary">
+              {t(($) => $.passwordChangedTip, { ns: 'login' })}
+            </h1>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button variant='primary' className='w-full' onClick={() => {
-              setLeftTime(undefined)
-              router.replace(getSignInUrl())
-            }}>{t('login.passwordChanged')} ({Math.round(countdown / 1000)}) </Button>
+            <Link
+              href={getSignInUrl()}
+              replace
+              className={cn(buttonVariants({ variant: 'primary' }), 'w-full')}
+            >
+              {t(($) => $.passwordChanged, { ns: 'login' })} ({Math.round(countdown / 1000)}){' '}
+            </Link>
           </div>
         </div>
       )}

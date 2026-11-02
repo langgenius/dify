@@ -1,4 +1,4 @@
-import cn from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type FileImageRenderProps = {
   imageUrl: string
@@ -17,9 +17,9 @@ const FileImageRender = ({
   showDownloadAction,
 }: FileImageRenderProps) => {
   return (
-    <div className={cn('border-[2px] border-effects-image-frame shadow-xs', className)}>
+    <div className={cn('border-2 border-effects-image-frame shadow-xs', className)}>
       <img
-        className={cn('h-full w-full object-cover', showDownloadAction && 'cursor-pointer')}
+        className={cn('size-full object-cover', showDownloadAction && 'cursor-pointer')}
         alt={alt || 'Preview'}
         onLoad={onLoad}
         onError={onError}

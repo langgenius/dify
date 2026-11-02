@@ -1,98 +1,62 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import * as React from 'react'
+import { useChatContext } from '../chat/chat/context'
+import ThinkingDetails from './thinking-details'
+import { useElapsedTimer } from './use-elapsed-timer'
 
-const hasEndThink = (children: any): boolean => {
-  if (typeof children === 'string')
-    return children.includes('[ENDTHINKFLAG]')
+const hasEndThink = (children: React.ReactNode): boolean => {
+  if (typeof children === 'string') return children.includes('[ENDTHINKFLAG]')
 
-  if (Array.isArray(children))
-    return children.some(child => hasEndThink(child))
+  if (Array.isArray(children)) return children.some((child) => hasEndThink(child))
 
-  if (children?.props?.children)
+  if (React.isValidElement<{ children?: React.ReactNode }>(children))
     return hasEndThink(children.props.children)
 
   return false
 }
 
-const removeEndThink = (children: any): any => {
-  if (typeof children === 'string')
-    return children.replace('[ENDTHINKFLAG]', '')
+const removeEndThink = (children: React.ReactNode): React.ReactNode => {
+  if (typeof children === 'string') return children.replace('[ENDTHINKFLAG]', '')
 
-  if (Array.isArray(children))
-    return children.map(child => removeEndThink(child))
+  if (Array.isArray(children)) return children.map((child) => removeEndThink(child))
 
-  if (children?.props?.children) {
-    return React.cloneElement(
-      children,
-      {
-        ...children.props,
-        children: removeEndThink(children.props.children),
-      },
-    )
-  }
+  if (React.isValidElement<{ children?: React.ReactNode }>(children))
+    return React.cloneElement(children, undefined, removeEndThink(children.props.children))
 
   return children
 }
 
-const useThinkTimer = (children: any) => {
-  const [startTime] = useState(Date.now())
-  const [elapsedTime, setElapsedTime] = useState(0)
-  const [isComplete, setIsComplete] = useState(false)
-  const timerRef = useRef<NodeJS.Timeout>()
-
-  useEffect(() => {
-    if (isComplete) return
-
-    timerRef.current = setInterval(() => {
-      setElapsedTime(Math.floor((Date.now() - startTime) / 100) / 10)
-    }, 100)
-
-    return () => {
-      if (timerRef.current)
-        clearInterval(timerRef.current)
-    }
-  }, [startTime, isComplete])
-
-  useEffect(() => {
-    if (hasEndThink(children))
-      setIsComplete(true)
-  }, [children])
-
-  return { elapsedTime, isComplete }
+const useThinkTimer = (children: React.ReactNode, responseState?: 'active' | 'complete') => {
+  const { isResponding } = useChatContext()
+  const endThinkDetected = hasEndThink(children)
+  const responseActive = responseState ? responseState === 'active' : isResponding === true
+  // Stop when the marker arrives (normal completion) or the response is no longer
+  // active (false = user stopped, undefined = historical conversation).
+  return useElapsedTimer(endThinkDetected || !responseActive)
 }
 
-export const ThinkBlock = ({ children, ...props }: any) => {
-  const { elapsedTime, isComplete } = useThinkTimer(children)
-  const displayContent = removeEndThink(children)
-  const { t } = useTranslation()
+type ThinkBlockProps = React.ComponentProps<'details'> & {
+  'data-think'?: boolean
+  responseState?: 'active' | 'complete'
+}
 
-  if (!(props['data-think'] ?? false))
-    return (<details {...props}>{children}</details>)
+const ThinkBlock = ({ children, responseState, ...props }: ThinkBlockProps) => {
+  const { elapsedTime, hasStarted, isComplete } = useThinkTimer(children, responseState)
+  const displayContent = removeEndThink(children)
+  const { 'data-think': isThink = false, className, open, ...rest } = props
+
+  if (!isThink) return <details {...props}>{children}</details>
 
   return (
-    <details {...(!isComplete && { open: true })} className="group">
-      <summary className="flex cursor-pointer select-none list-none items-center whitespace-nowrap pl-2 font-bold text-text-secondary">
-        <div className="flex shrink-0 items-center">
-          <svg
-            className="mr-2 h-3 w-3 transition-transform duration-500 group-open:rotate-90"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-          {isComplete ? `${t('common.chat.thought')}(${elapsedTime.toFixed(1)}s)` : `${t('common.chat.thinking')}(${elapsedTime.toFixed(1)}s)`}
-        </div>
-      </summary>
-      <div className="ml-2 border-l border-components-panel-border bg-components-panel-bg-alt p-3 text-text-secondary">
-        {displayContent}
-      </div>
-    </details>
+    <ThinkingDetails
+      {...rest}
+      data-think={isThink}
+      className={className}
+      open={open}
+      isComplete={isComplete}
+      elapsedTime={hasStarted ? elapsedTime : undefined}
+    >
+      {displayContent}
+    </ThinkingDetails>
   )
 }
 

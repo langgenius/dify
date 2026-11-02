@@ -1,0 +1,907 @@
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { httpErrorFromResponse } from '@/service/http-error'
+import { CreateFromDSLModalTab, useDSLImport } from '../use-dsl-import'
+
+const mockPush = vi.fn()
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}))
+
+const mockImportDSL = vi.fn()
+const mockImportDSLConfirm = vi.fn()
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.imports.post': (input) => mockImportDSL(input),
+      'rag.pipelines.imports.byImportId.confirm.post': (input) => mockImportDSLConfirm(input),
+    }),
+  }
+})
+
+// Mock plugin dependencies hook
+const mockHandleCheckPluginDependencies = vi.fn()
+
+vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
+  usePluginDependencies: () => ({
+    handleCheckPluginDependencies: mockHandleCheckPluginDependencies,
+  }),
+}))
+
+const toastMocks = vi.hoisted(() => {
+  const record = vi.fn()
+  const api = vi.fn((message: unknown, options?: Record<string, unknown>) =>
+    record({ message, ...options }),
+  )
+  return {
+    record,
+    api: Object.assign(api, {
+      success: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'success', message, ...options }),
+      ),
+      error: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'error', message, ...options }),
+      ),
+      warning: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'warning', message, ...options }),
+      ),
+      info: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'info', message, ...options }),
+      ),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    }),
+  }
+})
+
+vi.mock('@/app/notifications', () => ({
+  toast: toastMocks.api,
+}))
+
+const createImportDSLResponse = (overrides = {}) => ({
+  id: 'import-123',
+  status: 'completed' as const,
+  pipeline_id: 'pipeline-456',
+  dataset_id: 'dataset-789',
+  current_dsl_version: '1.0.0',
+  imported_dsl_version: '1.0.0',
+  ...overrides,
+})
+
+// Helper function to create QueryClient wrapper
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+}
+
+describe('useDSLImport', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockImportDSL.mockReset()
+    mockImportDSLConfirm.mockReset()
+    mockPush.mockReset()
+    toastMocks.record.mockReset()
+    mockHandleCheckPluginDependencies.mockReset()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  describe('handleFile', () => {
+    it('should clear file when undefined is passed', async () => {
+      const { result } = renderHook(() => useDSLImport({}), { wrapper: createWrapper() })
+
+      const mockFile = new File(['test content'], 'test.pipeline', {
+        type: 'application/octet-stream',
+      })
+
+      // First set a file
+      await act(async () => {
+        result.current.handleFile(mockFile)
+      })
+
+      expect(result.current.currentFile).toBe(mockFile)
+
+      // Then clear it
+      await act(async () => {
+        result.current.handleFile(undefined)
+      })
+
+      expect(result.current.currentFile).toBeUndefined()
+      expect(result.current.buttonDisabled).toBe(true)
+    })
+  })
+
+  describe('buttonDisabled', () => {
+    it('should be true when file tab is active and no file is selected', () => {
+      const { result } = renderHook(
+        () => useDSLImport({ activeTab: CreateFromDSLModalTab.FROM_FILE }),
+        { wrapper: createWrapper() },
+      )
+
+      expect(result.current.buttonDisabled).toBe(true)
+    })
+
+    it('should be true when URL tab is active and no URL is entered', () => {
+      const { result } = renderHook(
+        () => useDSLImport({ activeTab: CreateFromDSLModalTab.FROM_URL }),
+        { wrapper: createWrapper() },
+      )
+
+      expect(result.current.buttonDisabled).toBe(true)
+    })
+  })
+
+  describe('handleCreateApp with URL mode', () => {
+    it('should handle successful import with COMPLETED status', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      mockImportDSL.mockResolvedValue(createImportDSLResponse({ status: 'completed' }))
+      mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
+
+      const onSuccess = vi.fn()
+      const onClose = vi.fn()
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+            onSuccess,
+            onClose,
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await waitFor(() => {
+        expect(mockImportDSL).toHaveBeenCalledExactlyOnceWith({
+          body: { mode: 'yaml-url', yaml_url: 'https://example.com/test.pipeline' },
+        })
+        expect(mockHandleCheckPluginDependencies).toHaveBeenCalledExactlyOnceWith(
+          'pipeline-456',
+          true,
+        )
+        expect(onSuccess).toHaveBeenCalledOnce()
+        expect(onClose).toHaveBeenCalled()
+        expect(toastMocks.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'success',
+          }),
+        )
+        expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-789/pipeline')
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should handle import with COMPLETED_WITH_WARNINGS status', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      mockImportDSL.mockResolvedValue(
+        createImportDSLResponse({ status: 'completed-with-warnings' }),
+      )
+      mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
+
+      const onSuccess = vi.fn()
+      const onClose = vi.fn()
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+            onSuccess,
+            onClose,
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await waitFor(() => {
+        expect(toastMocks.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'warning',
+          }),
+        )
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should handle import with PENDING status and show confirm modal', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      mockImportDSL.mockResolvedValue(
+        createImportDSLResponse({
+          status: 'pending',
+          imported_dsl_version: '0.9.0',
+          current_dsl_version: '1.0.0',
+        }),
+      )
+
+      const onClose = vi.fn()
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+            onClose,
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalled()
+      })
+
+      // Wait for setTimeout to show confirm modal
+      await act(async () => {
+        vi.advanceTimersByTime(400)
+      })
+
+      expect(result.current.showConfirmModal).toBe(true)
+      expect(result.current.versions).toEqual({
+        importedVersion: '0.9.0',
+        systemVersion: '1.0.0',
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should handle API error (null response)', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      mockImportDSL.mockResolvedValue(null)
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await waitFor(() => {
+        expect(toastMocks.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+          }),
+        )
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should handle FAILED status', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      mockImportDSL.mockResolvedValue(
+        createImportDSLResponse({
+          status: 'failed',
+          error: 'Missing rag_pipeline data in YAML content',
+        }),
+      )
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await waitFor(() => {
+        expect(toastMocks.record).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Missing rag_pipeline data in YAML content',
+        })
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should show response error when import request rejects with a response body', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      mockImportDSL.mockRejectedValue(
+        await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({
+              error: 'Missing rag_pipeline data in YAML content',
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
+        ),
+      )
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await waitFor(() => {
+        expect(toastMocks.record).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Missing rag_pipeline data in YAML content',
+        })
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should not check plugin dependencies when pipeline_id is null', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      mockImportDSL.mockResolvedValue(
+        createImportDSLResponse({
+          status: 'completed',
+          pipeline_id: null,
+        }),
+      )
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await waitFor(() => {
+        expect(mockHandleCheckPluginDependencies).not.toHaveBeenCalled()
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should return early when URL tab is active but no URL is provided', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: '',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      expect(mockImportDSL).not.toHaveBeenCalled()
+
+      vi.useRealTimers()
+    })
+  })
+
+  describe('handleCreateApp with FILE mode', () => {
+    it('should call importDSL with file content mode', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      mockImportDSL.mockResolvedValue(createImportDSLResponse())
+      mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_FILE,
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      const fileContent = 'test yaml content'
+      const mockFile = new File([fileContent], 'test.pipeline', {
+        type: 'application/octet-stream',
+      })
+
+      const readAsText = FileReader.prototype.readAsText
+      let loaded!: () => void
+      const fileLoaded = new Promise<void>((resolve) => {
+        loaded = resolve
+      })
+      const readerSpy = vi.spyOn(FileReader.prototype, 'readAsText').mockImplementation(function (
+        this: FileReader,
+        file,
+      ) {
+        this.addEventListener('loadend', loaded, { once: true })
+        readAsText.call(this, file)
+      })
+      // Set up file and wait for FileReader to complete
+      await act(async () => {
+        result.current.handleFile(mockFile)
+        await fileLoaded
+      })
+
+      readerSpy.mockRestore()
+      // Trigger create
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await waitFor(() => {
+        expect(mockImportDSL).toHaveBeenCalledWith({
+          body: {
+            mode: 'yaml-content',
+            yaml_content: fileContent,
+          },
+        })
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should return early when file tab is active but no file is selected', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_FILE,
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      expect(mockImportDSL).not.toHaveBeenCalled()
+
+      vi.useRealTimers()
+    })
+  })
+
+  describe('onDSLConfirm', () => {
+    it('should call importDSLConfirm and handle success', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      // First, trigger pending status to get importId
+      mockImportDSL.mockResolvedValue(
+        createImportDSLResponse({
+          id: 'import-123',
+          status: 'pending',
+        }),
+      )
+
+      mockImportDSLConfirm.mockResolvedValue({
+        status: 'completed',
+        pipeline_id: 'pipeline-456',
+        dataset_id: 'dataset-789',
+      })
+
+      mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
+
+      const onSuccess = vi.fn()
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+            onSuccess,
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      // Trigger pending status
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      // Wait for confirm modal to show
+      await act(async () => {
+        vi.advanceTimersByTime(400)
+      })
+
+      expect(result.current.showConfirmModal).toBe(true)
+
+      // Call onDSLConfirm
+      await act(async () => {
+        result.current.onDSLConfirm()
+      })
+
+      await waitFor(() => {
+        expect(mockImportDSLConfirm).toHaveBeenCalledWith({ params: { import_id: 'import-123' } })
+        expect(onSuccess).toHaveBeenCalledOnce()
+        expect(mockHandleCheckPluginDependencies).toHaveBeenCalledExactlyOnceWith(
+          'pipeline-456',
+          true,
+        )
+        expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-789/pipeline')
+        expect(result.current.showConfirmModal).toBe(false)
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should handle confirm API error', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      mockImportDSL.mockResolvedValue(
+        createImportDSLResponse({
+          id: 'import-123',
+          status: 'pending',
+        }),
+      )
+
+      mockImportDSLConfirm.mockResolvedValue(null)
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      // Trigger pending status
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(400)
+      })
+
+      // Call onDSLConfirm
+      await act(async () => {
+        result.current.onDSLConfirm()
+      })
+
+      await waitFor(() => {
+        expect(toastMocks.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+          }),
+        )
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should handle confirm with FAILED status', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      mockImportDSL.mockResolvedValue(
+        createImportDSLResponse({
+          id: 'import-123',
+          status: 'pending',
+        }),
+      )
+
+      mockImportDSLConfirm.mockResolvedValue({
+        status: 'failed',
+        pipeline_id: 'pipeline-456',
+        dataset_id: 'dataset-789',
+        error: 'Import information expired or does not exist',
+      })
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      // Trigger pending status
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(400)
+      })
+
+      // Call onDSLConfirm
+      await act(async () => {
+        result.current.onDSLConfirm()
+      })
+
+      await waitFor(() => {
+        expect(toastMocks.record).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Import information expired or does not exist',
+        })
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should show response error when confirm request rejects with a response body', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      mockImportDSL.mockResolvedValue(
+        createImportDSLResponse({
+          id: 'import-123',
+          status: 'pending',
+        }),
+      )
+
+      mockImportDSLConfirm.mockRejectedValue(
+        await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({
+              error: 'Import information expired or does not exist',
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
+        ),
+      )
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(400)
+      })
+
+      await act(async () => {
+        result.current.onDSLConfirm()
+      })
+
+      await waitFor(() => {
+        expect(toastMocks.record).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Import information expired or does not exist',
+        })
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should return early when importId is not set', async () => {
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      // Call onDSLConfirm without triggering pending status
+      await act(async () => {
+        result.current.onDSLConfirm()
+      })
+
+      expect(mockImportDSLConfirm).not.toHaveBeenCalled()
+    })
+
+    it('should set isConfirming during confirm process', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      let resolveConfirm: (value: unknown) => void
+      mockImportDSL.mockResolvedValue(
+        createImportDSLResponse({
+          id: 'import-123',
+          status: 'pending',
+        }),
+      )
+
+      mockImportDSLConfirm.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveConfirm = resolve
+          }),
+      )
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      // Trigger pending status
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(400)
+      })
+
+      expect(result.current.isConfirming).toBe(false)
+
+      // Start confirm
+      let confirmPromise: Promise<void>
+      act(() => {
+        confirmPromise = result.current.onDSLConfirm()
+      })
+
+      await waitFor(() => {
+        expect(result.current.isConfirming).toBe(true)
+      })
+
+      // Resolve confirm
+      await act(async () => {
+        resolveConfirm!({
+          status: 'completed',
+          pipeline_id: 'pipeline-789',
+          dataset_id: 'dataset-789',
+        })
+      })
+
+      await confirmPromise!
+
+      expect(result.current.isConfirming).toBe(false)
+
+      vi.useRealTimers()
+    })
+  })
+
+  describe('handleCancelConfirm', () => {
+    it('should close confirm modal', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      mockImportDSL.mockResolvedValue(
+        createImportDSLResponse({
+          id: 'import-123',
+          status: 'pending',
+        }),
+      )
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      // Trigger pending status to show confirm modal
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(400)
+      })
+
+      expect(result.current.showConfirmModal).toBe(true)
+
+      // Cancel confirm
+      act(() => {
+        result.current.handleCancelConfirm()
+      })
+
+      expect(result.current.showConfirmModal).toBe(false)
+      expect(mockImportDSLConfirm).not.toHaveBeenCalled()
+      expect(mockPush).not.toHaveBeenCalled()
+
+      vi.useRealTimers()
+    })
+  })
+
+  describe('duplicate submission prevention', () => {
+    it('should prevent duplicate submissions while creating', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      let resolveImport: (value: unknown) => void
+      mockImportDSL.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveImport = resolve
+          }),
+      )
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      // First call
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      // Second call should be ignored
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      // Third call should be ignored
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      // Only one call should be made
+      expect(mockImportDSL).toHaveBeenCalledTimes(1)
+
+      // Resolve the first call
+      await act(async () => {
+        resolveImport!(createImportDSLResponse())
+      })
+
+      vi.useRealTimers()
+    })
+  })
+})

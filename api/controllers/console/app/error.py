@@ -1,10 +1,35 @@
+from http import HTTPStatus
+
 from libs.exception import BaseHTTPException
+
+
+class AnnotationIdsRequiredError(BaseHTTPException):
+    error_code = "bad_request"
+    description = "annotation_ids are required if the parameter is provided."
+    code = HTTPStatus.BAD_REQUEST
+
+
+class AnnotationImportRateLimitError(BaseHTTPException):
+    error_code = "too_many_requests"
+    code = HTTPStatus.TOO_MANY_REQUESTS
 
 
 class AppNotFoundError(BaseHTTPException):
     error_code = "app_not_found"
     description = "App not found."
     code = 404
+
+
+class AppTriggerNotFoundError(BaseHTTPException):
+    error_code = "app_trigger_not_found"
+    description = "Trigger not found."
+    code = HTTPStatus.NOT_FOUND
+
+
+class WebhookTriggerNotFoundError(BaseHTTPException):
+    error_code = "webhook_trigger_not_found"
+    description = "Webhook trigger not found for this node."
+    code = HTTPStatus.NOT_FOUND
 
 
 class ProviderNotInitializeError(BaseHTTPException):
@@ -79,46 +104,70 @@ class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     code = 400
 
 
-class NoFileUploadedError(BaseHTTPException):
-    error_code = "no_file_uploaded"
-    description = "Please upload your file."
+class ProviderNotSupportTextToSpeechError(BaseHTTPException):
+    error_code = "provider_not_support_text_to_speech"
+    description = "Provider does not support text to speech."
     code = 400
 
 
-class TooManyFilesError(BaseHTTPException):
-    error_code = "too_many_files"
-    description = "Only one file is allowed."
+class SpeechToTextDisabledError(BaseHTTPException):
+    error_code = "speech_to_text_disabled"
+    description = "Speech to text is disabled."
     code = 400
 
 
 class DraftWorkflowNotExist(BaseHTTPException):
     error_code = "draft_workflow_not_exist"
     description = "Draft workflow need to be initialized."
-    code = 400
+    code = 404
 
 
 class DraftWorkflowNotSync(BaseHTTPException):
     error_code = "draft_workflow_not_sync"
     description = "Workflow graph might have been modified, please refresh and resubmit."
+    code = 409
+
+
+class TracingConfigNotFoundError(BaseHTTPException):
+    error_code = "trace_config_not_found"
+    description = "Tracing configuration not found."
+    code = 404
+
+
+class TracingConfigAlreadyExistsError(BaseHTTPException):
+    error_code = "trace_config_already_exists"
+    description = "A tracing configuration already exists for this provider."
+    code = 409
+
+
+class UnsupportedTracingProviderError(BaseHTTPException):
+    error_code = "unsupported_tracing_provider"
+    description = "The tracing provider is not supported."
     code = 400
 
 
-class TracingConfigNotExist(BaseHTTPException):
-    error_code = "trace_config_not_exist"
-    description = "Trace config not exist."
+class TracingProviderUnavailableError(BaseHTTPException):
+    error_code = "tracing_provider_unavailable"
+    description = "The tracing provider is not available in this deployment."
     code = 400
 
 
-class TracingConfigIsExist(BaseHTTPException):
-    error_code = "trace_config_is_exist"
-    description = "Trace config is exist."
+class InvalidTracingConfigError(BaseHTTPException):
+    error_code = "invalid_tracing_config"
+    description = "The tracing configuration is invalid."
     code = 400
 
 
-class TracingConfigCheckError(BaseHTTPException):
-    error_code = "trace_config_check_error"
-    description = "Invalid Credentials."
+class TracingConfigVerificationFailedError(BaseHTTPException):
+    error_code = "tracing_config_verification_failed"
+    description = "The tracing configuration could not be verified."
     code = 400
+
+
+class TracingConfigProcessingError(BaseHTTPException):
+    error_code = "tracing_config_processing_failed"
+    description = "The tracing configuration could not be processed."
+    code = 500
 
 
 class InvokeRateLimitError(BaseHTTPException):
@@ -127,3 +176,45 @@ class InvokeRateLimitError(BaseHTTPException):
     error_code = "rate_limit_error"
     description = "Rate Limit Error"
     code = 429
+
+
+class NeedAddIdsError(BaseHTTPException):
+    error_code = "need_add_ids"
+    description = "Need to add ids."
+    code = 400
+
+
+class AgentSandboxBindingNotFoundHTTPError(BaseHTTPException):
+    error_code = "no_active_binding"
+    description = "No active sandbox binding."
+    code = 404
+
+
+class AgentSandboxUnavailableHTTPError(BaseHTTPException):
+    error_code = "inspector_unavailable"
+    description = "Sandbox inspector is unavailable."
+    code = 503
+
+
+class AgentSandboxDownloadUnavailableHTTPError(BaseHTTPException):
+    error_code = "binding_file_download_unavailable"
+    description = "Sandbox file download is unavailable."
+    code = 502
+
+
+class AgentBackendUnreachableError(BaseHTTPException):
+    error_code = "agent_backend_unreachable"
+    description = "Agent backend is unreachable."
+    code = 502
+
+
+class AgentNotBoundError(BaseHTTPException):
+    error_code = "agent_not_bound"
+    description = "no agent is bound for this app/node"
+    code = 400
+
+
+class TracingConfigConflictError(BaseHTTPException):
+    error_code = "tracing_config_conflict"
+    description = "Tracing configuration changed. Refresh and try again."
+    code = 409

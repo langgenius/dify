@@ -1,144 +1,109 @@
+import type { BlockEnum, Node } from '../../types'
+import { produce } from 'immer'
 import { useCallback } from 'react'
-import produce from 'immer'
-import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
-import type {
-  BlockEnum,
-  Node,
-} from '../../types'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
+import { useNodesMetaData } from '../../hooks/use-nodes-meta-data'
+import { generateNewNode, getNodeCustomTypeByNodeDataType } from '../../utils'
 import {
-  generateNewNode,
-  getNodeCustomTypeByNodeDataType,
-} from '../../utils'
-import {
-  LOOP_PADDING,
-  NODES_INITIAL_DATA,
-} from '../../constants'
-import { CUSTOM_LOOP_START_NODE } from '../loop-start/constants'
+  buildLoopChildCopy,
+  getContainerBounds,
+  getContainerResize,
+  getLoopChildren,
+  getRestrictedLoopPosition,
+} from './use-interactions.helpers'
 
 export const useNodeLoopInteractions = () => {
-  const { t } = useTranslation()
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+  const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
-  const handleNodeLoopRerender = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
+  const handleNodeLoopRerender = useCallback(
+    (nodeId: string) => {
+      const { nodes, setNodes } = collaborativeWorkflow.getState()
+      const currentNode = nodes.find((n) => n.id === nodeId)!
+      const childrenNodes = nodes.filter((n) => n.parentId === nodeId)
+      const resize = getContainerResize(currentNode, getContainerBounds(childrenNodes))
 
-    const nodes = getNodes()
-    const currentNode = nodes.find(n => n.id === nodeId)!
-    const childrenNodes = nodes.filter(n => n.parentId === nodeId)
-    let rightNode: Node
-    let bottomNode: Node
-
-    childrenNodes.forEach((n) => {
-      if (rightNode) {
-        if (n.position.x + n.width! > rightNode.position.x + rightNode.width!)
-          rightNode = n
-      }
-      else {
-        rightNode = n
-      }
-      if (bottomNode) {
-        if (n.position.y + n.height! > bottomNode.position.y + bottomNode.height!)
-          bottomNode = n
-      }
-      else {
-        bottomNode = n
-      }
-    })
-
-    const widthShouldExtend = rightNode! && currentNode.width! < rightNode.position.x + rightNode.width!
-    const heightShouldExtend = bottomNode! && currentNode.height! < bottomNode.position.y + bottomNode.height!
-
-    if (widthShouldExtend || heightShouldExtend) {
-      const newNodes = produce(nodes, (draft) => {
-        draft.forEach((n) => {
-          if (n.id === nodeId) {
-            if (widthShouldExtend) {
-              n.data.width = rightNode.position.x + rightNode.width! + LOOP_PADDING.right
-              n.width = rightNode.position.x + rightNode.width! + LOOP_PADDING.right
+      if (resize.width || resize.height) {
+        const newNodes = produce(nodes, (draft) => {
+          draft.forEach((n) => {
+            if (n.id === nodeId) {
+              if (resize.width) {
+                n.data.width = resize.width
+                n.width = resize.width
+              }
+              if (resize.height) {
+                n.data.height = resize.height
+                n.height = resize.height
+              }
             }
-            if (heightShouldExtend) {
-              n.data.height = bottomNode.position.y + bottomNode.height! + LOOP_PADDING.bottom
-              n.height = bottomNode.position.y + bottomNode.height! + LOOP_PADDING.bottom
-            }
-          }
+          })
         })
-      })
 
-      setNodes(newNodes)
-    }
-  }, [store])
-
-  const handleNodeLoopChildDrag = useCallback((node: Node) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
-
-    const restrictPosition: { x?: number; y?: number } = { x: undefined, y: undefined }
-
-    if (node.data.isInLoop) {
-      const parentNode = nodes.find(n => n.id === node.parentId)
-
-      if (parentNode) {
-        if (node.position.y < LOOP_PADDING.top)
-          restrictPosition.y = LOOP_PADDING.top
-        if (node.position.x < LOOP_PADDING.left)
-          restrictPosition.x = LOOP_PADDING.left
-        if (node.position.x + node.width! > parentNode!.width! - LOOP_PADDING.right)
-          restrictPosition.x = parentNode!.width! - LOOP_PADDING.right - node.width!
-        if (node.position.y + node.height! > parentNode!.height! - LOOP_PADDING.bottom)
-          restrictPosition.y = parentNode!.height! - LOOP_PADDING.bottom - node.height!
+        setNodes(newNodes)
       }
-    }
+    },
+    [collaborativeWorkflow],
+  )
 
-    return {
-      restrictPosition,
-    }
-  }, [store])
+  const handleNodeLoopChildDrag = useCallback(
+    (node: Node) => {
+      const { nodes } = collaborativeWorkflow.getState()
 
-  const handleNodeLoopChildSizeChange = useCallback((nodeId: string) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
-    const currentNode = nodes.find(n => n.id === nodeId)!
-    const parentId = currentNode.parentId
+      return {
+        restrictPosition: getRestrictedLoopPosition(
+          node,
+          nodes.find((n) => n.id === node.parentId),
+        ),
+      }
+    },
+    [collaborativeWorkflow],
+  )
 
-    if (parentId)
-      handleNodeLoopRerender(parentId)
-  }, [store, handleNodeLoopRerender])
+  const handleNodeLoopChildSizeChange = useCallback(
+    (nodeId: string) => {
+      const { nodes } = collaborativeWorkflow.getState()
+      const currentNode = nodes.find((n) => n.id === nodeId)!
+      const parentId = currentNode.parentId
 
-  const handleNodeLoopChildrenCopy = useCallback((nodeId: string, newNodeId: string) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
-    const childrenNodes = nodes.filter(n => n.parentId === nodeId && n.type !== CUSTOM_LOOP_START_NODE)
+      if (parentId) handleNodeLoopRerender(parentId)
+    },
+    [collaborativeWorkflow, handleNodeLoopRerender],
+  )
 
-    return childrenNodes.map((child, index) => {
-      const childNodeType = child.data.type as BlockEnum
-      const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
-      const { newNode } = generateNewNode({
-        type: getNodeCustomTypeByNodeDataType(childNodeType),
-        data: {
-          ...NODES_INITIAL_DATA[childNodeType],
-          ...child.data,
-          selected: false,
-          _isBundled: false,
-          _connectedSourceHandleIds: [],
-          _connectedTargetHandleIds: [],
-          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${childNodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${childNodeType}`),
-          loop_id: newNodeId,
+  const handleNodeLoopChildrenCopy = useCallback(
+    (nodeId: string, newNodeId: string, idMapping: Record<string, string>) => {
+      const { nodes } = collaborativeWorkflow.getState()
+      const childrenNodes = getLoopChildren(nodes, nodeId)
+      const newIdMapping = { ...idMapping }
 
-        },
-        position: child.position,
-        positionAbsolute: child.positionAbsolute,
-        parentId: newNodeId,
-        extent: child.extent,
-        zIndex: child.zIndex,
+      const copyChildren = childrenNodes.map((child, index) => {
+        const childNodeType = child.data.type as BlockEnum
+        const defaultValue = nodesMetaDataMap?.[childNodeType]?.defaultValue ?? {}
+        const nodesWithSameType = nodes.filter((node) => node.data.type === childNodeType)
+        const childCopy = buildLoopChildCopy({
+          child,
+          childNodeType,
+          defaultValue: defaultValue as Node['data'],
+          nodesWithSameTypeCount: nodesWithSameType.length,
+          newNodeId,
+          index,
+        })
+        const { newNode } = generateNewNode({
+          ...childCopy.params,
+          type: getNodeCustomTypeByNodeDataType(childNodeType),
+        })
+        newNode.id = `${newNodeId}${newNode.id + childCopy.newId}`
+        newIdMapping[child.id] = newNode.id
+        return newNode
       })
-      newNode.id = `${newNodeId}${newNode.id + index}`
-      return newNode
-    })
-  }, [store, t])
+
+      return {
+        copyChildren,
+        newIdMapping,
+      }
+    },
+    [collaborativeWorkflow, nodesMetaDataMap],
+  )
 
   return {
     handleNodeLoopRerender,

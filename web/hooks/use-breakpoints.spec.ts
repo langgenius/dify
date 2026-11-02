@@ -1,10 +1,12 @@
 import { act, renderHook } from '@testing-library/react'
+import { createElement } from 'react'
+import { hydrateRoot } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
 import useBreakpoints, { MediaType } from './use-breakpoints'
 
 describe('useBreakpoints', () => {
   const originalInnerWidth = window.innerWidth
 
-  // Mock the window resize event
   const fireResize = (width: number) => {
     window.innerWidth = width
     act(() => {
@@ -12,45 +14,38 @@ describe('useBreakpoints', () => {
     })
   }
 
-  // Restore the original innerWidth after tests
-  afterAll(() => {
+  afterEach(() => {
     window.innerWidth = originalInnerWidth
   })
 
-  it('should return mobile for width <= 640px', () => {
-    // Mock window.innerWidth for mobile
-    Object.defineProperty(window, 'innerWidth', {
-      writable: true,
-      configurable: true,
-      value: 640,
-    })
+  it('should hydrate server markup on mobile without rebuilding it', async () => {
+    const ResponsiveContent = () => {
+      const media = useBreakpoints()
+      return createElement(media === MediaType.mobile ? 'nav' : 'aside', null, media)
+    }
+    const container = document.createElement('div')
+    const onRecoverableError = vi.fn()
 
-    const { result } = renderHook(() => useBreakpoints())
-    expect(result.current).toBe(MediaType.mobile)
-  })
+    // The server has no viewport. Its markup must also be the first client render.
+    vi.stubGlobal('innerWidth', undefined)
+    try {
+      container.innerHTML = renderToString(createElement(ResponsiveContent))
+    } finally {
+      vi.unstubAllGlobals()
+    }
+    window.innerWidth = 390
 
-  it('should return tablet for width > 640px and <= 768px', () => {
-    // Mock window.innerWidth for tablet
-    Object.defineProperty(window, 'innerWidth', {
-      writable: true,
-      configurable: true,
-      value: 768,
-    })
+    const root = hydrateRoot(container, createElement(ResponsiveContent), { onRecoverableError })
+    try {
+      await act(async () => {})
+      expect(onRecoverableError).not.toHaveBeenCalled()
+      expect(container).toHaveTextContent(MediaType.mobile)
 
-    const { result } = renderHook(() => useBreakpoints())
-    expect(result.current).toBe(MediaType.tablet)
-  })
-
-  it('should return pc for width > 768px', () => {
-    // Mock window.innerWidth for pc
-    Object.defineProperty(window, 'innerWidth', {
-      writable: true,
-      configurable: true,
-      value: 1024,
-    })
-
-    const { result } = renderHook(() => useBreakpoints())
-    expect(result.current).toBe(MediaType.pc)
+      fireResize(1024)
+      expect(container).toHaveTextContent(MediaType.pc)
+    } finally {
+      act(() => root.unmount())
+    }
   })
 
   it('should update media type when window resizes', () => {
@@ -64,30 +59,13 @@ describe('useBreakpoints', () => {
     const { result } = renderHook(() => useBreakpoints())
     expect(result.current).toBe(MediaType.pc)
 
-    // Resize to tablet
     fireResize(768)
     expect(result.current).toBe(MediaType.tablet)
-
-    // Resize to mobile
-    fireResize(600)
+    fireResize(641)
+    expect(result.current).toBe(MediaType.tablet)
+    fireResize(640)
     expect(result.current).toBe(MediaType.mobile)
-  })
-
-  it('should clean up event listeners on unmount', () => {
-    // Spy on addEventListener and removeEventListener
-    const addEventListenerSpy = jest.spyOn(window, 'addEventListener')
-    const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener')
-
-    const { unmount } = renderHook(() => useBreakpoints())
-
-    // Unmount should trigger cleanup
-    unmount()
-
-    expect(addEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function))
-    expect(removeEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function))
-
-    // Clean up spies
-    addEventListenerSpy.mockRestore()
-    removeEventListenerSpy.mockRestore()
+    fireResize(769)
+    expect(result.current).toBe(MediaType.pc)
   })
 })

@@ -1,9 +1,11 @@
 import json
 import logging
 import uuid
-from typing import Optional, Union, cast
+from decimal import Decimal
+from typing import TYPE_CHECKING, cast
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentEntity, AgentToolEntity
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -12,14 +14,24 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
+    DifyRunContext,
+    InvokeFrom,
     ModelConfigWithCredentialsEntity,
+    UserFrom,
 )
+from core.app.file_access import DatabaseFileAccessController
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.file import file_manager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities import (
+from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from core.tools.__base.tool import Tool
+from core.tools.tool_manager import ToolManager
+from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+from extensions.ext_database import db
+from factories import file_factory
+from graphon.file import file_manager
+from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     LLMUsage,
     PromptMessage,
@@ -29,27 +41,25 @@ from core.model_runtime.entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from core.model_runtime.entities.model_entities import ModelFeature
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.utils.extract_thread_messages import extract_thread_messages
-from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import (
-    ToolParameter,
-)
-from core.tools.tool_manager import ToolManager
-from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
-from extensions.ext_database import db
-from factories import file_factory
-from models.model import Conversation, Message, MessageAgentThought, MessageFile
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from graphon.model_runtime.entities.model_entities import ModelFeature
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from models.enums import CreatorUserRole
+from models.model import Conversation, Message, MessageAgentThought, MessageFile, load_annotation_reply_config
+
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class BaseAgentRunner(AppRunner):
     def __init__(
         self,
         *,
+        execution_driver: "WorkflowRunDriver",
+        session: Session,
         tenant_id: str,
         application_generate_entity: AgentChatAppGenerateEntity,
         conversation: Conversation,
@@ -60,9 +70,10 @@ class BaseAgentRunner(AppRunner):
         message: Message,
         user_id: str,
         model_instance: ModelInstance,
-        memory: Optional[TokenBufferMemory] = None,
-        prompt_messages: Optional[list[PromptMessage]] = None,
-    ) -> None:
+        memory: TokenBufferMemory | None = None,
+        prompt_messages: list[PromptMessage] | None = None,
+    ):
+        self._execution_driver = execution_driver
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
@@ -73,7 +84,9 @@ class BaseAgentRunner(AppRunner):
         self.message = message
         self.user_id = user_id
         self.memory = memory
-        self.history_prompt_messages = self.organize_agent_history(prompt_messages=prompt_messages or [])
+        self.history_prompt_messages = self.organize_agent_history(
+            session=session, prompt_messages=prompt_messages or []
+        )
         self.model_instance = model_instance
 
         # init callback
@@ -87,10 +100,13 @@ class BaseAgentRunner(AppRunner):
             invoke_from=self.application_generate_entity.invoke_from,
         )
         self.dataset_tools = DatasetRetrieverTool.get_dataset_tools(
+            session=session,
             tenant_id=tenant_id,
             dataset_ids=app_config.dataset.dataset_ids if app_config.dataset else [],
             retrieve_config=app_config.dataset.retrieve_config if app_config.dataset else None,
-            return_resource=app_config.additional_features.show_retrieve_source,
+            return_resource=(
+                app_config.additional_features.show_retrieve_source if app_config.additional_features else False
+            ),
             invoke_from=application_generate_entity.invoke_from,
             hit_callback=hit_callback,
             user_id=user_id,
@@ -98,21 +114,25 @@ class BaseAgentRunner(AppRunner):
         )
         # get how many agent thoughts have been created
         self.agent_thought_count = (
-            db.session.query(MessageAgentThought)
-            .filter(
-                MessageAgentThought.message_id == self.message.id,
+            session.scalar(
+                select(func.count())
+                .select_from(MessageAgentThought)
+                .where(
+                    MessageAgentThought.message_id == self.message.id,
+                )
             )
-            .count()
+            or 0
         )
-        db.session.close()
+        session.close()
 
         # check if model supports stream tool call
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-        model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+        model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
         features = model_schema.features if model_schema and model_schema.features else []
         self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
-        self.files = application_generate_entity.files if ModelFeature.VISION in features else []
-        self.query: Optional[str] = ""
+        self.vision_enabled = ModelFeature.VISION in features
+        self.files = application_generate_entity.files if self.vision_enabled else []
+        self.query: str = ""
         self._current_thoughts: list[PromptMessage] = []
 
     def _repack_app_generate_entity(
@@ -131,52 +151,28 @@ class BaseAgentRunner(AppRunner):
         convert tool to prompt message tool
         """
         tool_entity = ToolManager.get_agent_tool_runtime(
+            execution_driver=self._execution_driver,
             tenant_id=self.tenant_id,
             app_id=self.app_config.app_id,
             agent_tool=tool,
+            user_id=self.user_id,
             invoke_from=self.application_generate_entity.invoke_from,
         )
+        invoke_from = self.application_generate_entity.invoke_from
+        if isinstance(invoke_from, InvokeFrom):
+            tool_entity.runtime.dify_run_context = DifyRunContext(
+                tenant_id=self.tenant_id,
+                app_id=self.app_config.app_id,
+                user_id=self.user_id,
+                user_from=(UserFrom.ACCOUNT if invoke_from.runs_as_account() else UserFrom.END_USER),
+                invoke_from=invoke_from,
+            )
         assert tool_entity.entity.description
         message_tool = PromptMessageTool(
             name=tool.tool_name,
             description=tool_entity.entity.description.llm,
-            parameters={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
+            parameters=tool_entity.get_llm_parameters_json_schema(),
         )
-
-        parameters = tool_entity.get_merged_runtime_parameters()
-        for parameter in parameters:
-            if parameter.form != ToolParameter.ToolParameterForm.LLM:
-                continue
-
-            parameter_type = parameter.type.as_normal_type()
-            if parameter.type in {
-                ToolParameter.ToolParameterType.SYSTEM_FILES,
-                ToolParameter.ToolParameterType.FILE,
-                ToolParameter.ToolParameterType.FILES,
-            }:
-                continue
-            enum = []
-            if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                enum = [option.value for option in parameter.options] if parameter.options else []
-
-            message_tool.parameters["properties"][parameter.name] = (
-                {
-                    "type": parameter_type,
-                    "description": parameter.llm_description or "",
-                }
-                if parameter.input_schema is None
-                else parameter.input_schema
-            )
-
-            if len(enum) > 0:
-                message_tool.parameters["properties"][parameter.name]["enum"] = enum
-
-            if parameter.required:
-                message_tool.parameters["required"].append(parameter.name)
 
         return message_tool, tool_entity
 
@@ -242,51 +238,19 @@ class BaseAgentRunner(AppRunner):
         """
         update prompt message tool
         """
-        # try to get tool runtime parameters
-        tool_runtime_parameters = tool.get_runtime_parameters()
-
-        for parameter in tool_runtime_parameters:
-            if parameter.form != ToolParameter.ToolParameterForm.LLM:
-                continue
-
-            parameter_type = parameter.type.as_normal_type()
-            if parameter.type in {
-                ToolParameter.ToolParameterType.SYSTEM_FILES,
-                ToolParameter.ToolParameterType.FILE,
-                ToolParameter.ToolParameterType.FILES,
-            }:
-                continue
-            enum = []
-            if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                enum = [option.value for option in parameter.options] if parameter.options else []
-
-            prompt_tool.parameters["properties"][parameter.name] = (
-                {
-                    "type": parameter_type,
-                    "description": parameter.llm_description or "",
-                }
-                if parameter.input_schema is None
-                else parameter.input_schema
-            )
-
-            if len(enum) > 0:
-                prompt_tool.parameters["properties"][parameter.name]["enum"] = enum
-
-            if parameter.required:
-                if parameter.name not in prompt_tool.parameters["required"]:
-                    prompt_tool.parameters["required"].append(parameter.name)
-
+        prompt_tool.parameters = tool.get_llm_parameters_json_schema()
         return prompt_tool
 
     def create_agent_thought(
         self, message_id: str, message: str, tool_name: str, tool_input: str, messages_ids: list[str]
-    ) -> MessageAgentThought:
+    ) -> str:
         """
         Create agent thought
         """
         thought = MessageAgentThought(
             message_id=message_id,
             message_chain_id=None,
+            tool_process_data=None,
             thought="",
             tool=tool_name,
             tool_labels_str="{}",
@@ -294,40 +258,39 @@ class BaseAgentRunner(AppRunner):
             tool_input=tool_input,
             message=message,
             message_token=0,
-            message_unit_price=0,
-            message_price_unit=0,
+            message_unit_price=Decimal(0),
+            message_price_unit=Decimal("0.001"),
             message_files=json.dumps(messages_ids) if messages_ids else "",
             answer="",
             observation="",
             answer_token=0,
-            answer_unit_price=0,
-            answer_price_unit=0,
+            answer_unit_price=Decimal(0),
+            answer_price_unit=Decimal("0.001"),
             tokens=0,
-            total_price=0,
+            total_price=Decimal(0),
             position=self.agent_thought_count + 1,
             currency="USD",
             latency=0,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=self.user_id,
         )
 
         db.session.add(thought)
         db.session.commit()
-        db.session.refresh(thought)
+        agent_thought_id = str(thought.id)
+        self.agent_thought_count += 1
         db.session.close()
 
-        self.agent_thought_count += 1
-
-        return thought
+        return agent_thought_id
 
     def save_agent_thought(
         self,
-        agent_thought: MessageAgentThought,
+        agent_thought_id: str,
         tool_name: str | None,
-        tool_input: Union[str, dict, None],
+        tool_input: str | dict | None,
         thought: str | None,
-        observation: Union[str, dict, None],
-        tool_invoke_meta: Union[str, dict, None],
+        observation: str | dict | None,
+        tool_invoke_meta: str | dict | None,
         answer: str | None,
         messages_ids: list[str],
         llm_usage: LLMUsage | None = None,
@@ -335,15 +298,14 @@ class BaseAgentRunner(AppRunner):
         """
         Save agent thought
         """
-        updated_agent_thought = (
-            db.session.query(MessageAgentThought).filter(MessageAgentThought.id == agent_thought.id).first()
-        )
-        if not updated_agent_thought:
+        stmt = select(MessageAgentThought).where(MessageAgentThought.id == agent_thought_id)
+        agent_thought = db.session.scalar(stmt)
+        if not agent_thought:
             raise ValueError("agent thought not found")
-        agent_thought = updated_agent_thought
 
         if thought:
-            agent_thought.thought += thought
+            existing_thought = agent_thought.thought or ""
+            agent_thought.thought = f"{existing_thought}{thought}"
 
         if tool_name:
             agent_thought.tool = tool_name
@@ -355,7 +317,7 @@ class BaseAgentRunner(AppRunner):
                 except Exception:
                     tool_input = json.dumps(tool_input)
 
-            updated_agent_thought.tool_input = tool_input
+            agent_thought.tool_input = tool_input
 
         if observation:
             if isinstance(observation, dict):
@@ -364,27 +326,27 @@ class BaseAgentRunner(AppRunner):
                 except Exception:
                     observation = json.dumps(observation)
 
-            updated_agent_thought.observation = observation
+            agent_thought.observation = observation
 
         if answer:
             agent_thought.answer = answer
 
         if messages_ids is not None and len(messages_ids) > 0:
-            updated_agent_thought.message_files = json.dumps(messages_ids)
+            agent_thought.message_files = json.dumps(messages_ids)
 
         if llm_usage:
-            updated_agent_thought.message_token = llm_usage.prompt_tokens
-            updated_agent_thought.message_price_unit = llm_usage.prompt_price_unit
-            updated_agent_thought.message_unit_price = llm_usage.prompt_unit_price
-            updated_agent_thought.answer_token = llm_usage.completion_tokens
-            updated_agent_thought.answer_price_unit = llm_usage.completion_price_unit
-            updated_agent_thought.answer_unit_price = llm_usage.completion_unit_price
-            updated_agent_thought.tokens = llm_usage.total_tokens
-            updated_agent_thought.total_price = llm_usage.total_price
+            agent_thought.message_token = llm_usage.prompt_tokens
+            agent_thought.message_price_unit = llm_usage.prompt_price_unit
+            agent_thought.message_unit_price = llm_usage.prompt_unit_price
+            agent_thought.answer_token = llm_usage.completion_tokens
+            agent_thought.answer_price_unit = llm_usage.completion_price_unit
+            agent_thought.answer_unit_price = llm_usage.completion_unit_price
+            agent_thought.tokens = llm_usage.total_tokens
+            agent_thought.total_price = llm_usage.total_price
 
         # check if tool labels is not empty
-        labels = updated_agent_thought.tool_labels or {}
-        tools = updated_agent_thought.tool.split(";") if updated_agent_thought.tool else []
+        labels = agent_thought.tool_labels or {}
+        tools = agent_thought.tool.split(";") if agent_thought.tool else []
         for tool in tools:
             if not tool:
                 continue
@@ -395,7 +357,7 @@ class BaseAgentRunner(AppRunner):
                 else:
                     labels[tool] = {"en_US": tool, "zh_Hans": tool}
 
-        updated_agent_thought.tool_labels_str = json.dumps(labels)
+        agent_thought.tool_labels_str = json.dumps(labels)
 
         if tool_invoke_meta is not None:
             if isinstance(tool_invoke_meta, dict):
@@ -404,12 +366,12 @@ class BaseAgentRunner(AppRunner):
                 except Exception:
                     tool_invoke_meta = json.dumps(tool_invoke_meta)
 
-            updated_agent_thought.tool_meta_str = tool_invoke_meta
+            agent_thought.tool_meta_str = tool_invoke_meta
 
         db.session.commit()
         db.session.close()
 
-    def organize_agent_history(self, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
+    def organize_agent_history(self, prompt_messages: list[PromptMessage], *, session: Session) -> list[PromptMessage]:
         """
         Organize agent history
         """
@@ -421,7 +383,7 @@ class BaseAgentRunner(AppRunner):
 
         messages = (
             (
-                db.session.execute(
+                session.execute(
                     select(Message)
                     .where(Message.conversation_id == self.message.conversation_id)
                     .order_by(Message.created_at.desc())
@@ -437,27 +399,36 @@ class BaseAgentRunner(AppRunner):
             if message.id == self.message.id:
                 continue
 
-            result.append(self.organize_agent_user_prompt(message))
-            agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
+            result.append(self.organize_agent_user_prompt(message, session=session))
+            agent_thoughts = message.agent_thoughts_with_session(session=session)
             if agent_thoughts:
                 for agent_thought in agent_thoughts:
-                    tools = agent_thought.tool
-                    if tools:
-                        tools = tools.split(";")
+                    tool_names_raw = agent_thought.tool
+                    if tool_names_raw:
+                        tool_names = tool_names_raw.split(";")
                         tool_calls: list[AssistantPromptMessage.ToolCall] = []
                         tool_call_response: list[ToolPromptMessage] = []
-                        try:
-                            tool_inputs = json.loads(agent_thought.tool_input)
-                        except Exception:
-                            tool_inputs = {tool: {} for tool in tools}
-                        try:
-                            tool_responses = json.loads(agent_thought.observation)
-                        except Exception:
-                            tool_responses = dict.fromkeys(tools, agent_thought.observation)
+                        tool_input_payload = agent_thought.tool_input
+                        if tool_input_payload:
+                            try:
+                                tool_inputs = json.loads(tool_input_payload)
+                            except Exception:
+                                tool_inputs = {tool: {} for tool in tool_names}
+                        else:
+                            tool_inputs = {tool: {} for tool in tool_names}
 
-                        for tool in tools:
-                            # generate a uuid for tool call
-                            tool_call_id = str(uuid.uuid4())
+                        observation_payload = agent_thought.observation
+                        if observation_payload:
+                            try:
+                                tool_responses = json.loads(observation_payload)
+                            except Exception:
+                                tool_responses = dict.fromkeys(tool_names, observation_payload)
+                        else:
+                            tool_responses = dict.fromkeys(tool_names, observation_payload)
+
+                        for index, tool in enumerate(tool_names):
+                            # Keep IDs stable across turns so replayed history can use prompt caching.
+                            tool_call_id = str(uuid.uuid5(uuid.NAMESPACE_OID, f"{agent_thought.id}:{index}:{tool}"))
                             tool_calls.append(
                                 AssistantPromptMessage.ToolCall(
                                     id=tool_call_id,
@@ -485,22 +456,27 @@ class BaseAgentRunner(AppRunner):
                                 *tool_call_response,
                             ]
                         )
-                    if not tools:
+                    if not tool_names_raw:
                         result.append(AssistantPromptMessage(content=agent_thought.thought))
             else:
                 if message.answer:
                     result.append(AssistantPromptMessage(content=message.answer))
 
-        db.session.close()
+        session.close()
 
         return result
 
-    def organize_agent_user_prompt(self, message: Message) -> UserPromptMessage:
-        files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
+    def organize_agent_user_prompt(self, message: Message, *, session: Session) -> UserPromptMessage:
+        stmt = select(MessageFile).where(MessageFile.message_id == message.id)
+        files = session.scalars(stmt).all()
         if not files:
             return UserPromptMessage(content=message.query)
-        if message.app_model_config:
-            file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
+        app_model_config = message.app_model_config_with_session(session=session)
+        if app_model_config:
+            annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
+            file_extra_config = FileUploadConfigManager.convert(
+                app_model_config.to_dict(annotation_reply=annotation_reply)
+            )
         else:
             file_extra_config = None
 
@@ -511,12 +487,13 @@ class BaseAgentRunner(AppRunner):
         image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
 
         file_objs = file_factory.build_from_message_files(
-            message_files=files, tenant_id=self.tenant_id, config=file_extra_config
+            message_files=files,
+            tenant_id=self.tenant_id,
+            access_controller=_file_access_controller,
         )
         if not file_objs:
             return UserPromptMessage(content=message.query)
         prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-        prompt_message_contents.append(TextPromptMessageContent(data=message.query))
         for file in file_objs:
             prompt_message_contents.append(
                 file_manager.to_prompt_message_content(
@@ -524,4 +501,6 @@ class BaseAgentRunner(AppRunner):
                     image_detail_config=image_detail_config,
                 )
             )
+        prompt_message_contents.append(TextPromptMessageContent(data=message.query))
+
         return UserPromptMessage(content=prompt_message_contents)

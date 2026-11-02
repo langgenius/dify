@@ -1,14 +1,16 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
 import { RiAddLine } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
-import ExternalApiSelect from './ExternalApiSelect'
-import Input from '@/app/components/base/input'
-import Button from '@/app/components/base/button'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import * as React from 'react'
+import { useEffect, useId, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
-import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import ExternalApiSelect from './ExternalApiSelect'
 
 type ExternalApiSelectionProps = {
   external_knowledge_api_id: string
@@ -16,23 +18,32 @@ type ExternalApiSelectionProps = {
   onChange: (data: { external_knowledge_api_id?: string; external_knowledge_id?: string }) => void
 }
 
-const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_knowledge_api_id, external_knowledge_id, onChange }) => {
-  const { t } = useTranslation()
+const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
+  external_knowledge_api_id,
+  external_knowledge_id,
+  onChange,
+}) => {
+  const { t } = useTranslation(['dataset'])
   const router = useRouter()
-  const { externalKnowledgeApiList } = useExternalKnowledgeApi()
+  const queryClient = useQueryClient()
+  const externalKnowledgeApiQueryOptions =
+    consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({ input: {} })
+  const { data } = useQuery(externalKnowledgeApiQueryOptions)
+  const externalKnowledgeApiList = data?.data ?? []
+  const externalKnowledgeApiLabelId = useId()
+  const externalKnowledgeIdInputId = useId()
   const [selectedApiId, setSelectedApiId] = useState(external_knowledge_api_id)
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
-  const { mutateExternalKnowledgeApis } = useExternalKnowledgeApi()
 
-  const apiItems = externalKnowledgeApiList.map(api => ({
+  const apiItems = externalKnowledgeApiList.map((api) => ({
     value: api.id,
     name: api.name,
-    url: api.settings.endpoint,
+    url: api.settings && typeof api.settings.endpoint === 'string' ? api.settings.endpoint : '',
   }))
 
   useEffect(() => {
     if (apiItems.length > 0) {
-      const newSelectedId = external_knowledge_api_id || apiItems[0].value
+      const newSelectedId = external_knowledge_api_id || apiItems[0]!.value
       setSelectedApiId(newSelectedId)
       if (newSelectedId !== external_knowledge_api_id)
         onChange({ external_knowledge_api_id: newSelectedId, external_knowledge_id })
@@ -43,11 +54,10 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
     setShowExternalKnowledgeAPIModal({
       payload: { name: '', settings: { endpoint: '', api_key: '' } },
       onSaveCallback: async () => {
-        mutateExternalKnowledgeApis()
+        await queryClient.invalidateQueries({
+          queryKey: externalKnowledgeApiQueryOptions.queryKey,
+        })
         router.refresh()
-      },
-      onCancelCallback: () => {
-        mutateExternalKnowledgeApis()
       },
       isEditMode: false,
     })
@@ -55,17 +65,20 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
 
   useEffect(() => {
     if (!external_knowledge_api_id && apiItems.length > 0)
-      onChange({ external_knowledge_api_id: apiItems[0].value, external_knowledge_id })
+      onChange({ external_knowledge_api_id: apiItems[0]!.value, external_knowledge_id })
   }, [])
 
   return (
-    <form className='flex flex-col gap-4 self-stretch'>
-      <div className='flex flex-col gap-1 self-stretch'>
-        <div className='flex flex-col self-stretch'>
-          <label className='system-sm-semibold text-text-secondary'>{t('dataset.externalAPIPanelTitle')}</label>
+    <form className="flex flex-col gap-4 self-stretch">
+      <div className="flex flex-col gap-1 self-stretch">
+        <div className="flex flex-col self-stretch">
+          <span id={externalKnowledgeApiLabelId} className="system-sm-semibold text-text-secondary">
+            {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
+          </span>
         </div>
-        {apiItems.length > 0
-          ? <ExternalApiSelect
+        {apiItems.length > 0 ? (
+          <ExternalApiSelect
+            aria-labelledby={externalKnowledgeApiLabelId}
             items={apiItems}
             value={selectedApiId}
             onSelect={(e) => {
@@ -73,20 +86,31 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
               onChange({ external_knowledge_api_id: e.value, external_knowledge_id })
             }}
           />
-          : <Button variant={'tertiary'} onClick={handleAddNewAPI} className='justify-start gap-0.5'>
-            <RiAddLine className='h-4 w-4 text-text-tertiary' />
-            <span className='system-sm-regular text-text-tertiary'>{t('dataset.noExternalKnowledge')}</span>
+        ) : (
+          <Button variant="tertiary" onClick={handleAddNewAPI} className="justify-start">
+            <RiAddLine className="size-4 text-text-tertiary" />
+            <span className="system-sm-regular text-text-tertiary">
+              {t(($) => $.noExternalKnowledge, { ns: 'dataset' })}
+            </span>
           </Button>
-        }
+        )}
       </div>
-      <div className='flex flex-col gap-1 self-stretch'>
-        <div className='flex flex-col self-stretch'>
-          <label className='system-sm-semibold text-text-secondary'>{t('dataset.externalKnowledgeId')}</label>
+      <div className="flex flex-col gap-1 self-stretch">
+        <div className="flex flex-col self-stretch">
+          <label
+            htmlFor={externalKnowledgeIdInputId}
+            className="system-sm-semibold text-text-secondary"
+          >
+            {t(($) => $.externalKnowledgeId, { ns: 'dataset' })}
+          </label>
         </div>
         <Input
+          id={externalKnowledgeIdInputId}
           value={external_knowledge_id}
-          onChange={e => onChange({ external_knowledge_id: e.target.value, external_knowledge_api_id })}
-          placeholder={t('dataset.externalKnowledgeIdPlaceholder') ?? ''}
+          onValueChange={(value) =>
+            onChange({ external_knowledge_id: value, external_knowledge_api_id })
+          }
+          placeholder={t(($) => $.externalKnowledgeIdPlaceholder, { ns: 'dataset' }) ?? ''}
         />
       </div>
     </form>

@@ -2,9 +2,11 @@ import logging
 import os
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any, override
 
-import opendal  # type: ignore[import]
+import opendal
 from dotenv import dotenv_values
+from opendal import Operator
 
 from extensions.storage.base_storage import BaseStorage
 
@@ -18,7 +20,7 @@ def _get_opendal_kwargs(*, scheme: str, env_file_path: str = ".env", prefix: str
         if key.startswith(config_prefix):
             kwargs[key[len(config_prefix) :].lower()] = value
 
-    file_env_vars: dict = dotenv_values(env_file_path) or {}
+    file_env_vars: dict[str, Any] = dotenv_values(env_file_path) or {}
     for key, value in file_env_vars.items():
         if key.startswith(config_prefix) and key[len(config_prefix) :].lower() not in kwargs and value:
             kwargs[key[len(config_prefix) :].lower()] = value
@@ -31,69 +33,78 @@ class OpenDALStorage(BaseStorage):
         kwargs = kwargs or _get_opendal_kwargs(scheme=scheme)
 
         if scheme == "fs":
-            root = kwargs.get("root", "storage")
+            root = kwargs.setdefault("root", "storage")
             Path(root).mkdir(parents=True, exist_ok=True)
 
-        self.op = opendal.Operator(scheme=scheme, **kwargs)  # type: ignore
-        logger.debug(f"opendal operator created with scheme {scheme}")
         retry_layer = opendal.layers.RetryLayer(max_times=3, factor=2.0, jitter=True)
-        self.op = self.op.layer(retry_layer)
+        self.op = Operator(scheme=scheme, **kwargs).layer(retry_layer)
+        logger.debug("opendal operator created with scheme %s", scheme)
         logger.debug("added retry layer to opendal operator")
 
-    def save(self, filename: str, data: bytes) -> None:
+    @override
+    def save(self, filename: str, data: bytes):
         self.op.write(path=filename, bs=data)
-        logger.debug(f"file {filename} saved")
+        logger.debug("file %s saved", filename)
 
+    @override
     def load_once(self, filename: str) -> bytes:
         if not self.exists(filename):
             raise FileNotFoundError("File not found")
 
         content: bytes = self.op.read(path=filename)
-        logger.debug(f"file {filename} loaded")
+        logger.debug("file %s loaded", filename)
         return content
 
+    @override
     def load_stream(self, filename: str) -> Generator:
         if not self.exists(filename):
             raise FileNotFoundError("File not found")
 
         batch_size = 4096
-        file = self.op.open(path=filename, mode="rb")
-        while chunk := file.read(batch_size):
-            yield chunk
-        logger.debug(f"file {filename} loaded as stream")
+        with self.op.open(
+            path=filename,
+            mode="rb",
+            chunck=batch_size,
+        ) as file:
+            while chunk := file.read(batch_size):
+                yield chunk
+        logger.debug("file %s loaded as stream", filename)
 
+    @override
     def download(self, filename: str, target_filepath: str):
         if not self.exists(filename):
             raise FileNotFoundError("File not found")
 
-        with Path(target_filepath).open("wb") as f:
-            f.write(self.op.read(path=filename))
-        logger.debug(f"file {filename} downloaded to {target_filepath}")
+        Path(target_filepath).write_bytes(self.op.read(path=filename))
+        logger.debug("file %s downloaded to %s", filename, target_filepath)
 
+    @override
     def exists(self, filename: str) -> bool:
-        res: bool = self.op.exists(path=filename)
-        return res
+        return self.op.exists(path=filename)
 
+    @override
     def delete(self, filename: str):
         if self.exists(filename):
             self.op.delete(path=filename)
-            logger.debug(f"file {filename} deleted")
+            logger.debug("file %s deleted", filename)
             return
-        logger.debug(f"file {filename} not found, skip delete")
+        logger.debug("file %s not found, skip delete", filename)
 
+    @override
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         if not self.exists(path):
             raise FileNotFoundError("Path not found")
 
-        all_files = self.op.scan(path=path)
+        # Use the new OpenDAL 0.46.0+ API with recursive listing
+        lister = self.op.list(path, recursive=True)
         if files and directories:
-            logger.debug(f"files and directories on {path} scanned")
-            return [f.path for f in all_files]
+            logger.debug("files and directories on %s scanned", path)
+            return [entry.path for entry in lister]
         if files:
-            logger.debug(f"files on {path} scanned")
-            return [f.path for f in all_files if not f.path.endswith("/")]
+            logger.debug("files on %s scanned", path)
+            return [entry.path for entry in lister if not entry.metadata.is_dir]
         elif directories:
-            logger.debug(f"directories on {path} scanned")
-            return [f.path for f in all_files if f.path.endswith("/")]
+            logger.debug("directories on %s scanned", path)
+            return [entry.path for entry in lister if entry.metadata.is_dir]
         else:
             raise ValueError("At least one of files or directories must be True")

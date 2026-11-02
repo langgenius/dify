@@ -1,30 +1,33 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useMemo } from 'react'
-import { type PluginDeclaration, TaskStatus } from '../../../types'
-import Card from '../../../card'
-import { pluginManifestToCardPluginProps } from '../../utils'
-import Button from '@/app/components/base/button'
-import { Trans, useTranslation } from 'react-i18next'
+import type { PluginDeclaration } from '../../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
-import checkTaskStatus from '../../base/check-task-status'
-import { useInstallPackageFromLocal, usePluginTaskList } from '@/service/use-plugins'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import * as React from 'react'
+import { useEffect, useMemo } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { uninstallPlugin } from '@/service/plugins'
+import { useInstallPackageFromLocal, usePluginTaskList } from '@/service/use-plugins'
+import { isEqualOrLaterThanVersion } from '@/utils/semver'
+import Card from '../../../card'
+import { TaskStatus } from '../../../types'
+import checkTaskStatus from '../../base/check-task-status'
 import Version from '../../base/version'
-import { useAppContext } from '@/context/app-context'
-import { gte } from 'semver'
+import { pluginManifestToCardPluginProps } from '../../utils'
 
-const i18nPrefix = 'plugin.installModal'
+const i18nPrefix = 'installModal'
 
-type Props = {
+type Props = Readonly<{
   uniqueIdentifier: string
   payload: PluginDeclaration
   onCancel: () => void
   onStartToInstall?: () => void
   onInstalled: (notRefresh?: boolean) => void
   onFailed: (message?: string) => void
-}
+}>
 
 const Installed: FC<Props> = ({
   uniqueIdentifier,
@@ -34,7 +37,7 @@ const Installed: FC<Props> = ({
   onInstalled,
   onFailed,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const toInstallVersion = payload.version
   const pluginId = `${payload.author}/${payload.name}`
   const { installedInfo, isLoading } = useCheckInstalled({
@@ -46,38 +49,33 @@ const Installed: FC<Props> = ({
   const hasInstalled = !!installedVersion
 
   useEffect(() => {
-    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
-      onInstalled()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier) onInstalled()
   }, [hasInstalled])
 
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromLocal } = useInstallPackageFromLocal()
 
-  const {
-    check,
-    stop,
-  } = checkTaskStatus()
+  const { check, stop } = checkTaskStatus()
 
   const handleCancel = () => {
     stop()
     onCancel()
   }
 
-  const { handleRefetch } = usePluginTaskList(payload.category)
+  const { handleInstallTaskStart } = usePluginTaskList(payload.category)
   const handleInstall = async () => {
     if (isInstalling) return
     setIsInstalling(true)
     onStartToInstall?.()
 
     try {
-      if (hasInstalled)
-        await uninstallPlugin(installedInfoPayload.installedId)
+      if (hasInstalled) {
+        await uninstallPlugin(installedInfoPayload.installedId, { preserveCredentials: true })
+      }
 
-      const {
-        all_installed,
-        task_id,
-      } = await installPackageFromLocal(uniqueIdentifier)
+      const response = await installPackageFromLocal(uniqueIdentifier)
+      const { all_installed, task_id } = response
+      handleInstallTaskStart(response)
       const taskId = task_id
       const isInstalled = all_installed
 
@@ -85,7 +83,6 @@ const Installed: FC<Props> = ({
         onInstalled()
         return
       }
-      handleRefetch()
       const { status, error } = await check({
         taskId,
         pluginUniqueIdentifier: uniqueIdentifier,
@@ -95,8 +92,7 @@ const Installed: FC<Props> = ({
         return
       }
       onInstalled(true)
-    }
-    catch (e) {
+    } catch (e) {
       if (typeof e === 'string') {
         onFailed(e)
         return
@@ -105,57 +101,71 @@ const Installed: FC<Props> = ({
     }
   }
 
-  const { langeniusVersionInfo } = useAppContext()
+  const { data: currentVersion } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentVersion ?? '',
+  })
   const isDifyVersionCompatible = useMemo(() => {
-    if (!langeniusVersionInfo.current_version)
-      return true
-    return gte(langeniusVersionInfo.current_version, payload.meta.minimum_dify_version ?? '0.0.0')
-  }, [langeniusVersionInfo.current_version, payload.meta.minimum_dify_version])
+    if (!currentVersion) return true
+    return isEqualOrLaterThanVersion(currentVersion, payload.meta.minimum_dify_version ?? '0.0.0')
+  }, [currentVersion, payload.meta.minimum_dify_version])
 
   return (
     <>
-      <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
-        <div className='system-md-regular text-text-secondary'>
-          <p>{t(`${i18nPrefix}.readyToInstall`)}</p>
+      <div className="flex flex-col items-start justify-center gap-2 self-stretch px-6 py-3">
+        <div className="system-md-regular text-text-secondary">
+          <p>{t(($) => $[`${i18nPrefix}.readyToInstall`], { ns: 'plugin' })}</p>
           <p>
             <Trans
-              i18nKey={`${i18nPrefix}.fromTrustSource`}
-              components={{ trustSource: <span className='system-md-semibold' /> }}
+              i18nKey={($) => $[`${i18nPrefix}.fromTrustSource`]}
+              ns="plugin"
+              components={{ trustSource: <span className="system-md-semibold" /> }}
             />
           </p>
           {!isDifyVersionCompatible && (
-            <p className='system-md-regular flex items-center gap-1 text-text-warning'>
-              {t('plugin.difyVersionNotCompatible', { minimalDifyVersion: payload.meta.minimum_dify_version })}
+            <p className="flex items-center gap-1 system-md-regular text-text-warning">
+              {t(($) => $.difyVersionNotCompatible, {
+                ns: 'plugin',
+                minimalDifyVersion: payload.meta.minimum_dify_version ?? '0.0.0',
+              })}
             </p>
           )}
         </div>
-        <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
+        <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
           <Card
-            className='w-full'
+            className="w-full"
             payload={pluginManifestToCardPluginProps(payload)}
-            titleLeft={!isLoading && <Version
-              hasInstalled={hasInstalled}
-              installedVersion={installedVersion}
-              toInstallVersion={toInstallVersion}
-            />}
+            titleLeft={
+              !isLoading && (
+                <Version
+                  hasInstalled={hasInstalled}
+                  installedVersion={installedVersion}
+                  toInstallVersion={toInstallVersion}
+                />
+              )
+            }
           />
         </div>
       </div>
       {/* Action Buttons */}
-      <div className='flex items-center justify-end gap-2 self-stretch p-6 pt-5'>
+      <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         {!isInstalling && (
-          <Button variant='secondary' className='min-w-[72px]' onClick={handleCancel}>
-            {t('common.operation.cancel')}
+          <Button variant="secondary" className="min-w-18" onClick={handleCancel}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
         )}
         <Button
-          variant='primary'
-          className='flex min-w-[72px] space-x-0.5'
+          variant="primary"
+          className="flex min-w-18"
           disabled={isInstalling || isLoading}
           onClick={handleInstall}
         >
-          {isInstalling && <RiLoader2Line className='h-4 w-4 animate-spin-slow' />}
-          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
+          {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
+          <span>
+            {t(($) => $[`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`], {
+              ns: 'plugin',
+            })}
+          </span>
         </Button>
       </div>
     </>

@@ -1,16 +1,40 @@
 from libs.exception import BaseHTTPException
 
 
-class ApiKeyAuthFailedError(BaseHTTPException):
-    error_code = "auth_failed"
-    description = "{message}"
-    code = 500
+class DataSourceApiKeyAuthProviderNotSupportedError(BaseHTTPException):
+    error_code = "unsupported_data_source_api_key_auth_provider"
+    description = "The data-source API-key authentication provider is not supported."
+    code = 400
+
+
+class InvalidDataSourceApiKeyAuthCredentialsRequestError(BaseHTTPException):
+    error_code = "invalid_data_source_api_key_auth_credentials"
+    description = "The data-source API-key authentication credentials are invalid."
+    code = 400
+
+
+class DataSourceApiKeyAuthCredentialsRejectedRequestError(BaseHTTPException):
+    error_code = "data_source_api_key_auth_credentials_rejected"
+    description = "The data-source provider rejected the API-key authentication credentials."
+    code = 400
+
+
+class DataSourceApiKeyAuthProviderUnavailableRequestError(BaseHTTPException):
+    error_code = "data_source_api_key_auth_provider_unavailable"
+    description = "The data-source API-key authentication provider is temporarily unavailable."
+    code = 502
 
 
 class InvalidEmailError(BaseHTTPException):
     error_code = "invalid_email"
     description = "The email address is not valid."
     code = 400
+
+
+class InvitationAccountMismatchError(BaseHTTPException):
+    error_code = "invitation_account_mismatch"
+    description = "This invitation was sent to another account. Please sign in with the invited account."
+    code = 403
 
 
 class PasswordMismatchError(BaseHTTPException):
@@ -27,8 +51,42 @@ class InvalidTokenError(BaseHTTPException):
 
 class PasswordResetRateLimitExceededError(BaseHTTPException):
     error_code = "password_reset_rate_limit_exceeded"
-    description = "Too many password reset emails have been sent. Please try again in 1 minutes."
+    description = "Too many password reset emails have been sent. Please try again in {minutes} minutes."
     code = 429
+
+    def __init__(self, minutes: int = 1):
+        description = self.description.format(minutes=minutes) if self.description else None
+        super().__init__(description=description)
+
+
+class EmailRegisterRateLimitExceededError(BaseHTTPException):
+    error_code = "email_register_rate_limit_exceeded"
+    description = "Too many email register emails have been sent. Please try again in {minutes} minutes."
+    code = 429
+
+    def __init__(self, minutes: int = 1):
+        description = self.description.format(minutes=minutes) if self.description else None
+        super().__init__(description=description)
+
+
+class EmailChangeRateLimitExceededError(BaseHTTPException):
+    error_code = "email_change_rate_limit_exceeded"
+    description = "Too many email change emails have been sent. Please try again in {minutes} minutes."
+    code = 429
+
+    def __init__(self, minutes: int = 1):
+        description = self.description.format(minutes=minutes) if self.description else None
+        super().__init__(description=description)
+
+
+class OwnerTransferRateLimitExceededError(BaseHTTPException):
+    error_code = "owner_transfer_rate_limit_exceeded"
+    description = "Too many owner transfer emails have been sent. Please try again in {minutes} minutes."
+    code = 429
+
+    def __init__(self, minutes: int = 1):
+        description = self.description.format(minutes=minutes) if self.description else None
+        super().__init__(description=description)
 
 
 class EmailCodeError(BaseHTTPException):
@@ -37,10 +95,22 @@ class EmailCodeError(BaseHTTPException):
     code = 400
 
 
+class EmailCodeLoginServiceUnavailableError(BaseHTTPException):
+    error_code = "email_code_login_service_unavailable"
+    description = "Email code verification is temporarily unavailable. Please try again later."
+    code = 503
+
+
 class EmailOrPasswordMismatchError(BaseHTTPException):
     error_code = "email_or_password_mismatch"
     description = "The email or password is mismatched."
     code = 400
+
+
+class AuthenticationFailedError(BaseHTTPException):
+    error_code = "authentication_failed"
+    description = "Invalid email or password."
+    code = 401
 
 
 class EmailPasswordLoginLimitError(BaseHTTPException):
@@ -49,19 +119,86 @@ class EmailPasswordLoginLimitError(BaseHTTPException):
     code = 429
 
 
+class TurnstileVerificationFailedError(BaseHTTPException):
+    error_code = "turnstile_verification_failed"
+    description = "Turnstile verification failed. Please try again."
+    code = 400
+
+
+class TurnstileServiceUnavailableError(BaseHTTPException):
+    error_code = "turnstile_service_unavailable"
+    description = "Turnstile verification is temporarily unavailable. Please try again later."
+    code = 503
+
+
 class EmailCodeLoginRateLimitExceededError(BaseHTTPException):
     error_code = "email_code_login_rate_limit_exceeded"
-    description = "Too many login emails have been sent. Please try again in 5 minutes."
+    description = "Too many login emails have been sent. Please try again in {minutes} minutes."
     code = 429
+
+    def __init__(self, minutes: int = 5):
+        description = self.description.format(minutes=minutes) if self.description else None
+        super().__init__(description=description)
 
 
 class EmailCodeAccountDeletionRateLimitExceededError(BaseHTTPException):
     error_code = "email_code_account_deletion_rate_limit_exceeded"
-    description = "Too many account deletion emails have been sent. Please try again in 5 minutes."
+    description = "Too many account deletion emails have been sent. Please try again in {minutes} minutes."
     code = 429
+
+    def __init__(self, minutes: int = 5):
+        description = self.description.format(minutes=minutes) if self.description else None
+        super().__init__(description=description)
 
 
 class EmailPasswordResetLimitError(BaseHTTPException):
     error_code = "email_password_reset_limit"
     description = "Too many failed password reset attempts. Please try again in 24 hours."
     code = 429
+
+
+class EmailRegisterLimitError(BaseHTTPException):
+    error_code = "email_register_limit"
+    description = "Too many failed email register attempts. Please try again in 24 hours."
+    code = 429
+
+
+class EmailChangeLimitError(BaseHTTPException):
+    error_code = "email_change_limit"
+    description = "Too many failed email change attempts. Please try again in 24 hours."
+    code = 429
+
+
+class EmailAlreadyInUseError(BaseHTTPException):
+    error_code = "email_already_in_use"
+    description = "A user with this email already exists."
+    code = 400
+
+
+class NormalizedEmailAlreadyInUseError(EmailAlreadyInUseError):
+    error_code = "normalized_email_already_in_use"
+    description = "An account with an equivalent email address already exists."
+
+
+class OwnerTransferLimitError(BaseHTTPException):
+    error_code = "owner_transfer_limit"
+    description = "Too many failed owner transfer attempts. Please try again in 24 hours."
+    code = 429
+
+
+class NotOwnerError(BaseHTTPException):
+    error_code = "not_owner"
+    description = "You are not the owner of the workspace."
+    code = 400
+
+
+class CannotTransferOwnerToSelfError(BaseHTTPException):
+    error_code = "cannot_transfer_owner_to_self"
+    description = "You cannot transfer ownership to yourself."
+    code = 400
+
+
+class MemberNotInTenantError(BaseHTTPException):
+    error_code = "member_not_in_tenant"
+    description = "The member is not in the workspace."
+    code = 400

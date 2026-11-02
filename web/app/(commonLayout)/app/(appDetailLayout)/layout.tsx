@@ -1,31 +1,9 @@
-'use client'
-import type { FC } from 'react'
-import React, { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
-import useDocumentTitle from '@/hooks/use-document-title'
+import type { ReactNode } from 'react'
 
 export type IAppDetail = {
-  children: React.ReactNode
+  children: ReactNode
 }
 
-const AppDetail: FC<IAppDetail> = ({ children }) => {
-  const router = useRouter()
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
-  const { t } = useTranslation()
-  useDocumentTitle(t('common.menus.appDetail'))
+const AppDetail = ({ children }: IAppDetail) => children
 
-  useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return router.replace('/datasets')
-  }, [isCurrentWorkspaceDatasetOperator, router])
-
-  return (
-    <>
-      {children}
-    </>
-  )
-}
-
-export default React.memo(AppDetail)
+export default AppDetail

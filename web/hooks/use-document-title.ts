@@ -1,23 +1,14 @@
 'use client'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useFavicon, useTitle } from 'ahooks'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { formatDocumentTitle, getApplicationTitle } from '@/utils/document-title'
 
-export default function useDocumentTitle(title: string) {
-  const isPending = useGlobalPublicStore(s => s.isGlobalPending)
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const prefix = title ? `${title} - ` : ''
-  let titleStr = ''
-  let favicon = ''
-  if (isPending === false) {
-    if (systemFeatures.branding.enabled) {
-      titleStr = `${prefix}${systemFeatures.branding.application_title}`
-      favicon = systemFeatures.branding.favicon
-    }
-    else {
-      titleStr = `${prefix}Dify`
-      favicon = '/favicon.ico'
-    }
-  }
-  useTitle(titleStr)
-  useFavicon(favicon)
+export default function useDocumentTitle(title: string | null) {
+  const { data } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const branding = data.branding
+  const titleStr = title === null ? null : formatDocumentTitle(title, getApplicationTitle(branding))
+  useEffect(() => {
+    if (titleStr !== null) document.title = titleStr
+  }, [titleStr])
 }

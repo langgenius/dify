@@ -1,22 +1,36 @@
+import type { Node } from '@/app/components/workflow/types'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import {
+  NumberField,
+  NumberFieldGroup,
+  NumberFieldInput,
+  NumberFieldUnit,
+} from '@langgenius/dify-ui/number-field'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRetryConfig } from './hooks'
-import s from './style.module.css'
-import Switch from '@/app/components/base/switch'
-import Slider from '@/app/components/base/slider'
-import Input from '@/app/components/base/input'
-import type {
-  Node,
-} from '@/app/components/workflow/types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { useRetryConfig } from './hooks'
 
 type RetryOnPanelProps = Pick<Node, 'id' | 'data'>
-const RetryOnPanel = ({
-  id,
-  data,
-}: RetryOnPanelProps) => {
-  const { t } = useTranslation()
+const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
+  const { t } = useTranslation(['workflow'])
   const { handleRetryConfigChange } = useRetryConfig(id)
   const { retry_config } = data
+  const retryEnabledId = useId()
+  const retryOnFailureLabel = t(($) => $['nodes.common.retry.retryOnFailure'], {
+    ns: 'workflow',
+  })
+  const maxRetriesLabel = t(($) => $['nodes.common.retry.maxRetries'], { ns: 'workflow' })
+  const retryIntervalLabel = t(($) => $['nodes.common.retry.retryInterval'], { ns: 'workflow' })
 
   const handleRetryEnabledChange = (value: boolean) => {
     handleRetryConfigChange({
@@ -27,10 +41,8 @@ const RetryOnPanel = ({
   }
 
   const handleMaxRetriesChange = (value: number) => {
-    if (value > 10)
-      value = 10
-    else if (value < 1)
-      value = 1
+    if (value > 10) value = 10
+    else if (value < 1) value = 1
     handleRetryConfigChange({
       retry_enabled: true,
       max_retries: value,
@@ -39,10 +51,8 @@ const RetryOnPanel = ({
   }
 
   const handleRetryIntervalChange = (value: number) => {
-    if (value > 5000)
-      value = 5000
-    else if (value < 100)
-      value = 100
+    if (value > 5000) value = 5000
+    else if (value < 100) value = 100
     handleRetryConfigChange({
       retry_enabled: true,
       max_retries: retry_config?.max_retries || 3,
@@ -52,64 +62,106 @@ const RetryOnPanel = ({
 
   return (
     <>
-      <div className='pt-2'>
-        <div className='flex h-10 items-center justify-between px-4 py-2'>
-          <div className='flex items-center'>
-            <div className='system-sm-semibold-uppercase mr-0.5 text-text-secondary'>{t('workflow.nodes.common.retry.retryOnFailure')}</div>
-          </div>
+      <div className="pt-2">
+        <div className="flex h-10 items-center justify-between px-4 py-2">
+          <label
+            htmlFor={retryEnabledId}
+            className="mr-0.5 cursor-pointer system-sm-semibold-uppercase text-text-secondary"
+          >
+            {retryOnFailureLabel}
+          </label>
           <Switch
-            defaultValue={retry_config?.retry_enabled}
-            onChange={v => handleRetryEnabledChange(v)}
+            id={retryEnabledId}
+            checked={retry_config?.retry_enabled ?? false}
+            onCheckedChange={(v) => handleRetryEnabledChange(v)}
           />
         </div>
-        {
-          retry_config?.retry_enabled && (
-            <div className='px-4 pb-2'>
-              <div className='mb-1 flex w-full items-center'>
-                <div className='system-xs-medium-uppercase mr-2 grow text-text-secondary'>{t('workflow.nodes.common.retry.maxRetries')}</div>
-                <Slider
-                  className='mr-3 w-[108px]'
-                  value={retry_config?.max_retries || 3}
-                  onChange={handleMaxRetriesChange}
-                  min={1}
-                  max={10}
-                />
-                <Input
-                  type='number'
-                  wrapperClassName='w-[80px]'
-                  value={retry_config?.max_retries || 3}
-                  onChange={e => handleMaxRetriesChange(e.target.value as any)}
-                  min={1}
-                  max={10}
-                  unit={t('workflow.nodes.common.retry.times') || ''}
-                  className={s.input}
-                />
+        {retry_config?.retry_enabled && (
+          <div className="px-4 pb-2">
+            <Fieldset className="mb-1 flex w-full items-center">
+              <FieldsetLegend className="sr-only">{maxRetriesLabel}</FieldsetLegend>
+              <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">
+                {maxRetriesLabel}
               </div>
-              <div className='flex items-center'>
-                <div className='system-xs-medium-uppercase mr-2 grow text-text-secondary'>{t('workflow.nodes.common.retry.retryInterval')}</div>
-                <Slider
-                  className='mr-3 w-[108px]'
-                  value={retry_config?.retry_interval || 1000}
-                  onChange={handleRetryIntervalChange}
-                  min={100}
-                  max={5000}
-                />
-                <Input
-                  type='number'
-                  wrapperClassName='w-[80px]'
-                  value={retry_config?.retry_interval || 1000}
-                  onChange={e => handleRetryIntervalChange(e.target.value as any)}
-                  min={100}
-                  max={5000}
-                  unit={t('workflow.nodes.common.retry.ms') || ''}
-                  className={s.input}
-                />
+              <Slider
+                className="mr-3 w-27"
+                value={retry_config?.max_retries || 3}
+                onValueChange={handleMaxRetriesChange}
+                min={1}
+                max={10}
+              >
+                <SliderLabel className="sr-only">{maxRetriesLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb
+                      getAriaValueText={(_formattedValue, sliderValue) =>
+                        `${sliderValue} ${t(($) => $['nodes.common.retry.times'], { ns: 'workflow' })}`
+                      }
+                    />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
+              <NumberField
+                className="w-25 shrink-0"
+                value={retry_config?.max_retries || 3}
+                min={1}
+                max={10}
+                format={{ useGrouping: false }}
+                onValueChange={(value) => handleMaxRetriesChange(value ?? 3)}
+              >
+                <NumberFieldGroup>
+                  <NumberFieldInput aria-label={maxRetriesLabel} />
+                  <NumberFieldUnit>
+                    {t(($) => $['nodes.common.retry.times'], { ns: 'workflow' })}
+                  </NumberFieldUnit>
+                </NumberFieldGroup>
+              </NumberField>
+            </Fieldset>
+            <Fieldset className="flex items-center">
+              <FieldsetLegend className="sr-only">{retryIntervalLabel}</FieldsetLegend>
+              <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">
+                {retryIntervalLabel}
               </div>
-            </div>
-          )
-        }
+              <Slider
+                className="mr-3 w-27"
+                value={retry_config?.retry_interval || 1000}
+                onValueChange={handleRetryIntervalChange}
+                min={100}
+                max={5000}
+              >
+                <SliderLabel className="sr-only">{retryIntervalLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb
+                      getAriaValueText={(_formattedValue, sliderValue) =>
+                        `${sliderValue} ${t(($) => $['nodes.common.retry.ms'], { ns: 'workflow' })}`
+                      }
+                    />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
+              <NumberField
+                className="w-25 shrink-0"
+                value={retry_config?.retry_interval || 1000}
+                min={100}
+                max={5000}
+                format={{ useGrouping: false }}
+                onValueChange={(value) => handleRetryIntervalChange(value ?? 1000)}
+              >
+                <NumberFieldGroup>
+                  <NumberFieldInput aria-label={retryIntervalLabel} />
+                  <NumberFieldUnit>
+                    {t(($) => $['nodes.common.retry.ms'], { ns: 'workflow' })}
+                  </NumberFieldUnit>
+                </NumberFieldGroup>
+              </NumberField>
+            </Fieldset>
+          </div>
+        )}
       </div>
-      <Split className='mx-4 mt-2' />
+      <Split className="mx-4 mt-2" />
     </>
   )
 }

@@ -1,0 +1,244 @@
+import json
+from collections.abc import Callable
+from dataclasses import dataclass
+
+import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
+
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    CreditUsageCreatedBy,
+    DifyRunContext,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+    get_credit_usage_app_type,
+    get_credit_usage_created_by,
+)
+from core.app.layers.pause_state_persist_layer import (
+    WorkflowResumptionContext,
+    _AdvancedChatAppGenerateEntityWrapper,
+    _WorkflowGenerateEntityWrapper,
+)
+from core.credit_usage import CreditUsageAppType
+from models.model import AppMode
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id="tenant-id",
+        app_id="app-id",
+        user_id="user-id",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
+def _build_workflow_app_config(app_mode: AppMode) -> WorkflowUIBasedAppConfig:
+    return WorkflowUIBasedAppConfig(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        app_mode=app_mode,
+        workflow_id=f"{app_mode.value}-workflow-id",
+    )
+
+
+def _create_workflow_generate_entity(trace_scope: TraceScope) -> WorkflowAppGenerateEntity:
+    return WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
+        task_id="workflow-task",
+        app_config=_build_workflow_app_config(AppMode.WORKFLOW),
+        inputs={"topic": "serialization"},
+        files=[],
+        user_id="user-workflow",
+        stream=True,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=1,
+        trace_scope=trace_scope,
+        workflow_execution_id="workflow-exec-id",
+        extras={"external_trace_id": "trace-id"},
+    )
+
+
+def _create_advanced_chat_generate_entity(trace_scope: TraceScope) -> AdvancedChatAppGenerateEntity:
+    return AdvancedChatAppGenerateEntity(
+        task_id="advanced-task",
+        app_config=_build_workflow_app_config(AppMode.ADVANCED_CHAT),
+        conversation_id="conversation-id",
+        inputs={"topic": "roundtrip"},
+        files=[],
+        user_id="user-advanced",
+        stream=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+        query="Explain serialization",
+        extras={"auto_generate_conversation_name": True},
+        trace_scope=trace_scope,
+        workflow_run_id="workflow-run-id",
+    )
+
+
+def test_workflow_app_generate_entity_roundtrip_excludes_trace_scope() -> None:
+    trace_scope = _trace_scope()
+    entity = _create_workflow_generate_entity(trace_scope=trace_scope)
+
+    serialized = entity.model_dump_json()
+    payload = json.loads(serialized)
+
+    assert entity.trace_scope is trace_scope
+    assert "trace_scope" not in payload
+    assert "trace_scope" not in repr(entity)
+
+    restored = WorkflowAppGenerateEntity.model_validate_json(serialized)
+
+    assert restored.model_dump() == entity.model_dump()
+    assert restored.trace_scope is None
+
+
+def test_advanced_chat_generate_entity_roundtrip_excludes_trace_scope() -> None:
+    trace_scope = _trace_scope()
+    entity = _create_advanced_chat_generate_entity(trace_scope=trace_scope)
+
+    serialized = entity.model_dump_json()
+    payload = json.loads(serialized)
+
+    assert entity.trace_scope is trace_scope
+    assert "trace_scope" not in payload
+
+    restored = AdvancedChatAppGenerateEntity.model_validate_json(serialized)
+
+    assert restored.model_dump() == entity.model_dump()
+    assert restored.trace_scope is None
+
+
+@pytest.mark.parametrize(
+    ("app_mode", "created_by"),
+    [
+        (AppMode.CHAT, CreditUsageCreatedBy.APP),
+        (AppMode.ADVANCED_CHAT, CreditUsageCreatedBy.APP),
+        (AppMode.WORKFLOW, CreditUsageCreatedBy.APP),
+        (AppMode.AGENT_CHAT, CreditUsageCreatedBy.APP),
+        (AppMode.AGENT, CreditUsageCreatedBy.APP),
+        (AppMode.COMPLETION, CreditUsageCreatedBy.APP),
+        (AppMode.RAG_PIPELINE, CreditUsageCreatedBy.APP),
+    ],
+)
+def test_get_credit_usage_created_by_maps_app_mode(
+    app_mode: AppMode,
+    created_by: CreditUsageCreatedBy,
+) -> None:
+    assert get_credit_usage_created_by(app_mode) == created_by
+
+
+def test_get_credit_usage_created_by_defaults_to_unknown() -> None:
+    assert get_credit_usage_created_by(None) == CreditUsageCreatedBy.UNKNOWN
+
+
+@pytest.mark.parametrize(
+    ("app_mode", "app_type"),
+    [
+        (AppMode.CHAT, CreditUsageAppType.CHATBOT),
+        (AppMode.ADVANCED_CHAT, CreditUsageAppType.CHATFLOW),
+        (AppMode.WORKFLOW, CreditUsageAppType.WORKFLOW),
+        (AppMode.AGENT_CHAT, CreditUsageAppType.AGENT),
+        (AppMode.AGENT, CreditUsageAppType.AGENT_V2),
+        (AppMode.COMPLETION, CreditUsageAppType.COMPLETION),
+        (AppMode.RAG_PIPELINE, CreditUsageAppType.RAG_PIPELINE),
+    ],
+)
+def test_get_credit_usage_app_type_maps_app_mode(app_mode: AppMode, app_type: CreditUsageAppType) -> None:
+    assert get_credit_usage_app_type(app_mode) == app_type
+
+
+def test_dify_run_context_normalizes_unknown_created_by_values() -> None:
+    context = DifyRunContext(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        user_id="user-id",
+        user_from="account",
+        invoke_from=InvokeFrom.DEBUGGER,
+        app_type="legacy-app-type",
+        created_by="legacy-created-by",
+    )
+
+    assert context.app_type == CreditUsageAppType.UNKNOWN
+    assert context.created_by == CreditUsageCreatedBy.UNKNOWN
+
+
+@dataclass(frozen=True)
+class ResumptionContextCase:
+    name: str
+    context_factory: Callable[[], tuple[WorkflowResumptionContext, type]]
+
+
+def _workflow_resumption_case() -> tuple[WorkflowResumptionContext, type]:
+    entity = _create_workflow_generate_entity(trace_scope=_trace_scope())
+    context = WorkflowResumptionContext(
+        serialized_graph_runtime_state=json.dumps({"state": "workflow"}),
+        generate_entity=_WorkflowGenerateEntityWrapper(entity=entity),
+    )
+    return context, WorkflowAppGenerateEntity
+
+
+def _advanced_chat_resumption_case() -> tuple[WorkflowResumptionContext, type]:
+    entity = _create_advanced_chat_generate_entity(trace_scope=_trace_scope())
+    context = WorkflowResumptionContext(
+        serialized_graph_runtime_state=json.dumps({"state": "advanced"}),
+        generate_entity=_AdvancedChatAppGenerateEntityWrapper(entity=entity),
+    )
+    return context, AdvancedChatAppGenerateEntity
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(ResumptionContextCase("workflow", _workflow_resumption_case), id="workflow"),
+        pytest.param(ResumptionContextCase("advanced_chat", _advanced_chat_resumption_case), id="advanced_chat"),
+    ],
+)
+def test_workflow_resumption_context_roundtrip(case: ResumptionContextCase):
+    context, expected_type = case.context_factory()
+
+    serialized = context.dumps()
+    restored = WorkflowResumptionContext.loads(serialized)
+
+    assert restored.serialized_graph_runtime_state == context.serialized_graph_runtime_state
+    entity = restored.get_generate_entity()
+    assert isinstance(entity, expected_type)
+    assert entity.model_dump() == context.get_generate_entity().model_dump()
+    assert entity.trace_scope is None
+
+
+def test_openapi_variant_present():
+    assert InvokeFrom.OPENAPI.value == "openapi"
+
+
+def test_openapi_distinct_from_service_api():
+    assert InvokeFrom.OPENAPI != InvokeFrom.SERVICE_API
+
+
+def test_runs_as_account_only_for_console_contexts():
+    # Console contexts (studio debugger / explore) run as the signed-in Account.
+    assert InvokeFrom.DEBUGGER.runs_as_account() is True
+    assert InvokeFrom.EXPLORE.runs_as_account() is True
+    # Everything else is attributed to an end user.
+    for invoke_from in (
+        InvokeFrom.WEB_APP,
+        InvokeFrom.SERVICE_API,
+        InvokeFrom.OPENAPI,
+        InvokeFrom.TRIGGER,
+        InvokeFrom.PUBLISHED_PIPELINE,
+        InvokeFrom.VALIDATION,
+    ):
+        assert invoke_from.runs_as_account() is False

@@ -1,13 +1,11 @@
-import { useCallback } from 'react'
-import produce from 'immer'
-import useVarList from '../_base/hooks/use-var-list'
 import type { Var } from '../../types'
-import { VarType } from '../../types'
 import type { AnswerNodeType } from './types'
+import { produce } from 'immer'
+import { useCallback } from 'react'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import {
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
+import { VarType } from '../../types'
+import useVarList from '../_base/hooks/use-var-list'
 
 const useConfig = (id: string, payload: AnswerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -18,12 +16,15 @@ const useConfig = (id: string, payload: AnswerNodeType) => {
     setInputs,
   })
 
-  const handleAnswerChange = useCallback((value: string) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.answer = value
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleAnswerChange = useCallback(
+    (value: string) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.answer = value
+      })
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type !== VarType.arrayObject

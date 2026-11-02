@@ -1,128 +1,266 @@
-from flask_restful import marshal_with, reqparse
-from flask_restful.inputs import int_range
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from http import HTTPStatus
+from typing import Literal
+from uuid import UUID
 
-from controllers.web import api
+from flask import request
+from pydantic import BaseModel, Field, field_validator
+
+from controllers.common.controller_schemas import ConversationRenamePayload
+from controllers.common.errors import (
+    ConversationCursorNotFoundHTTPError,
+    ConversationFirstMessageNotFoundHTTPError,
+    ConversationNotFoundHTTPError,
+)
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
+from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
-from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
-from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
-from libs.helper import uuid_value
-from models.model import AppMode
-from services.conversation_service import ConversationService
+from extensions.ext_application_services import application_services
+from fields.conversation_fields import (
+    ConversationInfiniteScrollPagination,
+    ResultResponse,
+    SimpleConversation,
+)
+from libs.external_api import error_responses
+from libs.helper import dump_response, uuid_value
+from models.model import App, AppMode, EndUser
+from services.entities.conversation_entities import EndUserConversationRef, EndUserConversationScope
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
-from services.web_conversation_service import WebConversationService
+from services.errors.message import MessageNotExistsError
 
 
+class ConversationListQuery(BaseModel):
+    last_id: str | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+    pinned: bool | None = None
+    sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = "-updated_at"
+
+    @field_validator("last_id")
+    @classmethod
+    def validate_last_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+register_schema_models(web_ns, ConversationListQuery, ConversationRenamePayload)
+register_response_schema_models(web_ns, ConversationInfiniteScrollPagination, ResultResponse, SimpleConversation)
+
+
+@web_ns.route("/conversations")
 class ConversationListApi(WebApiResource):
-    @marshal_with(conversation_infinite_scroll_pagination_fields)
-    def get(self, app_model, end_user):
+    @error_responses(NotChatAppError, ConversationCursorNotFoundHTTPError, ConversationNotFoundHTTPError)
+    @web_ns.doc("Get Conversation List")
+    @web_ns.doc(description="Retrieve paginated list of conversations for a chat application.")
+    @web_ns.doc(params=query_params_from_model(ConversationListQuery))
+    @web_ns.doc(
+        responses={
+            HTTPStatus.OK: "Success",
+            HTTPStatus.BAD_REQUEST: "Invalid conversation list query or app mode does not match the API route.",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.NOT_FOUND: (
+                "`conversation_cursor_not_found`: Cursor is outside the current list. "
+                "`conversation_not_found`: The app or user is no longer available."
+            ),
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
+        }
+    )
+    @web_ns.response(HTTPStatus.OK, "Success", web_ns.models[ConversationInfiniteScrollPagination.__name__])
+    def get(self, app_model: App, end_user: EndUser) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("last_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument("pinned", type=str, choices=["true", "false", None], location="args")
-        parser.add_argument(
-            "sort_by",
-            type=str,
-            choices=["created_at", "-created_at", "updated_at", "-updated_at"],
-            required=False,
-            default="-updated_at",
-            location="args",
-        )
-        args = parser.parse_args()
-
-        pinned = None
-        if "pinned" in args and args["pinned"] is not None:
-            pinned = args["pinned"] == "true"
-
+        query = ConversationListQuery.model_validate(request.args.to_dict(flat=True))
         try:
-            with Session(db.engine) as session:
-                return WebConversationService.pagination_by_last_id(
-                    session=session,
-                    app_model=app_model,
-                    user=end_user,
-                    last_id=args["last_id"],
-                    limit=args["limit"],
-                    invoke_from=InvokeFrom.WEB_APP,
-                    pinned=pinned,
-                    sort_by=args["sort_by"],
-                )
-        except LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+            pagination = application_services().conversation_queries.get_page(
+                scope=EndUserConversationScope(
+                    app_id=app_model.id,
+                    tenant_id=app_model.tenant_id,
+                    end_user_id=end_user.id,
+                ),
+                invoke_from="web-app",
+                last_id=query.last_id,
+                limit=query.limit,
+                pinned=query.pinned,
+                sort_by=query.sort_by,
+            )
+            return dump_response(ConversationInfiniteScrollPagination, pagination)
+        except LastConversationNotExistsError as error:
+            raise ConversationCursorNotFoundHTTPError() from error
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
 
 
+@web_ns.route("/conversations/<uuid:c_id>")
 class ConversationApi(WebApiResource):
-    def delete(self, app_model, end_user, c_id):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError)
+    @web_ns.doc("Delete Conversation")
+    @web_ns.doc(description="Delete a specific conversation.")
+    @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
+    @web_ns.doc(
+        responses={
+            HTTPStatus.NO_CONTENT: "Conversation deleted successfully",
+            HTTPStatus.BAD_REQUEST: "Bad Request",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.NOT_FOUND: "`conversation_not_found`: Conversation does not exist for this user and app.",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
+        }
+    )
+    def delete(self, app_model: App, end_user: EndUser, c_id: UUID) -> tuple[str, HTTPStatus]:
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
         try:
-            ConversationService.delete(app_model, conversation_id, end_user)
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        WebConversationService.unpin(app_model, conversation_id, end_user)
+            application_services().conversation_commands.delete(
+                ref=EndUserConversationRef(
+                    app_id=app_model.id,
+                    tenant_id=app_model.tenant_id,
+                    end_user_id=end_user.id,
+                    conversation_id=conversation_id,
+                )
+            )
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        return "", HTTPStatus.NO_CONTENT
 
-        return {"result": "success"}, 204
 
-
+@web_ns.route("/conversations/<uuid:c_id>/name")
 class ConversationRenameApi(WebApiResource):
-    @marshal_with(simple_conversation_fields)
-    def post(self, app_model, end_user, c_id):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError, ConversationFirstMessageNotFoundHTTPError)
+    @web_ns.doc("Rename Conversation")
+    @web_ns.doc(description="Rename a specific conversation with a custom name or auto-generate one.")
+    @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
+    @web_ns.doc(
+        params={
+            "name": {"description": "New conversation name", "type": "string", "required": False},
+            "auto_generate": {
+                "description": "Auto-generate conversation name",
+                "type": "boolean",
+                "required": False,
+                "default": False,
+            },
+        }
+    )
+    @web_ns.doc(
+        responses={
+            HTTPStatus.OK: "Conversation renamed successfully; model failure preserves the existing name.",
+            HTTPStatus.BAD_REQUEST: "Bad Request",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.NOT_FOUND: (
+                "`conversation_not_found`: Conversation does not exist. "
+                "`conversation_first_message_not_found`: No first message is available for automatic naming."
+            ),
+            HTTPStatus.UNPROCESSABLE_ENTITY: "Invalid conversation rename payload.",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
+        }
+    )
+    @web_ns.response(HTTPStatus.OK, "Conversation renamed successfully", web_ns.models[SimpleConversation.__name__])
+    @web_ns.expect(web_ns.models[ConversationRenamePayload.__name__])
+    @model_validate(ConversationRenamePayload)
+    def post(
+        self, payload: ConversationRenamePayload, app_model: App, end_user: EndUser, c_id: UUID
+    ) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=False, location="json")
-        parser.add_argument("auto_generate", type=bool, required=False, default=False, location="json")
-        args = parser.parse_args()
-
         try:
-            return ConversationService.rename(app_model, conversation_id, end_user, args["name"], args["auto_generate"])
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            conversation = application_services().conversation_names.rename(
+                ref=EndUserConversationRef(
+                    app_id=app_model.id,
+                    tenant_id=app_model.tenant_id,
+                    end_user_id=end_user.id,
+                    conversation_id=conversation_id,
+                ),
+                app_mode=app_model.mode,
+                name=payload.name,
+                auto_generate=payload.auto_generate,
+            )
+            return dump_response(SimpleConversation, conversation)
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        except MessageNotExistsError as error:
+            raise ConversationFirstMessageNotFoundHTTPError() from error
 
 
+@web_ns.route("/conversations/<uuid:c_id>/pin")
 class ConversationPinApi(WebApiResource):
-    def patch(self, app_model, end_user, c_id):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError)
+    @web_ns.doc("Pin Conversation")
+    @web_ns.doc(description="Pin a specific conversation to keep it at the top of the list.")
+    @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
+    @web_ns.doc(
+        responses={
+            HTTPStatus.OK: "Conversation pinned successfully",
+            HTTPStatus.BAD_REQUEST: "Bad Request",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.NOT_FOUND: "`conversation_not_found`: Conversation does not exist for this user and app.",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
+        }
+    )
+    @web_ns.response(HTTPStatus.OK, "Conversation pinned successfully", web_ns.models[ResultResponse.__name__])
+    def patch(self, app_model: App, end_user: EndUser, c_id: UUID) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
 
         try:
-            WebConversationService.pin(app_model, conversation_id, end_user)
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            application_services().conversation_commands.set_pinned(
+                ref=EndUserConversationRef(
+                    app_id=app_model.id,
+                    tenant_id=app_model.tenant_id,
+                    end_user_id=end_user.id,
+                    conversation_id=conversation_id,
+                ),
+                is_pinned=True,
+            )
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
 
-        return {"result": "success"}
+        return ResultResponse(result="success").model_dump(mode="json")
 
 
+@web_ns.route("/conversations/<uuid:c_id>/unpin")
 class ConversationUnPinApi(WebApiResource):
-    def patch(self, app_model, end_user, c_id):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError)
+    @web_ns.doc("Unpin Conversation")
+    @web_ns.doc(description="Remove the current user's pin. Succeeds when the conversation is already unpinned.")
+    @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
+    @web_ns.doc(
+        responses={
+            HTTPStatus.OK: "Conversation unpinned successfully",
+            HTTPStatus.BAD_REQUEST: "Bad Request",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.NOT_FOUND: "`conversation_not_found`: The app or user is no longer available.",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
+        }
+    )
+    @web_ns.response(HTTPStatus.OK, "Conversation unpinned successfully", web_ns.models[ResultResponse.__name__])
+    def patch(self, app_model: App, end_user: EndUser, c_id: UUID) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
-        WebConversationService.unpin(app_model, conversation_id, end_user)
+        try:
+            application_services().conversation_commands.set_pinned(
+                ref=EndUserConversationRef(
+                    app_id=app_model.id,
+                    tenant_id=app_model.tenant_id,
+                    end_user_id=end_user.id,
+                    conversation_id=conversation_id,
+                ),
+                is_pinned=False,
+            )
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
 
-        return {"result": "success"}
-
-
-api.add_resource(ConversationRenameApi, "/conversations/<uuid:c_id>/name", endpoint="web_conversation_name")
-api.add_resource(ConversationListApi, "/conversations")
-api.add_resource(ConversationApi, "/conversations/<uuid:c_id>")
-api.add_resource(ConversationPinApi, "/conversations/<uuid:c_id>/pin")
-api.add_resource(ConversationUnPinApi, "/conversations/<uuid:c_id>/unpin")
+        return ResultResponse(result="success").model_dump(mode="json")

@@ -1,11 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/react'
-
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ChatItem } from '../types'
 import Question from './question'
-import { User } from '@/app/components/base/icons/src/public/avatar'
 
 const meta = {
-  title: 'Base/Chat Question',
+  title: 'Base/Other/Chat Question',
   component: Question,
   parameters: {
     layout: 'centered',
@@ -26,8 +24,10 @@ export const Default: Story = {
       content: 'You are a helpful assistant.',
     } satisfies ChatItem,
     theme: undefined,
-    questionIcon: <div className='h-full w-full rounded-full border-[0.5px] border-black/5'>
-      <User className='h-full w-full' />
-    </div>,
+    questionIcon: (
+      <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
+        <span aria-hidden className="i-custom-public-avatar-user size-full" />
+      </div>
+    ),
   },
 }

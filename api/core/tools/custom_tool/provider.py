@@ -1,6 +1,12 @@
-from pydantic import Field
+from __future__ import annotations
 
-from core.entities.provider_entities import ProviderConfig
+from typing import override
+
+from pydantic import Field
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.tool import ApiTool
@@ -19,24 +25,26 @@ from extensions.ext_database import db
 from models.tools import ApiToolProvider
 
 
-class ApiToolProviderController(ToolProviderController):
+class ApiToolProviderController(ToolProviderController[ToolProviderEntity, ApiTool]):
     provider_id: str
     tenant_id: str
     tools: list[ApiTool] = Field(default_factory=list)
 
-    def __init__(self, entity: ToolProviderEntity, provider_id: str, tenant_id: str) -> None:
+    def __init__(self, entity: ToolProviderEntity, provider_id: str, tenant_id: str):
         super().__init__(entity)
         self.provider_id = provider_id
         self.tenant_id = tenant_id
         self.tools = []
 
     @classmethod
-    def from_db(cls, db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> "ApiToolProviderController":
+    def from_db(
+        cls, db_provider: ApiToolProvider, auth_type: ApiProviderAuthType, *, session: Session
+    ) -> ApiToolProviderController:
         credentials_schema = [
             ProviderConfig(
                 name="auth_type",
                 required=True,
-                type=ProviderConfig.Type.SELECT,
+                type=ProviderConfigType.SELECT,
                 options=[
                     ProviderConfig.Option(value="none", label=I18nObject(en_US="None", zh_Hans="无")),
                     ProviderConfig.Option(value="api_key_header", label=I18nObject(en_US="Header", zh_Hans="请求头")),
@@ -55,20 +63,20 @@ class ApiToolProviderController(ToolProviderController):
                     name="api_key_header",
                     required=False,
                     default="Authorization",
-                    type=ProviderConfig.Type.TEXT_INPUT,
+                    type=ProviderConfigType.TEXT_INPUT,
                     help=I18nObject(en_US="The header name of the api key", zh_Hans="携带 api key 的 header 名称"),
                 ),
                 ProviderConfig(
                     name="api_key_value",
                     required=True,
-                    type=ProviderConfig.Type.SECRET_INPUT,
+                    type=ProviderConfigType.SECRET_INPUT,
                     help=I18nObject(en_US="The api key", zh_Hans="api key 的值"),
                 ),
                 ProviderConfig(
                     name="api_key_header_prefix",
                     required=False,
                     default="basic",
-                    type=ProviderConfig.Type.SELECT,
+                    type=ProviderConfigType.SELECT,
                     help=I18nObject(en_US="The prefix of the api key header", zh_Hans="api key header 的前缀"),
                     options=[
                         ProviderConfig.Option(value="basic", label=I18nObject(en_US="Basic", zh_Hans="Basic")),
@@ -84,7 +92,7 @@ class ApiToolProviderController(ToolProviderController):
                     name="api_key_query_param",
                     required=False,
                     default="key",
-                    type=ProviderConfig.Type.TEXT_INPUT,
+                    type=ProviderConfigType.TEXT_INPUT,
                     help=I18nObject(
                         en_US="The query parameter name of the api key", zh_Hans="携带 api key 的查询参数名称"
                     ),
@@ -92,14 +100,14 @@ class ApiToolProviderController(ToolProviderController):
                 ProviderConfig(
                     name="api_key_value",
                     required=True,
-                    type=ProviderConfig.Type.SECRET_INPUT,
+                    type=ProviderConfigType.SECRET_INPUT,
                     help=I18nObject(en_US="The api key", zh_Hans="api key 的值"),
                 ),
             ]
         elif auth_type == ApiProviderAuthType.NONE:
             pass
 
-        user = db_provider.user
+        user = db_provider.user(session=session)
         user_name = user.name if user else ""
 
         return ApiToolProviderController(
@@ -119,6 +127,7 @@ class ApiToolProviderController(ToolProviderController):
         )
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         return ToolProviderType.API
 
@@ -176,11 +185,11 @@ class ApiToolProviderController(ToolProviderController):
         tools: list[ApiTool] = []
 
         # get tenant api providers
-        db_providers: list[ApiToolProvider] = (
-            db.session.query(ApiToolProvider)
-            .filter(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name)
-            .all()
-        )
+        db_providers = db.session.scalars(
+            select(ApiToolProvider).where(
+                ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name
+            )
+        ).all()
 
         if db_providers and len(db_providers) != 0:
             for db_provider in db_providers:
@@ -191,7 +200,8 @@ class ApiToolProviderController(ToolProviderController):
         self.tools = tools
         return tools
 
-    def get_tool(self, tool_name: str):
+    @override
+    def get_tool(self, tool_name: str) -> ApiTool:
         """
         get tool by name
 

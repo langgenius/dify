@@ -1,27 +1,39 @@
 'use client'
+
 import type { FC } from 'react'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { InputVar } from '@/app/components/workflow/types'
+import type { ExternalDataTool } from '@/models/common'
+import type { PromptVariable } from '@/models/debug'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useBoolean } from 'ahooks'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ReactSortable } from 'react-sortablejs'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
+import { toast } from '@/app/components/app/configuration/toast'
+import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
+import { InputVarType } from '@/app/components/workflow/types'
+import ConfigContext from '@/context/debug-configuration'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useModalContext } from '@/context/modal-context'
+import { getNewVar, hasDuplicateStr } from '@/utils/var'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
-import VarItem from './var-item'
 import SelectVarType from './select-var-type'
-import Tooltip from '@/app/components/base/tooltip'
-import type { PromptVariable } from '@/models/debug'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
-import { getNewVar } from '@/utils/var'
-import Toast from '@/app/components/base/toast'
-import Confirm from '@/app/components/base/confirm'
-import ConfigContext from '@/context/debug-configuration'
-import { AppType } from '@/types/app'
-import type { ExternalDataTool } from '@/models/common'
-import { useModalContext } from '@/context/modal-context'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import type { InputVar } from '@/app/components/workflow/types'
-import { InputVarType } from '@/app/components/workflow/types'
+import VarItem from './var-item'
 
 export const ADD_EXTERNAL_DATA_TOOL = 'ADD_EXTERNAL_DATA_TOOL'
 
@@ -30,9 +42,50 @@ type ExternalDataToolParams = {
   type: string
   index: number
   name: string
-  config?: Record<string, any>
+  config?: PromptVariable['config']
   icon?: string
   icon_background?: string
+}
+
+const BASIC_INPUT_TYPES = new Set(['string', 'paragraph', 'select', 'number', 'checkbox'])
+
+const toInputVar = (item: PromptVariable): InputVar => ({
+  ...item,
+  label: item.name,
+  variable: item.key,
+  type: (item.type === 'string' ? InputVarType.textInput : item.type) as InputVarType,
+  required: item.required ?? false,
+})
+
+const buildPromptVariableFromInput = (payload: InputVar): PromptVariable => {
+  const { variable, label, type, ...rest } = payload
+  const nextType = type === InputVarType.textInput ? 'string' : type
+  const nextItem: PromptVariable = {
+    ...rest,
+    type: nextType,
+    key: variable,
+    name: label as string,
+  }
+
+  if (payload.type !== InputVarType.select) delete nextItem.options
+
+  return nextItem
+}
+
+const getDuplicateError = (list: PromptVariable[]) => {
+  if (hasDuplicateStr(list.map((item) => item.key))) {
+    return {
+      errorMsgKey: 'varKeyError.keyAlreadyExists',
+      typeName: 'variableConfig.varName',
+    } as const
+  }
+  if (hasDuplicateStr(list.map((item) => item.name))) {
+    return {
+      errorMsgKey: 'varKeyError.keyAlreadyExists',
+      typeName: 'variableConfig.labelName',
+    } as const
+  }
+  return null
 }
 
 export type IConfigVarProps = {
@@ -42,112 +95,121 @@ export type IConfigVarProps = {
 }
 
 const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVariablesChange }) => {
-  const { t } = useTranslation()
-  const {
-    mode,
-    dataSets,
-  } = useContext(ConfigContext)
+  const titleId = React.useId()
+
+  const { t } = useTranslation(['appDebug', 'common'])
+  const { mode, dataSets } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
 
   const hasVar = promptVariables.length > 0
   const [currIndex, setCurrIndex] = useState<number>(-1)
   const currItem = currIndex !== -1 ? promptVariables[currIndex] : null
-  const currItemToEdit: InputVar | null = (() => {
-    if (!currItem)
-      return null
-
-    return {
-      ...currItem,
-      label: currItem.name,
-      variable: currItem.key,
-      type: currItem.type === 'string' ? InputVarType.textInput : currItem.type,
-    } as InputVar
-  })()
-  const updatePromptVariableItem = (payload: InputVar) => {
-    const newPromptVariables = produce(promptVariables, (draft) => {
-      const { variable, label, type, ...rest } = payload
-      draft[currIndex] = {
-        ...rest,
-        type: type === InputVarType.textInput ? 'string' : type,
-        key: variable,
-        name: label as string,
+  const currItemToEdit = useMemo(() => {
+    if (!currItem) return null
+    return toInputVar(currItem)
+  }, [currItem])
+  const updatePromptVariableItem = useCallback(
+    (payload: InputVar) => {
+      const newPromptVariables = produce(promptVariables, (draft) => {
+        draft[currIndex] = buildPromptVariableFromInput(payload)
+      })
+      const duplicateError = getDuplicateError(newPromptVariables)
+      if (duplicateError) {
+        toast.error(
+          t(($) => $[duplicateError.errorMsgKey], {
+            ns: 'appDebug',
+            key: t(($) => $[duplicateError.typeName], { ns: 'appDebug' }),
+          }),
+        )
+        return false
       }
 
-      if (payload.type === InputVarType.textInput)
-        draft[currIndex].max_length = draft[currIndex].max_length || DEFAULT_VALUE_MAX_LEN
-
-      if (payload.type !== InputVarType.select)
-        delete draft[currIndex].options
-    })
-
-    onPromptVariablesChange?.(newPromptVariables)
-  }
+      onPromptVariablesChange?.(newPromptVariables)
+      return true
+    },
+    [currIndex, onPromptVariablesChange, promptVariables, t],
+  )
 
   const { setShowExternalDataToolModal } = useModalContext()
 
-  const handleOpenExternalDataToolModal = (
-    { key, type, index, name, config, icon, icon_background }: ExternalDataToolParams,
-    oldPromptVariables: PromptVariable[],
-  ) => {
-    setShowExternalDataToolModal({
-      payload: {
-        type,
-        variable: key,
-        label: name,
-        config,
-        icon,
-        icon_background,
-      },
-      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
-        const newPromptVariables = oldPromptVariables.map((item, i) => {
-          if (i === index) {
-            return {
-              key: newExternalDataTool.variable as string,
-              name: newExternalDataTool.label as string,
-              enabled: newExternalDataTool.enabled,
-              type: newExternalDataTool.type as string,
-              config: newExternalDataTool.config,
-              required: item.required,
-              icon: newExternalDataTool.icon,
-              icon_background: newExternalDataTool.icon_background,
+  const handleOpenExternalDataToolModal = useCallback(
+    (
+      { key, type, index, name, config, icon, icon_background }: ExternalDataToolParams,
+      oldPromptVariables: PromptVariable[],
+    ) => {
+      setShowExternalDataToolModal({
+        payload: {
+          type,
+          variable: key,
+          label: name,
+          config,
+          icon,
+          icon_background,
+        },
+        onSaveCallback: (newExternalDataTool?: ExternalDataTool) => {
+          if (!newExternalDataTool) return
+          const newPromptVariables = oldPromptVariables.map((item, i) => {
+            if (i === index) {
+              return {
+                key: newExternalDataTool.variable as string,
+                name: newExternalDataTool.label as string,
+                enabled: newExternalDataTool.enabled,
+                type: newExternalDataTool.type as string,
+                config: newExternalDataTool.config,
+                required: item.required,
+                icon: newExternalDataTool.icon,
+                icon_background: newExternalDataTool.icon_background,
+              }
+            }
+            return item
+          })
+          onPromptVariablesChange?.(newPromptVariables)
+        },
+        onCancelCallback: () => {
+          if (!key) onPromptVariablesChange?.(promptVariables.filter((_, i) => i !== index))
+        },
+        onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+          for (let i = 0; i < promptVariables.length; i++) {
+            if (promptVariables[i]!.key === newExternalDataTool.variable && i !== index) {
+              toast.error(
+                t(($) => $['varKeyError.keyAlreadyExists'], {
+                  ns: 'appDebug',
+                  key: promptVariables[i]!.key,
+                }),
+              )
+              return false
             }
           }
-          return item
-        })
-        onPromptVariablesChange?.(newPromptVariables)
-      },
-      onCancelCallback: () => {
-        if (!key)
-          onPromptVariablesChange?.(promptVariables.filter((_, i) => i !== index))
-      },
-      onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
-        for (let i = 0; i < promptVariables.length; i++) {
-          if (promptVariables[i].key === newExternalDataTool.variable && i !== index) {
-            Toast.notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
-            return false
-          }
-        }
 
-        return true
-      },
-    })
-  }
+          return true
+        },
+      })
+    },
+    [onPromptVariablesChange, promptVariables, setShowExternalDataToolModal, t],
+  )
 
-  const handleAddVar = (type: string) => {
-    const newVar = getNewVar('', type)
-    const newPromptVariables = [...promptVariables, newVar]
-    onPromptVariablesChange?.(newPromptVariables)
+  const handleAddVar = useCallback(
+    (type: string) => {
+      const newVar = getNewVar('', type)
+      const newPromptVariables = [...promptVariables, newVar]
+      onPromptVariablesChange?.(newPromptVariables)
 
-    if (type === 'api') {
-      handleOpenExternalDataToolModal({
-        type,
-        key: newVar.key,
-        name: newVar.name,
-        index: promptVariables.length,
-      }, newPromptVariables)
-    }
-  }
+      if (type === 'api') {
+        handleOpenExternalDataToolModal(
+          {
+            type,
+            key: newVar.key,
+            name: newVar.name,
+            index: promptVariables.length,
+          },
+          newPromptVariables,
+        )
+      }
+    },
+    [handleOpenExternalDataToolModal, onPromptVariablesChange, promptVariables],
+  )
 
+  // oxlint-disable-next-line typescript/no-explicit-any
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === ADD_EXTERNAL_DATA_TOOL) {
       const payload = v.payload
@@ -167,75 +229,156 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     }
   })
 
-  const [isShowDeleteContextVarModal, { setTrue: showDeleteContextVarModal, setFalse: hideDeleteContextVarModal }] = useBoolean(false)
+  const [
+    isShowDeleteContextVarModal,
+    { setTrue: showDeleteContextVarModal, setFalse: hideDeleteContextVarModal },
+  ] = useBoolean(false)
   const [removeIndex, setRemoveIndex] = useState<number | null>(null)
-  const didRemoveVar = (index: number) => {
-    onPromptVariablesChange?.(promptVariables.filter((_, i) => i !== index))
-  }
+  const didRemoveVar = useCallback(
+    (index: number) => {
+      onPromptVariablesChange?.(promptVariables.filter((_, i) => i !== index))
+    },
+    [onPromptVariablesChange, promptVariables],
+  )
 
-  const handleRemoveVar = (index: number) => {
-    const removeVar = promptVariables[index]
+  const handleRemoveVar = useCallback(
+    (index: number) => {
+      const removeVar = promptVariables[index]
 
-    if (mode === AppType.completion && dataSets.length > 0 && removeVar.is_context_var) {
-      showDeleteContextVarModal()
-      setRemoveIndex(index)
-      return
-    }
-    didRemoveVar(index)
-  }
+      if (mode === 'completion' && dataSets.length > 0 && removeVar!.is_context_var) {
+        showDeleteContextVarModal()
+        setRemoveIndex(index)
+        return
+      }
+      didRemoveVar(index)
+    },
+    [dataSets.length, didRemoveVar, mode, promptVariables, showDeleteContextVarModal],
+  )
 
-  // const [currKey, setCurrKey] = useState<string | null>(null)
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
 
-  const handleConfig = ({ key, type, index, name, config, icon, icon_background }: ExternalDataToolParams) => {
-    // setCurrKey(key)
-    setCurrIndex(index)
-    if (type !== 'string' && type !== 'paragraph' && type !== 'select' && type !== 'number') {
-      handleOpenExternalDataToolModal({ key, type, index, name, config, icon, icon_background }, promptVariables)
-      return
-    }
+  const handleConfig = useCallback(
+    ({ key, type, index, name, config, icon, icon_background }: ExternalDataToolParams) => {
+      // setCurrKey(key)
+      setCurrIndex(index)
+      if (!BASIC_INPUT_TYPES.has(type)) {
+        handleOpenExternalDataToolModal(
+          { key, type, index, name, config, icon, icon_background },
+          promptVariables,
+        )
+        return
+      }
 
-    showEditModal()
-  }
+      showEditModal()
+    },
+    [handleOpenExternalDataToolModal, promptVariables, showEditModal],
+  )
+
+  const {
+    items: variables,
+    getHandleProps,
+    getItemKey,
+    isSorting,
+    announcement,
+  } = useKeyboardSortable({
+    items: promptVariables,
+    onChange: (items) => onPromptVariablesChange?.(items),
+    disabled: readonly,
+    getItemLabel: (item) => item.name || item.key,
+  })
+
+  const promptVariablesWithIds = useMemo(
+    () =>
+      variables.map((item) => {
+        return {
+          id: item.key,
+          variable: { ...item },
+        }
+      }),
+    [variables],
+  )
+  const handlePromptVariablesReorder = useCallback(
+    (list: typeof promptVariablesWithIds) => {
+      const hasOrderChanged =
+        list.length !== promptVariables.length ||
+        list.some((item, index) => item.id !== promptVariables[index]?.key)
+      if (isSorting || !hasOrderChanged) return
+
+      onPromptVariablesChange?.(list.map((item) => item.variable))
+    },
+    [isSorting, onPromptVariablesChange, promptVariables],
+  )
+
+  const canDrag = !readonly && promptVariables.length > 1
+
   return (
     <Panel
       className="mt-2"
       title={
-        <div className='flex items-center'>
-          <div className='mr-1'>{t('appDebug.variableTitle')}</div>
+        <div className="flex items-center">
+          <h2 id={titleId} className="mr-1">
+            {t(($) => $.variableTitle, { ns: 'appDebug' })}
+          </h2>
           {!readonly && (
-            <Tooltip
-              popupContent={
-                <div className='w-[180px]'>
-                  {t('appDebug.variableTip')}
-                </div>
-              }
-            />
+            <Infotip>
+              <InfotipTrigger aria-labelledby={titleId} />
+              <InfotipContent aria-labelledby={titleId} className="w-45">
+                {t(($) => $.variableTip, { ns: 'appDebug' })}
+              </InfotipContent>
+            </Infotip>
           )}
         </div>
       }
       headerRight={!readonly ? <SelectVarType onChange={handleAddVar} /> : null}
       noBodySpacing
     >
+      {announcement}
       {!hasVar && (
-        <div className='mt-1 px-3 pb-3'>
-          <div className='pb-1 pt-2 text-xs text-text-tertiary'>{t('appDebug.notSetVar')}</div>
+        <div className="mt-1 px-3 pb-3">
+          <div className="pt-2 pb-1 text-xs text-text-tertiary">
+            {t(($) => $.notSetVar, { ns: 'appDebug', input: '{{input}}' })}
+          </div>
         </div>
       )}
       {hasVar && (
-        <div className='mt-1 px-3 pb-3'>
-          {promptVariables.map(({ key, name, type, required, config, icon, icon_background }, index) => (
-            <VarItem
-              key={index}
-              readonly={readonly}
-              name={key}
-              label={name}
-              required={!!required}
-              type={type}
-              onEdit={() => handleConfig({ type, key, index, name, config, icon, icon_background })}
-              onRemove={() => handleRemoveVar(index)}
-            />
-          ))}
+        <div className={cn('mt-1 grid px-3 pb-3')}>
+          <ReactSortable
+            className={cn('grid space-y-1', readonly && 'grid-cols-2 gap-1 space-y-0')}
+            list={promptVariablesWithIds}
+            setList={handlePromptVariablesReorder}
+            disabled={readonly || isSorting}
+            handle=".handle"
+            ghostClass="opacity-50"
+            animation={150}
+          >
+            {promptVariablesWithIds.map((item, index) => {
+              const { key, name, type, required, config, icon, icon_background } = item.variable
+              return (
+                <VarItem
+                  key={key}
+                  dragHandleProps={getHandleProps(index)}
+                  readonly={readonly}
+                  name={key}
+                  label={name}
+                  required={!!required}
+                  type={type}
+                  onEdit={() =>
+                    handleConfig({
+                      type,
+                      key,
+                      index: getItemKey(index),
+                      name,
+                      config,
+                      icon,
+                      icon_background,
+                    })
+                  }
+                  onRemove={() => handleRemoveVar(getItemKey(index))}
+                  canDrag={canDrag}
+                />
+              )
+            })}
+          </ReactSortable>
         </div>
       )}
 
@@ -245,26 +388,45 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           isShow={isShowEditModal}
           onClose={hideEditModal}
           onConfirm={(item) => {
-            updatePromptVariableItem(item)
+            const isValid = updatePromptVariableItem(item)
+            if (!isValid) return
             hideEditModal()
           }}
-          varKeys={promptVariables.map(v => v.key)}
+          varKeys={promptVariables.map((v) => v.key)}
         />
       )}
 
-      {isShowDeleteContextVarModal && (
-        <Confirm
-          isShow={isShowDeleteContextVarModal}
-          title={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTitle', { varName: promptVariables[removeIndex as number]?.name })}
-          content={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTip')}
-          onConfirm={() => {
-            didRemoveVar(removeIndex as number)
-            hideDeleteContextVarModal()
-          }}
-          onCancel={hideDeleteContextVarModal}
-        />
-      )}
-
+      <AlertDialog
+        open={isShowDeleteContextVarModal}
+        onOpenChange={(open) => !open && hideDeleteContextVarModal()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTitle'], {
+                ns: 'appDebug',
+                varName: promptVariables[removeIndex as number]?.name ?? '',
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTip'], { ns: 'appDebug' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              onClick={() => {
+                didRemoveVar(removeIndex as number)
+                hideDeleteContextVarModal()
+              }}
+            >
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Panel>
   )
 }

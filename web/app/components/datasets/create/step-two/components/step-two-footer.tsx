@@ -1,0 +1,49 @@
+'use client'
+
+import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { RiArrowLeftLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+
+type StepTwoFooterProps = {
+  isSetting?: boolean
+  isCreating: boolean
+  onPrevious: () => void
+  onCreate: () => void
+  onCancel?: () => void
+}
+
+export const StepTwoFooter: FC<StepTwoFooterProps> = ({
+  isSetting,
+  isCreating,
+  onPrevious,
+  onCreate,
+  onCancel,
+}) => {
+  const { t } = useTranslation(['datasetCreation'])
+
+  if (!isSetting) {
+    return (
+      <div className="mt-8 flex flex-wrap items-center gap-y-2 py-2">
+        <Button onClick={onPrevious}>
+          <RiArrowLeftLine className="size-4" />
+          {t(($) => $['stepTwo.previousStep'], { ns: 'datasetCreation' })}
+        </Button>
+        <Button className="ml-auto" loading={isCreating} variant="primary" onClick={onCreate}>
+          {t(($) => $['stepTwo.nextStep'], { ns: 'datasetCreation' })}
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-8 flex flex-wrap items-center gap-y-2 py-2">
+      <Button loading={isCreating} variant="primary" onClick={onCreate}>
+        {t(($) => $['stepTwo.save'], { ns: 'datasetCreation' })}
+      </Button>
+      <Button className="ml-2" onClick={onCancel}>
+        {t(($) => $['stepTwo.cancel'], { ns: 'datasetCreation' })}
+      </Button>
+    </div>
+  )
+}

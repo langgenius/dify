@@ -1,46 +1,44 @@
 'use client'
 
-import type { FC } from 'react'
+import type { NodeTracing } from '@/types/workflow'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiArrowLeftLine,
-} from '@remixicon/react'
-import TracingPanel from '../tracing-panel'
-import type { NodeTracing } from '@/types/workflow'
+import NodePanel from '../node'
 
 type Props = {
-  list: NodeTracing[]
-  onBack: () => void
+  readonly list: NodeTracing[]
+  readonly onBack: () => void
 }
 
-const RetryResultPanel: FC<Props> = ({
-  list,
-  onBack,
-}) => {
-  const { t } = useTranslation()
+function RetryResultPanel({ list, onBack }: Props) {
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div>
-      <div
-        className='system-sm-medium flex h-8 cursor-pointer items-center bg-components-panel-bg px-4 text-text-accent-secondary'
+      <button
+        type="button"
+        className="flex h-8 w-full cursor-pointer items-center bg-components-panel-bg px-4 system-sm-medium text-text-accent-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         onClick={(e) => {
           e.stopPropagation()
           e.nativeEvent.stopImmediatePropagation()
           onBack()
         }}
       >
-        <RiArrowLeftLine className='mr-1 h-4 w-4' />
-        {t('workflow.singleRun.back')}
+        <span aria-hidden className="mr-1 i-ri-arrow-left-line size-4" />
+        {t(($) => $['singleRun.back'], { ns: 'workflow' })}
+      </button>
+      <div className="bg-background-section-burn py-2">
+        {list.map((item, index) => (
+          <NodePanel
+            key={`${item.id}:${item.retry_index ?? item.created_at}`}
+            nodeInfo={{
+              ...item,
+              title: `${t(($) => $['nodes.common.retry.retry'], { ns: 'workflow' })} ${index + 1}`,
+            }}
+          />
+        ))}
       </div>
-      <TracingPanel
-        list={list.map((item, index) => ({
-          ...item,
-          title: `${t('workflow.nodes.common.retry.retry')} ${index + 1}`,
-        }))}
-        className='bg-background-section-burn'
-      />
-    </div >
+    </div>
   )
 }
 export default memo(RetryResultPanel)

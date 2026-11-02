@@ -1,0 +1,51 @@
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+  SliderValue,
+} from '@langgenius/dify-ui/slider'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+
+type OnMinuteSelectorProps = {
+  disabled?: boolean
+  value?: number
+  onChange: (value: number) => void
+}
+
+const OnMinuteSelector = ({ value = 0, onChange, disabled }: OnMinuteSelectorProps) => {
+  const { t } = useTranslation(['workflowIntegrations'])
+
+  return (
+    <Slider
+      disabled={disabled}
+      className="flex flex-col"
+      value={value}
+      min={0}
+      max={59}
+      step={1}
+      onValueChange={onChange}
+    >
+      <SliderLabel className="text-xs">
+        {t(($) => $['nodes.triggerSchedule.onMinute'], { ns: 'workflowIntegrations' })}
+      </SliderLabel>
+      <div className="relative flex h-8 items-center rounded-lg bg-components-input-bg-normal">
+        <SliderValue className="flex h-full w-12 shrink-0 items-center justify-center text-[13px] text-components-input-text-filled" />
+        <div className="absolute top-0 left-12 h-full w-px bg-components-panel-bg"></div>
+        <div className="flex h-full grow items-center pr-3 pl-4">
+          <SliderControl>
+            <SliderTrack>
+              <SliderIndicator />
+              <SliderThumb />
+            </SliderTrack>
+          </SliderControl>
+        </div>
+      </div>
+    </Slider>
+  )
+}
+
+export default OnMinuteSelector

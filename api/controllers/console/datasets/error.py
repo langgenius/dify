@@ -1,36 +1,6 @@
 from libs.exception import BaseHTTPException
 
 
-class NoFileUploadedError(BaseHTTPException):
-    error_code = "no_file_uploaded"
-    description = "Please upload your file."
-    code = 400
-
-
-class TooManyFilesError(BaseHTTPException):
-    error_code = "too_many_files"
-    description = "Only one file is allowed."
-    code = 400
-
-
-class FileTooLargeError(BaseHTTPException):
-    error_code = "file_too_large"
-    description = "File size exceeded. {message}"
-    code = 413
-
-
-class UnsupportedFileTypeError(BaseHTTPException):
-    error_code = "unsupported_file_type"
-    description = "File type not allowed."
-    code = 415
-
-
-class HighQualityDatasetOnlyError(BaseHTTPException):
-    error_code = "high_quality_dataset_only"
-    description = "Current operation only supports 'high-quality' datasets."
-    code = 400
-
-
 class DatasetNotInitializedError(BaseHTTPException):
     error_code = "dataset_not_initialized"
     description = "The dataset is still being initialized or indexing. Please wait a moment."
@@ -53,6 +23,12 @@ class InvalidActionError(BaseHTTPException):
     error_code = "invalid_action"
     description = "Invalid action."
     code = 400
+
+
+class DatasetAccessDeniedRequestError(BaseHTTPException):
+    error_code = "dataset_access_denied"
+    description = "Dataset access denied."
+    code = 403
 
 
 class DocumentAlreadyFinishedError(BaseHTTPException):
@@ -79,12 +55,6 @@ class WebsiteCrawlError(BaseHTTPException):
     code = 500
 
 
-class DatasetInUseError(BaseHTTPException):
-    error_code = "dataset_in_use"
-    description = "The dataset is being used by some apps. Please remove the dataset from the apps before deleting it."
-    code = 409
-
-
 class IndexingEstimateError(BaseHTTPException):
     error_code = "indexing_estimate_error"
     description = "Knowledge indexing estimate failed: {message}"
@@ -101,3 +71,9 @@ class ChildChunkDeleteIndexError(BaseHTTPException):
     error_code = "child_chunk_delete_index_error"
     description = "Delete child chunk index failed: {message}"
     code = 500
+
+
+class PipelineNotFoundError(BaseHTTPException):
+    error_code = "pipeline_not_found"
+    description = "Pipeline not found."
+    code = 404

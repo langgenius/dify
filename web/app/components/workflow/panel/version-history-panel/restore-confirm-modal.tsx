@@ -1,14 +1,24 @@
-import React, { type FC } from 'react'
-import Modal from '@/app/components/base/modal'
-import type { VersionHistory } from '@/types/workflow'
+import type { FC } from 'react'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 
 type RestoreConfirmModalProps = {
   isOpen: boolean
-  versionInfo: VersionHistory
+  versionInfo: FetchWorkflowDraftResponse
   onClose: () => void
-  onRestore: (item: VersionHistory) => void
+  onRestore: (item: FetchWorkflowDraftResponse) => void
 }
 
 const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
@@ -17,26 +27,38 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
   onClose,
   onRestore,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'workflowHistory'])
 
-  return <Modal className='p-0' isShow={isOpen} onClose={onClose}>
-    <div className='flex flex-col gap-y-2 p-6 pb-4 '>
-      <div className='title-2xl-semi-bold text-text-primary'>
-        {`${t('workflow.common.restore')} ${versionInfo.marked_name || t('workflow.versionHistory.defaultName')}`}
-      </div>
-      <p className='system-md-regular text-text-secondary'>
-        {t('workflow.versionHistory.restorationTip')}
-      </p>
-    </div>
-    <div className='flex items-center justify-end gap-x-2 p-6'>
-      <Button onClick={onClose}>
-        {t('common.operation.cancel')}
-      </Button>
-      <Button variant='primary' onClick={onRestore.bind(null, versionInfo)}>
-        {t('workflow.common.restore')}
-      </Button>
-    </div>
-  </Modal>
+  return (
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {`${t(($) => $['common.restore'], { ns: 'workflow' })} ${getWorkflowVersionName(
+              versionInfo,
+              t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
+            )}`}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {t(($) => $['versionHistory.restorationTip'], { ns: 'workflowHistory' })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancelButton>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </AlertDialogCancelButton>
+          <AlertDialogConfirmButton tone="default" onClick={onRestore.bind(null, versionInfo)}>
+            {t(($) => $['common.restore'], { ns: 'workflow' })}
+          </AlertDialogConfirmButton>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
 }
 
 export default RestoreConfirmModal

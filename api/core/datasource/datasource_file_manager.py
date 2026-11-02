@@ -1,0 +1,213 @@
+import base64
+import hashlib
+import hmac
+import logging
+import os
+import time
+from datetime import datetime
+from mimetypes import guess_extension, guess_type
+from uuid import uuid4
+
+import httpx
+
+from configs import dify_config
+from core.db.session_factory import session_factory
+from core.file import remote_fetcher
+from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
+from models.enums import CreatorUserRole
+from models.model import MessageFile, UploadFile
+from models.tools import ToolFile
+
+logger = logging.getLogger(__name__)
+
+
+class DatasourceFileManager:
+    @staticmethod
+    def sign_file(datasource_file_id: str, extension: str) -> str:
+        """
+        sign file to get a temporary url
+        """
+        base_url = dify_config.FILES_URL
+        file_preview_url = f"{base_url}/files/datasources/{datasource_file_id}{extension}"
+
+        timestamp = str(int(time.time()))
+        nonce = os.urandom(16).hex()
+        data_to_sign = f"file-preview|{datasource_file_id}|{timestamp}|{nonce}"
+        sign = hmac.new(
+            dify_config.SECRET_KEY.encode(),
+            data_to_sign.encode(),
+            hashlib.sha256,
+        ).digest()
+        encoded_sign = base64.urlsafe_b64encode(sign).decode()
+
+        return f"{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+
+    @staticmethod
+    def create_file_by_raw(
+        *,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: str | None,
+        file_binary: bytes,
+        mimetype: str,
+        filename: str | None = None,
+    ) -> UploadFile:
+        """Persist an uploaded datasource file and its storage payload."""
+        extension = guess_extension(mimetype) or ".bin"
+        unique_name = uuid4().hex
+        unique_filename = f"{unique_name}{extension}"
+        # default just as before
+        present_filename = unique_filename
+        if filename is not None:
+            has_extension = len(filename.split(".")) > 1
+            # Add extension flexibly
+            present_filename = filename if has_extension else f"{filename}{extension}"
+        filepath = f"datasources/{tenant_id}/{unique_filename}"
+        storage.save(filepath, file_binary)
+
+        upload_file = UploadFile(
+            tenant_id=tenant_id,
+            storage_type=StorageType(dify_config.STORAGE_TYPE),
+            key=filepath,
+            name=present_filename,
+            size=len(file_binary),
+            extension=extension,
+            mime_type=mimetype,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=user_id,
+            used=False,
+            hash=hashlib.sha3_256(file_binary).hexdigest(),
+            source_url="",
+            created_at=datetime.now(),
+        )
+
+        with session_factory.create_session() as session:
+            session.add(upload_file)
+            session.commit()
+            session.refresh(upload_file)
+
+        return upload_file
+
+    @staticmethod
+    def create_file_by_url(
+        user_id: str,
+        tenant_id: str,
+        file_url: str,
+        conversation_id: str | None = None,
+    ) -> ToolFile:
+        """Download a remote file and persist its tool-file metadata."""
+        # try to download image
+        try:
+            response = remote_fetcher.make_request("GET", file_url)
+            response.raise_for_status()
+            blob = response.content
+        except httpx.TimeoutException as caught_error:
+            raise ValueError(f"timeout when downloading file from {file_url}") from caught_error
+
+        mimetype = (
+            guess_type(file_url)[0]
+            or response.headers.get("Content-Type", "").split(";")[0].strip()
+            or "application/octet-stream"
+        )
+        extension = guess_extension(mimetype) or ".bin"
+        unique_name = uuid4().hex
+        filename = f"{unique_name}{extension}"
+        filepath = f"tools/{tenant_id}/{filename}"
+        storage.save(filepath, blob)
+
+        tool_file = ToolFile(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            file_key=filepath,
+            mimetype=mimetype,
+            original_url=file_url,
+            name=filename,
+            size=len(blob),
+        )
+
+        with session_factory.create_session() as session:
+            session.add(tool_file)
+            session.commit()
+
+        return tool_file
+
+    @staticmethod
+    def get_file_binary(id: str) -> tuple[bytes, str] | None:
+        """
+        get file binary
+
+        :param id: the id of the file
+
+        :return: the binary of the file, mime type
+        """
+        with session_factory.create_session() as session:
+            upload_file: UploadFile | None = session.get(UploadFile, id)
+
+        if not upload_file:
+            return None
+
+        blob = storage.load_once(upload_file.key)
+
+        return blob, upload_file.mime_type
+
+    @staticmethod
+    def get_file_binary_by_message_file_id(id: str) -> tuple[bytes, str] | None:
+        """
+        get file binary
+
+        :param id: the id of the file
+
+        :return: the binary of the file, mime type
+        """
+        with session_factory.create_session() as session:
+            message_file: MessageFile | None = session.get(MessageFile, id)
+
+            # Check if message_file is not None
+            if message_file is not None:
+                # get tool file id
+                if message_file.url is not None:
+                    tool_file_id = message_file.url.split("/")[-1]
+                    # trim extension
+                    tool_file_id = tool_file_id.split(".")[0]
+                else:
+                    tool_file_id = None
+            else:
+                tool_file_id = None
+
+            if not tool_file_id:
+                return None
+            tool_file: ToolFile | None = session.get(ToolFile, tool_file_id)
+
+        if not tool_file:
+            return None
+
+        blob = storage.load_once(tool_file.file_key)
+
+        return blob, tool_file.mimetype
+
+    @staticmethod
+    def get_file_generator_by_upload_file_id(upload_file_id: str):
+        """
+        get file binary
+
+        :param upload_file_id: the id of the upload file
+
+        :return: the binary of the file, mime type
+        """
+        with session_factory.create_session() as session:
+            upload_file: UploadFile | None = session.get(UploadFile, upload_file_id)
+
+        if not upload_file:
+            return None, None
+
+        stream = storage.load_stream(upload_file.key)
+
+        return stream, upload_file.mime_type
+
+
+# init tool_file_parser
+# from graphon.file.datasource_file_parser import datasource_file_manager
+#
+# datasource_file_manager["manager"] = DatasourceFileManager

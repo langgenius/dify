@@ -1,3 +1,20 @@
+"""
+Low-level implementation of the default ("local") tenant credential encryption key provider.
+
+Do NOT import this module directly to encrypt/decrypt tenant credentials. It only implements
+one specific key provider (per-tenant RSA key pair, private key kept in STORAGE_TYPE). Other
+KEY_PROVIDER_TYPE options (e.g. 'azure-keyvault') are not implemented here.
+
+Instead use:
+  - core.helper.encrypter (encrypt_token / decrypt_token / batch_decrypt_token / ...) for
+    application code that needs to encrypt or decrypt tenant credentials.
+  - libs.key_providers (generate_key_pair) when provisioning the key for a new tenant.
+
+This module is only meant to be imported by libs.key_providers.rsa_key_provider.RSAKeyProvider,
+which the rest of the codebase should reach through extensions.ext_key_provider.key_provider_manager.
+This is enforced by the "no-direct-rsa-imports" contract in .importlinter (run via `make lint`).
+"""
+
 import hashlib
 
 from Crypto.Cipher import AES
@@ -9,14 +26,14 @@ from extensions.ext_storage import storage
 from libs import gmpy2_pkcs10aep_cipher
 
 
-def generate_key_pair(tenant_id):
+def generate_key_pair(tenant_id: str) -> str:
     private_key = RSA.generate(2048)
     public_key = private_key.publickey()
 
     pem_private = private_key.export_key()
     pem_public = public_key.export_key()
 
-    filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
+    filepath = f"privkeys/{tenant_id}/private.pem"
 
     storage.save(filepath, pem_private)
 
@@ -26,7 +43,7 @@ def generate_key_pair(tenant_id):
 prefix_hybrid = b"HYBRID:"
 
 
-def encrypt(text, public_key):
+def encrypt(text: str, public_key: str | bytes) -> bytes:
     if isinstance(public_key, str):
         public_key = public_key.encode()
 
@@ -38,23 +55,23 @@ def encrypt(text, public_key):
     rsa_key = RSA.import_key(public_key)
     cipher_rsa = gmpy2_pkcs10aep_cipher.new(rsa_key)
 
-    enc_aes_key = cipher_rsa.encrypt(aes_key)
+    enc_aes_key: bytes = cipher_rsa.encrypt(aes_key)
 
     encrypted_data = enc_aes_key + cipher_aes.nonce + tag + ciphertext
 
     return prefix_hybrid + encrypted_data
 
 
-def get_decrypt_decoding(tenant_id):
-    filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
+def get_decrypt_decoding(tenant_id: str) -> tuple[RSA.RsaKey, object]:
+    filepath = f"privkeys/{tenant_id}/private.pem"
 
-    cache_key = "tenant_privkey:{hash}".format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
+    cache_key = f"tenant_privkey:{hashlib.sha3_256(filepath.encode()).hexdigest()}"
     private_key = redis_client.get(cache_key)
     if not private_key:
         try:
             private_key = storage.load(filepath)
-        except FileNotFoundError:
-            raise PrivkeyNotFoundError("Private key not found, tenant_id: {tenant_id}".format(tenant_id=tenant_id))
+        except FileNotFoundError as caught_error:
+            raise PrivkeyNotFoundError(f"Private key not found, tenant_id: {tenant_id}") from caught_error
 
         redis_client.setex(cache_key, 120, private_key)
 
@@ -64,7 +81,7 @@ def get_decrypt_decoding(tenant_id):
     return rsa_key, cipher_rsa
 
 
-def decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa):
+def decrypt_token_with_decoding(encrypted_text: bytes, rsa_key: RSA.RsaKey, cipher_rsa) -> str:
     if encrypted_text.startswith(prefix_hybrid):
         encrypted_text = encrypted_text[len(prefix_hybrid) :]
 
@@ -83,10 +100,10 @@ def decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa):
     return decrypted_text.decode()
 
 
-def decrypt(encrypted_text, tenant_id):
+def decrypt(encrypted_text: bytes, tenant_id: str) -> str:
     rsa_key, cipher_rsa = get_decrypt_decoding(tenant_id)
 
-    return decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa)
+    return decrypt_token_with_decoding(encrypted_text=encrypted_text, rsa_key=rsa_key, cipher_rsa=cipher_rsa)
 
 
 class PrivkeyNotFoundError(Exception):

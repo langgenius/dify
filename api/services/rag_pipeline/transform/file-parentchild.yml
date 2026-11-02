@@ -1,0 +1,814 @@
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    plugin_unique_identifier: langgenius/parentchild_chunker:0.0.1@b1a28a27e33fec442ce494da2a7814edd7eb9d646c81f38bccfcf1133d486e40
+- current_identifier: null
+  type: marketplace
+  value:
+    plugin_unique_identifier: langgenius/dify_extractor:0.0.1@50103421d4e002f059b662d21ad2d7a1cf34869abdbe320299d7e382516ebb1c
+kind: rag_pipeline
+rag_pipeline:
+  description: ''
+  icon: 📙
+  icon_background: '#FFF4ED'
+  icon_type: emoji
+  name: file-parentchild
+version: 0.1.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features: {}
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: datasource
+        targetType: if-else
+      id: 1752479895761-source-1752481129417-target
+      source: '1752479895761'
+      sourceHandle: source
+      target: '1752481129417'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: tool
+      id: 1752481129417-24e47cad-f1e2-4f74-9884-3f49d5bb37b7-1752480460682-target
+      source: '1752481129417'
+      sourceHandle: 24e47cad-f1e2-4f74-9884-3f49d5bb37b7
+      target: '1752480460682'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: document-extractor
+      id: 1752481129417-false-1752481112180-target
+      source: '1752481129417'
+      sourceHandle: 'false'
+      target: '1752481112180'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: variable-aggregator
+      id: 1752480460682-source-1752482022496-target
+      source: '1752480460682'
+      sourceHandle: source
+      target: '1752482022496'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: document-extractor
+        targetType: variable-aggregator
+      id: 1752481112180-source-1752482022496-target
+      source: '1752481112180'
+      sourceHandle: source
+      target: '1752482022496'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: variable-aggregator
+        targetType: tool
+      id: 1752482022496-source-1752575473519-target
+      source: '1752482022496'
+      sourceHandle: source
+      target: '1752575473519'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: tool
+        targetType: knowledge-index
+      id: 1752575473519-source-1752477924228-target
+      source: '1752575473519'
+      sourceHandle: source
+      target: '1752477924228'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        chunk_structure: hierarchical_model
+        embedding_model: text-embedding-ada-002
+        embedding_model_provider: langgenius/openai/openai
+        index_chunk_variable_selector:
+        - '1752575473519'
+        - result
+        indexing_technique: high_quality
+        keyword_number: 10
+        retrieval_model:
+          score_threshold: 0.5
+          score_threshold_enabled: false
+          search_method: semantic_search
+          top_k: 3
+          vector_setting:
+            embedding_model_name: text-embedding-ada-002
+            embedding_provider_name: langgenius/openai/openai
+        selected: false
+        title: Knowledge Base
+        type: knowledge-index
+      height: 114
+      id: '1752477924228'
+      position:
+        x: 994.3774545394483
+        y: 281.3910724383104
+      positionAbsolute:
+        x: 994.3774545394483
+        y: 281.3910724383104
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        datasource_configurations: {}
+        datasource_label: File
+        datasource_name: upload-file
+        datasource_parameters: {}
+        fileExtensions:
+        - txt
+        - markdown
+        - mdx
+        - pdf
+        - html
+        - xlsx
+        - xls
+        - vtt
+        - properties
+        - doc
+        - docx
+        - csv
+        - eml
+        - msg
+        - pptx
+        - xml
+        - epub
+        - ppt
+        - md
+        plugin_id: langgenius/file
+        provider_name: file
+        provider_type: local_file
+        selected: false
+        title: File
+        type: datasource
+      height: 52
+      id: '1752479895761'
+      position:
+        x: -839.8603427660498
+        y: 251.3910724383104
+      positionAbsolute:
+        x: -839.8603427660498
+        y: 251.3910724383104
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        is_team_authorization: true
+        output_schema:
+          properties:
+            documents:
+              description: the documents extracted from the file
+              items:
+                type: object
+              type: array
+            images:
+              description: The images extracted from the file
+              items:
+                type: object
+              type: array
+          type: object
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: the file to be parsed(support pdf, ppt, pptx, doc, docx, png, jpg,
+              jpeg)
+            ja_JP: 解析するファイル(pdf, ppt, pptx, doc, docx, png, jpg, jpegをサポート)
+            pt_BR: o arquivo a ser analisado (suporta pdf, ppt, pptx, doc, docx, png,
+              jpg, jpeg)
+            zh_Hans: 用于解析的文件(支持 pdf, ppt, pptx, doc, docx, png, jpg, jpeg)
+          label:
+            en_US: file
+            ja_JP: ファイル
+            pt_BR: arquivo
+            zh_Hans: file
+          llm_description: the file to be parsed (support pdf, ppt, pptx, doc, docx,
+            png, jpg, jpeg)
+          max: null
+          min: null
+          name: file
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: file
+        params:
+          file: ''
+        provider_id: langgenius/dify_extractor/dify_extractor
+        provider_name: langgenius/dify_extractor/dify_extractor
+        provider_type: builtin
+        selected: false
+        title: Dify Extractor
+        tool_configurations: {}
+        tool_description: Dify Extractor
+        tool_label: Dify Extractor
+        tool_name: dify_extractor
+        tool_parameters:
+          file:
+            type: variable
+            value:
+            - '1752479895761'
+            - file
+        type: tool
+      height: 52
+      id: '1752480460682'
+      position:
+        x: -108.28652292656551
+        y: 281.3910724383104
+      positionAbsolute:
+        x: -108.28652292656551
+        y: 281.3910724383104
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        is_array_file: false
+        selected: false
+        title: 文档提取器
+        type: document-extractor
+        variable_selector:
+        - '1752479895761'
+        - file
+      height: 90
+      id: '1752481112180'
+      position:
+        x: -108.28652292656551
+        y: 390.6576481692478
+      positionAbsolute:
+        x: -108.28652292656551
+        y: 390.6576481692478
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        cases:
+        - case_id: 24e47cad-f1e2-4f74-9884-3f49d5bb37b7
+          conditions:
+          - comparison_operator: is
+            id: 9da88d93-3ff6-463f-abfd-6bcafbf2554d
+            value: .xlsx
+            varType: file
+            variable_selector:
+            - '1752479895761'
+            - file
+            - extension
+          - comparison_operator: is
+            id: d0e88f5e-dfe3-4bae-af0c-dbec267500de
+            value: .xls
+            varType: file
+            variable_selector:
+            - '1752479895761'
+            - file
+            - extension
+          - comparison_operator: is
+            id: a957e91e-1ed7-4c6b-9c80-2f0948858f1d
+            value: .md
+            varType: file
+            variable_selector:
+            - '1752479895761'
+            - file
+            - extension
+          - comparison_operator: is
+            id: 870c3c39-8d3f-474a-ab8b-9c0ccf53db73
+            value: .markdown
+            varType: file
+            variable_selector:
+            - '1752479895761'
+            - file
+            - extension
+          - comparison_operator: is
+            id: f9541513-1e71-4dc1-9db5-35dc84a39e3c
+            value: .mdx
+            varType: file
+            variable_selector:
+            - '1752479895761'
+            - file
+            - extension
+          - comparison_operator: is
+            id: 4c7f455b-ac20-40ca-9495-6cc44ffcb35d
+            value: .html
+            varType: file
+            variable_selector:
+            - '1752479895761'
+            - file
+            - extension
+          - comparison_operator: is
+            id: 2e12d9c7-8057-4a09-8851-f9fd1d0718d1
+            value: .htm
+            varType: file
+            variable_selector:
+            - '1752479895761'
+            - file
+            - extension
+          - comparison_operator: is
+            id: 73a995a9-d8b9-4aef-89f7-306e2ddcbce2
+            value: .docx
+            varType: file
+            variable_selector:
+            - '1752479895761'
+            - file
+            - extension
+          - comparison_operator: is
+            id: 8a2e8772-0426-458b-a1f9-9eaaec0f27c8
+            value: .csv
+            varType: file
+            variable_selector:
+            - '1752479895761'
+            - file
+            - extension
+          - comparison_operator: is
+            id: aa2cb6b6-a2fc-462a-a9f5-c9c3f33a1602
+            value: .txt
+            varType: file
+            variable_selector:
+            - '1752479895761'
+            - file
+            - extension
+          id: 24e47cad-f1e2-4f74-9884-3f49d5bb37b7
+          logical_operator: or
+        selected: false
+        title: IF/ELSE
+        type: if-else
+      height: 358
+      id: '1752481129417'
+      position:
+        x: -512.2335487893622
+        y: 251.3910724383104
+      positionAbsolute:
+        x: -512.2335487893622
+        y: 251.3910724383104
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        advanced_settings:
+          group_enabled: false
+          groups:
+          - groupId: f4cf07b4-914d-4544-8ef8-0c5d9e4f21a7
+            group_name: Group1
+            output_type: string
+            variables:
+            - - '1752481112180'
+              - text
+            - - '1752480460682'
+              - text
+        output_type: string
+        selected: false
+        title: Variable Aggregator
+        type: variable-aggregator
+        variables:
+        - - '1752481112180'
+          - text
+        - - '1752480460682'
+          - text
+      height: 129
+      id: '1752482022496'
+      position:
+        x: 319.441649575055
+        y: 281.3910724383104
+      positionAbsolute:
+        x: 319.441649575055
+        y: 281.3910724383104
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        is_team_authorization: true
+        output_schema:
+          properties:
+            result:
+              description: Parent child chunks result
+              items:
+                type: object
+              type: array
+          type: object
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: The text you want to chunk.
+            ja_JP: チャンク化したいテキスト。
+            pt_BR: O texto que você deseja dividir.
+            zh_Hans: 你想要分块的文本。
+          label:
+            en_US: Input text
+            ja_JP: 入力テキスト
+            pt_BR: Texto de entrada
+            zh_Hans: 输入文本
+          llm_description: The text you want to chunk.
+          max: null
+          min: null
+          name: input_text
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: 1024
+          form: llm
+          human_description:
+            en_US: Maximum length for chunking
+            ja_JP: チャンク分割の最大長
+            pt_BR: Comprimento máximo para divisão
+            zh_Hans: 用于分块的最大长度
+          label:
+            en_US: Maximum Length
+            ja_JP: 最大長
+            pt_BR: Comprimento Máximo
+            zh_Hans: 最大长度
+          llm_description: Maximum length allowed per chunk
+          max: null
+          min: null
+          name: max_length
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: '
+
+
+            '
+          form: llm
+          human_description:
+            en_US: Separator used for chunking
+            ja_JP: チャンク分割に使用する区切り文字
+            pt_BR: Separador usado para divisão
+            zh_Hans: 用于分块的分隔符
+          label:
+            en_US: Chunk Separator
+            ja_JP: チャンク区切り文字
+            pt_BR: Separador de Divisão
+            zh_Hans: 分块分隔符
+          llm_description: The separator used to split chunks
+          max: null
+          min: null
+          name: separator
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: 512
+          form: llm
+          human_description:
+            en_US: Maximum length for subchunking
+            ja_JP: サブチャンク分割の最大長
+            pt_BR: Comprimento máximo para subdivisão
+            zh_Hans: 用于子分块的最大长度
+          label:
+            en_US: Subchunk Maximum Length
+            ja_JP: サブチャンク最大長
+            pt_BR: Comprimento Máximo de Subdivisão
+            zh_Hans: 子分块最大长度
+          llm_description: Maximum length allowed per subchunk
+          max: null
+          min: null
+          name: subchunk_max_length
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: '. '
+          form: llm
+          human_description:
+            en_US: Separator used for subchunking
+            ja_JP: サブチャンク分割に使用する区切り文字
+            pt_BR: Separador usado para subdivisão
+            zh_Hans: 用于子分块的分隔符
+          label:
+            en_US: Subchunk Separator
+            ja_JP: サブチャンキング用セパレーター
+            pt_BR: Separador de Subdivisão
+            zh_Hans: 子分块分隔符
+          llm_description: The separator used to split subchunks
+          max: null
+          min: null
+          name: subchunk_separator
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: paragraph
+          form: llm
+          human_description:
+            en_US: Split text into paragraphs based on separator and maximum chunk
+              length, using split text as parent block or entire document as parent
+              block and directly retrieve.
+            ja_JP: セパレーターと最大チャンク長に基づいてテキストを段落に分割し、分割されたテキスト
+              を親ブロックとして使用するか、文書全体を親ブロックとして使用して直接取得します。
+            pt_BR: Dividir texto em parágrafos com base no separador e no comprimento
+              máximo do bloco, usando o texto dividido como bloco pai ou documento
+              completo como bloco pai e diretamente recuperá-lo.
+            zh_Hans: 根据分隔符和最大块长度将文本拆分为段落，使用拆分文本作为检索的父块或整个文档用作父块并直接检索。
+          label:
+            en_US: Parent Mode
+            ja_JP: 親子モード
+            pt_BR: Modo Pai
+            zh_Hans: 父块模式
+          llm_description: Split text into paragraphs based on separator and maximum
+            chunk length, using split text as parent block or entire document as parent
+            block and directly retrieve.
+          max: null
+          min: null
+          name: parent_mode
+          options:
+          - icon: ''
+            label:
+              en_US: Paragraph
+              ja_JP: 段落
+              pt_BR: Parágrafo
+              zh_Hans: 段落
+            value: paragraph
+          - icon: ''
+            label:
+              en_US: Full Document
+              ja_JP: 全文
+              pt_BR: Documento Completo
+              zh_Hans: 全文
+            value: full_doc
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: select
+        - auto_generate: null
+          default: 0
+          form: llm
+          human_description:
+            en_US: Whether to remove extra spaces in the text
+            ja_JP: テキスト内の余分なスペースを削除するかどうか
+            pt_BR: Se deve remover espaços extras no texto
+            zh_Hans: 是否移除文本中的多余空格
+          label:
+            en_US: Remove Extra Spaces
+            ja_JP: 余分なスペースを削除
+            pt_BR: Remover Espaços Extras
+            zh_Hans: 移除多余空格
+          llm_description: Whether to remove extra spaces in the text
+          max: null
+          min: null
+          name: remove_extra_spaces
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: boolean
+        - auto_generate: null
+          default: 0
+          form: llm
+          human_description:
+            en_US: Whether to remove URLs and emails in the text
+            ja_JP: テキスト内のURLやメールアドレスを削除するかどうか
+            pt_BR: Se deve remover URLs e e-mails no texto
+            zh_Hans: 是否移除文本中的URL和电子邮件地址
+          label:
+            en_US: Remove URLs and Emails
+            ja_JP: URLとメールアドレスを削除
+            pt_BR: Remover URLs e E-mails
+            zh_Hans: 移除URL和电子邮件地址
+          llm_description: Whether to remove URLs and emails in the text
+          max: null
+          min: null
+          name: remove_urls_emails
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: boolean
+        params:
+          input_text: ''
+          max_length: ''
+          parent_mode: ''
+          remove_extra_spaces: ''
+          remove_urls_emails: ''
+          separator: ''
+          subchunk_max_length: ''
+          subchunk_separator: ''
+        provider_id: langgenius/parentchild_chunker/parentchild_chunker
+        provider_name: langgenius/parentchild_chunker/parentchild_chunker
+        provider_type: builtin
+        selected: false
+        title: Parent-child Chunker
+        tool_configurations: {}
+        tool_description: Parent-child Chunk Structure
+        tool_label: Parent-child Chunker
+        tool_name: parentchild_chunker
+        tool_parameters:
+          input_text:
+            type: mixed
+            value: '{{#1752482022496.output#}}'
+          max_length:
+            type: variable
+            value:
+            - rag
+            - shared
+            - max_chunk_length
+          parent_mode:
+            type: variable
+            value:
+            - rag
+            - shared
+            - parent_mode
+          remove_extra_spaces:
+            type: mixed
+            value: '{{#rag.shared.replace_consecutive_spaces#}}'
+          remove_urls_emails:
+            type: mixed
+            value: '{{#rag.shared.delete_urls_email#}}'
+          separator:
+            type: mixed
+            value: '{{#rag.shared.delimiter#}}'
+          subchunk_max_length:
+            type: variable
+            value:
+            - rag
+            - shared
+            - child_max_chunk_length
+          subchunk_separator:
+            type: mixed
+            value: '{{#rag.shared.child_delimiter#}}'
+        type: tool
+      height: 52
+      id: '1752575473519'
+      position:
+        x: 637.9241611063885
+        y: 281.3910724383104
+      positionAbsolute:
+        x: 637.9241611063885
+        y: 281.3910724383104
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    viewport:
+      x: 948.6766333808323
+      y: -102.06757184183238
+      zoom: 0.8375774577380971
+  rag_pipeline_variables:
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: shared
+    default_value: \n\n
+    label: Delimiter
+    max_length: 256
+    options: []
+    placeholder: null
+    required: true
+    tooltips: A delimiter is the character used to separate text. \n\n is recommended
+      for splitting the original document into large parent chunks. You can also use
+      special delimiters defined by yourself.
+    type: text-input
+    unit: null
+    variable: delimiter
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: shared
+    default_value: 1024
+    label: Maximum chunk length
+    max_length: 48
+    options: []
+    placeholder: null
+    required: true
+    tooltips: null
+    type: number
+    unit: characters
+    variable: max_chunk_length
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: shared
+    default_value: \n
+    label: Child delimiter
+    max_length: 256
+    options: []
+    placeholder: null
+    required: true
+    tooltips: A delimiter is the character used to separate text. \n\n is recommended
+      for splitting the original document into large parent chunks. You can also use
+      special delimiters defined by yourself.
+    type: text-input
+    unit: null
+    variable: child_delimiter
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: shared
+    default_value: 512
+    label: Child max chunk length
+    max_length: 48
+    options: []
+    placeholder: null
+    required: true
+    tooltips: null
+    type: number
+    unit: characters
+    variable: child_max_chunk_length
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: shared
+    default_value: paragraph
+    label: Parent mode
+    max_length: 48
+    options:
+    - full_doc
+    - paragraph
+    placeholder: null
+    required: true
+    tooltips: null
+    type: select
+    unit: null
+    variable: parent_mode
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: shared
+    default_value: null
+    label: Replace consecutive spaces, newlines and tabs
+    max_length: 48
+    options: []
+    placeholder: null
+    required: false
+    tooltips: null
+    type: checkbox
+    unit: null
+    variable: replace_consecutive_spaces
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: shared
+    default_value: null
+    label: Delete all URLs and email addresses
+    max_length: 48
+    options: []
+    placeholder: null
+    required: false
+    tooltips: null
+    type: checkbox
+    unit: null
+    variable: delete_urls_email

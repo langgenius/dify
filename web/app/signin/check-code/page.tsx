@@ -1,96 +1,245 @@
 'use client'
-import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
+import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useContext } from 'use-context-selector'
+import { useLocale } from '#i18n'
+import { trackEvent } from '@/app/components/base/amplitude'
 import Countdown from '@/app/components/signin/countdown'
-import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
-import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
-import I18NContext from '@/context/i18n'
+import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
+import { TURNSTILE_SITE_KEY } from '@/config'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleClient } from '@/service/console'
+import { encryptVerificationCode } from '@/utils/encryption'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { getBrowserTimezone } from '@/utils/timezone'
+import { basePath } from '@/utils/var'
+import Turnstile from '../components/turnstile'
+import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
+
+type CheckCodeFormValues = {
+  code: string
+}
 
 export default function CheckCode() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation(['login'])
   const router = useRouter()
+  const queryClient = useQueryClient()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
   const token = decodeURIComponent(searchParams.get('token') as string)
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
-  const [code, setVerifyCode] = useState('')
-  const [loading, setIsLoading] = useState(false)
-  const { locale } = useContext(I18NContext)
+  const language = i18n.language
+  const [loading, setLoading] = useState(false)
+  const [isResending, setIsResending] = useState(false)
+  const [verifyTurnstileToken, setVerifyTurnstileToken] = useState('')
+  const [verifyTurnstileGeneration, setVerifyTurnstileGeneration] = useState(0)
+  const [showResendTurnstile, setShowResendTurnstile] = useState(false)
+  const [countdownGeneration, setCountdownGeneration] = useState(0)
+  const locale = useLocale()
+  const setCountdownLeftTime = useSetCountdownLeftTime()
+  const codeInputRef = useRef<HTMLInputElement>(null)
+  const turnstileSiteKey = TURNSTILE_SITE_KEY.trim()
+  const isTurnstileRequired = systemFeatures.deployment_edition === 'CLOUD'
+  const shouldRenderTurnstile = isTurnstileRequired && Boolean(turnstileSiteKey)
+  const pageTitle = t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })
+  useDocumentTitle(pageTitle)
 
-  const verify = async () => {
+  const verify = async (code: string) => {
+    if (loading || isResending || showResendTurnstile) return
+
+    let shouldResetTurnstile = false
     try {
-      if (!code.trim()) {
-        Toast.notify({
-          type: 'error',
-          message: t('login.checkCode.emptyCode'),
-        })
-        return
-      }
-      if (!/\d{6}/.test(code)) {
-        Toast.notify({
-          type: 'error',
-          message: t('login.checkCode.invalidCode'),
-        })
-        return
-      }
-      setIsLoading(true)
-      const ret = await emailLoginWithCode({ email, code, token })
+      if (isTurnstileRequired && !verifyTurnstileToken) return
+
+      setLoading(true)
+      shouldResetTurnstile = isTurnstileRequired
+      const ret = await consoleClient.emailCodeLogin.validity.post({
+        body: {
+          email,
+          code: encryptVerificationCode(code),
+          token,
+          language,
+          timezone: getBrowserTimezone(),
+          ...(isTurnstileRequired ? { turnstile_token: verifyTurnstileToken } : {}),
+        },
+      })
       if (ret.result === 'success') {
-        localStorage.setItem('console_token', ret.data.access_token)
-        localStorage.setItem('refresh_token', ret.data.refresh_token)
-        router.replace(invite_token ? `/signin/invite-settings?${searchParams.toString()}` : '/apps')
+        // Track login success event
+        trackEvent('user_login_success', {
+          method: 'email_code',
+          is_invite: !!invite_token,
+        })
+
+        if (invite_token) {
+          router.replace(`/signin/invite-settings?${searchParams.toString()}`)
+        } else {
+          const profileQueryOptions = userProfileQueryOptions()
+          await queryClient.resetQueries({ queryKey: profileQueryOptions.queryKey })
+          await queryClient.query(profileQueryOptions)
+          replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
+        }
       }
-    }
-    catch (error) { console.error(error) }
-    finally {
-      setIsLoading(false)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setLoading(false)
+      if (shouldResetTurnstile) {
+        setVerifyTurnstileToken('')
+        setVerifyTurnstileGeneration((value) => value + 1)
+      }
     }
   }
 
-  const resendCode = async () => {
+  useEffect(() => {
+    codeInputRef.current?.focus()
+  }, [])
+
+  const resendCode = async (turnstileToken?: string) => {
+    setIsResending(true)
     try {
-      const ret = await sendEMailLoginCode(email, locale)
+      const ret = await consoleClient.emailCodeLogin.post({
+        body: {
+          email,
+          language: locale,
+          ...(isTurnstileRequired ? { turnstile_token: turnstileToken } : {}),
+        },
+      })
       if (ret.result === 'success') {
+        setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
+        setCountdownGeneration((value) => value + 1)
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(ret.data))
         router.replace(`/signin/check-code?${params.toString()}`)
       }
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsResending(false)
+      setShowResendTurnstile(false)
     }
-    catch (error) { console.error(error) }
   }
 
-  return <div className='flex flex-col gap-3'>
-    <div className='inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg'>
-      <RiMailSendFill className='h-6 w-6 text-2xl text-text-accent-light-mode-only' />
-    </div>
-    <div className='pb-4 pt-2'>
-      <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.checkCode.checkYourEmail')}</h2>
-      <p className='body-md-regular mt-2 text-text-secondary'>
-        <span dangerouslySetInnerHTML={{ __html: t('login.checkCode.tips', { email }) as string }}></span>
-        <br />
-        {t('login.checkCode.validTime')}
-      </p>
-    </div>
+  const handleResend = () => {
+    if (loading || isResending) return
 
-    <form action="">
-      <label htmlFor="code" className='system-md-semibold mb-1 text-text-secondary'>{t('login.checkCode.verificationCode')}</label>
-      <Input value={code} onChange={e => setVerifyCode(e.target.value)} max-length={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
-      <Button loading={loading} disabled={loading} className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
-      <Countdown onResend={resendCode} />
-    </form>
-    <div className='py-2'>
-      <div className='h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent'></div>
-    </div>
-    <div onClick={() => router.back()} className='flex h-9 cursor-pointer items-center justify-center text-text-tertiary'>
-      <div className='bg-background-default-dimm inline-block rounded-full p-1'>
-        <RiArrowLeftLine size={12} />
+    if (isTurnstileRequired) {
+      setVerifyTurnstileToken('')
+      setShowResendTurnstile(true)
+      return
+    }
+    void resendCode()
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
+        <span
+          className="i-ri-mail-send-fill size-6 text-text-accent-light-mode-only"
+          aria-hidden="true"
+        />
       </div>
-      <span className='system-xs-regular ml-2'>{t('login.back')}</span>
+      <div className="pt-2 pb-4">
+        <h1 className="title-4xl-semi-bold text-text-primary">{pageTitle}</h1>
+        <p className="mt-2 body-md-regular text-text-secondary">
+          <span>
+            {t(($) => $['checkCode.tipsPrefix'], { ns: 'login' })}
+            <strong>{email}</strong>
+          </span>
+          <br />
+          {t(($) => $['checkCode.validTime'], { ns: 'login' })}
+        </p>
+      </div>
+
+      <Form<CheckCodeFormValues> onFormSubmit={({ code }) => void verify(code)}>
+        <Field name="code">
+          <FieldLabel>{t(($) => $['checkCode.verificationCode'], { ns: 'login' })}</FieldLabel>
+          <Input
+            ref={codeInputRef}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            spellCheck={false}
+            required
+            pattern="[0-9]{6}"
+            maxLength={6}
+            placeholder={
+              t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) as string
+            }
+          />
+          <FieldError match="valueMissing">
+            {t(($) => $['checkCode.emptyCode'], { ns: 'login' })}
+          </FieldError>
+          <FieldError match="patternMismatch">
+            {t(($) => $['checkCode.invalidCode'], { ns: 'login' })}
+          </FieldError>
+        </Field>
+        {shouldRenderTurnstile && (
+          <Turnstile
+            action={showResendTurnstile ? 'signin_code' : 'signin_code_verify'}
+            resetKey={verifyTurnstileGeneration}
+            siteKey={turnstileSiteKey}
+            onVerify={(turnstileToken) => {
+              if (showResendTurnstile) {
+                void resendCode(turnstileToken)
+                return
+              }
+              setVerifyTurnstileToken(turnstileToken)
+            }}
+            onInvalidate={() => {
+              if (showResendTurnstile) {
+                setShowResendTurnstile(false)
+                return
+              }
+              setVerifyTurnstileToken('')
+            }}
+            onError={() => {
+              setVerifyTurnstileToken('')
+            }}
+          />
+        )}
+        <Button
+          type="submit"
+          loading={loading}
+          disabled={
+            isResending || showResendTurnstile || (isTurnstileRequired && !verifyTurnstileToken)
+          }
+          className="my-3 w-full"
+          variant="primary"
+        >
+          {t(($) => $['checkCode.verify'], { ns: 'login' })}
+        </Button>
+        <Countdown
+          key={countdownGeneration}
+          onResend={handleResend}
+          resendDisabled={
+            loading ||
+            isResending ||
+            showResendTurnstile ||
+            (isTurnstileRequired && !turnstileSiteKey)
+          }
+          restartOnResend={false}
+        />
+      </Form>
+      <div className="py-2">
+        <div className="h-px bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
+      </div>
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="flex h-9 cursor-pointer appearance-none items-center justify-center text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      >
+        <span className="inline-block rounded-full bg-background-default-dimmed p-1">
+          <span className="i-ri-arrow-left-line size-3" aria-hidden="true" />
+        </span>
+        <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
+      </button>
     </div>
-  </div>
+  )
 }

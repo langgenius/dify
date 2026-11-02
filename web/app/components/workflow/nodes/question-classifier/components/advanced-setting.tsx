@@ -1,14 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import MemoryConfig from '../../_base/components/memory-config'
-import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import Tooltip from '@/app/components/base/tooltip'
-const i18nPrefix = 'workflow.nodes.questionClassifiers'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import MemoryConfig from '../../_base/components/memory-config'
 
-type Props = {
+const i18nPrefix = 'nodes.questionClassifiers'
+
+type Props = Readonly<{
   instruction: string
   onInstructionChange: (instruction: string) => void
   hideMemorySetting: boolean
@@ -24,7 +25,7 @@ type Props = {
   }
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
-}
+}>
 
 const AdvancedSetting: FC<Props> = ({
   instruction,
@@ -39,22 +40,24 @@ const AdvancedSetting: FC<Props> = ({
   nodesOutputVars,
   availableNodes,
 }) => {
-  const { t } = useTranslation()
+  const instructionLabelId = React.useId()
+
+  const { t } = useTranslation(['workflowModels'])
 
   return (
     <>
       <Editor
         title={
-          <div className='flex items-center space-x-1'>
-            <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
-            <Tooltip
-              popupContent={
-                <div className='w-[120px]'>
-                  {t(`${i18nPrefix}.instructionTip`)}
-                </div>
-              }
-              triggerClassName='w-3.5 h-3.5 ml-0.5'
-            />
+          <div className="flex items-center space-x-1">
+            <span id={instructionLabelId} className="uppercase">
+              {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflowModels' })}
+            </span>
+            <Infotip>
+              <InfotipTrigger aria-labelledby={instructionLabelId} className="ml-0.5 size-3.5" />
+              <InfotipContent aria-labelledby={instructionLabelId} className="w-30">
+                {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflowModels' })}
+              </InfotipContent>
+            </Infotip>
           </div>
         }
         value={instruction}
@@ -69,8 +72,8 @@ const AdvancedSetting: FC<Props> = ({
       />
       {!hideMemorySetting && (
         <MemoryConfig
-          className='mt-4'
-          readonly={false}
+          className="mt-4"
+          readonly={!!readonly}
           config={{ data: memory }}
           onChange={onMemoryChange}
           canSetRoleName={false}

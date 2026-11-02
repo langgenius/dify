@@ -1,36 +1,73 @@
 import logging
 
-from flask_restful import reqparse
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
-from controllers.web import api
+from controllers.common.controller_schemas import WorkflowRunPayload
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
+from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
     NotWorkflowAppError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
+register_schema_models(web_ns, WorkflowRunPayload)
+register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultResponse)
 
+
+@web_ns.route("/workflows/run")
 class WorkflowRunApi(WebApiResource):
-    def post(self, app_model: App, end_user: EndUser):
+    @error_responses(
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotWorkflowAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        TriggerWorkflowServiceModeUnavailableError,
+    )
+    @web_ns.doc("Run Workflow")
+    @web_ns.doc(description="Execute a workflow with provided inputs and files.")
+    @web_ns.expect(web_ns.models[WorkflowRunPayload.__name__])
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "App Not Found",
+            500: "Internal Server Error",
+        }
+    )
+    @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """
         Run workflow
         """
@@ -38,35 +75,60 @@ class WorkflowRunApi(WebApiResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
-        args = parser.parse_args()
+        payload = WorkflowRunPayload.model_validate(web_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=True
+                session=session,
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=True,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TriggerWorkflowServiceModeUnavailableServiceError as caught_error:
+            raise TriggerWorkflowServiceModeUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
-            logging.exception("internal server error.")
-            raise InternalServerError()
+        except Exception as caught_error:
+            logger.exception("internal server error.")
+            raise InternalServerError() from caught_error
 
 
+@web_ns.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(WebApiResource):
+    @error_responses(NotWorkflowAppError)
+    @web_ns.doc("Stop Workflow Task")
+    @web_ns.doc(description="Stop a running workflow task.")
+    @web_ns.doc(
+        params={
+            "task_id": {"description": "Task ID to stop", "type": "string", "required": True},
+        }
+    )
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            404: "Task Not Found",
+            500: "Internal Server Error",
+        }
+    )
+    @web_ns.response(200, "Success", web_ns.models[SimpleResultResponse.__name__])
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """
         Stop workflow task
@@ -75,10 +137,12 @@ class WorkflowTaskStopApi(WebApiResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
+        AppTaskService.stop_workflow_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            task_id=task_id,
+            app_mode=app_mode,
+            owner=None,
+        )
 
-        return {"result": "success"}
-
-
-api.add_resource(WorkflowRunApi, "/workflows/run")
-api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")
+        return SimpleResultResponse(result="success").model_dump(mode="json")

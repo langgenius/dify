@@ -1,17 +1,13 @@
-import {
-  useEffect,
-  useState,
-} from 'react'
-import {
-  RiArrowRightSLine,
-  RiErrorWarningFill,
-  RiLoader2Line,
-} from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import type { ChatItem, WorkflowProcess } from '../../types'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useStore as useAtomStore } from 'jotai'
+import { use, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
+import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
-import cn from '@/utils/classnames'
-import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
 type WorkflowProcessProps = {
@@ -24,69 +20,139 @@ type WorkflowProcessProps = {
 }
 const WorkflowProcessItem = ({
   data,
+  item,
   expand = false,
   hideInfo = false,
   hideProcessDetail = false,
   readonly = false,
 }: WorkflowProcessProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
+  const workflowStore = use(WorkflowContext)
+  const atomStore = useAtomStore()
+  const appId = workflowStore ? atomStore.get(editorAppIdAtom) : undefined
   const [collapse, setCollapse] = useState(!expand)
   const running = data.status === WorkflowRunningStatus.Running
   const succeeded = data.status === WorkflowRunningStatus.Succeeded
-  const failed = data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
+  const failed =
+    data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
+  const paused = data.status === WorkflowRunningStatus.Paused
+  const latestNode = data.tracing[data.tracing.length - 1]
+  const localizeError = (error?: string) =>
+    localizeKnowledgeRetrievalV2Error(error, (key) => t(($) => $[key], { ns: 'workflow' }))
+  const localizedError = localizeError(data.error)
+  const localizedLatestNodeError = localizeError(latestNode?.error)
+  const fallbackTitle = t(($) => $['common.workflowProcess'], { ns: 'workflow' })
+  const statusLabel = running
+    ? t(($) => $['common.workflowProcessRunning'], { ns: 'workflow' })
+    : succeeded
+      ? t(($) => $['common.workflowProcessSucceeded'], { ns: 'workflow' })
+      : failed
+        ? t(($) => $['common.workflowProcessFailed'], { ns: 'workflow' })
+        : paused
+          ? t(($) => $['common.workflowProcessPaused'], { ns: 'workflow' })
+          : undefined
+  const collapsedTitle = failed
+    ? localizedError || localizedLatestNodeError || latestNode?.title || fallbackTitle
+    : latestNode?.title || fallbackTitle
 
   useEffect(() => {
     setCollapse(!expand)
   }, [expand])
 
+  if (readonly) return null
+
   return (
     <div
       className={cn(
         '-mx-1 rounded-xl px-2.5',
-        collapse ? 'border-l-[0.25px] border-components-panel-border py-[7px]' : 'border-[0.5px] border-components-panel-border-subtle px-1 pb-1 pt-[7px]',
+        collapse
+          ? 'border-s-[0.25px] border-components-panel-border py-1.75'
+          : 'border-[0.5px] border-components-panel-border-subtle px-1 pt-1.75 pb-1',
         running && !collapse && 'bg-background-section-burn',
         succeeded && !collapse && 'bg-state-success-hover',
         failed && !collapse && 'bg-state-destructive-hover',
-        collapse && 'bg-workflow-process-bg',
+        paused && !collapse && 'bg-state-warning-hover',
+        collapse && !failed && !paused && 'bg-workflow-process-bg',
+        collapse && paused && 'bg-workflow-process-paused-bg',
+        collapse && failed && 'bg-(--color-workflow-process-failed-bg)',
       )}
+      data-testid="workflow-process-item"
     >
-      <div
-        className={cn('flex cursor-pointer items-center', !collapse && 'px-1.5', readonly && 'cursor-default')}
-        onClick={() => !readonly && setCollapse(!collapse)}
+      <button
+        type="button"
+        className={cn(
+          'flex w-full cursor-pointer items-center border-0 bg-transparent p-0 text-start',
+          !collapse && 'px-1.5',
+        )}
+        aria-expanded={!collapse}
+        onClick={() => setCollapse(!collapse)}
       >
-        {
-          running && (
-            <RiLoader2Line className='mr-1 h-3.5 w-3.5 shrink-0 animate-spin text-text-tertiary' />
-          )
-        }
-        {
-          succeeded && (
-            <CheckCircle className='mr-1 h-3.5 w-3.5 shrink-0 text-text-success' />
-          )
-        }
-        {
-          failed && (
-            <RiErrorWarningFill className='mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive' />
-          )
-        }
-        <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
-          {t('workflow.common.workflowProcess')}
+        {running && (
+          <span
+            role="img"
+            aria-label={statusLabel}
+            className="me-1 i-ri-loader-2-line size-3.5 shrink-0 animate-spin text-text-tertiary"
+          />
+        )}
+        {succeeded && (
+          <span
+            role="img"
+            aria-label={statusLabel}
+            className="me-1 i-custom-vender-solid-general-check-circle size-3.5 shrink-0 text-text-success"
+          />
+        )}
+        {failed && (
+          <span
+            role="img"
+            aria-label={statusLabel}
+            className="me-1 i-ri-error-warning-fill size-3.5 shrink-0 text-text-destructive"
+          />
+        )}
+        {paused && (
+          <span
+            role="img"
+            aria-label={statusLabel}
+            className="me-1 i-ri-pause-circle-fill size-3.5 shrink-0 text-text-warning-secondary"
+          />
+        )}
+        <div
+          className={cn(
+            'min-w-0 grow truncate system-xs-medium',
+            collapse && failed && data.error ? 'text-text-destructive' : 'text-text-secondary',
+          )}
+        >
+          {!collapse ? fallbackTitle : collapsedTitle}
         </div>
-        {!readonly && <RiArrowRightSLine className={cn('ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />}
-      </div>
-      {
-        !collapse && !readonly && (
-          <div className='mt-1.5'>
-            {
-              <TracingPanel
-                list={data.tracing}
-                hideNodeInfo={hideInfo}
-                hideNodeProcessDetail={hideProcessDetail}
-              />
-            }
-          </div>
-        )
-      }
+        <span
+          aria-hidden
+          className={cn(
+            'ms-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary',
+            !collapse && 'rotate-90',
+          )}
+        />
+      </button>
+      {!collapse && (
+        <div className="mt-1.5">
+          {failed && data.error && (
+            <Alert type="error" className="mb-1.5">
+              <AlertTitle>{localizedError}</AlertTitle>
+            </Alert>
+          )}
+          {data.tracing.length > 0 && (
+            <TracingPanel
+              key={item?.workflow_run_id}
+              list={data.tracing}
+              workflowRun={
+                appId && item?.workflow_run_id
+                  ? { appId, runId: item.workflow_run_id, status: data.status }
+                  : undefined
+              }
+              hideNodeInfo={hideInfo}
+              hideNodeProcessDetail={hideProcessDetail}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }

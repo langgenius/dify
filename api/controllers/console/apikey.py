@@ -1,186 +1,171 @@
-from typing import Any
+"""Console transport adapters for resource-scoped API key management."""
 
-import flask_restful
-from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
+from collections.abc import Generator
+from contextlib import contextmanager
+from uuid import UUID
 
-from extensions.ext_database import db
-from libs.helper import TimestampField
-from libs.login import login_required
-from models.dataset import Dataset
-from models.model import ApiToken, App
+from flask_restx import Resource
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from . import api
-from .wraps import account_initialization_required, setup_required
+from controllers.common.rbac import AgentBehindApp, DatasetId, PlainApp, RBACCheck
+from controllers.common.schema import register_response_schema_models
+from controllers.console import console_ns
+from controllers.console.error import ApiKeyLimitExceededHTTPError
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import RBACPermission
+from extensions.ext_application_services import application_services
+from fields.api_key_fields import ApiKeyItem, ApiKeyList, build_masked_api_key_list
+from libs.external_api import error_responses
+from libs.helper import dump_response
+from machinery.context import RequestContext
+from models.account import TenantAccountRole
+from services.agent.errors import AgentAccessNotReadyError
+from services.app.api_key_service import AppApiKeyNotReadyError
+from services.auth.api_key_contracts import (
+    ApiKeyLimitExceededError,
+    ApiKeyNotFoundError,
+    ApiKeyResourceNotFoundError,
+)
+from services.errors.base import NoPermissionError
+from services.knowledge.api_key_service import UnknownDatasetIdsError, UnknownKnowledgeSpaceIdsError
 
-api_key_fields = {
-    "id": fields.String,
-    "type": fields.String,
-    "token": fields.String,
-    "last_used_at": TimestampField,
-    "created_at": TimestampField,
-}
+API_KEY_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
+API_KEY_DELETE_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
-api_key_list = {"data": fields.List(fields.Nested(api_key_fields), attribute="items")}
-
-
-def _get_resource(resource_id, tenant_id, resource_model):
-    if resource_model == App:
-        with Session(db.engine) as session:
-            resource = session.execute(
-                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
-            ).scalar_one_or_none()
-    else:
-        with Session(db.engine) as session:
-            resource = session.execute(
-                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
-            ).scalar_one_or_none()
-
-    if resource is None:
-        flask_restful.abort(404, message=f"{resource_model.__name__} not found.")
-
-    return resource
+register_response_schema_models(console_ns, ApiKeyItem, ApiKeyList)
 
 
-class BaseApiKeyListResource(Resource):
-    method_decorators = [account_initialization_required, login_required, setup_required]
-
-    resource_type: str | None = None
-    resource_model: Any = None
-    resource_id_field: str | None = None
-    token_prefix: str | None = None
-    max_keys = 10
-
-    @marshal_with(api_key_list)
-    def get(self, resource_id):
-        assert self.resource_id_field is not None, "resource_id_field must be set"
-        resource_id = str(resource_id)
-        _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
-        keys = (
-            db.session.query(ApiToken)
-            .filter(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
-            .all()
-        )
-        return {"items": keys}
-
-    @marshal_with(api_key_fields)
-    def post(self, resource_id):
-        assert self.resource_id_field is not None, "resource_id_field must be set"
-        resource_id = str(resource_id)
-        _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        current_key_count = (
-            db.session.query(ApiToken)
-            .filter(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
-            .count()
-        )
-
-        if current_key_count >= self.max_keys:
-            flask_restful.abort(
-                400,
-                message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
-                code="max_keys_exceeded",
-            )
-
-        key = ApiToken.generate_api_key(self.token_prefix, 24)
-        api_token = ApiToken()
-        setattr(api_token, self.resource_id_field, resource_id)
-        api_token.tenant_id = current_user.current_tenant_id
-        api_token.token = key
-        api_token.type = self.resource_type
-        db.session.add(api_token)
-        db.session.commit()
-        return api_token, 201
+@contextmanager
+def api_key_errors() -> Generator[None]:
+    """Translate the errors every API key operation can raise."""
+    try:
+        yield
+    except (ApiKeyResourceNotFoundError, ApiKeyNotFoundError) as error:
+        raise NotFound(str(error)) from error
+    except (UnknownDatasetIdsError, UnknownKnowledgeSpaceIdsError) as error:
+        raise BadRequest(str(error)) from error
+    except NoPermissionError as error:
+        raise Forbidden(str(error)) from error
 
 
-class BaseApiKeyResource(Resource):
-    method_decorators = [account_initialization_required, login_required, setup_required]
-
-    resource_type: str | None = None
-    resource_model: Any = None
-    resource_id_field: str | None = None
-
-    def delete(self, resource_id, api_key_id):
-        assert self.resource_id_field is not None, "resource_id_field must be set"
-        resource_id = str(resource_id)
-        api_key_id = str(api_key_id)
-        _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
-
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
-        key = (
-            db.session.query(ApiToken)
-            .filter(
-                getattr(ApiToken, self.resource_id_field) == resource_id,
-                ApiToken.type == self.resource_type,
-                ApiToken.id == api_key_id,
-            )
-            .first()
-        )
-
-        if key is None:
-            flask_restful.abort(404, message="API key not found")
-
-        db.session.query(ApiToken).filter(ApiToken.id == api_key_id).delete()
-        db.session.commit()
-
-        return {"result": "success"}, 204
+@contextmanager
+def api_key_create_errors() -> Generator[None]:
+    """Creating a key can also hit the per-resource key limit."""
+    try:
+        with api_key_errors():
+            yield
+    except ApiKeyLimitExceededError as error:
+        raise ApiKeyLimitExceededHTTPError(str(error)) from error
 
 
-class AppApiKeyListResource(BaseApiKeyListResource):
-    def after_request(self, resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
-
-    resource_type = "app"
-    resource_model = App
-    resource_id_field = "app_id"
-    token_prefix = "app-"
+@contextmanager
+def app_api_key_create_errors() -> Generator[None]:
+    """Creating an app key also requires an agent app to have a published snapshot."""
+    try:
+        with api_key_create_errors():
+            yield
+    except AppApiKeyNotReadyError as error:
+        raise AgentAccessNotReadyError from error
 
 
-class AppApiKeyResource(BaseApiKeyResource):
-    def after_request(self, resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
+@console_ns.route("/apps/<uuid:resource_id>/api-keys")
+class AppApiKeyListResource(Resource):
+    @console_ns.doc("get_app_api_keys")
+    @console_ns.doc(description="Get all API keys for an app")
+    @console_ns.doc(params={"resource_id": "App ID"})
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
+    @console_account_admission(
+        allowed_roles=API_KEY_EDIT_ROLES,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp("resource_id")),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentBehindApp("resource_id")),
+        ],
+    )
+    def get(self, request_context: RequestContext, resource_id: UUID) -> dict[str, object]:
+        with api_key_errors():
+            keys = application_services().app_api_keys.list_keys(request_context, str(resource_id))
+        return dump_response(ApiKeyList, {"data": keys})
 
-    resource_type = "app"
-    resource_model = App
-    resource_id_field = "app_id"
+    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
+    @console_ns.doc("create_app_api_key")
+    @console_ns.doc(description="Create a new API key for an app")
+    @console_ns.doc(params={"resource_id": "App ID"})
+    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
+    @console_ns.response(400, "Maximum keys exceeded")
+    @console_account_admission(
+        allowed_roles=API_KEY_EDIT_ROLES,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp("resource_id")),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp("resource_id")),
+        ],
+    )
+    def post(self, request_context: RequestContext, resource_id: UUID) -> tuple[dict[str, object], int]:
+        with app_api_key_create_errors():
+            key = application_services().app_api_keys.create_key(request_context, str(resource_id))
+        return dump_response(ApiKeyItem, key), 201
 
 
-class DatasetApiKeyListResource(BaseApiKeyListResource):
-    def after_request(self, resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
-
-    resource_type = "dataset"
-    resource_model = Dataset
-    resource_id_field = "dataset_id"
-    token_prefix = "ds-"
-
-
-class DatasetApiKeyResource(BaseApiKeyResource):
-    def after_request(self, resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
-
-    resource_type = "dataset"
-    resource_model = Dataset
-    resource_id_field = "dataset_id"
+@console_ns.route("/apps/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
+class AppApiKeyResource(Resource):
+    @console_ns.doc("delete_app_api_key")
+    @console_ns.doc(description="Delete an API key for an app")
+    @console_ns.doc(params={"resource_id": "App ID", "api_key_id": "API key ID"})
+    @console_ns.response(204, "API key deleted successfully")
+    @console_account_admission(
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=[
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp("resource_id")),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp("resource_id")),
+        ],
+    )
+    def delete(self, request_context: RequestContext, resource_id: UUID, api_key_id: UUID) -> tuple[str, int]:
+        with api_key_errors():
+            application_services().app_api_keys.delete_key(request_context, str(resource_id), str(api_key_id))
+        return "", 204
 
 
-api.add_resource(AppApiKeyListResource, "/apps/<uuid:resource_id>/api-keys")
-api.add_resource(AppApiKeyResource, "/apps/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
-api.add_resource(DatasetApiKeyListResource, "/datasets/<uuid:resource_id>/api-keys")
-api.add_resource(DatasetApiKeyResource, "/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
+@console_ns.route("/datasets/<uuid:resource_id>/api-keys")
+class DatasetApiKeyListResource(Resource):
+    @console_ns.doc("get_dataset_api_keys")
+    @console_ns.doc(description="Get all API keys for a dataset")
+    @console_ns.doc(params={"resource_id": "Dataset ID"})
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
+    @console_account_admission(
+        allowed_roles=API_KEY_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, DatasetId("resource_id"))],
+    )
+    def get(self, request_context: RequestContext, resource_id: UUID) -> dict[str, object]:
+        with api_key_errors():
+            keys = application_services().dataset_api_keys.list_keys(request_context, str(resource_id))
+        return dump_response(ApiKeyList, build_masked_api_key_list(keys))
+
+    @error_responses(ApiKeyLimitExceededHTTPError)
+    @console_ns.doc("create_dataset_api_key")
+    @console_ns.doc(description="Create a new API key for a dataset")
+    @console_ns.doc(params={"resource_id": "Dataset ID"})
+    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
+    @console_ns.response(400, "Maximum keys exceeded")
+    @console_account_admission(
+        allowed_roles=API_KEY_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, DatasetId("resource_id"))],
+    )
+    def post(self, request_context: RequestContext, resource_id: UUID) -> tuple[dict[str, object], int]:
+        with api_key_create_errors():
+            key = application_services().dataset_api_keys.create_key(request_context, str(resource_id))
+        return dump_response(ApiKeyItem, key), 201
+
+
+@console_ns.route("/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
+class DatasetApiKeyResource(Resource):
+    @console_ns.doc("delete_dataset_api_key")
+    @console_ns.doc(description="Delete an API key for a dataset")
+    @console_ns.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
+    @console_ns.response(204, "API key deleted successfully")
+    @console_account_admission(
+        allowed_roles=API_KEY_DELETE_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, DatasetId("resource_id"))],
+    )
+    def delete(self, request_context: RequestContext, resource_id: UUID, api_key_id: UUID) -> tuple[str, int]:
+        with api_key_errors():
+            application_services().dataset_api_keys.delete_key(request_context, str(resource_id), str(api_key_id))
+        return "", 204

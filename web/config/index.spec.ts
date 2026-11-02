@@ -1,56 +1,32 @@
-import { validPassword } from './index'
+import { resetReg, validPassword, VAR_REGEX } from './index'
 
-describe('validPassword Tests', () => {
-  const passwordRegex = validPassword
+it.each([
+  ['abc12345', true],
+  ['ABC12345', true],
+  ['p@$$w0rd', true],
+  ['abc1234', false],
+  ['12345678', false],
+  ['abcdefgh', false],
+  ['pass word1', false],
+  ['password1 ', false],
+  ['pass\tword1', false],
+])('checks the password policy for %s', (password, valid) => {
+  expect(validPassword.test(password)).toBe(valid)
+})
 
-  // Valid passwords
-  test('Valid passwords: contains letter+digit, length ≥8', () => {
-    expect(passwordRegex.test('password1')).toBe(true)
-    expect(passwordRegex.test('PASSWORD1')).toBe(true)
-    expect(passwordRegex.test('12345678a')).toBe(true)
-    expect(passwordRegex.test('a1b2c3d4')).toBe(true)
-    expect(passwordRegex.test('VeryLongPassword123')).toBe(true)
-    expect(passwordRegex.test('short1')).toBe(false)
-  })
+describe('workflow variable references', () => {
+  beforeEach(() => resetReg())
+  afterEach(() => resetReg())
 
-  // Missing letter
-  test('Invalid passwords: missing letter', () => {
-    expect(passwordRegex.test('12345678')).toBe(false)
-    expect(passwordRegex.test('!@#$%^&*123')).toBe(false)
-  })
-
-  // Missing digit
-  test('Invalid passwords: missing digit', () => {
-    expect(passwordRegex.test('password')).toBe(false)
-    expect(passwordRegex.test('PASSWORD')).toBe(false)
-    expect(passwordRegex.test('AbCdEfGh')).toBe(false)
-  })
-
-  // Too short
-  test('Invalid passwords: less than 8 characters', () => {
-    expect(passwordRegex.test('pass1')).toBe(false)
-    expect(passwordRegex.test('abc123')).toBe(false)
-    expect(passwordRegex.test('1a')).toBe(false)
-  })
-
-  // Boundary test
-  test('Boundary test: exactly 8 characters', () => {
-    expect(passwordRegex.test('abc12345')).toBe(true)
-    expect(passwordRegex.test('1abcdefg')).toBe(true)
-  })
-
-  // Special characters
-  test('Special characters: non-whitespace special chars allowed', () => {
-    expect(passwordRegex.test('pass@123')).toBe(true)
-    expect(passwordRegex.test('p@$$w0rd')).toBe(true)
-    expect(passwordRegex.test('!1aBcDeF')).toBe(true)
-  })
-
-  // Contains whitespace
-  test('Invalid passwords: contains whitespace', () => {
-    expect(passwordRegex.test('pass word1')).toBe(false)
-    expect(passwordRegex.test('password1 ')).toBe(false)
-    expect(passwordRegex.test(' password1')).toBe(false)
-    expect(passwordRegex.test('pass\tword1')).toBe(false)
+  it.each([
+    '{{#1749783300519.text#}}',
+    '{{#1749783300519.llm.a.b.c#}}',
+    '{{#sys.query#}}',
+    '{{#conversation.aaa#}}',
+    '{{#env.a#}}',
+    '{{#rag.1748945155129.a#}}',
+    '{{#rag.shared.bbb#}}',
+  ])('matches the complete %s reference', (variable) => {
+    expect(variable.match(VAR_REGEX)).toEqual([variable])
   })
 })

@@ -1,0 +1,41 @@
+import type { FC } from 'react'
+import type { SortField, SortOrder } from '../hooks'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
+
+type SortHeaderProps = {
+  field: Exclude<SortField, null>
+  label: string
+  currentSortField: SortField
+  sortOrder: SortOrder
+  onSort: (field: SortField) => void
+}
+
+const SortHeader: FC<SortHeaderProps> = React.memo(
+  ({ field, label, currentSortField, sortOrder, onSort }) => {
+    const isActive = currentSortField === field
+    const isDesc = isActive && sortOrder === 'desc'
+
+    return (
+      <button
+        type="button"
+        className="flex items-center bg-transparent p-0 text-start hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+        onClick={() => onSort(field)}
+      >
+        {label}
+        <span
+          aria-hidden="true"
+          className={cn(
+            'ms-0.5 i-ri-arrow-down-line size-3 transition-all',
+            isActive ? 'text-text-tertiary' : 'text-text-disabled',
+            isActive && !isDesc ? 'rotate-180' : '',
+          )}
+        />
+      </button>
+    )
+  },
+)
+
+SortHeader.displayName = 'SortHeader'
+
+export default SortHeader

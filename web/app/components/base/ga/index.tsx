@@ -1,60 +1,44 @@
-import type { FC } from 'react'
-import React from 'react'
-import Script from 'next/script'
-import { type UnsafeUnwrappedHeaders, headers } from 'next/headers'
-import { IS_CE_EDITION } from '@/config'
+import Script from '@/next/script'
 
-export enum GaType {
-  admin = 'admin',
-  webapp = 'webapp',
+const GOOGLE_ANALYTICS_ID = 'G-DM9497FN4V'
+const GOOGLE_TAG_SCRIPT_SRC = `https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}`
+
+type AnalyticsScriptProps = {
+  nonce?: string
 }
 
-const gaIdMaps = {
-  [GaType.admin]: 'G-DM9497FN4V',
-  [GaType.webapp]: 'G-2MFWXK7WYT',
+export function GoogleConsentDefaults({ nonce }: AnalyticsScriptProps) {
+  return (
+    <Script id="google-consent-defaults" strategy="beforeInteractive" nonce={nonce}>
+      {`
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = window.gtag || function gtag(){window.dataLayer.push(arguments);};
+        window.gtag('consent', 'default', {
+          ad_storage: 'denied',
+          ad_user_data: 'denied',
+          ad_personalization: 'denied',
+          analytics_storage: 'denied',
+        });
+      `}
+    </Script>
+  )
 }
 
-export type IGAProps = {
-  gaType: GaType
-}
-
-const GA: FC<IGAProps> = ({
-  gaType,
-}) => {
-  if (IS_CE_EDITION)
-    return null
-
-  const nonce = process.env.NODE_ENV === 'production' ? (headers() as unknown as UnsafeUnwrappedHeaders).get('x-nonce') : ''
-
+export function GoogleAnalyticsTagScripts({ nonce }: AnalyticsScriptProps) {
   return (
     <>
       <Script
-        strategy="beforeInteractive"
-        async
-        src={`https://www.googletagmanager.com/gtag/js?id=${gaIdMaps[gaType]}`}
-        nonce={nonce!}
-      ></Script>
-      <Script
-        id="ga-init"
-        dangerouslySetInnerHTML={{
-          __html: `
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', '${gaIdMaps[gaType]}');
-          `,
-        }}
-        nonce={nonce!}
-      >
+        id="google-analytics"
+        strategy="afterInteractive"
+        src={GOOGLE_TAG_SCRIPT_SRC}
+        nonce={nonce}
+      />
+      <Script id="google-analytics-init" strategy="afterInteractive" nonce={nonce}>
+        {`
+          window.gtag('js', new Date());
+          window.gtag('config', '${GOOGLE_ANALYTICS_ID}');
+        `}
       </Script>
-      {/* Cookie banner */}
-      <Script
-        id="cookieyes"
-        src='https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js'
-        nonce={nonce!}
-      ></Script>
     </>
-
   )
 }
-export default React.memo(GA)

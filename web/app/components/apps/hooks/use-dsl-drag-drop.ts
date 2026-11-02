@@ -1,0 +1,71 @@
+import { useEffect, useEffectEvent, useState } from 'react'
+
+type DSLDragDropHookProps = {
+  onDSLFileDropped: (file: File) => void
+  dropZoneRef: React.RefObject<HTMLDivElement | null>
+  enabled?: boolean
+}
+
+export const useDSLDragDrop = ({
+  onDSLFileDropped,
+  dropZoneRef,
+  enabled = true,
+}: DSLDragDropHookProps) => {
+  const [dragging, setDragging] = useState(false)
+
+  const handleDragEnter = (e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.dataTransfer?.types.includes('Files')) setDragging(true)
+  }
+
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDragLeave = useEffectEvent((e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.relatedTarget === null || !dropZoneRef.current?.contains(e.relatedTarget as Node))
+      setDragging(false)
+  })
+
+  const handleDrop = useEffectEvent((e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragging(false)
+
+    if (!e.dataTransfer) return
+
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length === 0) return
+
+    const file = files[0]
+    if (/\.(?:yaml|yml|ifpkg)$/i.test(file!.name)) onDSLFileDropped(file!)
+  })
+
+  useEffect(() => {
+    if (!enabled) return
+
+    const current = dropZoneRef.current
+    if (current) {
+      current.addEventListener('dragenter', handleDragEnter)
+      current.addEventListener('dragover', handleDragOver)
+      current.addEventListener('dragleave', handleDragLeave)
+      current.addEventListener('drop', handleDrop)
+    }
+    return () => {
+      if (current) {
+        current.removeEventListener('dragenter', handleDragEnter)
+        current.removeEventListener('dragover', handleDragOver)
+        current.removeEventListener('dragleave', handleDragLeave)
+        current.removeEventListener('drop', handleDrop)
+      }
+    }
+  }, [dropZoneRef, enabled])
+
+  return {
+    dragging: enabled ? dragging : false,
+  }
+}

@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import { skipToken, useQuery } from '@tanstack/react-query'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
-import Input from '@/app/components/base/input'
-import { fetchAnnotationsCount } from '@/service/log'
+import { SearchInput } from '@/app/components/base/search-input'
+import { consoleQuery } from '@/service/console'
 
 export type QueryParam = {
   keyword?: string
@@ -17,29 +17,23 @@ type IFilterProps = {
   children: React.JSX.Element
 }
 
-const Filter: FC<IFilterProps> = ({
-  appId,
-  queryParams,
-  setQueryParams,
-  children,
-}) => {
-  // TODO: change fetch list api
-  const { data } = useSWR({ url: `/apps/${appId}/annotations/count` }, fetchAnnotationsCount)
-  const { t } = useTranslation()
-  if (!data)
-    return null
+const Filter: FC<IFilterProps> = ({ appId, queryParams, setQueryParams, children }) => {
+  const { data, isLoading } = useQuery(
+    consoleQuery.apps.byAppId.annotations.count.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
+  const { t } = useTranslation(['common'])
+  if (isLoading || !data) return null
   return (
-    <div className='mb-2 flex flex-row flex-wrap items-center justify-between gap-2'>
-      <Input
-        wrapperClassName='w-[200px]'
-        showLeftIcon
-        showClearIcon
-        value={queryParams.keyword}
-        placeholder={t('common.operation.search')!}
-        onChange={(e) => {
-          setQueryParams({ ...queryParams, keyword: e.target.value })
+    <div className="mb-2 flex flex-row flex-wrap items-center justify-between gap-2">
+      <SearchInput
+        className="w-50"
+        value={queryParams.keyword ?? ''}
+        placeholder={t(($) => $['operation.search'], { ns: 'common' })!}
+        onValueChange={(value) => {
+          setQueryParams({ ...queryParams, keyword: value })
         }}
-        onClear={() => setQueryParams({ ...queryParams, keyword: '' })}
       />
       {children}
     </div>

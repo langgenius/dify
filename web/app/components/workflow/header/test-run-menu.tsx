@@ -1,0 +1,224 @@
+import type { ShortcutMapping } from './test-run-menu-helpers'
+import {
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
+import {
+  forwardRef,
+  isValidElement,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
+import { handleShortcutMenuKeyDown, SingleOptionTrigger } from './test-run-menu-helpers'
+
+export const TriggerType = {
+  UserInput: 'user_input',
+  Schedule: 'schedule',
+  Webhook: 'webhook',
+  Plugin: 'plugin',
+  All: 'all',
+} as const
+
+export type TriggerType = (typeof TriggerType)[keyof typeof TriggerType]
+
+export type TriggerOption = {
+  id: string
+  type: TriggerType
+  name: string
+  icon: React.ReactNode
+  nodeId?: string
+  relatedNodeIds?: string[]
+  enabled: boolean
+}
+
+export type TestRunOptions = {
+  userInput?: TriggerOption
+  triggers: TriggerOption[]
+  runAll?: TriggerOption
+}
+
+type TestRunMenuProps = {
+  options: TestRunOptions
+  onSelect: (option: TriggerOption) => void
+  children: React.ReactNode
+}
+
+export type TestRunMenuRef = {
+  toggle: () => void
+}
+
+const OptionRow = ({
+  option,
+  shortcutKey,
+  onSelect,
+}: {
+  option: TriggerOption
+  shortcutKey?: string
+  onSelect: (option: TriggerOption) => void
+}) => {
+  return (
+    <MenuItem
+      className="h-auto gap-3 px-3 py-1.5 system-md-regular"
+      onClick={() => onSelect(option)}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex size-6 shrink-0 items-center justify-center">{option.icon}</div>
+        <span className="truncate">{option.name}</span>
+      </div>
+      {shortcutKey && <ShortcutKbd displayKey={shortcutKey} textColor="secondary" />}
+    </MenuItem>
+  )
+}
+
+const getEnabledOptions = (options: TestRunOptions) => {
+  const flattened: TriggerOption[] = []
+
+  if (options.userInput) flattened.push(options.userInput)
+  if (options.runAll) flattened.push(options.runAll)
+  flattened.push(...options.triggers)
+
+  return flattened.filter((option) => option.enabled !== false)
+}
+
+const getMenuVisibility = (options: TestRunOptions) => {
+  return {
+    hasUserInput: Boolean(options.userInput?.enabled !== false && options.userInput),
+    hasTriggers: options.triggers.some((trigger) => trigger.enabled !== false),
+    hasRunAll: Boolean(options.runAll?.enabled !== false && options.runAll),
+  }
+}
+
+const buildShortcutMappings = (options: TestRunOptions): ShortcutMapping[] => {
+  const mappings: ShortcutMapping[] = []
+
+  if (options.userInput && options.userInput.enabled !== false)
+    mappings.push({ option: options.userInput, shortcutKey: '~' })
+
+  let numericShortcut = 0
+
+  if (options.runAll && options.runAll.enabled !== false)
+    mappings.push({ option: options.runAll, shortcutKey: String(numericShortcut++) })
+
+  options.triggers.forEach((trigger) => {
+    if (trigger.enabled !== false && numericShortcut < 10)
+      mappings.push({ option: trigger, shortcutKey: String(numericShortcut++) })
+  })
+
+  return mappings
+}
+
+// oxlint-disable-next-line eslint-react/no-forward-ref
+const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
+  ({ options, onSelect, children }, ref) => {
+    const { t } = useTranslation(['workflow'])
+    const [open, setOpen] = useState(false)
+    const shortcutMappings = useMemo(() => buildShortcutMappings(options), [options])
+    const shortcutKeyById = useMemo(() => {
+      const map = new Map<string, string>()
+      shortcutMappings.forEach(({ option, shortcutKey }) => {
+        map.set(option.id, shortcutKey)
+      })
+      return map
+    }, [shortcutMappings])
+
+    const handleSelect = useCallback(
+      (option: TriggerOption) => {
+        onSelect(option)
+        setOpen(false)
+      },
+      [onSelect],
+    )
+
+    const enabledOptions = useMemo(() => getEnabledOptions(options), [options])
+
+    const hasSingleEnabledOption = enabledOptions.length === 1
+    const soleEnabledOption = hasSingleEnabledOption ? enabledOptions[0] : undefined
+
+    const runSoleOption = useCallback(() => {
+      if (soleEnabledOption) handleSelect(soleEnabledOption)
+    }, [handleSelect, soleEnabledOption])
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        toggle: () => {
+          if (hasSingleEnabledOption) {
+            runSoleOption()
+            return
+          }
+
+          setOpen((prev) => !prev)
+        },
+      }),
+      [hasSingleEnabledOption, runSoleOption],
+    )
+
+    const renderOption = (option: TriggerOption) => {
+      return (
+        <OptionRow
+          key={option.id}
+          option={option}
+          shortcutKey={shortcutKeyById.get(option.id)}
+          onSelect={handleSelect}
+        />
+      )
+    }
+
+    const { hasUserInput, hasTriggers, hasRunAll } = useMemo(
+      () => getMenuVisibility(options),
+      [options],
+    )
+
+    if (hasSingleEnabledOption && soleEnabledOption) {
+      return <SingleOptionTrigger runSoleOption={runSoleOption}>{children}</SingleOptionTrigger>
+    }
+
+    return (
+      <Menu open={open} onOpenChange={setOpen}>
+        {isValidElement(children) ? (
+          <MenuTrigger render={children} style={{ userSelect: 'none' }} />
+        ) : (
+          <MenuTrigger style={{ userSelect: 'none' }}>{children}</MenuTrigger>
+        )}
+        <MenuContent
+          onKeyDown={(event) => handleShortcutMenuKeyDown(event, shortcutMappings, handleSelect)}
+          align="start"
+          sideOffset={8}
+          alignOffset={-4}
+          className="w-71"
+        >
+          <MenuGroup className="flex flex-col gap-1">
+            <MenuGroupLabel className="pt-2 text-sm font-medium text-text-primary">
+              {t(($) => $['common.chooseStartNodeToRun'], { ns: 'workflow' })}
+            </MenuGroupLabel>
+            <div>
+              {hasUserInput && renderOption(options.userInput!)}
+
+              {(hasTriggers || hasRunAll) && hasUserInput && <MenuSeparator className="mx-3" />}
+
+              {hasRunAll && renderOption(options.runAll!)}
+
+              {hasTriggers &&
+                options.triggers
+                  .filter((trigger) => trigger.enabled !== false)
+                  .map((trigger) => renderOption(trigger))}
+            </div>
+          </MenuGroup>
+        </MenuContent>
+      </Menu>
+    )
+  },
+)
+
+TestRunMenu.displayName = 'TestRunMenu'
+
+export default TestRunMenu

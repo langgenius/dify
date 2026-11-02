@@ -1,0 +1,236 @@
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import i18next from 'i18next'
+import { useParams, usePathname } from '@/next/navigation'
+import { AudioBtn } from '../index'
+
+const mockPlayAudio = vi.fn()
+const mockPauseAudio = vi.fn()
+const mockGetAudioPlayer = vi.fn()
+
+vi.mock('@/next/navigation', () => ({
+  useParams: vi.fn(),
+  usePathname: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
+  AudioPlayerManager: {
+    getInstance: vi.fn(() => ({
+      getAudioPlayer: mockGetAudioPlayer,
+    })),
+  },
+}))
+
+describe('AudioBtn', () => {
+  const getButton = () => screen.getByRole('button')
+  const mockUseParams = (value: Partial<Record<string, string>>) => {
+    vi.mocked(useParams).mockReturnValue(value)
+  }
+  const mockUsePathname = (value: string) => {
+    vi.mocked(usePathname).mockReturnValue(value)
+  }
+
+  const hoverAndCheckTooltip = async (
+    user: ReturnType<typeof userEvent.setup>,
+    expectedText: string,
+  ) => {
+    await user.unhover(getButton())
+    await user.hover(getButton())
+    expect(await screen.findByText(expectedText))!.toBeInTheDocument()
+  }
+
+  const getLatestAudioCallback = () => {
+    const lastCall = mockGetAudioPlayer.mock.calls[mockGetAudioPlayer.mock.calls.length - 1]
+    const callback = lastCall?.[5]
+
+    if (typeof callback !== 'function')
+      throw new Error('Audio callback not found in latest getAudioPlayer call')
+
+    return callback as (event: string) => void
+  }
+
+  beforeAll(async () => {
+    await i18next.init({})
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetAudioPlayer.mockReturnValue({
+      playAudio: mockPlayAudio,
+      pauseAudio: mockPauseAudio,
+    })
+    mockUseParams({})
+    mockUsePathname('/')
+  })
+
+  // Core rendering and base UI integration.
+  describe('Rendering', () => {
+    it('should render button with play tooltip by default', async () => {
+      const user = userEvent.setup()
+      render(<AudioBtn value="hello" />)
+
+      expect(getButton())!.toBeInTheDocument()
+      expect(getButton()).not.toBeDisabled()
+      await hoverAndCheckTooltip(user, 'play')
+    })
+  })
+
+  // URL path resolution for app, agent, and public audio endpoints.
+  describe('URL routing', () => {
+    it('should call public text-to-audio endpoint when token exists', async () => {
+      const user = userEvent.setup()
+      mockUseParams({ token: 'public-token' })
+
+      render(<AudioBtn value="test" />)
+      await user.click(getButton())
+
+      await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
+      const call = mockGetAudioPlayer.mock.calls[0]
+      expect(call![0]).toBe('/text-to-audio')
+      expect(call![1]).toBe(true)
+    })
+
+    it('should call app endpoint when appId exists', async () => {
+      const user = userEvent.setup()
+      mockUseParams({ appId: '123' })
+      mockUsePathname('/apps/123/chat')
+
+      render(<AudioBtn value="test" />)
+      await user.click(getButton())
+
+      await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
+      const call = mockGetAudioPlayer.mock.calls[0]
+      expect(call![0]).toBe('/apps/123/text-to-audio')
+      expect(call![1]).toBe(false)
+    })
+
+    it('should call installed app endpoint for installed app routes', async () => {
+      const user = userEvent.setup()
+      mockUseParams({ appId: '456' })
+      mockUsePathname('/installed/456')
+
+      render(<AudioBtn value="test" />)
+      await user.click(getButton())
+
+      await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
+      const call = mockGetAudioPlayer.mock.calls[0]
+      expect(call![0]).toBe('/installed-apps/456/text-to-audio')
+      expect(call![1]).toBe(false)
+    })
+
+    it('should play the selected voice preview through the agent endpoint', async () => {
+      const user = userEvent.setup()
+      mockUseParams({ agentId: 'agent-123' })
+      mockUsePathname('/agents/agent-123/configure')
+
+      render(<AudioBtn isAudition value="This is a voice preview." voice="alloy" />)
+      await user.click(screen.getByRole('button', { name: 'play' }))
+
+      expect(mockGetAudioPlayer).toHaveBeenCalledWith(
+        '/agent/agent-123/text-to-audio',
+        false,
+        undefined,
+        'This is a voice preview.',
+        'alloy',
+        expect.any(Function),
+      )
+      expect(mockPlayAudio).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  // User-visible playback state transitions.
+  describe('Playback interactions', () => {
+    it('should start loading and call playAudio when button is clicked', async () => {
+      const user = userEvent.setup()
+      render(<AudioBtn value="test" />)
+      await user.click(getButton())
+
+      await waitFor(() => {
+        expect(mockPlayAudio).toHaveBeenCalledTimes(1)
+        expect(getButton())!.toBeDisabled()
+      })
+      expect(getButton()).toHaveAccessibleName('loading')
+      await hoverAndCheckTooltip(user, 'loading')
+    })
+
+    it('should pause audio when clicked while playing', async () => {
+      const user = userEvent.setup()
+      render(<AudioBtn value="test" />)
+      await user.click(getButton())
+
+      await act(() => {
+        getLatestAudioCallback()('play')
+      })
+
+      await hoverAndCheckTooltip(user, 'playing')
+      expect(getButton()).not.toBeDisabled()
+
+      await user.click(getButton())
+      await waitFor(() => expect(mockPauseAudio).toHaveBeenCalledTimes(1))
+    })
+  })
+
+  // Audio event callback handling from the player manager.
+  describe('Audio callback events', () => {
+    it('should set loading tooltip when loaded event is received', async () => {
+      const user = userEvent.setup()
+      render(<AudioBtn value="test" />)
+      await user.click(getButton())
+
+      await act(() => {
+        getLatestAudioCallback()('loaded')
+      })
+
+      await hoverAndCheckTooltip(user, 'loading')
+      expect(getButton())!.toBeDisabled()
+    })
+
+    it.each(['ended', 'paused', 'error'])(
+      'should return to play tooltip when %s event is received',
+      async (event) => {
+        const user = userEvent.setup()
+        render(<AudioBtn value="test" />)
+        await user.click(getButton())
+
+        await act(() => {
+          getLatestAudioCallback()(event)
+        })
+
+        await hoverAndCheckTooltip(user, 'play')
+        expect(getButton()).not.toBeDisabled()
+      },
+    )
+  })
+
+  // Prop forwarding and minimal-input behavior.
+  describe('Props and edge cases', () => {
+    it('should pass id, value, and voice to getAudioPlayer', async () => {
+      const user = userEvent.setup()
+      render(<AudioBtn id="msg-1" value="hello" voice="en-US" />)
+      await user.click(getButton())
+
+      await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
+      const call = mockGetAudioPlayer.mock.calls[0]
+      expect(call![2]).toBe('msg-1')
+      expect(call![3]).toBe('hello')
+      expect(call![4]).toBe('en-US')
+    })
+  })
+})
+
+it('preserves a synchronous play event instead of overwriting it with a delayed loading state', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    vi.mocked(useParams).mockReturnValue({ appId: 'app-1' })
+    vi.mocked(usePathname).mockReturnValue('/apps/app-1')
+    mockGetAudioPlayer.mockReturnValue({ playAudio: mockPlayAudio, pauseAudio: mockPauseAudio })
+    mockPlayAudio.mockImplementationOnce(() => mockGetAudioPlayer.mock.lastCall![5]('play'))
+    render(<AudioBtn value="Ready immediately" />)
+    await user.click(screen.getByRole('button', { name: 'play' }))
+    act(() => vi.advanceTimersByTime(10))
+    expect(screen.getByRole('button', { name: 'playing' })).toBeEnabled()
+  } finally {
+    vi.useRealTimers()
+  }
+})

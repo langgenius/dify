@@ -1,41 +1,79 @@
-import os
+from __future__ import annotations
+
+# ``python -m app`` (docker DEBUG=true, or IDE debugging) serves through the
+# gevent pywsgi server at the bottom of this file, so the stdlib must be
+# monkey-patched BEFORE any other import pulls in sockets or locks. Without
+# this, every request runs as a greenlet on one OS thread while blocking
+# calls (LLM invokes, ``Future.result`` waits, DB I/O) pin that thread — the
+# whole process freezes until the call returns. Gunicorn and Celery apply
+# their own patching (see gunicorn.conf.py / celery_entrypoint.py), and
+# ``flask run`` uses real Werkzeug threads, so both skip this branch.
+if __name__ == "__main__":
+    from gevent import monkey
+
+    monkey.patch_all()
+
+    import psycogreen.gevent as psycogreen_gevent
+    from grpc.experimental import gevent as grpc_gevent
+
+    grpc_gevent.init_gevent()
+    psycogreen_gevent.patch_psycopg()
+
+import logging
 import sys
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from celery import Celery
+
+    celery: Celery
 
 
-def is_db_command():
-    if len(sys.argv) > 1 and sys.argv[0].endswith("flask") and sys.argv[1] == "db":
-        return True
-    return False
+HOST = "0.0.0.0"
+PORT = 5001
+logger = logging.getLogger(__name__)
+
+
+def is_db_command() -> bool:
+    return bool(len(sys.argv) > 1 and sys.argv[0].endswith("flask") and sys.argv[1] == "db")
+
+
+def log_startup_banner(host: str, port: int) -> None:
+    debugger_attached = sys.gettrace() is not None
+    logger.info("Serving Dify API via gevent WebSocket server")
+    logger.info("Bound to http://%s:%s", host, port)
+    logger.info("Debugger attached: %s", "on" if debugger_attached else "off")
+    logger.info("Press CTRL+C to quit")
 
 
 # create app
+flask_app = None
+socketio_app = None
+
 if is_db_command():
     from app_factory import create_migrations_app
 
     app = create_migrations_app()
+    socketio_app = app
+    flask_app = app
 else:
-    # It seems that JetBrains Python debugger does not work well with gevent,
-    # so we need to disable gevent in debug mode.
-    # If you are using debugpy and set GEVENT_SUPPORT=True, you can debug with gevent.
-    if (flask_debug := os.environ.get("FLASK_DEBUG", "0")) and flask_debug.lower() in {"false", "0", "no"}:
-        from gevent import monkey
-
-        # gevent
-        monkey.patch_all()
-
-        from grpc.experimental import gevent as grpc_gevent  # type: ignore
-
-        # grpc gevent
-        grpc_gevent.init_gevent()
-
-        import psycogreen.gevent  # type: ignore
-
-        psycogreen.gevent.patch_psycopg()
+    # Gunicorn and Celery handle monkey patching automatically in production by
+    # specifying the `gevent` worker class. Manual monkey patching is not required here.
+    #
+    # See `api/docker/entrypoint.sh` (lines 33 and 47) for details.
+    #
+    # For third-party library patching, refer to `gunicorn.conf.py` and `celery_entrypoint.py`.
 
     from app_factory import create_app
 
-    app = create_app()
-    celery = app.extensions["celery"]
+    socketio_app, flask_app = create_app()
+    app = flask_app
+    celery = cast("Celery", app.extensions["celery"])
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001)
+    from gevent import pywsgi
+    from geventwebsocket.handler import WebSocketHandler
+
+    log_startup_banner(HOST, PORT)
+    server = pywsgi.WSGIServer((HOST, PORT), socketio_app, handler_class=WebSocketHandler)
+    server.serve_forever()

@@ -1,14 +1,21 @@
 import logging
+from http import HTTPStatus
+from typing import Literal
+from uuid import UUID
 
-from flask_restful import fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
-from werkzeug.exceptions import InternalServerError, NotFound
+from flask import Response
+from pydantic import BaseModel, Field
 
-import services
-from controllers.web import api
+from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
+from controllers.common.errors import InternalServerError, MessageFeedbackRatingRequiredError, NotFoundError
+from controllers.common.fields import GeneratedAppResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
+from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
     AppSuggestedQuestionsAfterAnswerDisabledError,
+    AppUnavailableError,
     CompletionRequestError,
     NotChatAppError,
     NotCompletionAppError,
@@ -17,169 +24,307 @@ from controllers.web.error import (
     ProviderQuotaExceededError,
 )
 from controllers.web.wraps import WebApiResource
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
-from fields.conversation_fields import message_file_fields
-from fields.message_fields import agent_thought_fields, feedback_fields, retriever_resource_fields
-from fields.raws import FilesContainedField
+from extensions.ext_application_services import application_services
+from fields.conversation_fields import ResultResponse
+from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import TimestampField, uuid_value
-from models.model import AppMode
-from services.app_generate_service import AppGenerateService
+from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
+from models.enums import FeedbackRating
+from models.model import App, AppMode, EndUser
+from services.agent.errors import AgentVersionNotFoundError
+from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.entities.message_entities import MessageEndUser
 from services.errors.app import MoreLikeThisDisabledError
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
-from services.message_service import MessageService
+from services.errors.message import (
+    FeedbackRatingRequiredError,
+    FirstMessageNotExistsError,
+    MessageActorNotFoundError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
+from services.message_more_like_this_service import (
+    MoreLikeThisConfigNotFoundError,
+    MoreLikeThisNotCompletionError,
+)
+
+logger = logging.getLogger(__name__)
 
 
+class MessageMoreLikeThisQuery(BaseModel):
+    response_mode: Literal["blocking", "streaming"] = Field(
+        description="Response mode",
+    )
+
+
+register_schema_models(web_ns, MessageListQuery, MessageFeedbackPayload, MessageMoreLikeThisQuery)
+register_response_schema_models(
+    web_ns,
+    GeneratedAppResponse,
+    ResultResponse,
+    SuggestedQuestionsResponse,
+    WebMessageInfiniteScrollPagination,
+)
+
+
+@web_ns.route("/messages")
 class MessageListApi(WebApiResource):
-    message_fields = {
-        "id": fields.String,
-        "conversation_id": fields.String,
-        "parent_message_id": fields.String,
-        "inputs": FilesContainedField,
-        "query": fields.String,
-        "answer": fields.String(attribute="re_sign_file_url_answer"),
-        "message_files": fields.List(fields.Nested(message_file_fields)),
-        "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
-        "retriever_resources": fields.List(fields.Nested(retriever_resource_fields)),
-        "created_at": TimestampField,
-        "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
-        "metadata": fields.Raw(attribute="message_metadata_dict"),
-        "status": fields.String,
-        "error": fields.String,
-    }
-
-    message_infinite_scroll_pagination_fields = {
-        "limit": fields.Integer,
-        "has_more": fields.Boolean,
-        "data": fields.List(fields.Nested(message_fields)),
-    }
-
-    @marshal_with(message_infinite_scroll_pagination_fields)
-    def get(self, app_model, end_user):
+    @error_responses(AppUnavailableError, NotChatAppError)
+    @web_ns.doc("Get Message List")
+    @web_ns.doc(description="Retrieve paginated list of messages from a conversation in a chat application.")
+    @web_ns.doc(params=query_params_from_model(MessageListQuery))
+    @web_ns.doc(
+        responses={
+            HTTPStatus.OK: "Success",
+            HTTPStatus.BAD_REQUEST: "Bad Request - Not a chat app or app unavailable",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.NOT_FOUND: "Conversation, First Message, or End User Not Found",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
+        }
+    )
+    @web_ns.response(HTTPStatus.OK, "Success", web_ns.models[WebMessageInfiniteScrollPagination.__name__])
+    @model_validate(MessageListQuery)
+    def get(self, query: MessageListQuery, app_model: App, end_user: EndUser) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")
-        parser.add_argument("first_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        args = parser.parse_args()
-
         try:
-            return MessageService.pagination_by_first_id(
-                app_model, end_user, args["conversation_id"], args["first_id"], args["limit"]
+            pagination = application_services().message_queries.get_page(
+                app_id=app_model.id,
+                app_owner_tenant_id=app_model.tenant_id,
+                actor=MessageEndUser(end_user_id=end_user.id),
+                conversation_id=query.conversation_id,
+                first_id=query.first_id,
+                limit=query.limit,
             )
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.message.FirstMessageNotExistsError:
-            raise NotFound("First Message Not Exists.")
+            return helper.dump_response(WebMessageInfiniteScrollPagination, pagination)
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except MessageActorNotFoundError as error:
+            raise NotFoundError("End user not found") from error
+        except ConversationNotExistsError as error:
+            raise NotFoundError("Conversation Not Exists.") from error
+        except FirstMessageNotExistsError as error:
+            raise NotFoundError("First Message Not Exists.") from error
 
 
+@web_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(WebApiResource):
-    def post(self, app_model, end_user, message_id):
-        message_id = str(message_id)
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
-        parser.add_argument("content", type=str, location="json", default=None)
-        args = parser.parse_args()
+    @error_responses(AppUnavailableError, MessageFeedbackRatingRequiredError)
+    @web_ns.doc("Create Message Feedback")
+    @web_ns.doc(description="Submit feedback (like/dislike) for a specific message.")
+    @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
+    @web_ns.doc(
+        params={
+            "rating": {
+                "description": "Feedback rating",
+                "type": "string",
+                "enum": ["like", "dislike"],
+                "required": False,
+            },
+            "content": {"description": "Feedback content", "type": "string", "required": False},
+        }
+    )
+    @web_ns.doc(
+        responses={
+            HTTPStatus.OK: "Feedback submitted successfully",
+            HTTPStatus.BAD_REQUEST: (
+                "`message_feedback_rating_required`: Cannot revoke feedback that does not exist. "
+                "`app_unavailable`: App is no longer available."
+            ),
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden",
+            HTTPStatus.NOT_FOUND: "Message Not Found",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
+        }
+    )
+    @web_ns.response(HTTPStatus.OK, "Feedback submitted successfully", web_ns.models[ResultResponse.__name__])
+    @web_ns.expect(web_ns.models[MessageFeedbackPayload.__name__])
+    @model_validate(MessageFeedbackPayload)
+    def post(
+        self, payload: MessageFeedbackPayload, app_model: App, end_user: EndUser, message_id: UUID
+    ) -> dict[str, object]:
+        message_id_str = str(message_id)
 
         try:
-            MessageService.create_feedback(
-                app_model=app_model,
-                message_id=message_id,
-                user=end_user,
-                rating=args.get("rating"),
-                content=args.get("content"),
+            application_services().message_feedbacks.set_feedback(
+                app_id=app_model.id,
+                app_owner_tenant_id=app_model.tenant_id,
+                message_id=message_id_str,
+                actor=MessageEndUser(end_user_id=end_user.id),
+                rating=FeedbackRating(payload.rating) if payload.rating else None,
+                content=payload.content,
             )
-        except services.errors.message.MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except MessageActorNotFoundError as error:
+            raise NotFoundError("End user not found") from error
+        except MessageNotExistsError as error:
+            raise NotFoundError("Message Not Exists.") from error
+        except FeedbackRatingRequiredError as error:
+            raise MessageFeedbackRatingRequiredError() from error
 
-        return {"result": "success"}
+        return helper.dump_response(ResultResponse, {"result": "success"})
 
 
+@web_ns.route("/messages/<uuid:message_id>/more-like-this")
 class MessageMoreLikeThisApi(WebApiResource):
-    def get(self, app_model, end_user, message_id):
-        if app_model.mode != "completion":
+    @error_responses(
+        AppMoreLikeThisDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        NotCompletionAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
+    @web_ns.doc("Generate More Like This")
+    @web_ns.doc(description="Generate a new completion similar to an existing message (completion apps only).")
+    @web_ns.doc(params=query_params_from_model(MessageMoreLikeThisQuery))
+    @web_ns.doc(
+        responses={
+            HTTPStatus.OK: "Success",
+            HTTPStatus.BAD_REQUEST: "Bad Request - Not a completion app, app unavailable, or model invocation failed",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden - Access denied or more-like-this disabled",
+            HTTPStatus.NOT_FOUND: "Message Not Found",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
+        }
+    )
+    @web_ns.response(HTTPStatus.OK, "Success", web_ns.models[GeneratedAppResponse.__name__])
+    @model_validate(MessageMoreLikeThisQuery)
+    def get(
+        self,
+        query: MessageMoreLikeThisQuery,
+        app_model: App,
+        end_user: EndUser,
+        message_id: UUID,
+    ) -> Response:
+        if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "response_mode", type=str, required=True, choices=["blocking", "streaming"], location="args"
-        )
-        args = parser.parse_args()
-
-        streaming = args["response_mode"] == "streaming"
+        streaming = query.response_mode == "streaming"
 
         try:
-            response = AppGenerateService.generate_more_like_this(
-                app_model=app_model,
-                user=end_user,
-                message_id=message_id,
-                invoke_from=InvokeFrom.WEB_APP,
+            response = application_services().message_more_like_this.generate(
+                app_id=app_model.id,
+                app_owner_tenant_id=app_model.tenant_id,
+                actor=MessageEndUser(end_user_id=end_user.id),
+                message_id=message_id_str,
                 streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
-        except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
-        except MoreLikeThisDisabledError:
-            raise AppMoreLikeThisDisabledError()
+        except (AppDefinitionUnavailableError, MoreLikeThisConfigNotFoundError, AppModelConfigBrokenError) as error:
+            raise AppUnavailableError() from error
+        except MessageActorNotFoundError as error:
+            raise NotFoundError("End user not found") from error
+        except MoreLikeThisNotCompletionError as error:
+            raise NotCompletionAppError() from error
+        except MessageNotExistsError as caught_error:
+            raise NotFoundError("Message Not Exists.") from caught_error
+        except MoreLikeThisDisabledError as caught_error:
+            raise AppMoreLikeThisDisabledError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
-        except Exception:
-            logging.exception("internal server error.")
-            raise InternalServerError()
+            raise CompletionRequestError(e.description) from e
+        except (BaseHTTPException, ValueError):
+            raise
+        except Exception as caught_error:
+            logger.exception("internal server error.")
+            raise InternalServerError() from caught_error
 
 
+@web_ns.route("/messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(WebApiResource):
-    def get(self, app_model, end_user, message_id):
+    @error_responses(
+        AgentVersionNotFoundError,
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
+    @web_ns.response(HTTPStatus.OK, "Success", web_ns.models[SuggestedQuestionsResponse.__name__])
+    @web_ns.doc("Get Suggested Questions")
+    @web_ns.doc(
+        description=(
+            "Get suggested follow-up questions after a message (chat apps only). "
+            "If no usable model can be resolved or the model call to generate questions fails, "
+            "the response is HTTP 200 with an empty data list. "
+            "Model invocation failures during history token counting instead return "
+            "HTTP 400 with `completion_request_error`."
+        )
+    )
+    @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
+    @web_ns.doc(
+        responses={
+            HTTPStatus.OK: "Success",
+            HTTPStatus.BAD_REQUEST: (
+                "Bad Request - Not a chat app or app unavailable; "
+                "`completion_request_error` when model invocation fails while counting history tokens."
+            ),
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden - Access denied or suggested questions disabled",
+            HTTPStatus.NOT_FOUND: "App, End User, Message, or Conversation Not Found",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
+        }
+    )
+    def get(self, app_model: App, end_user: EndUser, message_id: UUID) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotCompletionAppError()
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
+            raise NotChatAppError()
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         try:
-            questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, user=end_user, message_id=message_id, invoke_from=InvokeFrom.WEB_APP
+            questions = application_services().message_suggested_questions.get_suggested_questions(
+                app_id=app_model.id,
+                app_owner_tenant_id=app_model.tenant_id,
+                expected_app_mode=app_model.mode,
+                actor=MessageEndUser(end_user_id=end_user.id),
+                invoke_from="web-app",
+                message_id=message_id_str,
             )
-        except MessageNotExistsError:
-            raise NotFound("Message not found")
-        except ConversationNotExistsError:
-            raise NotFound("Conversation not found")
-        except SuggestedQuestionsAfterAnswerDisabledError:
-            raise AppSuggestedQuestionsAfterAnswerDisabledError()
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        except MessageActorNotFoundError:
+            raise NotFoundError("End user not found") from None
+        except MessageNotExistsError as caught_error:
+            raise NotFoundError("Message not found") from caught_error
+        except ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation not found") from caught_error
+        except SuggestedQuestionsAfterAnswerDisabledError as caught_error:
+            raise AppSuggestedQuestionsAfterAnswerDisabledError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except Exception:
-            logging.exception("internal server error.")
-            raise InternalServerError()
+            raise CompletionRequestError(e.description) from e
+        except AgentVersionNotFoundError:
+            # The legacy Agent config reader still owns this HTTP error.
+            # Remove this compatibility case when it exposes a domain error.
+            raise
+        except Exception as caught_error:
+            logger.exception("internal server error.")
+            raise InternalServerError() from caught_error
 
-        return {"data": questions}
-
-
-api.add_resource(MessageListApi, "/messages")
-api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
-api.add_resource(MessageMoreLikeThisApi, "/messages/<uuid:message_id>/more-like-this")
-api.add_resource(MessageSuggestedQuestionApi, "/messages/<uuid:message_id>/suggested-questions")
+        return helper.dump_response(SuggestedQuestionsResponse, {"data": questions})

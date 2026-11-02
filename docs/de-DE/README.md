@@ -1,0 +1,174 @@
+![cover-v5-optimized](../../images/GitHub_README_if.png)
+
+<p align="center">
+  📌 <a href="https://dify.ai/blog/introducing-dify-workflow-file-upload-a-demo-on-ai-podcast">Einführung in Dify Workflow File Upload: Google NotebookLM Podcast nachbilden</a>
+</p>
+
+<p align="center">
+  <a href="https://cloud.dify.ai">Dify Cloud</a> ·
+  <a href="https://docs.dify.ai/getting-started/install-self-hosted">Selbstgehostetes</a> ·
+  <a href="https://docs.dify.ai">Dokumentation</a> ·
+  <a href="https://dify.ai/pricing">Überblick über die Dify-Produkte</a>
+</p>
+
+<p align="center">
+    <a href="https://dify.ai" target="_blank">
+        <img alt="Static Badge" src="https://img.shields.io/badge/Product-F04438"></a>
+    <a href="https://dify.ai/pricing" target="_blank">
+        <img alt="Static Badge" src="https://img.shields.io/badge/free-pricing?logo=free&color=%20%23155EEF&label=pricing&labelColor=%20%23528bff"></a>
+    <a href="https://discord.gg/FngNHpbcY7" target="_blank">
+        <img src="https://img.shields.io/discord/1082486657678311454?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb"
+            alt="chat on Discord"></a>
+    <a href="https://reddit.com/r/difyai" target="_blank">  
+        <img src="https://img.shields.io/reddit/subreddit-subscribers/difyai?style=plastic&logo=reddit&label=r%2Fdifyai&labelColor=white"
+            alt="join Reddit"></a>
+    <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
+        <img src="https://img.shields.io/twitter/follow/dify_ai?logo=X&color=%20%23f5f5f5"
+            alt="follow on X(Twitter)"></a>
+    <a href="https://www.linkedin.com/company/langgenius/" target="_blank">
+        <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff"
+            alt="follow on LinkedIn"></a>
+    <a href="https://hub.docker.com/u/langgenius" target="_blank">
+        <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
+    <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
+        <img alt="Commits last month" src="https://img.shields.io/github/commit-activity/m/langgenius/dify?labelColor=%20%2332b583&color=%20%2312b76a"></a>
+    <a href="https://github.com/langgenius/dify/" target="_blank">
+        <img alt="Issues closed" src="https://img.shields.io/github/issues-search?query=repo%3Alanggenius%2Fdify%20is%3Aclosed&label=issues%20closed&labelColor=%20%237d89b0&color=%20%235d6b98"></a>
+    <a href="https://github.com/langgenius/dify/discussions/" target="_blank">
+        <img alt="Discussion posts" src="https://img.shields.io/github/discussions/langgenius/dify?labelColor=%20%239b8afb&color=%20%237a5af8"></a>
+    <a href="https://insights.linuxfoundation.org/project/langgenius-dify" target="_blank">
+        <img alt="LFX Health Score" src="https://insights.linuxfoundation.org/api/badge/health-score?project=langgenius-dify"></a>
+    <a href="https://insights.linuxfoundation.org/project/langgenius-dify" target="_blank">
+        <img alt="LFX Contributors" src="https://insights.linuxfoundation.org/api/badge/contributors?project=langgenius-dify"></a>
+    <a href="https://insights.linuxfoundation.org/project/langgenius-dify" target="_blank">
+        <img alt="LFX Active Contributors" src="https://insights.linuxfoundation.org/api/badge/active-contributors?project=langgenius-dify"></a>
+</p>
+
+<p align="center">
+  <a href="../../README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
+  <a href="../zh-TW/README.md"><img alt="繁體中文文件" src="https://img.shields.io/badge/繁體中文-d9d9d9"></a>
+  <a href="../zh-CN/README.md"><img alt="简体中文文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
+  <a href="../ja-JP/README.md"><img alt="日本語のREADME" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
+  <a href="../es-ES/README.md"><img alt="README en Español" src="https://img.shields.io/badge/Español-d9d9d9"></a>
+  <a href="../fr-FR/README.md"><img alt="README en Français" src="https://img.shields.io/badge/Français-d9d9d9"></a>
+  <a href="../tlh/README.md"><img alt="README tlhIngan Hol" src="https://img.shields.io/badge/Klingon-d9d9d9"></a>
+  <a href="../ko-KR/README.md"><img alt="README in Korean" src="https://img.shields.io/badge/한국어-d9d9d9"></a>
+  <a href="../ar-SA/README.md"><img alt="README بالعربية" src="https://img.shields.io/badge/العربية-d9d9d9"></a>
+  <a href="../tr-TR/README.md"><img alt="Türkçe README" src="https://img.shields.io/badge/Türkçe-d9d9d9"></a>
+  <a href="../vi-VN/README.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
+  <a href="../de-DE/README.md"><img alt="README in Deutsch" src="https://img.shields.io/badge/German-d9d9d9"></a>
+  <a href="../it-IT/README.md"><img alt="README in Italiano" src="https://img.shields.io/badge/Italiano-d9d9d9"></a>
+  <a href="../pt-BR/README.md"><img alt="README em Português do Brasil" src="https://img.shields.io/badge/Portugu%C3%AAs%20do%20Brasil-d9d9d9"></a>
+  <a href="../sl-SI/README.md"><img alt="README Slovenščina" src="https://img.shields.io/badge/Sloven%C5%A1%C4%8Dina-d9d9d9"></a>
+  <a href="../bn-BD/README.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
+  <a href="../hi-IN/README.md"><img alt="README in हिन्दी" src="https://img.shields.io/badge/Hindi-d9d9d9"></a>
+</p>
+
+Dify ist eine Open-Source-Plattform zur Entwicklung von LLM-Anwendungen. Ihre intuitive Benutzeroberfläche vereint agentenbasierte KI-Workflows, RAG-Pipelines, Agentenfunktionen, Modellverwaltung, Überwachungsfunktionen und mehr, sodass Sie schnell von einem Prototyp in die Produktion übergehen können.
+
+## Schnellstart
+
+> Bevor Sie Dify installieren, stellen Sie sicher, dass Ihr System die folgenden Mindestanforderungen erfüllt:
+>
+> - CPU >= 2 Core
+> - RAM >= 4 GiB
+
+</br>
+
+Der einfachste Weg, den Dify-Server zu starten, ist über [docker compose](../../docker/docker-compose.yaml). Stellen Sie vor dem Ausführen von Dify mit den folgenden Befehlen sicher, dass [Docker](https://docs.docker.com/get-docker/) und [Docker Compose](https://docs.docker.com/compose/install/) auf Ihrem System installiert sind:
+
+```bash
+cd dify
+cd docker
+cp .env.example .env
+docker compose up -d
+```
+
+Nachdem Sie den Server gestartet haben, können Sie über Ihren Browser auf das Dify Dashboard unter [http://localhost/install](http://localhost/install) zugreifen und den Initialisierungsprozess starten.
+
+### Hilfe suchen
+
+Bitte beachten Sie unsere [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs), wenn Sie Probleme bei der Einrichtung von Dify haben. Wenden Sie sich an [die Community und uns](#gemeinschaft--kontakt), falls weiterhin Schwierigkeiten auftreten.
+
+> Wenn Sie zu Dify beitragen oder zusätzliche Entwicklungen durchführen möchten, lesen Sie bitte unseren [Leitfaden zur Bereitstellung aus dem Quellcode](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code).
+
+## Wesentliche Merkmale
+
+**1. Workflow**:
+Erstellen und testen Sie leistungsstarke KI-Workflows auf einer visuellen Oberfläche, wobei Sie alle der folgenden Funktionen und darüber hinaus nutzen können.
+
+**2. Umfassende Modellunterstützung**:
+Nahtlose Integration mit Hunderten von proprietären und Open-Source-LLMs von Dutzenden Inferenzanbietern und selbstgehosteten Lösungen, die GPT, Mistral, Llama3 und alle mit der OpenAI API kompatiblen Modelle abdecken. Eine vollständige Liste der unterstützten Modellanbieter finden Sie [hier](https://docs.dify.ai/getting-started/readme/model-providers).
+
+![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
+
+**3. Prompt IDE**:
+Intuitive Benutzeroberfläche zum Erstellen von Prompts, zum Vergleichen der Modellleistung und zum Hinzufügen zusätzlicher Funktionen wie Text-to-Speech in einer chatbasierten Anwendung.
+
+**4. RAG Pipeline**:
+Umfassende RAG-Funktionalitäten, die alles von der Dokumenteneinlesung bis zur -abfrage abdecken, mit sofort einsatzbereiter Unterstützung für die Textextraktion aus PDFs, PPTs und anderen gängigen Dokumentformaten.
+
+**5. Fähigkeiten des Agenten**:
+Sie können Agenten basierend auf LLM Function Calling oder ReAct definieren und vorgefertigte oder benutzerdefinierte Tools für den Agenten hinzufügen. Dify stellt über 50 integrierte Tools für KI-Agenten bereit, wie zum Beispiel Google Search, DALL·E, Stable Diffusion und WolframAlpha.
+
+**6. LLMOps**:
+Überwachen und analysieren Sie Anwendungsprotokolle und die Leistung im Laufe der Zeit. Sie können kontinuierlich Prompts, Datensätze und Modelle basierend auf Produktionsdaten und Annotationen verbessern.
+
+**7. Backend-as-a-Service**:
+Alle Dify-Angebote kommen mit entsprechenden APIs, sodass Sie Dify mühelos in Ihre eigene Geschäftslogik integrieren können.
+
+## Dify verwenden
+
+- **Cloud </br>**
+  Mit [Dify Cloud](https://cloud.dify.ai) können Sie Dify ohne eigenen Server ausprobieren. Aktuelle Tarife und Nutzungskontingente finden Sie auf der [Preisseite](https://dify.ai/pricing).
+
+- **Selbstgehostete Dify Community Edition</br>**
+  Starten Sie Dify schnell in Ihrer Umgebung mit diesem [Schnellstart-Leitfaden](#schnellstart). Nutzen Sie unsere [Dokumentation](https://docs.dify.ai) für weiterführende Informationen und detaillierte Anweisungen.
+
+- **Dify für Unternehmen / Organisationen</br>**
+  Wir bieten zusätzliche, unternehmensspezifische Funktionen. [Über diesen Chatbot können Sie uns Ihre Fragen mitteilen](https://udify.app/chat/22L1zSxg6yW1cWQg) oder [senden Sie uns eine E-Mail](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry), um Ihre unternehmerischen Bedürfnisse zu besprechen. </br>
+
+## Immer einen Schritt voraus
+
+Star Dify auf GitHub und lassen Sie sich sofort über neue Releases benachrichtigen.
+
+<img width="1344" height="720" alt="star" src="https://github.com/user-attachments/assets/dcd086d1-af0f-471b-ae52-1ad2fa040595" />
+
+## Erweiterte Einstellungen
+
+Optionen für benutzerdefinierte Konfiguration, Observability und Bereitstellung finden Sie unter [Erweiterte Einstellungen](ADVANCED_SETUP.md).
+
+## Mitwirken
+
+Dify freut sich über Beiträge jeder Art:
+
+- **Code**: Lesen Sie den [Contribution Guide](./CONTRIBUTING.md) und stöbern Sie anschließend in den [Good First Issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
+- **Ideen und Feedback**: Starten Sie eine [GitHub-Diskussion](https://github.com/langgenius/dify/discussions) oder beteiligen Sie sich an einer bestehenden.
+- **Übersetzungen**: Folgen Sie dem [Internationalisierungsleitfaden](https://github.com/langgenius/dify/blob/main/web/i18n/README.md), um eine Sprache hinzuzufügen oder zu aktualisieren.
+- **Community**: Teilen Sie Ihre Apps, helfen Sie anderen Nutzern und machen Sie Dify bekannter.
+
+### Mitwirkende
+
+<a href="https://github.com/langgenius/dify/graphs/contributors">
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
+</a>
+
+## Gemeinschaft & Kontakt
+
+Wählen Sie den Kanal, der am besten zu Ihrem Anliegen passt:
+
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions): Hilfe erhalten, Feedback teilen und Ideen vorschlagen.
+- [GitHub Issues](https://github.com/langgenius/dify/issues): Reproduzierbare Fehler melden und technische Arbeiten verfolgen. Lesen Sie vor dem Erstellen eines Issues den [Contribution Guide](./CONTRIBUTING.md).
+- [Discord](https://discord.gg/FngNHpbcY7): In Echtzeit chatten, Apps teilen und sich mit anderen Dify-Nutzern austauschen.
+- [X](https://x.com/dify_ai): Neuigkeiten zu Releases und Projekt-Updates verfolgen.
+## Star-Geschichte
+
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
+
+## Offenlegung der Sicherheit
+
+Melden Sie Sicherheitslücken gemäß unserer [Sicherheitsrichtlinie](../../SECURITY.md) vertraulich über GitHub Security Advisories. Veröffentlichen Sie sie nicht in öffentlichen Issues, Diskussionen oder Pull Requests.
+
+## Lizenz
+
+Dieses Repository steht unter der [Dify Open Source License](../../LICENSE), die im Wesentlichen Apache 2.0 mit einigen zusätzlichen Einschränkungen ist.

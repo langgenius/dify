@@ -1,54 +1,53 @@
 'use client'
 
-import {
-  memo,
-  useCallback,
-} from 'react'
 import type { EditorState } from 'lexical'
-import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
-import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { ClickableLinkPlugin } from '@lexical/react/LexicalClickableLinkPlugin'
-import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin'
-import { ListPlugin } from '@lexical/react/LexicalListPlugin'
+import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
+import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin'
+import { ListPlugin } from '@lexical/react/LexicalListPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
-import { useWorkflowHistoryStore } from '../../workflow-history-store'
-import LinkEditorPlugin from './plugins/link-editor-plugin'
-import FormatDetectorPlugin from './plugins/format-detector-plugin'
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
+import { memo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 // import TreeView from '@/app/components/base/prompt-editor/plugins/tree-view'
 import Placeholder from '@/app/components/base/prompt-editor/plugins/placeholder'
+import FormatDetectorPlugin from './plugins/format-detector-plugin'
+import LinkEditorPlugin from './plugins/link-editor-plugin'
 
 type EditorProps = {
   placeholder?: string
   onChange?: (editorState: EditorState) => void
   containerElement: HTMLDivElement | null
 }
-const Editor = ({
-  placeholder = 'write you note...',
-  onChange,
-  containerElement,
-}: EditorProps) => {
-  const handleEditorChange = useCallback((editorState: EditorState) => {
-    onChange?.(editorState)
-  }, [onChange])
-
-  const { setShortcutsEnabled } = useWorkflowHistoryStore()
+const Editor = ({ placeholder, onChange, containerElement }: EditorProps) => {
+  const { t } = useTranslation(['workflow'])
+  const handleEditorChange = useCallback(
+    (editorState: EditorState) => {
+      onChange?.(editorState)
+    },
+    [onChange],
+  )
 
   return (
-    <div className='relative'>
+    <div className="relative">
       <RichTextPlugin
         contentEditable={
           <div>
             <ContentEditable
-              onFocus={() => setShortcutsEnabled(false)}
-              onBlur={() => setShortcutsEnabled(true)}
+              aria-label={t(($) => $['nodes.note.editor.label'], { ns: 'workflow' })}
               spellCheck={false}
-              className='h-full w-full text-text-secondary caret-primary-600 outline-none'
+              className="size-full text-text-secondary caret-primary-600 outline-hidden"
             />
           </div>
         }
-        placeholder={<Placeholder value={placeholder} compact />}
+        placeholder={
+          <Placeholder
+            value={placeholder ?? t(($) => $['nodes.note.editor.placeholder'], { ns: 'workflow' })}
+            compact
+          />
+        }
         ErrorBoundary={LexicalErrorBoundary}
       />
       <ClickableLinkPlugin disabled />

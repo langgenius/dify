@@ -1,0 +1,216 @@
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { pick } from 'es-toolkit/object'
+import { useAtomValue } from 'jotai'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import ChunkingModeLabel from '@/app/components/datasets/common/chunking-mode-label'
+import Operations from '@/app/components/datasets/documents/components/operations'
+import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'
+import StatusItem from '@/app/components/datasets/documents/status-item'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import useTimestamp from '@/hooks/use-timestamp'
+import { DataSourceType, isDocumentDisplayStatus } from '@/models/datasets'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { formatNumber } from '@/utils/format'
+import { getDatasetACLCapabilities } from '@/utils/permission'
+import DocumentSourceIcon from './document-source-icon'
+import { renderTdValue } from './utils'
+
+type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
+
+type DocumentTableRowProps = {
+  doc: LocalDoc
+  index: number
+  datasetId: string
+  isGeneralMode: boolean
+  isQAMode: boolean
+  embeddingAvailable: boolean
+  onShowRenameModal: (doc: LocalDoc) => void
+  onDelete: (row: HTMLTableRowElement | null) => void
+  onUpdate: () => void
+}
+
+const renderCount = (count?: number | null) => {
+  if (!count) return renderTdValue(0, true)
+
+  if (count < 1000) return count
+
+  return `${formatNumber((count / 1000).toFixed(1))}k`
+}
+
+const DocumentTableRow = React.memo(
+  ({
+    doc,
+    index,
+    datasetId,
+    isGeneralMode,
+    isQAMode,
+    embeddingAvailable,
+    onShowRenameModal,
+    onUpdate,
+    onDelete,
+  }: DocumentTableRowProps) => {
+    const { t } = useTranslation(['datasetDocuments', 'datasetHitTesting'])
+    const { formatTime } = useTimestamp()
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const rowRef = React.useRef<HTMLTableRowElement>(null)
+    const documentNameId = React.useId()
+    const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
+    const { data: currentUserId } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile.id,
+    })
+    const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+    const datasetACLCapabilities = React.useMemo(
+      () =>
+        getDatasetACLCapabilities(dataset?.permission_keys, {
+          currentUserId,
+          resourceMaintainer: dataset?.maintainer,
+          workspacePermissionKeys,
+        }),
+      [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
+    )
+
+    const isFile = doc.data_source_type === DataSourceType.FILE
+    const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
+    const queryString = searchParams.toString()
+
+    const documentHref = `/datasets/${datasetId}/documents/${doc.id}${queryString ? `?${queryString}` : ''}`
+    const handleRowClick = useCallback(
+      (event: React.MouseEvent<HTMLTableRowElement>) => {
+        if ((event.target as HTMLElement).closest('a, button, input')) return
+        router.push(documentHref)
+      },
+      [router, documentHref],
+    )
+
+    const stopPropagation = useCallback((e: React.SyntheticEvent) => {
+      e.stopPropagation()
+    }, [])
+
+    const handleRenameClick = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation()
+        onShowRenameModal(doc)
+      },
+      [doc, onShowRenameModal],
+    )
+
+    return (
+      <tr
+        ref={rowRef}
+        className="h-8 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
+        onClick={handleRowClick}
+      >
+        <td className="text-start align-middle text-xs text-text-tertiary">
+          {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Only stops child control events from reaching row navigation. */}
+          <div
+            className="flex items-center gap-2"
+            onClick={stopPropagation}
+            onKeyDown={stopPropagation}
+          >
+            <Checkbox className="shrink-0" value={doc.id} aria-labelledby={documentNameId} />
+            {index + 1}
+          </div>
+        </td>
+        <td>
+          <div className="group me-6 flex max-w-115 items-center focus-within:me-0 hover:me-0">
+            <div className="flex shrink-0 items-center">
+              <DocumentSourceIcon doc={doc} fileType={fileType} />
+            </div>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Link
+                    id={documentNameId}
+                    href={documentHref}
+                    className="grow truncate rounded-sm text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+                  >
+                    {doc.name}
+                  </Link>
+                }
+              />
+              <TooltipContent>{doc.name}</TooltipContent>
+            </Tooltip>
+            {doc.summary_index_status && (
+              <div className="ms-1 hidden shrink-0 group-hover:flex">
+                <SummaryStatus status={doc.summary_index_status} />
+              </div>
+            )}
+            {datasetACLCapabilities.canEdit && (
+              <div className="w-0 shrink-0 overflow-hidden opacity-0 group-focus-within:ms-auto group-focus-within:w-6 group-focus-within:overflow-visible group-focus-within:opacity-100 group-hover:ms-auto group-hover:w-6 group-hover:overflow-visible group-hover:opacity-100">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <IconButton
+                        aria-label={t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
+                        onClick={handleRenameClick}
+                      >
+                        <span aria-hidden="true" className="i-ri-edit-line size-4" />
+                      </IconButton>
+                    }
+                  />
+                  <TooltipContent>
+                    {t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+          </div>
+        </td>
+        <td>
+          <ChunkingModeLabel isGeneralMode={isGeneralMode} isQAMode={isQAMode} />
+        </td>
+        <td>{renderCount(doc.word_count)}</td>
+        <td>{renderCount(doc.hit_count)}</td>
+        <td className="text-[13px] text-text-secondary">
+          {doc.created_at
+            ? formatTime(
+                doc.created_at,
+                t(($) => $.dateTimeFormat, { ns: 'datasetHitTesting' }) as string,
+              )
+            : '-'}
+        </td>
+        <td>
+          {isDocumentDisplayStatus(doc.display_status) && (
+            <StatusItem status={doc.display_status} />
+          )}
+        </td>
+        <td>
+          <Operations
+            embeddingAvailable={embeddingAvailable}
+            datasetId={datasetId}
+            detail={pick(doc, [
+              'name',
+              'enabled',
+              'archived',
+              'id',
+              'data_source_type',
+              'doc_form',
+              'display_status',
+            ])}
+            onUpdate={onUpdate}
+            onDelete={() => onDelete(rowRef.current)}
+            canEdit={datasetACLCapabilities.canEdit}
+            canDownload={datasetACLCapabilities.canDocumentDownload}
+            canDelete={datasetACLCapabilities.canDeleteFile}
+            canViewSettings={datasetACLCapabilities.canEdit}
+          />
+        </td>
+      </tr>
+    )
+  },
+)
+
+DocumentTableRow.displayName = 'DocumentTableRow'
+
+export default DocumentTableRow

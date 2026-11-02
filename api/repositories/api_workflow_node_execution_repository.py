@@ -9,15 +9,96 @@ The service repository handles operations that require access to database-specif
 tenant_id, app_id, triggered_from, etc., which are not part of the core domain model.
 """
 
-from collections.abc import Sequence
+from __future__ import annotations
+
+import json
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Protocol
+from typing import Any, Protocol
 
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from models.workflow import WorkflowNodeExecutionModel
+from sqlalchemy.orm import Session
+
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 
 
-class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Protocol):
+class WorkflowNodeExecutionSnapshotRow(Protocol):
+    id: str
+    node_execution_id: str | None
+    node_id: str
+    node_type: str
+    title: str
+    index: int
+    status: WorkflowNodeExecutionStatus
+    elapsed_time: float | None
+    created_at: datetime
+    finished_at: datetime | None
+    execution_metadata: str | None
+
+
+@dataclass(frozen=True)
+class WorkflowNodeExecutionPayloads:
+    """Full node payloads; ``None`` means the execution has no value for that field."""
+
+    inputs: Mapping[str, Any] | None
+    process_data: Mapping[str, Any] | None
+    outputs: Mapping[str, Any] | None
+
+
+@dataclass(frozen=True)
+class WorkflowNodeExecutionSnapshot:
+    """
+    Minimal snapshot of workflow node execution for stream recovery.
+
+    Only includes fields required by snapshot events.
+    """
+
+    execution_id: str  # Unique execution identifier (node_execution_id or row id).
+    node_id: str  # Workflow graph node id.
+    node_type: str  # Workflow graph node type (e.g. "human-input").
+    title: str  # Human-friendly node title.
+    index: int  # Execution order index within the workflow run.
+    status: str  # Execution status (running/succeeded/failed/paused).
+    elapsed_time: float  # Execution elapsed time in seconds.
+    created_at: datetime  # Execution created timestamp.
+    finished_at: datetime | None  # Execution finished timestamp.
+    iteration_id: str | None = None  # Iteration id from execution metadata, if any.
+    loop_id: str | None = None  # Loop id from execution metadata, if any.
+
+    @classmethod
+    def from_execution(
+        cls, row: WorkflowNodeExecutionSnapshotRow | WorkflowNodeExecutionModel
+    ) -> WorkflowNodeExecutionSnapshot:
+        metadata: dict[str, object] = {}
+        if row.execution_metadata:
+            try:
+                parsed_metadata = json.loads(row.execution_metadata)
+                if isinstance(parsed_metadata, dict):
+                    metadata = parsed_metadata
+            except json.JSONDecodeError:
+                metadata = {}
+        iteration_id = metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID.value)
+        loop_id = metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID.value)
+        elapsed_time = row.elapsed_time
+        if elapsed_time is None:
+            elapsed_time = (row.finished_at - row.created_at).total_seconds() if row.finished_at else 0.0
+        return cls(
+            execution_id=row.node_execution_id or row.id,
+            node_id=row.node_id,
+            node_type=row.node_type,
+            title=row.title,
+            index=row.index,
+            status=row.status,
+            elapsed_time=float(elapsed_time),
+            created_at=row.created_at,
+            finished_at=row.finished_at,
+            iteration_id=str(iteration_id) if iteration_id else None,
+            loop_id=str(loop_id) if loop_id else None,
+        )
+
+
+class DifyAPIWorkflowNodeExecutionRepository(Protocol):
     """
     Protocol for service-layer operations on WorkflowNodeExecutionModel.
 
@@ -38,13 +119,17 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
     - Supports cleanup and maintenance operations
     """
 
+    def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        """Return full Process Data, loading offloaded content when necessary."""
+        ...
+
     def get_node_last_execution(
         self,
         tenant_id: str,
         app_id: str,
         workflow_id: str,
         node_id: str,
-    ) -> Optional[WorkflowNodeExecutionModel]:
+    ) -> WorkflowNodeExecutionModel | None:
         """
         Get the most recent execution for a specific node.
 
@@ -69,10 +154,11 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         workflow_run_id: str,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
-        Get all node executions for a specific workflow run.
+        Get visible node executions for a specific workflow run.
 
-        This method retrieves all node executions that belong to a specific workflow run,
+        This method retrieves visible node executions that belong to a specific workflow run,
         ordered by index in descending order for proper trace visualization.
+        Internal Workflow Tool executions are excluded even when the source is the same app and workflow.
 
         Args:
             tenant_id: The tenant identifier
@@ -84,11 +170,65 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         """
         ...
 
+    def get_execution_snapshots_by_workflow_run(
+        self,
+        tenant_id: str,
+        app_id: str,
+        workflow_id: str,
+        triggered_from: str,
+        workflow_run_id: str,
+    ) -> Sequence[WorkflowNodeExecutionSnapshot]:
+        """
+        Get minimal snapshots for node executions in a workflow run.
+
+        Args:
+            tenant_id: The tenant identifier
+            app_id: The application identifier
+            workflow_id: The workflow identifier
+            triggered_from: The workflow trigger source
+            workflow_run_id: The workflow run identifier
+
+        Returns:
+            A sequence of WorkflowNodeExecutionSnapshot ordered by creation time
+        """
+        ...
+
+    def load_full_inputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        """Return complete inputs, resolving offloaded files within the admitted execution's tenant."""
+        ...
+
+    def load_full_outputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        """Return complete outputs, resolving offloaded files within the admitted execution's tenant."""
+        ...
+
+    def load_full_payloads(
+        self, executions: Sequence[WorkflowNodeExecutionModel]
+    ) -> Mapping[str, WorkflowNodeExecutionPayloads]:
+        """Batch-load payloads by execution ID for already admitted executions.
+
+        Resolve file references within each execution's tenant in bounded queries,
+        then read storage after the database session closes. Shared files load once.
+        """
+        ...
+
+    def get_workflow_tool_executions(
+        self,
+        tenant_id: str,
+        workflow_run_id: str,
+        parent_node_execution_id: str,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        """Get one Tool execution's children after the service admits the owning app/run.
+
+        The parent may belong to a nested source app. Both parent and children must
+        belong to the admitted tenant and run; preserve each child's source app.
+        """
+        ...
+
     def get_execution_by_id(
         self,
         execution_id: str,
-        tenant_id: Optional[str] = None,
-    ) -> Optional[WorkflowNodeExecutionModel]:
+        tenant_id: str | None = None,
+    ) -> WorkflowNodeExecutionModel | None:
         """
         Get a workflow node execution by its ID.
 
@@ -127,6 +267,18 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
 
         Returns:
             The number of executions deleted
+        """
+        ...
+
+    def count_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
+        """
+        Count node executions and offloads for the given workflow run ids.
+        """
+        ...
+
+    def delete_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
+        """
+        Delete node executions and offloads for the given workflow run ids.
         """
         ...
 
@@ -193,5 +345,25 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
 
         Returns:
             The number of executions deleted
+        """
+        ...
+
+    def get_offloads_by_execution_ids(
+        self,
+        session: Session,
+        node_execution_ids: Sequence[str],
+    ) -> Sequence[WorkflowNodeExecutionOffload]:
+        """
+        Get offload records by node execution IDs.
+
+        This method retrieves workflow node execution offload records
+        that belong to the given node execution IDs.
+
+        Args:
+            session: The database session to use
+            node_execution_ids: List of node execution IDs to filter by
+
+        Returns:
+            A sequence of WorkflowNodeExecutionOffload instances
         """
         ...

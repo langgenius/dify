@@ -1,26 +1,24 @@
-import { LanguagesSupported } from '@/i18n/language'
+import type { Plugin } from './types'
+import { API_PREFIX } from '@/config'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 
-import {
-  categoryKeys,
-  tagKeys,
-} from './constants'
+const hasUrlProtocol = (value: string) => /^[a-z][a-z\d+.-]*:/i.test(value)
 
-export const getValidTagKeys = (tags: string[]) => {
-  return tags.filter(tag => tagKeys.includes(tag))
-}
+export const getPluginCardIconUrl = (
+  plugin: Pick<Plugin, 'from' | 'name' | 'org' | 'type'>,
+  icon: string | { content: string; background: string } | undefined,
+  tenantId: string,
+) => {
+  if (!icon) return ''
 
-export const getValidCategoryKeys = (category?: string) => {
-  return categoryKeys.find(key => key === category)
-}
+  if (typeof icon === 'object') return icon
 
-export const getDocsUrl = (locale: string, path: string) => {
-  let localePath = 'en'
+  if (hasUrlProtocol(icon) || icon.startsWith('/')) return icon
 
-  if (locale === LanguagesSupported[1])
-    localePath = 'zh-hans'
+  if (plugin.from === 'marketplace')
+    return getMarketplacePluginIconUrl(`${plugin.org}/${plugin.name}`, plugin.type)
 
-  else if (locale === LanguagesSupported[7])
-    localePath = 'ja-jp'
+  if (!tenantId) return icon
 
-  return `https://docs.dify.ai/${localePath}${path}`
+  return `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${icon}`
 }

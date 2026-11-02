@@ -1,128 +1,100 @@
 'use client'
-import { useRouter, useSearchParams } from 'next/navigation'
-import type { FC } from 'react'
-import React, { useCallback, useEffect } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import * as React from 'react'
+import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
-import { removeAccessToken, setAccessToken } from '@/app/components/share/utils'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import Loading from '@/app/components/base/loading'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import NormalForm from './normalForm'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { useWebAppStore } from '@/context/web-app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { resolveWebAppAddress } from '@/service/webapp-address'
+import { webAppLogout } from '@/service/webapp-auth'
+import { getClientLoginFallback } from '@/utils/login-redirect'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { basePath } from '@/utils/var'
 import ExternalMemberSsoAuth from './components/external-member-sso-auth'
-import { fetchAccessToken } from '@/service/share'
+import { resolveWebAppLoginRedirect } from './login-redirect'
+import NormalForm from './normalForm'
 
-const WebSSOForm: FC = () => {
-  const { t } = useTranslation()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const webAppAccessMode = useGlobalPublicStore(s => s.webAppAccessMode)
+const subscribeToOrigin = () => () => {}
+const getClientOrigin = () => window.location.origin
+const getServerOrigin = () => undefined
+
+function WebSSOForm() {
+  const { t } = useTranslation(['login', 'share'])
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
   const searchParams = useSearchParams()
   const router = useRouter()
 
   const redirectUrl = searchParams.get('redirect_url')
-  const tokenFromUrl = searchParams.get('web_sso_token')
-  const message = searchParams.get('message')
-  const code = searchParams.get('code')
+  const currentOrigin = useSyncExternalStore(subscribeToOrigin, getClientOrigin, getServerOrigin)
+  const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, currentOrigin)
+
+  useEffect(() => {
+    if (!resolveWebAppLoginRedirect(redirectUrl, window.location.origin))
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
+  }, [redirectUrl, router])
 
   const getSigninUrl = useCallback(() => {
-    const params = new URLSearchParams(searchParams)
-    params.delete('message')
-    params.delete('code')
+    const params = new URLSearchParams()
+    const resolvedRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
+    if (resolvedRedirect) params.set('redirect_url', resolvedRedirect.target.href)
     return `/webapp-signin?${params.toString()}`
-  }, [searchParams])
+  }, [redirectUrl])
 
-  const backToHome = useCallback(() => {
-    removeAccessToken()
+  const backToHome = useCallback(async () => {
+    await webAppLogout(resolveWebAppAddress())
     const url = getSigninUrl()
     router.replace(url)
   }, [getSigninUrl, router])
 
-  const showErrorToast = (msg: string) => {
-    Toast.notify({
-      type: 'error',
-      message: msg,
-    })
+  if (!loginRedirect) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <LoadingPlaceholder />
+      </div>
+    )
   }
 
-  const getAppCodeFromRedirectUrl = useCallback(() => {
-    if (!redirectUrl)
-      return null
-    const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
-    const appCode = url.pathname.split('/').pop()
-    if (!appCode)
-      return null
-
-    return appCode
-  }, [redirectUrl])
-
-  useEffect(() => {
-    (async () => {
-      if (message)
-        return
-
-      const appCode = getAppCodeFromRedirectUrl()
-      if (appCode && tokenFromUrl && redirectUrl) {
-        localStorage.setItem('webapp_access_token', tokenFromUrl)
-        const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: tokenFromUrl })
-        await setAccessToken(appCode, tokenResp.access_token)
-        router.replace(decodeURIComponent(redirectUrl))
-        return
-      }
-      if (appCode && redirectUrl && localStorage.getItem('webapp_access_token')) {
-        const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: localStorage.getItem('webapp_access_token') })
-        await setAccessToken(appCode, tokenResp.access_token)
-        router.replace(decodeURIComponent(redirectUrl))
-      }
-    })()
-  }, [getAppCodeFromRedirectUrl, redirectUrl, router, tokenFromUrl, message])
-
-  useEffect(() => {
-    if (webAppAccessMode && webAppAccessMode === AccessMode.PUBLIC && redirectUrl)
-      router.replace(decodeURIComponent(redirectUrl))
-  }, [webAppAccessMode, router, redirectUrl])
-
-  if (tokenFromUrl) {
-    return <div className='flex h-full items-center justify-center'>
-      <Loading />
-    </div>
-  }
-
-  if (message) {
-    return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
-      <AppUnavailable className='h-auto w-auto' code={code || t('share.common.appUnavailable')} unknownReason={message} />
-      <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{code === '403' ? t('common.userProfile.logout') : t('share.login.backToHome')}</span>
-    </div>
-  }
-  if (!redirectUrl) {
-    showErrorToast('redirect url is invalid.')
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable code={t('share.common.appUnavailable')} unknownReason='redirect url is invalid.' />
-    </div>
-  }
-  if (webAppAccessMode && webAppAccessMode === AccessMode.PUBLIC) {
-    return <div className='flex h-full items-center justify-center'>
-      <Loading />
-    </div>
-  }
   if (!systemFeatures.webapp_auth.enabled) {
-    return <div className="flex h-full items-center justify-center">
-      <p className='system-xs-regular text-text-tertiary'>{t('login.webapp.disabled')}</p>
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="system-xs-regular text-text-tertiary">
+          {t(($) => $['webapp.disabled'], { ns: 'login' })}
+        </p>
+      </div>
+    )
   }
-  if (webAppAccessMode && (webAppAccessMode === AccessMode.ORGANIZATION || webAppAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS)) {
-    return <div className='w-full max-w-[400px]'>
-      <NormalForm />
-    </div>
+  if (
+    webAppAccessMode &&
+    (webAppAccessMode === AccessMode.ORGANIZATION ||
+      webAppAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  ) {
+    return (
+      <div className="w-full max-w-100">
+        <NormalForm />
+      </div>
+    )
   }
 
   if (webAppAccessMode && webAppAccessMode === AccessMode.EXTERNAL_MEMBERS)
     return <ExternalMemberSsoAuth />
 
-  return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
-    <AppUnavailable className='h-auto w-auto' isUnknownReason={true} />
-    <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('share.login.backToHome')}</span>
-  </div>
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-y-4">
+      <AppUnavailable className="size-auto" isUnknownReason={true} />
+      <button
+        type="button"
+        className="cursor-pointer appearance-none system-sm-regular text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        onClick={backToHome}
+      >
+        {t(($) => $['login.backToHome'], { ns: 'share' })}
+      </button>
+    </div>
+  )
 }
 
 export default React.memo(WebSSOForm)

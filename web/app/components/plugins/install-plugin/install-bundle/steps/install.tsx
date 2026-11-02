@@ -1,28 +1,32 @@
 'use client'
 import type { FC } from 'react'
-import { useRef } from 'react'
-import React, { useCallback, useState } from 'react'
 import type { Dependency, InstallStatusResponse, Plugin, VersionInfo } from '../../../types'
-import Button from '@/app/components/base/button'
-import { RiLoader2Line } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import type { InstallBundleCompleteCallback } from '../index'
 import type { ExposeRefs } from './install-multi'
-import InstallMulti from './install-multi'
-import { useInstallOrUpdate } from '@/service/use-plugins'
+import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { RiLoader2Line } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useCanInstallPluginFromMarketplace } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { useInstallOrUpdate, usePluginTaskList } from '@/service/use-plugins'
+import { TaskStatus } from '../../../types'
+import checkTaskStatus from '../../base/check-task-status'
 import useRefreshPluginList from '../../hooks/use-refresh-plugin-list'
-import { useCanInstallPluginFromMarketplace } from '@/app/components/plugins/plugin-page/use-permission'
-import { useMittContextSelector } from '@/context/mitt-context'
-import Checkbox from '@/app/components/base/checkbox'
-const i18nPrefix = 'plugin.installModal'
+import { getPluginKey } from './hooks/use-install-multi-state'
+import InstallMulti from './install-multi'
 
-type Props = {
+const i18nPrefix = 'installModal'
+
+type Props = Readonly<{
   allPlugins: Dependency[]
   onStartToInstall?: () => void
-  onInstalled: (plugins: Plugin[], installStatus: InstallStatusResponse[]) => void
+  onInstalled: InstallBundleCompleteCallback
   onCancel: () => void
   isFromMarketPlace?: boolean
   isHideButton?: boolean
-}
+}>
 
 const Install: FC<Props> = ({
   allPlugins,
@@ -32,38 +36,95 @@ const Install: FC<Props> = ({
   isFromMarketPlace,
   isHideButton,
 }) => {
-  const { t } = useTranslation()
-  const emit = useMittContextSelector(s => s.emit)
+  const { t } = useTranslation(['common', 'plugin'])
   const [selectedPlugins, setSelectedPlugins] = React.useState<Plugin[]>([])
   const [selectedIndexes, setSelectedIndexes] = React.useState<number[]>([])
   const selectedPluginsNum = selectedPlugins.length
   const installMultiRef = useRef<ExposeRefs>(null)
   const { refreshPluginList } = useRefreshPluginList()
-
+  const [isSelectAll, setIsSelectAll] = useState(false)
+  const handleClickSelectAll = useCallback(() => {
+    if (isSelectAll) installMultiRef.current?.deSelectAllPlugins()
+    else installMultiRef.current?.selectAllPlugins()
+  }, [isSelectAll])
   const [canInstall, setCanInstall] = React.useState(false)
-  const [installedInfo, setInstalledInfo] = useState<Record<string, VersionInfo> | undefined>(undefined)
+  const [installedInfo, setInstalledInfo] = useState<Record<string, VersionInfo> | undefined>(
+    undefined,
+  )
 
-  const handleLoadedAllPlugin = useCallback((installedInfo: Record<string, VersionInfo> | undefined) => {
-    setInstalledInfo(installedInfo)
-    setCanInstall(true)
-  }, [])
+  const handleLoadedAllPlugin = useCallback(
+    (installedInfo: Record<string, VersionInfo> | undefined) => {
+      handleClickSelectAll()
+      setInstalledInfo(installedInfo)
+      setCanInstall(true)
+    },
+    [],
+  )
+
+  const { check, stop } = checkTaskStatus()
+
+  const handleCancel = useCallback(() => {
+    stop()
+    onCancel()
+  }, [onCancel, stop])
+
+  const { handleRefetch } = usePluginTaskList()
+  const getSelectedVersionInfo = useCallback(() => {
+    return selectedPlugins.map((plugin) => {
+      const pluginDetail = installedInfo?.[getPluginKey(plugin)]
+      return {
+        hasInstalled: !!pluginDetail,
+        installedVersion: pluginDetail?.installedVersion,
+        toInstallVersion: plugin.version,
+      }
+    })
+  }, [installedInfo, selectedPlugins])
 
   // Install from marketplace and github
   const { mutate: installOrUpdate, isPending: isInstalling } = useInstallOrUpdate({
-    onSuccess: (res: InstallStatusResponse[]) => {
-      onInstalled(selectedPlugins, res.map((r, i) => {
-        return ({
-          ...r,
-          isFromMarketPlace: allPlugins[selectedIndexes[i]].type === 'marketplace',
-        })
-      }))
-      const hasInstallSuccess = res.some(r => r.success)
-      if (hasInstallSuccess) {
-        refreshPluginList(undefined, true)
-        emit('plugin:install:success', selectedPlugins.map((p) => {
-          return `${p.plugin_id}/${p.name}`
-        }))
+    onSuccess: async (res: InstallStatusResponse[]) => {
+      const isAllSettled = res.every(
+        (r) => r.status === TaskStatus.success || r.status === TaskStatus.failed,
+      )
+      // if all settled, return the install status
+      if (isAllSettled) {
+        onInstalled(
+          selectedPlugins,
+          res.map((r, i) => {
+            return {
+              success: r.status === TaskStatus.success,
+              isFromMarketPlace: allPlugins[selectedIndexes[i]!]!.type === 'marketplace',
+            }
+          }),
+          getSelectedVersionInfo(),
+        )
+        const hasInstallSuccess = res.some((r) => r.status === TaskStatus.success)
+        if (hasInstallSuccess) {
+          refreshPluginList(undefined, true)
+        }
+        return
       }
+      // if not all settled, keep checking the status of the plugins
+      handleRefetch()
+      const installStatus = await Promise.all(
+        res.map(async (item, index) => {
+          if (item.status !== TaskStatus.running) {
+            return {
+              success: item.status === TaskStatus.success,
+              isFromMarketPlace: allPlugins[selectedIndexes[index]!]!.type === 'marketplace',
+            }
+          }
+          const { status } = await check({
+            taskId: item.taskId,
+            pluginUniqueIdentifier: item.uniqueIdentifier,
+          })
+          return {
+            success: status === TaskStatus.success,
+            isFromMarketPlace: allPlugins[selectedIndexes[index]!]!.type === 'marketplace',
+          }
+        }),
+      )
+      onInstalled(selectedPlugins, installStatus, getSelectedVersionInfo())
     },
   })
   const handleInstall = () => {
@@ -74,14 +135,7 @@ const Install: FC<Props> = ({
       installedInfo: installedInfo!,
     })
   }
-  const [isSelectAll, setIsSelectAll] = useState(false)
   const [isIndeterminate, setIsIndeterminate] = useState(false)
-  const handleClickSelectAll = useCallback(() => {
-    if (isSelectAll)
-      installMultiRef.current?.deSelectAllPlugins()
-    else
-      installMultiRef.current?.selectAllPlugins()
-  }, [isSelectAll])
   const handleSelectAll = useCallback((plugins: Plugin[], selectedIndexes: number[]) => {
     setSelectedPlugins(plugins)
     setSelectedIndexes(selectedIndexes)
@@ -95,38 +149,48 @@ const Install: FC<Props> = ({
     setIsIndeterminate(false)
   }, [])
 
-  const handleSelect = useCallback((plugin: Plugin, selectedIndex: number, allPluginsLength: number) => {
-    const isSelected = !!selectedPlugins.find(p => p.plugin_id === plugin.plugin_id)
-    let nextSelectedPlugins
-    if (isSelected)
-      nextSelectedPlugins = selectedPlugins.filter(p => p.plugin_id !== plugin.plugin_id)
-    else
-      nextSelectedPlugins = [...selectedPlugins, plugin]
-    setSelectedPlugins(nextSelectedPlugins)
-    const nextSelectedIndexes = isSelected ? selectedIndexes.filter(i => i !== selectedIndex) : [...selectedIndexes, selectedIndex]
-    setSelectedIndexes(nextSelectedIndexes)
-    if (nextSelectedPlugins.length === 0) {
-      setIsSelectAll(false)
-      setIsIndeterminate(false)
-    }
-    else if (nextSelectedPlugins.length === allPluginsLength) {
-      setIsSelectAll(true)
-      setIsIndeterminate(false)
-    }
-    else {
-      setIsIndeterminate(true)
-      setIsSelectAll(false)
-    }
-  }, [selectedPlugins, selectedIndexes])
+  const handleSelect = useCallback(
+    (plugin: Plugin, selectedIndex: number, allPluginsLength: number) => {
+      const isSelected = !!selectedPlugins.find((p) => p.plugin_id === plugin.plugin_id)
+      let nextSelectedPlugins
+      if (isSelected)
+        nextSelectedPlugins = selectedPlugins.filter((p) => p.plugin_id !== plugin.plugin_id)
+      else nextSelectedPlugins = [...selectedPlugins, plugin]
+      setSelectedPlugins(nextSelectedPlugins)
+      const nextSelectedIndexes = isSelected
+        ? selectedIndexes.filter((i) => i !== selectedIndex)
+        : [...selectedIndexes, selectedIndex]
+      setSelectedIndexes(nextSelectedIndexes)
+      if (nextSelectedPlugins.length === 0) {
+        setIsSelectAll(false)
+        setIsIndeterminate(false)
+      } else if (nextSelectedPlugins.length === allPluginsLength) {
+        setIsSelectAll(true)
+        setIsIndeterminate(false)
+      } else {
+        setIsIndeterminate(true)
+        setIsSelectAll(false)
+      }
+    },
+    [selectedPlugins, selectedIndexes],
+  )
 
   const { canInstallPluginFromMarketplace } = useCanInstallPluginFromMarketplace()
   return (
-    <>
-      <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
-        <div className='system-md-regular text-text-secondary'>
-          <p>{t(`${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`, { num: selectedPluginsNum })}</p>
+    <div className="flex min-h-0 flex-1 flex-col self-stretch overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col items-start justify-center gap-4 self-stretch overflow-hidden px-6 py-3">
+        <div className="system-md-regular text-text-secondary">
+          <p>
+            {t(
+              ($) =>
+                $[
+                  `${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`
+                ],
+              { ns: 'plugin', num: selectedPluginsNum },
+            )}
+          </p>
         </div>
-        <div className='w-full space-y-1 rounded-2xl bg-background-section-burn p-2'>
+        <div className="flex min-h-0 w-full flex-1 flex-col gap-1 overflow-y-auto rounded-2xl bg-background-section-burn p-2">
           <InstallMulti
             ref={installMultiRef}
             allPlugins={allPlugins}
@@ -141,33 +205,51 @@ const Install: FC<Props> = ({
       </div>
       {/* Action Buttons */}
       {!isHideButton && (
-        <div className='flex items-center justify-between gap-2 self-stretch p-6 pt-5'>
-          <div className='px-2'>
-            {canInstall && <div className='flex items-center gap-x-2' onClick={handleClickSelectAll}>
-              <Checkbox checked={isSelectAll} indeterminate={isIndeterminate} />
-              <p className='system-sm-medium cursor-pointer text-text-secondary'>{isSelectAll ? t('common.operation.deSelectAll') : t('common.operation.selectAll')}</p>
-            </div>}
+        <div className="flex items-center justify-between gap-2 self-stretch p-6 pt-5">
+          <div className="px-2">
+            {canInstall && (
+              <label className="flex cursor-pointer items-center gap-x-2">
+                <Checkbox
+                  checked={isSelectAll}
+                  indeterminate={isIndeterminate}
+                  onCheckedChange={() => handleClickSelectAll()}
+                />
+                <span className="system-sm-medium text-text-secondary">
+                  {isSelectAll
+                    ? t(($) => $['operation.deSelectAll'], { ns: 'common' })
+                    : t(($) => $['operation.selectAll'], { ns: 'common' })}
+                </span>
+              </label>
+            )}
           </div>
-          <div className='flex items-center justify-end gap-2 self-stretch'>
+          <div className="flex items-center justify-end gap-2 self-stretch">
             {!canInstall && (
-              <Button variant='secondary' className='min-w-[72px]' onClick={onCancel}>
-                {t('common.operation.cancel')}
+              <Button variant="secondary" className="min-w-18" onClick={handleCancel}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
             )}
             <Button
-              variant='primary'
-              className='flex min-w-[72px] space-x-0.5'
-              disabled={!canInstall || isInstalling || selectedPlugins.length === 0 || !canInstallPluginFromMarketplace}
+              variant="primary"
+              className="flex min-w-18"
+              disabled={
+                !canInstall ||
+                isInstalling ||
+                selectedPlugins.length === 0 ||
+                !canInstallPluginFromMarketplace
+              }
               onClick={handleInstall}
             >
-              {isInstalling && <RiLoader2Line className='h-4 w-4 animate-spin-slow' />}
-              <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
+              {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
+              <span>
+                {t(($) => $[`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`], {
+                  ns: 'plugin',
+                })}
+              </span>
             </Button>
           </div>
         </div>
       )}
-
-    </>
+    </div>
   )
 }
 export default React.memo(Install)

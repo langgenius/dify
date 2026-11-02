@@ -1,0 +1,106 @@
+'use client'
+import type { HumanInputFieldValue } from './field-renderer'
+import type { HumanInputFormProps } from './type'
+import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import { Button } from '@langgenius/dify-ui/button'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ENABLE_HITL_IM } from '@/config'
+import { HumanInputSubmissionPreparationError } from '@/service/human-input-submission'
+import ContentItem from './content-item'
+import {
+  getButtonStyle,
+  getProcessedHumanInputFormInputs,
+  getRenderedFormInputs,
+  hasInvalidSelectOrFileInput,
+  initializeInputs,
+  splitByOutputVar,
+} from './utils'
+
+const HumanInputFormContent = ({ formData, onSubmit }: HumanInputFormProps) => {
+  const { t } = useTranslation(['common'])
+  const formToken = formData.form_token
+  const contentList = splitByOutputVar(formData.form_content)
+  const renderedFormInputs = getRenderedFormInputs(formData.inputs, formData.form_content)
+  const defaultInputs = initializeInputs(renderedFormInputs, formData.resolved_default_values || {})
+  const [inputs, setInputs] = useState(defaultInputs)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
+
+  const handleInputsChange = useCallback((name: string, value: HumanInputFieldValue) => {
+    setInputs((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }, [])
+
+  const submit = async (
+    formToken: string,
+    actionID: string,
+    inputs: Record<string, HumanInputFieldValue>,
+  ) => {
+    setIsSubmitting(true)
+    setSubmissionError(null)
+    try {
+      await onSubmit?.(formToken, {
+        inputs: getProcessedHumanInputFormInputs(renderedFormInputs, inputs) || {},
+        action: actionID,
+        form_version: formData.form_version,
+      })
+    } catch (error) {
+      if (error instanceof HumanInputSubmissionPreparationError)
+        setSubmissionError(t(($) => $['api.actionFailed'], { ns: 'common' }))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const isActionDisabled =
+    isSubmitting || !formToken || hasInvalidSelectOrFileInput(renderedFormInputs, inputs)
+
+  return (
+    <>
+      {contentList.map((content, index) => (
+        <ContentItem
+          key={index}
+          content={content}
+          formInputFields={formData.inputs}
+          inputs={inputs}
+          onInputChange={handleInputsChange}
+        />
+      ))}
+      {submissionError && (
+        <div role="alert" className="py-1 system-xs-regular text-text-destructive">
+          {submissionError}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-1 py-1">
+        {formData.actions.map((action: UserAction) => (
+          <Button
+            key={action.id}
+            disabled={isActionDisabled}
+            variant={getButtonStyle(action.button_style)}
+            onClick={() => formToken && submit(formToken, action.id, inputs)}
+          >
+            {action.title}
+          </Button>
+        ))}
+      </div>
+    </>
+  )
+}
+
+const HumanInputForm = (props: HumanInputFormProps) => {
+  const { t } = useTranslation(['share'])
+  if (!ENABLE_HITL_IM && props.formData.form_version === '2') {
+    return (
+      <p role="status" className="py-2 system-sm-regular text-text-secondary">
+        {t(($) => $['humanInputV2.unavailable'], { ns: 'share' })}
+      </p>
+    )
+  }
+  return <HumanInputFormContent {...props} />
+}
+
+export default React.memo(HumanInputForm)

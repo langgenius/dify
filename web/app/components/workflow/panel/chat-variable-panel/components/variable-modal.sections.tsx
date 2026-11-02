@@ -1,0 +1,248 @@
+import type { SelectorParam } from 'i18next'
+import type { ReactNode } from 'react'
+import type {
+  ChatVariableTranslator,
+  EditorToggleLabelKey,
+  ObjectValueItem,
+} from './variable-modal.helpers'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
+import { RiDraftLine, RiInputField } from '@remixicon/react'
+import { useId } from 'react'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { ChatVarType } from '../type'
+import ArrayBoolList from './array-bool-list'
+import ArrayValueList from './array-value-list'
+import BoolValue from './bool-value'
+import ObjectValueList from './object-value-list'
+import VariableTypeSelector from './variable-type-select'
+
+const editorToggleLabelSelectors: Record<EditorToggleLabelKey, SelectorParam<'workflow'>> = {
+  'chatVariable.modal.editInForm': ($) => $['chatVariable.modal.editInForm'],
+  'chatVariable.modal.editInJSON': ($) => $['chatVariable.modal.editInJSON'],
+  'chatVariable.modal.oneByOne': ($) => $['chatVariable.modal.oneByOne'],
+}
+
+type SectionTitleProps = {
+  children: ReactNode
+}
+
+const SectionTitle = ({ children }: SectionTitleProps) => (
+  <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
+    {children}
+  </div>
+)
+
+type NameSectionProps = {
+  name: string
+  onBlur: (value: string) => void
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  placeholder: string
+  title: string
+}
+
+export const NameSection = ({ name, onBlur, onChange, placeholder, title }: NameSectionProps) => (
+  <Field className="mb-4">
+    <FieldLabel className="system-sm-semibold">{title}</FieldLabel>
+    <Input
+      placeholder={placeholder}
+      value={name}
+      onChange={onChange}
+      onBlur={(e) => onBlur(e.target.value)}
+      type="text"
+    />
+  </Field>
+)
+
+type TypeSectionProps = {
+  list: ChatVarType[]
+  onSelect: (value: ChatVarType) => void
+  title: string
+  type: ChatVarType
+}
+
+export const TypeSection = ({ list, onSelect, title, type }: TypeSectionProps) => (
+  <div className="mb-4">
+    <SectionTitle>{title}</SectionTitle>
+    <div className="flex">
+      <VariableTypeSelector
+        value={type}
+        list={list}
+        onSelect={onSelect}
+        popupClassName="w-[327px]"
+      />
+    </div>
+  </div>
+)
+
+type ValueSectionProps = {
+  editorContent?: string
+  editorMinHeight: string
+  editInJSON: boolean
+  objectValue: ObjectValueItem[]
+  onArrayBoolChange: (value: boolean[]) => void
+  onArrayChange: (value: Array<string | number | undefined>) => void
+  onEditorChange: (nextEditInJson: boolean) => void
+  onEditorValueChange: (content: string) => void
+  onObjectChange: (value: ObjectValueItem[]) => void
+  onValueChange: (value: boolean) => void
+  placeholder: ReactNode
+  t: ChatVariableTranslator
+  toggleLabelKey?: EditorToggleLabelKey
+  type: ChatVarType
+  value: unknown
+}
+
+export const ValueSection = ({
+  editorContent,
+  editorMinHeight,
+  editInJSON,
+  objectValue,
+  onArrayBoolChange,
+  onArrayChange,
+  onEditorChange,
+  onEditorValueChange,
+  onObjectChange,
+  onValueChange,
+  placeholder,
+  t,
+  toggleLabelKey,
+  type,
+  value,
+}: ValueSectionProps) => {
+  const numberInputId = useId()
+  return (
+    <div className="mb-4">
+      <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold text-text-secondary">
+        {type === ChatVarType.Number ? (
+          <label htmlFor={numberInputId}>
+            {t(($) => $['chatVariable.modal.value'], { ns: 'workflow' })}
+          </label>
+        ) : (
+          <div>{t(($) => $['chatVariable.modal.value'], { ns: 'workflow' })}</div>
+        )}
+        {toggleLabelKey && (
+          <Button
+            variant="ghost"
+            size="small"
+            className="text-text-tertiary"
+            onClick={() => onEditorChange(!editInJSON)}
+          >
+            {editInJSON ? (
+              <RiInputField className="size-3.5" />
+            ) : (
+              <RiDraftLine className="size-3.5" />
+            )}
+            {t(editorToggleLabelSelectors[toggleLabelKey], { ns: 'workflow' })}
+          </Button>
+        )}
+      </div>
+      <div className="flex">
+        {type === ChatVarType.String && (
+          <textarea
+            className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+            value={(value as string) || ''}
+            placeholder={
+              t(($) => $['chatVariable.modal.valuePlaceholder'], { ns: 'workflow' }) || ''
+            }
+            onChange={(e) => onArrayChange([e.target.value])}
+          />
+        )}
+        {type === ChatVarType.Number && (
+          <NumberField
+            format={{ maximumSignificantDigits: 21, useGrouping: false }}
+            id={numberInputId}
+            className="w-full"
+            value={typeof value === 'number' ? value : null}
+            onValueChange={(value) => onArrayChange([value ?? undefined])}
+          >
+            <NumberFieldGroup>
+              <NumberFieldInput
+                inputMode="decimal"
+                placeholder={t(($) => $['chatVariable.modal.valuePlaceholder'], { ns: 'workflow' })}
+              />
+            </NumberFieldGroup>
+          </NumberField>
+        )}
+        {type === ChatVarType.Boolean && (
+          <BoolValue value={value as boolean} onChange={onValueChange} />
+        )}
+        {type === ChatVarType.Object && !editInJSON && (
+          <ObjectValueList list={objectValue} onChange={onObjectChange} />
+        )}
+        {type === ChatVarType.ArrayString && !editInJSON && (
+          <ArrayValueList
+            isString
+            list={(value as Array<string | undefined>) || [undefined]}
+            onChange={onArrayChange}
+          />
+        )}
+        {type === ChatVarType.ArrayNumber && !editInJSON && (
+          <ArrayValueList
+            isString={false}
+            list={(value as Array<number | undefined>) || [undefined]}
+            onChange={onArrayChange}
+          />
+        )}
+        {type === ChatVarType.ArrayBoolean && !editInJSON && (
+          <ArrayBoolList list={(value as boolean[]) || [true]} onChange={onArrayBoolChange} />
+        )}
+        {editInJSON && (
+          <div
+            className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pr-1 pl-3"
+            style={{ height: editorMinHeight }}
+          >
+            <CodeEditor
+              isExpand
+              noWrapper
+              language={CodeLanguage.json}
+              value={editorContent}
+              placeholder={<div className="whitespace-pre">{placeholder}</div>}
+              onChange={onEditorValueChange}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+type DescriptionSectionProps = {
+  description: string
+  maxLength: number
+  onChange: (value: string) => void
+  placeholder: string
+  title: string
+}
+
+export const DescriptionSection = ({
+  description,
+  maxLength,
+  onChange,
+  placeholder,
+  title,
+}: DescriptionSectionProps) => (
+  <div>
+    <SectionTitle>{title}</SectionTitle>
+    <div className="flex">
+      <textarea
+        className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+        value={description}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+    <div
+      className={cn(
+        'mt-1 text-right system-xs-regular',
+        description.length > maxLength ? 'text-text-destructive' : 'text-text-quaternary',
+      )}
+    >
+      {description.length}/{maxLength}
+    </div>
+  </div>
+)

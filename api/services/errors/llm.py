@@ -1,14 +1,15 @@
-from typing import Optional
+from typing import override
 
 
 class InvokeError(Exception):
     """Base class for all LLM exceptions."""
 
-    description: Optional[str] = None
+    description: str = ""
 
-    def __init__(self, description: Optional[str] = None) -> None:
+    def __init__(self, description: str = ""):
         self.description = description
 
+    @override
     def __str__(self):
         return self.description or self.__class__.__name__
 

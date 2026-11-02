@@ -1,54 +1,51 @@
-import React, { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import produce from 'immer'
-import { RiSparklingFill } from '@remixicon/react'
-import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
-import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { RiSparklingFill } from '@remixicon/react'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
+import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
-const MoreLikeThis = ({
-  disabled,
-  onChange,
-}: Props) => {
-  const { t } = useTranslation()
-  const features = useFeatures(s => s.features)
+const MoreLikeThis = ({ disabled, onChange }: Props) => {
+  const { t } = useTranslation(['appDebug'])
+  const features = useFeatures((s) => s.features)
   const featuresStore = useFeaturesStore()
 
-  const handleChange = useCallback((type: FeatureEnum, enabled: boolean) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+  const handleChange = useCallback(
+    (type: FeatureEnum, enabled: boolean) => {
+      const { features, setFeatures } = featuresStore!.getState()
 
-    const newFeatures = produce(features, (draft) => {
-      draft[type] = {
-        ...draft[type],
-        enabled,
-      }
-    })
-    setFeatures(newFeatures)
-    if (onChange)
-      onChange()
-  }, [featuresStore, onChange])
+      const newFeatures = produce(features, (draft) => {
+        draft[type] = {
+          ...draft[type],
+          enabled,
+        }
+      })
+      setFeatures(newFeatures)
+      if (onChange) onChange()
+    },
+    [featuresStore, onChange],
+  )
 
   return (
     <FeatureCard
       icon={
-        <div className='shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs'>
-          <RiSparklingFill className='h-4 w-4 text-text-primary-on-surface' />
+        <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
+          <RiSparklingFill className="size-4 text-text-primary-on-surface" />
         </div>
       }
-      title={t('appDebug.feature.moreLikeThis.title')}
-      tooltip={t('appDebug.feature.moreLikeThis.tip')}
+      title={t(($) => $['feature.moreLikeThis.title'], { ns: 'appDebug' })}
+      tooltip={t(($) => $['feature.moreLikeThis.tip'], { ns: 'appDebug' })}
       value={!!features.moreLikeThis?.enabled}
-      description={t('appDebug.feature.moreLikeThis.description')!}
-      onChange={state => handleChange(FeatureEnum.moreLikeThis, state)}
+      description={t(($) => $['feature.moreLikeThis.description'], { ns: 'appDebug' })!}
+      onChange={(state) => handleChange(FeatureEnum.moreLikeThis, state)}
       disabled={disabled}
     />
   )

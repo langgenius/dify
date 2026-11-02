@@ -1,65 +1,39 @@
-import type { Fetcher } from 'swr'
-import { del, get, post } from './base'
-import type { AnnotationEnableStatus, AnnotationItemBasic, EmbeddingModelConfig } from '@/app/components/app/annotation/type'
+import type {
+  AnnotationEnableStatus,
+  EmbeddingModelConfig,
+} from '@/app/components/app/annotation/type'
 import { ANNOTATION_DEFAULT } from '@/config'
+import { post } from './base'
+import { consoleClient } from './console'
 
-export const fetchAnnotationConfig = (appId: string) => {
-  return get(`apps/${appId}/annotation-setting`)
-}
-export const updateAnnotationStatus = (appId: string, action: AnnotationEnableStatus, embeddingModel?: EmbeddingModelConfig, score?: number) => {
-  let body: any = {
-    score_threshold: score || ANNOTATION_DEFAULT.score_threshold,
-  }
-  if (embeddingModel) {
-    body = {
-      ...body,
-      ...embeddingModel,
-    }
-  }
+export const updateAnnotationStatus = (
+  appId: string,
+  action: AnnotationEnableStatus,
+  embeddingModel?: EmbeddingModelConfig,
+  score?: number,
+) =>
+  // Callers report request and job failures together.
+  consoleClient.apps.byAppId.annotationReply.byAction.post(
+    {
+      params: { app_id: appId, action },
+      body: {
+        score_threshold: score ?? ANNOTATION_DEFAULT.score_threshold,
+        // Disabling does not use the embedding model; the API still requires the fields.
+        embedding_provider_name: embeddingModel?.embedding_provider_name ?? '',
+        embedding_model_name: embeddingModel?.embedding_model_name ?? '',
+      },
+    },
+    { context: { silent: true } },
+  )
 
-  return post(`apps/${appId}/annotation-reply/${action}`, {
-    body,
-  })
-}
-
-export const updateAnnotationScore = (appId: string, settingId: string, score: number) => {
-  return post(`apps/${appId}/annotation-settings/${settingId}`, {
-    body: { score_threshold: score },
-  })
-}
-
-export const queryAnnotationJobStatus = (appId: string, action: AnnotationEnableStatus, jobId: string) => {
-  return get(`apps/${appId}/annotation-reply/${action}/status/${jobId}`)
-}
-
-export const fetchAnnotationList = (appId: string, params: Record<string, any>) => {
-  return get(`apps/${appId}/annotations`, { params })
-}
-
-export const fetchExportAnnotationList = (appId: string) => {
-  return get(`apps/${appId}/annotations/export`)
-}
-
-export const addAnnotation = (appId: string, body: AnnotationItemBasic) => {
-  return post(`apps/${appId}/annotations`, { body })
-}
-
-export const annotationBatchImport: Fetcher<{ job_id: string; job_status: string }, { url: string; body: FormData }> = ({ url, body }) => {
-  return post<{ job_id: string; job_status: string }>(url, { body }, { bodyStringify: false, deleteContentType: true })
-}
-
-export const checkAnnotationBatchImportProgress: Fetcher<{ job_id: string; job_status: string }, { jobID: string; appId: string }> = ({ jobID, appId }) => {
-  return get<{ job_id: string; job_status: string }>(`/apps/${appId}/annotations/batch-import-status/${jobID}`)
-}
-
-export const editAnnotation = (appId: string, annotationId: string, body: AnnotationItemBasic) => {
-  return post(`apps/${appId}/annotations/${annotationId}`, { body })
-}
-
-export const delAnnotation = (appId: string, annotationId: string) => {
-  return del(`apps/${appId}/annotations/${annotationId}`)
-}
-
-export const fetchHitHistoryList = (appId: string, annotationId: string, params: Record<string, any>) => {
-  return get(`apps/${appId}/annotations/${annotationId}/hit-histories`, { params })
-}
+// Multipart uploads are not described by the generated contract yet.
+export const annotationBatchImport = (
+  appId: string,
+  body: FormData,
+  options?: { silent?: boolean },
+) =>
+  post<{ job_id: string; job_status: string }>(
+    `/apps/${appId}/annotations/batch-import`,
+    { body },
+    { bodyStringify: false, deleteContentType: true, ...options },
+  )

@@ -1,26 +1,21 @@
-import {
-  useCallback,
-} from 'react'
+import type { ViewHistoryProps } from './view-history'
+import { Button } from '@langgenius/dify-ui/button'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useWorkflowStore,
-} from '../store'
-import {
-  useWorkflowRun,
-} from '../hooks'
-import Divider from '../../base/divider'
+import { useWorkflowRun } from '../hooks/use-workflow-run'
+import { useWorkflowStore } from '../store'
 import RunningTitle from './running-title'
 import ViewHistory from './view-history'
-import Button from '@/app/components/base/button'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 
-const HeaderInHistory = () => {
-  const { t } = useTranslation()
+export type HeaderInHistoryProps = {
+  viewHistoryProps?: ViewHistoryProps
+}
+const HeaderInHistory = ({ viewHistoryProps }: HeaderInHistoryProps) => {
+  const { t } = useTranslation(['workflow'])
   const workflowStore = useWorkflowStore()
 
-  const {
-    handleLoadBackupDraft,
-  } = useWorkflowRun()
+  const { handleLoadBackupDraft } = useWorkflowRun()
 
   const handleGoBackToEdit = useCallback(() => {
     handleLoadBackupDraft()
@@ -32,15 +27,12 @@ const HeaderInHistory = () => {
       <div>
         <RunningTitle />
       </div>
-      <div className='flex items-center space-x-2'>
-        <ViewHistory withText />
-        <Divider type='vertical' className='mx-auto h-3.5' />
-        <Button
-          variant='primary'
-          onClick={handleGoBackToEdit}
-        >
-          <ArrowNarrowLeft className='mr-1 h-4 w-4' />
-          {t('workflow.common.goBackToEdit')}
+      <div className="flex items-center space-x-2">
+        <ViewHistory {...viewHistoryProps} withText />
+        <Separator decorative orientation="vertical" className="mx-auto h-3.5" />
+        <Button variant="primary" onClick={handleGoBackToEdit}>
+          <span aria-hidden className="i-custom-vender-line-arrows-arrow-narrow-left size-4" />
+          {t(($) => $['common.goBackToEdit'], { ns: 'workflow' })}
         </Button>
       </div>
     </>

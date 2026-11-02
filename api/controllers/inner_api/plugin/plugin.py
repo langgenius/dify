@@ -1,11 +1,14 @@
-from flask_restful import Resource
+import re
 
+from flask_restx import Resource
+from sqlalchemy.orm import Session
+
+from configs import dify_config
+from controllers.console.app.wraps import with_session
 from controllers.console.wraps import setup_required
-from controllers.inner_api import api
+from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
-from core.file.helpers import get_signed_file_url_for_plugin
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocationResponse
 from core.plugin.backwards_invocation.encrypt import PluginEncrypter
@@ -15,10 +18,12 @@ from core.plugin.backwards_invocation.tool import PluginToolBackwardsInvocation
 from core.plugin.entities.request import (
     RequestFetchAppInfo,
     RequestInvokeApp,
+    RequestInvokeDatasource,
     RequestInvokeEncrypt,
     RequestInvokeLLM,
     RequestInvokeLLMWithStructuredOutput,
     RequestInvokeModeration,
+    RequestInvokeMultimodalEmbedding,
     RequestInvokeParameterExtractorNode,
     RequestInvokeQuestionClassifierNode,
     RequestInvokeRerank,
@@ -27,19 +32,85 @@ from core.plugin.entities.request import (
     RequestInvokeTextEmbedding,
     RequestInvokeTool,
     RequestInvokeTTS,
+    RequestListModels,
+    RequestRequestDownloadFile,
     RequestRequestUploadFile,
 )
 from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
+from extensions.ext_application_services import application_services
+from extensions.ext_database import db
+from graphon.model_runtime.errors.invoke import (
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
-from models.account import Account, Tenant
+from models import Account, Tenant
 from models.model import EndUser
+from services.file_request_service import FileRequestService
+from services.plugin.datasource_backwards_invocation import PluginDatasourceBackwardsInvocation
+from services.workflow_run_agg import WorkflowRunAgg
 
 
+def _model_invocation_error_response(error: Exception) -> dict[str, object]:
+    """Return a backwards-compatible envelope with safe retry classification."""
+
+    message = str(error)
+    normalized = message.lower()
+    if (
+        isinstance(error, InvokeRateLimitError)
+        or "resource_exhausted" in normalized
+        or "rate limit" in normalized
+        or re.search(r"\b429\b", normalized)
+    ):
+        error_code = "rate_limited"
+        retryable = True
+        status = 429
+    elif "timed out" in normalized or "timeout" in normalized:
+        error_code = "timeout"
+        retryable = True
+        status = 504
+    elif (
+        isinstance(error, InvokeConnectionError | InvokeServerUnavailableError)
+        or "connection error" in normalized
+        or "temporarily unavailable" in normalized
+    ):
+        error_code = "unavailable"
+        retryable = True
+        status = 503
+    else:
+        error_code = "invocation_failed"
+        retryable = False
+        status = None
+
+    response: dict[str, object] = {
+        "data": None,
+        "error": message,
+        "error_code": error_code,
+        "retryable": retryable,
+    }
+    if status is not None:
+        response["status"] = status
+    return response
+
+
+@inner_api_ns.route("/invoke/llm")
 class PluginInvokeLLMApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestInvokeLLM)
+    @inner_api_ns.doc("plugin_invoke_llm")
+    @inner_api_ns.doc(description="Invoke LLM models through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "LLM invocation successful (streaming response)",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLM):
         def generator():
             response = PluginModelBackwardsInvocation.invoke_llm(user_model.id, tenant_model, payload)
@@ -48,11 +119,21 @@ class PluginInvokeLLMApi(Resource):
         return length_prefixed_response(0xF, generator())
 
 
+@inner_api_ns.route("/invoke/llm/structured-output")
 class PluginInvokeLLMWithStructuredOutputApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestInvokeLLMWithStructuredOutput)
+    @inner_api_ns.doc("plugin_invoke_llm_structured")
+    @inner_api_ns.doc(description="Invoke LLM models with structured output through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "LLM structured output invocation successful (streaming response)",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLMWithStructuredOutput):
         def generator():
             response = PluginModelBackwardsInvocation.invoke_llm_with_structured_output(
@@ -63,11 +144,21 @@ class PluginInvokeLLMWithStructuredOutputApi(Resource):
         return length_prefixed_response(0xF, generator())
 
 
+@inner_api_ns.route("/invoke/text-embedding")
 class PluginInvokeTextEmbeddingApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestInvokeTextEmbedding)
+    @inner_api_ns.doc("plugin_invoke_text_embedding")
+    @inner_api_ns.doc(description="Invoke text embedding models through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Text embedding successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTextEmbedding):
         try:
             return jsonable_encoder(
@@ -80,14 +171,50 @@ class PluginInvokeTextEmbeddingApi(Resource):
                 )
             )
         except Exception as e:
+            return _model_invocation_error_response(e)
+
+
+@inner_api_ns.route("/invoke/multimodal-embedding")
+class PluginInvokeMultimodalEmbeddingApi(Resource):
+    @get_user_tenant
+    @setup_required
+    @plugin_inner_api_only
+    @plugin_data(payload_type=RequestInvokeMultimodalEmbedding)
+    @inner_api_ns.doc("plugin_invoke_multimodal_embedding")
+    @inner_api_ns.doc(description="Invoke multimodal embedding models through Dify model management")
+    @inner_api_ns.doc(
+        responses={
+            200: "Multimodal embedding successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
+    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeMultimodalEmbedding):
+        try:
+            return jsonable_encoder(
+                BaseBackwardsInvocationResponse(
+                    data=PluginModelBackwardsInvocation.invoke_multimodal_embedding(
+                        user_id=user_model.id,
+                        tenant=tenant_model,
+                        payload=payload,
+                    )
+                )
+            )
+        except Exception as e:
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
+@inner_api_ns.route("/invoke/rerank")
 class PluginInvokeRerankApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestInvokeRerank)
+    @inner_api_ns.doc("plugin_invoke_rerank")
+    @inner_api_ns.doc(description="Invoke rerank models through plugin interface")
+    @inner_api_ns.doc(
+        responses={200: "Rerank successful", 401: "Unauthorized - invalid API key", 404: "Service not available"}
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeRerank):
         try:
             return jsonable_encoder(
@@ -103,11 +230,85 @@ class PluginInvokeRerankApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
-class PluginInvokeTTSApi(Resource):
+@inner_api_ns.route("/invoke/model-catalog")
+class PluginModelCatalogApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
+    @plugin_data(payload_type=RequestListModels)
+    @inner_api_ns.doc("plugin_model_catalog")
+    @inner_api_ns.doc(description="List tenant-active models managed by Dify")
+    @inner_api_ns.doc(
+        responses={
+            200: "Model catalog lookup successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
+    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestListModels):
+        try:
+            return jsonable_encoder(
+                BaseBackwardsInvocationResponse(
+                    data=PluginModelBackwardsInvocation.list_models(
+                        tenant_id=tenant_model.id,
+                        user_id=user_model.id,
+                        payload=payload,
+                    )
+                )
+            )
+        except Exception as e:
+            return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
+
+
+@inner_api_ns.route("/invoke/datasource")
+class PluginInvokeDatasourceApi(Resource):
+    """Invoke an installed datasource with credentials resolved inside Dify."""
+
     @get_user_tenant
+    @setup_required
+    @plugin_inner_api_only
+    @plugin_data(payload_type=RequestInvokeDatasource)
+    @inner_api_ns.doc("plugin_invoke_datasource")
+    @inner_api_ns.doc(description="Invoke datasource plugins through Dify credential management")
+    @inner_api_ns.doc(
+        responses={
+            200: "Datasource invocation successful (streaming response)",
+            401: "Unauthorized - invalid API key",
+            404: "Datasource provider, datasource, or credential not found",
+        }
+    )
+    def post(
+        self,
+        user_model: Account | EndUser,
+        tenant_model: Tenant,
+        payload: RequestInvokeDatasource,
+    ):
+        response = PluginDatasourceBackwardsInvocation.invoke(
+            user_id=user_model.id,
+            tenant=tenant_model,
+            payload=payload,
+        )
+        return length_prefixed_response(
+            0xF,
+            PluginDatasourceBackwardsInvocation.convert_to_event_stream(response),
+        )
+
+
+@inner_api_ns.route("/invoke/tts")
+class PluginInvokeTTSApi(Resource):
+    @get_user_tenant
+    @setup_required
+    @plugin_inner_api_only
     @plugin_data(payload_type=RequestInvokeTTS)
+    @inner_api_ns.doc("plugin_invoke_tts")
+    @inner_api_ns.doc(description="Invoke text-to-speech models through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "TTS invocation successful (streaming response)",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTTS):
         def generator():
             response = PluginModelBackwardsInvocation.invoke_tts(
@@ -120,11 +321,17 @@ class PluginInvokeTTSApi(Resource):
         return length_prefixed_response(0xF, generator())
 
 
+@inner_api_ns.route("/invoke/speech2text")
 class PluginInvokeSpeech2TextApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestInvokeSpeech2Text)
+    @inner_api_ns.doc("plugin_invoke_speech2text")
+    @inner_api_ns.doc(description="Invoke speech-to-text models through plugin interface")
+    @inner_api_ns.doc(
+        responses={200: "Speech2Text successful", 401: "Unauthorized - invalid API key", 404: "Service not available"}
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeSpeech2Text):
         try:
             return jsonable_encoder(
@@ -140,11 +347,17 @@ class PluginInvokeSpeech2TextApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
+@inner_api_ns.route("/invoke/moderation")
 class PluginInvokeModerationApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestInvokeModeration)
+    @inner_api_ns.doc("plugin_invoke_moderation")
+    @inner_api_ns.doc(description="Invoke moderation models through plugin interface")
+    @inner_api_ns.doc(
+        responses={200: "Moderation successful", 401: "Unauthorized - invalid API key", 404: "Service not available"}
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeModeration):
         try:
             return jsonable_encoder(
@@ -160,32 +373,56 @@ class PluginInvokeModerationApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
+@inner_api_ns.route("/invoke/tool")
 class PluginInvokeToolApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestInvokeTool)
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
+    @inner_api_ns.doc("plugin_invoke_tool")
+    @inner_api_ns.doc(description="Invoke tools through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Tool invocation successful (streaming response)",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
+    @with_session
+    def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
         def generator():
             return PluginToolBackwardsInvocation.convert_to_event_stream(
                 PluginToolBackwardsInvocation.invoke_tool(
+                    execution_driver=WorkflowRunAgg.run,
+                    session=session,
                     tenant_id=tenant_model.id,
                     user_id=user_model.id,
                     tool_type=ToolProviderType.value_of(payload.tool_type),
                     provider=payload.provider,
                     tool_name=payload.tool,
                     tool_parameters=payload.tool_parameters,
+                    credential_id=payload.credential_id,
                 ),
             )
 
         return length_prefixed_response(0xF, generator())
 
 
+@inner_api_ns.route("/invoke/parameter-extractor")
 class PluginInvokeParameterExtractorNodeApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestInvokeParameterExtractorNode)
+    @inner_api_ns.doc("plugin_invoke_parameter_extractor")
+    @inner_api_ns.doc(description="Invoke parameter extractor node through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Parameter extraction successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeParameterExtractorNode):
         try:
             return jsonable_encoder(
@@ -204,11 +441,21 @@ class PluginInvokeParameterExtractorNodeApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
+@inner_api_ns.route("/invoke/question-classifier")
 class PluginInvokeQuestionClassifierNodeApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestInvokeQuestionClassifierNode)
+    @inner_api_ns.doc("plugin_invoke_question_classifier")
+    @inner_api_ns.doc(description="Invoke question classifier node through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Question classification successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeQuestionClassifierNode):
         try:
             return jsonable_encoder(
@@ -227,13 +474,26 @@ class PluginInvokeQuestionClassifierNodeApi(Resource):
             return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
+@inner_api_ns.route("/invoke/app")
 class PluginInvokeAppApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestInvokeApp)
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
+    @inner_api_ns.doc("plugin_invoke_app")
+    @inner_api_ns.doc(description="Invoke application through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "App invocation successful (streaming response)",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
+    @with_session
+    def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
         response = PluginAppBackwardsInvocation.invoke_app(
+            execution_driver=WorkflowRunAgg.run,
+            session=session,
             app_id=payload.app_id,
             user_id=user_model.id,
             tenant_id=tenant_model.id,
@@ -242,16 +502,27 @@ class PluginInvokeAppApi(Resource):
             stream=payload.response_mode == "streaming",
             inputs=payload.inputs,
             files=payload.files,
+            end_users=application_services().app_scoped_end_users.commands,
         )
 
         return length_prefixed_response(0xF, PluginAppBackwardsInvocation.convert_to_event_stream(response))
 
 
+@inner_api_ns.route("/invoke/encrypt")
 class PluginInvokeEncryptApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestInvokeEncrypt)
+    @inner_api_ns.doc("plugin_invoke_encrypt")
+    @inner_api_ns.doc(description="Encrypt or decrypt data through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Encryption/decryption successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeEncrypt):
         """
         encrypt or decrypt data
@@ -264,11 +535,21 @@ class PluginInvokeEncryptApi(Resource):
             return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
+@inner_api_ns.route("/invoke/summary")
 class PluginInvokeSummaryApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestInvokeSummary)
+    @inner_api_ns.doc("plugin_invoke_summary")
+    @inner_api_ns.doc(description="Invoke summary functionality through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Summary generation successful",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeSummary):
         try:
             return BaseBackwardsInvocationResponse(
@@ -284,40 +565,96 @@ class PluginInvokeSummaryApi(Resource):
             return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
+@inner_api_ns.route("/upload/file/request")
 class PluginUploadFileRequestApi(Resource):
+    @get_user_tenant
     @setup_required
     @plugin_inner_api_only
-    @get_user_tenant
     @plugin_data(payload_type=RequestRequestUploadFile)
+    @inner_api_ns.doc("plugin_upload_file_request")
+    @inner_api_ns.doc(description="Request signed URL for file upload through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Signed URL generated successfully",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestUploadFile):
         # generate signed url
-        url = get_signed_file_url_for_plugin(payload.filename, payload.mimetype, tenant_model.id, user_model.id)
+        uri = get_signed_file_uri_for_plugin(
+            filename=payload.filename,
+            mimetype=payload.mimetype,
+            tenant_id=tenant_model.id,
+            user_id=user_model.id,
+            conversation_id=payload.conversation_id,
+        )
+        url = bind_file_uri(uri, dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
         return BaseBackwardsInvocationResponse(data={"url": url}).model_dump()
 
 
-class PluginFetchAppInfoApi(Resource):
+@inner_api_ns.route("/download/file/request")
+class PluginDownloadFileRequestApi(Resource):
     @setup_required
     @plugin_inner_api_only
+    @plugin_data(payload_type=RequestRequestDownloadFile)
+    @inner_api_ns.doc("plugin_download_file_request")
+    @inner_api_ns.doc(description="Request signed URL for file download through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "Signed URL generated successfully",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
+    def post(self, payload: RequestRequestDownloadFile):
+        """Adapt a shared file request result to the Plugin backward contract.
+
+        ``FileRequestService`` rebuilds the caller's ``FileAccessScope`` and
+        resolves one origin-free signed URI. This controller binds that URI to
+        the Plugin-selected external or internal files base URL, then returns
+        the existing backward-invocation envelope.
+        """
+        tenant_model = db.session.get(Tenant, payload.tenant_id)
+        if tenant_model is None:
+            raise ValueError("tenant not found")
+
+        result = FileRequestService().request_download(
+            tenant_id=tenant_model.id,
+            user_id=payload.user_id,
+            user_from=payload.user_from,
+            invoke_from=payload.invoke_from,
+            file_mapping=payload.file.model_dump(mode="python", exclude_none=True),
+        )
+        base_url = (
+            dify_config.FILES_URL if payload.for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
+        )
+        return BaseBackwardsInvocationResponse(
+            data={
+                "filename": result.filename,
+                "mime_type": result.mime_type,
+                "size": result.size,
+                "download_url": bind_file_uri(result.download_uri, base_url),
+            }
+        ).model_dump()
+
+
+@inner_api_ns.route("/fetch/app/info")
+class PluginFetchAppInfoApi(Resource):
     @get_user_tenant
+    @setup_required
+    @plugin_inner_api_only
     @plugin_data(payload_type=RequestFetchAppInfo)
+    @inner_api_ns.doc("plugin_fetch_app_info")
+    @inner_api_ns.doc(description="Fetch application information through plugin interface")
+    @inner_api_ns.doc(
+        responses={
+            200: "App information retrieved successfully",
+            401: "Unauthorized - invalid API key",
+            404: "Service not available",
+        }
+    )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestFetchAppInfo):
         return BaseBackwardsInvocationResponse(
             data=PluginAppBackwardsInvocation.fetch_app_info(payload.app_id, tenant_model.id)
         ).model_dump()
-
-
-api.add_resource(PluginInvokeLLMApi, "/invoke/llm")
-api.add_resource(PluginInvokeLLMWithStructuredOutputApi, "/invoke/llm/structured-output")
-api.add_resource(PluginInvokeTextEmbeddingApi, "/invoke/text-embedding")
-api.add_resource(PluginInvokeRerankApi, "/invoke/rerank")
-api.add_resource(PluginInvokeTTSApi, "/invoke/tts")
-api.add_resource(PluginInvokeSpeech2TextApi, "/invoke/speech2text")
-api.add_resource(PluginInvokeModerationApi, "/invoke/moderation")
-api.add_resource(PluginInvokeToolApi, "/invoke/tool")
-api.add_resource(PluginInvokeParameterExtractorNodeApi, "/invoke/parameter-extractor")
-api.add_resource(PluginInvokeQuestionClassifierNodeApi, "/invoke/question-classifier")
-api.add_resource(PluginInvokeAppApi, "/invoke/app")
-api.add_resource(PluginInvokeEncryptApi, "/invoke/encrypt")
-api.add_resource(PluginInvokeSummaryApi, "/invoke/summary")
-api.add_resource(PluginUploadFileRequestApi, "/upload/file/request")
-api.add_resource(PluginFetchAppInfoApi, "/fetch/app/info")

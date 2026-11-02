@@ -1,70 +1,47 @@
 import type { FC } from 'react'
-import {
-  memo,
-  useEffect,
-} from 'react'
-import {
-  Background,
-  useNodesInitialized,
-  useViewport,
-} from 'reactflow'
-import { useTranslation } from 'react-i18next'
-import { IterationStartNodeDumb } from '../iteration-start'
-import { useNodeIterationInteractions } from './use-interactions'
 import type { IterationNodeType } from './types'
-import AddBlock from './add-block'
-import cn from '@/utils/classnames'
 import type { NodeProps } from '@/app/components/workflow/types'
-import Toast from '@/app/components/base/toast'
+import { cn } from '@langgenius/dify-ui/cn'
+import { memo, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Background, useNodesInitialized, useViewport } from 'reactflow'
+import { toast } from '@/app/notifications'
+import { IterationStartNodeDumb } from '../iteration-start'
+import AddBlock from './add-block'
+import { useNodeIterationInteractions } from './use-interactions'
 
-const i18nPrefix = 'workflow.nodes.iteration'
+const i18nPrefix = 'nodes.iteration'
 
-const Node: FC<NodeProps<IterationNodeType>> = ({
-  id,
-  data,
-}) => {
+const Node: FC<NodeProps<IterationNodeType>> = ({ id, data }) => {
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()
   const { handleNodeIterationRerender } = useNodeIterationInteractions()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
+  const [showTips, setShowTips] = useState(data._isShowTips)
 
   useEffect(() => {
-    if (nodesInitialized)
-      handleNodeIterationRerender(id)
-    if (data.is_parallel && data._isShowTips) {
-      Toast.notify({
-        type: 'warning',
-        message: t(`${i18nPrefix}.answerNodeWarningDesc`),
-        duration: 5000,
-      })
-      data._isShowTips = false
+    if (nodesInitialized) handleNodeIterationRerender(id)
+    if (data.is_parallel && showTips) {
+      toast.warning(t(($) => $[`${i18nPrefix}.answerNodeWarningDesc`], { ns: 'workflowLogic' }))
+      setShowTips(false)
     }
-  }, [nodesInitialized, id, handleNodeIterationRerender, data, t])
+  }, [nodesInitialized, id, handleNodeIterationRerender, data.is_parallel, showTips, t])
 
   return (
-    <div className={cn(
-      'relative h-full min-h-[90px] w-full min-w-[240px] rounded-2xl bg-workflow-canvas-workflow-bg',
-    )}>
+    <div
+      className={cn(
+        'relative h-full min-h-22.5 w-full min-w-60 rounded-2xl bg-workflow-canvas-workflow-bg',
+      )}
+    >
       <Background
         id={`iteration-background-${id}`}
-        className='!z-0 rounded-2xl'
+        className="z-0! rounded-2xl"
         gap={[14 / zoom, 14 / zoom]}
         size={2 / zoom}
-        color='var(--color-workflow-canvas-workflow-dot-color)'
+        color="var(--color-workflow-canvas-workflow-dot-color)"
       />
-      {
-        data._isCandidate && (
-          <IterationStartNodeDumb />
-        )
-      }
-      {
-        data._children!.length === 1 && (
-          <AddBlock
-            iterationNodeId={id}
-            iterationNodeData={data}
-          />
-        )
-      }
+      {data._isCandidate && <IterationStartNodeDumb />}
+      {data._children?.length === 1 && <AddBlock iterationNodeId={id} iterationNodeData={data} />}
     </div>
   )
 }

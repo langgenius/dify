@@ -1,33 +1,20 @@
 import type { FC } from 'react'
-import {
-  Fragment,
-  useEffect,
-  useState,
-} from 'react'
+import type { ImageFile, VisionSettings } from '@/types/app'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Uploader from './uploader'
+import { TransferMethod } from '@/types/app'
+import { useImageFiles } from './hooks'
 import ImageLinkInput from './image-link-input'
 import ImageList from './image-list'
-import { useImageFiles } from './hooks'
-import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
-import { Link03 } from '@/app/components/base/icons/src/vender/line/general'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import type { ImageFile, VisionSettings } from '@/types/app'
-import { TransferMethod } from '@/types/app'
+import Uploader from './uploader'
 
 type PasteImageLinkButtonProps = {
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
 }
-const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
-  onUpload,
-  disabled,
-}) => {
-  const { t } = useTranslation()
+const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({ onUpload, disabled }) => {
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
 
   const handleUpload = (imageFile: ImageFile) => {
@@ -35,55 +22,54 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
     onUpload(imageFile)
   }
 
-  const handleToggle = () => {
-    if (disabled)
-      return
-
-    setOpen(v => !v)
-  }
-
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={setOpen}
-      placement='top-start'
+      onOpenChange={(nextOpen) => {
+        if (disabled) return
+        setOpen(nextOpen)
+      }}
     >
-      <PortalToFollowElemTrigger onClick={handleToggle}>
-        <div className={`
-          relative flex h-8 items-center justify-center rounded-lg bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary hover:bg-components-button-tertiary-bg-hover
-          ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
-        `}>
-          <Link03 className='mr-2 h-4 w-4' />
-          {t('common.imageUploader.pasteImageLink')}
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
-        <div className='w-[320px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-2 shadow-lg'>
+      <PopoverTrigger
+        disabled={disabled}
+        render={
+          <button
+            type="button"
+            className={`relative flex h-8 items-center justify-center rounded-lg bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary hover:bg-components-button-tertiary-bg-hover ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} `}
+          >
+            <span aria-hidden className="mr-2 i-custom-vender-line-general-link-03 size-4" />
+            {t(($) => $['imageUploader.pasteImageLink'], { ns: 'common' })}
+          </button>
+        }
+      />
+      <PopoverContent
+        side="top"
+        align="start"
+        sideOffset={0}
+        className="border-none bg-transparent shadow-none"
+      >
+        <div className="w-[320px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
           <ImageLinkInput onUpload={handleUpload} />
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 
 type TextGenerationImageUploaderProps = {
   settings: VisionSettings
   onFilesChange: (files: ImageFile[]) => void
+  disabled?: boolean
 }
 const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   settings,
   onFilesChange,
+  disabled,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
-  const {
-    files,
-    onUpload,
-    onRemove,
-    onImageLinkLoadError,
-    onImageLinkLoadSuccess,
-    onReUpload,
-  } = useImageFiles()
+  const { files, onUpload, onRemove, onImageLinkLoadError, onImageLinkLoadSuccess, onReUpload } =
+    useImageFiles()
 
   useEffect(() => {
     onFilesChange(files)
@@ -92,34 +78,30 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   const localUpload = (
     <Uploader
       onUpload={onUpload}
-      disabled={files.length >= settings.number_limits}
+      disabled={files.length >= settings.number_limits || disabled}
       limit={+settings.image_file_size_limit!}
     >
-      {
-        hovering => (
-          <div className={`
-            flex h-8 cursor-pointer items-center justify-center rounded-lg
-            bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary
-            ${hovering && 'hover:bg-components-button-tertiary-bg-hover'}
-          `}>
-            <ImagePlus className='mr-2 h-4 w-4' />
-            {t('common.imageUploader.uploadFromComputer')}
-          </div>
-        )
-      }
+      {(hovering) => (
+        <span
+          className={`flex h-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary ${hovering && 'hover:bg-components-button-tertiary-bg-hover'} `}
+        >
+          <span aria-hidden className="mr-2 i-custom-vender-line-images-image-plus size-4" />
+          {t(($) => $['imageUploader.uploadFromComputer'], { ns: 'common' })}
+        </span>
+      )}
     </Uploader>
   )
 
   const urlUpload = (
     <PasteImageLinkButton
       onUpload={onUpload}
-      disabled={files.length >= settings.number_limits}
+      disabled={files.length >= settings.number_limits || disabled}
     />
   )
 
   return (
     <div>
-      <div className='mb-1'>
+      <div className="mb-1">
         <ImageList
           list={files}
           onRemove={onRemove}
@@ -128,18 +110,19 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
           onImageLinkLoadSuccess={onImageLinkLoadSuccess}
         />
       </div>
-      <div className={`grid gap-1 ${settings.transfer_methods.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-        {
-          settings.transfer_methods.map((method) => {
-            if (method === TransferMethod.local_file)
-              return <Fragment key={TransferMethod.local_file}>{localUpload}</Fragment>
+      <div
+        className={`grid gap-1 ${settings.transfer_methods.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}
+        data-testid="upload-actions"
+      >
+        {settings.transfer_methods.map((method) => {
+          if (method === TransferMethod.local_file)
+            return <Fragment key={TransferMethod.local_file}>{localUpload}</Fragment>
 
-            if (method === TransferMethod.remote_url)
-              return <Fragment key={TransferMethod.remote_url}>{urlUpload}</Fragment>
+          if (method === TransferMethod.remote_url)
+            return <Fragment key={TransferMethod.remote_url}>{urlUpload}</Fragment>
 
-            return null
-          })
-        }
+          return null
+        })}
       </div>
     </div>
   )

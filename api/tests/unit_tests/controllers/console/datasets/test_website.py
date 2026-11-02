@@ -1,0 +1,174 @@
+import inspect
+
+import pytest
+from flask import Flask
+from pytest_mock import MockerFixture
+
+from controllers.console.datasets.error import WebsiteCrawlError
+from controllers.console.datasets.website import (
+    WebsiteCrawlApi,
+    WebsiteCrawlPayload,
+    WebsiteCrawlStatusApi,
+    WebsiteCrawlStatusQuery,
+)
+from services.data_source.website_service import (
+    WebsiteCrawlApiRequest,
+    WebsiteCrawlStatusApiRequest,
+    WebsiteService,
+)
+
+
+@pytest.fixture
+def app() -> Flask:
+    app = Flask("test_website_crawl")
+    app.config["TESTING"] = True
+    return app
+
+
+@pytest.fixture(autouse=True)
+def bypass_auth_and_setup(mocker: MockerFixture) -> None:
+    """Bypass setup/login/account decorators."""
+    mocker.patch(
+        "controllers.console.datasets.website.login_required",
+        lambda f: f,
+    )
+    mocker.patch(
+        "controllers.console.datasets.website.setup_required",
+        lambda f: f,
+    )
+    mocker.patch(
+        "controllers.console.datasets.website.account_initialization_required",
+        lambda f: f,
+    )
+
+
+class TestWebsiteCrawlApi:
+    def test_crawl_success(self, app: Flask, mocker: MockerFixture) -> None:
+        api = WebsiteCrawlApi()
+        method = inspect.unwrap(api.post)
+
+        payload = {
+            "provider": "firecrawl",
+            "url": "https://example.com",
+            "options": {"depth": 1},
+        }
+        req_data = WebsiteCrawlPayload.model_validate(payload)
+
+        with app.test_request_context("/", json=payload):
+            crawl_url = mocker.patch.object(
+                WebsiteService,
+                "crawl_url",
+                return_value={"job_id": "job-1"},
+            )
+
+            result, status = method(api, req_data)
+
+        assert status == 200
+        assert result["job_id"] == "job-1"
+        crawl_url.assert_called_once_with(
+            WebsiteCrawlApiRequest(provider="firecrawl", url="https://example.com", options={"depth": 1})
+        )
+
+    def test_crawl_invalid_payload(self, app: Flask, mocker: MockerFixture) -> None:
+        api = WebsiteCrawlApi()
+        method = inspect.unwrap(api.post)
+
+        payload = {
+            "provider": "firecrawl",
+            "url": "bad-url",
+            "options": dict[str, object](),
+        }
+        req_data = WebsiteCrawlPayload.model_validate(payload)
+
+        with app.test_request_context("/", json=payload):
+            mocker.patch.object(
+                WebsiteCrawlApiRequest,
+                "from_args",
+                side_effect=ValueError("invalid payload"),
+            )
+
+            with pytest.raises(WebsiteCrawlError, match="invalid payload"):
+                method(api, req_data)
+
+    def test_crawl_service_error(self, app: Flask, mocker: MockerFixture) -> None:
+        api = WebsiteCrawlApi()
+        method = inspect.unwrap(api.post)
+
+        payload = {
+            "provider": "firecrawl",
+            "url": "https://example.com",
+            "options": {"limit": 1},
+        }
+        req_data = WebsiteCrawlPayload.model_validate(payload)
+
+        with app.test_request_context("/", json=payload):
+            crawl_url = mocker.patch.object(
+                WebsiteService,
+                "crawl_url",
+                side_effect=Exception("crawl failed"),
+            )
+
+            with pytest.raises(WebsiteCrawlError, match="crawl failed"):
+                method(api, req_data)
+
+        crawl_url.assert_called_once_with(
+            WebsiteCrawlApiRequest(provider="firecrawl", url="https://example.com", options={"limit": 1})
+        )
+
+
+class TestWebsiteCrawlStatusApi:
+    def test_get_status_success(self, app: Flask, mocker: MockerFixture) -> None:
+        api = WebsiteCrawlStatusApi()
+        method = inspect.unwrap(api.get)
+
+        job_id = "job-123"
+        req_data = WebsiteCrawlStatusQuery.model_validate({"provider": "firecrawl"})
+
+        with app.test_request_context("/?provider=firecrawl"):
+            get_status = mocker.patch.object(
+                WebsiteService,
+                "get_crawl_status_typed",
+                return_value={"status": "completed"},
+            )
+
+            result, status = method(api, req_data, job_id)
+
+        assert status == 200
+        assert result["status"] == "completed"
+        get_status.assert_called_once_with(WebsiteCrawlStatusApiRequest(provider="firecrawl", job_id=job_id))
+
+    def test_get_status_invalid_provider(self, app: Flask, mocker: MockerFixture) -> None:
+        api = WebsiteCrawlStatusApi()
+        method = inspect.unwrap(api.get)
+
+        job_id = "job-123"
+        req_data = WebsiteCrawlStatusQuery.model_validate({"provider": "firecrawl"})
+
+        with app.test_request_context("/?provider=firecrawl"):
+            mocker.patch.object(
+                WebsiteCrawlStatusApiRequest,
+                "from_args",
+                side_effect=ValueError("invalid provider"),
+            )
+
+            with pytest.raises(WebsiteCrawlError, match="invalid provider"):
+                method(api, req_data, job_id)
+
+    def test_get_status_service_error(self, app: Flask, mocker: MockerFixture) -> None:
+        api = WebsiteCrawlStatusApi()
+        method = inspect.unwrap(api.get)
+
+        job_id = "job-123"
+        req_data = WebsiteCrawlStatusQuery.model_validate({"provider": "firecrawl"})
+
+        with app.test_request_context("/?provider=firecrawl"):
+            get_status = mocker.patch.object(
+                WebsiteService,
+                "get_crawl_status_typed",
+                side_effect=Exception("status lookup failed"),
+            )
+
+            with pytest.raises(WebsiteCrawlError, match="status lookup failed"):
+                method(api, req_data, job_id)
+
+        get_status.assert_called_once_with(WebsiteCrawlStatusApiRequest(provider="firecrawl", job_id=job_id))

@@ -1,23 +1,60 @@
-import Tooltip from '@/app/components/base/tooltip'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import Indicator from '@/app/components/header/indicator'
-import { type FC, useMemo } from 'react'
+import type { FC } from 'react'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { consoleQuery } from '@/service/console'
 
-export type ModelBarProps = {
-  provider: string
-  model: string
-} | {}
+type ModelBarProps =
+  | {
+      provider: string
+      model: string
+    }
+  | {
+      provider?: never
+      model?: never
+    }
 
 const useAllModel = () => {
-  const { data: textGeneration } = useModelList(ModelTypeEnum.textGeneration)
-  const { data: moderation } = useModelList(ModelTypeEnum.moderation)
-  const { data: rerank } = useModelList(ModelTypeEnum.rerank)
-  const { data: speech2text } = useModelList(ModelTypeEnum.speech2text)
-  const { data: textEmbedding } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: tts } = useModelList(ModelTypeEnum.tts)
+  const { data: textGeneration = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: moderation = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.moderation } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerank = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: speech2text = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.speech2text } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: textEmbedding = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: tts = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.tts } },
+      select: (response) => response.data,
+    }),
+  )
   const models = useMemo(() => {
     return textGeneration
       .concat(moderation)
@@ -32,44 +69,68 @@ const useAllModel = () => {
 }
 
 export const ModelBar: FC<ModelBarProps> = (props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowAgent'])
   const modelList = useAllModel()
-  if (!('provider' in props)) {
-    return <Tooltip
-      popupContent={t('workflow.nodes.agent.modelNotSelected')}
-      triggerMethod='hover'
-    >
-      <div className='relative'>
-        <ModelSelector
-          modelList={[]}
-          triggerClassName='bg-workflow-block-parma-bg !h-6 !rounded-md'
-          defaultModel={undefined}
-          showDeprecatedWarnIcon={false}
-          readonly
-          deprecatedClassName='opacity-50'
+  if (props.provider === undefined) {
+    const tooltip = t(($) => $['nodes.agent.modelNotSelected'], { ns: 'workflow' })
+
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <div className="relative">
+              <ModelSelector
+                models={[]}
+                value={undefined}
+                size="small"
+                surface="workflow"
+                showDeprecatedWarnIcon={false}
+                disabled
+              />
+              <StatusDot status="error" className="absolute -top-0.5 -right-0.5" />
+              <span className="sr-only">{tooltip}</span>
+            </div>
+          }
         />
-        <Indicator color={'red'} className='absolute -right-0.5 -top-0.5' />
-      </div>
-    </Tooltip>
+        <TooltipContent>{tooltip}</TooltipContent>
+      </Tooltip>
+    )
   }
   const modelInstalled = modelList?.some(
-    provider => provider.provider === props.provider && provider.models.some(model => model.model === props.model))
+    (provider) =>
+      provider.provider === props.provider &&
+      provider.models.some((model) => model.model === props.model),
+  )
   const showWarn = modelList && !modelInstalled
-  return modelList && <Tooltip
-    popupContent={t('workflow.nodes.agent.modelNotInstallTooltip')}
-    triggerMethod='hover'
-    disabled={!modelList || modelInstalled}
-  >
-    <div className='relative'>
+  if (!modelList) return null
+
+  const modelNotInstalledTooltip = t(($) => $['nodes.agent.modelNotInstallTooltip'], {
+    ns: 'workflowAgent',
+  })
+  const modelSelector = (
+    <div className="relative">
       <ModelSelector
-        modelList={modelList}
-        triggerClassName='bg-workflow-block-parma-bg !h-6 !rounded-md'
-        defaultModel={props}
+        models={modelList}
+        value={{
+          provider: props.provider,
+          model: props.model,
+        }}
+        size="small"
+        surface="workflow"
         showDeprecatedWarnIcon={false}
-        readonly
-        deprecatedClassName='opacity-50'
+        disabled
       />
-      {showWarn && <Indicator color={'red'} className='absolute -right-0.5 -top-0.5' />}
+      {showWarn && <StatusDot status="error" className="absolute -top-0.5 -right-0.5" />}
+      {showWarn && <span className="sr-only">{modelNotInstalledTooltip}</span>}
     </div>
-  </Tooltip>
+  )
+
+  if (modelInstalled) return modelSelector
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={modelSelector} />
+      <TooltipContent>{modelNotInstalledTooltip}</TooltipContent>
+    </Tooltip>
+  )
 }

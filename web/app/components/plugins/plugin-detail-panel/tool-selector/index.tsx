@@ -1,56 +1,37 @@
 'use client'
-import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Link from 'next/link'
-import {
-  RiArrowLeftLine,
-} from '@remixicon/react'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import ToolTrigger from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-trigger'
-import ToolItem from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-item'
-import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
-import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'
-import Button from '@/app/components/base/button'
-import Indicator from '@/app/components/header/indicator'
-import ToolCredentialForm from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-credentials-form'
-import Toast from '@/app/components/base/toast'
-import Textarea from '@/app/components/base/textarea'
-import Divider from '@/app/components/base/divider'
-import TabSlider from '@/app/components/base/tab-slider-plain'
-import ReasoningConfigForm from '@/app/components/plugins/plugin-detail-panel/tool-selector/reasoning-config-form'
-import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-
-import { useAppContext } from '@/context/app-context'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-  useInvalidateAllBuiltInTools,
-  useUpdateProviderCredentials,
-} from '@/service/use-tools'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { usePluginInstalledCheck } from '@/app/components/plugins/plugin-detail-panel/tool-selector/hooks'
-import { CollectionType } from '@/app/components/tools/types'
-import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import type { ReactElement, Ref } from 'react'
 import type { Node } from 'reactflow'
+import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { CollectionType } from '@/app/components/tools/types'
+import Link from '@/next/link'
+import { ToolAuthorizationSection } from './components/tool-authorization-section'
+import { ToolBaseForm } from './components/tool-base-form'
+import { ToolItem } from './components/tool-item'
+import { ToolSettingsPanel } from './components/tool-settings-panel'
+import { ToolTrigger } from './components/tool-trigger'
+import { useToolSelector } from './hooks/use-tool-selector'
 
-type Props = {
+type TriggerProps =
+  | {
+      trigger: ReactElement
+      triggerRef?: never
+      controlledState: boolean
+      onControlledStateChange: (state: boolean) => void
+    }
+  | {
+      trigger?: never
+      triggerRef?: Ref<HTMLButtonElement>
+      controlledState?: never
+      onControlledStateChange?: never
+    }
+
+type Props = Readonly<{
   disabled?: boolean
-  placement?: Placement
-  offset?: OffsetOptions
   scope?: string
   value?: ToolValue
   selectedTools?: ToolValue[]
@@ -59,24 +40,19 @@ type Props = {
   isEdit?: boolean
   onDelete?: () => void
   supportEnableSwitch?: boolean
-  supportAddCustomTool?: boolean
-  trigger?: React.ReactNode
-  controlledState?: boolean
-  onControlledStateChange?: (state: boolean) => void
   panelShowState?: boolean
   onPanelShowStateChange?: (state: boolean) => void
-  nodeOutputVars: NodeOutPutVar[],
-  availableNodes: Node[],
-  nodeId?: string,
-  canChooseMCPTool?: boolean,
-}
-const ToolSelector: FC<Props> = ({
+  nodeOutputVars: NodeOutPutVar[]
+  availableNodes: Node[]
+  nodeId?: string
+}> &
+  TriggerProps
+
+function ToolSelector({
   value,
   selectedTools,
   isEdit,
   disabled,
-  placement = 'left',
-  offset = 4,
   onSelect,
   onSelectMultiple,
   onDelete,
@@ -90,369 +66,163 @@ const ToolSelector: FC<Props> = ({
   nodeOutputVars,
   availableNodes,
   nodeId = '',
-  canChooseMCPTool,
-}) => {
-  const { t } = useTranslation()
-  const [isShow, onShowChange] = useState(false)
-  const handleTriggerClick = () => {
-    if (disabled) return
-    onShowChange(true)
+  triggerRef,
+}: Props) {
+  const { t } = useTranslation(['plugin'])
+  const {
+    isShow,
+    setIsShow,
+    isShowChooseTool,
+    setIsShowChooseTool,
+    currType,
+    setCurrType,
+    currentProvider,
+    currentTool,
+    settingsFormSchemas,
+    paramsFormSchemas,
+    showTabSlider,
+    userSettingsOnly,
+    reasoningConfigOnly,
+    manifestIcon,
+    inMarketPlace,
+    manifest,
+    handleSelectTool,
+    handleSelectMultipleTool,
+    handleDescriptionChange,
+    handleSettingsFormChange,
+    handleParamsFormChange,
+    handleEnabledChange,
+    handleAuthorizationItemClick,
+    handleInstall,
+    settingsValue,
+  } = useToolSelector({ value, onSelect, onSelectMultiple })
+
+  const portalOpen = trigger ? controlledState : isShow
+  const onPortalOpenChange = trigger ? onControlledStateChange : setIsShow
+  const handlePortalOpenChange = (nextOpen: boolean) => {
+    const isConfiguredToolUnavailable = !!value?.provider_name && (!currentProvider || !currentTool)
+    if (nextOpen && (disabled || isConfiguredToolUnavailable)) return
+    onPortalOpenChange?.(nextOpen)
   }
 
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
-  const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
-  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-
-  // plugin info check
-  const { inMarketPlace, manifest } = usePluginInstalledCheck(value?.provider_name)
-
-  const currentProvider = useMemo(() => {
-    const mergedTools = [...(buildInTools || []), ...(customTools || []), ...(workflowTools || []), ...(mcpTools || [])]
-    return mergedTools.find((toolWithProvider) => {
-      return toolWithProvider.id === value?.provider_name
-    })
-  }, [value, buildInTools, customTools, workflowTools, mcpTools])
-
-  const [isShowChooseTool, setIsShowChooseTool] = useState(false)
-  const getToolValue = (tool: ToolDefaultValue) => {
-    const settingValues = generateFormValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form !== 'llm') as any))
-    const paramValues = generateFormValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form === 'llm') as any), true)
-    return {
-      provider_name: tool.provider_id,
-      provider_show_name: tool.provider_name,
-      type: tool.provider_type,
-      tool_name: tool.tool_name,
-      tool_label: tool.tool_label,
-      tool_description: tool.tool_description,
-      settings: settingValues,
-      parameters: paramValues,
-      enabled: tool.is_team_authorization,
-      extra: {
-        description: tool.tool_description,
-      },
-      schemas: tool.paramSchemas,
-    }
-  }
-  const handleSelectTool = (tool: ToolDefaultValue) => {
-    const toolValue = getToolValue(tool)
-    onSelect(toolValue)
-    // setIsShowChooseTool(false)
-  }
-  const handleSelectMultipleTool = (tool: ToolDefaultValue[]) => {
-    const toolValues = tool.map(item => getToolValue(item))
-    onSelectMultiple?.(toolValues)
-  }
-
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onSelect({
-      ...value,
-      extra: {
-        ...value?.extra,
-        description: e.target.value || '',
-      },
-    } as any)
-  }
-
-  // tool settings & params
-  const currentToolSettings = useMemo(() => {
-    if (!currentProvider) return []
-    return currentProvider.tools.find(tool => tool.name === value?.tool_name)?.parameters.filter(param => param.form !== 'llm') || []
-  }, [currentProvider, value])
-  const currentToolParams = useMemo(() => {
-    if (!currentProvider) return []
-    return currentProvider.tools.find(tool => tool.name === value?.tool_name)?.parameters.filter(param => param.form === 'llm') || []
-  }, [currentProvider, value])
-  const [currType, setCurrType] = useState('settings')
-  const showTabSlider = currentToolSettings.length > 0 && currentToolParams.length > 0
-  const userSettingsOnly = currentToolSettings.length > 0 && !currentToolParams.length
-  const reasoningConfigOnly = currentToolParams.length > 0 && !currentToolSettings.length
-
-  const settingsFormSchemas = useMemo(() => toolParametersToFormSchemas(currentToolSettings), [currentToolSettings])
-  const paramsFormSchemas = useMemo(() => toolParametersToFormSchemas(currentToolParams), [currentToolParams])
-
-  const handleSettingsFormChange = (v: Record<string, any>) => {
-    const newValue = getStructureValue(v)
-    const toolValue = {
-      ...value,
-      settings: newValue,
-    }
-    onSelect(toolValue as any)
-  }
-  const handleParamsFormChange = (v: Record<string, any>) => {
-    const toolValue = {
-      ...value,
-      parameters: v,
-    }
-    onSelect(toolValue as any)
-  }
-
-  const handleEnabledChange = (state: boolean) => {
-    onSelect({
-      ...value,
-      enabled: state,
-    } as any)
-  }
-
-  // authorization
-  const { isCurrentWorkspaceManager } = useAppContext()
-  const [isShowSettingAuth, setShowSettingAuth] = useState(false)
-  const handleCredentialSettingUpdate = () => {
-    invalidateAllBuiltinTools()
-    Toast.notify({
-      type: 'success',
-      message: t('common.api.actionSuccess'),
-    })
-    setShowSettingAuth(false)
-    onShowChange(false)
-  }
-
-  const { mutate: updatePermission } = useUpdateProviderCredentials({
-    onSuccess: handleCredentialSettingUpdate,
-  })
-
-  // install from marketplace
-  const currentTool = useMemo(() => {
-    return currentProvider?.tools.find(tool => tool.name === value?.tool_name)
-  }, [currentProvider?.tools, value?.tool_name])
-  const manifestIcon = useMemo(() => {
-    if (!manifest)
-      return ''
-    return `${MARKETPLACE_API_PREFIX}/plugins/${(manifest as any).plugin_id}/icon`
-  }, [manifest])
-  const handleInstall = async () => {
-    invalidateAllBuiltinTools()
-    invalidateInstalledPluginList()
-  }
+  const renderErrorTip = () => (
+    <div className="max-w-60 space-y-1 text-xs">
+      <h3 className="font-semibold text-text-primary">
+        {currentTool
+          ? t(($) => $['detailPanel.toolSelector.uninstalledTitle'], { ns: 'plugin' })
+          : t(($) => $['detailPanel.toolSelector.unsupportedTitle'], { ns: 'plugin' })}
+      </h3>
+      <p className="tracking-tight text-text-secondary">
+        {currentTool
+          ? t(($) => $['detailPanel.toolSelector.uninstalledContent'], { ns: 'plugin' })
+          : t(($) => $['detailPanel.toolSelector.unsupportedContent'], { ns: 'plugin' })}
+      </p>
+      <p>
+        <Link href="/plugins" className="tracking-tight text-text-accent">
+          {t(($) => $['detailPanel.toolSelector.uninstalledLink'], { ns: 'plugin' })}
+        </Link>
+      </p>
+    </div>
+  )
 
   return (
-    <>
-      <PortalToFollowElem
-        placement={placement}
-        offset={offset}
-        open={trigger ? controlledState : isShow}
-        onOpenChange={trigger ? onControlledStateChange : onShowChange}
-      >
-        <PortalToFollowElemTrigger
-          className='w-full'
-          onClick={() => {
-            if (!currentProvider || !currentTool) return
-            handleTriggerClick()
-          }}
-        >
-          {trigger}
-          {!trigger && !value?.provider_name && (
+    <Popover open={portalOpen} onOpenChange={handlePortalOpenChange}>
+      {trigger ? <PopoverTrigger render={trigger} /> : null}
+
+      {!trigger && !value?.provider_name ? (
+        <PopoverTrigger
+          render={
             <ToolTrigger
+              ref={triggerRef}
               isConfigure
               open={isShow}
               value={value}
               provider={currentProvider}
             />
+          }
+        />
+      ) : null}
+
+      {!trigger && value?.provider_name ? (
+        <ToolItem
+          triggerRef={triggerRef}
+          triggerLabel={value.tool_label || value.tool_name}
+          open={isShow}
+          icon={currentProvider?.icon || manifestIcon}
+          isMCPTool={currentProvider?.type === CollectionType.mcp}
+          providerName={value.provider_name}
+          providerShowName={value.provider_show_name}
+          toolLabel={value.tool_label || value.tool_name}
+          showSwitch={supportEnableSwitch}
+          switchValue={value.enabled}
+          onSwitchChange={handleEnabledChange}
+          onDelete={onDelete}
+          noAuth={currentProvider && currentTool && !currentProvider.is_team_authorization}
+          uninstalled={!currentProvider && inMarketPlace}
+          versionMismatch={currentProvider && inMarketPlace && !currentTool}
+          installInfo={manifest?.latest_package_identifier}
+          onInstall={handleInstall}
+          isError={(!currentProvider || !currentTool) && !inMarketPlace}
+          errorTip={renderErrorTip()}
+        />
+      ) : null}
+
+      <PopoverContent side="left" sideOffset={4} className="border-none bg-transparent shadow-none">
+        <div
+          className={cn(
+            'relative max-h-160.5 min-h-20 w-90.25 rounded-xl',
+            'border-[0.5px] border-components-panel-border bg-components-panel-bg-blur',
+            'overflow-y-auto pb-4 shadow-lg backdrop-blur-xs',
           )}
-          {!trigger && value?.provider_name && (
-            <ToolItem
-              open={isShow}
-              icon={currentProvider?.icon || manifestIcon}
-              isMCPTool={currentProvider?.type === CollectionType.mcp}
-              providerName={value.provider_name}
-              providerShowName={value.provider_show_name}
-              toolLabel={value.tool_label || value.tool_name}
-              showSwitch={supportEnableSwitch}
-              switchValue={value.enabled}
-              onSwitchChange={handleEnabledChange}
-              onDelete={onDelete}
-              noAuth={currentProvider && currentTool && !currentProvider.is_team_authorization}
-              onAuth={() => setShowSettingAuth(true)}
-              uninstalled={!currentProvider && inMarketPlace}
-              versionMismatch={currentProvider && inMarketPlace && !currentTool}
-              installInfo={manifest?.latest_package_identifier}
-              onInstall={() => handleInstall()}
-              isError={(!currentProvider || !currentTool) && !inMarketPlace}
-              errorTip={
-                <div className='max-w-[240px] space-y-1 text-xs'>
-                  <h3 className='font-semibold text-text-primary'>{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledTitle') : t('plugin.detailPanel.toolSelector.unsupportedTitle')}</h3>
-                  <p className='tracking-tight text-text-secondary'>{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledContent') : t('plugin.detailPanel.toolSelector.unsupportedContent')}</p>
-                  <p>
-                    <Link href={'/plugins'} className='tracking-tight text-text-accent'>{t('plugin.detailPanel.toolSelector.uninstalledLink')}</Link>
-                  </p>
-                </div>
-              }
-              canChooseMCPTool={canChooseMCPTool}
-            />
-          )}
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent>
-          <div className={cn('relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', !isShowSettingAuth && 'overflow-y-auto pb-2')}>
-            {!isShowSettingAuth && (
-              <>
-                <div className='system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary'>{t(`plugin.detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`)}</div>
-                {/* base form */}
-                <div className='flex flex-col gap-3 px-4 py-2'>
-                  <div className='flex flex-col gap-1'>
-                    <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>{t('plugin.detailPanel.toolSelector.toolLabel')}</div>
-                    <ToolPicker
-                      placement='bottom'
-                      offset={offset}
-                      trigger={
-                        <ToolTrigger
-                          open={panelShowState || isShowChooseTool}
-                          value={value}
-                          provider={currentProvider}
-                        />
-                      }
-                      isShow={panelShowState || isShowChooseTool}
-                      onShowChange={trigger ? onPanelShowStateChange as any : setIsShowChooseTool}
-                      disabled={false}
-                      supportAddCustomTool
-                      onSelect={handleSelectTool}
-                      onSelectMultiple={handleSelectMultipleTool}
-                      scope={scope}
-                      selectedTools={selectedTools}
-                      canChooseMCPTool={canChooseMCPTool}
-                    />
-                  </div>
-                  <div className='flex flex-col gap-1'>
-                    <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>{t('plugin.detailPanel.toolSelector.descriptionLabel')}</div>
-                    <Textarea
-                      className='resize-none'
-                      placeholder={t('plugin.detailPanel.toolSelector.descriptionPlaceholder')}
-                      value={value?.extra?.description || ''}
-                      onChange={handleDescriptionChange}
-                      disabled={!value?.provider_name}
-                    />
-                  </div>
-                </div>
-                {/* authorization */}
-                {currentProvider && currentProvider.type === CollectionType.builtIn && currentProvider.allow_delete && (
-                  <>
-                    <Divider className='my-1 w-full' />
-                    <div className='px-4 py-2'>
-                      {!currentProvider.is_team_authorization && (
-                        <Button
-                          variant='primary'
-                          className={cn('w-full shrink-0')}
-                          onClick={() => setShowSettingAuth(true)}
-                          disabled={!isCurrentWorkspaceManager}
-                        >
-                          {t('tools.auth.unauthorized')}
-                        </Button>
-                      )}
-                      {currentProvider.is_team_authorization && (
-                        <Button
-                          variant='secondary'
-                          className={cn('w-full shrink-0')}
-                          onClick={() => setShowSettingAuth(true)}
-                          disabled={!isCurrentWorkspaceManager}
-                        >
-                          <Indicator className='mr-2' color={'green'} />
-                          {t('tools.auth.authorized')}
-                        </Button>
-                      )}
-                    </div>
-                  </>
-                )}
-                {/* tool settings */}
-                {(currentToolSettings.length > 0 || currentToolParams.length > 0) && currentProvider?.is_team_authorization && (
-                  <>
-                    <Divider className='my-1 w-full' />
-                    {/* tabs */}
-                    {nodeId && showTabSlider && (
-                      <TabSlider
-                        className='mt-1 shrink-0 px-4'
-                        itemClassName='py-3'
-                        noBorderBottom
-                        smallItem
-                        value={currType}
-                        onChange={(value) => {
-                          setCurrType(value)
-                        }}
-                        options={[
-                          { value: 'settings', text: t('plugin.detailPanel.toolSelector.settings')! },
-                          { value: 'params', text: t('plugin.detailPanel.toolSelector.params')! },
-                        ]}
-                      />
-                    )}
-                    {nodeId && showTabSlider && currType === 'params' && (
-                      <div className='px-4 py-2'>
-                        <div className='system-xs-regular text-text-tertiary'>{t('plugin.detailPanel.toolSelector.paramsTip1')}</div>
-                        <div className='system-xs-regular text-text-tertiary'>{t('plugin.detailPanel.toolSelector.paramsTip2')}</div>
-                      </div>
-                    )}
-                    {/* user settings only */}
-                    {userSettingsOnly && (
-                      <div className='p-4 pb-1'>
-                        <div className='system-sm-semibold-uppercase text-text-primary'>{t('plugin.detailPanel.toolSelector.settings')}</div>
-                      </div>
-                    )}
-                    {/* reasoning config only */}
-                    {nodeId && reasoningConfigOnly && (
-                      <div className='mb-1 p-4 pb-1'>
-                        <div className='system-sm-semibold-uppercase text-text-primary'>{t('plugin.detailPanel.toolSelector.params')}</div>
-                        <div className='pb-1'>
-                          <div className='system-xs-regular text-text-tertiary'>{t('plugin.detailPanel.toolSelector.paramsTip1')}</div>
-                          <div className='system-xs-regular text-text-tertiary'>{t('plugin.detailPanel.toolSelector.paramsTip2')}</div>
-                        </div>
-                      </div>
-                    )}
-                    {/* user settings form */}
-                    {(currType === 'settings' || userSettingsOnly) && (
-                      <div className='px-4 py-2'>
-                        <ToolForm
-                          inPanel
-                          readOnly={false}
-                          nodeId={nodeId}
-                          schema={settingsFormSchemas as any}
-                          value={getPlainValue(value?.settings || {})}
-                          onChange={handleSettingsFormChange}
-                        />
-                      </div>
-                    )}
-                    {/* reasoning config form */}
-                    {nodeId && (currType === 'params' || reasoningConfigOnly) && (
-                      <ReasoningConfigForm
-                        value={value?.parameters || {}}
-                        onChange={handleParamsFormChange}
-                        schemas={paramsFormSchemas as any}
-                        nodeOutputVars={nodeOutputVars}
-                        availableNodes={availableNodes}
-                        nodeId={nodeId}
-                      />
-                    )}
-                  </>
-                )}
-              </>
-            )}
-            {/* authorization panel */}
-            {isShowSettingAuth && currentProvider && (
-              <>
-                <div className='relative flex flex-col gap-1 pt-3.5'>
-                  <div className='absolute -top-2 left-2 w-[345px] rounded-t-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pt-2 backdrop-blur-sm'></div>
-                  <div
-                    className='system-xs-semibold-uppercase flex h-6 cursor-pointer items-center gap-1 px-3 text-text-accent-secondary'
-                    onClick={() => setShowSettingAuth(false)}
-                  >
-                    <RiArrowLeftLine className='h-4 w-4' />
-                    BACK
-                  </div>
-                  <div className='system-xl-semibold px-4 text-text-primary'>{t('tools.auth.setupModalTitle')}</div>
-                  <div className='system-xs-regular px-4 text-text-tertiary'>{t('tools.auth.setupModalTitleDescription')}</div>
-                </div>
-                <ToolCredentialForm
-                  collection={currentProvider}
-                  onCancel={() => setShowSettingAuth(false)}
-                  onSaved={async value => updatePermission({
-                    providerName: currentProvider.name,
-                    credentials: value,
-                  })}
-                />
-              </>
-            )}
+        >
+          <div className="px-4 pt-3.5 pb-1 system-xl-semibold text-text-primary">
+            {t(($) => $[`detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`], {
+              ns: 'plugin',
+            })}
           </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
-    </>
+
+          <ToolBaseForm
+            value={value}
+            currentProvider={currentProvider}
+            scope={scope}
+            selectedTools={selectedTools}
+            isShowChooseTool={isShowChooseTool}
+            panelShowState={panelShowState}
+            hasTrigger={!!trigger}
+            onShowChange={setIsShowChooseTool}
+            onPanelShowStateChange={onPanelShowStateChange}
+            onSelectTool={handleSelectTool}
+            onSelectMultipleTool={handleSelectMultipleTool}
+            onDescriptionChange={handleDescriptionChange}
+          />
+
+          <ToolAuthorizationSection
+            currentProvider={currentProvider}
+            credentialId={value?.credential_id}
+            onAuthorizationItemClick={handleAuthorizationItemClick}
+          />
+
+          <ToolSettingsPanel
+            value={value}
+            currentProvider={currentProvider}
+            nodeId={nodeId}
+            currType={currType}
+            settingsFormSchemas={settingsFormSchemas}
+            paramsFormSchemas={paramsFormSchemas}
+            settingsValue={settingsValue}
+            showTabSlider={showTabSlider}
+            userSettingsOnly={userSettingsOnly}
+            reasoningConfigOnly={reasoningConfigOnly}
+            nodeOutputVars={nodeOutputVars}
+            availableNodes={availableNodes}
+            onCurrTypeChange={setCurrType}
+            onSettingsFormChange={handleSettingsFormChange}
+            onParamsFormChange={handleParamsFormChange}
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
-export default React.memo(ToolSelector)
+
+export default memo(ToolSelector)

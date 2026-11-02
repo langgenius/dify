@@ -1,0 +1,48 @@
+import logging
+
+from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
+from core.plugin.impl.datasource import PluginDatasourceManager
+from services.data_source.provider_service import DatasourceProviderService
+
+logger = logging.getLogger(__name__)
+
+
+class RagPipelineManageService:
+    @staticmethod
+    def list_rag_pipeline_datasources(
+        tenant_id: str,
+        *,
+        datasource_providers: DatasourceProviderService,
+    ) -> list[PluginDatasourceProviderEntity]:
+        """
+        list rag pipeline datasources
+        """
+
+        # get all builtin providers
+        manager = PluginDatasourceManager()
+        datasources = manager.fetch_datasource_providers(tenant_id)
+        for datasource in datasources:
+            if not datasource.declaration.credentials_schema and not datasource.declaration.oauth_schema:
+                # built-in providers that declare neither credentials nor OAuth never require authorization
+                datasource.is_authorized = True
+                continue
+            try:
+                credentials = datasource_providers.get_datasource_credentials(
+                    tenant_id=tenant_id,
+                    provider=datasource.provider,
+                    plugin_id=datasource.plugin_id,
+                )
+                if credentials:
+                    datasource.is_authorized = True
+            except Exception:
+                logger.exception(
+                    "Skipping datasource credentials for provider %s after refresh or decrypt failure",
+                    datasource.provider,
+                    extra={
+                        "tenant_id": tenant_id,
+                        "plugin_id": datasource.plugin_id,
+                        "provider": datasource.provider,
+                    },
+                )
+
+        return datasources

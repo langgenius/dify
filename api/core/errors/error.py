@@ -1,12 +1,9 @@
-from typing import Optional
-
-
 class LLMError(ValueError):
     """Base class for all LLM exceptions."""
 
-    description: Optional[str] = None
+    description: str = ""
 
-    def __init__(self, description: Optional[str] = None) -> None:
+    def __init__(self, description: str = ""):
         self.description = description
 
 
@@ -23,8 +20,8 @@ class ProviderTokenNotInitError(ValueError):
 
     description = "Provider Token Not Init"
 
-    def __init__(self, *args, **kwargs):
-        self.description = args[0] if args else self.description
+    def __init__(self, *args: object, **kwargs: object):
+        self.description = str(args[0]) if args else self.description
 
 
 class QuotaExceededError(ValueError):

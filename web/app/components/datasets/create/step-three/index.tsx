@@ -1,73 +1,106 @@
 'use client'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
+import type { DatasetAndDocumentResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { RETRIEVE_METHOD } from '@/types/app'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiBookOpenLine } from '@remixicon/react'
-import EmbeddingProcess from '../embedding-process'
-
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import type { FullDocumentDetail, createDocumentResponse } from '@/models/datasets'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { useDocLink } from '@/context/i18n'
+import EmbeddingProcess from '../embedding-process'
 
 type StepThreeProps = {
   datasetId?: string
   datasetName?: string
   indexingType?: string
-  retrievalMethod?: string
-  creationCache?: createDocumentResponse
+  retrievalMethod?: RETRIEVE_METHOD
+  creationCache?: DatasetAndDocumentResponse
 }
 
-const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrievalMethod }: StepThreeProps) => {
-  const { t } = useTranslation()
+const StepThree = ({
+  datasetId,
+  datasetName,
+  indexingType,
+  creationCache,
+  retrievalMethod,
+}: StepThreeProps) => {
+  const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
+  const docLink = useDocLink()
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  // The creation response carries no icon; new knowledge bases start with the default one.
+  const iconInfo = {
+    icon: '📙',
+    icon_type: 'emoji',
+    icon_background: '#FFF4ED',
+    icon_url: '',
+  }
 
   return (
-    <div className="flex h-full max-h-full w-full justify-center overflow-y-auto">
-      <div className="h-full max-w-[960px] shrink-0 grow overflow-y-auto px-14 sm:px-16">
-        <div className="mx-auto max-w-[640px]">
+    <div className="flex size-full max-h-full min-w-0 flex-col overflow-y-auto xl:flex-row xl:justify-center">
+      <div className="max-w-240 min-w-0 shrink-0 grow px-4 sm:px-8 xl:shrink xl:px-16">
+        <div className="mx-auto max-w-160 pt-10 pb-8">
           {!datasetId && (
             <>
-              <div className="pt-10">
-                <div className="mb-1 text-xl font-semibold leading-[22px] text-text-primary">{t('datasetCreation.stepThree.creationTitle')}</div>
-                <div className="mb-7 text-[13px] leading-4 text-text-tertiary">{t('datasetCreation.stepThree.creationContent')}</div>
-                <div className="flex gap-4">
-                  <AppIcon {...creationCache?.dataset} className="size-14 self-center text-2xl" />
-                  <div className="flex grow flex-col gap-1">
-                    <div className="text-[13px] font-semibold leading-6 text-text-secondary">{t('datasetCreation.stepThree.label')}</div>
-                    <div className="w-full truncate rounded-lg bg-components-input-bg-normal px-3 py-2 text-[13px] leading-4 text-components-input-text-filled">{datasetName || creationCache?.dataset?.name}</div>
+              <div className="flex flex-col gap-y-1 pb-3">
+                <h1 className="title-2xl-semi-bold text-text-primary">
+                  {t(($) => $['stepThree.creationTitle'], { ns: 'datasetCreation' })}
+                </h1>
+                <div className="system-sm-regular text-text-tertiary">
+                  {t(($) => $['stepThree.creationContent'], { ns: 'datasetCreation' })}
+                </div>
+              </div>
+              <div className="flex items-center gap-x-4">
+                <AppIcon size="xxl" className="shrink-0" icon={iconInfo} />
+                <div className="flex min-w-0 grow flex-col gap-y-1">
+                  <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
+                    {t(($) => $['stepThree.label'], { ns: 'datasetCreation' })}
+                  </div>
+                  <div className="w-full rounded-lg bg-components-input-bg-normal p-2 system-sm-regular wrap-anywhere text-components-input-text-filled">
+                    <span className="px-1">{datasetName || creationCache?.dataset?.name}</span>
                   </div>
                 </div>
               </div>
-              <hr className="my-6 h-[1px] border-0 bg-divider-subtle" />
+              <Separator orientation="horizontal" className="my-6 h-[0.5px] bg-divider-subtle" />
             </>
           )}
           {datasetId && (
-            <div className="pt-10">
-              <div className="mb-1 text-xl font-semibold leading-[22px] text-text-primary">{t('datasetCreation.stepThree.additionTitle')}</div>
-              <div className="mb-7 text-[13px] leading-4 text-text-tertiary">{`${t('datasetCreation.stepThree.additionP1')} ${datasetName || creationCache?.dataset?.name} ${t('datasetCreation.stepThree.additionP2')}`}</div>
+            <div className="flex flex-col gap-y-1 pb-3">
+              <h1 className="title-2xl-semi-bold text-text-primary">
+                {t(($) => $['stepThree.additionTitle'], { ns: 'datasetCreation' })}
+              </h1>
+              <div className="system-sm-regular text-text-tertiary">{`${t(($) => $['stepThree.additionP1'], { ns: 'datasetCreation' })} ${datasetName || creationCache?.dataset?.name} ${t(($) => $['stepThree.additionP2'], { ns: 'datasetCreation' })}`}</div>
             </div>
           )}
           <EmbeddingProcess
             datasetId={datasetId || creationCache?.dataset?.id || ''}
             batchId={creationCache?.batch || ''}
-            documents={creationCache?.documents as FullDocumentDetail[]}
+            documents={creationCache?.documents}
             indexingType={creationCache?.dataset?.indexing_technique || indexingType}
-            retrievalMethod={creationCache?.dataset?.retrieval_model_dict?.search_method || retrievalMethod}
+            retrievalMethod={retrievalMethod}
           />
         </div>
       </div>
-      {!isMobile && (
-        <div className="shrink-0 pr-8 pt-[88px] text-xs">
-          <div className="flex w-[328px] flex-col gap-3 rounded-xl bg-background-section p-6 text-text-tertiary">
-            <div className="flex size-10 items-center justify-center rounded-[10px] bg-components-card-bg shadow-lg">
-              <RiBookOpenLine className="size-5 text-text-accent" />
-            </div>
-            <div className="text-base font-semibold text-text-secondary">{t('datasetCreation.stepThree.sideTipTitle')}</div>
-            <div className="text-text-tertiary">{t('datasetCreation.stepThree.sideTipContent')}</div>
+      <div className="shrink-0 px-4 pb-8 text-xs sm:px-8 xl:pt-22 xl:pl-0">
+        <div className="flex w-full max-w-82 flex-col gap-3 rounded-xl bg-background-section p-6 text-text-tertiary">
+          <div className="flex size-10 items-center justify-center rounded-[10px] bg-components-card-bg shadow-lg">
+            <RiBookOpenLine className="size-5 text-text-accent" />
           </div>
+          <h2 className="text-base font-semibold text-text-secondary">
+            {t(($) => $['stepThree.sideTipTitle'], { ns: 'datasetCreation' })}
+          </h2>
+          <div className="text-text-tertiary">
+            {t(($) => $['stepThree.sideTipContent'], { ns: 'datasetCreation' })}
+          </div>
+          <a
+            href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="system-sm-regular text-text-accent"
+          >
+            {t(($) => $['addDocuments.stepThree.learnMore'], { ns: 'datasetPipeline' })}
+          </a>
         </div>
-      )}
+      </div>
     </div>
   )
 }

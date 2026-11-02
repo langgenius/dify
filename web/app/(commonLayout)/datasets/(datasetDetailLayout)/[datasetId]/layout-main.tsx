@@ -1,189 +1,193 @@
 'use client'
+
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import React, { useEffect, useMemo } from 'react'
-import { usePathname } from 'next/navigation'
-import useSWR from 'swr'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import * as React from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
-import {
-  RiEqualizer2Fill,
-  RiEqualizer2Line,
-  RiFileTextFill,
-  RiFileTextLine,
-  RiFocus2Fill,
-  RiFocus2Line,
-} from '@remixicon/react'
-import {
-  PaperClipIcon,
-} from '@heroicons/react/24/outline'
-import { RiApps2AddLine, RiBookOpenLine, RiInformation2Line } from '@remixicon/react'
-import classNames from '@/utils/classnames'
-import { fetchDatasetDetail, fetchDatasetRelatedApps } from '@/service/datasets'
-import type { RelatedAppResponse } from '@/models/datasets'
-import AppSideBar from '@/app/components/app-sidebar'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import DatasetDetailContext from '@/context/dataset-detail'
-import { DataSourceType } from '@/models/datasets'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { useStore } from '@/app/components/app/store'
-import { useDocLink } from '@/context/i18n'
-import { useAppContext } from '@/context/app-context'
-import Tooltip from '@/app/components/base/tooltip'
-import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
+import {
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+} from '@/context/permission-state'
+import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { usePathname, useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 
-export type IAppDetailLayoutProps = {
+type IAppDetailLayoutProps = {
   children: React.ReactNode
-  params: { datasetId: string }
+  datasetId: string
 }
 
-type IExtraInfoProps = {
-  isMobile: boolean
-  relatedApps?: RelatedAppResponse
-  expand: boolean
+const shouldRedirectToDatasetList = (error: unknown) => {
+  const status = getHttpErrorStatus(error)
+  return status === 403 || status === 404
 }
 
-const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
-  const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
-  const { t } = useTranslation()
-  const docLink = useDocLink()
+const datasetDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslation>['t']) => {
+  if (
+    pathname.endsWith('/documents/create') ||
+    pathname.endsWith('/documents/create-from-pipeline')
+  )
+    return t(($) => $['addDocuments.title'], { ns: 'datasetPipeline' })
+  if (pathname.includes('/documents'))
+    return t(($) => $['datasetMenus.documents'], { ns: 'common' })
+  if (pathname.endsWith('/pipeline')) return t(($) => $['datasetMenus.pipeline'], { ns: 'common' })
+  if (pathname.endsWith('/hitTesting'))
+    return t(($) => $['datasetMenus.hitTesting'], { ns: 'common' })
+  if (pathname.endsWith('/settings')) return t(($) => $['datasetMenus.settings'], { ns: 'common' })
+  if (pathname.endsWith('/access-config'))
+    return t(($) => $['settings.resourceAccess'], { ns: 'navigation' })
+  if (pathname.endsWith('/api')) return t(($) => $['appMenus.apiAccess'], { ns: 'common' })
 
-  const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
-  const relatedAppsTotal = relatedApps?.data?.length || 0
+  return t(($) => $['menus.datasets'], { ns: 'navigation' })
+}
 
-  useEffect(() => {
-    setShowTips(!isMobile)
-  }, [isMobile, setShowTips])
+const isDocumentDetailPath = (pathname: string) =>
+  /^\/datasets\/[^/]+\/documents\/(?!create(?:-from-pipeline)?\/?$)[^/]+(?:\/settings)?\/?$/.test(
+    pathname,
+  )
 
-  return <div>
-    {hasRelatedApps && (
-      <>
-        {!isMobile && (
-          <Tooltip
-            position='right'
-            noDecoration
-            popupContent={
-              <LinkedAppsPanel
-                relatedApps={relatedApps.data}
-                isMobile={isMobile}
-              />
-            }
-          >
-            <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
-              <span>{relatedAppsTotal || '--'} {t('common.datasetMenus.relatedApp')}</span>
-              <RiInformation2Line className='h-4 w-4' />
-            </div>
-          </Tooltip>
-        )}
+const DatasetDetailPageTitle = ({ title }: { title: string }) => {
+  useDocumentTitle(title)
 
-        {isMobile && <div className={classNames('pb-2 pt-4 text-xs font-medium uppercase text-text-tertiary', 'flex items-center justify-center gap-1 !px-0')}>
-          {relatedAppsTotal || '--'}
-          <PaperClipIcon className='h-4 w-4 text-text-secondary' />
-        </div>}
-      </>
-    )}
-    {!hasRelatedApps && !expand && (
-      <Tooltip
-        position='right'
-        noDecoration
-        popupContent={
-          <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4'>
-            <div className='inline-flex rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle p-2'>
-              <RiApps2AddLine className='h-4 w-4 text-text-tertiary' />
-            </div>
-            <div className='my-2 text-xs text-text-tertiary'>{t('common.datasetMenus.emptyTip')}</div>
-            <a
-              className='mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent'
-              href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
-              target='_blank' rel='noopener noreferrer'
-            >
-              <RiBookOpenLine className='mr-1 text-text-accent' />
-              {t('common.datasetMenus.viewDoc')}
-            </a>
-          </div>
-        }
-      >
-        <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
-          <span>{t('common.datasetMenus.noRelatedApp')}</span>
-          <RiInformation2Line className='h-4 w-4' />
-        </div>
-      </Tooltip>
-    )}
-  </div>
+  return null
+}
+
+const getDatasetRedirectionPath = (
+  dataset: DatasetDetailWithPartialMembersResponse,
+  datasetACLCapabilities: ReturnType<typeof getDatasetACLCapabilities>,
+) => {
+  if (dataset.provider === 'external') {
+    if (datasetACLCapabilities.canRetrievalRecall) return `/datasets/${dataset.id}/hitTesting`
+
+    return `/datasets/${dataset.id}/settings`
+  }
+
+  if (dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published)
+    return `/datasets/${dataset.id}/pipeline`
+
+  return `/datasets/${dataset.id}/documents`
 }
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
-  const {
-    children,
-    params: { datasetId },
-  } = props
+  const { children, datasetId } = props
+  const { t } = useTranslation(['common', 'datasetPipeline', 'navigation'])
+  const router = useRouter()
   const pathname = usePathname()
-  const hideSideBar = /documents\/create$/.test(pathname)
-  const { t } = useTranslation()
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const { data: isRbacEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ rbac_enabled }) => rbac_enabled,
+  })
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
-
-  const { data: datasetRes, error, mutate: mutateDatasetRes } = useSWR({
-    url: 'fetchDatasetDetail',
-    datasetId,
-  }, apiParams => fetchDatasetDetail(apiParams.datasetId))
-
-  const { data: relatedApps } = useSWR({
-    action: 'fetchDatasetRelatedApps',
-    datasetId,
-  }, apiParams => fetchDatasetRelatedApps(apiParams.datasetId))
-
-  const navigation = useMemo(() => {
-    const baseNavigation = [
-      { name: t('common.datasetMenus.hitTesting'), href: `/datasets/${datasetId}/hitTesting`, icon: RiFocus2Line, selectedIcon: RiFocus2Fill },
-      { name: t('common.datasetMenus.settings'), href: `/datasets/${datasetId}/settings`, icon: RiEqualizer2Line, selectedIcon: RiEqualizer2Fill },
-    ]
-
-    if (datasetRes?.provider !== 'external') {
-      baseNavigation.unshift({
-        name: t('common.datasetMenus.documents'),
-        href: `/datasets/${datasetId}/documents`,
-        icon: RiFileTextLine,
-        selectedIcon: RiFileTextFill,
-      })
-    }
-    return baseNavigation
-  }, [datasetRes?.provider, datasetId, t])
-
-  useDocumentTitle(datasetRes?.name || t('common.menus.datasets'))
-
-  const setAppSiderbarExpand = useStore(state => state.setAppSiderbarExpand)
+  const {
+    data: datasetRes,
+    error,
+    refetch: mutateDatasetRes,
+  } = useQuery(
+    consoleQuery.datasets.byDatasetId.get.queryOptions({
+      input: { params: { dataset_id: datasetId } },
+      enabled: !!datasetId,
+    }),
+  )
+  const shouldRedirect = shouldRedirectToDatasetList(error)
+  const datasetACLCapabilities = React.useMemo(
+    () =>
+      getDatasetACLCapabilities(datasetRes?.permission_keys, {
+        currentUserId,
+        resourceMaintainer: datasetRes?.maintainer,
+        workspacePermissionKeys,
+        isRbacEnabled,
+      }),
+    [
+      datasetRes?.maintainer,
+      datasetRes?.permission_keys,
+      isRbacEnabled,
+      currentUserId,
+      workspacePermissionKeys,
+    ],
+  )
+  const isAccessConfigPath = pathname.endsWith('/access-config')
+  const isHitTestingPath = pathname.endsWith('/hitTesting')
+  const isPermissionControlledPath = isAccessConfigPath || isHitTestingPath
+  const isCheckingRouteAccess =
+    !!datasetRes &&
+    isPermissionControlledPath &&
+    (isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys)
+  const shouldRedirectUnauthorizedRoute =
+    !!datasetRes &&
+    !isCheckingRouteAccess &&
+    ((isAccessConfigPath && !datasetACLCapabilities.canAccessConfig) ||
+      (isHitTestingPath && !datasetACLCapabilities.canRetrievalRecall))
+  const pageTitle = datasetDetailPageTitle(pathname, t)
+  const documentTitle = `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'navigation' })}`
 
   useEffect(() => {
-    const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
-    const mode = isMobile ? 'collapse' : 'expand'
-    setAppSiderbarExpand(isMobile ? mode : localeMode)
-  }, [isMobile, setAppSiderbarExpand])
+    if (shouldRedirect) router.replace('/datasets')
+  }, [router, shouldRedirect])
 
-  if (!datasetRes && !error)
-    return <Loading type='app' />
+  useEffect(() => {
+    if (!datasetRes || !shouldRedirectUnauthorizedRoute) return
+
+    router.replace(getDatasetRedirectionPath(datasetRes, datasetACLCapabilities))
+  }, [datasetACLCapabilities, datasetRes, router, shouldRedirectUnauthorizedRoute])
+
+  const isPipelinePage =
+    pathname.endsWith('/pipeline') || pathname.includes('/create-from-pipeline')
+  const shouldShowLoading =
+    (!datasetRes && !error) ||
+    shouldRedirect ||
+    isCheckingRouteAccess ||
+    shouldRedirectUnauthorizedRoute
+  const documentTitleOwnedByChild = isDocumentDetailPath(pathname) && !shouldShowLoading
+  const content = shouldShowLoading ? (
+    <LoadingPlaceholder className="h-full" />
+  ) : (
+    <div
+      className={cn(
+        'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
+        !isPipelinePage && 'pt-1 pr-1 pb-1',
+      )}
+    >
+      <DatasetDetailContext.Provider
+        value={{
+          indexingTechnique: datasetRes?.indexing_technique ?? undefined,
+          dataset: datasetRes,
+          mutateDatasetRes,
+        }}
+      >
+        <div
+          className={cn(
+            'min-w-0 grow overflow-hidden bg-components-panel-bg',
+            !isPipelinePage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+          )}
+        >
+          {children}
+        </div>
+      </DatasetDetailContext.Provider>
+    </div>
+  )
 
   return (
-    <div className='flex grow overflow-hidden'>
-      {!hideSideBar && <AppSideBar
-        title={datasetRes?.name || '--'}
-        icon={datasetRes?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
-        icon_background={datasetRes?.icon_background || '#F5F5F5'}
-        desc={datasetRes?.description || '--'}
-        isExternal={datasetRes?.provider === 'external'}
-        navigation={navigation}
-        extraInfo={!isCurrentWorkspaceDatasetOperator ? mode => <ExtraInfo isMobile={mode === 'collapse'} relatedApps={relatedApps} expand={mode === 'collapse'} /> : undefined}
-        iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}
-      />}
-      <DatasetDetailContext.Provider value={{
-        indexingTechnique: datasetRes?.indexing_technique,
-        dataset: datasetRes,
-        mutateDatasetRes: () => mutateDatasetRes(),
-      }}>
-        <div className="grow overflow-hidden bg-background-default-subtle">{children}</div>
-      </DatasetDetailContext.Provider>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body">
+      {!documentTitleOwnedByChild && <DatasetDetailPageTitle title={documentTitle} />}
+      {content}
     </div>
   )
 }

@@ -1,38 +1,46 @@
 'use client'
-import React, { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiArrowRightLine, RiFolder6Line } from '@remixicon/react'
-import FilePreview from '../file-preview'
-import FileUploader from '../file-uploader'
-import NotionPagePreview from '../notion-page-preview'
-import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
-import Website from '../website'
-import WebsitePreview from '../website/preview'
-import s from './index.module.css'
-import cn from '@/utils/classnames'
-import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
+
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
-import { DataSourceType } from '@/models/datasets'
-import Button from '@/app/components/base/button'
+import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { RiFolder6Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
+import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
+import { useCallback, useId, useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import NotionConnector from '@/app/components/base/notion-connector'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
-import { useDatasetDetailContext } from '@/context/dataset-detail'
-import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import classNames from '@/utils/classnames'
-import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
-import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
+import VectorSpaceUnavailable from '@/app/components/billing/vector-space-unavailable'
+import { toCreationDataSourceType } from '@/app/components/datasets/dataset-fields'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { DataSourceType } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
+import EmptyDatasetCreationContent from '../empty-dataset-creation-modal'
+import FileUploader from '../file-uploader'
+import Website from '../website'
+import { DataSourceTypeSelector, NextStepButton, PreviewPanel } from './components'
+import { usePreviewState } from './hooks'
+import s from './index.module.css'
+import UpgradeCard from './upgrade-card'
 
 type IStepOneProps = {
   datasetId?: string
   dataSourceType?: DataSourceType
   dataSourceTypeDisable: boolean
-  hasConnection: boolean
   onSetting: () => void
   files: FileItem[]
   updateFileList: (files: FileItem[]) => void
   updateFile: (fileItem: FileItem, progress: number, list: FileItem[]) => void
   notionPages?: NotionPage[]
+  notionCredentialId: string
   updateNotionPages: (value: NotionPage[]) => void
+  updateNotionCredentialId: (credentialId: string) => void
   onStepChange: () => void
   changeType: (type: DataSourceType) => void
   websitePages?: CrawlResultItem[]
@@ -41,28 +49,35 @@ type IStepOneProps = {
   onWebsiteCrawlJobIdChange: (jobId: string) => void
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
+  authedDataSourceList: DatasourceProviderAuthResponse[]
 }
 
-type NotionConnectorProps = {
-  onSetting: () => void
+// Helper function to check if notion is authenticated
+function checkNotionAuth(authedDataSourceList: DatasourceProviderAuthResponse[]): boolean {
+  const notionSource = authedDataSourceList.find((item) => item.provider === 'notion_datasource')
+  return Boolean(notionSource && notionSource.credentials_list.length > 0)
 }
-export const NotionConnector = (props: NotionConnectorProps) => {
-  const { onSetting } = props
-  const { t } = useTranslation()
 
+// Helper function to get notion credential list
+function getNotionCredentialList(authedDataSourceList: DatasourceProviderAuthResponse[]) {
   return (
-    <div className='flex w-[640px] flex-col items-start rounded-2xl bg-workflow-process-bg p-6'>
-      <span className={cn(s.notionIcon, 'mb-2 h-12 w-12 rounded-[10px] border-[0.5px] border-components-card-border p-3 shadow-lg shadow-shadow-shadow-5')} />
-      <div className='mb-1 flex flex-col gap-y-1 pb-3 pt-1'>
-        <span className='system-md-semibold text-text-secondary'>
-          {t('datasetCreation.stepOne.notionSyncTitle')}
-          <Icon3Dots className='relative -left-1.5 -top-2.5 inline h-4 w-4 text-text-secondary' />
-        </span>
-        <div className='system-sm-regular text-text-tertiary'>{t('datasetCreation.stepOne.notionSyncTip')}</div>
-      </div>
-      <Button className='h-8' variant='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
-    </div>
+    authedDataSourceList.find((item) => item.provider === 'notion_datasource')?.credentials_list ||
+    []
   )
+}
+
+// Lookup table for checking multiple items by data source type
+const MULTIPLE_ITEMS_CHECK: Record<
+  DataSourceType,
+  (props: {
+    files: FileItem[]
+    notionPages: NotionPage[]
+    websitePages: CrawlResultItem[]
+  }) => boolean
+> = {
+  [DataSourceType.FILE]: ({ files }) => files.length > 1,
+  [DataSourceType.NOTION]: ({ notionPages }) => notionPages.length > 1,
+  [DataSourceType.WEB]: ({ websitePages }) => websitePages.length > 1,
 }
 
 const StepOne = ({
@@ -70,266 +85,334 @@ const StepOne = ({
   dataSourceType: inCreatePageDataSourceType,
   dataSourceTypeDisable,
   changeType,
-  hasConnection,
   onSetting,
-  onStepChange,
+  onStepChange: doOnStepChange,
   files,
   updateFileList,
   updateFile,
   notionPages = [],
+  notionCredentialId,
   updateNotionPages,
+  updateNotionCredentialId,
   websitePages = [],
   updateWebsitePages,
   onWebsiteCrawlProviderChange,
   onWebsiteCrawlJobIdChange,
   crawlOptions,
   onCrawlOptionsChange,
+  authedDataSourceList,
 }: IStepOneProps) => {
-  const { dataset } = useDatasetDetailContext()
-  const [showModal, setShowModal] = useState(false)
-  const [currentFile, setCurrentFile] = useState<File | undefined>()
-  const [currentNotionPage, setCurrentNotionPage] = useState<NotionPage | undefined>()
-  const [currentWebsite, setCurrentWebsite] = useState<CrawlResultItem | undefined>()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
+  const sourceLabelId = useId()
+  const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
 
-  const modalShowHandle = () => setShowModal(true)
-  const modalCloseHandle = () => setShowModal(false)
+  // Preview state management
+  const {
+    currentFile,
+    currentNotionPage,
+    currentWebsite,
+    showFilePreview,
+    hideFilePreview,
+    showNotionPagePreview,
+    hideNotionPagePreview,
+    showWebsitePreview,
+    hideWebsitePreview,
+  } = usePreviewState()
 
-  const updateCurrentFile = useCallback((file: File) => {
-    setCurrentFile(file)
-  }, [])
+  const emptyDatasetDialogActionsRef = useRef<DialogActions>(null)
+  const isCreatingEmptyDatasetRef = useRef(false)
 
-  const hideFilePreview = useCallback(() => {
-    setCurrentFile(undefined)
-  }, [])
+  // Plan upgrade modal state
+  const [
+    isShowPlanUpgradeModal,
+    { setTrue: showPlanUpgradeModal, setFalse: hidePlanUpgradeModal },
+  ] = useBoolean(false)
 
-  const updateCurrentPage = useCallback((page: NotionPage) => {
-    setCurrentNotionPage(page)
-  }, [])
-
-  const hideNotionPagePreview = useCallback(() => {
-    setCurrentNotionPage(undefined)
-  }, [])
-
-  const updateWebsite = useCallback((website: CrawlResultItem) => {
-    setCurrentWebsite(website)
-  }, [])
-
-  const hideWebsitePreview = useCallback(() => {
-    setCurrentWebsite(undefined)
-  }, [])
-
+  // Computed values
   const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
   const isInCreatePage = shouldShowDataSourceTypeList
-  const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : dataset?.data_source_type
-  const { plan, enableBilling } = useProviderContext()
-  const allFileLoaded = (files.length > 0 && files.every(file => file.file.id))
-  const hasNotin = notionPages.length > 0
-  const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
-  const isShowVectorSpaceFull = (allFileLoaded || hasNotin) && isVectorSpaceFull && enableBilling
-  const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
-  const nextDisabled = useMemo(() => {
-    if (!files.length)
-      return true
-    if (files.some(file => !file.file.id))
-      return true
-    return isShowVectorSpaceFull
-  }, [files, isShowVectorSpaceFull])
+  // Default to FILE type when no type is provided from either source
+  const dataSourceType = isInCreatePage
+    ? (inCreatePageDataSourceType ?? DataSourceType.FILE)
+    : (toCreationDataSourceType(dataset?.data_source_type) ?? DataSourceType.FILE)
+
+  const allFileLoaded = files.length > 0 && files.every((file) => file.file.id)
+  const hasNotion = notionPages.length > 0
+  const shouldCheckVectorSpace = deploymentEdition === 'CLOUD' && (allFileLoaded || hasNotion)
+  const {
+    data: vectorSpace,
+    isFetching: isFetchingVectorSpacePlan,
+    refetch: refetchVectorSpace,
+  } = useQuery(
+    consoleQuery.features.vectorSpace.get.queryOptions({ enabled: shouldCheckVectorSpace }),
+  )
+  const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
+  const isVectorSpaceUnavailable =
+    shouldCheckVectorSpace && plan === 'sandbox' && !!vectorSpace?.usage_unknown
+  const isVectorSpaceFull =
+    !!vectorSpace &&
+    !vectorSpace.usage_unknown &&
+    vectorSpace.limit > 0 &&
+    vectorSpace.size >= vectorSpace.limit
+  const isShowVectorSpaceFull =
+    (allFileLoaded || hasNotion) && isVectorSpaceFull && deploymentEdition === 'CLOUD'
+  const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
+  const supportBatchUpload =
+    deploymentEdition !== 'CLOUD' || plan === 'professional' || plan === 'team'
+
+  const isNotionAuthed = useMemo(
+    () => checkNotionAuth(authedDataSourceList),
+    [authedDataSourceList],
+  )
+  const notionCredentialList = useMemo(
+    () => getNotionCredentialList(authedDataSourceList),
+    [authedDataSourceList],
+  )
+
+  const fileNextDisabled = useMemo(() => {
+    if (!files.length) return true
+    if (files.some((file) => !file.file.id)) return true
+    if (isCheckingVectorSpace) return true
+    return isShowVectorSpaceFull || isVectorSpaceUnavailable
+  }, [files, isCheckingVectorSpace, isShowVectorSpaceFull, isVectorSpaceUnavailable])
+
+  // Clear previews when switching data source type
+  const handleClearPreviews = useCallback(
+    (newType: DataSourceType) => {
+      if (newType !== DataSourceType.FILE) hideFilePreview()
+      if (newType !== DataSourceType.NOTION) hideNotionPagePreview()
+      if (newType !== DataSourceType.WEB) hideWebsitePreview()
+    },
+    [hideFilePreview, hideNotionPagePreview, hideWebsitePreview],
+  )
+
+  // Handle step change with batch upload check
+  const onStepChange = useCallback(() => {
+    if (isPlanUnavailable) return
+    if (!supportBatchUpload && dataSourceType) {
+      const checkFn = MULTIPLE_ITEMS_CHECK[dataSourceType]
+      if (checkFn?.({ files, notionPages, websitePages })) {
+        showPlanUpgradeModal()
+        return
+      }
+    }
+    doOnStepChange()
+  }, [
+    dataSourceType,
+    doOnStepChange,
+    files,
+    isPlanUnavailable,
+    supportBatchUpload,
+    notionPages,
+    showPlanUpgradeModal,
+    websitePages,
+  ])
 
   return (
-    <div className='h-full w-full overflow-x-auto'>
-      <div className='flex h-full w-full min-w-[1440px]'>
-        <div className='relative h-full w-1/2 overflow-y-auto'>
-          <div className='flex justify-end'>
-            <div className={classNames(s.form)}>
-              {
-                shouldShowDataSourceTypeList && (
-                  <div className={classNames(s.stepHeader, 'system-md-semibold text-text-secondary')}>
-                    {t('datasetCreation.steps.one')}
-                  </div>
-                )
-              }
-              {
-                shouldShowDataSourceTypeList && (
-                  <div className='mb-8 grid grid-cols-3 gap-4'>
-                    <div
-                      className={cn(
-                        s.dataSourceItem,
-                        'system-sm-medium',
-                        dataSourceType === DataSourceType.FILE && s.active,
-                        dataSourceTypeDisable && dataSourceType !== DataSourceType.FILE && s.disabled,
-                      )}
-                      onClick={() => {
-                        if (dataSourceTypeDisable)
-                          return
-                        changeType(DataSourceType.FILE)
-                        hideNotionPagePreview()
-                        hideWebsitePreview()
-                      }}
-                    >
-                      <span className={cn(s.datasetIcon)} />
-                      <span
-                        title={t('datasetCreation.stepOne.dataSourceType.file')!}
-                        className='truncate'
-                      >
-                        {t('datasetCreation.stepOne.dataSourceType.file')}
-                      </span>
-                    </div>
-                    <div
-                      className={cn(
-                        s.dataSourceItem,
-                        'system-sm-medium',
-                        dataSourceType === DataSourceType.NOTION && s.active,
-                        dataSourceTypeDisable && dataSourceType !== DataSourceType.NOTION && s.disabled,
-                      )}
-                      onClick={() => {
-                        if (dataSourceTypeDisable)
-                          return
-                        changeType(DataSourceType.NOTION)
-                        hideFilePreview()
-                        hideWebsitePreview()
-                      }}
-                    >
-                      <span className={cn(s.datasetIcon, s.notion)} />
-                      <span
-                        title={t('datasetCreation.stepOne.dataSourceType.notion')!}
-                        className='truncate'
-                      >
-                        {t('datasetCreation.stepOne.dataSourceType.notion')}
-                      </span>
-                    </div>
-                    {(ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL) && (
-                      <div
-                        className={cn(
-                          s.dataSourceItem,
-                          'system-sm-medium',
-                          dataSourceType === DataSourceType.WEB && s.active,
-                          dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
-                        )}
-                        onClick={() => {
-                          if (dataSourceTypeDisable)
-                            return
-                          changeType(DataSourceType.WEB)
-                          hideFilePreview()
-                          hideNotionPagePreview()
-                        }}
-                      >
-                        <span className={cn(s.datasetIcon, s.web)} />
-                        <span
-                          title={t('datasetCreation.stepOne.dataSourceType.web')!}
-                          className='truncate'
-                        >
-                          {t('datasetCreation.stepOne.dataSourceType.web')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )
-              }
+    <div className="size-full min-w-0 overflow-y-auto">
+      <div className="flex min-h-full w-full min-w-0 flex-col xl:h-full xl:flex-row">
+        {/* Left Panel - Form */}
+        <div className="relative w-full min-w-0 xl:h-full xl:w-1/2 xl:overflow-y-auto">
+          <div className="flex min-w-0 justify-end">
+            <div className={cn(s.form)}>
+              {shouldShowDataSourceTypeList && (
+                <>
+                  <h1
+                    id={sourceLabelId}
+                    className={cn(s.stepHeader, 'system-md-semibold text-text-secondary')}
+                  >
+                    {t(($) => $['steps.one'], { ns: 'datasetCreation' })}
+                  </h1>
+                  <DataSourceTypeSelector
+                    labelledBy={sourceLabelId}
+                    currentType={dataSourceType}
+                    disabled={dataSourceTypeDisable}
+                    onChange={changeType}
+                    onClearPreviews={handleClearPreviews}
+                  />
+                </>
+              )}
+
+              {/* File Data Source */}
               {dataSourceType === DataSourceType.FILE && (
                 <>
                   <FileUploader
                     fileList={files}
-                    titleClassName={!shouldShowDataSourceTypeList ? 'mt-[30px] !mb-[44px] !text-lg' : undefined}
+                    titleClassName={
+                      !shouldShowDataSourceTypeList ? 'mt-[30px] mb-[44px]! text-lg!' : undefined
+                    }
                     prepareFileList={updateFileList}
                     onFileListUpdate={updateFileList}
                     onFileUpdate={updateFile}
-                    onPreview={updateCurrentFile}
-                    notSupportBatchUpload={notSupportBatchUpload}
+                    onPreview={showFilePreview}
+                    supportBatchUpload={supportBatchUpload}
                   />
                   {isShowVectorSpaceFull && (
-                    <div className='mb-4 max-w-[640px]'>
+                    <div className="mb-4 max-w-160">
                       <VectorSpaceFull />
                     </div>
                   )}
-                  <div className="flex max-w-[640px] justify-end gap-2">
-                    {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
-                    <Button disabled={nextDisabled} variant='primary' onClick={onStepChange}>
-                      <span className="flex gap-0.5 px-[10px]">
-                        <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
-                        <RiArrowRightLine className="size-4" />
-                      </span>
-                    </Button>
-                  </div>
+                  {isVectorSpaceUnavailable && (
+                    <div className="mb-4 max-w-160">
+                      <VectorSpaceUnavailable
+                        isRetrying={isFetchingVectorSpacePlan}
+                        onRetry={() => void refetchVectorSpace()}
+                      />
+                    </div>
+                  )}
+                  <NextStepButton
+                    disabled={isPlanUnavailable || fileNextDisabled}
+                    onClick={onStepChange}
+                  />
+                  {deploymentEdition === 'CLOUD' && plan === 'sandbox' && (
+                    <div className="mt-5">
+                      <div className="mb-4 h-px bg-divider-subtle" />
+                      <UpgradeCard />
+                    </div>
+                  )}
                 </>
               )}
+
+              {/* Notion Data Source */}
               {dataSourceType === DataSourceType.NOTION && (
                 <>
-                  {!hasConnection && <NotionConnector onSetting={onSetting} />}
-                  {hasConnection && (
+                  {!isNotionAuthed && (
+                    <div
+                      className={cn(
+                        'mb-8 w-full max-w-160',
+                        !shouldShowDataSourceTypeList && 'mt-12',
+                      )}
+                    >
+                      <NotionConnector onSetting={onSetting} />
+                    </div>
+                  )}
+                  {isNotionAuthed && (
                     <>
-                      <div className='mb-8 w-[640px]'>
+                      <div className="mb-8 w-full max-w-160">
                         <NotionPageSelector
-                          value={notionPages.map(page => page.page_id)}
+                          value={notionPages.map((page) => page.page_id)}
                           onSelect={updateNotionPages}
-                          onPreview={updateCurrentPage}
+                          onPreview={showNotionPagePreview}
+                          credentialList={notionCredentialList}
+                          onSelectCredential={updateNotionCredentialId}
+                          datasetId={datasetId}
                         />
                       </div>
                       {isShowVectorSpaceFull && (
-                        <div className='mb-4 max-w-[640px]'>
+                        <div className="mb-4 max-w-160">
                           <VectorSpaceFull />
                         </div>
                       )}
-                      <div className="flex max-w-[640px] justify-end gap-2">
-                        {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
-                        <Button disabled={isShowVectorSpaceFull || !notionPages.length} variant='primary' onClick={onStepChange}>
-                          <span className="flex gap-0.5 px-[10px]">
-                            <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
-                            <RiArrowRightLine className="size-4" />
-                          </span>
-                        </Button>
-                      </div>
+                      {isVectorSpaceUnavailable && (
+                        <div className="mb-4 max-w-160">
+                          <VectorSpaceUnavailable
+                            isRetrying={isFetchingVectorSpacePlan}
+                            onRetry={() => void refetchVectorSpace()}
+                          />
+                        </div>
+                      )}
+                      <NextStepButton
+                        disabled={
+                          isPlanUnavailable ||
+                          isShowVectorSpaceFull ||
+                          isVectorSpaceUnavailable ||
+                          !notionPages.length
+                        }
+                        onClick={onStepChange}
+                      />
                     </>
                   )}
                 </>
               )}
+
+              {/* Web Data Source */}
               {dataSourceType === DataSourceType.WEB && (
                 <>
-                  <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
+                  <div
+                    className={cn(
+                      'mb-8 w-full max-w-160',
+                      !shouldShowDataSourceTypeList && 'mt-12',
+                    )}
+                  >
                     <Website
-                      onPreview={updateWebsite}
+                      onPreview={showWebsitePreview}
                       checkedCrawlResult={websitePages}
                       onCheckedCrawlResultChange={updateWebsitePages}
                       onCrawlProviderChange={onWebsiteCrawlProviderChange}
                       onJobIdChange={onWebsiteCrawlJobIdChange}
                       crawlOptions={crawlOptions}
                       onCrawlOptionsChange={onCrawlOptionsChange}
+                      authedDataSourceList={authedDataSourceList}
                     />
                   </div>
                   {isShowVectorSpaceFull && (
-                    <div className='mb-4 max-w-[640px]'>
+                    <div className="mb-4 max-w-160">
                       <VectorSpaceFull />
                     </div>
                   )}
-                  <div className="flex max-w-[640px] justify-end gap-2">
-                    {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
-                    <Button disabled={isShowVectorSpaceFull || !websitePages.length} variant='primary' onClick={onStepChange}>
-                      <span className="flex gap-0.5 px-[10px]">
-                        <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
-                        <RiArrowRightLine className="size-4" />
-                      </span>
-                    </Button>
-                  </div>
+                  <NextStepButton
+                    disabled={isPlanUnavailable || isShowVectorSpaceFull || !websitePages.length}
+                    onClick={onStepChange}
+                  />
                 </>
               )}
+
+              {/* Empty Dataset Creation Link */}
               {!datasetId && (
                 <>
-                  <div className='my-8 h-px max-w-[640px] bg-divider-regular' />
-                  <span className="inline-flex cursor-pointer items-center text-[13px] leading-4 text-text-accent" onClick={modalShowHandle}>
-                    <RiFolder6Line className="mr-1 size-4" />
-                    {t('datasetCreation.stepOne.emptyDatasetCreation')}
-                  </span>
+                  <div className="my-8 h-px max-w-160 bg-divider-regular" />
+                  <Dialog
+                    actionsRef={emptyDatasetDialogActionsRef}
+                    onOpenChange={(open, details) => {
+                      if (
+                        !open &&
+                        isCreatingEmptyDatasetRef.current &&
+                        details.reason !== 'imperative-action'
+                      )
+                        details.cancel()
+                    }}
+                  >
+                    <DialogTrigger
+                      type="button"
+                      className="inline-flex cursor-pointer items-center rounded-sm text-start text-[13px] leading-4 text-text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-input-border-active"
+                    >
+                      <RiFolder6Line aria-hidden="true" className="me-1 size-4 shrink-0" />
+                      {t(($) => $['stepOne.emptyDatasetCreation'], { ns: 'datasetCreation' })}
+                    </DialogTrigger>
+                    <DialogContent className="w-130">
+                      <EmptyDatasetCreationContent
+                        onCreated={() => emptyDatasetDialogActionsRef.current?.close()}
+                        onPendingChange={(pending) => {
+                          isCreatingEmptyDatasetRef.current = pending
+                        }}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </>
               )}
             </div>
-            <EmptyDatasetCreationModal show={showModal} onHide={modalCloseHandle} />
           </div>
         </div>
-        <div className='h-full w-1/2 overflow-y-auto'>
-          {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
-          {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
-          {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
-        </div>
+
+        {/* Right Panel - Preview */}
+        <PreviewPanel
+          currentFile={currentFile}
+          currentNotionPage={currentNotionPage}
+          currentWebsite={currentWebsite}
+          notionCredentialId={notionCredentialId}
+          isShowPlanUpgradeModal={isShowPlanUpgradeModal}
+          hideFilePreview={() => hideFilePreview(true)}
+          hideNotionPagePreview={hideNotionPagePreview}
+          hideWebsitePreview={hideWebsitePreview}
+          hidePlanUpgradeModal={hidePlanUpgradeModal}
+        />
       </div>
     </div>
   )

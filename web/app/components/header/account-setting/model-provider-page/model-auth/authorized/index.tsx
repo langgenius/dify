@@ -1,0 +1,281 @@
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
+import type { ComponentPropsWithRef, MouseEvent, ReactElement } from 'react'
+import type {
+  ConfigurationMethodEnum,
+  Credential,
+  CustomConfigurationModelFixedFields,
+  CustomModel,
+  ModelModalModeEnum,
+  ModelProvider,
+} from '../../declarations'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Fragment, memo, useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
+import { useAuth } from '../hooks'
+import AuthorizedItem from './authorized-item'
+
+type AuthorizedProps = Pick<PopoverContentProps, 'side' | 'align'> & {
+  provider: ModelProvider
+  configurationMethod: ConfigurationMethodEnum
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
+  authParams?: {
+    isModelCredential?: boolean
+    onUpdate?: (newPayload?: Record<string, unknown>, formValues?: Record<string, unknown>) => void
+    onRemove?: (credentialId: string) => void
+    mode?: ModelModalModeEnum
+  }
+  items: {
+    title?: string
+    model?: CustomModel
+    selectedCredential?: Credential
+    credentials: Credential[]
+  }[]
+  disabled?: boolean
+  renderTrigger: (open: boolean, props: ComponentPropsWithRef<'button'>) => ReactElement
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  popupClassName?: string
+  showItemSelectedIcon?: boolean
+  onItemClick?: (credential: Credential, model?: CustomModel) => void
+  enableAddModelCredential?: boolean
+  triggerOnlyOpenModal?: boolean
+  hideAddAction?: boolean
+  disableItemClick?: boolean
+  popupTitle?: string
+  showModelTitle?: boolean
+  disableDeleteButShowAction?: boolean
+  disableDeleteTip?: string
+}
+const Authorized = ({
+  provider,
+  configurationMethod,
+  currentCustomConfigurationModelFixedFields,
+  items,
+  authParams,
+  disabled,
+  renderTrigger,
+  isOpen,
+  onOpenChange,
+  side,
+  align = 'end',
+  popupClassName,
+  showItemSelectedIcon,
+  onItemClick,
+  triggerOnlyOpenModal,
+  hideAddAction,
+  disableItemClick,
+  popupTitle,
+  showModelTitle,
+  disableDeleteButShowAction,
+  disableDeleteTip,
+}: AuthorizedProps) => {
+  const { t } = useTranslation(['common', 'modelProvider'])
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
+  const [isLocalOpen, setIsLocalOpen] = useState(false)
+  const mergedIsOpen = isOpen ?? isLocalOpen
+  const setMergedIsOpen = useCallback(
+    (open: boolean) => {
+      if (onOpenChange) onOpenChange(open)
+
+      setIsLocalOpen(open)
+    },
+    [onOpenChange],
+  )
+  const { isModelCredential, onUpdate, onRemove, mode } = authParams || {}
+  const {
+    openConfirmDelete,
+    closeConfirmDelete,
+    doingAction,
+    handleActiveCredential,
+    handleConfirmDelete,
+    deleteCredentialId,
+    handleOpenModal,
+  } = useAuth(provider, configurationMethod, currentCustomConfigurationModelFixedFields, {
+    isModelCredential,
+    onUpdate,
+    onRemove,
+    mode,
+  })
+
+  const handleEdit = useCallback(
+    (credential?: Credential, model?: CustomModel) => {
+      if (credential ? !canManageCredential : !canCreateCredential) return
+
+      setMergedIsOpen(false)
+      handleOpenModal(credential, model)
+    },
+    [canCreateCredential, canManageCredential, handleOpenModal, setMergedIsOpen],
+  )
+  const handleDelete = useCallback(
+    (credential?: Credential, model?: CustomModel) => {
+      if (!canManageCredential) return
+
+      setMergedIsOpen(false)
+      openConfirmDelete(credential, model)
+    },
+    [canManageCredential, openConfirmDelete, setMergedIsOpen],
+  )
+
+  const handleItemClick = useCallback(
+    (credential: Credential, model?: CustomModel) => {
+      if (!canUseCredential) return
+
+      if (disableItemClick) return
+
+      if (onItemClick) onItemClick(credential, model)
+      else handleActiveCredential(credential, model)
+
+      setMergedIsOpen(false)
+    },
+    [canUseCredential, handleActiveCredential, onItemClick, setMergedIsOpen, disableItemClick],
+  )
+  const notAllowCustomCredential = provider.allow_custom_token === false
+  const handleTriggerClick = useCallback(
+    (event: MouseEvent<HTMLElement>) => {
+      if (!triggerOnlyOpenModal) return
+
+      event.preventDefault()
+      if (!canCreateCredential || notAllowCustomCredential || disabled) return
+
+      handleOpenModal()
+    },
+    [
+      canCreateCredential,
+      disabled,
+      handleOpenModal,
+      notAllowCustomCredential,
+      triggerOnlyOpenModal,
+    ],
+  )
+
+  return (
+    <>
+      <Popover open={mergedIsOpen} onOpenChange={setMergedIsOpen}>
+        <PopoverTrigger
+          render={(props, state) => renderTrigger(state.open, props)}
+          disabled={disabled}
+          onClick={handleTriggerClick}
+        />
+        <PopoverContent
+          side={side}
+          align={align}
+          className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+        >
+          <div
+            className={cn(
+              'w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]',
+              popupClassName,
+            )}
+          >
+            {popupTitle && (
+              <div className="px-3 pt-2.5 pb-0.5 system-xs-medium text-text-tertiary">
+                {popupTitle}
+              </div>
+            )}
+            <div className="max-h-76 overflow-y-auto">
+              {items.map((item) => (
+                <Fragment
+                  key={
+                    item.model?.model ??
+                    item.title ??
+                    item.credentials.map((credential) => credential.credential_id).join('-')
+                  }
+                >
+                  <AuthorizedItem
+                    provider={provider}
+                    title={item.title}
+                    model={item.model}
+                    credentials={item.credentials}
+                    disabled={disabled}
+                    disableEdit={!canManageCredential}
+                    disableDelete={!canManageCredential}
+                    onDelete={handleDelete}
+                    disableDeleteButShowAction={disableDeleteButShowAction}
+                    disableDeleteTip={disableDeleteTip}
+                    onEdit={handleEdit}
+                    showItemSelectedIcon={showItemSelectedIcon}
+                    selectedCredentialId={item.selectedCredential?.credential_id}
+                    onItemClick={canUseCredential ? handleItemClick : undefined}
+                    showModelTitle={showModelTitle}
+                  />
+                  {item !== items[items.length - 1] && (
+                    <div className="h-px bg-divider-subtle"></div>
+                  )}
+                </Fragment>
+              ))}
+            </div>
+            <div className="h-px bg-divider-subtle"></div>
+            {isModelCredential &&
+              !notAllowCustomCredential &&
+              !hideAddAction &&
+              canCreateCredential && (
+                <Button
+                  variant="ghost"
+                  disabled={disabled}
+                  onClick={() =>
+                    handleEdit(
+                      undefined,
+                      currentCustomConfigurationModelFixedFields
+                        ? {
+                            model: currentCustomConfigurationModelFixedFields.__model_name,
+                            model_type: currentCustomConfigurationModelFixedFields.__model_type,
+                          }
+                        : undefined,
+                    )
+                  }
+                  className="h-10 w-full justify-start px-3 system-xs-medium text-text-accent-light-mode-only"
+                >
+                  <span aria-hidden="true" className="i-ri-add-line size-4" />
+                  {t(($) => $['modelProvider.auth.addModelCredential'], { ns: 'modelProvider' })}
+                </Button>
+              )}
+            {!isModelCredential &&
+              !notAllowCustomCredential &&
+              !hideAddAction &&
+              canCreateCredential && (
+                <div className="p-2">
+                  <Button disabled={disabled} onClick={() => handleEdit()} className="w-full">
+                    {t(($) => $['modelProvider.auth.addApiKey'], { ns: 'modelProvider' })}
+                  </Button>
+                </div>
+              )}
+          </div>
+        </PopoverContent>
+      </Popover>
+      <AlertDialog
+        open={!!deleteCredentialId}
+        onOpenChange={(open) => !open && closeConfirmDelete()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirmDelete}>
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
+
+export default memo(Authorized)

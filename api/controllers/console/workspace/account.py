@@ -1,389 +1,654 @@
-import datetime
+from __future__ import annotations
 
-import pytz
+from datetime import datetime
+from http import HTTPStatus
+from typing import Annotated, Literal
+
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
+from pydantic.json_schema import SkipJsonSchema
+from werkzeug.exceptions import NotFound
 
-from configs import dify_config
 from constants.languages import supported_language
-from controllers.console import api
+from controllers.common.fields import (
+    AvatarUrlResponse,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+    VerificationTokenResponse,
+)
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console import console_ns
+from controllers.console.auth.error import (
+    EmailAlreadyInUseError,
+    EmailChangeLimitError,
+    EmailChangeRateLimitExceededError,
+    EmailCodeAccountDeletionRateLimitExceededError,
+    EmailCodeError,
+    InvalidEmailError,
+    InvalidTokenError,
+)
+from controllers.console.billing.error import (
+    BillingOperationFailedError,
+    BillingRequestInProgressError,
+    BillingUnavailableError,
+    to_billing_request_error,
+)
+from controllers.console.error import (
+    AccountInFreezeError,
+    AccountNotFound,
+    EducationActivateFailedError,
+    EducationActivateLimitError,
+    EducationVerifyFailedError,
+    EducationVerifyLimitError,
+    EmailDomainSuspendedError,
+    EmailSendIpLimitError,
+    InvalidAccountPasswordRequestError,
+)
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
     InvalidInvitationCodeError,
+    MissingInvitationCodeRequestError,
     RepeatPasswordNotMatchError,
 )
-from controllers.console.wraps import (
-    account_initialization_required,
-    cloud_edition_billing_enabled,
-    enterprise_license_required,
-    only_edition_cloud,
-    setup_required,
-)
-from extensions.ext_database import db
-from fields.member_fields import account_fields
-from libs.helper import TimestampField, timezone
-from libs.login import login_required
-from models import AccountIntegrate, InvitationCode
-from services.account_service import AccountService
-from services.billing_service import BillingService
-from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
+from controllers.console.wraps import model_validate, setup_required
+from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
+from fields.member_fields import AccountResponse
+from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
+from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
+from machinery.context import RequestContext
+from services import account_errors
+from services.account_education_service import EDUCATION_EDITIONS
+from services.entities.account_entities import AccountProfileChanges
+from services.errors.billing import BillingUpstreamError
 
 
-class AccountInitApi(Resource):
-    @setup_required
-    @login_required
-    def post(self):
-        account = current_user
+class AccountInitPayload(BaseModel):
+    interface_language: str
+    timezone: str
+    invitation_code: str | None = None
 
-        if account.status == "active":
-            raise AccountAlreadyInitedError()
+    @field_validator("interface_language")
+    @classmethod
+    def validate_language(cls, value: str) -> str:
+        return supported_language(value)
 
-        parser = reqparse.RequestParser()
-
-        if dify_config.EDITION == "CLOUD":
-            parser.add_argument("invitation_code", type=str, location="json")
-
-        parser.add_argument("interface_language", type=supported_language, required=True, location="json")
-        parser.add_argument("timezone", type=timezone, required=True, location="json")
-        args = parser.parse_args()
-
-        if dify_config.EDITION == "CLOUD":
-            if not args["invitation_code"]:
-                raise ValueError("invitation_code is required")
-
-            # check invitation code
-            invitation_code = (
-                db.session.query(InvitationCode)
-                .filter(
-                    InvitationCode.code == args["invitation_code"],
-                    InvitationCode.status == "unused",
-                )
-                .first()
-            )
-
-            if not invitation_code:
-                raise InvalidInvitationCodeError()
-
-            invitation_code.status = "used"
-            invitation_code.used_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-            invitation_code.used_by_tenant_id = account.current_tenant_id
-            invitation_code.used_by_account_id = account.id
-
-        account.interface_language = args["interface_language"]
-        account.timezone = args["timezone"]
-        account.interface_theme = "light"
-        account.status = "active"
-        account.initialized_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-        db.session.commit()
-
-        return {"result": "success"}
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str) -> str:
+        return timezone(value)
 
 
-class AccountProfileApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(account_fields)
-    @enterprise_license_required
-    def get(self):
-        return current_user
+class AccountAvatarQuery(BaseModel):
+    avatar: str = Field(..., description="Avatar file ID")
 
 
-class AccountNameApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(account_fields)
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
-        args = parser.parse_args()
+class AccountProfilePatchPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-        # Validate account name length
-        if len(args["name"]) < 3 or len(args["name"]) > 30:
-            raise ValueError("Account name must be between 3 and 30 characters.")
+    name: Annotated[str, Field(min_length=3, max_length=30)] | SkipJsonSchema[None] = None
+    avatar: str | SkipJsonSchema[None] = None
+    interface_language: str | SkipJsonSchema[None] = None
+    interface_theme: Literal["light", "dark"] | SkipJsonSchema[None] = None
+    timezone: str | SkipJsonSchema[None] = None
 
-        updated_account = AccountService.update_account(current_user, name=args["name"])
+    @field_validator("*", mode="before")
+    @classmethod
+    def reject_null(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("Account profile fields cannot be null")
+        return value
 
-        return updated_account
+    @field_validator("interface_language")
+    @classmethod
+    def validate_language(cls, value: str) -> str:
+        return supported_language(value)
 
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str) -> str:
+        return timezone(value)
 
-class AccountAvatarApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(account_fields)
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("avatar", type=str, required=True, location="json")
-        args = parser.parse_args()
-
-        updated_account = AccountService.update_account(current_user, avatar=args["avatar"])
-
-        return updated_account
-
-
-class AccountInterfaceLanguageApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(account_fields)
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("interface_language", type=supported_language, required=True, location="json")
-        args = parser.parse_args()
-
-        updated_account = AccountService.update_account(current_user, interface_language=args["interface_language"])
-
-        return updated_account
+    def to_changes(self) -> AccountProfileChanges:
+        return AccountProfileChanges(
+            name=self.name,
+            avatar=self.avatar,
+            interface_language=self.interface_language,
+            interface_theme=self.interface_theme,
+            timezone=self.timezone,
+        )
 
 
-class AccountInterfaceThemeApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(account_fields)
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("interface_theme", type=str, choices=["light", "dark"], required=True, location="json")
-        args = parser.parse_args()
+class AccountPasswordPayload(BaseModel):
+    password: str | None = None
+    new_password: str
+    repeat_new_password: str
 
-        updated_account = AccountService.update_account(current_user, interface_theme=args["interface_theme"])
-
-        return updated_account
-
-
-class AccountTimezoneApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(account_fields)
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("timezone", type=str, required=True, location="json")
-        args = parser.parse_args()
-
-        # Validate timezone string, e.g. America/New_York, Asia/Shanghai
-        if args["timezone"] not in pytz.all_timezones:
-            raise ValueError("Invalid timezone string.")
-
-        updated_account = AccountService.update_account(current_user, timezone=args["timezone"])
-
-        return updated_account
-
-
-class AccountPasswordApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(account_fields)
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("password", type=str, required=False, location="json")
-        parser.add_argument("new_password", type=str, required=True, location="json")
-        parser.add_argument("repeat_new_password", type=str, required=True, location="json")
-        args = parser.parse_args()
-
-        if args["new_password"] != args["repeat_new_password"]:
+    @model_validator(mode="after")
+    def check_passwords_match(self) -> AccountPasswordPayload:
+        if self.new_password != self.repeat_new_password:
             raise RepeatPasswordNotMatchError()
+        return self
 
+
+class AccountDeletePayload(BaseModel):
+    token: str
+    code: str
+
+
+class AccountDeletionFeedbackPayload(BaseModel):
+    email: EmailStr
+    feedback: str
+
+
+class EducationActivatePayload(BaseModel):
+    token: str
+    institution: str
+    role: str
+
+
+class EducationAutocompleteQuery(BaseModel):
+    keywords: str
+    page: int = 0
+    limit: int = 20
+
+
+class ChangeEmailSendPayload(BaseModel):
+    email: EmailStr
+    language: str | None = None
+    phase: str | None = None
+    token: str | None = None
+
+
+class ChangeEmailValidityPayload(BaseModel):
+    email: EmailStr
+    code: str
+    token: str
+
+
+class ChangeEmailResetPayload(BaseModel):
+    new_email: EmailStr
+    token: str
+
+
+class CheckEmailUniquePayload(BaseModel):
+    email: EmailStr
+
+
+register_schema_models(
+    console_ns,
+    AccountInitPayload,
+    AccountAvatarQuery,
+    AccountProfilePatchPayload,
+    AccountPasswordPayload,
+    AccountDeletePayload,
+    AccountDeletionFeedbackPayload,
+    EducationActivatePayload,
+    EducationAutocompleteQuery,
+    ChangeEmailSendPayload,
+    ChangeEmailValidityPayload,
+    ChangeEmailResetPayload,
+    CheckEmailUniquePayload,
+)
+
+
+class AccountIntegrateResponse(ResponseModel):
+    provider: str
+    created_at: int | None = None
+    is_bound: bool
+    link: str | None = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class AccountIntegrateListResponse(ResponseModel):
+    data: list[AccountIntegrateResponse]
+
+
+class EducationVerifyEligibleResponse(ResponseModel):
+    status: Literal["eligible"]
+    token: str
+
+
+class EducationVerifyNotEligibleResponse(ResponseModel):
+    status: Literal["not_eligible"]
+
+
+class EducationVerifyResponse(
+    RootModel[
+        Annotated[
+            EducationVerifyEligibleResponse | EducationVerifyNotEligibleResponse,
+            Field(discriminator="status"),
+        ]
+    ]
+):
+    """Education verification result: a token for an eligible account, none for an ineligible one."""
+
+
+class EducationActivateResponse(ResponseModel):
+    message: str
+
+
+class EducationStatusResponse(ResponseModel):
+    result: bool
+    is_student: bool
+    expire_at: int | None
+    allow_refresh: bool
+
+    @field_validator("expire_at", mode="before")
+    @classmethod
+    def _normalize_expire_at(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class EducationAutocompleteResponse(ResponseModel):
+    data: list[str]
+    curr_page: int
+    has_next: bool
+
+
+register_response_schema_models(
+    console_ns,
+    AccountResponse,
+    AccountIntegrateResponse,
+    AccountIntegrateListResponse,
+    AvatarUrlResponse,
+    EducationActivateResponse,
+    EducationVerifyResponse,
+    EducationStatusResponse,
+    EducationAutocompleteResponse,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+    VerificationTokenResponse,
+)
+
+
+@console_ns.route("/account/init")
+class AccountInitApi(Resource):
+    @error_responses(
+        AccountAlreadyInitedError, AccountNotFound, InvalidInvitationCodeError, MissingInvitationCodeRequestError
+    )
+    @console_ns.expect(console_ns.models[AccountInitPayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission(require_initialized=False)
+    @model_validate(AccountInitPayload)
+    def post(self, args: AccountInitPayload, request_context: RequestContext):
         try:
-            AccountService.update_account_password(current_user, args["password"], args["new_password"])
-        except ServiceCurrentPasswordIncorrectError:
-            raise CurrentPasswordIncorrectError()
+            application_services().accounts.initialization.initialize(
+                request_context,
+                interface_language=args.interface_language,
+                timezone=args.timezone,
+                invitation_code=args.invitation_code,
+            )
+        except account_errors.AccountAlreadyInitializedError as error:
+            raise AccountAlreadyInitedError() from error
+        except account_errors.MissingInvitationCodeError as error:
+            raise MissingInvitationCodeRequestError() from error
+        except account_errors.InvalidInvitationCodeError as error:
+            raise InvalidInvitationCodeError() from error
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
+@console_ns.route("/account/profile")
+class AccountProfileApi(Resource):
+    @error_responses(AccountNotFound)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
+    @console_account_admission(require_valid_enterprise_license=True)
+    def get(self, request_context: RequestContext):
+        try:
+            account = application_services().accounts.profile.get(request_context)
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+        return dump_response(AccountResponse, account)
+
+    @error_responses(AccountNotFound)
+    @console_ns.expect(console_ns.models[AccountProfilePatchPayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
+    @console_account_admission()
+    @model_validate(AccountProfilePatchPayload)
+    def patch(self, args: AccountProfilePatchPayload, request_context: RequestContext):
+        try:
+            account = application_services().accounts.profile.update(request_context, args.to_changes())
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+        return dump_response(AccountResponse, account)
+
+
+@console_ns.route("/account/avatar")
+class AccountAvatarApi(Resource):
+    @console_ns.doc("get_account_avatar")
+    @console_ns.doc(description="Get account avatar url")
+    @console_ns.doc(params=query_params_from_model(AccountAvatarQuery))
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AvatarUrlResponse.__name__])
+    @console_account_admission()
+    @model_validate(AccountAvatarQuery)
+    def get(self, args: AccountAvatarQuery, request_context: RequestContext):
+        try:
+            avatar_url = application_services().accounts.avatar.resolve(request_context, args.avatar)
+        except account_errors.AvatarFileNotFoundError as error:
+            raise NotFound("Avatar file not found") from error
+        return AvatarUrlResponse(avatar_url=avatar_url).model_dump(mode="json")
+
+
+@console_ns.route("/account/password")
+class AccountPasswordApi(Resource):
+    @error_responses(AccountNotFound, CurrentPasswordIncorrectError, InvalidAccountPasswordRequestError)
+    @console_ns.expect(console_ns.models[AccountPasswordPayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
+    @console_account_admission()
+    @model_validate(AccountPasswordPayload)
+    def post(self, args: AccountPasswordPayload, request_context: RequestContext):
+        try:
+            assert args.password is not None
+            account = application_services().accounts.password.change(
+                request_context,
+                current_password=args.password,
+                new_password=args.new_password,
+            )
+        except account_errors.CurrentAccountPasswordIncorrectError as error:
+            raise CurrentPasswordIncorrectError() from error
+        except account_errors.InvalidAccountPasswordError as error:
+            raise InvalidAccountPasswordRequestError(description=str(error)) from error
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+
+        return dump_response(AccountResponse, account)
+
+
+@console_ns.route("/account/integrates")
 class AccountIntegrateApi(Resource):
-    integrate_fields = {
-        "provider": fields.String,
-        "created_at": TimestampField,
-        "is_bound": fields.Boolean,
-        "link": fields.String,
-    }
-
-    integrate_list_fields = {
-        "data": fields.List(fields.Nested(integrate_fields)),
-    }
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(integrate_list_fields)
-    def get(self):
-        account = current_user
-
-        account_integrates = db.session.query(AccountIntegrate).filter(AccountIntegrate.account_id == account.id).all()
-
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountIntegrateListResponse.__name__])
+    @console_account_admission()
+    def get(self, request_context: RequestContext):
         base_url = request.url_root.rstrip("/")
         oauth_base_path = "/console/api/oauth/login"
-        providers = ["github", "google"]
+        integrations = application_services().accounts.integrations.list(request_context)
+        integrate_data = [
+            AccountIntegrateResponse(
+                provider=integration.provider,
+                created_at=to_timestamp(integration.created_at),
+                is_bound=integration.is_bound,
+                link=(None if integration.is_bound else f"{base_url}{oauth_base_path}/{integration.provider}"),
+            )
+            for integration in integrations
+        ]
 
-        integrate_data = []
-        for provider in providers:
-            existing_integrate = next((ai for ai in account_integrates if ai.provider == provider), None)
-            if existing_integrate:
-                integrate_data.append(
-                    {
-                        "id": existing_integrate.id,
-                        "provider": provider,
-                        "created_at": existing_integrate.created_at,
-                        "is_bound": True,
-                        "link": None,
-                    }
-                )
-            else:
-                integrate_data.append(
-                    {
-                        "id": None,
-                        "provider": provider,
-                        "created_at": None,
-                        "is_bound": False,
-                        "link": f"{base_url}{oauth_base_path}/{provider}",
-                    }
-                )
-
-        return {"data": integrate_data}
+        return AccountIntegrateListResponse(data=integrate_data).model_dump(mode="json")
 
 
+@console_ns.route("/account/delete/verify")
 class AccountDeleteVerifyApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        account = current_user
+    @error_responses(AccountNotFound, EmailCodeAccountDeletionRateLimitExceededError)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
+    @console_account_admission()
+    def get(self, request_context: RequestContext):
+        try:
+            token = application_services().accounts.deletion.issue_verification(request_context)
+        except account_errors.AccountDeletionRateLimitError as error:
+            raise EmailCodeAccountDeletionRateLimitExceededError(error.retry_after_minutes) from None
+        except account_errors.AccountNotFoundError:
+            raise AccountNotFound() from None
 
-        token, code = AccountService.generate_account_deletion_verification_code(account)
-        AccountService.send_account_deletion_verification_email(account, code)
-
-        return {"result": "success", "data": token}
+        return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
 
 
+@console_ns.route("/account/delete")
 class AccountDeleteApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self):
-        account = current_user
+    @error_responses(InvalidAccountDeletionCodeError)
+    @console_ns.expect(console_ns.models[AccountDeletePayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission()
+    @model_validate(AccountDeletePayload)
+    def post(self, args: AccountDeletePayload, request_context: RequestContext):
+        try:
+            application_services().accounts.deletion.request_deletion(
+                request_context,
+                token=args.token,
+                code=args.code,
+            )
+        except account_errors.InvalidAccountDeletionVerificationError:
+            raise InvalidAccountDeletionCodeError() from None
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("token", type=str, required=True, location="json")
-        parser.add_argument("code", type=str, required=True, location="json")
-        args = parser.parse_args()
-
-        if not AccountService.verify_account_deletion_code(args["token"], args["code"]):
-            raise InvalidAccountDeletionCodeError()
-
-        AccountService.delete_account(account)
-
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
+@console_ns.route("/account/delete/feedback")
 class AccountDeleteUpdateFeedbackApi(Resource):
+    @console_ns.expect(console_ns.models[AccountDeletionFeedbackPayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=str, required=True, location="json")
-        parser.add_argument("feedback", type=str, required=True, location="json")
-        args = parser.parse_args()
+    @model_validate(AccountDeletionFeedbackPayload)
+    def post(self, args: AccountDeletionFeedbackPayload):
+        application_services().accounts.deletion_feedback.submit(email=args.email, feedback=args.feedback)
 
-        BillingService.update_account_deletion_feedback(args["email"], args["feedback"])
-
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
+_EDUCATION_BILLING_ERRORS = (
+    account_errors.EducationVerificationFailedError,
+    account_errors.EducationActivationFailedError,
+    account_errors.EducationRequestInProgressError,
+    BillingUpstreamError,
+)
+
+
+def _education_billing_error(
+    error: account_errors.EducationVerificationFailedError
+    | account_errors.EducationActivationFailedError
+    | account_errors.EducationRequestInProgressError
+    | BillingUpstreamError,
+) -> BaseHTTPException:
+    if isinstance(error, account_errors.EducationVerificationFailedError):
+        return EducationVerifyFailedError()
+    if isinstance(error, account_errors.EducationActivationFailedError):
+        return EducationActivateFailedError()
+    if isinstance(error, account_errors.EducationRequestInProgressError):
+        return BillingRequestInProgressError()
+    return to_billing_request_error(error)
+
+
+@console_ns.route("/account/education/verify")
 class EducationVerifyApi(Resource):
-    verify_fields = {
-        "token": fields.String,
-    }
+    @error_responses(
+        AccountNotFound,
+        BillingOperationFailedError,
+        BillingRequestInProgressError,
+        BillingUnavailableError,
+        EducationVerifyFailedError,
+        EducationVerifyLimitError,
+    )
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationVerifyResponse.__name__])
+    @console_account_admission(editions=EDUCATION_EDITIONS)
+    def get(self, request_context: RequestContext):
+        try:
+            verification = application_services().accounts.education.verify(request_context)
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+        except account_errors.EducationRateLimitExceededError as error:
+            raise EducationVerifyLimitError() from error
+        except _EDUCATION_BILLING_ERRORS as error:
+            raise _education_billing_error(error) from error
+        return dump_response(EducationVerifyResponse, verification)
 
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    @cloud_edition_billing_enabled
-    @marshal_with(verify_fields)
-    def get(self):
-        account = current_user
 
-        return BillingService.EducationIdentity.verify(account.id, account.email)
-
-
+@console_ns.route("/account/education")
 class EducationApi(Resource):
-    status_fields = {
-        "result": fields.Boolean,
-    }
+    @error_responses(
+        AccountNotFound,
+        BillingOperationFailedError,
+        BillingRequestInProgressError,
+        BillingUnavailableError,
+        EducationActivateFailedError,
+        EducationActivateLimitError,
+    )
+    @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationActivateResponse.__name__])
+    @console_account_admission(editions=EDUCATION_EDITIONS)
+    @model_validate(EducationActivatePayload)
+    def post(self, args: EducationActivatePayload, request_context: RequestContext):
+        try:
+            activation = application_services().accounts.education.activate(
+                request_context,
+                token=args.token,
+                institution=args.institution,
+                role=args.role,
+            )
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+        except account_errors.EducationRateLimitExceededError as error:
+            raise EducationActivateLimitError() from error
+        except _EDUCATION_BILLING_ERRORS as error:
+            raise _education_billing_error(error) from error
+        return dump_response(EducationActivateResponse, activation)
 
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    @cloud_edition_billing_enabled
-    def post(self):
-        account = current_user
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("token", type=str, required=True, location="json")
-        parser.add_argument("institution", type=str, required=True, location="json")
-        parser.add_argument("role", type=str, required=True, location="json")
-        args = parser.parse_args()
-
-        return BillingService.EducationIdentity.activate(account, args["token"], args["institution"], args["role"])
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    @cloud_edition_billing_enabled
-    @marshal_with(status_fields)
-    def get(self):
-        account = current_user
-
-        return BillingService.EducationIdentity.is_active(account.id)
+    @error_responses(BillingOperationFailedError, BillingRequestInProgressError, BillingUnavailableError)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationStatusResponse.__name__])
+    @console_account_admission(editions=EDUCATION_EDITIONS)
+    def get(self, request_context: RequestContext):
+        try:
+            status = application_services().accounts.education.status(request_context)
+        except _EDUCATION_BILLING_ERRORS as error:
+            raise _education_billing_error(error) from error
+        return dump_response(EducationStatusResponse, status)
 
 
+@console_ns.route("/account/education/autocomplete")
 class EducationAutoCompleteApi(Resource):
-    data_fields = {
-        "data": fields.List(fields.String),
-        "curr_page": fields.Integer,
-        "has_next": fields.Boolean,
-    }
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    @cloud_edition_billing_enabled
-    @marshal_with(data_fields)
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("keywords", type=str, required=True, location="args")
-        parser.add_argument("page", type=int, required=False, location="args", default=0)
-        parser.add_argument("limit", type=int, required=False, location="args", default=20)
-        args = parser.parse_args()
-
-        return BillingService.EducationIdentity.autocomplete(args["keywords"], args["page"], args["limit"])
+    @error_responses(BillingOperationFailedError, BillingUnavailableError)
+    @console_ns.doc(params=query_params_from_model(EducationAutocompleteQuery))
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
+    @console_account_admission(editions=EDUCATION_EDITIONS)
+    @model_validate(EducationAutocompleteQuery)
+    def get(self, args: EducationAutocompleteQuery, request_context: RequestContext):
+        try:
+            institutions = application_services().accounts.education.autocomplete(
+                request_context,
+                keywords=args.keywords,
+                page=args.page,
+                limit=args.limit,
+            )
+        except _EDUCATION_BILLING_ERRORS as error:
+            raise _education_billing_error(error) from error
+        return dump_response(EducationAutocompleteResponse, institutions)
 
 
-# Register API resources
-api.add_resource(AccountInitApi, "/account/init")
-api.add_resource(AccountProfileApi, "/account/profile")
-api.add_resource(AccountNameApi, "/account/name")
-api.add_resource(AccountAvatarApi, "/account/avatar")
-api.add_resource(AccountInterfaceLanguageApi, "/account/interface-language")
-api.add_resource(AccountInterfaceThemeApi, "/account/interface-theme")
-api.add_resource(AccountTimezoneApi, "/account/timezone")
-api.add_resource(AccountPasswordApi, "/account/password")
-api.add_resource(AccountIntegrateApi, "/account/integrates")
-api.add_resource(AccountDeleteVerifyApi, "/account/delete/verify")
-api.add_resource(AccountDeleteApi, "/account/delete")
-api.add_resource(AccountDeleteUpdateFeedbackApi, "/account/delete/feedback")
-api.add_resource(EducationVerifyApi, "/account/education/verify")
-api.add_resource(EducationApi, "/account/education")
-api.add_resource(EducationAutoCompleteApi, "/account/education/autocomplete")
-# api.add_resource(AccountEmailApi, '/account/email')
-# api.add_resource(AccountEmailVerifyApi, '/account/email-verify')
+@console_ns.route("/account/change-email")
+class ChangeEmailSendEmailApi(Resource):
+    @error_responses(
+        AccountNotFound, EmailChangeRateLimitExceededError, EmailSendIpLimitError, InvalidEmailError, InvalidTokenError
+    )
+    @console_ns.expect(console_ns.models[ChangeEmailSendPayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
+    @console_account_admission(require_change_email_enabled=True)
+    @model_validate(ChangeEmailSendPayload)
+    def post(self, args: ChangeEmailSendPayload, request_context: RequestContext):
+        ip_address = extract_remote_ip(request)
+        language = "zh-Hans" if args.language == "zh-Hans" else "en-US"
+        try:
+            token = application_services().accounts.change_email.send_code(
+                request_context,
+                requested_email=args.email,
+                language=language,
+                phase=args.phase,
+                predecessor_token=args.token,
+                ip_address=ip_address,
+            )
+        except account_errors.ChangeEmailSendIPLimitedError:
+            raise EmailSendIpLimitError() from None
+        except account_errors.ChangeEmailSendRateLimitError as error:
+            raise EmailChangeRateLimitExceededError(error.retry_after_minutes) from None
+        except account_errors.InvalidChangeEmailTokenError:
+            raise InvalidTokenError() from None
+        except account_errors.InvalidChangeEmailAddressError:
+            raise InvalidEmailError() from None
+        except account_errors.AccountNotFoundError:
+            raise AccountNotFound() from None
+        return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
+
+
+@console_ns.route("/account/change-email/validity")
+class ChangeEmailCheckApi(Resource):
+    @error_responses(EmailChangeLimitError, EmailCodeError, InvalidEmailError, InvalidTokenError)
+    @console_ns.expect(console_ns.models[ChangeEmailValidityPayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
+    @console_account_admission(require_change_email_enabled=True)
+    @model_validate(ChangeEmailValidityPayload)
+    def post(self, args: ChangeEmailValidityPayload, request_context: RequestContext):
+        try:
+            verification = application_services().accounts.change_email.verify_code(
+                request_context,
+                email=args.email,
+                code=args.code,
+                token=args.token,
+            )
+        except account_errors.ChangeEmailVerificationLimitError:
+            raise EmailChangeLimitError() from None
+        except account_errors.InvalidChangeEmailTokenError:
+            raise InvalidTokenError() from None
+        except account_errors.InvalidChangeEmailAddressError:
+            raise InvalidEmailError() from None
+        except account_errors.InvalidChangeEmailCodeError:
+            raise EmailCodeError() from None
+        return VerificationTokenResponse(is_valid=True, email=verification.email, token=verification.token).model_dump(
+            mode="json"
+        )
+
+
+@console_ns.route("/account/change-email/reset")
+class ChangeEmailResetApi(Resource):
+    @error_responses(
+        AccountInFreezeError, AccountNotFound, EmailAlreadyInUseError, EmailDomainSuspendedError, InvalidTokenError
+    )
+    @console_ns.expect(console_ns.models[ChangeEmailResetPayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
+    @console_account_admission(require_change_email_enabled=True)
+    @model_validate(ChangeEmailResetPayload)
+    def post(self, args: ChangeEmailResetPayload, request_context: RequestContext):
+        try:
+            updated_account = application_services().accounts.change_email.reset(
+                request_context,
+                new_email=args.new_email,
+                token=args.token,
+            )
+        except account_errors.AccountEmailDomainSuspendedError:
+            raise EmailDomainSuspendedError() from None
+        except account_errors.AccountEmailFrozenError:
+            raise AccountInFreezeError() from None
+        except account_errors.AccountEmailAlreadyInUseError:
+            raise EmailAlreadyInUseError() from None
+        except account_errors.InvalidChangeEmailTokenError:
+            raise InvalidTokenError() from None
+        except account_errors.AccountNotFoundError:
+            raise AccountNotFound() from None
+
+        return dump_response(AccountResponse, updated_account)
+
+
+@console_ns.route("/account/change-email/check-email-unique")
+class CheckEmailUnique(Resource):
+    @error_responses(AccountInFreezeError, EmailAlreadyInUseError, EmailDomainSuspendedError)
+    @console_ns.expect(console_ns.models[CheckEmailUniquePayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission()
+    @model_validate(CheckEmailUniquePayload)
+    def post(self, args: CheckEmailUniquePayload, request_context: RequestContext):
+        try:
+            application_services().accounts.change_email.ensure_available(args.email)
+        except account_errors.AccountEmailDomainSuspendedError:
+            raise EmailDomainSuspendedError() from None
+        except account_errors.AccountEmailFrozenError:
+            raise AccountInFreezeError() from None
+        except account_errors.AccountEmailAlreadyInUseError:
+            raise EmailAlreadyInUseError() from None
+        return SimpleResultResponse(result="success").model_dump(mode="json")

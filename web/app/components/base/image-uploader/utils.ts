@@ -1,36 +1,63 @@
+import type { TFunction } from 'i18next'
+import { ORPCError } from '@orpc/client'
 import { upload } from '@/service/base'
+
+/**
+ * Get appropriate error message for image upload errors
+ * @param error - The error object from upload failure
+ * @param defaultMessage - Default error message to use if no specific error is matched
+ * @param t - Translation function
+ * @returns Localized error message
+ */
+export const getImageUploadErrorMessage = (
+  error: unknown,
+  defaultMessage: string,
+  t: TFunction<['common']>,
+): string => {
+  const errorCode = error instanceof ORPCError ? error.code : undefined
+
+  if (errorCode === 'forbidden') return error instanceof Error ? error.message : defaultMessage
+
+  if (errorCode === 'file_extension_blocked')
+    return t(($) => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
+
+  return defaultMessage
+}
 
 type ImageUploadParams = {
   file: File
   onProgressCallback: (progress: number) => void
   onSuccessCallback: (res: { id: string }) => void
-  onErrorCallback: () => void
+  onErrorCallback: (error?: unknown) => void
 }
 type ImageUpload = (v: ImageUploadParams, isPublic?: boolean, url?: string) => void
-export const imageUpload: ImageUpload = ({
-  file,
-  onProgressCallback,
-  onSuccessCallback,
-  onErrorCallback,
-}, isPublic, url) => {
+export const imageUpload: ImageUpload = (
+  { file, onProgressCallback, onSuccessCallback, onErrorCallback },
+  isPublic,
+  url,
+) => {
   const formData = new FormData()
   formData.append('file', file)
   const onProgress = (e: ProgressEvent) => {
     if (e.lengthComputable) {
-      const percent = Math.floor(e.loaded / e.total * 100)
+      const percent = Math.floor((e.loaded / e.total) * 100)
       onProgressCallback(percent)
     }
   }
 
-  upload({
-    xhr: new XMLHttpRequest(),
-    data: formData,
-    onprogress: onProgress,
-  }, isPublic, url)
+  upload(
+    {
+      xhr: new XMLHttpRequest(),
+      data: formData,
+      onprogress: onProgress,
+    },
+    isPublic,
+    url,
+  )
     .then((res: { id: string }) => {
       onSuccessCallback(res)
     })
-    .catch(() => {
-      onErrorCallback()
+    .catch((error) => {
+      onErrorCallback(error)
     })
 }

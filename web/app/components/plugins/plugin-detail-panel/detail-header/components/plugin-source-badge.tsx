@@ -1,0 +1,79 @@
+'use client'
+
+import type { SelectorParam } from 'i18next'
+import type { FC, ReactNode } from 'react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useTranslation } from 'react-i18next'
+import { PluginSource } from '../../../types'
+
+type SourceConfig = {
+  icon: ReactNode
+  tipSelector: SelectorParam<'plugin'>
+}
+
+type PluginSourceBadgeProps = {
+  source: PluginSource
+}
+
+const SOURCE_CONFIG_MAP: Record<PluginSource, SourceConfig | null> = {
+  [PluginSource.marketplace]: {
+    icon: (
+      <span
+        aria-hidden
+        className="i-custom-vender-plugin-box-sparkle-fill size-3.5 text-text-tertiary hover:text-text-accent"
+      />
+    ),
+    tipSelector: ($) => $['detailPanel.categoryTip.marketplace'],
+  },
+  [PluginSource.github]: {
+    icon: (
+      <span
+        aria-hidden
+        className="i-custom-public-common-github size-3.5 text-text-secondary hover:text-text-primary"
+      />
+    ),
+    tipSelector: ($) => $['detailPanel.categoryTip.github'],
+  },
+  [PluginSource.local]: {
+    icon: <span aria-hidden className="i-ri-hard-drive-3-line size-3.5 text-text-tertiary" />,
+    tipSelector: ($) => $['detailPanel.categoryTip.local'],
+  },
+  [PluginSource.debugging]: {
+    icon: (
+      <span
+        aria-hidden
+        className="i-ri-bug-line size-3.5 text-text-tertiary hover:text-text-warning"
+      />
+    ),
+    tipSelector: ($) => $['detailPanel.categoryTip.debugging'],
+  },
+}
+
+const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
+  const { t } = useTranslation(['plugin'])
+
+  const config = SOURCE_CONFIG_MAP[source]
+  if (!config) return null
+  const tip = t(config.tipSelector, { ns: 'plugin' })
+
+  return (
+    <>
+      <div className="mr-0.5 ml-1 system-xs-regular text-text-quaternary">·</div>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <span className="inline-flex">
+              <span aria-hidden className="inline-flex">
+                {config.icon}
+              </span>
+              <span className="sr-only">{tip}</span>
+            </span>
+          }
+        />
+        <TooltipContent>{tip}</TooltipContent>
+      </Tooltip>
+    </>
+  )
+}
+
+export default PluginSourceBadge

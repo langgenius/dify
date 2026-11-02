@@ -1,12 +1,13 @@
-import { RiFileTextLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
 import type { DataSourceNotionPage } from '@/models/common'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiFileTextLine } from '@remixicon/react'
 
 type IconTypes = 'workspace' | 'page'
 type NotionIconProps = {
   type?: IconTypes
   name?: string | null
   className?: string
+  decorative?: boolean
   src?: string | null | DataSourceNotionPage['page_icon']
 }
 const NotionIcon = ({
@@ -14,24 +15,38 @@ const NotionIcon = ({
   src,
   name,
   className,
+  decorative = false,
 }: NotionIconProps) => {
   if (type === 'workspace') {
     if (typeof src === 'string') {
       if (src.startsWith('https://') || src.startsWith('http://')) {
         return (
           <img
-            alt='workspace icon'
+            alt={decorative ? '' : 'workspace icon'}
             src={src}
-            className={cn('block h-5 w-5 object-cover', className)}
+            className={cn('block size-5 object-cover', className)}
           />
         )
       }
       return (
-        <div className={cn('flex h-5 w-5 items-center justify-center', className)}>{src}</div>
+        <div
+          aria-hidden={decorative || undefined}
+          className={cn('flex size-5 items-center justify-center', className)}
+        >
+          {src}
+        </div>
       )
     }
     return (
-      <div className={cn('flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-xs font-medium text-gray-500', className)}>{name?.[0].toLocaleUpperCase()}</div>
+      <div
+        aria-hidden={decorative || undefined}
+        className={cn(
+          'flex size-5 items-center justify-center rounded-sm bg-gray-200 text-xs font-medium text-gray-500',
+          className,
+        )}
+      >
+        {name?.[0]!.toLocaleUpperCase()}
+      </div>
     )
   }
 
@@ -39,19 +54,27 @@ const NotionIcon = ({
     if (src?.type === 'url') {
       return (
         <img
-          alt='page icon'
+          alt={decorative ? '' : 'page icon'}
           src={src.url || ''}
-          className={cn('block h-5 w-5 object-cover', className)}
+          className={cn('block size-5 object-cover', className)}
         />
       )
     }
     return (
-      <div className={cn('flex h-5 w-5 items-center justify-center', className)}>{src?.emoji}</div>
+      <div
+        aria-hidden={decorative || undefined}
+        className={cn('flex size-5 items-center justify-center', className)}
+      >
+        {src?.emoji}
+      </div>
     )
   }
 
   return (
-    <RiFileTextLine className={cn('h-5 w-5 text-text-tertiary', className)} />
+    <RiFileTextLine
+      aria-hidden={decorative || undefined}
+      className={cn('size-5 text-text-tertiary', className)}
+    />
   )
 }
 

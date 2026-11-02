@@ -1,20 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import type { Plugin } from '../../../types'
-import type { PackageDependency } from '../../../types'
+import type { PackageDependency, Plugin, VersionProps } from '../../../types'
+import * as React from 'react'
+import LoadingError from '../../base/loading-error'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import LoadedItem from './loaded-item'
-import LoadingError from '../../base/loading-error'
-import type { VersionProps } from '@/app/components/plugins/types'
 
-type Props = {
+type Props = Readonly<{
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
   payload: PackageDependency
   isFromMarketPlace?: boolean
   versionInfo: VersionProps
-}
+}>
 
 const PackageItem: FC<Props> = ({
   payload,
@@ -23,8 +21,7 @@ const PackageItem: FC<Props> = ({
   isFromMarketPlace,
   versionInfo,
 }) => {
-  if (!payload.value?.manifest)
-    return <LoadingError />
+  if (!payload.value?.manifest) return <LoadingError />
 
   const plugin = pluginManifestToCardPluginProps(payload.value.manifest)
   return (

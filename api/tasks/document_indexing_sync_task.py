@@ -1,16 +1,23 @@
-import datetime
+import json
 import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
+from sqlalchemy import delete, select
 
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
+from core.db.session_factory import get_session_maker, session_factory
 from core.rag.extractor.notion_extractor import NotionExtractor
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from extensions.ext_database import db
+from core.rag.index_processor.index_processor import IndexProcessorFactory
+from extensions.application_services.data_sources import build_data_source_credentials
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
-from models.source import DataSourceOauthBinding
+from models.enums import IndexingStatus
+from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DatasetRef
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
@@ -22,96 +29,150 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
 
     Usage: document_indexing_sync_task.delay(dataset_id, document_id)
     """
-    logging.info(click.style("Start sync document: {}".format(document_id), fg="green"))
+    logger.info(click.style(f"Start sync document: {document_id}", fg="green"))
     start_at = time.perf_counter()
+    tenant_id = None
 
-    document = db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+    with session_factory.create_session() as session, session.begin():
+        document = session.scalar(
+            select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+        )
 
-    if not document:
-        logging.info(click.style("Document not found: {}".format(document_id), fg="red"))
-        db.session.close()
-        return
+        if not document:
+            logger.info(click.style(f"Document not found: {document_id}", fg="red"))
+            return
 
-    data_source_info = document.data_source_info_dict
-    if document.data_source_type == "notion_import":
+        if document.indexing_status == IndexingStatus.PARSING:
+            logger.info(click.style(f"Document {document_id} is already being processed, skipping", fg="yellow"))
+            return
+
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+        if not dataset:
+            raise Exception("Dataset not found")
+
+        data_source_info = document.data_source_info_dict
+        if document.data_source_type != "notion_import":
+            logger.info(click.style(f"Document {document_id} is not a notion_import, skipping", fg="yellow"))
+            return
+
         if (
             not data_source_info
             or "notion_page_id" not in data_source_info
             or "notion_workspace_id" not in data_source_info
         ):
             raise ValueError("no notion page found")
+
         workspace_id = data_source_info["notion_workspace_id"]
         page_id = data_source_info["notion_page_id"]
         page_type = data_source_info["type"]
         page_edited_time = data_source_info["last_edited_time"]
-        data_source_binding = (
-            db.session.query(DataSourceOauthBinding)
-            .filter(
-                db.and_(
-                    DataSourceOauthBinding.tenant_id == document.tenant_id,
-                    DataSourceOauthBinding.provider == "notion",
-                    DataSourceOauthBinding.disabled == False,
-                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
-                )
-            )
-            .first()
+        credential_id = data_source_info.get("credential_id")
+        tenant_id = document.tenant_id
+        index_type = document.doc_form
+
+        segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+        index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+
+    # Get credentials from datasource provider
+    datasource_provider_service = build_data_source_credentials(database_client=get_session_maker()).providers
+    credential = datasource_provider_service.get_datasource_credentials(
+        tenant_id=tenant_id,
+        credential_id=credential_id,
+        provider="notion_datasource",
+        plugin_id="langgenius/notion_datasource",
+    )
+
+    if not credential:
+        logger.error(
+            "Datasource credential not found for document %s, tenant_id: %s, credential_id: %s",
+            document_id,
+            tenant_id,
+            credential_id,
         )
-        if not data_source_binding:
-            raise ValueError("Data source binding not found.")
 
-        loader = NotionExtractor(
-            notion_workspace_id=workspace_id,
-            notion_obj_id=page_id,
-            notion_page_type=page_type,
-            notion_access_token=data_source_binding.access_token,
-            tenant_id=document.tenant_id,
-        )
+        with session_factory.create_session() as session, session.begin():
+            document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
+            if document:
+                document.indexing_status = IndexingStatus.ERROR
+                document.error = "Datasource credential not found. Please reconnect your Notion workspace."
+                document.stopped_at = naive_utc_now()
+        return
 
-        last_edited_time = loader.get_notion_last_edited_time()
+    loader = NotionExtractor(
+        notion_token_loader=lambda: datasource_provider_service.get_stored_notion_access_token(
+            tenant_id=tenant_id, credential_id=credential_id
+        ),
+        notion_workspace_id=workspace_id,
+        notion_obj_id=page_id,
+        notion_page_type=page_type,
+        notion_access_token=credential.get("integration_secret"),
+        tenant_id=tenant_id,
+    )
 
-        # check the page is updated
-        if last_edited_time != page_edited_time:
-            document.indexing_status = "parsing"
-            document.processing_started_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-            db.session.commit()
+    last_edited_time = loader.get_notion_last_edited_time()
+    if last_edited_time == page_edited_time:
+        logger.info(click.style(f"Document {document_id} content unchanged, skipping sync", fg="yellow"))
+        return
 
-            # delete all document segment and index
-            try:
-                dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
-                if not dataset:
-                    raise Exception("Dataset not found")
-                index_type = document.doc_form
-                index_processor = IndexProcessorFactory(index_type).init_index_processor()
+    logger.info(click.style(f"Document {document_id} content changed, starting sync", fg="green"))
 
-                segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
-                index_node_ids = [segment.index_node_id for segment in segments]
+    try:
+        indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
+        with session_factory.create_session() as session:
+            document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
+            if not document:
+                logger.warning(click.style(f"Document {document_id} not found during sync", fg="yellow"))
+                return
 
-                # delete from vector index
-                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
-
-                for segment in segments:
-                    db.session.delete(segment)
-
-                end_at = time.perf_counter()
-                logging.info(
-                    click.style(
-                        "Cleaned document when document update data source or process rule: {} latency: {}".format(
-                            document_id, end_at - start_at
-                        ),
-                        fg="green",
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+            # End the read transaction before the external vector cleanup.
+            session.commit()
+            if dataset:
+                try:
+                    index_processor = IndexProcessorFactory(index_type).init_index_processor()
+                    index_processor.clean(
+                        dataset,
+                        index_node_ids,
+                        with_keywords=True,
+                        delete_child_chunks=True,
+                        session=session,
                     )
-                )
-            except Exception:
-                logging.exception("Cleaned document when document update data source or process rule failed")
+                    session.commit()
+                    logger.info(click.style(f"Cleaned vector index for document {document_id}", fg="green"))
+                except Exception:
+                    logger.exception("Failed to clean vector index for document %s", document_id)
+                    session.rollback()
+                    document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
+                    if not document:
+                        logger.warning(click.style(f"Document {document_id} not found during sync", fg="yellow"))
+                        return
 
-            try:
-                indexing_runner = IndexingRunner()
-                indexing_runner.run([document])
-                end_at = time.perf_counter()
-                logging.info(
-                    click.style("update document: {} latency: {}".format(document.id, end_at - start_at), fg="green")
-                )
-            except DocumentIsPausedError as ex:
-                logging.info(click.style(str(ex), fg="yellow"))
-            except Exception:
-                logging.exception("document_indexing_sync_task failed, document_id: {}".format(document_id))
+            data_source_info = document.data_source_info_dict
+            data_source_info["last_edited_time"] = last_edited_time
+            document.data_source_info = json.dumps(data_source_info)
+
+            document.indexing_status = IndexingStatus.PARSING
+            document.processing_started_at = naive_utc_now()
+
+            segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
+            session.execute(segment_delete_stmt)
+            document_refs = [DatasetRef(document.tenant_id, document.dataset_id).document(document.id)]
+            # Make the source update and segment deletion visible before extraction.
+            session.commit()
+
+            logger.info(click.style(f"Deleted segments for document {document_id}", fg="green"))
+
+            indexing_service.run(document_refs)
+        end_at = time.perf_counter()
+        logger.info(click.style(f"Sync completed for document {document_id} latency: {end_at - start_at}", fg="green"))
+    except DocumentIsPausedError as ex:
+        logger.info(click.style(str(ex), fg="yellow"))
+    except Exception as e:
+        logger.exception("document_indexing_sync_task failed for document_id: %s", document_id)
+        with session_factory.create_session() as session:
+            document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
+            if document:
+                document.indexing_status = IndexingStatus.ERROR
+                document.error = str(e)
+                document.stopped_at = naive_utc_now()
+                session.commit()

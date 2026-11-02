@@ -10,6 +10,7 @@
 
 # next.js
 /.next/
+/.vinext/
 /out/
 
 # production
@@ -54,3 +55,7 @@ package-lock.json
 # mise
 mise.toml
 
+
+.vscode/settings.json
+.vscode/mcp.json
+.vitest/

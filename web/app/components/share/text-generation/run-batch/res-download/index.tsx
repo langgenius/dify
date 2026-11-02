@@ -1,32 +1,26 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiDownloadLine } from '@remixicon/react'
-import {
-  useCSVDownloader,
-} from 'react-papaparse'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { useCSVDownloader } from 'react-papaparse'
 
-export type IResDownloadProps = {
+type IResDownloadProps = {
   isMobile: boolean
   values: Record<string, string>[]
 }
 
-const ResDownload: FC<IResDownloadProps> = ({
-  isMobile,
-  values,
-}) => {
-  const { t } = useTranslation()
+const ResDownload: FC<IResDownloadProps> = ({ isMobile, values }) => {
+  const { t } = useTranslation(['common'])
   const { CSVDownloader, Type } = useCSVDownloader()
 
   return (
     <CSVDownloader
       className="block cursor-pointer"
       type={Type.Link}
-      filename={'result'}
+      filename="result"
       bom={true}
       config={{
         // delimiter: ';',
@@ -34,14 +28,14 @@ const ResDownload: FC<IResDownloadProps> = ({
       data={values}
     >
       {isMobile && (
-        <ActionButton>
-          <RiDownloadLine className='h-4 w-4' />
-        </ActionButton>
+        <IconButton aria-label={t(($) => $['operation.download'], { ns: 'common' })}>
+          <RiDownloadLine aria-hidden="true" className="size-4" />
+        </IconButton>
       )}
       {!isMobile && (
-        <Button className={cn('space-x-1')}>
-          <RiDownloadLine className='h-4 w-4' />
-          <span>{t('common.operation.download')}</span>
+        <Button>
+          <RiDownloadLine className="size-4" />
+          <span>{t(($) => $['operation.download'], { ns: 'common' })}</span>
         </Button>
       )}
     </CSVDownloader>

@@ -1,30 +1,25 @@
 import type { StateCreator } from 'zustand'
-import type {
-  ToolWithProvider,
-} from '@/app/components/workflow/types'
+import type { ToolWithProvider } from '../../types'
 
 export type ToolSliceShape = {
-  buildInTools: ToolWithProvider[]
-  setBuildInTools: (tools: ToolWithProvider[]) => void
-  customTools: ToolWithProvider[]
-  setCustomTools: (tools: ToolWithProvider[]) => void
-  workflowTools: ToolWithProvider[]
-  setWorkflowTools: (tools: ToolWithProvider[]) => void
-  mcpTools: ToolWithProvider[]
-  setMcpTools: (tools: ToolWithProvider[]) => void
   toolPublished: boolean
   setToolPublished: (toolPublished: boolean) => void
+  lastPublishedHasUserInput: boolean
+  setLastPublishedHasUserInput: (hasUserInput: boolean) => void
+  buildInTools?: ToolWithProvider[]
+  customTools?: ToolWithProvider[]
+  workflowTools?: ToolWithProvider[]
+  mcpTools?: ToolWithProvider[]
 }
 
-export const createToolSlice: StateCreator<ToolSliceShape> = set => ({
-  buildInTools: [],
-  setBuildInTools: buildInTools => set(() => ({ buildInTools })),
-  customTools: [],
-  setCustomTools: customTools => set(() => ({ customTools })),
-  workflowTools: [],
-  setWorkflowTools: workflowTools => set(() => ({ workflowTools })),
-  mcpTools: [],
-  setMcpTools: mcpTools => set(() => ({ mcpTools })),
+export const createToolSlice: StateCreator<ToolSliceShape> = (set) => ({
   toolPublished: false,
-  setToolPublished: toolPublished => set(() => ({ toolPublished })),
+  setToolPublished: (toolPublished) => set(() => ({ toolPublished })),
+  lastPublishedHasUserInput: false,
+  setLastPublishedHasUserInput: (hasUserInput) =>
+    set(() => ({ lastPublishedHasUserInput: hasUserInput })),
+  buildInTools: undefined,
+  customTools: undefined,
+  workflowTools: undefined,
+  mcpTools: undefined,
 })

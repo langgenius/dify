@@ -1,11 +1,17 @@
 import logging
-from datetime import UTC, datetime
+from http import HTTPStatus
+from typing import Any, Literal
+from uuid import UUID
 
-from flask_login import current_user
-from flask_restful import reqparse
-from werkzeug.exceptions import InternalServerError, NotFound
+from flask import Response
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
 
 import services
+from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -15,142 +21,251 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
-from controllers.console.explore.wraps import InstalledAppResource
+from controllers.console.explore.installed_app_admission import get_installed_app
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_runtime.errors.invoke import InvokeError
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import uuid_value
+from libs.external_api import error_responses
+from machinery.context import RequestContext
+from models.enums import CreatorUserRole
 from models.model import AppMode
-from services.app_generate_service import AppGenerateService
+from services.account_errors import AccountNotFoundError
+from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.llm import InvokeRateLimitError
+from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
+from services.installed_app_generation_service import InstalledAppNotChatError, InstalledAppNotCompletionError
+
+logger = logging.getLogger(__name__)
+
+
+class CompletionMessageExplorePayload(BaseModel):
+    inputs: dict[str, Any]
+    query: str = ""
+    files: list[dict[str, Any]] | None = Field(default=None)
+    response_mode: Literal["blocking", "streaming"] | None = None
+    retriever_from: str = Field(default="explore_app")
+
+
+class ChatMessageExplorePayload(BaseModel):
+    inputs: dict[str, Any]
+    query: str
+    files: list[dict[str, Any]] | None = Field(default=None)
+    conversation_id: str | None = None
+    parent_message_id: str | None = None
+    retriever_from: str = Field(default="explore_app")
+
+    @field_validator("conversation_id", "parent_message_id", mode="before")
+    @classmethod
+    def normalize_uuid(cls, value: str | UUID | None) -> str | None:
+        """
+        Accept blank IDs and validate UUID format when provided.
+        """
+        if not value:
+            return None
+
+        try:
+            return helper.uuid_value(value)
+        except ValueError as exc:
+            raise ValueError("must be a valid UUID") from exc
+
+
+register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessageExplorePayload)
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 # define completion api for user
-class CompletionApi(InstalledAppResource):
-    def post(self, installed_app):
-        app_model = installed_app.app
-        if app_model.mode != "completion":
-            raise NotCompletionAppError()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("query", type=str, location="json", default="")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        parser.add_argument("retriever_from", type=str, required=False, default="explore_app", location="json")
-        args = parser.parse_args()
-
-        streaming = args["response_mode"] == "streaming"
-        args["auto_generate_name"] = False
-
-        installed_app.last_used_at = datetime.now(UTC).replace(tzinfo=None)
-        db.session.commit()
-
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/completion-messages",
+    endpoint="installed_app_completion",
+)
+class CompletionApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        NotCompletionAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
+    @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success")
+    @console_account_admission()
+    @get_installed_app
+    @model_validate(CompletionMessageExplorePayload)
+    def post(
+        self,
+        req_data: CompletionMessageExplorePayload,
+        request_context: RequestContext,
+        installed_app: InstalledAppRef,
+    ) -> Response:
         try:
-            response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+            response = application_services().installed_apps.generation.generate_completion(
+                installed_app=installed_app,
+                account_id=request_context.account_id,
+                args=req_data.model_dump(exclude_none=True),
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
-            raise AppUnavailableError()
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        except InstalledAppNotCompletionError:
+            raise NotCompletionAppError() from None
+        except InstalledAppNotFoundError:
+            raise NotFoundError("Installed app not found") from None
+        except AccountNotFoundError:
+            raise UnauthorizedError("Account no longer exists.") from None
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
+            logger.exception("App model config broken.")
+            raise AppUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
-        except Exception:
-            logging.exception("internal server error.")
-            raise InternalServerError()
+        except Exception as caught_error:
+            logger.exception("internal server error.")
+            raise InternalServerError() from caught_error
 
 
-class CompletionStopApi(InstalledAppResource):
-    def post(self, installed_app, task_id):
-        app_model = installed_app.app
-        if app_model.mode != "completion":
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/completion-messages/<string:task_id>/stop",
+    endpoint="installed_app_stop_completion",
+)
+class CompletionStopApi(Resource):
+    @error_responses(NotCompletionAppError)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission()
+    @get_installed_app
+    def post(
+        self, request_context: RequestContext, installed_app: InstalledAppRef, task_id: str
+    ) -> tuple[dict[str, object], int]:
+        app_mode = installed_app.app_mode
+        if app_mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
+        application_services().app_tasks.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.EXPLORE,
+            user_id=request_context.account_id,
+        )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK
 
 
-class ChatApi(InstalledAppResource):
-    def post(self, installed_app):
-        app_model = installed_app.app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("query", type=str, required=True, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("conversation_id", type=uuid_value, location="json")
-        parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
-        parser.add_argument("retriever_from", type=str, required=False, default="explore_app", location="json")
-        args = parser.parse_args()
-
-        args["auto_generate_name"] = False
-
-        installed_app.last_used_at = datetime.now(UTC).replace(tzinfo=None)
-        db.session.commit()
-
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/chat-messages",
+    endpoint="installed_app_chat_completion",
+)
+class ChatApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
+    @console_ns.expect(console_ns.models[ChatMessageExplorePayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success")
+    @console_account_admission()
+    @get_installed_app
+    @model_validate(ChatMessageExplorePayload)
+    def post(
+        self,
+        req_data: ChatMessageExplorePayload,
+        request_context: RequestContext,
+        installed_app: InstalledAppRef,
+    ) -> Response:
         try:
-            response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+            response = application_services().installed_apps.generation.generate_chat(
+                installed_app=installed_app,
+                account_id=request_context.account_id,
+                args=req_data.model_dump(exclude_none=True),
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
-            raise AppUnavailableError()
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        except InstalledAppNotChatError:
+            raise NotChatAppError() from None
+        except InstalledAppNotFoundError:
+            raise NotFoundError("Installed app not found") from None
+        except AccountNotFoundError:
+            raise UnauthorizedError("Account no longer exists.") from None
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
+            logger.exception("App model config broken.")
+            raise AppUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
-            logging.exception("internal server error.")
-            raise InternalServerError()
+        except Exception as caught_error:
+            logger.exception("internal server error.")
+            raise InternalServerError() from caught_error
 
 
-class ChatStopApi(InstalledAppResource):
-    def post(self, installed_app, task_id):
-        app_model = installed_app.app
-        app_mode = AppMode.value_of(app_model.mode)
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/chat-messages/<string:task_id>/stop",
+    endpoint="installed_app_stop_chat_completion",
+)
+class ChatStopApi(Resource):
+    @error_responses(NotChatAppError)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission()
+    @get_installed_app
+    def post(
+        self, request_context: RequestContext, installed_app: InstalledAppRef, task_id: str
+    ) -> tuple[dict[str, object], int]:
+        app_mode = AppMode.value_of(installed_app.app_mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
+        if app_mode == AppMode.ADVANCED_CHAT:
+            application_services().app_tasks.stop_workflow_task(
+                tenant_id=installed_app.app_owner_tenant_id,
+                app_id=installed_app.app_id,
+                task_id=task_id,
+                app_mode=app_mode,
+                owner=(CreatorUserRole.ACCOUNT, request_context.account_id),
+            )
+        else:
+            application_services().app_tasks.stop_task(
+                task_id=task_id,
+                invoke_from=InvokeFrom.EXPLORE,
+                user_id=request_context.account_id,
+            )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK

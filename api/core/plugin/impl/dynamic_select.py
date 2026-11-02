@@ -1,9 +1,10 @@
 from collections.abc import Mapping
 from typing import Any
 
-from core.plugin.entities.plugin import GenericProviderID
 from core.plugin.entities.plugin_daemon import PluginDynamicSelectOptionsResponse
 from core.plugin.impl.base import BasePluginClient
+from models.provider_ids import GenericProviderID
+from services.plugin.dispatch_identity import plugin_dispatch_headers
 
 
 class DynamicSelectClient(BasePluginClient):
@@ -15,7 +16,10 @@ class DynamicSelectClient(BasePluginClient):
         provider: str,
         action: str,
         credentials: Mapping[str, Any],
+        credential_type: str,
         parameter: str,
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginDynamicSelectOptionsResponse:
         """
         Fetch dynamic select options for a plugin parameter.
@@ -29,14 +33,12 @@ class DynamicSelectClient(BasePluginClient):
                 "data": {
                     "provider": GenericProviderID(provider).provider_name,
                     "credentials": credentials,
+                    "credential_type": credential_type,
                     "provider_action": action,
                     "parameter": parameter,
                 },
             },
-            headers={
-                "X-Plugin-ID": plugin_id,
-                "Content-Type": "application/json",
-            },
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
         )
 
         for options in response:

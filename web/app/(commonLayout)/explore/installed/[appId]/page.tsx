@@ -1,16 +1,16 @@
-import type { FC } from 'react'
-import React from 'react'
-import Main from '@/app/components/explore/installed-app'
+import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
+import { redirect } from '@/next/navigation'
 
 export type IInstalledAppProps = {
-  params: Promise<{
+  params?: Promise<{
     appId: string
   }>
 }
 
-const InstalledApp: FC<IInstalledAppProps> = async ({ params }) => {
-  return (
-    <Main id={(await params).appId} />
-  )
+// Using Next.js page convention for async server components
+async function InstalledApp({ params }: IInstalledAppProps) {
+  const { appId } = await (params ?? Promise.reject(new Error('Missing params')))
+  redirect(buildInstalledAppPath(appId))
 }
-export default React.memo(InstalledApp)
+
+export default InstalledApp

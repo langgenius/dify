@@ -1,36 +1,40 @@
-import React from 'react'
+import type { PluginDetail } from '@/app/components/plugins/types'
+import { useQuery } from '@tanstack/react-query'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
-import { useModelProviderModelList } from '@/service/use-models'
-import type { PluginDetail } from '@/app/components/plugins/types'
+import { consoleQuery } from '@/service/console'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
-}
+}>
 
-const ModelList = ({
-  detail,
-}: Props) => {
-  const { t } = useTranslation()
-  const { data: res } = useModelProviderModelList(`${detail.plugin_id}/${detail.declaration.model.provider}`)
+const ModelList = ({ detail }: Props) => {
+  const { t } = useTranslation(['plugin'])
+  const { data: res } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
+      input: { params: { provider: `${detail.plugin_id}/${detail.declaration.model.provider}` } },
+    }),
+  )
 
-  if (!res)
-    return null
+  if (!res) return null
 
   return (
-    <div className='px-4 py-2'>
-      <div className='system-sm-semibold-uppercase mb-1 flex h-6 items-center text-text-secondary'>{t('plugin.detailPanel.modelNum', { num: res.data.length })}</div>
-      <div className='flex flex-col'>
-        {res.data.map(model => (
-          <div key={model.model} className='flex h-6 items-center py-1'>
+    <div className="px-4 py-2">
+      <div className="mb-1 flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
+        {t(($) => $['detailPanel.modelNum'], { ns: 'plugin', num: res.data.length })}
+      </div>
+      <div className="flex flex-col">
+        {res.data.map((model) => (
+          <div key={model.model} className="flex h-6 items-center py-1">
             <ModelIcon
-              className='mr-2 shrink-0'
+              className="mr-2 shrink-0"
               provider={(model as any).provider}
               modelName={model.model}
             />
             <ModelName
-              className='system-md-regular grow text-text-secondary'
+              className="grow system-md-regular text-text-secondary"
               modelItem={model}
               showModelType
               showMode

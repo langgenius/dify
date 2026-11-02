@@ -1,32 +1,23 @@
-import cn from '@/utils/classnames'
+import type { LabelProps } from '../label'
+import type { Options } from '@/app/components/app/configuration/config-var/config-select'
+import { cn } from '@langgenius/dify-ui/cn'
+import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 import { useFieldContext } from '../..'
 import Label from '../label'
-import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 
 type OptionsFieldProps = {
-  label: string;
-  className?: string;
-  labelClassName?: string;
+  label: string
+  labelOptions?: Omit<LabelProps, 'htmlFor' | 'label'>
+  className?: string
 }
 
-const OptionsField = ({
-  label,
-  className,
-  labelClassName,
-}: OptionsFieldProps) => {
-  const field = useFieldContext<string[]>()
+const OptionsField = ({ label, className, labelOptions }: OptionsFieldProps) => {
+  const field = useFieldContext<Options>()
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
-      <Label
-        htmlFor={field.name}
-        label={label}
-        className={labelClassName}
-      />
-      <ConfigSelect
-        options={field.state.value}
-        onChange={value => field.handleChange(value)}
-      />
+      <Label htmlFor={field.name} label={label} {...(labelOptions ?? {})} />
+      <ConfigSelect options={field.state.value} onChange={(value) => field.handleChange(value)} />
     </div>
   )
 }

@@ -1,45 +1,153 @@
+import logging
+import ssl
 from datetime import timedelta
+from typing import Any, NotRequired
 
-import pytz
-from celery import Celery, Task  # type: ignore
-from celery.schedules import crontab  # type: ignore
+import pytz  # type: ignore[import-untyped]
+from celery import Celery, Task
+from celery.schedules import crontab
+from celery.signals import beat_init
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from dify_app import DifyApp
+from enums import DeploymentEdition
+from extensions.redis_names import normalize_redis_key_prefix
+from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
+
+logger = logging.getLogger(__name__)
+
+
+class _CelerySentinelKwargsDict(TypedDict):
+    socket_timeout: float | None
+    password: str | None
+
+
+class CelerySentinelTransportDict(TypedDict, total=False):
+    master_name: str | None
+    sentinel_kwargs: _CelerySentinelKwargsDict
+    global_keyprefix: str
+    visibility_timeout: int
+
+
+class CelerySSLOptionsDict(TypedDict):
+    ssl_cert_reqs: int
+    ssl_ca_certs: str | None
+    ssl_certfile: str | None
+    ssl_keyfile: str | None
+
+
+class CeleryBeatScheduleEntry(TypedDict):
+    task: str
+    schedule: crontab | timedelta
+    kwargs: NotRequired[dict[str, str]]
+    options: NotRequired[dict[str, Any]]
+
+
+def _enqueue_initial_community_telemetry_heartbeat(sender: Any, **_: Any) -> None:
+    task_name = "community_telemetry.send_heartbeat"
+    if "community_telemetry_heartbeat" not in sender.app.conf.beat_schedule:
+        return
+
+    task = sender.app.tasks.get(task_name)
+    if task is not None:
+        task.apply_async()
+
+
+beat_init.connect(_enqueue_initial_community_telemetry_heartbeat, weak=False)
+
+
+def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
+    """Get SSL configuration for Celery broker/backend connections."""
+    # Only apply SSL if we're using Redis as broker/backend
+    if not dify_config.BROKER_USE_SSL:
+        return None
+
+    # Check if Celery is actually using Redis
+    broker_is_redis = dify_config.CELERY_BROKER_URL and (
+        dify_config.CELERY_BROKER_URL.startswith("redis://") or dify_config.CELERY_BROKER_URL.startswith("rediss://")
+    )
+
+    if not broker_is_redis:
+        return None
+
+    # Map certificate requirement strings to SSL constants
+    cert_reqs_map = {
+        "CERT_NONE": ssl.CERT_NONE,
+        "CERT_OPTIONAL": ssl.CERT_OPTIONAL,
+        "CERT_REQUIRED": ssl.CERT_REQUIRED,
+    }
+
+    ssl_cert_reqs = cert_reqs_map.get(dify_config.REDIS_SSL_CERT_REQS, ssl.CERT_NONE)
+
+    return CelerySSLOptionsDict(
+        ssl_cert_reqs=ssl_cert_reqs,
+        ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS,
+        ssl_certfile=dify_config.REDIS_SSL_CERTFILE,
+        ssl_keyfile=dify_config.REDIS_SSL_KEYFILE,
+    )
+
+
+def get_celery_broker_transport_options() -> CelerySentinelTransportDict | dict[str, Any]:
+    """Get broker transport options (e.g. Redis Sentinel) for Celery connections."""
+    transport_options: CelerySentinelTransportDict | dict[str, Any]
+    if dify_config.CELERY_USE_SENTINEL:
+        transport_options = CelerySentinelTransportDict(
+            master_name=dify_config.CELERY_SENTINEL_MASTER_NAME,
+            sentinel_kwargs=_CelerySentinelKwargsDict(
+                socket_timeout=dify_config.CELERY_SENTINEL_SOCKET_TIMEOUT,
+                password=dify_config.CELERY_SENTINEL_PASSWORD,
+            ),
+        )
+    else:
+        transport_options = {}
+
+    global_keyprefix = get_celery_redis_global_keyprefix()
+    if global_keyprefix:
+        transport_options["global_keyprefix"] = global_keyprefix
+
+    visibility = dify_config.CELERY_BROKER_VISIBILITY_TIMEOUT
+    if isinstance(visibility, int) and not isinstance(visibility, bool):
+        transport_options["visibility_timeout"] = visibility
+    if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
+        broker = dify_config.CELERY_BROKER_URL or ""
+        if not broker:
+            raise ValueError("KnowledgeFS workers require an explicit CELERY_BROKER_URL")
+        if broker.startswith(("redis://", "rediss://", "sentinel://")) and (
+            not isinstance(visibility, int)
+            or visibility <= dify_config.KNOWLEDGE_FS_BACKGROUND_TASK_TIMEOUT_SECONDS + 30
+        ):
+            raise ValueError("KnowledgeFS workers require CELERY_BROKER_VISIBILITY_TIMEOUT above their hard task limit")
+
+    return transport_options
+
+
+def get_celery_redis_global_keyprefix() -> str | None:
+    """Return the Redis transport prefix for Celery when namespace isolation is enabled."""
+    normalized_prefix = normalize_redis_key_prefix(dify_config.REDIS_KEY_PREFIX)
+    if not normalized_prefix:
+        return None
+    return f"{normalized_prefix}:"
 
 
 def init_app(app: DifyApp) -> Celery:
     class FlaskTask(Task):
         def __call__(self, *args: object, **kwargs: object) -> object:
+            from core.logging.context import init_request_context
+
             with app.app_context():
+                # Initialize logging context for this task (similar to before_request in Flask)
+                init_request_context()
                 return self.run(*args, **kwargs)
 
-    broker_transport_options = {}
-
-    if dify_config.CELERY_USE_SENTINEL:
-        broker_transport_options = {
-            "master_name": dify_config.CELERY_SENTINEL_MASTER_NAME,
-            "sentinel_kwargs": {
-                "socket_timeout": dify_config.CELERY_SENTINEL_SOCKET_TIMEOUT,
-                "password": dify_config.CELERY_SENTINEL_PASSWORD,
-            },
-        }
+    broker_transport_options = get_celery_broker_transport_options()
 
     celery_app = Celery(
         app.name,
         task_cls=FlaskTask,
         broker=dify_config.CELERY_BROKER_URL,
         backend=dify_config.CELERY_BACKEND,
-        task_ignore_result=True,
     )
-
-    # Add SSL options to the Celery configuration
-    ssl_options = {
-        "ssl_cert_reqs": None,
-        "ssl_ca_certs": None,
-        "ssl_certfile": None,
-        "ssl_keyfile": None,
-    }
 
     celery_app.conf.update(
         result_backend=dify_config.CELERY_RESULT_BACKEND,
@@ -49,11 +157,30 @@ def init_app(app: DifyApp) -> Celery:
         worker_task_log_format=dify_config.LOG_FORMAT,
         worker_hijack_root_logger=False,
         timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
+        task_ignore_result=True,
+        task_annotations=dify_config.CELERY_TASK_ANNOTATIONS,
+        task_routes={
+            "tasks.trace_delivery_task.*": {"queue": dify_config.OPS_TRACE_QUEUE},
+            "tasks.application_trace_task.*": {"queue": dify_config.OPS_TRACE_QUEUE},
+            "schedule.collect_agent_sandbox_usage.collect_agent_sandbox_usage": {"queue": dify_config.OPS_TRACE_QUEUE},
+        },
     )
 
-    if dify_config.BROKER_USE_SSL:
+    if dify_config.CELERY_BACKEND == "redis":
         celery_app.conf.update(
-            broker_use_ssl=ssl_options,  # Add the SSL options to the broker configuration
+            result_backend_transport_options=broker_transport_options,
+        )
+
+    if "visibility_timeout" in broker_transport_options:
+        celery_app.conf.visibility_timeout = broker_transport_options["visibility_timeout"]
+
+    # Apply SSL configuration if enabled
+    ssl_options = get_celery_ssl_options()
+    if ssl_options:
+        celery_app.conf.update(
+            broker_use_ssl=ssl_options,
+            # Also apply SSL to the backend if it's Redis
+            redis_backend_use_ssl=ssl_options if dify_config.CELERY_BACKEND == "redis" else None,
         )
 
     if dify_config.LOG_FILE:
@@ -63,50 +190,218 @@ def init_app(app: DifyApp) -> Celery:
 
     celery_app.set_default()
     app.extensions["celery"] = celery_app
+    setup_workflow_warm_shutdown_handler()
 
     imports = [
-        "schedule.clean_embedding_cache_task",
-        "schedule.clean_unused_datasets_task",
-        "schedule.create_tidb_serverless_task",
-        "schedule.update_tidb_serverless_status_task",
-        "schedule.clean_messages",
-        "schedule.mail_clean_document_notify_task",
-        "schedule.queue_monitor_task",
+        "schedule.collect_agent_sandbox_usage",  # optional background provider accounting
+        "tasks.async_workflow_tasks",  # trigger workers
+        "tasks.collect_agent_resources_task",  # retired Agent resource collection
+        "tasks.trigger_processing_tasks",  # async trigger processing
+        "tasks.generate_summary_index_task",  # summary index generation
+        "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.rag_pipeline.rag_pipeline_run_task",  # regular RAG pipeline execution
+        "tasks.rag_pipeline.priority_rag_pipeline_run_task",  # priority RAG pipeline execution
+        "tasks.initialize_created_app_rbac_access_task",  # app access initialization
+        "tasks.install_default_plugins_task",  # tenant default plugin installation
+        "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
+        "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
+        "tasks.im_message_inbox_tasks",  # durable IM callback processing
+        "tasks.human_input_im_card_tasks",  # post-submission IM card updates
+        "tasks.im_contact_sync_tasks",  # durable IM Contact directory synchronization
+        "tasks.knowledge_fs_initial_source_preview_tasks",  # datasource previews use the standard dataset queue
+        "tasks.knowledge_fs_agent_investigation_tasks",
+        "tasks.knowledge_fs_failed_retrieval_tasks",  # best-effort Workflow quality capture uses dataset workers
+        "tasks.knowledge_fs_upgrade_tasks",  # legacy Dataset upgrades use a dedicated queue and worker
+        "tasks.knowledge_fs_background_tasks",  # local-engine tasks on dedicated prefork queues
+        "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
+        "tasks.trace_delivery_task",  # trace delivery and provider export retries
+        "tasks.ops_trace_task",  # retired endpoint; old workers must drain pre-upgrade tasks
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
-    beat_schedule = {
-        "clean_embedding_cache_task": {
+
+    # if you add a new task, please add the switch to CeleryScheduleTasksConfig
+    beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
+        from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
+
+        interval = dify_config.KNOWLEDGE_FS_BACKGROUND_POLL_INTERVAL_SECONDS
+        for operation, queue in OPERATION_QUEUES.items():
+            beat_schedule[f"knowledge_fs_background_{operation}"] = {
+                "task": OPERATION_TASK,
+                "schedule": timedelta(seconds=interval),
+                "kwargs": {"operation": operation},
+                # These are recoverable database sweeps, not document messages. Expired wakeups
+                # must not replay a backlog of timer ticks after an extended worker outage.
+                "options": {"queue": queue, "expires": max(30, interval * 2)},
+            }
+    from services.knowledge_fs.lifecycle_readiness import get_configured_knowledge_fs_lifecycle_worker_readiness
+
+    if get_configured_knowledge_fs_lifecycle_worker_readiness().ready:
+        imports.extend(
+            [
+                "tasks.knowledge_fs_initial_source_tasks",
+                "tasks.knowledge_fs_lifecycle_tasks",
+                "tasks.knowledge_fs_source_import_tasks",
+            ]
+        )
+        beat_schedule["knowledge_fs_lifecycle_worker"] = {
+            "task": "tasks.knowledge_fs_lifecycle_tasks.run_knowledge_fs_lifecycle_worker",
+            "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
+        }
+        beat_schedule["knowledge_fs_staged_upload_cleanup"] = {
+            "task": "tasks.knowledge_fs_lifecycle_tasks.cleanup_knowledge_fs_staged_uploads",
+            "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
+        }
+        beat_schedule["knowledge_fs_upgrade_recovery"] = {
+            "task": "tasks.knowledge_fs_upgrade_tasks.recover_stalled_knowledge_fs_upgrades",
+            "schedule": timedelta(seconds=60),
+            "options": {"expires": 60},
+        }
+        beat_schedule["knowledge_fs_upgrade_file_cleanup"] = {
+            "task": "tasks.knowledge_fs_upgrade_tasks.cleanup_deferred_knowledge_fs_upgrade_files",
+            "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
+        }
+    if dify_config.ENABLE_TRACE_PAYLOAD_SWEEP_TASK:
+        beat_schedule["sweep_trace_payloads"] = {
+            "task": "tasks.trace_delivery_task.sweep_trace_payloads",
+            "schedule": crontab(minute="30", hour="3"),
+        }
+    if dify_config.OPS_AGENT_TRACE_ENABLED:
+        imports.append("tasks.application_trace_task")
+    if dify_config.OPS_AGENT_TRACE_ENABLED and dify_config.ENABLE_APPLICATION_TRACE_RECONCILE_TASK:
+        beat_schedule["reconcile_application_traces"] = {
+            "task": "tasks.application_trace_task.reconcile_application_traces",
+            "schedule": timedelta(seconds=30),
+            "options": {"expires": 25},
+        }
+    if dify_config.AGENT_SANDBOX_METERING_ENABLED:
+        try:
+            interval = int(dify_config.AGENT_SANDBOX_METERING_INTERVAL_SECONDS)
+            if interval < 1:
+                raise ValueError("collection interval must be positive")
+            collection_schedule = timedelta(seconds=interval)
+        except (ValueError, OverflowError):
+            logger.warning("Skipping sandbox usage schedule: interval must be a valid positive number of seconds")
+        else:
+            beat_schedule["collect_agent_sandbox_usage"] = {
+                "task": "schedule.collect_agent_sandbox_usage.collect_agent_sandbox_usage",
+                "schedule": collection_schedule,
+                "options": {"expires": interval},
+            }
+    if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
+        imports.append("tasks.delete_conversation_task")
+        beat_schedule["conversation_cleanup_sweeper"] = {
+            "task": "tasks.delete_conversation_task.sweep_deleted_conversations",
+            "schedule": timedelta(minutes=dify_config.CONVERSATION_CLEANUP_TASK_INTERVAL),
+        }
+    if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
+        imports.append("schedule.clean_embedding_cache_task")
+        beat_schedule["clean_embedding_cache_task"] = {
             "task": "schedule.clean_embedding_cache_task.clean_embedding_cache_task",
-            "schedule": timedelta(days=day),
-        },
-        "clean_unused_datasets_task": {
+            "schedule": crontab(minute="0", hour="2", day_of_month=f"*/{day}"),
+        }
+    if dify_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK:
+        imports.append("schedule.clean_unused_datasets_task")
+        beat_schedule["clean_unused_datasets_task"] = {
             "task": "schedule.clean_unused_datasets_task.clean_unused_datasets_task",
-            "schedule": timedelta(days=day),
-        },
-        "create_tidb_serverless_task": {
+            "schedule": crontab(minute="0", hour="3", day_of_month=f"*/{day}"),
+        }
+    if dify_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK:
+        imports.append("schedule.create_tidb_serverless_task")
+        beat_schedule["create_tidb_serverless_task"] = {
             "task": "schedule.create_tidb_serverless_task.create_tidb_serverless_task",
             "schedule": crontab(minute="0", hour="*"),
-        },
-        "update_tidb_serverless_status_task": {
+        }
+    if dify_config.ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK:
+        imports.append("schedule.update_tidb_serverless_status_task")
+        beat_schedule["update_tidb_serverless_status_task"] = {
             "task": "schedule.update_tidb_serverless_status_task.update_tidb_serverless_status_task",
             "schedule": timedelta(minutes=10),
-        },
-        "clean_messages": {
+        }
+    if dify_config.ENABLE_CLEAN_MESSAGES:
+        imports.append("schedule.clean_messages")
+        beat_schedule["clean_messages"] = {
             "task": "schedule.clean_messages.clean_messages",
-            "schedule": timedelta(days=day),
-        },
-        # every Monday
-        "mail_clean_document_notify_task": {
+            "schedule": crontab(minute="0", hour="4", day_of_month=f"*/{day}"),
+        }
+    if dify_config.ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK:
+        imports.append("schedule.mail_clean_document_notify_task")
+        beat_schedule["mail_clean_document_notify_task"] = {
             "task": "schedule.mail_clean_document_notify_task.mail_clean_document_notify_task",
             "schedule": crontab(minute="0", hour="10", day_of_week="1"),
-        },
-        "datasets-queue-monitor": {
+        }
+    if dify_config.ENABLE_DATASETS_QUEUE_MONITOR:
+        imports.append("schedule.queue_monitor_task")
+        beat_schedule["datasets-queue-monitor"] = {
             "task": "schedule.queue_monitor_task.queue_monitor_task",
-            "schedule": timedelta(
-                minutes=dify_config.QUEUE_MONITOR_INTERVAL if dify_config.QUEUE_MONITOR_INTERVAL else 30
-            ),
-        },
-    }
+            "schedule": timedelta(minutes=dify_config.QUEUE_MONITOR_INTERVAL or 30),
+        }
+    if dify_config.ENABLE_HUMAN_INPUT_TIMEOUT_TASK:
+        imports.append("tasks.human_input_timeout_tasks")
+        beat_schedule["human_input_form_timeout"] = {
+            "task": "human_input_form_timeout.check_and_resume",
+            "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
+        }
+    if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
+        imports.extend(("schedule.check_upgradable_plugin_task", "tasks.process_tenant_plugin_autoupgrade_check_task"))
+        beat_schedule["check_upgradable_plugin_task"] = {
+            "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
+            "schedule": crontab(minute="*/15"),
+        }
+    if dify_config.WORKFLOW_LOG_CLEANUP_ENABLED:
+        # 2:00 AM every day
+        imports.append("schedule.clean_workflow_runlogs_precise")
+        beat_schedule["clean_workflow_runlogs_precise"] = {
+            "task": "schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise",
+            "schedule": crontab(minute="0", hour="2"),
+        }
+    if dify_config.ENABLE_WORKFLOW_RUN_CLEANUP_TASK:
+        # for saas only
+        imports.append("schedule.clean_workflow_runs_task")
+        beat_schedule["clean_workflow_runs_task"] = {
+            "task": "schedule.clean_workflow_runs_task.clean_workflow_runs_task",
+            "schedule": crontab(minute="0", hour="0"),
+        }
+    if dify_config.ENABLE_CLEAN_OAUTH_ACCESS_TOKENS_TASK:
+        imports.append("schedule.clean_oauth_access_tokens_task")
+        beat_schedule["clean_oauth_access_tokens_task"] = {
+            "task": "schedule.clean_oauth_access_tokens_task.clean_oauth_access_tokens_task",
+            "schedule": crontab(minute="0", hour="5", day_of_month=f"*/{day}"),
+        }
+    if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
+        imports.append("schedule.workflow_schedule_task")
+        beat_schedule["workflow_schedule_task"] = {
+            "task": "schedule.workflow_schedule_task.poll_workflow_schedules",
+            "schedule": timedelta(minutes=dify_config.WORKFLOW_SCHEDULE_POLLER_INTERVAL),
+        }
+    if dify_config.ENABLE_TRIGGER_PROVIDER_REFRESH_TASK:
+        imports.append("schedule.trigger_provider_refresh_task")
+        beat_schedule["trigger_provider_refresh"] = {
+            "task": "schedule.trigger_provider_refresh_task.trigger_provider_refresh",
+            "schedule": timedelta(minutes=dify_config.TRIGGER_PROVIDER_REFRESH_INTERVAL),
+        }
+
+    if dify_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK:
+        imports.append("schedule.update_api_token_last_used_task")
+        beat_schedule["batch_update_api_token_last_used"] = {
+            "task": "schedule.update_api_token_last_used_task.batch_update_api_token_last_used",
+            "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
+        }
+
+    if (
+        dify_config.DEPLOYMENT_EDITION == DeploymentEdition.COMMUNITY
+        and not dify_config.DISABLE_TELEMETRY
+        and not dify_config.DO_NOT_TRACK
+        and not dify_config.CI
+    ):
+        imports.append("tasks.community_telemetry_task")
+        beat_schedule["community_telemetry_heartbeat"] = {
+            "task": "community_telemetry.send_heartbeat",
+            "schedule": timedelta(minutes=dify_config.TELEMETRY_HEARTBEAT_INTERVAL_MINUTES),
+        }
+
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE and dify_config.ENTERPRISE_TELEMETRY_ENABLED:
+        imports.append("tasks.enterprise_telemetry_task")
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app

@@ -1,0 +1,231 @@
+import type { TFunction } from 'i18next'
+import type { FC } from 'react'
+import type { Node } from 'reactflow'
+import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
+import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import copy from 'copy-to-clipboard'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useStoreApi } from 'reactflow'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { getNextExecutionTime } from '@/app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { useGetToolIcon } from '../hooks/use-tool-icon'
+import { useStore } from '../store'
+
+const resolveListeningDescription = (
+  message: string | undefined,
+  triggerNode: Node | undefined,
+  triggerType: BlockEnum,
+  t: TFunction<['workflow', 'workflowDebug', 'workflowIntegrations']>,
+): string => {
+  if (message) return message
+
+  if (triggerType === BlockEnum.TriggerSchedule) {
+    const scheduleData = triggerNode?.data as ScheduleTriggerNodeType | undefined
+    const nextTriggerTime = scheduleData ? getNextExecutionTime(scheduleData) : ''
+    return t(($) => $['debug.variableInspect.listening.tipSchedule'], {
+      ns: 'workflowDebug',
+      nextTriggerTime:
+        nextTriggerTime ||
+        t(($) => $['debug.variableInspect.listening.defaultScheduleTime'], { ns: 'workflowDebug' }),
+    })
+  }
+
+  if (triggerType === BlockEnum.TriggerPlugin) {
+    const pluginName =
+      (triggerNode?.data as { provider_name?: string; title?: string })?.provider_name ||
+      (triggerNode?.data as { title?: string })?.title ||
+      t(($) => $['debug.variableInspect.listening.defaultPluginName'], { ns: 'workflowDebug' })
+    return t(($) => $['debug.variableInspect.listening.tipPlugin'], {
+      ns: 'workflowDebug',
+      pluginName,
+    })
+  }
+
+  if (triggerType === BlockEnum.TriggerWebhook) {
+    const nodeName =
+      (triggerNode?.data as { title?: string })?.title ||
+      t(($) => $['debug.variableInspect.listening.defaultNodeName'], { ns: 'workflowDebug' })
+    return t(($) => $['debug.variableInspect.listening.tip'], { ns: 'workflowDebug', nodeName })
+  }
+
+  const nodeDescription = (triggerNode?.data as { desc?: string })?.desc
+  if (nodeDescription) return nodeDescription
+
+  return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflowDebug' })
+}
+
+const resolveMultipleListeningDescription = (
+  nodes: Node[],
+  t: TFunction<['workflow', 'workflowDebug', 'workflowIntegrations']>,
+): string => {
+  if (!nodes.length)
+    return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflowDebug' })
+
+  const titles = nodes
+    .map((node) => (node.data as { title?: string })?.title)
+    .filter((title): title is string => Boolean(title))
+
+  if (titles.length)
+    return t(($) => $['debug.variableInspect.listening.tip'], {
+      ns: 'workflowDebug',
+      nodeName: titles.join(', '),
+    })
+
+  return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflowDebug' })
+}
+
+type ListeningProps = {
+  onStop: () => void
+  message?: string
+}
+
+const Listening: FC<ListeningProps> = ({ onStop, message }) => {
+  const { t } = useTranslation(['workflow', 'workflowDebug', 'workflowIntegrations'])
+  const store = useStoreApi()
+
+  // Get the current trigger type and node ID from store
+  const listeningTriggerType = useStore((s) => s.listeningTriggerType)
+  const listeningTriggerNodeId = useStore((s) => s.listeningTriggerNodeId)
+  const listeningTriggerNodeIds = useStore((s) => s.listeningTriggerNodeIds)
+  const listeningTriggerIsAll = useStore((s) => s.listeningTriggerIsAll)
+
+  const getToolIcon = useGetToolIcon()
+
+  // Get the trigger node data to extract icon information
+  const { getNodes } = store.getState()
+  const nodes = getNodes()
+  const triggerNode = listeningTriggerNodeId
+    ? nodes.find((node) => node.id === listeningTriggerNodeId)
+    : undefined
+  const inferredTriggerType = (triggerNode?.data as { type?: BlockEnum })?.type
+  const triggerType = listeningTriggerType || inferredTriggerType || BlockEnum.TriggerWebhook
+  const webhookDebugUrl =
+    triggerType === BlockEnum.TriggerWebhook
+      ? (triggerNode?.data as WebhookTriggerNodeType | undefined)?.webhook_debug_url
+      : undefined
+  const [debugUrlCopied, setDebugUrlCopied] = useState(false)
+
+  useEffect(() => {
+    if (!debugUrlCopied) return
+
+    const timer = window.setTimeout(() => {
+      setDebugUrlCopied(false)
+    }, 2000)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [debugUrlCopied])
+
+  let displayNodes: Node[] = []
+
+  if (listeningTriggerIsAll) {
+    if (listeningTriggerNodeIds.length > 0) {
+      displayNodes = nodes.filter((node) => listeningTriggerNodeIds.includes(node.id))
+    } else {
+      displayNodes = nodes.filter((node) => {
+        const nodeType = (node.data as { type?: BlockEnum })?.type
+        return (
+          nodeType === BlockEnum.TriggerSchedule ||
+          nodeType === BlockEnum.TriggerWebhook ||
+          nodeType === BlockEnum.TriggerPlugin
+        )
+      })
+    }
+  } else if (triggerNode) {
+    displayNodes = [triggerNode]
+  }
+
+  const iconsToRender = displayNodes.map((node) => {
+    const blockType = (node.data as { type?: BlockEnum })?.type || BlockEnum.TriggerWebhook
+    const icon = getToolIcon(node.data as any)
+    return {
+      key: node.id,
+      type: blockType,
+      toolIcon: icon,
+    }
+  })
+
+  if (iconsToRender.length === 0) {
+    iconsToRender.push({
+      key: 'default',
+      type: listeningTriggerIsAll ? BlockEnum.TriggerWebhook : triggerType,
+      toolIcon:
+        !listeningTriggerIsAll && triggerNode ? getToolIcon(triggerNode.data as any) : undefined,
+    })
+  }
+
+  const description = listeningTriggerIsAll
+    ? resolveMultipleListeningDescription(displayNodes, t)
+    : resolveListeningDescription(message, triggerNode, triggerType, t)
+
+  return (
+    <div className="flex h-full flex-col gap-4 rounded-xl bg-background-section p-8">
+      <div className="flex flex-row flex-wrap items-center gap-3">
+        {iconsToRender.map((icon) => (
+          <BlockIcon
+            key={icon.key}
+            type={icon.type}
+            toolIcon={icon.toolIcon}
+            size="md"
+            className="size-10! rounded-xl!"
+            iconClassName="size-7"
+          />
+        ))}
+      </div>
+      <div className="flex flex-col gap-1">
+        <div className="system-sm-semibold text-text-secondary">
+          {t(($) => $['debug.variableInspect.listening.title'], { ns: 'workflowDebug' })}
+        </div>
+        <div className="system-xs-regular whitespace-pre-line text-text-tertiary">
+          {description}
+        </div>
+      </div>
+      {webhookDebugUrl && (
+        <div className="flex items-center gap-2">
+          <div className="shrink-0 system-xs-regular whitespace-pre-line text-text-tertiary">
+            {t(($) => $['nodes.triggerWebhook.debugUrlTitle'], { ns: 'workflowIntegrations' })}
+          </div>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label={
+                    t(($) => $['nodes.triggerWebhook.debugUrlCopy'], {
+                      ns: 'workflowIntegrations',
+                    }) || ''
+                  }
+                  className={`inline-flex items-center rounded-md border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-0.5 font-mono text-[13px] leading-4.5 text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-hidden focus-visible:outline-2 focus-visible:outline-components-panel-border focus-visible:outline-solid ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
+                  onClick={() => {
+                    copy(webhookDebugUrl)
+                    setDebugUrlCopied(true)
+                  }}
+                >
+                  <span className="whitespace-nowrap text-text-primary">{webhookDebugUrl}</span>
+                </button>
+              }
+            />
+            <TooltipContent>
+              {debugUrlCopied
+                ? t(($) => $['nodes.triggerWebhook.debugUrlCopied'], { ns: 'workflowIntegrations' })
+                : t(($) => $['nodes.triggerWebhook.debugUrlCopy'], { ns: 'workflowIntegrations' })}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      )}
+      <div>
+        <Button size="medium" className="px-3" variant="primary" onClick={onStop}>
+          <span aria-hidden className="i-custom-vender-line-mediaAndDevices-stop-circle size-4" />
+          {t(($) => $['debug.variableInspect.listening.stopButton'], { ns: 'workflowDebug' })}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export default Listening

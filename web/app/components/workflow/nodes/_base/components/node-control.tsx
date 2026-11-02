@@ -1,94 +1,79 @@
 import type { FC } from 'react'
-import {
-  memo,
-  useCallback,
-  useState,
-} from 'react'
+import type { Node } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiPlayLargeLine,
-} from '@remixicon/react'
-import {
-  useNodeDataUpdate,
-  useNodesInteractions,
-  useNodesSyncDraft,
-} from '../../../hooks'
-import { type Node, NodeRunningStatus } from '../../../types'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { NodeActionsMenu } from '@/app/components/workflow/node-actions-menu'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
+import { useNodesReadOnly } from '../../../hooks/use-workflow'
+import { NodeRunningStatus } from '../../../types'
 import { canRunBySingle } from '../../../utils'
-import PanelOperator from './panel-operator'
-import {
-  Stop,
-} from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import Tooltip from '@/app/components/base/tooltip'
 
-type NodeControlProps = Pick<Node, 'id' | 'data'>
-const NodeControl: FC<NodeControlProps> = ({
-  id,
-  data,
-}) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const { handleNodeDataUpdate } = useNodeDataUpdate()
+type NodeControlProps = Pick<Node, 'id' | 'data'> & {
+  pluginInstallLocked?: boolean
+}
+const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) => {
+  const { t } = useTranslation(['workflow', 'workflowDebug'])
   const { handleNodeSelect } = useNodesInteractions()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { nodesReadOnly } = useNodesReadOnly()
+  const workflowStore = useWorkflowStore()
+  const canRun = useHooksStore((s) => s.accessControl.canRun)
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
-  const handleOpenChange = useCallback((newOpen: boolean) => {
-    setOpen(newOpen)
-  }, [])
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
   return (
     <div
-      className={`
-      absolute -top-7 right-0 hidden h-7 pb-1 group-hover:flex
-      ${data.selected && '!flex'}
-      ${open && '!flex'}
-      `}
+      className={cn(
+        'pointer-events-none absolute -top-8 right-0 flex h-8 origin-bottom-right pb-1 opacity-0',
+        'focus-within:pointer-events-auto focus-within:opacity-100',
+        !pluginInstallLocked && 'group-hover:pointer-events-auto group-hover:opacity-100',
+        data.selected && 'pointer-events-auto opacity-100',
+        'has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100',
+      )}
+      style={{ scale: 'var(--workflow-control-scale, 1)' }}
     >
       <div
-        className='flex h-6 items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg px-0.5 text-text-tertiary shadow-md backdrop-blur-[5px]'
-        onClick={e => e.stopPropagation()}
+        className="nodrag nopan nowheel flex h-7 items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg px-0.5 text-text-tertiary shadow-md backdrop-blur-[5px]"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
-        {
-          canRunBySingle(data.type, isChildNode) && (
-            <div
-              className='flex h-5 w-5 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
-              onClick={() => {
-                const nextData: Record<string, any> = {
-                  _isSingleRun: !isSingleRunning,
-                }
-                if(isSingleRunning)
-                  nextData._singleRunningStatus = undefined
+        {canRun && !nodesReadOnly && canRunBySingle(data.type, isChildNode) && (
+          <button
+            type="button"
+            aria-label={
+              isSingleRunning
+                ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })
+                : t(($) => $['panel.runThisStep'], { ns: 'workflow' })
+            }
+            className={`flex size-6 items-center justify-center rounded-md ${isSingleRunning && 'cursor-pointer hover:bg-state-base-hover'}`}
+            onClick={() => {
+              const action = isSingleRunning ? 'stop' : 'run'
 
-                handleNodeDataUpdate({
-                  id,
-                  data: nextData,
-                })
-                handleNodeSelect(id)
-              }}
-            >
-              {
-                isSingleRunning
-                  ? <Stop className='h-3 w-3' />
-                  : (
-                    <Tooltip
-                      popupContent={t('workflow.panel.runThisStep')}
-                      asChild={false}
-                    >
-                      <RiPlayLargeLine className='h-3 w-3' />
-                    </Tooltip>
-                  )
-              }
-            </div>
-          )
-        }
-        <PanelOperator
-          id={id}
-          data={data}
-          offset={0}
-          onOpenChange={handleOpenChange}
-          triggerClassName='!w-5 !h-5'
-        />
+              const store = workflowStore.getState()
+              store.setInitShowLastRunTab(true)
+              store.setPendingSingleRun({
+                nodeId: id,
+                action,
+              })
+              handleNodeSelect(id)
+            }}
+          >
+            {isSingleRunning ? (
+              <span aria-hidden className="i-custom-vender-line-mediaanddevices-stop size-3" />
+            ) : (
+              <Tooltip>
+                <TooltipTrigger render={<span className="i-ri-play-large-line size-3" />} />
+                <TooltipContent>
+                  {t(($) => $['panel.runThisStep'], { ns: 'workflow' })}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </button>
+        )}
+        <NodeActionsMenu id={id} data={data} />
       </div>
     </div>
   )

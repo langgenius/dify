@@ -1,108 +1,421 @@
-from typing import cast
+from typing import Literal
+from uuid import UUID
 
-from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from configs import dify_config
+from controllers.common.errors import NotFoundError
+from controllers.common.rbac import PlainApp, RBACCheck, enforce_rbac_checks
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
-from fields.workflow_run_fields import (
-    advanced_chat_workflow_run_pagination_fields,
-    workflow_run_detail_fields,
-    workflow_run_node_execution_list_fields,
-    workflow_run_pagination_fields,
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import (
+    RBACPermission,
+    model_validate,
 )
-from libs.helper import uuid_value
-from libs.login import login_required
-from models import Account, App, AppMode, EndUser
-from services.workflow_run_service import WorkflowRunService
+from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
+from fields.workflow_run_fields import (
+    AdvancedChatWorkflowRunPaginationResponse,
+    WorkflowRunCountResponse,
+    WorkflowRunDetailResponse,
+    WorkflowRunNodeExecutionListResponse,
+    WorkflowRunNodeExecutionResponse,
+    WorkflowRunPaginationResponse,
+    WorkflowToolNodeExecutionListResponse,
+    workflow_run_pagination_response_source,
+    workflow_run_response_source,
+)
+from libs.custom_inputs import time_duration
+from libs.helper import dump_response, uuid_value
+from machinery.context import RequestContext
+from models import App, AppMode, WorkflowRunTriggeredFrom
+from services.workflow_run_service import WorkflowRunListArgs
 
 
+def _build_backstage_input_url(form_token: str | None) -> str | None:
+    if not form_token:
+        return None
+    base_url = dify_config.APP_WEB_URL
+    if not base_url:
+        return None
+    return f"{base_url.rstrip('/')}/form/{form_token}"
+
+
+class WorkflowRunListQuery(BaseModel):
+    last_id: str | None = Field(default=None, description="Last run ID for pagination")
+    limit: int = Field(default=20, ge=1, le=100, description="Number of items per page (1-100)")
+    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
+        default=None, description="Workflow run status filter"
+    )
+    triggered_from: Literal["debugging", "app-run"] | None = Field(
+        default=None, description="Filter by trigger source: debugging or app-run. Default: debugging"
+    )
+
+    @field_validator("last_id")
+    @classmethod
+    def validate_last_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+class WorkflowRunCountQuery(BaseModel):
+    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
+        default=None, description="Workflow run status filter"
+    )
+    time_range: str | None = Field(
+        default=None,
+        description=(
+            "Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), "
+            "30m (30 minutes), 30s (30 seconds). Filters by created_at field."
+        ),
+    )
+    triggered_from: Literal["debugging", "app-run"] | None = Field(
+        default=None, description="Filter by trigger source: debugging or app-run. Default: debugging"
+    )
+
+    @field_validator("time_range")
+    @classmethod
+    def validate_time_range(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return time_duration(value)
+
+
+def _workflow_run_list_args(req_data: WorkflowRunListQuery) -> WorkflowRunListArgs:
+    args: WorkflowRunListArgs = {"limit": req_data.limit}
+    if req_data.last_id is not None:
+        args["last_id"] = req_data.last_id
+    if req_data.status is not None:
+        args["status"] = req_data.status
+    return args
+
+
+def _triggered_from(value: str | None) -> WorkflowRunTriggeredFrom:
+    return WorkflowRunTriggeredFrom(value) if value else WorkflowRunTriggeredFrom.DEBUGGING
+
+
+class HumanInputPauseTypeResponse(ResponseModel):
+    type: Literal["human_input"]
+    form_id: str
+    form_version: Literal["1", "2"] = "1"
+    backstage_input_url: str | None = None
+
+
+class PausedNodeResponse(ResponseModel):
+    node_id: str
+    node_title: str
+    pause_type: HumanInputPauseTypeResponse
+
+
+class WorkflowPauseDetailsResponse(ResponseModel):
+    paused_at: str | None = None
+    paused_nodes: list[PausedNodeResponse]
+
+
+register_schema_models(
+    console_ns,
+    WorkflowRunListQuery,
+    WorkflowRunCountQuery,
+)
+register_response_schema_models(
+    console_ns,
+    AdvancedChatWorkflowRunPaginationResponse,
+    WorkflowRunPaginationResponse,
+    WorkflowRunCountResponse,
+    WorkflowRunDetailResponse,
+    WorkflowToolNodeExecutionListResponse,
+    WorkflowRunNodeExecutionResponse,
+    WorkflowRunNodeExecutionListResponse,
+    HumanInputPauseTypeResponse,
+    PausedNodeResponse,
+    WorkflowPauseDetailsResponse,
+)
+
+
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs")
 class AdvancedChatAppWorkflowRunListApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
+    @console_ns.doc("get_advanced_chat_workflow_runs")
+    @console_ns.doc(description="Get advanced chat workflow run list")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(params=query_params_from_model(WorkflowRunListQuery))
+    @console_ns.response(
+        200,
+        "Workflow runs retrieved successfully",
+        console_ns.models[AdvancedChatWorkflowRunPaginationResponse.__name__],
+    )
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
+    )
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    @marshal_with(advanced_chat_workflow_run_pagination_fields)
-    def get(self, app_model: App):
+    @model_validate(WorkflowRunListQuery)
+    @with_session(write=False)
+    def get(self, session: Session, req_data: WorkflowRunListQuery, request_context: RequestContext, app_model: App):
         """
         Get advanced chat app workflow run list
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("last_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        args = parser.parse_args()
+        result = application_services().workflow_runs.get_paginate_advanced_chat_workflow_runs(
+            request_context,
+            app_id=app_model.id,
+            args=_workflow_run_list_args(req_data),
+            triggered_from=_triggered_from(req_data.triggered_from),
+        )
 
-        workflow_run_service = WorkflowRunService()
-        result = workflow_run_service.get_paginate_advanced_chat_workflow_runs(app_model=app_model, args=args)
+        return dump_response(
+            AdvancedChatWorkflowRunPaginationResponse,
+            workflow_run_pagination_response_source(result, session=session),
+        )
 
-        return result
+
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")
+class AdvancedChatAppWorkflowRunCountApi(Resource):
+    @console_ns.doc("get_advanced_chat_workflow_runs_count")
+    @console_ns.doc(description="Get advanced chat workflow runs count statistics")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(params=query_params_from_model(WorkflowRunCountQuery))
+    @console_ns.response(
+        200,
+        "Workflow runs count retrieved successfully",
+        console_ns.models[WorkflowRunCountResponse.__name__],
+    )
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
+    )
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @model_validate(WorkflowRunCountQuery)
+    def get(self, req_data: WorkflowRunCountQuery, request_context: RequestContext, app_model: App):
+        """
+        Get advanced chat workflow runs count statistics
+        """
+        result = application_services().workflow_runs.get_workflow_runs_count(
+            request_context,
+            app_id=app_model.id,
+            status=req_data.status,
+            time_range=req_data.time_range,
+            triggered_from=_triggered_from(req_data.triggered_from),
+        )
+
+        return dump_response(WorkflowRunCountResponse, result)
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs")
 class WorkflowRunListApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
+    @console_ns.doc("get_workflow_runs")
+    @console_ns.doc(description="Get workflow run list")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(params=query_params_from_model(WorkflowRunListQuery))
+    @console_ns.response(
+        200,
+        "Workflow runs retrieved successfully",
+        console_ns.models[WorkflowRunPaginationResponse.__name__],
+    )
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
+    )
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_pagination_fields)
-    def get(self, app_model: App):
+    @model_validate(WorkflowRunListQuery)
+    @with_session(write=False)
+    def get(self, session: Session, req_data: WorkflowRunListQuery, request_context: RequestContext, app_model: App):
         """
         Get workflow run list
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("last_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        args = parser.parse_args()
+        result = application_services().workflow_runs.get_paginate_workflow_runs(
+            request_context,
+            app_id=app_model.id,
+            args=_workflow_run_list_args(req_data),
+            triggered_from=_triggered_from(req_data.triggered_from),
+        )
 
-        workflow_run_service = WorkflowRunService()
-        result = workflow_run_service.get_paginate_workflow_runs(app_model=app_model, args=args)
+        return dump_response(
+            WorkflowRunPaginationResponse, workflow_run_pagination_response_source(result, session=session)
+        )
 
-        return result
 
-
-class WorkflowRunDetailApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/count")
+class WorkflowRunCountApi(Resource):
+    @console_ns.doc("get_workflow_runs_count")
+    @console_ns.doc(description="Get workflow runs count statistics")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(params=query_params_from_model(WorkflowRunCountQuery))
+    @console_ns.response(
+        200,
+        "Workflow runs count retrieved successfully",
+        console_ns.models[WorkflowRunCountResponse.__name__],
+    )
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
+    )
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_detail_fields)
-    def get(self, app_model: App, run_id):
+    @model_validate(WorkflowRunCountQuery)
+    def get(self, req_data: WorkflowRunCountQuery, request_context: RequestContext, app_model: App):
+        """
+        Get workflow runs count statistics
+        """
+        result = application_services().workflow_runs.get_workflow_runs_count(
+            request_context,
+            app_id=app_model.id,
+            status=req_data.status,
+            time_range=req_data.time_range,
+            triggered_from=_triggered_from(req_data.triggered_from),
+        )
+
+        return dump_response(WorkflowRunCountResponse, result)
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>")
+class WorkflowRunDetailApi(Resource):
+    @console_ns.doc("get_workflow_run_detail")
+    @console_ns.doc(description="Get workflow run detail")
+    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(
+        200,
+        "Workflow run detail retrieved successfully",
+        console_ns.models[WorkflowRunDetailResponse.__name__],
+    )
+    @console_ns.response(404, "Workflow run not found")
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
+    )
+    @with_session(write=False)
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, session: Session, request_context: RequestContext, app_model: App, run_id: UUID):
         """
         Get workflow run detail
         """
-        run_id = str(run_id)
+        workflow_run = application_services().workflow_runs.get_workflow_run(
+            request_context,
+            app_id=app_model.id,
+            run_id=str(run_id),
+        )
+        if workflow_run is None:
+            raise NotFoundError("Workflow run not found")
 
-        workflow_run_service = WorkflowRunService()
-        workflow_run = workflow_run_service.get_workflow_run(app_model=app_model, run_id=run_id)
-
-        return workflow_run
+        return dump_response(WorkflowRunDetailResponse, workflow_run_response_source(workflow_run, session=session))
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions")
 class WorkflowRunNodeExecutionListApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
+    @console_ns.doc("get_workflow_run_node_executions")
+    @console_ns.doc(description="Get workflow run node execution list")
+    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(
+        200,
+        "Node executions retrieved successfully",
+        console_ns.models[WorkflowRunNodeExecutionListResponse.__name__],
+    )
+    @console_ns.response(404, "Workflow run not found")
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
+    )
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_node_execution_list_fields)
-    def get(self, app_model: App, run_id):
+    def get(self, request_context: RequestContext, app_model: App, run_id: UUID):
         """
         Get workflow run node execution list
         """
-        run_id = str(run_id)
-
-        workflow_run_service = WorkflowRunService()
-        user = cast("Account | EndUser", current_user)
-        node_executions = workflow_run_service.get_workflow_run_node_executions(
-            app_model=app_model,
-            run_id=run_id,
-            user=user,
+        node_executions = application_services().workflow_runs.get_workflow_run_node_executions(
+            request_context,
+            app_id=app_model.id,
+            run_id=str(run_id),
         )
 
-        return {"data": node_executions}
+        return dump_response(WorkflowRunNodeExecutionListResponse, {"data": node_executions})
 
 
-api.add_resource(AdvancedChatAppWorkflowRunListApi, "/apps/<uuid:app_id>/advanced-chat/workflow-runs")
-api.add_resource(WorkflowRunListApi, "/apps/<uuid:app_id>/workflow-runs")
-api.add_resource(WorkflowRunDetailApi, "/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>")
-api.add_resource(WorkflowRunNodeExecutionListApi, "/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions")
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions/<string:node_execution_id>/children")
+class WorkflowToolNodeExecutionListApi(Resource):
+    @console_ns.doc("get_workflow_tool_node_executions")
+    @console_ns.doc(description="Get the internal node executions of one workflow tool invocation")
+    @console_ns.doc(
+        params={"app_id": "Root application ID", "run_id": "Workflow run ID", "node_execution_id": "Tool execution ID"}
+    )
+    @console_ns.response(
+        200,
+        "Internal node executions retrieved successfully",
+        console_ns.models[WorkflowToolNodeExecutionListResponse.__name__],
+    )
+    @console_ns.response(404, "Workflow run not found")
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
+    )
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, request_context: RequestContext, app_model: App, run_id: UUID, node_execution_id: str):
+        executions = application_services().workflow_runs.get_workflow_tool_node_executions(
+            request_context,
+            app_id=app_model.id,
+            run_id=str(run_id),
+            node_execution_id=node_execution_id,
+        )
+        if executions is None:
+            raise NotFoundError("Workflow run not found")
+        try:
+            # Check every source separately because RBAC check bundles use OR semantics.
+            for source_app_id in {execution.app_id for execution in executions}:
+                enforce_rbac_checks(
+                    tenant_id=request_context.active_workspace_id,
+                    account_id=request_context.account_id,
+                    checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
+                    path_args={"app_id": source_app_id},
+                )
+        except Forbidden as error:
+            raise Forbidden("You do not have permission to view this tool's internal execution details.") from error
+        return dump_response(WorkflowToolNodeExecutionListResponse, {"data": executions})
+
+
+@console_ns.route("/workflow/<string:workflow_run_id>/pause-details")
+class ConsoleWorkflowPauseDetailsApi(Resource):
+    """Console API for getting workflow pause details."""
+
+    @console_ns.doc("get_workflow_pause_details")
+    @console_ns.doc(description="Get workflow pause details")
+    @console_ns.doc(params={"workflow_run_id": "Workflow run ID"})
+    @console_ns.response(
+        200,
+        "Workflow pause details retrieved successfully",
+        console_ns.models[WorkflowPauseDetailsResponse.__name__],
+    )
+    @console_ns.response(404, "Workflow run not found")
+    @console_account_admission()
+    def get(self, request_context: RequestContext, workflow_run_id: str):
+        """
+        Get workflow pause details.
+
+        GET /console/api/workflow/<workflow_run_id>/pause-details
+
+        Returns information about why and where the workflow is paused.
+        """
+
+        details = application_services().workflow_runs.get_pause_details(
+            request_context,
+            workflow_run_id=workflow_run_id,
+        )
+        if details is None:
+            raise NotFoundError("Workflow run not found")
+
+        return (
+            dump_response(
+                WorkflowPauseDetailsResponse,
+                {
+                    "paused_at": details.paused_at.isoformat() + "Z" if details.paused_at else None,
+                    "paused_nodes": [
+                        {
+                            "node_id": node.node_id,
+                            "node_title": node.node_title,
+                            "pause_type": {
+                                "type": "human_input",
+                                "form_id": node.form_id,
+                                "form_version": node.form_version,
+                                "backstage_input_url": _build_backstage_input_url(node.form_token),
+                            },
+                        }
+                        for node in details.paused_nodes
+                    ],
+                },
+            ),
+            200,
+        )

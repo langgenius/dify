@@ -1,6 +1,9 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { RefObject } from 'react'
-import { createContext, useContext } from 'use-context-selector'
-import { PromptMode } from '@/models/debug'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Collection } from '@/app/components/tools/types'
+import type { ExternalDataTool } from '@/models/common'
 import type {
   AnnotationReplyConfig,
   BlockStatus,
@@ -19,20 +22,25 @@ import type {
   SuggestedQuestionsAfterAnswerConfig,
   TextToSpeechConfig,
 } from '@/models/debug'
-import type { ExternalDataTool } from '@/models/common'
-import type { DataSet } from '@/models/datasets'
 import type { VisionSettings } from '@/types/app'
-import { ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
-import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Collection } from '@/app/components/tools/types'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
+import { createContext, useContext } from 'use-context-selector'
+import {
+  ANNOTATION_DEFAULT,
+  DEFAULT_AGENT_SETTING,
+  DEFAULT_CHAT_PROMPT_CONFIG,
+  DEFAULT_COMPLETION_PROMPT_CONFIG,
+} from '@/config'
+import { PromptMode } from '@/models/debug'
+import { ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 
 type IDebugConfiguration = {
+  readonly?: boolean
+  canTestAndRun?: boolean
+  onOpenFeatures: () => void
   appId: string
-  isAPIKeySet: boolean
   isTrailFinished: boolean
-  mode: string
+  mode: ConfigurationAppMode
   modelModeType: ModelModeType
   promptMode: PromptMode
   setPromptMode: (promptMode: PromptMode) => void
@@ -64,7 +72,9 @@ type IDebugConfiguration = {
   moreLikeThisConfig: MoreLikeThisConfig
   setMoreLikeThisConfig: (moreLikeThisConfig: MoreLikeThisConfig) => void
   suggestedQuestionsAfterAnswerConfig: SuggestedQuestionsAfterAnswerConfig
-  setSuggestedQuestionsAfterAnswerConfig: (suggestedQuestionsAfterAnswerConfig: SuggestedQuestionsAfterAnswerConfig) => void
+  setSuggestedQuestionsAfterAnswerConfig: (
+    suggestedQuestionsAfterAnswerConfig: SuggestedQuestionsAfterAnswerConfig,
+  ) => void
   speechToTextConfig: SpeechToTextConfig
   setSpeechToTextConfig: (speechToTextConfig: SpeechToTextConfig) => void
   textToSpeechConfig: TextToSpeechConfig
@@ -89,8 +99,8 @@ type IDebugConfiguration = {
   // model_config
   modelConfig: ModelConfig
   setModelConfig: (modelConfig: ModelConfig) => void
-  dataSets: DataSet[]
-  setDataSets: (dataSet: DataSet[]) => void
+  dataSets: DatasetDetailWithPartialMembersResponse[]
+  setDataSets: (dataSet: DatasetDetailWithPartialMembersResponse[]) => void
   showSelectDataSet: () => void
   // dataset config
   datasetConfigs: DatasetConfigs
@@ -108,10 +118,12 @@ type IDebugConfiguration = {
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
+  readonly: false,
+  canTestAndRun: false,
   appId: '',
-  isAPIKeySet: false,
+  onOpenFeatures: noop,
   isTrailFinished: false,
-  mode: '',
+  mode: 'chat' as const,
   modelModeType: ModelModeType.chat,
   promptMode: PromptMode.simple,
   setPromptMode: noop,
@@ -210,6 +222,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
       prompt_template: '',
       prompt_variables: [],
     },
+    chat_prompt_config: DEFAULT_CHAT_PROMPT_CONFIG,
+    completion_prompt_config: DEFAULT_COMPLETION_PROMPT_CONFIG,
     more_like_this: null,
     opening_statement: '',
     suggested_questions: [],
@@ -220,6 +234,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     suggested_questions_after_answer: null,
     retriever_resource: null,
     annotation_reply: null,
+    external_data_tools: [],
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   },
@@ -233,7 +248,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
       reranking_provider_name: '',
       reranking_model_name: '',
     },
-    top_k: 2,
+    top_k: 4,
     score_threshold_enabled: false,
     score_threshold: 0.7,
     datasets: {
@@ -242,7 +257,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   datasetConfigsRef: {
     current: null,
-  },
+  } as unknown as RefObject<DatasetConfigs>,
   setDatasetConfigs: noop,
   hasSetContextVar: false,
   isShowVisionConfig: false,

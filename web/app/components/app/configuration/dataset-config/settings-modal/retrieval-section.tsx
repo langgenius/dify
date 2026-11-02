@@ -1,0 +1,248 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { TFunction } from 'i18next'
+import type { FC } from 'react'
+import type { RetrievalConfig } from '@/types/app'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
+import { Alert, AlertClose, AlertTitle } from '@langgenius/dify-ui/alert'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useTranslation } from 'react-i18next'
+import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
+import { IndexingType } from '@/app/components/datasets/create/step-two'
+import RetrievalSettings from '@/app/components/datasets/external-knowledge-base/create/RetrievalSettings'
+
+type RetrievalTranslate = TFunction<['datasetSettings']>
+
+type CommonSectionProps = {
+  rowClass: string
+  labelClass: string
+  t: RetrievalTranslate
+}
+
+type ExternalRetrievalSectionProps = CommonSectionProps & {
+  topK: number
+  scoreThreshold: number
+  scoreThresholdEnabled: boolean
+  onExternalSettingChange: (data: {
+    top_k?: number
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+  }) => void
+  currentDataset: DatasetDetailWithPartialMembersResponse
+}
+
+const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
+  rowClass,
+  labelClass,
+  t,
+  topK,
+  scoreThreshold,
+  scoreThresholdEnabled,
+  onExternalSettingChange,
+  currentDataset,
+}) => (
+  <>
+    <div className={rowClass}>
+      <Separator className="my-2 h-[0.5px]" />
+    </div>
+    <div className={rowClass}>
+      <div className={labelClass}>
+        <div className="system-sm-semibold text-text-secondary">
+          {t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
+        </div>
+      </div>
+      <RetrievalSettings
+        topK={topK}
+        scoreThreshold={scoreThreshold}
+        scoreThresholdEnabled={scoreThresholdEnabled}
+        onChange={onExternalSettingChange}
+        isInRetrievalSetting={true}
+      />
+    </div>
+    <div className={rowClass}>
+      <Separator className="my-2 h-[0.5px]" />
+    </div>
+    <div className={rowClass}>
+      <div className={labelClass}>
+        <div className="system-sm-semibold text-text-secondary">
+          {t(($) => $['form.externalKnowledgeAPI'], { ns: 'datasetSettings' })}
+        </div>
+      </div>
+      <div className="w-full max-w-120">
+        <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
+          <span
+            aria-hidden
+            className="i-custom-vender-solid-development-api-connection-mod size-4 text-text-secondary"
+          />
+          <div className="overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
+            {currentDataset?.external_knowledge_info?.external_knowledge_api_name}
+          </div>
+          <div className="system-xs-regular text-text-tertiary">·</div>
+          <div className="system-xs-regular text-text-tertiary">
+            {currentDataset?.external_knowledge_info?.external_knowledge_api_endpoint}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div className={rowClass}>
+      <div className={labelClass}>
+        <div className="system-sm-semibold text-text-secondary">
+          {t(($) => $['form.externalKnowledgeID'], { ns: 'datasetSettings' })}
+        </div>
+      </div>
+      <div className="w-full max-w-120">
+        <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
+          <div className="system-xs-regular text-text-tertiary">
+            {currentDataset?.external_knowledge_info?.external_knowledge_id}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div className={rowClass}>
+      <Separator decorative className="my-2 h-[0.5px]" />
+    </div>
+  </>
+)
+
+type InternalRetrievalSectionProps = CommonSectionProps & {
+  // Unset until the knowledge base indexes its first document.
+  indexMethod?: IndexingType
+  retrievalConfig: RetrievalConfig
+  showMultiModalTip: boolean
+  onRetrievalConfigChange: (value: RetrievalConfig) => void
+  docLink: (path?: DocPathWithoutLang) => string
+}
+
+const InternalRetrievalSection: FC<InternalRetrievalSectionProps> = ({
+  rowClass,
+  labelClass,
+  t,
+  indexMethod,
+  retrievalConfig,
+  showMultiModalTip,
+  onRetrievalConfigChange,
+  docLink,
+}) => (
+  <div className={rowClass}>
+    <div className={cn(labelClass, 'w-auto min-w-42')}>
+      <div>
+        <div className="system-sm-semibold text-text-secondary">
+          {t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
+        </div>
+        <div className="text-xs leading-4.5 font-normal text-text-tertiary">
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')}
+            className="text-text-accent"
+          >
+            {t(($) => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}
+          </a>
+          {t(($) => $['form.retrievalSetting.description'], { ns: 'datasetSettings' })}
+        </div>
+      </div>
+    </div>
+    <div>
+      {indexMethod === IndexingType.QUALIFIED ? (
+        <RetrievalMethodConfig
+          value={retrievalConfig}
+          onChange={onRetrievalConfigChange}
+          showMultiModalTip={showMultiModalTip}
+        />
+      ) : (
+        <EconomicalRetrievalMethodConfig
+          value={retrievalConfig}
+          onChange={onRetrievalConfigChange}
+        />
+      )}
+    </div>
+  </div>
+)
+
+type RetrievalSectionProps =
+  | (ExternalRetrievalSectionProps & { isExternal: true })
+  | (InternalRetrievalSectionProps & { isExternal: false })
+
+export const RetrievalSection: FC<RetrievalSectionProps> = (props) => {
+  if (props.isExternal) {
+    const {
+      rowClass,
+      labelClass,
+      t,
+      topK,
+      scoreThreshold,
+      scoreThresholdEnabled,
+      onExternalSettingChange,
+      currentDataset,
+    } = props
+
+    return (
+      <ExternalRetrievalSection
+        rowClass={rowClass}
+        labelClass={labelClass}
+        t={t}
+        topK={topK}
+        scoreThreshold={scoreThreshold}
+        scoreThresholdEnabled={scoreThresholdEnabled}
+        onExternalSettingChange={onExternalSettingChange}
+        currentDataset={currentDataset}
+      />
+    )
+  }
+
+  const {
+    rowClass,
+    labelClass,
+    t,
+    indexMethod,
+    retrievalConfig,
+    showMultiModalTip,
+    onRetrievalConfigChange,
+    docLink,
+  } = props
+
+  return (
+    <InternalRetrievalSection
+      rowClass={rowClass}
+      labelClass={labelClass}
+      t={t}
+      indexMethod={indexMethod}
+      retrievalConfig={retrievalConfig}
+      showMultiModalTip={showMultiModalTip}
+      onRetrievalConfigChange={onRetrievalConfigChange}
+      docLink={docLink}
+    />
+  )
+}
+
+type RetrievalChangeTipProps = {
+  visible: boolean
+  message: string
+  onDismiss: () => void
+}
+
+export const RetrievalChangeTip: FC<RetrievalChangeTipProps> = ({
+  visible,
+  message,
+  onDismiss,
+}) => {
+  const { t } = useTranslation(['common'])
+
+  if (!visible) return null
+
+  return (
+    <div className="absolute right-7.5 bottom-19 left-7.5 z-10">
+      <Alert type="warning">
+        <AlertTitle>{message}</AlertTitle>
+        <AlertClose
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          onClick={(event) => {
+            onDismiss()
+            event.stopPropagation()
+          }}
+        />
+      </Alert>
+    </div>
+  )
+}

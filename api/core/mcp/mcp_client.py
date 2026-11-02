@@ -1,51 +1,54 @@
 import logging
+import re
 from collections.abc import Callable
 from contextlib import AbstractContextManager, ExitStack
 from types import TracebackType
-from typing import Any, Optional, cast
+from typing import Any
 from urllib.parse import urlparse
+
+from flask import has_request_context, request
 
 from core.mcp.client.sse_client import sse_client
 from core.mcp.client.streamable_client import streamablehttp_client
-from core.mcp.error import MCPAuthError, MCPConnectionError
+from core.mcp.error import MCPConnectionError
 from core.mcp.session.client_session import ClientSession
-from core.mcp.types import Tool
+from core.mcp.types import CallToolResult, Tool
 
 logger = logging.getLogger(__name__)
+
+_MAX_DISCOVERED_TOOLS = 10_000
+# Bound round trips independently of inventory size, including empty continuation pages.
+_MAX_TOOL_DISCOVERY_REQUESTS = 100
 
 
 class MCPClient:
     def __init__(
         self,
         server_url: str,
-        provider_id: str,
-        tenant_id: str,
-        authed: bool = True,
-        authorization_code: Optional[str] = None,
-        for_list: bool = False,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
+        sse_read_timeout: float | None = None,
     ):
-        # Initialize info
-        self.provider_id = provider_id
-        self.tenant_id = tenant_id
-        self.client_type = "streamable"
         self.server_url = server_url
+        self.headers = headers.copy() if headers else {}
+        self.timeout = timeout
+        self.sse_read_timeout = sse_read_timeout
 
-        # Authentication info
-        self.authed = authed
-        self.authorization_code = authorization_code
-        if authed:
-            from core.mcp.auth.auth_provider import OAuthClientProvider
+        # Substitute placeholders with incoming request headers if in a request context
+        if has_request_context() and self.headers:
+            pattern = re.compile(r"\{\{\s*request\.headers?\.(.+?)\s*\}\}", re.IGNORECASE)
+            for key, value in list(self.headers.items()):
+                if isinstance(value, str):
 
-            self.provider = OAuthClientProvider(self.provider_id, self.tenant_id, for_list=for_list)
-            self.token = self.provider.tokens()
+                    def replace_func(match):
+                        header_name = match.group(1)
+                        return request.headers.get(header_name, "")
+
+                    self.headers[key] = pattern.sub(replace_func, value)
 
         # Initialize session and client objects
-        self._session: Optional[ClientSession] = None
-        self._streams_context: Optional[AbstractContextManager[Any]] = None
-        self._session_context: Optional[ClientSession] = None
-        self.exit_stack = ExitStack()
-
-        # Whether the client has been initialized
+        self._session: ClientSession | None = None
+        self._exit_stack = ExitStack()
         self._initialized = False
 
     def __enter__(self):
@@ -53,9 +56,7 @@ class MCPClient:
         self._initialized = True
         return self
 
-    def __exit__(
-        self, exc_type: Optional[type], exc_value: Optional[BaseException], traceback: Optional[TracebackType]
-    ):
+    def __exit__(self, exc_type: type | None, exc_value: BaseException | None, traceback: TracebackType | None):
         self.cleanup()
 
     def _initialize(
@@ -68,71 +69,79 @@ class MCPClient:
         }
 
         parsed_url = urlparse(self.server_url)
-        path = parsed_url.path
+        path = parsed_url.path or ""
         method_name = path.rstrip("/").split("/")[-1] if path else ""
-        try:
+        if method_name in connection_methods:
             client_factory = connection_methods[method_name]
             self.connect_server(client_factory, method_name)
-        except KeyError:
+        else:
             try:
+                logger.debug("Not supported method %s found in URL path, trying default 'mcp' method.", method_name)
                 self.connect_server(sse_client, "sse")
-            except MCPConnectionError:
+            except (MCPConnectionError, ValueError):
+                logger.debug("MCP connection failed with 'sse', falling back to 'mcp' method.")
+                # The SSE transport and ClientSession can already be entered when
+                # the handshake fails. Close that partial connection before
+                # opening the fallback so both transports are never live at once.
+                self._exit_stack.close()
+                self._exit_stack = ExitStack()
+                self._session = None
                 self.connect_server(streamablehttp_client, "mcp")
 
-    def connect_server(
-        self, client_factory: Callable[..., AbstractContextManager[Any]], method_name: str, first_try: bool = True
-    ):
-        from core.mcp.auth.auth_flow import auth
+    def connect_server(self, client_factory: Callable[..., AbstractContextManager[Any]], method_name: str) -> None:
+        """
+        Connect to the MCP server using streamable http or sse.
+        Default to streamable http.
+        Args:
+            client_factory: The client factory to use(streamablehttp_client or sse_client).
+            method_name: The method name to use(mcp or sse).
+        """
+        streams_context = client_factory(
+            url=self.server_url,
+            headers=self.headers,
+            timeout=self.timeout,
+            sse_read_timeout=self.sse_read_timeout,
+        )
 
-        try:
-            headers = (
-                {"Authorization": f"{self.token.token_type.capitalize()} {self.token.access_token}"}
-                if self.authed and self.token
-                else {}
-            )
-            self._streams_context = client_factory(url=self.server_url, headers=headers)
-            if self._streams_context is None:
-                raise MCPConnectionError("Failed to create connection context")
+        # Use exit_stack to manage context managers properly
+        if method_name == "mcp":
+            read_stream, write_stream, _ = self._exit_stack.enter_context(streams_context)
+            streams = (read_stream, write_stream)
+        else:  # sse_client
+            streams = self._exit_stack.enter_context(streams_context)
 
-            # Use exit_stack to manage context managers properly
-            if method_name == "mcp":
-                read_stream, write_stream, _ = self.exit_stack.enter_context(self._streams_context)
-                streams = (read_stream, write_stream)
-            else:  # sse_client
-                streams = self.exit_stack.enter_context(self._streams_context)
-
-            self._session_context = ClientSession(*streams)
-            self._session = self.exit_stack.enter_context(self._session_context)
-            session = cast(ClientSession, self._session)
-            session.initialize()
-            return
-
-        except MCPAuthError:
-            if not self.authed:
-                raise
-            try:
-                auth(self.provider, self.server_url, self.authorization_code)
-            except Exception as e:
-                raise ValueError(f"Failed to authenticate: {e}")
-            self.token = self.provider.tokens()
-            if first_try:
-                return self.connect_server(client_factory, method_name, first_try=False)
-
-        except MCPConnectionError:
-            raise
+        session_context = ClientSession(*streams)
+        self._session = self._exit_stack.enter_context(session_context)
+        self._session.initialize()
 
     def list_tools(self) -> list[Tool]:
-        """Connect to an MCP server running with SSE transport"""
-        # List available tools to verify connection
-        if not self._initialized or not self._session:
+        """List the complete tool inventory within tool and request limits, or raise."""
+        if not self._session:
             raise ValueError("Session not initialized.")
         response = self._session.list_tools()
-        tools = response.tools
-        return tools
+        requests_sent = 1
+        tools: list[Tool] = []
+        seen_cursors: set[str] = set()
+        while True:
+            tool_count = len(tools) + len(response.tools)
+            if tool_count > _MAX_DISCOVERED_TOOLS:
+                raise MCPConnectionError("MCP tools/list exceeded the 10,000-tool discovery limit.")
+            if tool_count == _MAX_DISCOVERED_TOOLS and response.nextCursor is not None:
+                raise MCPConnectionError("MCP tools/list reached the 10,000-tool discovery limit with more pages.")
+            tools.extend(response.tools)
+            if response.nextCursor is None:
+                return tools
+            if response.nextCursor in seen_cursors:
+                raise MCPConnectionError("MCP tools/list returned a repeated pagination cursor.")
+            if requests_sent >= _MAX_TOOL_DISCOVERY_REQUESTS:
+                raise MCPConnectionError("MCP tools/list reached the 100-request discovery limit with more pages.")
+            seen_cursors.add(response.nextCursor)
+            response = self._session.list_tools(cursor=response.nextCursor)
+            requests_sent += 1
 
-    def invoke_tool(self, tool_name: str, tool_args: dict):
+    def invoke_tool(self, tool_name: str, tool_args: dict[str, Any]) -> CallToolResult:
         """Call a tool"""
-        if not self._initialized or not self._session:
+        if not self._session:
             raise ValueError("Session not initialized.")
         return self._session.call_tool(tool_name, tool_args)
 
@@ -140,11 +149,10 @@ class MCPClient:
         """Clean up resources"""
         try:
             # ExitStack will handle proper cleanup of all managed context managers
-            self.exit_stack.close()
-            self._session = None
-            self._session_context = None
-            self._streams_context = None
-            self._initialized = False
+            self._exit_stack.close()
         except Exception as e:
-            logging.exception("Error during cleanup")
-            raise ValueError(f"Error during cleanup: {e}")
+            logger.exception("Error during cleanup")
+            raise ValueError(f"Error during cleanup: {e}") from e
+        finally:
+            self._session = None
+            self._initialized = False

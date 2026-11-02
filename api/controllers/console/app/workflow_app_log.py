@@ -1,81 +1,157 @@
-from dateutil.parser import isoparse
-from flask_restful import Resource, marshal_with, reqparse
-from flask_restful.inputs import int_range
-from sqlalchemy.orm import Session
+from datetime import datetime
+from typing import Any
 
-from controllers.console import api
+from dateutil.parser import isoparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
+
+from controllers.common.rbac import PlainApp, RBACCheck
+from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
-from extensions.ext_database import db
-from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
-from libs.login import login_required
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import RBACPermission, model_validate
+from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
+from fields.end_user_fields import SimpleEndUser
+from fields.member_fields import SimpleAccount
+from graphon.enums import WorkflowExecutionStatus
+from libs.helper import dump_response, to_timestamp
+from machinery.context import RequestContext
 from models import App
 from models.model import AppMode
-from services.workflow_app_service import WorkflowAppService
 
 
+class WorkflowAppLogQuery(BaseModel):
+    keyword: str | None = Field(default=None, description="Search keyword for filtering logs")
+    status: WorkflowExecutionStatus | None = Field(default=None, description="Execution status filter")
+    created_at__before: datetime | None = Field(default=None, description="Filter logs created before this timestamp")
+    created_at__after: datetime | None = Field(default=None, description="Filter logs created after this timestamp")
+    created_by_end_user_session_id: str | None = Field(default=None, description="Filter by end user session ID")
+    created_by_account: str | None = Field(default=None, description="Filter by account")
+    detail: bool = Field(default=False, description="Whether to return detailed logs")
+    page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
+    limit: int = Field(default=20, ge=1, le=100, description="Number of items per page (1-100)")
+
+    @field_validator("created_at__before", "created_at__after", mode="before")
+    @classmethod
+    def parse_datetime(cls, value: str | None) -> datetime | None:
+        if value in (None, ""):
+            return None
+        return isoparse(value)  # type: ignore
+
+    @field_validator("detail", mode="before")
+    @classmethod
+    def parse_bool(cls, value: bool | str | None) -> bool:
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return False
+        lowered = value.lower()
+        if lowered in {"1", "true", "yes", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "off"}:
+            return False
+        raise ValueError("Invalid boolean value for detail")
+
+
+class WorkflowRunForLogResponse(ResponseModel):
+    id: str
+    version: str | None = None
+    status: str | None = None
+    triggered_from: str | None = None
+    error: str | None = None
+    elapsed_time: float | None = None
+    total_tokens: int | None = None
+    total_steps: int | None = None
+    created_at: int | None = None
+    finished_at: int | None = None
+    exceptions_count: int | None = None
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _normalize_status(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(getattr(value, "value", value))
+
+    @field_validator("created_at", "finished_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class WorkflowAppLogPartialResponse(ResponseModel):
+    id: str
+    workflow_run: WorkflowRunForLogResponse | None = None
+    details: Any = None
+    created_from: str | None = None
+    created_by_role: str | None = None
+    created_by_account: SimpleAccount | None = None
+    created_by_end_user: SimpleEndUser | None = None
+    created_at: int | None = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class WorkflowAppLogPaginationResponse(ResponseModel):
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+    data: list[WorkflowAppLogPartialResponse]
+
+
+register_schema_models(
+    console_ns,
+    WorkflowAppLogQuery,
+    WorkflowRunForLogResponse,
+    WorkflowAppLogPartialResponse,
+    WorkflowAppLogPaginationResponse,
+)
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-app-logs")
 class WorkflowAppLogApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
+    @console_ns.doc("get_workflow_app_logs")
+    @console_ns.doc(description="Get workflow application execution logs")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(params=query_params_from_model(WorkflowAppLogQuery))
+    @console_ns.response(
+        200,
+        "Workflow app logs retrieved successfully",
+        console_ns.models[WorkflowAppLogPaginationResponse.__name__],
+    )
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp())],
+    )
     @get_app_model(mode=[AppMode.WORKFLOW])
-    @marshal_with(workflow_app_log_pagination_fields)
-    def get(self, app_model: App):
+    @model_validate(WorkflowAppLogQuery)
+    def get(
+        self,
+        req_data: WorkflowAppLogQuery,
+        _request_context: RequestContext,
+        app_model: App,
+    ):
         """
         Get workflow app logs
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("keyword", type=str, location="args")
-        parser.add_argument("status", type=str, choices=["succeeded", "failed", "stopped"], location="args")
-        parser.add_argument(
-            "created_at__before", type=str, location="args", help="Filter logs created before this timestamp"
+        result = application_services().workflow_app_logs.list_logs(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            keyword=req_data.keyword,
+            status=req_data.status,
+            created_at_before=req_data.created_at__before,
+            created_at_after=req_data.created_at__after,
+            page=req_data.page,
+            limit=req_data.limit,
+            detail=req_data.detail,
+            created_by_end_user_session_id=req_data.created_by_end_user_session_id,
+            created_by_account=req_data.created_by_account,
         )
-        parser.add_argument(
-            "created_at__after", type=str, location="args", help="Filter logs created after this timestamp"
-        )
-        parser.add_argument(
-            "created_by_end_user_session_id",
-            type=str,
-            location="args",
-            required=False,
-            default=None,
-        )
-        parser.add_argument(
-            "created_by_account",
-            type=str,
-            location="args",
-            required=False,
-            default=None,
-        )
-        parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
-        args = parser.parse_args()
-
-        args.status = WorkflowExecutionStatus(args.status) if args.status else None
-        if args.created_at__before:
-            args.created_at__before = isoparse(args.created_at__before)
-
-        if args.created_at__after:
-            args.created_at__after = isoparse(args.created_at__after)
-
-        # get paginate workflow app logs
-        workflow_app_service = WorkflowAppService()
-        with Session(db.engine) as session:
-            workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
-                session=session,
-                app_model=app_model,
-                keyword=args.keyword,
-                status=args.status,
-                created_at_before=args.created_at__before,
-                created_at_after=args.created_at__after,
-                page=args.page,
-                limit=args.limit,
-                created_by_end_user_session_id=args.created_by_end_user_session_id,
-                created_by_account=args.created_by_account,
-            )
-
-            return workflow_app_log_pagination
-
-
-api.add_resource(WorkflowAppLogApi, "/apps/<uuid:app_id>/workflow-app-logs")
+        return dump_response(WorkflowAppLogPaginationResponse, result)

@@ -16,6 +16,10 @@ branch_labels = None
 depends_on = None
 
 
+def _is_pg(conn):
+    return conn.dialect.name == "postgresql"
+
+
 def upgrade():
     def _has_name_or_size_column() -> bool:
         # We cannot access the database in offline mode, so assume
@@ -46,14 +50,26 @@ def upgrade():
     if _has_name_or_size_column():
         return
 
-    with op.batch_alter_table("tool_files", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("name", sa.String(), nullable=True))
-        batch_op.add_column(sa.Column("size", sa.Integer(), nullable=True))
-    op.execute("UPDATE tool_files SET name = '' WHERE name IS NULL")
-    op.execute("UPDATE tool_files SET size = -1 WHERE size IS NULL")
-    with op.batch_alter_table("tool_files", schema=None) as batch_op:
-        batch_op.alter_column("name", existing_type=sa.String(), nullable=False)
-        batch_op.alter_column("size", existing_type=sa.Integer(), nullable=False)
+    if _is_pg(conn):
+        # PostgreSQL: Keep original syntax
+        with op.batch_alter_table("tool_files", schema=None) as batch_op:
+            batch_op.add_column(sa.Column("name", sa.String(), nullable=True))
+            batch_op.add_column(sa.Column("size", sa.Integer(), nullable=True))
+        op.execute("UPDATE tool_files SET name = '' WHERE name IS NULL")
+        op.execute("UPDATE tool_files SET size = -1 WHERE size IS NULL")
+        with op.batch_alter_table("tool_files", schema=None) as batch_op:
+            batch_op.alter_column("name", existing_type=sa.String(), nullable=False)
+            batch_op.alter_column("size", existing_type=sa.Integer(), nullable=False)
+    else:
+        # MySQL: Use compatible syntax
+        with op.batch_alter_table("tool_files", schema=None) as batch_op:
+            batch_op.add_column(sa.Column("name", sa.String(length=255), nullable=True))
+            batch_op.add_column(sa.Column("size", sa.Integer(), nullable=True))
+        op.execute("UPDATE tool_files SET name = '' WHERE name IS NULL")
+        op.execute("UPDATE tool_files SET size = -1 WHERE size IS NULL")
+        with op.batch_alter_table("tool_files", schema=None) as batch_op:
+            batch_op.alter_column("name", existing_type=sa.String(length=255), nullable=False)
+            batch_op.alter_column("size", existing_type=sa.Integer(), nullable=False)
     # ### end Alembic commands ###
 
 

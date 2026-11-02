@@ -1,40 +1,49 @@
+import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
+import { produce } from 'immer'
 import { useCallback } from 'react'
-import produce from 'immer'
-import { useStoreApi } from 'reactflow'
+import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
 
 type NodeDataUpdatePayload = {
   id: string
-  data: Record<string, any>
+  data: Record<string, unknown>
 }
 
 export const useNodeDataUpdate = () => {
-  const store = useStoreApi()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getNodesReadOnly } = useNodesReadOnly()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
-  const handleNodeDataUpdate = useCallback(({ id, data }: NodeDataUpdatePayload) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
-      const currentNode = draft.find(node => node.id === id)!
+  const handleNodeDataUpdate = useCallback(
+    ({ id, data }: NodeDataUpdatePayload) => {
+      const { nodes, setNodes } = collaborativeWorkflow.getState()
+      const newNodes = produce(nodes, (draft) => {
+        const currentNode = draft.find((node) => node.id === id)!
 
-      if (currentNode)
-        currentNode.data = { ...currentNode.data, ...data }
-    })
-    setNodes(newNodes)
-  }, [store])
+        if (currentNode) currentNode.data = { ...currentNode.data, ...data }
+      })
+      setNodes(newNodes)
+    },
+    [collaborativeWorkflow],
+  )
 
-  const handleNodeDataUpdateWithSyncDraft = useCallback((payload: NodeDataUpdatePayload) => {
-    if (getNodesReadOnly())
-      return
+  const handleNodeDataUpdateWithSyncDraft = useCallback(
+    (
+      payload: NodeDataUpdatePayload,
+      options?: {
+        sync?: boolean
+        notRefreshWhenSyncError?: boolean
+        callback?: SyncDraftCallback
+      },
+    ) => {
+      if (getNodesReadOnly()) return
 
-    handleNodeDataUpdate(payload)
-    handleSyncWorkflowDraft()
-  }, [handleSyncWorkflowDraft, handleNodeDataUpdate, getNodesReadOnly])
+      handleNodeDataUpdate(payload)
+      handleSyncWorkflowDraft(options?.sync, options?.notRefreshWhenSyncError, options?.callback)
+    },
+    [handleSyncWorkflowDraft, handleNodeDataUpdate, getNodesReadOnly],
+  )
 
   return {
     handleNodeDataUpdate,

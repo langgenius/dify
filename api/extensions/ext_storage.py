@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable, Generator
-from typing import Literal, Union, overload
+from typing import Literal, overload
 
 from flask import Flask
 
@@ -65,14 +65,27 @@ class Storage:
                 from extensions.storage.volcengine_tos_storage import VolcengineTosStorage
 
                 return VolcengineTosStorage
-            case StorageType.SUPBASE:
+            case StorageType.SUPABASE:
                 from extensions.storage.supabase_storage import SupabaseStorage
 
                 return SupabaseStorage
+            case StorageType.CLICKZETTA_VOLUME:
+                from extensions.storage.clickzetta_volume.clickzetta_volume_storage import (
+                    ClickZettaVolumeConfig,
+                    ClickZettaVolumeStorage,
+                )
+
+                def create_clickzetta_volume_storage():
+                    # ClickZettaVolumeConfig will automatically read from environment variables
+                    # and fallback to CLICKZETTA_* config if CLICKZETTA_VOLUME_* is not set
+                    volume_config = ClickZettaVolumeConfig()
+                    return ClickZettaVolumeStorage(volume_config)
+
+                return create_clickzetta_volume_storage
             case _:
                 raise ValueError(f"unsupported storage type {storage_type}")
 
-    def save(self, filename, data):
+    def save(self, filename: str, data: bytes):
         self.storage_runner.save(filename, data)
 
     @overload
@@ -81,7 +94,11 @@ class Storage:
     @overload
     def load(self, filename: str, /, *, stream: Literal[True]) -> Generator: ...
 
-    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
+    # Keep a bool fallback overload for callers that forward a runtime bool flag.
+    @overload
+    def load(self, filename: str, /, *, stream: bool = False) -> bytes | Generator: ...
+
+    def load(self, filename: str, /, *, stream: bool = False) -> bytes | Generator:
         if stream:
             return self.load_stream(filename)
         else:
@@ -99,8 +116,21 @@ class Storage:
     def exists(self, filename):
         return self.storage_runner.exists(filename)
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         return self.storage_runner.delete(filename)
+
+    def generate_presigned_url(
+        self,
+        filename: str,
+        *,
+        expires_in: int,
+        content_type: str | None = None,
+    ) -> str:
+        return self.storage_runner.generate_presigned_url(
+            filename,
+            expires_in=expires_in,
+            content_type=content_type,
+        )
 
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         return self.storage_runner.scan(path, files=files, directories=directories)
@@ -111,3 +141,6 @@ storage = Storage()
 
 def init_app(app: DifyApp):
     storage.init_app(app)
+    from core.app.workflow import file_runtime
+
+    file_runtime.init_app(app)

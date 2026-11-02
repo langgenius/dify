@@ -1,23 +1,61 @@
+import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo } from 'react'
-import Button from '@/app/components/base/button'
-import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
+import useTheme from '@/hooks/use-theme'
 
 const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
-  const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
-  const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
-  const setShowDebugAndPreviewPanel = useStore(s => s.setShowDebugAndPreviewPanel)
+  const { theme } = useTheme()
+  const { t } = useTranslation(['workflow'])
+  const showChatVariablePanel = useStore((s) => s.showChatVariablePanel)
+  const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
+  const setShowEnvPanel = useStore((s) => s.setShowEnvPanel)
+  const setShowGlobalVariablePanel = useStore((s) => s.setShowGlobalVariablePanel)
+  const setShowDebugAndPreviewPanel = useStore((s) => s.setShowDebugAndPreviewPanel)
 
   const handleClick = () => {
     setShowChatVariablePanel(true)
     setShowEnvPanel(false)
+    setShowGlobalVariablePanel(false)
     setShowDebugAndPreviewPanel(false)
   }
 
   return (
-    <Button className='p-2' disabled={disabled} onClick={handleClick}>
-      <BubbleX className='h-4 w-4 text-components-button-secondary-text' />
-    </Button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <IconButton
+            aria-label={t(($) => $['chatVariable.panelTitle'], {
+              ns: 'workflow',
+            })}
+            aria-expanded={showChatVariablePanel}
+            size="lg"
+            className={cn(
+              'border border-transparent',
+              theme === 'dark' &&
+                showChatVariablePanel &&
+                'border-black/5 bg-white/10 backdrop-blur-xs',
+            )}
+            disabled={disabled}
+            onClick={handleClick}
+            variant="ghost"
+          >
+            <span
+              aria-hidden
+              className="i-custom-vender-line-others-bubble-x size-4 text-components-button-secondary-text"
+            />
+          </IconButton>
+        }
+      />
+
+      <TooltipContent>
+        {t(($) => $['chatVariable.panelTitle'], {
+          ns: 'workflow',
+        })}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

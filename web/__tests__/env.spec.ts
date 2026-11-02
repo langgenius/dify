@@ -1,0 +1,198 @@
+describe('env runtime transport', () => {
+  const envKeys = [
+    'NEXT_PUBLIC_ENABLE_AGENT_V2',
+    'NEXT_PUBLIC_ENABLE_HITL_IM',
+    'NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS',
+    'NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH',
+    'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+  ] as const
+  const attributes = [
+    'data-enable-agent-v2',
+    'data-enable-hitl-im',
+    'data-enable-agent-v-2',
+    'data-markdown-form-field-name-extra-chars',
+    'data-markdown-form-field-name-max-length',
+    'data-turnstile-site-key',
+  ]
+  let previousAttributes: (string | null)[]
+
+  beforeEach(() => {
+    vi.resetModules()
+    vi.doUnmock('../utils/client')
+    previousAttributes = attributes.map((name) => document.documentElement.getAttribute(name))
+    attributes.forEach((name) => document.documentElement.removeAttribute(name))
+    envKeys.forEach((name) => vi.stubEnv(name, undefined))
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.doUnmock('../utils/client')
+    attributes.forEach((name, index) => {
+      const value = previousAttributes[index]
+      if (value == null) document.documentElement.removeAttribute(name)
+      else document.documentElement.setAttribute(name, value)
+    })
+  })
+
+  it.each([
+    [undefined, false],
+    ['false', false],
+    ['true', true],
+    ['0', false],
+    ['1', true],
+  ] as const)(
+    'transports the HITL IM release gate from server to browser for %s',
+    async (value, enabled) => {
+      vi.stubEnv('NEXT_PUBLIC_ENABLE_HITL_IM', value)
+      vi.doMock('../utils/client', () => ({ isClient: false, isServer: true }))
+      const { env: serverEnv, getDatasetMap } = await import('../env')
+      expect(serverEnv.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(enabled)
+      const dataset = getDatasetMap()
+      expect(dataset['data-enable-hitl-im']).toBe(enabled)
+
+      document.documentElement.setAttribute(
+        'data-enable-hitl-im',
+        String(dataset['data-enable-hitl-im']),
+      )
+      vi.stubEnv('NEXT_PUBLIC_ENABLE_HITL_IM', String(!enabled))
+      vi.resetModules()
+      vi.doMock('../utils/client', () => ({ isClient: true, isServer: false }))
+      const { env: browserEnv } = await import('../env')
+      expect(browserEnv.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(enabled)
+    },
+  )
+
+  it('keeps HITL IM disabled when the browser runtime attribute is absent', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_HITL_IM', 'true')
+    const { env } = await import('../env')
+    expect(env.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(false)
+  })
+
+  it('preserves runtime configuration when modules load before the streamed body', async () => {
+    const body = document.body
+    const root = document.documentElement
+    const runtimeAttributes = {
+      'data-api-prefix': 'https://runtime.example.com/console/api',
+      'data-base-path': '/runtime',
+      'data-enable-hitl-im': 'true',
+      'data-enable-agent-v2': 'true',
+    }
+    const previous = Object.keys(runtimeAttributes).map((key) => root.getAttribute(key))
+    Object.entries(runtimeAttributes).forEach(([key, value]) => root.setAttribute(key, value))
+    body.remove()
+
+    try {
+      expect(document.body).toBeNull()
+      const { env } = await import('../env')
+      expect(env.NEXT_PUBLIC_API_PREFIX).toBe(runtimeAttributes['data-api-prefix'])
+      expect(env.NEXT_PUBLIC_BASE_PATH).toBe('/runtime')
+      expect(env.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(true)
+      expect(env.NEXT_PUBLIC_ENABLE_AGENT_V2).toBe(true)
+    } finally {
+      root.append(body)
+      Object.keys(runtimeAttributes).forEach((key, index) => {
+        const value = previous[index]
+        if (value == null) root.removeAttribute(key)
+        else root.setAttribute(key, value)
+      })
+    }
+  })
+
+  it('should read NEXT_PUBLIC_ENABLE_AGENT_V2 from the browser runtime dataset key', async () => {
+    document.documentElement.setAttribute('data-enable-agent-v2', 'true')
+
+    const { env } = await import('../env')
+
+    expect(env.NEXT_PUBLIC_ENABLE_AGENT_V2).toBe(true)
+  })
+
+  it('should emit the Agent v2 runtime dataset attribute from getDatasetMap on the server', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_AGENT_V2', 'true')
+
+    vi.doMock('../utils/client', () => ({
+      isClient: false,
+      isServer: true,
+    }))
+
+    const { getDatasetMap } = await import('../env')
+    const datasetMap = getDatasetMap()
+
+    expect(datasetMap['data-enable-agent-v2']).toBe(true)
+    expect(datasetMap['data-enable-agent-v-2']).toBeUndefined()
+  })
+
+  it('should read Markdown form field name extra characters from the browser runtime dataset', async () => {
+    document.documentElement.setAttribute(
+      'data-markdown-form-field-name-extra-chars',
+      '()!*&（）！＊＆－',
+    )
+
+    const { env } = await import('../env')
+
+    expect(env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS).toBe('()!*&（）！＊＆－')
+  })
+
+  it('should emit Markdown form field name extra characters in the server runtime dataset', async () => {
+    vi.stubEnv('NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS', '()!*&（）！＊＆－')
+
+    vi.doMock('../utils/client', () => ({
+      isClient: false,
+      isServer: true,
+    }))
+
+    const { getDatasetMap } = await import('../env')
+    const datasetMap = getDatasetMap()
+
+    expect(datasetMap['data-markdown-form-field-name-extra-chars']).toBe('()!*&（）！＊＆－')
+  })
+
+  it('should default the Markdown form field name maximum length to 128', async () => {
+    const { env } = await import('../env')
+
+    expect(env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH).toBe(128)
+  })
+
+  it('should read the Markdown form field name maximum length from the browser runtime dataset', async () => {
+    document.documentElement.setAttribute('data-markdown-form-field-name-max-length', '64')
+
+    const { env } = await import('../env')
+
+    expect(env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH).toBe(64)
+  })
+
+  it('should emit the Markdown form field name maximum length in the server runtime dataset', async () => {
+    vi.stubEnv('NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH', '64')
+
+    vi.doMock('../utils/client', () => ({
+      isClient: false,
+      isServer: true,
+    }))
+
+    const { getDatasetMap } = await import('../env')
+    const datasetMap = getDatasetMap()
+
+    expect(datasetMap['data-markdown-form-field-name-max-length']).toBe(64)
+  })
+
+  it('should read the Turnstile site key from the browser runtime dataset', async () => {
+    document.documentElement.setAttribute('data-turnstile-site-key', 'site-key-for-tests')
+
+    const { env } = await import('../env')
+
+    expect(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY).toBe('site-key-for-tests')
+  })
+
+  it('should emit the Turnstile site key in the server runtime dataset', async () => {
+    vi.stubEnv('NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'site-key-for-tests')
+
+    vi.doMock('../utils/client', () => ({
+      isClient: false,
+      isServer: true,
+    }))
+
+    const { getDatasetMap } = await import('../env')
+    const datasetMap = getDatasetMap()
+
+    expect(datasetMap['data-turnstile-site-key']).toBe('site-key-for-tests')
+  })
+})

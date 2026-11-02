@@ -1,8 +1,14 @@
 import logging
+from http import HTTPStatus
 
-from flask_restful import reqparse
-from werkzeug.exceptions import InternalServerError
+from flask import Response
+from flask_restx import Resource
 
+from controllers.common.controller_schemas import WorkflowRunPayload
+from controllers.common.errors import InternalServerError, UnauthorizedError
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_model
+from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -10,73 +16,106 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.explore.error import NotWorkflowAppError
-from controllers.console.explore.wraps import InstalledAppResource
+from controllers.console.explore.installed_app_admission import get_installed_app
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_runtime.errors.invoke import InvokeError
+from extensions.ext_application_services import application_services
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.login import current_user
-from models.model import AppMode, InstalledApp
-from services.app_generate_service import AppGenerateService
+from libs.external_api import error_responses
+from machinery.context import RequestContext
+from models.model import AppMode
+from services.account_errors import AccountNotFoundError
+from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.llm import InvokeRateLimitError
+from services.installed_app_access_service import InstalledAppRef
+from services.installed_app_generation_service import InstalledAppNotWorkflowError
 
 logger = logging.getLogger(__name__)
 
+register_schema_model(console_ns, WorkflowRunPayload)
+register_response_schema_models(console_ns, SimpleResultResponse)
 
-class InstalledAppWorkflowRunApi(InstalledAppResource):
-    def post(self, installed_app: InstalledApp):
+
+@console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
+class InstalledAppWorkflowRunApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotWorkflowAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
+    @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success")
+    @console_account_admission()
+    @get_installed_app
+    @model_validate(WorkflowRunPayload)
+    def post(
+        self,
+        req_data: WorkflowRunPayload,
+        request_context: RequestContext,
+        installed_app: InstalledAppRef,
+    ) -> Response:
         """
         Run workflow
         """
-        app_model = installed_app.app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode != AppMode.WORKFLOW:
-            raise NotWorkflowAppError()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
-        args = parser.parse_args()
-
         try:
-            response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+            response = application_services().installed_apps.generation.generate_workflow(
+                installed_app=installed_app,
+                account_id=request_context.account_id,
+                args=req_data.model_dump(exclude_none=True),
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except (AppDefinitionUnavailableError, InstalledAppNotWorkflowError):
+            raise NotWorkflowAppError() from None
+        except AccountNotFoundError:
+            raise UnauthorizedError("Account no longer exists.") from None
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
-            logging.exception("internal server error.")
-            raise InternalServerError()
+        except Exception as caught_error:
+            logger.exception("internal server error.")
+            raise InternalServerError() from caught_error
 
 
-class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
-    def post(self, installed_app: InstalledApp, task_id: str):
+@console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")
+class InstalledAppWorkflowTaskStopApi(Resource):
+    @error_responses(NotWorkflowAppError)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission()
+    @get_installed_app
+    def post(self, request_context: RequestContext, installed_app: InstalledAppRef, task_id: str) -> dict[str, object]:
         """
         Stop workflow task
         """
-        app_model = installed_app.app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode != AppMode.WORKFLOW:
+        if installed_app.app_mode != "workflow":
             raise NotWorkflowAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
+        application_services().app_tasks.stop_workflow_task(
+            tenant_id=installed_app.app_owner_tenant_id,
+            app_id=installed_app.app_id,
+            task_id=task_id,
+            app_mode=AppMode.WORKFLOW,
+            owner=None,
+        )
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")

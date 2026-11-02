@@ -1,12 +1,15 @@
-import React from 'react'
 import DatasetUpdateForm from '@/app/components/datasets/create'
+import { getRouteMetadata } from '@/app/route-metadata'
 
-type Props = {}
-
-const DatasetCreation = async (props: Props) => {
-  return (
-    <DatasetUpdateForm />
+export function generateMetadata() {
+  return getRouteMetadata(
+    'onboarding',
+    ($) => $['stepByStepTour.guides.knowledge.empty.create.title'],
   )
+}
+
+const DatasetCreation = () => {
+  return <DatasetUpdateForm />
 }
 
 export default DatasetCreation

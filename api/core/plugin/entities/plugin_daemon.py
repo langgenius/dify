@@ -1,30 +1,33 @@
+from __future__ import annotations
+
+import enum
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.agent.plugin_entities import AgentProviderEntityWithPlugin
-from core.model_runtime.entities.model_entities import AIModelEntity
-from core.model_runtime.entities.provider_entities import ProviderEntity
+from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.parameters import PluginParameterOption
-from core.plugin.entities.plugin import PluginDeclaration, PluginEntity
+from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
+from core.trigger.entities.entities import TriggerProviderEntity
+from graphon.model_runtime.entities.model_entities import AIModelEntity
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
-T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 
-
-class PluginDaemonBasicResponse(BaseModel, Generic[T]):
+class PluginDaemonBasicResponse[T: BaseModel | dict | list | bool | str](BaseModel):
     """
     Basic response from plugin daemon.
     """
 
     code: int
     message: str
-    data: Optional[T]
+    data: T | None = None
 
 
 class InstallPluginMessage(BaseModel):
@@ -48,6 +51,14 @@ class PluginToolProviderEntity(BaseModel):
     declaration: ToolProviderEntityWithPlugin
 
 
+class PluginDatasourceProviderEntity(BaseModel):
+    provider: str
+    plugin_unique_identifier: str
+    plugin_id: str
+    is_authorized: bool = False
+    declaration: DatasourceProviderEntityWithPlugin
+
+
 class PluginAgentProviderEntity(BaseModel):
     provider: str
     plugin_unique_identifier: str
@@ -62,7 +73,7 @@ class PluginBasicBooleanResponse(BaseModel):
     """
 
     result: bool
-    credentials: dict | None = None
+    credentials: dict[str, Any] | None = None
 
 
 class PluginModelSchemaEntity(BaseModel):
@@ -70,6 +81,11 @@ class PluginModelSchemaEntity(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+
+
+class PluginModelProviderDeclaration(ProviderEntity):
+    plugin_unique_identifier: str = Field(description="The plugin unique identifier.")
+    installation_source: PluginInstallationSource | None = Field(description="The plugin installation source.")
 
 
 class PluginModelProviderEntity(BaseModel):
@@ -80,7 +96,23 @@ class PluginModelProviderEntity(BaseModel):
     tenant_id: str = Field(description="The tenant ID.")
     plugin_unique_identifier: str = Field(description="The plugin unique identifier.")
     plugin_id: str = Field(description="The plugin ID.")
+    installation_source: PluginInstallationSource | None = Field(
+        default=None, description="The plugin installation source."
+    )
     declaration: ProviderEntity = Field(description="The declaration of the model provider.")
+
+
+class PluginModelProviderBinding(BaseModel):
+    """Lightweight installation metadata for one model provider."""
+
+    provider: str
+    installation_id: str
+    plugin_id: str
+    plugin_unique_identifier: str
+    runtime_type: str
+    source: PluginInstallationSource
+    version: str
+    verified: bool = False
 
 
 class PluginTextEmbeddingNumTokensResponse(BaseModel):
@@ -101,6 +133,28 @@ class PluginLLMNumTokensResponse(BaseModel):
 
 class PluginStringResultResponse(BaseModel):
     result: str = Field(description="The result of the string.")
+
+
+class PluginTTSResultResponse(PluginStringResultResponse):
+    """One TTS data chunk returned by the plugin daemon."""
+
+    mime_type: str | None = Field(default=None, description="The MIME type of the audio chunk.")
+
+
+class TTSAudioChunk(bytes):
+    """A bytes-compatible TTS chunk carrying optional daemon MIME metadata.
+
+    The currently released Graphon runtime exposes TTS output as ``bytes``.
+    This carrier preserves that contract while retaining the daemon field until
+    the structured Graphon ``TTSChunk`` protocol is available in a release.
+    """
+
+    mime_type: str | None
+
+    def __new__(cls, data: bytes | bytearray | memoryview, mime_type: str | None = None):
+        instance = super().__new__(cls, data)
+        instance.mime_type = mime_type
+        return instance
 
 
 class PluginVoiceEntity(BaseModel):
@@ -144,6 +198,7 @@ class PluginInstallTaskPluginStatus(BaseModel):
     message: str = Field(description="The message of the install task.")
     icon: str = Field(description="The icon of the plugin.")
     labels: I18nObject = Field(description="The labels of the plugin.")
+    source: str | None = Field(default=None, description="The installation source of the plugin")
 
 
 class PluginInstallTask(BasePluginEntity):
@@ -156,6 +211,7 @@ class PluginInstallTask(BasePluginEntity):
 class PluginInstallTaskStartResponse(BaseModel):
     all_installed: bool = Field(description="Whether all plugins are installed.")
     task_id: str = Field(description="The ID of the install task.")
+    task: PluginInstallTask | None = Field(default=None, description="The install task.")
 
 
 class PluginVerification(BaseModel):
@@ -174,7 +230,7 @@ class PluginVerification(BaseModel):
 class PluginDecodeResponse(BaseModel):
     unique_identifier: str = Field(description="The unique identifier of the plugin.")
     manifest: PluginDeclaration
-    verification: Optional[PluginVerification] = Field(default=None, description="Basic verification information")
+    verification: PluginVerification | None = Field(default=None, description="Basic verification information")
 
 
 class PluginOAuthAuthorizationUrlResponse(BaseModel):
@@ -182,6 +238,10 @@ class PluginOAuthAuthorizationUrlResponse(BaseModel):
 
 
 class PluginOAuthCredentialsResponse(BaseModel):
+    metadata: Mapping[str, Any] = Field(
+        default_factory=dict, description="The metadata of the OAuth, like avatar url, name, etc."
+    )
+    expires_at: int = Field(default=-1, description="The expires at time of the credentials. UTC timestamp.")
     credentials: Mapping[str, Any] = Field(description="The credentials of the OAuth.")
 
 
@@ -190,5 +250,64 @@ class PluginListResponse(BaseModel):
     total: int
 
 
+class PluginInstalledIdsDaemonResponse(BaseModel):
+    plugin_ids: list[str]
+
+
+class PluginListWithoutTotalResponse(BaseModel):
+    list: list[PluginEntity]
+    has_more: bool
+
+
 class PluginDynamicSelectOptionsResponse(BaseModel):
     options: Sequence[PluginParameterOption] = Field(description="The options of the dynamic select.")
+
+
+class PluginTriggerProviderEntity(BaseModel):
+    provider: str
+    plugin_unique_identifier: str
+    plugin_id: str
+    declaration: TriggerProviderEntity
+
+
+class CredentialType(enum.StrEnum):
+    API_KEY = "api-key"
+    OAUTH2 = "oauth2"
+    UNAUTHORIZED = "unauthorized"
+
+    def get_name(self) -> str:
+        if self == CredentialType.API_KEY:
+            return "API KEY"
+        elif self == CredentialType.OAUTH2:
+            return "AUTH"
+        elif self == CredentialType.UNAUTHORIZED:
+            return "UNAUTHORIZED"
+        else:
+            return self.value.replace("-", " ").upper()
+
+    def is_editable(self):
+        return self == CredentialType.API_KEY
+
+    def is_validate_allowed(self):
+        return self == CredentialType.API_KEY
+
+    @classmethod
+    def values(cls):
+        return [item.value for item in cls]
+
+    @classmethod
+    def of(cls, credential_type: str) -> CredentialType:
+        type_name = credential_type.lower()
+        if type_name in {"api-key", "api_key"}:
+            return cls.API_KEY
+        elif type_name in {"oauth2", "oauth"}:
+            return cls.OAUTH2
+        elif type_name == "unauthorized":
+            return cls.UNAUTHORIZED
+        else:
+            raise ValueError(f"Invalid credential type: {credential_type}")
+
+
+class PluginReadmeResponse(BaseModel):
+    content: str = Field(description="The readme of the plugin.")
+    language: str = Field(description="The language of the readme.")

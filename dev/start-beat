@@ -1,0 +1,60 @@
+#!/bin/bash
+
+set -x
+
+# Help function
+show_help() {
+  echo "Usage: $0 [OPTIONS]"
+  echo ""
+  echo "Options:"
+  echo "  --loglevel LEVEL       Log level (default: INFO)"
+  echo "  --scheduler SCHEDULER  Scheduler class (default: celery.beat:PersistentScheduler)"
+  echo "  -h, --help             Show this help message"
+  echo ""
+  echo "Examples:"
+  echo "  $0"
+  echo "  $0 --loglevel DEBUG"
+  echo "  $0 --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+  echo ""
+  echo "Description:"
+  echo "  Starts Celery Beat scheduler for periodic task execution."
+  echo "  Beat sends scheduled tasks to worker queues at specified intervals."
+}
+
+# Parse command line arguments
+LOGLEVEL="INFO"
+SCHEDULER="celery.beat:PersistentScheduler"
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --loglevel)
+      LOGLEVEL="$2"
+      shift 2
+      ;;
+    --scheduler)
+      SCHEDULER="$2"
+      shift 2
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      show_help
+      exit 1
+      ;;
+  esac
+done
+
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+cd "$SCRIPT_DIR/.."
+
+echo "Starting Celery Beat with:"
+echo "  Log Level: ${LOGLEVEL}"
+echo "  Scheduler: ${SCHEDULER}"
+
+uv --directory api run \
+  celery -A app.celery beat \
+  --loglevel ${LOGLEVEL} \
+  --scheduler ${SCHEDULER}

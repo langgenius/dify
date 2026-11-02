@@ -1,13 +1,14 @@
-import { useContext } from 'react'
-import {
-  useStore as useZustandStore,
-} from 'zustand'
+import type { NodeKey } from 'lexical'
+import { use } from 'react'
+import { useStore as useZustandStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import NoteEditorContext from './context'
 
 type Shape = {
   linkAnchorElement: HTMLElement | null
-  setLinkAnchorElement: (open?: boolean) => void
+  dismissedLinkKey: NodeKey | null
+  dismissLinkEditor: () => void
+  setLinkAnchorElement: (open?: boolean | HTMLElement | null) => void
   linkOperatorShow: boolean
   setLinkOperatorShow: (linkOperatorShow: boolean) => void
   selectedIsBold: boolean
@@ -17,6 +18,8 @@ type Shape = {
   selectedIsStrikeThrough: boolean
   setSelectedIsStrikeThrough: (selectedIsStrikeThrough: boolean) => void
   selectedLinkUrl: string
+  selectedLinkKey: NodeKey | null
+  setSelectedLinkKey: (selectedLinkKey: NodeKey | null) => void
   setSelectedLinkUrl: (selectedLinkUrl: string) => void
   selectedIsLink: boolean
   setSelectedIsLink: (selectedIsLink: boolean) => void
@@ -25,11 +28,28 @@ type Shape = {
 }
 
 export const createNoteEditorStore = () => {
-  return createStore<Shape>(set => ({
+  let pendingAnchor: ReturnType<typeof setTimeout> | undefined
+  return createStore<Shape>((set, get) => ({
     linkAnchorElement: null,
+    dismissedLinkKey: null,
+    dismissLinkEditor: () => {
+      clearTimeout(pendingAnchor)
+      set({
+        linkAnchorElement: null,
+        linkOperatorShow: false,
+        dismissedLinkKey: get().selectedLinkKey,
+      })
+    },
     setLinkAnchorElement: (open) => {
+      clearTimeout(pendingAnchor)
+      if (open instanceof HTMLElement) {
+        set({ linkAnchorElement: open, dismissedLinkKey: null })
+        return
+      }
+
       if (open) {
-        setTimeout(() => {
+        set({ dismissedLinkKey: null })
+        pendingAnchor = setTimeout(() => {
           const nativeSelection = window.getSelection()
 
           if (nativeSelection?.focusNode) {
@@ -37,36 +57,42 @@ export const createNoteEditorStore = () => {
             set(() => ({ linkAnchorElement: parent }))
           }
         })
-      }
-      else {
-        set(() => ({ linkAnchorElement: null }))
+      } else {
+        set({ linkAnchorElement: null, dismissedLinkKey: null })
       }
     },
     linkOperatorShow: false,
-    setLinkOperatorShow: linkOperatorShow => set(() => ({ linkOperatorShow })),
+    setLinkOperatorShow: (linkOperatorShow) => set(() => ({ linkOperatorShow })),
     selectedIsBold: false,
-    setSelectedIsBold: selectedIsBold => set(() => ({ selectedIsBold })),
+    setSelectedIsBold: (selectedIsBold) => set(() => ({ selectedIsBold })),
     selectedIsItalic: false,
-    setSelectedIsItalic: selectedIsItalic => set(() => ({ selectedIsItalic })),
+    setSelectedIsItalic: (selectedIsItalic) => set(() => ({ selectedIsItalic })),
     selectedIsStrikeThrough: false,
-    setSelectedIsStrikeThrough: selectedIsStrikeThrough => set(() => ({ selectedIsStrikeThrough })),
+    setSelectedIsStrikeThrough: (selectedIsStrikeThrough) =>
+      set(() => ({ selectedIsStrikeThrough })),
     selectedLinkUrl: '',
-    setSelectedLinkUrl: selectedLinkUrl => set(() => ({ selectedLinkUrl })),
+    selectedLinkKey: null,
+    setSelectedLinkKey: (selectedLinkKey) =>
+      set((state) => ({
+        selectedLinkKey,
+        dismissedLinkKey:
+          selectedLinkKey === state.dismissedLinkKey ? state.dismissedLinkKey : null,
+      })),
+    setSelectedLinkUrl: (selectedLinkUrl) => set(() => ({ selectedLinkUrl })),
     selectedIsLink: false,
-    setSelectedIsLink: selectedIsLink => set(() => ({ selectedIsLink })),
+    setSelectedIsLink: (selectedIsLink) => set(() => ({ selectedIsLink })),
     selectedIsBullet: false,
-    setSelectedIsBullet: selectedIsBullet => set(() => ({ selectedIsBullet })),
+    setSelectedIsBullet: (selectedIsBullet) => set(() => ({ selectedIsBullet })),
   }))
 }
 
 export function useStore<T>(selector: (state: Shape) => T): T {
-  const store = useContext(NoteEditorContext)
-  if (!store)
-    throw new Error('Missing NoteEditorContext.Provider in the tree')
+  const store = use(NoteEditorContext)
+  if (!store) throw new Error('Missing NoteEditorContext.Provider in the tree')
 
   return useZustandStore(store, selector)
 }
 
 export const useNoteEditorStore = () => {
-  return useContext(NoteEditorContext)!
+  return use(NoteEditorContext)!
 }

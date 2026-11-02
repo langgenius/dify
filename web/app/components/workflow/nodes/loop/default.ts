@@ -1,13 +1,27 @@
-import { BlockEnum } from '../../types'
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
-import { ComparisonOperator, LogicalOperator, type LoopNodeType } from './types'
-import { isEmptyRelatedOperator } from './utils'
-import { TransferMethod } from '@/types/app'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+import type { LoopNodeType } from './types'
+import type { I18nKeysByPrefix } from '@/types/i18n'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { LOOP_NODE_MAX_COUNT } from '@/config'
-const i18nPrefix = 'workflow.errorMsg'
+import { TransferMethod } from '@/types/app'
+import { VarType } from '../../types'
+import { ComparisonOperator, LogicalOperator } from './types'
+import { isEmptyRelatedOperator } from './utils'
 
+const i18nPrefix = 'errorMsg'
+
+const metaData = genNodeMetaData({
+  classification: BlockClassification.Logic,
+  sort: 3,
+  type: BlockEnum.Loop,
+  author: 'AICT-Team',
+  isTypeFixed: true,
+})
 const nodeDefault: NodeDefault<LoopNodeType> = {
+  metaData,
   defaultValue: {
     start_node_id: '',
     break_conditions: [],
@@ -15,59 +29,81 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
     _children: [],
     logical_operator: LogicalOperator.and,
   },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
-  },
-  checkValid(payload: LoopNodeType, t: any) {
+  checkValid(payload: LoopNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
 
     payload.loop_variables?.forEach((variable) => {
       if (!variable.label)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
+        errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+          ns: 'workflow',
+          field: t(($) => $[`${i18nPrefix}.fields.variable`], { ns: 'workflow' }),
+        })
     })
 
     payload.break_conditions!.forEach((condition) => {
-      if (!errorMessages && (!condition.variable_selector || condition.variable_selector.length === 0))
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
-      if (!errorMessages && !condition.comparison_operator)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.ifElse.operator') })
-      if (!errorMessages) {
-        if (condition.sub_variable_condition
-          && ![ComparisonOperator.empty, ComparisonOperator.notEmpty].includes(condition.comparison_operator!)) {
-          const isSet = condition.sub_variable_condition.conditions.every((c) => {
-            if (!c.comparison_operator)
-              return false
+      const emptyOperators: readonly ComparisonOperator[] = [
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
 
-            if (isEmptyRelatedOperator(c.comparison_operator!))
-              return true
+      if (
+        !errorMessages &&
+        (!condition.variable_selector || condition.variable_selector.length === 0)
+      )
+        errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+          ns: 'workflow',
+          field: t(($) => $[`${i18nPrefix}.fields.variable`], { ns: 'workflow' }),
+        })
+      if (!errorMessages && !condition.comparison_operator)
+        errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+          ns: 'workflow',
+          field: t(($) => $['nodes.ifElse.operator'], { ns: 'workflow' }),
+        })
+      if (!errorMessages) {
+        if (
+          condition.sub_variable_condition &&
+          !emptyOperators.includes(condition.comparison_operator!)
+        ) {
+          const isSet = condition.sub_variable_condition.conditions.every((c) => {
+            if (!c.comparison_operator) return false
+
+            if (isEmptyRelatedOperator(c.comparison_operator!)) return true
 
             return !!c.value
           })
 
           if (!isSet)
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
-        }
-        else {
-          if (!isEmptyRelatedOperator(condition.comparison_operator!) && !condition.value)
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
+            errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+              ns: 'workflow',
+              field: t(($) => $[`${i18nPrefix}.fields.variableValue`], { ns: 'workflow' }),
+            })
+        } else {
+          if (
+            !isEmptyRelatedOperator(condition.comparison_operator!) &&
+            (condition.varType === VarType.boolean
+              ? condition.value === undefined
+              : !condition.value)
+          )
+            errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+              ns: 'workflow',
+              field: t(($) => $[`${i18nPrefix}.fields.variableValue`], { ns: 'workflow' }),
+            })
         }
       }
     })
 
-    if (!errorMessages && (
-      Number.isNaN(Number(payload.loop_count))
-      || !Number.isInteger(Number(payload.loop_count))
-      || payload.loop_count < 1
-      || payload.loop_count > LOOP_NODE_MAX_COUNT
-    ))
-      errorMessages = t('workflow.nodes.loop.loopMaxCountError', { maxCount: LOOP_NODE_MAX_COUNT })
+    if (
+      !errorMessages &&
+      (Number.isNaN(Number(payload.loop_count)) ||
+        !Number.isInteger(Number(payload.loop_count)) ||
+        payload.loop_count < 1 ||
+        payload.loop_count > LOOP_NODE_MAX_COUNT)
+    ) {
+      errorMessages = t(($) => $['nodes.loop.loopMaxCountError'], {
+        ns: 'workflow',
+        maxCount: LOOP_NODE_MAX_COUNT,
+      })
+    }
 
     return {
       isValid: !errorMessages,
@@ -76,19 +112,33 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
   },
 }
 
+type OptionItem = {
+  value: string
+  i18nKey: I18nKeysByPrefix<'workflowLogic', 'nodes.ifElse.optionName.'>
+}
+
 export const FILE_TYPE_OPTIONS = [
   { value: 'image', i18nKey: 'image' },
   { value: 'document', i18nKey: 'doc' },
   { value: 'audio', i18nKey: 'audio' },
   { value: 'video', i18nKey: 'video' },
-]
+] as const satisfies readonly OptionItem[]
 
 export const TRANSFER_METHOD = [
   { value: TransferMethod.local_file, i18nKey: 'localUpload' },
   { value: TransferMethod.remote_url, i18nKey: 'url' },
-]
+] as const satisfies readonly OptionItem[]
 
-export const SUB_VARIABLES = ['type', 'size', 'name', 'url', 'extension', 'mime_type', 'transfer_method', 'related_id']
-export const OUTPUT_FILE_SUB_VARIABLES = SUB_VARIABLES.filter(key => key !== 'transfer_method')
+export const SUB_VARIABLES = [
+  'type',
+  'size',
+  'name',
+  'url',
+  'extension',
+  'mime_type',
+  'transfer_method',
+  'related_id',
+]
+export const OUTPUT_FILE_SUB_VARIABLES = SUB_VARIABLES.filter((key) => key !== 'transfer_method')
 
 export default nodeDefault

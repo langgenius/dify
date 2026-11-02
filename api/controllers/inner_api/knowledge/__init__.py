@@ -1,0 +1,1 @@
+"""Inner knowledge retrieval endpoints."""

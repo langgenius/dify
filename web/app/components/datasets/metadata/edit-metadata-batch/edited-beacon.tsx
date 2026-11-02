@@ -1,36 +1,40 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef } from 'react'
-import { useHover } from 'ahooks'
-import { RiResetLeftLine } from '@remixicon/react'
-import Tooltip from '@/app/components/base/tooltip'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import * as React from 'react'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
+  fieldId?: string
   onReset: () => void
-}
+}>
 
-const EditedBeacon: FC<Props> = ({
-  onReset,
-}) => {
-  const { t } = useTranslation()
-  const ref = useRef(null)
-  const isHovering = useHover(ref)
+const EditedBeacon: FC<Props> = ({ fieldId, onReset }) => {
+  const { t } = useTranslation(['common'])
+  const resetId = useId()
 
   return (
-    <div ref={ref} className='size-4 cursor-pointer'>
-      {isHovering ? (
-        <Tooltip popupContent={t('common.operation.reset')}>
-          <div className='flex size-4 items-center justify-center rounded-full bg-text-accent-secondary' onClick={onReset}>
-            <RiResetLeftLine className='size-[10px] text-text-primary-on-surface' />
-          </div>
-        </Tooltip>
-      ) : (
-        <div className='flex size-4 items-center justify-center'>
-          <div className='size-1 rounded-full bg-text-accent-secondary'></div>
-        </div>
-      )}
-    </div>
+    <>
+      <span id={resetId} className="sr-only">
+        {t(($) => $['operation.reset'], { ns: 'common' })}
+      </span>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <IconButton
+              variant="ghost-accent"
+              aria-labelledby={[resetId, fieldId].filter(Boolean).join(' ')}
+              onClick={onReset}
+            >
+              <span className="i-ri-reset-left-line size-3" aria-hidden="true" />
+            </IconButton>
+          }
+        />
+        <TooltipContent>{t(($) => $['operation.reset'], { ns: 'common' })}</TooltipContent>
+      </Tooltip>
+    </>
   )
 }
 export default React.memo(EditedBeacon)

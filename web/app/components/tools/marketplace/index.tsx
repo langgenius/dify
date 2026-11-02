@@ -1,117 +1,143 @@
-import {
-  useEffect,
-  useRef,
-} from 'react'
+import type { SearchParamsFromCollection } from '@dify/contracts/marketplace'
+import type { ToolsContentInset } from '../content-inset'
+import type { useToolMarketplace } from './hooks'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
+import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTheme } from 'next-themes'
-import {
-  RiArrowRightUpLine,
-  RiArrowUpDoubleLine,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { useMarketplace } from './hooks'
+import { useLocale } from '#i18n'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
-import Loading from '@/app/components/base/loading'
-import { getLocaleOnClient } from '@/i18n'
-import { getMarketplaceUrl } from '@/utils/var'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { useRouter } from '@/next/navigation'
+import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
 
 type MarketplaceProps = {
+  marketplace: MarketplaceLinks
   searchPluginText: string
   filterPluginTags: string[]
-  onMarketplaceScroll: () => void
+  isMarketplaceArrowVisible: boolean
+  showMarketplacePanel: () => void
+  marketplaceContext: ReturnType<typeof useToolMarketplace>
+  contentInset?: ToolsContentInset
 }
 const Marketplace = ({
+  marketplace,
   searchPluginText,
   filterPluginTags,
-  onMarketplaceScroll,
+  isMarketplaceArrowVisible,
+  showMarketplacePanel,
+  marketplaceContext,
+  contentInset = 'default',
 }: MarketplaceProps) => {
-  const locale = getLocaleOnClient()
-  const { t } = useTranslation()
+  const locale = useLocale()
+  const { t } = useTranslation(['common', 'plugin'])
   const { theme } = useTheme()
-  const {
-    isLoading,
-    marketplaceCollections,
-    marketplaceCollectionPluginsMap,
-    plugins,
-    handleScroll,
-    page,
-  } = useMarketplace(searchPluginText, filterPluginTags)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+  const { canInstallPlugin } = usePluginSettingsAccess()
+  const { isLoading, marketplaceCollections, marketplaceCollectionPluginsMap, plugins, page } =
+    marketplaceContext
+  const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
+  const marketplaceFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
+  const cardContainerClassName = 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3'
+  const handleCollectionMoreClick = (searchParams?: SearchParamsFromCollection) => {
+    const params = new URLSearchParams({ category: 'tool' })
 
-  useEffect(() => {
-    const container = containerRef.current
-    if (container)
-      container.addEventListener('scroll', handleScroll)
+    if (searchParams?.query) params.set('q', searchParams.query)
+    if (searchParams?.sort_by) params.set('sort_by', searchParams.sort_by)
+    if (searchParams?.sort_order) params.set('sort_order', searchParams.sort_order)
 
-    return () => {
-      if (container)
-        container.removeEventListener('scroll', handleScroll)
-    }
-  }, [handleScroll])
+    router.push(`/marketplace?${params.toString()}`)
+  }
 
   return (
-    <div
-      ref={containerRef}
-      className='sticky bottom-[-442px] flex h-[530px] shrink-0 grow flex-col overflow-y-auto bg-background-default-subtle px-12 py-2 pt-0'
-    >
-      <RiArrowUpDoubleLine
-        className='absolute left-1/2 top-2 h-4 w-4 -translate-x-1/2 cursor-pointer text-text-quaternary'
-        onClick={() => onMarketplaceScroll()}
-      />
-      <div className='sticky top-0 z-10 bg-background-default-subtle pb-3 pt-5'>
-        <div className='title-2xl-semi-bold bg-gradient-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text text-transparent'>
-          {t('plugin.marketplace.moreFrom')}
-        </div>
-        <div className='body-md-regular flex items-center text-center text-text-tertiary'>
-          {t('plugin.marketplace.discover')}
-          <span className="body-md-medium relative ml-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-            {t('plugin.category.models')}
-          </span>
-          ,
-          <span className="body-md-medium relative ml-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-            {t('plugin.category.tools')}
-          </span>
-          ,
-          <span className="body-md-medium relative ml-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-            {t('plugin.category.agents')}
-          </span>
-          ,
-          <span className="body-md-medium relative ml-1 mr-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-            {t('plugin.category.extensions')}
-          </span>
-          {t('plugin.marketplace.and')}
-          <span className="body-md-medium relative ml-1 mr-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-            {t('plugin.category.bundles')}
-          </span>
-          {t('common.operation.in')}
-          <a
-            href={getMarketplaceUrl('', { language: locale, q: searchPluginText, tags: filterPluginTags.join(','), theme })}
-            className='system-sm-medium ml-1 flex items-center text-text-accent'
-            target='_blank'
+    <>
+      <div className="sticky bottom-0 flex shrink-0 flex-col bg-background-default-subtle pt-2 pb-3.5">
+        {isMarketplaceArrowVisible && (
+          <IconButton
+            aria-label={t(($) => $['marketplace.moreFrom'], { ns: 'plugin' })}
+            className="absolute top-2 left-1/2 z-10 -translate-x-1/2 text-text-quaternary"
+            onClick={showMarketplacePanel}
+            size="md"
+            variant="ghost"
           >
-            {t('plugin.marketplace.difyMarketplace')}
-            <RiArrowRightUpLine className='h-4 w-4' />
-          </a>
+            <span aria-hidden="true" className="i-ri-arrow-up-double-line size-4" />
+          </IconButton>
+        )}
+        <div className={cn('pt-4 pb-3', marketplaceFrameClassName)}>
+          <div className="bg-linear-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text title-2xl-semi-bold text-transparent">
+            {t(($) => $['marketplace.moreFrom'], { ns: 'plugin' })}
+          </div>
+          <div className="flex items-center text-center body-md-regular text-text-tertiary">
+            {t(($) => $['marketplace.discover'], { ns: 'plugin' })}
+            <span className="relative ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+              {t(($) => $['category.models'], { ns: 'plugin' })}
+            </span>
+            ,
+            <span className="relative ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+              {t(($) => $['category.tools'], { ns: 'plugin' })}
+            </span>
+            ,
+            <span className="relative ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+              {t(($) => $['category.datasources'], { ns: 'plugin' })}
+            </span>
+            ,
+            <span className="relative ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+              {t(($) => $['category.triggers'], { ns: 'plugin' })}
+            </span>
+            ,
+            <span className="relative ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+              {t(($) => $['category.agents'], { ns: 'plugin' })}
+            </span>
+            ,
+            <span className="relative ms-1 me-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+              {t(($) => $['category.extensions'], { ns: 'plugin' })}
+            </span>
+            {t(($) => $['marketplace.and'], { ns: 'plugin' })}
+            <span className="relative ms-1 me-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+              {t(($) => $['category.bundles'], { ns: 'plugin' })}
+            </span>
+            {t(($) => $['operation.in'], { ns: 'common' })}
+            <a
+              href={marketplace.page('', {
+                language: locale,
+                q: searchPluginText,
+                tags: filterPluginTags.join(','),
+                theme,
+              })}
+              className="ms-1 flex items-center system-sm-medium text-text-accent"
+              target="_blank"
+            >
+              {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
+              <span
+                aria-hidden="true"
+                className="i-ri-arrow-right-up-line size-4 rtl:-scale-x-100"
+              />
+            </a>
+          </div>
         </div>
       </div>
-      {
-        isLoading && page === 1 && (
-          <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'>
-            <Loading />
+      <div className="-mt-3.5 shrink-0 grow bg-background-default-subtle pb-2">
+        {isLoading && page === 1 && (
+          <div className="absolute top-1/2 left-1/2 -translate-1/2">
+            <LoadingPlaceholder />
           </div>
-        )
-      }
-      {
-        (!isLoading || page > 1) && (
-          <List
-            marketplaceCollections={marketplaceCollections || []}
-            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
-            plugins={plugins}
-            showInstallButton
-            locale={locale}
-          />
-        )
-      }
-    </div>
+        )}
+        {(!isLoading || page > 1) && (
+          <div className={marketplaceFrameClassName}>
+            <List
+              marketplaceCollections={marketplaceCollections || []}
+              marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
+              plugins={plugins}
+              showInstallButton={canInstallPlugin}
+              cardContainerClassName={cardContainerClassName}
+              onCollectionMoreClick={handleCollectionMoreClick}
+            />
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 

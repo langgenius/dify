@@ -1,0 +1,188 @@
+import type {
+  AgentAppComposerResponse,
+  TrialAppDetailResponse,
+} from '@dify/contracts/api/console/trial-apps/types.gen'
+import type { AgentTool } from '@/types/app'
+import { useQuery } from '@tanstack/react-query'
+import { uniqBy } from 'es-toolkit/compat'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
+import { consoleQuery } from '@/service/console'
+
+type Params = {
+  appDetail: TrialAppDetailResponse
+  appId: string
+  agentComposer?: AgentAppComposerResponse
+}
+
+type RequirementItem = {
+  name: string
+  iconUrl: string
+}
+
+type ProviderType = 'model' | 'tool'
+
+type ProviderInfo = {
+  organization: string
+  providerName: string
+}
+
+const PROVIDER_PLUGIN_ALIASES: Record<ProviderType, Record<string, string>> = {
+  model: {
+    google: 'gemini',
+  },
+  tool: {
+    stepfun: 'stepfun_tool',
+    jina: 'jina_tool',
+    siliconflow: 'siliconflow_tool',
+    gitee_ai: 'gitee_ai_tool',
+  },
+}
+
+const parseProviderId = (providerId: string): ProviderInfo | null => {
+  const segments = providerId.split('/').filter(Boolean)
+  if (!segments.length) return null
+
+  if (segments.length === 1) {
+    return {
+      organization: 'langgenius',
+      providerName: segments[0]!,
+    }
+  }
+
+  return {
+    organization: segments[0]!,
+    providerName: segments[1]!,
+  }
+}
+
+const getPluginName = (providerName: string, type: ProviderType) => {
+  return PROVIDER_PLUGIN_ALIASES[type][providerName] || providerName
+}
+
+const getIconUrl = (providerId: string, type: ProviderType) => {
+  const parsed = parseProviderId(providerId)
+  if (!parsed) return ''
+
+  return getMarketplacePluginIconUrl(
+    `${parsed.organization}/${getPluginName(parsed.providerName, type)}`,
+  )
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+const getGraphNodes = (graph: unknown): unknown[] => {
+  if (!isRecord(graph) || !Array.isArray(graph.nodes)) return []
+
+  return graph.nodes
+}
+
+const isAgentTool = (value: unknown): value is AgentTool => {
+  if (!isRecord(value)) return false
+
+  return (
+    typeof value.provider_id === 'string' &&
+    typeof value.tool_label === 'string' &&
+    value.enabled === true
+  )
+}
+
+const hasLLMRequirementData = (
+  value: unknown,
+): value is { model: { name: string; provider: string } } => {
+  if (!isRecord(value) || !isRecord(value.model)) return false
+
+  return typeof value.model.name === 'string' && typeof value.model.provider === 'string'
+}
+
+const hasToolRequirementData = (
+  value: unknown,
+): value is { provider_id: string; tool_label: string } => {
+  if (!isRecord(value)) return false
+
+  return typeof value.provider_id === 'string' && typeof value.tool_label === 'string'
+}
+
+const useGetRequirements = ({ appDetail, appId, agentComposer }: Params) => {
+  const isBasic = ['chat', 'completion', 'agent-chat'].includes(appDetail.mode)
+  const isAgent = appDetail.mode === 'agent-chat'
+  const isAdvanced = !isBasic && appDetail.mode !== 'agent'
+  const { data: flowData } = useQuery(
+    consoleQuery.trialApps.byAppId.workflows.get.queryOptions({
+      input: { params: { app_id: appId } },
+      enabled: isAdvanced,
+    }),
+  )
+
+  const requirements: RequirementItem[] = []
+  if (appDetail.mode === 'agent' && agentComposer) {
+    const agentModel = agentComposer.agent_soul.model
+    if (agentModel)
+      requirements.push({
+        name: agentModel.model,
+        iconUrl: getIconUrl(agentModel.plugin_id, 'model'),
+      })
+    for (const tool of agentComposer.agent_soul.tools?.dify_tools ?? []) {
+      if (tool.enabled === false || !tool.name || !tool.plugin_id) continue
+      requirements.push({ name: tool.name, iconUrl: getIconUrl(tool.plugin_id, 'tool') })
+    }
+  }
+  const modelConfig = appDetail.model_config
+  const model = modelConfig?.model
+  if (isBasic && model) {
+    const modelProvider = model.provider
+    const name = model.provider.split('/').pop() || ''
+    requirements.push({
+      name,
+      iconUrl: getIconUrl(modelProvider, 'model'),
+    })
+  }
+  if (isAgent && modelConfig?.agent_mode?.tools) {
+    requirements.push(
+      ...modelConfig.agent_mode.tools.filter(isAgentTool).map((tool) => ({
+        name: tool.tool_label,
+        iconUrl: getIconUrl(tool.provider_id, 'tool'),
+      })),
+    )
+  }
+  const nodes = getGraphNodes(flowData?.graph)
+  if (isAdvanced && nodes.length > 0) {
+    requirements.push(
+      ...nodes.flatMap((node) => {
+        const data = isRecord(node) && isRecord(node.data) ? node.data : null
+        if (data?.type !== BlockEnum.LLM || !hasLLMRequirementData(data)) return []
+
+        return [
+          {
+            name: data.model.name,
+            iconUrl: getIconUrl(data.model.provider, 'model'),
+          },
+        ]
+      }),
+    )
+
+    requirements.push(
+      ...nodes.flatMap((node) => {
+        const data = isRecord(node) && isRecord(node.data) ? node.data : null
+        if (data?.type !== BlockEnum.Tool || !hasToolRequirementData(data)) return []
+
+        return [
+          {
+            name: data.tool_label,
+            iconUrl: getIconUrl(data.provider_id, 'tool'),
+          },
+        ]
+      }),
+    )
+  }
+
+  const uniqueRequirements = uniqBy(requirements, 'name')
+
+  return {
+    requirements: uniqueRequirements,
+  }
+}
+
+export default useGetRequirements

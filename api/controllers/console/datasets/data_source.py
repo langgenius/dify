@@ -1,282 +1,352 @@
-import datetime
-import json
+from datetime import datetime
+from typing import Never
+from uuid import UUID
 
-from flask import request
-from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_serializer, field_validator
 
-from controllers.console import api
-from controllers.console.wraps import account_initialization_required, setup_required
-from core.indexing_runner import IndexingRunner
-from core.rag.extractor.entity.extract_setting import ExtractSetting
-from core.rag.extractor.notion_extractor import NotionExtractor
-from extensions.ext_database import db
-from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
-from libs.login import login_required
-from models import DataSourceOauthBinding, Document
-from services.dataset_service import DatasetService, DocumentService
-from tasks.document_indexing_sync_task import document_indexing_sync_task
+from configs import dify_config
+from controllers.common.errors import InvalidArgumentError, NotFoundError
+from controllers.common.fields import SimpleResultResponse, TextContentResponse
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console import console_ns
+from controllers.console.app.error import ProviderNotInitializeError
+from controllers.console.datasets.error import (
+    DatasetAccessDeniedRequestError,
+    IndexingEstimateError,
+    InvalidActionError,
+)
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
+from core.entities.knowledge_entities import IndexingEstimate
+from core.rbac import RBACPermission
+from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
+from fields.dataset_fields import NotionEstimateWorkspacePayload
+from libs.external_api import error_responses
+from libs.helper import dump_response, to_timestamp
+from machinery.context import RequestContext
+from models.account import TenantAccountRole
+from services.data_source.binding_application_service import (
+    BindingAction,
+    DataSourceBindingNotFoundError,
+    DataSourceBindingStateError,
+)
+from services.data_source.entities.notion_import import NotionPageType
+from services.data_source.notion_import_application_service import (
+    DatasetIsNotNotionSourceError,
+    NotionImportCredentialUnavailableError,
+)
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.document_sync import SyncDocumentNotFoundError, SyncDocumentSourceError
+from services.knowledge.entities.indexing_estimate import NewSourcesEstimateCommand, NotionEstimateSource
+from services.knowledge.indexing.estimate import (
+    EstimateSourceNotFoundError,
+    IndexingEstimateCredentialUnavailableError,
+    IndexingEstimateExecutionError,
+    IndexingEstimateProviderUnavailableError,
+)
+
+_ADMIN_OR_OWNER_ROLES = frozenset({TenantAccountRole.ADMIN, TenantAccountRole.OWNER})
+_DATA_SOURCE_OAUTH_BASE_PATH = "/console/api/oauth/data-source"
 
 
-class DataSourceApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(integrate_list_fields)
-    def get(self):
-        # get workspace data source integrates
-        data_source_integrates = (
-            db.session.query(DataSourceOauthBinding)
-            .filter(
-                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceOauthBinding.disabled == False,
+class NotionEstimatePayload(BaseModel):
+    notion_info_list: list[NotionEstimateWorkspacePayload] = Field(min_length=1)
+    process_rule: dict[str, object]
+    doc_form: str = Field(default="text_model")
+    doc_language: str = Field(default="English")
+
+
+class DataSourceNotionListQuery(BaseModel):
+    dataset_id: str | None = Field(default=None, description="Dataset ID")
+    credential_id: str = Field(..., description="Credential ID", min_length=1)
+
+    @field_validator("dataset_id", mode="before")
+    @classmethod
+    def empty_dataset_id_to_none(cls, value: str | None) -> str | None:
+        return None if value == "" else value
+
+
+class DataSourceNotionPreviewQuery(BaseModel):
+    credential_id: str = Field(..., description="Credential ID", min_length=1)
+
+
+class DataSourceIntegrateIconResponse(ResponseModel):
+    type: str | None = None
+    url: str | None = None
+    emoji: str | None = None
+
+
+class DataSourceIntegratePageResponse(ResponseModel):
+    page_name: str
+    page_id: str
+    page_icon: DataSourceIntegrateIconResponse | None
+    parent_id: str
+    type: NotionPageType
+
+
+class DataSourceIntegrateWorkspaceResponse(ResponseModel):
+    workspace_name: str | None
+    workspace_id: str | None
+    workspace_icon: str | None
+    pages: list[DataSourceIntegratePageResponse]
+    total: int
+
+
+class DataSourceIntegrateResponse(ResponseModel):
+    id: str | None
+    provider: str
+    created_at: datetime | int | None
+    is_bound: bool
+    disabled: bool | None
+    link: str
+    source_info: DataSourceIntegrateWorkspaceResponse | None
+
+    @field_serializer("created_at")
+    def serialize_created_at(self, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class DataSourceIntegrateListResponse(ResponseModel):
+    data: list[DataSourceIntegrateResponse]
+
+
+class NotionIntegratePageResponse(ResponseModel):
+    page_name: str
+    page_id: str
+    page_icon: DataSourceIntegrateIconResponse | None
+    parent_id: str | None
+    page_type: NotionPageType = Field(alias="type")
+    is_bound: bool
+
+
+class NotionIntegrateWorkspaceResponse(ResponseModel):
+    workspace_name: str | None
+    workspace_id: str | None
+    workspace_icon: str | None
+    pages: list[NotionIntegratePageResponse]
+
+
+class NotionIntegrateInfoListResponse(ResponseModel):
+    notion_info: list[NotionIntegrateWorkspaceResponse]
+
+
+register_schema_models(console_ns, NotionEstimatePayload)
+register_response_schema_models(
+    console_ns,
+    DataSourceIntegrateListResponse,
+    IndexingEstimate,
+    NotionIntegrateInfoListResponse,
+    SimpleResultResponse,
+    TextContentResponse,
+)
+
+
+def _raise_dataset_access_error(error: DatasetNotFoundError | DatasetAccessDeniedError) -> Never:
+    if isinstance(error, DatasetNotFoundError):
+        raise NotFoundError(description="Dataset not found.") from None
+    raise DatasetAccessDeniedRequestError(description=str(error)) from None
+
+
+@console_ns.route("/data-source/integrates")
+class DataSourceIntegrationListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[DataSourceIntegrateListResponse.__name__])
+    @console_account_admission(
+        allowed_roles=_ADMIN_OR_OWNER_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()),),
+    )
+    def get(self, request_context: RequestContext) -> tuple[dict[str, object], int]:
+        bindings = application_services().data_sources.bindings.list_integrations(request_context)
+        base_url = dify_config.CONSOLE_API_URL.rstrip("/")
+        data = [
+            {
+                "id": binding.id,
+                "provider": binding.provider,
+                "created_at": binding.created_at,
+                "is_bound": True,
+                "disabled": binding.disabled,
+                "source_info": binding.source_info,
+                "link": f"{base_url}{_DATA_SOURCE_OAUTH_BASE_PATH}/{binding.provider}",
+            }
+            for binding in bindings
+        ]
+        return dump_response(DataSourceIntegrateListResponse, {"data": data}), 200
+
+
+@console_ns.route("/data-source/integrates/<uuid:binding_id>/<string:action>")
+class DataSourceIntegrationApi(Resource):
+    @error_responses(InvalidActionError)
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission(
+        allowed_roles=_ADMIN_OR_OWNER_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()),),
+    )
+    def patch(
+        self,
+        request_context: RequestContext,
+        binding_id: UUID,
+        action: str,
+    ) -> tuple[dict[str, object], int]:
+        try:
+            validated_action = BindingAction(action)
+        except ValueError as error:
+            raise InvalidActionError() from error
+        try:
+            application_services().data_sources.bindings.change_state(
+                request_context,
+                str(binding_id),
+                validated_action,
             )
-            .all()
-        )
-
-        base_url = request.url_root.rstrip("/")
-        data_source_oauth_base_path = "/console/api/oauth/data-source"
-        providers = ["notion"]
-
-        integrate_data = []
-        for provider in providers:
-            # existing_integrate = next((ai for ai in data_source_integrates if ai.provider == provider), None)
-            existing_integrates = filter(lambda item: item.provider == provider, data_source_integrates)
-            if existing_integrates:
-                for existing_integrate in list(existing_integrates):
-                    integrate_data.append(
-                        {
-                            "id": existing_integrate.id,
-                            "provider": provider,
-                            "created_at": existing_integrate.created_at,
-                            "is_bound": True,
-                            "disabled": existing_integrate.disabled,
-                            "source_info": existing_integrate.source_info,
-                            "link": f"{base_url}{data_source_oauth_base_path}/{provider}",
-                        }
-                    )
-            else:
-                integrate_data.append(
-                    {
-                        "id": None,
-                        "provider": provider,
-                        "created_at": None,
-                        "source_info": None,
-                        "is_bound": False,
-                        "disabled": None,
-                        "link": f"{base_url}{data_source_oauth_base_path}/{provider}",
-                    }
-                )
-        return {"data": integrate_data}, 200
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def patch(self, binding_id, action):
-        binding_id = str(binding_id)
-        action = str(action)
-        with Session(db.engine) as session:
-            data_source_binding = session.execute(
-                select(DataSourceOauthBinding).filter_by(id=binding_id)
-            ).scalar_one_or_none()
-        if data_source_binding is None:
-            raise NotFound("Data source binding not found.")
-        # enable binding
-        if action == "enable":
-            if data_source_binding.disabled:
-                data_source_binding.disabled = False
-                data_source_binding.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-                db.session.add(data_source_binding)
-                db.session.commit()
-            else:
-                raise ValueError("Data source is not disabled.")
-        # disable binding
-        if action == "disable":
-            if not data_source_binding.disabled:
-                data_source_binding.disabled = True
-                data_source_binding.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-                db.session.add(data_source_binding)
-                db.session.commit()
-            else:
-                raise ValueError("Data source is disabled.")
-        return {"result": "success"}, 200
+        except DataSourceBindingNotFoundError as error:
+            raise NotFoundError(description="Data source binding not found.") from error
+        except DataSourceBindingStateError as error:
+            raise InvalidArgumentError(description=str(error)) from error
+        return dump_response(SimpleResultResponse, {"result": "success"}), 200
 
 
+@console_ns.route("/notion/pre-import/pages")
 class DataSourceNotionListApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(integrate_notion_info_list_fields)
-    def get(self):
-        dataset_id = request.args.get("dataset_id", default=None, type=str)
-        exist_page_ids = []
-        with Session(db.engine) as session:
-            # import notion in the exist dataset
-            if dataset_id:
-                dataset = DatasetService.get_dataset(dataset_id)
-                if not dataset:
-                    raise NotFound("Dataset not found.")
-                if dataset.data_source_type != "notion_import":
-                    raise ValueError("Dataset is not notion type.")
+    @error_responses(DatasetAccessDeniedRequestError)
+    @console_ns.doc(params=query_params_from_model(DataSourceNotionListQuery))
+    @console_ns.response(200, "Success", console_ns.models[NotionIntegrateInfoListResponse.__name__])
+    @console_account_admission()
+    @model_validate(DataSourceNotionListQuery)
+    def get(
+        self,
+        req_data: DataSourceNotionListQuery,
+        request_context: RequestContext,
+    ) -> tuple[dict[str, object], int]:
+        try:
+            result = application_services().data_sources.notion_imports.list_pages(
+                request_context,
+                credential_id=req_data.credential_id,
+                dataset_id=req_data.dataset_id,
+            )
+        except NotionImportCredentialUnavailableError as error:
+            raise NotFoundError(description="Credential not found.") from error
+        except (DatasetNotFoundError, DatasetAccessDeniedError) as error:
+            _raise_dataset_access_error(error)
+        except DatasetIsNotNotionSourceError as error:
+            raise InvalidArgumentError(description="Dataset is not notion type.") from error
+        return dump_response(NotionIntegrateInfoListResponse, {"notion_info": result.workspaces}), 200
 
-                documents = session.scalars(
-                    select(Document).filter_by(
-                        dataset_id=dataset_id,
-                        tenant_id=current_user.current_tenant_id,
-                        data_source_type="notion_import",
-                        enabled=True,
-                    )
-                ).all()
-                if documents:
-                    for document in documents:
-                        data_source_info = json.loads(document.data_source_info)
-                        exist_page_ids.append(data_source_info["notion_page_id"])
-            # get all authorized pages
-            data_source_bindings = session.scalars(
-                select(DataSourceOauthBinding).filter_by(
-                    tenant_id=current_user.current_tenant_id, provider="notion", disabled=False
+
+@console_ns.route("/notion/pages/<uuid:page_id>/<string:page_type>/preview")
+class DataSourceNotionPreviewApi(Resource):
+    """Preview one authorized Notion page through the datasource credential."""
+
+    @console_ns.doc(params=query_params_from_model(DataSourceNotionPreviewQuery))
+    @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
+    @console_account_admission()
+    @model_validate(DataSourceNotionPreviewQuery)
+    def get(
+        self,
+        req_data: DataSourceNotionPreviewQuery,
+        request_context: RequestContext,
+        page_id: UUID,
+        page_type: str,
+    ) -> tuple[dict[str, object], int]:
+        try:
+            validated_page_type = NotionPageType(page_type)
+        except ValueError as error:
+            raise InvalidArgumentError(description="Invalid Notion page type.") from error
+        try:
+            content = application_services().data_sources.notion_imports.preview_page(
+                request_context,
+                credential_id=req_data.credential_id,
+                page_id=str(page_id),
+                page_type=validated_page_type,
+            )
+        except NotionImportCredentialUnavailableError as error:
+            raise NotFoundError(description="Credential not found.") from error
+        return dump_response(TextContentResponse, {"content": content}), 200
+
+
+@console_ns.route("/datasets/notion-indexing-estimate")
+class DataSourceNotionIndexingEstimateApi(Resource):
+    """Estimate indexing work for selected Notion pages."""
+
+    @error_responses(IndexingEstimateError, ProviderNotInitializeError)
+    @console_ns.expect(console_ns.models[NotionEstimatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[IndexingEstimate.__name__])
+    @console_account_admission()
+    @model_validate(NotionEstimatePayload)
+    def post(
+        self,
+        req_data: NotionEstimatePayload,
+        request_context: RequestContext,
+    ) -> tuple[dict[str, object], int]:
+        command = NewSourcesEstimateCommand(
+            sources=tuple(
+                NotionEstimateSource(
+                    workspace_id=workspace.workspace_id,
+                    page_id=page.page_id,
+                    page_type=page.page_type,
+                    credential_id=workspace.credential_id,
                 )
-            ).all()
-            if not data_source_bindings:
-                return {"notion_info": []}, 200
-            pre_import_info_list = []
-            for data_source_binding in data_source_bindings:
-                source_info = data_source_binding.source_info
-                pages = source_info["pages"]
-                # Filter out already bound pages
-                for page in pages:
-                    if page["page_id"] in exist_page_ids:
-                        page["is_bound"] = True
-                    else:
-                        page["is_bound"] = False
-                pre_import_info = {
-                    "workspace_name": source_info["workspace_name"],
-                    "workspace_icon": source_info["workspace_icon"],
-                    "workspace_id": source_info["workspace_id"],
-                    "pages": pages,
-                }
-                pre_import_info_list.append(pre_import_info)
-            return {"notion_info": pre_import_info_list}, 200
-
-
-class DataSourceNotionApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, workspace_id, page_id, page_type):
-        workspace_id = str(workspace_id)
-        page_id = str(page_id)
-        with Session(db.engine) as session:
-            data_source_binding = session.execute(
-                select(DataSourceOauthBinding).filter(
-                    db.and_(
-                        DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                        DataSourceOauthBinding.provider == "notion",
-                        DataSourceOauthBinding.disabled == False,
-                        DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
-                    )
-                )
-            ).scalar_one_or_none()
-        if not data_source_binding:
-            raise NotFound("Data source binding not found.")
-
-        extractor = NotionExtractor(
-            notion_workspace_id=workspace_id,
-            notion_obj_id=page_id,
-            notion_page_type=page_type,
-            notion_access_token=data_source_binding.access_token,
-            tenant_id=current_user.current_tenant_id,
+                for workspace in req_data.notion_info_list
+                for page in workspace.pages
+            ),
+            process_rule=req_data.process_rule,
+            doc_form=req_data.doc_form,
+            doc_language=req_data.doc_language,
         )
-
-        text_docs = extractor.extract()
-        return {"content": "\n".join([doc.page_content for doc in text_docs])}, 200
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("notion_info_list", type=list, required=True, nullable=True, location="json")
-        parser.add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
-        parser.add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-        parser.add_argument(
-            "doc_language", type=str, default="English", required=False, nullable=False, location="json"
-        )
-        args = parser.parse_args()
-        # validate args
-        DocumentService.estimate_args_validate(args)
-        notion_info_list = args["notion_info_list"]
-        extract_settings = []
-        for notion_info in notion_info_list:
-            workspace_id = notion_info["workspace_id"]
-            for page in notion_info["pages"]:
-                extract_setting = ExtractSetting(
-                    datasource_type="notion_import",
-                    notion_info={
-                        "notion_workspace_id": workspace_id,
-                        "notion_obj_id": page["page_id"],
-                        "notion_page_type": page["type"],
-                        "tenant_id": current_user.current_tenant_id,
-                    },
-                    document_model=args["doc_form"],
-                )
-                extract_settings.append(extract_setting)
-        indexing_runner = IndexingRunner()
-        response = indexing_runner.indexing_estimate(
-            current_user.current_tenant_id,
-            extract_settings,
-            args["process_rule"],
-            args["doc_form"],
-            args["doc_language"],
-        )
-        return response.model_dump(), 200
+        try:
+            response = application_services().knowledge.indexing_estimates.estimate_new_sources(
+                request_context,
+                command,
+            )
+        except IndexingEstimateCredentialUnavailableError as error:
+            raise NotFoundError(description="Credential not found.") from error
+        except EstimateSourceNotFoundError as error:
+            raise NotFoundError(description=str(error)) from error
+        except IndexingEstimateProviderUnavailableError as error:
+            raise ProviderNotInitializeError(str(error)) from error
+        except IndexingEstimateExecutionError as error:
+            raise IndexingEstimateError(str(error)) from error
+        return dump_response(IndexingEstimate, response), 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/notion/sync")
 class DataSourceNotionDatasetSyncApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, dataset_id):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-
-        documents = DocumentService.get_document_by_dataset_id(dataset_id_str)
-        for document in documents:
-            document_indexing_sync_task.delay(dataset_id_str, document.id)
-        return 200
+    @error_responses(DatasetAccessDeniedRequestError)
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission(
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
+    )
+    def get(self, request_context: RequestContext, dataset_id: UUID) -> tuple[dict[str, object], int]:
+        try:
+            application_services().knowledge.document_sync.sync_dataset(request_context, str(dataset_id))
+        except (DatasetNotFoundError, DatasetAccessDeniedError) as error:
+            _raise_dataset_access_error(error)
+        return dump_response(SimpleResultResponse, {"result": "success"}), 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync")
 class DataSourceNotionDocumentSyncApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, dataset_id, document_id):
-        dataset_id_str = str(dataset_id)
-        document_id_str = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
-        if document is None:
-            raise NotFound("Document not found.")
-        document_indexing_sync_task.delay(dataset_id_str, document_id_str)
-        return 200
-
-
-api.add_resource(DataSourceApi, "/data-source/integrates", "/data-source/integrates/<uuid:binding_id>/<string:action>")
-api.add_resource(DataSourceNotionListApi, "/notion/pre-import/pages")
-api.add_resource(
-    DataSourceNotionApi,
-    "/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/<string:page_type>/preview",
-    "/datasets/notion-indexing-estimate",
-)
-api.add_resource(DataSourceNotionDatasetSyncApi, "/datasets/<uuid:dataset_id>/notion/sync")
-api.add_resource(
-    DataSourceNotionDocumentSyncApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync"
-)
+    @error_responses(DatasetAccessDeniedRequestError)
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission(
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
+    )
+    def get(
+        self,
+        request_context: RequestContext,
+        dataset_id: UUID,
+        document_id: UUID,
+    ) -> tuple[dict[str, object], int]:
+        try:
+            application_services().knowledge.document_sync.sync_document(
+                request_context,
+                str(dataset_id),
+                str(document_id),
+            )
+        except (DatasetNotFoundError, DatasetAccessDeniedError) as error:
+            _raise_dataset_access_error(error)
+        except SyncDocumentNotFoundError as error:
+            raise NotFoundError(description="Document not found.") from error
+        except SyncDocumentSourceError as error:
+            raise InvalidArgumentError(description=str(error)) from error
+        return dump_response(SimpleResultResponse, {"result": "success"}), 200

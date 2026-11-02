@@ -1,0 +1,302 @@
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
+import type { DataSourceNotionPage } from '@/models/common'
+import type { RETRIEVE_METHOD } from '@/types/app'
+import { buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Separator } from '@langgenius/dify-ui/separator'
+import {
+  RiAedFill,
+  RiArrowRightLine,
+  RiCheckboxCircleFill,
+  RiErrorWarningFill,
+  RiLoader2Fill,
+  RiTerminalBoxLine,
+} from '@remixicon/react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import NotionIcon from '@/app/components/base/notion-icon'
+import PriorityLabel from '@/app/components/billing/priority-label'
+import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
+import VectorSpaceAdmissionAlert from '@/app/components/datasets/common/vector-space-admission-alert'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
+import { DatasourceType } from '@/models/pipeline'
+import Link from '@/next/link'
+import { consoleQuery } from '@/service/console'
+import RuleDetail from './rule-detail'
+
+const isNotionPageIcon = (value: unknown): value is DataSourceNotionPage['page_icon'] =>
+  typeof value === 'object' && value !== null && 'type' in value
+
+type EmbeddingProcessProps = {
+  datasetId: string
+  batchId: string
+  documents?: PipelineDocument[]
+  indexingType?: IndexingType
+  retrievalMethod?: RETRIEVE_METHOD
+}
+
+const EmbeddingProcess = ({
+  datasetId,
+  batchId,
+  documents = [],
+  indexingType,
+  retrievalMethod,
+}: EmbeddingProcessProps) => {
+  const { t } = useTranslation(['billing', 'datasetCreation', 'datasetDocuments'])
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  const [indexingStatusBatchDetail, setIndexingStatusDetail] = useState<DocumentStatusResponse[]>(
+    [],
+  )
+  const [shouldPoll, setShouldPoll] = useState(true)
+  const { mutateAsync: fetchIndexingStatus } = useMutation(
+    consoleQuery.datasets.byDatasetId.batch.byBatch.indexingStatus.get.mutationOptions(),
+  )
+
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>
+
+    const fetchData = async () => {
+      await fetchIndexingStatus(
+        { params: { dataset_id: datasetId, batch: batchId } },
+        {
+          onSuccess: (res) => {
+            const indexingStatusDetailList = res.data
+            setIndexingStatusDetail(indexingStatusDetailList)
+            const isCompleted = indexingStatusDetailList.every((indexingStatusDetail) =>
+              ['completed', 'error', 'paused'].includes(indexingStatusDetail.indexing_status),
+            )
+            if (isCompleted) setShouldPoll(false)
+          },
+          onSettled: () => {
+            if (shouldPoll) timeoutId = setTimeout(fetchData, 2500)
+          },
+        },
+      )
+    }
+
+    fetchData()
+
+    return () => {
+      clearTimeout(timeoutId)
+    }
+  }, [shouldPoll])
+
+  // get rule
+  const firstDocument = documents[0]
+  const { data: ruleDetail } = useQuery(
+    consoleQuery.datasets.processRule.get.queryOptions({
+      input: { query: { document_id: firstDocument?.id } },
+      enabled: !!firstDocument,
+    }),
+  )
+
+  const queryClient = useQueryClient()
+  const invalidDocumentList = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
+    })
+  const documentsHref = `/datasets/${datasetId}/documents`
+  const apiReferenceUrl = useDatasetApiAccessUrl()
+
+  const isEmbeddingWaiting = useMemo(() => {
+    if (!indexingStatusBatchDetail.length) return false
+    return indexingStatusBatchDetail.every((indexingStatusDetail) =>
+      ['waiting'].includes(indexingStatusDetail?.indexing_status || ''),
+    )
+  }, [indexingStatusBatchDetail])
+  const isEmbedding = useMemo(() => {
+    if (!indexingStatusBatchDetail.length) return false
+    return indexingStatusBatchDetail.some((indexingStatusDetail) =>
+      ['indexing', 'splitting', 'parsing', 'cleaning'].includes(
+        indexingStatusDetail?.indexing_status || '',
+      ),
+    )
+  }, [indexingStatusBatchDetail])
+  const isEmbeddingCompleted = useMemo(() => {
+    if (!indexingStatusBatchDetail.length) return false
+    return indexingStatusBatchDetail.every((indexingStatusDetail) =>
+      ['completed', 'error', 'paused'].includes(indexingStatusDetail?.indexing_status || ''),
+    )
+  }, [indexingStatusBatchDetail])
+  const vectorSpaceAdmissionError = useMemo(
+    () =>
+      indexingStatusBatchDetail.find(
+        (detail) => detail.error_code === 'vector_space_estimate_exceeded',
+      ),
+    [indexingStatusBatchDetail],
+  )
+  const showUpgrade =
+    deploymentEdition === 'CLOUD' && (plan === 'sandbox' || plan === 'professional')
+
+  const getSourceName = (id: string) => {
+    const doc = documents.find((document) => document.id === id)
+    return doc?.name
+  }
+  const getFileType = (name?: string) => name?.split('.').pop() || 'txt'
+  const getSourcePercent = (detail: DocumentStatusResponse) => {
+    const completedCount = detail.completed_segments || 0
+    const totalCount = detail.total_segments || 0
+    if (totalCount === 0) return 0
+    const percent = Math.round((completedCount * 100) / totalCount)
+    return percent > 100 ? 100 : percent
+  }
+  const getSourceType = (id: string) => {
+    const doc = documents.find((document) => document.id === id)
+    return doc?.data_source_type
+  }
+  const getIcon = (id: string) => {
+    const doc = documents.find((document) => document.id === id)
+
+    const icon = doc?.data_source_info?.notion_page_icon
+    return typeof icon === 'string' || isNotionPageIcon(icon) ? icon : undefined
+  }
+  const isSourceEmbedding = (detail: DocumentStatusResponse) =>
+    ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'].includes(
+      detail.indexing_status || '',
+    )
+
+  return (
+    <>
+      <div className="flex flex-col gap-y-3">
+        <div className="flex items-center gap-x-1 system-md-semibold-uppercase text-text-secondary">
+          {(isEmbeddingWaiting || isEmbedding) && (
+            <>
+              <RiLoader2Fill className="size-4 animate-spin" />
+              <span>
+                {isEmbeddingWaiting
+                  ? t(($) => $['embedding.waiting'], { ns: 'datasetDocuments' })
+                  : t(($) => $['embedding.processing'], { ns: 'datasetDocuments' })}
+              </span>
+            </>
+          )}
+          {isEmbeddingCompleted && t(($) => $['embedding.completed'], { ns: 'datasetDocuments' })}
+        </div>
+        {vectorSpaceAdmissionError?.estimated_vector_space_mb != null &&
+          vectorSpaceAdmissionError.vector_space_limit_mb != null && (
+            <VectorSpaceAdmissionAlert
+              showUpgrade={showUpgrade}
+              estimatedMb={vectorSpaceAdmissionError.estimated_vector_space_mb}
+              planLimitMb={vectorSpaceAdmissionError.vector_space_limit_mb}
+            />
+          )}
+        {deploymentEdition === 'CLOUD' && (plan === 'sandbox' || plan === 'professional') && (
+          <div className="flex h-13 items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 pl-3 shadow-xs shadow-shadow-shadow-3">
+            <div className="flex shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
+              <RiAedFill className="size-4 text-text-primary-on-surface" />
+            </div>
+            <div className="grow system-md-medium text-text-primary">
+              {t(($) => $['plansCommon.documentProcessingPriorityUpgrade'], { ns: 'billing' })}
+            </div>
+            <UpgradeBtn loc="knowledge-speed-up" />
+          </div>
+        )}
+        <div className="flex flex-col gap-0.5 pb-2">
+          {indexingStatusBatchDetail.map((indexingStatusDetail) => (
+            <div
+              key={indexingStatusDetail.id}
+              className={cn(
+                'relative h-6.5 overflow-hidden rounded-md bg-components-progress-bar-bg',
+                indexingStatusDetail.indexing_status === 'error' &&
+                  'bg-state-destructive-hover-alt',
+              )}
+            >
+              {isSourceEmbedding(indexingStatusDetail) && (
+                <div
+                  className="absolute top-0 left-0 h-full min-w-0.5 border-r-2 border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
+                  style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}
+                />
+              )}
+              <div className="z-1 flex h-full items-center gap-1 pr-2 pl-1.5">
+                {getSourceType(indexingStatusDetail.id) === DatasourceType.localFile && (
+                  <DocumentFileIcon
+                    size="sm"
+                    className="shrink-0"
+                    name={getSourceName(indexingStatusDetail.id)}
+                    extension={getFileType(getSourceName(indexingStatusDetail.id))}
+                  />
+                )}
+                {getSourceType(indexingStatusDetail.id) === DatasourceType.onlineDocument && (
+                  <NotionIcon
+                    className="shrink-0"
+                    type="page"
+                    src={getIcon(indexingStatusDetail.id)}
+                  />
+                )}
+                <div
+                  className="flex w-0 grow items-center gap-1"
+                  title={getSourceName(indexingStatusDetail.id)}
+                >
+                  <div className="truncate system-xs-medium text-text-secondary">
+                    {getSourceName(indexingStatusDetail.id)}
+                  </div>
+                  <PriorityLabel className="ml-0" />
+                </div>
+                {isSourceEmbedding(indexingStatusDetail) && (
+                  <div className="shrink-0 text-xs text-text-secondary">{`${getSourcePercent(indexingStatusDetail)}%`}</div>
+                )}
+                {indexingStatusDetail.indexing_status === 'error' && (
+                  <Popover>
+                    <PopoverTrigger
+                      openOnHover
+                      aria-label={indexingStatusDetail.error ?? undefined}
+                      className="inline-flex border-0 bg-transparent p-0"
+                    >
+                      <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />
+                    </PopoverTrigger>
+                    <PopoverContent className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-3.5 body-xs-regular text-text-secondary">
+                      {indexingStatusDetail.error}
+                    </PopoverContent>
+                  </Popover>
+                )}
+                {indexingStatusDetail.indexing_status === 'completed' && (
+                  <RiCheckboxCircleFill className="size-4 shrink-0 text-text-success" />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <Separator orientation="horizontal" className="my-0 h-[0.5px] bg-divider-subtle" />
+        <RuleDetail
+          sourceData={ruleDetail}
+          indexingType={indexingType}
+          retrievalMethod={retrievalMethod}
+        />
+      </div>
+      <div className="mt-6 flex items-center gap-x-2 py-2">
+        <Link
+          href={apiReferenceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(buttonVariants(), 'w-fit')}
+        >
+          <RiTerminalBoxLine className="size-4" />
+          <span>Access the API</span>
+        </Link>
+        <Link
+          href={documentsHref}
+          className={cn(buttonVariants({ variant: 'primary' }), 'w-fit')}
+          onClick={invalidDocumentList}
+        >
+          <span>{t(($) => $['stepThree.navTo'], { ns: 'datasetCreation' })}</span>
+          <RiArrowRightLine className="size-4 stroke-current stroke-1" />
+        </Link>
+      </div>
+    </>
+  )
+}
+
+export default EmbeddingProcess

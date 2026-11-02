@@ -51,12 +51,15 @@
   align-items: center;
 }
 
-.leftControls, .rightControls {
+.leftControls,
+.rightControls {
   display: flex;
   align-items: center;
 }
 
-.playPauseButton, .muteButton, .fullscreenButton {
+.playPauseButton,
+.muteButton,
+.fullscreenButton {
   background: none;
   border: none;
   color: white;
@@ -68,7 +71,9 @@
   justify-content: center;
 }
 
-.playPauseButton:hover, .muteButton:hover, .fullscreenButton:hover {
+.playPauseButton:hover,
+.muteButton:hover,
+.fullscreenButton:hover {
   background-color: rgba(255, 255, 255, 0.1);
   border-radius: 50%;
 }

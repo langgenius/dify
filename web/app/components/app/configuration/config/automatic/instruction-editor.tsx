@@ -1,0 +1,137 @@
+'use client'
+import type { FC } from 'react'
+import type { GeneratorType } from './types'
+import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd } from '@langgenius/dify-ui/kbd'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import PromptEditor from '@/app/components/base/prompt-editor'
+import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+
+type Props = Readonly<{
+  'aria-labelledby'?: string
+  editorKey: string
+  value: string
+  onChange: (text: string) => void
+  generatorType: GeneratorType
+  availableVars: NodeOutPutVar[]
+  availableNodes: Node[]
+  getVarType?: (params: { nodeId: string; valueSelector: ValueSelector }) => Type
+  isShowCurrentBlock: boolean
+  isShowLastRunBlock: boolean
+}>
+
+const i18nPrefix = 'generate'
+
+const InstructionEditor: FC<Props> = ({
+  'aria-labelledby': ariaLabelledBy,
+  editorKey,
+  generatorType,
+  value,
+  onChange,
+  availableVars,
+  availableNodes,
+  getVarType = () => Type.string,
+  isShowCurrentBlock,
+  isShowLastRunBlock,
+}) => {
+  const { t } = useTranslation(['workflow', 'appGeneration'])
+  const { eventEmitter } = useEventEmitterContextContext()
+
+  const isCode = generatorType === 'code'
+  const placeholder = isCode ? (
+    <div className="system-sm-regular leading-6! whitespace-break-spaces text-text-placeholder">
+      {t(($) => $[`${i18nPrefix}.codeGenInstructionPlaceHolderLine`], { ns: 'appGeneration' })}
+    </div>
+  ) : (
+    <div className="system-sm-regular text-text-placeholder">
+      <div className="leading-6">
+        {t(($) => $[`${i18nPrefix}.instructionPlaceHolderTitle`], { ns: 'appGeneration' })}
+      </div>
+      <div className="mt-2">
+        <div>
+          {t(($) => $[`${i18nPrefix}.instructionPlaceHolderLine1`], { ns: 'appGeneration' })}
+        </div>
+        <div>
+          {t(($) => $[`${i18nPrefix}.instructionPlaceHolderLine2`], { ns: 'appGeneration' })}
+        </div>
+        <div>
+          {t(($) => $[`${i18nPrefix}.instructionPlaceHolderLine3`], { ns: 'appGeneration' })}
+        </div>
+      </div>
+    </div>
+  )
+
+  const handleInsertVariable = () => {
+    eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId: editorKey } as any)
+  }
+
+  return (
+    <div className="relative">
+      <PromptEditor
+        aria-labelledby={ariaLabelledBy}
+        aria-label={
+          ariaLabelledBy ? undefined : t(($) => $['generate.instruction'], { ns: 'appGeneration' })
+        }
+        wrapperClassName="border border-components-input-bg-normal! bg-components-input-bg-normal hover:border-components-input-bg-hover! rounded-[10px] px-4 pt-3"
+        key={editorKey}
+        instanceId={editorKey}
+        placeholder={placeholder}
+        placeholderClassName="px-4 pt-3"
+        className={cn('min-h-60 pb-8')}
+        value={value}
+        workflowVariableBlock={{
+          show: true,
+          variables: availableVars,
+          getVarType,
+          workflowNodesMap: availableNodes.reduce((acc, node) => {
+            acc[node.id] = {
+              title: node.data.title,
+              type: node.data.type,
+              width: node.width,
+              height: node.height,
+              position: node.position,
+            }
+            if (node.data.type === BlockEnum.Start) {
+              acc.sys = {
+                title: t(($) => $['blocks.start'], { ns: 'workflow' }),
+                type: BlockEnum.Start,
+              }
+            }
+            return acc
+          }, {} as any),
+        }}
+        currentBlock={{
+          show: isShowCurrentBlock,
+          generatorType,
+        }}
+        errorMessageBlock={{
+          show: isCode,
+        }}
+        lastRunBlock={{
+          show: isShowLastRunBlock,
+        }}
+        onChange={onChange}
+        editable
+        isSupportFileVar={false}
+      />
+      <div className="absolute bottom-0 left-4 flex h-8 items-center space-x-0.5 system-xs-regular text-components-input-text-placeholder">
+        <span>{t(($) => $['generate.press'], { ns: 'appGeneration' })}</span>
+        <Kbd className="text-text-placeholder">/</Kbd>
+        <span>{t(($) => $['generate.to'], { ns: 'appGeneration' })}</span>
+        <button
+          type="button"
+          className="ml-1! cursor-pointer border-none bg-transparent p-0 text-left hover:border-b hover:border-dotted hover:border-text-tertiary hover:text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={handleInsertVariable}
+        >
+          {t(($) => $['generate.insertContext'], { ns: 'appGeneration' })}
+        </button>
+      </div>
+    </div>
+  )
+}
+export default React.memo(InstructionEditor)

@@ -1,0 +1,61 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
+import * as React from 'react'
+
+type HeaderProps = {
+  isInPipeline?: boolean
+  onClickConfiguration?: () => void
+  title: string
+  buttonText?: string
+  docTitle: string
+  docLink: string
+}
+
+const Header = ({
+  isInPipeline = false,
+  onClickConfiguration,
+  title,
+  buttonText,
+  docTitle,
+  docLink,
+}: HeaderProps) => {
+  return (
+    <div className="flex items-center gap-x-2">
+      <div className="flex shrink-0 grow items-center gap-x-1">
+        <div
+          className={cn(
+            'text-text-secondary',
+            isInPipeline ? 'system-sm-semibold' : 'system-md-semibold',
+          )}
+        >
+          {title}
+        </div>
+        <Separator decorative orientation="vertical" className="mx-1 h-3.5" />
+        <Button
+          variant="secondary"
+          size="small"
+          className={cn(isInPipeline ? 'size-6 px-1' : 'px-1.5')}
+          onClick={onClickConfiguration}
+        >
+          <RiEqualizer2Line className="size-4" />
+          {!isInPipeline && <span className="system-xs-medium">{buttonText}</span>}
+        </Button>
+      </div>
+      <a
+        className="flex items-center gap-x-1 overflow-hidden system-xs-medium text-text-accent"
+        href={docLink}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <RiBookOpenLine className="size-3.5 shrink-0" />
+        <span className="grow truncate" title={docTitle}>
+          {docTitle}
+        </span>
+      </a>
+    </div>
+  )
+}
+
+export default React.memo(Header)

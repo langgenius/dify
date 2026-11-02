@@ -1,0 +1,219 @@
+'use client'
+
+import type { PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
+import type { FC, MouseEventHandler } from 'react'
+import type { ParentChildConfig } from '../hooks'
+import type { ParentMode, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { RiSearchEyeLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
+import RadioCard from '@/app/components/base/radio-card'
+import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { ChunkingMode } from '@/models/datasets'
+import FileList from '../../assets/file-list-3-fill.svg'
+import Note from '../../assets/note-mod.svg'
+import BlueEffect from '../../assets/option-card-effect-blue.svg'
+import s from '../index.module.css'
+import { DelimiterInput, MaxLengthInput } from './inputs'
+import { OptionCard } from './option-card'
+
+type TextLabelProps = {
+  children: React.ReactNode
+}
+
+const TextLabel: FC<TextLabelProps> = ({ children }) => {
+  return <label className="system-sm-semibold text-text-secondary">{children}</label>
+}
+
+type ParentChildOptionsProps = {
+  // State
+  parentChildConfig: ParentChildConfig
+  rules: PreProcessingRule[]
+  summaryIndexSetting?: SummaryIndexSettingType
+  onSummaryIndexSettingChange?: (payload: SummaryIndexSettingType) => void
+  currentDocForm: ChunkingMode
+  // Flags
+  isActive: boolean
+  isInUpload: boolean
+  isNotUploadInEmptyDataset: boolean
+  // Actions
+  onChunkForContextChange: (mode: ParentMode) => void
+  onParentDelimiterChange: (value: string) => void
+  onParentMaxLengthChange: (value: number) => void
+  onChildDelimiterChange: (value: string) => void
+  onChildMaxLengthChange: (value: number) => void
+  onRuleToggle: (id: string) => void
+  onPreview: MouseEventHandler<HTMLButtonElement>
+  onReset: () => void
+  showSummaryIndexSetting?: boolean
+}
+
+export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
+  parentChildConfig,
+  rules,
+  summaryIndexSetting,
+  currentDocForm: _currentDocForm,
+  isActive,
+  isInUpload,
+  isNotUploadInEmptyDataset,
+  onChunkForContextChange,
+  onParentDelimiterChange,
+  onParentMaxLengthChange,
+  onChildDelimiterChange,
+  onChildMaxLengthChange,
+  onRuleToggle,
+  onSummaryIndexSettingChange,
+  onPreview,
+  onReset,
+  showSummaryIndexSetting,
+}) => {
+  const { t } = useTranslation(['datasetCreation'])
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
+
+  const getRuleName = (key: string): string => {
+    const ruleNameMap: Record<string, string> = {
+      remove_extra_spaces: t(($) => $['stepTwo.removeExtraSpaces'], { ns: 'datasetCreation' }),
+      remove_urls_emails: t(($) => $['stepTwo.removeUrlEmails'], { ns: 'datasetCreation' }),
+      remove_stopwords: t(($) => $['stepTwo.removeStopwords'], { ns: 'datasetCreation' }),
+    }
+    return ruleNameMap[key] ?? key
+  }
+
+  return (
+    <OptionCard
+      title={t(($) => $['stepTwo.parentChild'], { ns: 'datasetCreation' })}
+      icon={<span aria-hidden className="i-custom-vender-knowledge-parent-child-chunk h-5 w-5" />}
+      effectImg={BlueEffect.src}
+      className="text-util-colors-blue-light-blue-light-500"
+      activeHeaderClassName="bg-dataset-option-card-blue-gradient"
+      description={t(($) => $['stepTwo.parentChildTip'], { ns: 'datasetCreation' })}
+      isActive={isActive}
+      value={ChunkingMode.parentChild}
+      actions={
+        <>
+          <Button variant="secondary-accent" onClick={onPreview}>
+            <RiSearchEyeLine className="size-4" />
+            {t(($) => $['stepTwo.previewChunk'], { ns: 'datasetCreation' })}
+          </Button>
+          <Button variant="ghost" onClick={onReset}>
+            {t(($) => $['stepTwo.reset'], { ns: 'datasetCreation' })}
+          </Button>
+        </>
+      }
+      noHighlight={isInUpload && isNotUploadInEmptyDataset}
+    >
+      <div className="flex flex-col gap-4">
+        {/* Parent chunk for context */}
+        <div>
+          <div className="flex items-center gap-x-2">
+            <div className="inline-flex shrink-0">
+              <TextLabel>
+                {t(($) => $['stepTwo.parentChunkForContext'], { ns: 'datasetCreation' })}
+              </TextLabel>
+            </div>
+            <Separator decorative className="my-2 h-[0.5px] grow" variant="gradient" />
+          </div>
+          <RadioGroup<ParentMode>
+            aria-label={t(($) => $['stepTwo.parentChunkForContext'], { ns: 'datasetCreation' })}
+            value={parentChildConfig.chunkForContext}
+            onValueChange={(value) => onChunkForContextChange(value)}
+            className="mt-1 flex-col items-stretch gap-2"
+          >
+            <RadioCard<ParentMode>
+              value="paragraph"
+              icon={<img src={Note.src} alt="" />}
+              title={t(($) => $['stepTwo.paragraph'], { ns: 'datasetCreation' })}
+              description={t(($) => $['stepTwo.paragraphTip'], { ns: 'datasetCreation' })}
+              chosenConfig={
+                <div className="flex flex-col gap-3 @min-[552px]/chunkfields:flex-row">
+                  <DelimiterInput
+                    value={parentChildConfig.parent.delimiter}
+                    tooltip={t(($) => $['stepTwo.parentChildDelimiterTip'], {
+                      ns: 'datasetCreation',
+                    })!}
+                    onValueChange={onParentDelimiterChange}
+                  />
+                  <MaxLengthInput
+                    unit="characters"
+                    value={parentChildConfig.parent.maxLength}
+                    onChange={onParentMaxLengthChange}
+                  />
+                </div>
+              }
+            />
+            <RadioCard<ParentMode>
+              value="full-doc"
+              icon={<img src={FileList.src} alt="" />}
+              title={t(($) => $['stepTwo.fullDoc'], { ns: 'datasetCreation' })}
+              description={t(($) => $['stepTwo.fullDocTip'], { ns: 'datasetCreation' })}
+            />
+          </RadioGroup>
+        </div>
+
+        {/* Child chunk for retrieval */}
+        <div>
+          <div className="flex items-center gap-x-2">
+            <div className="inline-flex shrink-0">
+              <TextLabel>
+                {t(($) => $['stepTwo.childChunkForRetrieval'], { ns: 'datasetCreation' })}
+              </TextLabel>
+            </div>
+            <Separator decorative className="my-2 h-[0.5px] grow" variant="gradient" />
+          </div>
+          <div className="mt-1 flex flex-col gap-3 @min-[552px]/chunkfields:flex-row">
+            <DelimiterInput
+              value={parentChildConfig.child.delimiter}
+              tooltip={t(($) => $['stepTwo.parentChildChunkDelimiterTip'], {
+                ns: 'datasetCreation',
+              })!}
+              onValueChange={onChildDelimiterChange}
+            />
+            <MaxLengthInput
+              unit="characters"
+              value={parentChildConfig.child.maxLength}
+              onChange={onChildMaxLengthChange}
+            />
+          </div>
+        </div>
+
+        {/* Rules */}
+        <div>
+          <div className="flex items-center gap-x-2">
+            <div className="inline-flex shrink-0">
+              <TextLabel>{t(($) => $['stepTwo.rules'], { ns: 'datasetCreation' })}</TextLabel>
+            </div>
+            <Separator decorative className="my-2 h-[0.5px] grow" variant="gradient" />
+          </div>
+          <div className="mt-1">
+            {rules.map((rule) => (
+              <label key={rule.id} className={`${s.ruleItem} cursor-pointer`}>
+                <Checkbox checked={rule.enabled} onCheckedChange={() => onRuleToggle(rule.id)} />
+                <span className="ml-2 system-sm-regular text-text-secondary">
+                  {getRuleName(rule.id)}
+                </span>
+              </label>
+            ))}
+            {showSummaryIndexSetting && isNonCloudEdition && (
+              <div className="mt-3">
+                <SummaryIndexSetting
+                  entry="create-document"
+                  summaryIndexSetting={summaryIndexSetting}
+                  onSummaryIndexSettingChange={onSummaryIndexSettingChange}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </OptionCard>
+  )
+}

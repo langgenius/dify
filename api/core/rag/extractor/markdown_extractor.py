@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import Optional, cast
+from typing import override
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.helpers import detect_file_encodings
@@ -22,7 +22,7 @@ class MarkdownExtractor(BaseExtractor):
         file_path: str,
         remove_hyperlinks: bool = False,
         remove_images: bool = False,
-        encoding: Optional[str] = None,
+        encoding: str | None = None,
         autodetect_encoding: bool = True,
     ):
         """Initialize with file path."""
@@ -32,6 +32,7 @@ class MarkdownExtractor(BaseExtractor):
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
 
+    @override
     def extract(self) -> list[Document]:
         """Load from file path."""
         tups = self.parse_tups(self._file_path)
@@ -45,27 +46,41 @@ class MarkdownExtractor(BaseExtractor):
 
         return documents
 
-    def markdown_to_tups(self, markdown_text: str) -> list[tuple[Optional[str], str]]:
+    def markdown_to_tups(self, markdown_text: str) -> list[tuple[str | None, str]]:
         """Convert a markdown file to a dictionary.
 
         The keys are the headers and the values are the text under each header.
 
         """
-        markdown_tups: list[tuple[Optional[str], str]] = []
+        markdown_tups: list[tuple[str | None, str]] = []
         lines = markdown_text.split("\n")
 
         current_header = None
         current_text = ""
-        code_block_flag = False
+        fence_marker = None
+        fence_length = 0
 
         for line in lines:
-            if line.startswith("```"):
-                code_block_flag = not code_block_flag
+            fence_match = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+            if fence_marker is not None:
+                if (
+                    fence_match
+                    and fence_match.group(1)[0] == fence_marker
+                    and len(fence_match.group(1)) >= fence_length
+                    and re.fullmatch(r"[ \t]*", fence_match.group(2))
+                ):
+                    fence_marker = None
+                    fence_length = 0
                 current_text += line + "\n"
                 continue
-            if code_block_flag:
-                current_text += line + "\n"
-                continue
+            if fence_match:
+                marker = fence_match.group(1)
+                info = fence_match.group(2)
+                if marker[0] == "~" or "`" not in info:
+                    fence_marker = marker[0]
+                    fence_length = len(marker)
+                    current_text += line + "\n"
+                    continue
             header_match = re.match(r"^#+\s", line)
             if header_match:
                 markdown_tups.append((current_header, current_text))
@@ -76,7 +91,7 @@ class MarkdownExtractor(BaseExtractor):
         markdown_tups.append((current_header, current_text))
 
         markdown_tups = [
-            (re.sub(r"#", "", cast(str, key)).strip() if key else None, re.sub(r"<.*?>", "", value))
+            (re.sub(r"#", "", key).strip() if key else None, re.sub(r"<.*?>", "", value))
             for key, value in markdown_tups
         ]
 
@@ -94,7 +109,7 @@ class MarkdownExtractor(BaseExtractor):
         content = re.sub(pattern, r"\1", content)
         return content
 
-    def parse_tups(self, filepath: str) -> list[tuple[Optional[str], str]]:
+    def parse_tups(self, filepath: str) -> list[tuple[str | None, str]]:
         """Parse file into tuples."""
         content = ""
         try:

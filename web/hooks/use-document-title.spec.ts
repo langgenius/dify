@@ -1,65 +1,66 @@
-import { defaultSystemFeatures } from '@/types/feature'
-import { act, renderHook } from '@testing-library/react'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useDocumentTitle from './use-document-title'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 
-jest.mock('@/service/common', () => ({
-  getSystemFeatures: jest.fn(() => ({ ...defaultSystemFeatures })),
-}))
-
-describe('title should be empty if systemFeatures is pending', () => {
-  act(() => {
-    useGlobalPublicStore.setState({
-      systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } },
-      isGlobalPending: true,
-    })
-  })
-  it('document title should be empty if set title', () => {
-    renderHook(() => useDocumentTitle('test'))
-    expect(document.title).toBe('')
-  })
-  it('document title should be empty if not set title', () => {
-    renderHook(() => useDocumentTitle(''))
-    expect(document.title).toBe('')
-  })
-})
-
-describe('use default branding', () => {
+describe('useDocumentTitle', () => {
+  let originalTitle: string
   beforeEach(() => {
-    act(() => {
-      useGlobalPublicStore.setState({
-        isGlobalPending: false,
-        systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } },
-      })
+    originalTitle = document.title
+  })
+  afterEach(() => {
+    document.title = originalTitle
+  })
+
+  it('preserves route metadata while system features are pending', () => {
+    document.title = 'Route title'
+    renderHookWithConsoleQuery(() => useDocumentTitle('Settings'), { systemFeatures: null })
+    expect(document.title).toBe('Route title')
+  })
+
+  it('uses the default product name', () => {
+    renderHookWithConsoleQuery(() => useDocumentTitle('Settings'), {
+      systemFeatures: { branding: { enabled: false } },
     })
-  })
-  it('document title should be test-Dify if set title', () => {
-    renderHook(() => useDocumentTitle('test'))
-    expect(document.title).toBe('test - Dify')
+    expect(document.title).toBe('Settings - Dify')
   })
 
-  it('document title should be Dify if not set title', () => {
-    renderHook(() => useDocumentTitle(''))
-    expect(document.title).toBe('Dify')
-  })
-})
-
-describe('use specific branding', () => {
-  beforeEach(() => {
-    act(() => {
-      useGlobalPublicStore.setState({
-        isGlobalPending: false,
-        systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: true, application_title: 'Test' } },
-      })
+  it('uses the configured product name with or without a page title', () => {
+    const { rerender } = renderHookWithConsoleQuery(({ title }) => useDocumentTitle(title), {
+      initialProps: { title: 'Settings' },
+      systemFeatures: { branding: { enabled: true, application_title: 'Acme' } },
     })
-  })
-  it('document title should be test-Test if set title', () => {
-    renderHook(() => useDocumentTitle('test'))
-    expect(document.title).toBe('test - Test')
+
+    expect(document.title).toBe('Settings - Acme')
+    rerender({ title: '' })
+    expect(document.title).toBe('Acme')
   })
 
-  it('document title should be Test if not set title', () => {
-    renderHook(() => useDocumentTitle(''))
-    expect(document.title).toBe('Test')
+  it('preserves route metadata when no client title is provided', () => {
+    document.title = 'Route title - Dify'
+
+    renderHookWithConsoleQuery(() => useDocumentTitle(null))
+
+    expect(document.title).toBe('Route title - Dify')
+  })
+
+  it('does not mutate framework-owned favicon metadata', () => {
+    const favicon = document.createElement('link')
+    favicon.rel = 'icon'
+    favicon.href = '/favicon.ico'
+    document.head.appendChild(favicon)
+    onTestFinished(() => favicon.remove())
+
+    renderHookWithConsoleQuery(() => useDocumentTitle('Settings'), {
+      systemFeatures: {
+        branding: {
+          application_title: 'Acme',
+          enabled: true,
+          favicon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>',
+        },
+      },
+    })
+
+    expect(favicon.isConnected).toBe(true)
+    expect(favicon).toHaveAttribute('rel', 'icon')
+    expect(favicon).toHaveAttribute('href', '/favicon.ico')
   })
 })

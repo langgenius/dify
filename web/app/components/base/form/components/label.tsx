@@ -1,5 +1,6 @@
-import cn from '@/utils/classnames'
-import Tooltip from '../../tooltip'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export type LabelProps = {
@@ -11,35 +12,35 @@ export type LabelProps = {
   className?: string
 }
 
-const Label = ({
-  htmlFor,
-  label,
-  isRequired,
-  showOptional,
-  tooltip,
-  className,
-}: LabelProps) => {
-  const { t } = useTranslation()
+const Label = ({ htmlFor, label, isRequired, showOptional, tooltip, className }: LabelProps) => {
+  const labelId = useId()
+
+  const { t } = useTranslation(['common'])
 
   return (
-    <div className='flex h-6 items-center'>
+    <div className="flex h-6 items-center">
       <label
-        data-testid='label'
+        id={labelId}
         htmlFor={htmlFor}
         className={cn('system-sm-medium text-text-secondary', className)}
       >
         {label}
       </label>
-      {!isRequired && showOptional && <div className='system-xs-regular ml-1 text-text-tertiary'>{t('common.label.optional')}</div>}
-      {isRequired && <div className='system-xs-regular ml-1 text-text-destructive-secondary'>*</div>}
+      {!isRequired && showOptional && (
+        <div className="ml-1 system-xs-regular text-text-tertiary">
+          {t(($) => $['label.optional'], { ns: 'common' })}
+        </div>
+      )}
+      {isRequired && (
+        <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
+      )}
       {tooltip && (
-        <Tooltip
-          popupContent={
-            <div className='w-[200px]'>{tooltip}</div>
-          }
-          triggerClassName='ml-0.5 w-4 h-4'
-          triggerTestId={`${htmlFor}-tooltip`}
-        />
+        <Infotip>
+          <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
+          <InfotipContent aria-labelledby={labelId} className="w-50">
+            {tooltip}
+          </InfotipContent>
+        </Infotip>
       )}
     </div>
   )

@@ -1,377 +1,402 @@
 'use client'
+
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
-import {
-  RiDatabase2Line,
-  RiFileExcel2Line,
-  RiGitCommitLine,
-  RiNewspaperLine,
-  RiPresentationLine,
-  RiRoadMapLine,
-  RiTerminalBoxLine,
-  RiTranslate,
-  RiUser2Line,
-} from '@remixicon/react'
-import cn from 'classnames'
-import s from './style.module.css'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
-import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
-import { generateRule } from '@/service/debug'
-import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
-import type { CompletionParams, Model } from '@/types/app'
-import { AppType } from '@/types/app'
-import ConfigVar from '@/app/components/app/configuration/config-var'
-import GroupName from '@/app/components/app/configuration/base/group-name'
-import Loading from '@/app/components/base/loading'
-import Confirm from '@/app/components/base/confirm'
-import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
-
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 // type
-import type { AutomaticRes } from '@/service/debug'
-import { Generator } from '@/app/components/base/icons/src/vender/other'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-
+import type { GenRes } from '@/service/debug'
+import type { CompletionParams, Model, ModelModeType } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { useQuery } from '@tanstack/react-query'
+import { useBoolean, useSessionStorageState } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/components/app/configuration/toast'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import type { ModelModeType } from '@/types/app'
-import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { consoleQuery } from '@/service/console'
+import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
+import { useAutoGenModel } from '../auto-gen-model-storage'
+import IdeaOutput from './idea-output'
+import InstructionEditorInBasic from './instruction-editor'
+import InstructionEditorInWorkflow from './instruction-editor-in-workflow'
+import ResPlaceholder from './res-placeholder'
+import Result from './result'
+import s from './style.module.css'
+import { GeneratorType } from './types'
+import useGenData from './use-gen-data'
 
-export type IGetAutomaticResProps = {
-  mode: AppType
+const i18nPrefix = 'generate'
+
+type IGetAutomaticResProps = {
+  modelMode: ModelModeType
   isShow: boolean
   onClose: () => void
-  onFinished: (res: AutomaticRes) => void
-  isInLLMNode?: boolean
+  onFinished: (res: GenRes) => void
+  flowId?: string
+  nodeId?: string
+  editorId?: string
+  currentPrompt?: string
+  isBasicMode?: boolean
 }
 
 const TryLabel: FC<{
-  Icon: any
+  iconClassName: string
   text: string
   onClick: () => void
-}> = ({ Icon, text, onClick }) => {
+}> = ({ iconClassName, text, onClick }) => {
   return (
-    <div
-      className='mr-1 mt-2 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2'
+    <button
+      type="button"
+      className="mt-2 mr-1 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
       onClick={onClick}
     >
-      <Icon className='h-4 w-4 text-text-tertiary'></Icon>
-      <div className='ml-1 text-xs font-medium text-text-secondary'>{text}</div>
-    </div>
+      <span aria-hidden className={`${iconClassName} size-4 text-text-tertiary`} />
+      <div className="ml-1 text-xs font-medium text-text-secondary">{text}</div>
+    </button>
   )
 }
 
 const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
-  mode,
+  modelMode,
   isShow,
   onClose,
-  isInLLMNode,
+  flowId,
+  nodeId,
+  editorId,
+  currentPrompt,
+  isBasicMode,
   onFinished,
 }) => {
-  const { t } = useTranslation()
-  const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
-    : null
-  const [model, setModel] = React.useState<Model>(localModel || {
-    name: '',
-    provider: '',
-    mode: mode as unknown as ModelModeType.chat,
-    completion_params: {} as CompletionParams,
-  })
-  const {
-    defaultModel,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
+  const { t } = useTranslation(['appDebug', 'common', 'appGeneration'])
+  const instructionLabelId = useId()
+  const [storedModel, setStoredModel] = useAutoGenModel()
+  const [selectedModel, setSelectedModel] = React.useState<Model>()
+  const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
+    ModelTypeEnum.textGeneration,
+  )
+  const model = useMemo<Model>(() => {
+    if (selectedModel) return selectedModel
+    if (storedModel) return storedModel
+
+    return {
+      name: defaultModel?.model ?? '',
+      provider: defaultModel?.provider.provider ?? '',
+      mode: modelMode,
+      completion_params: {} as CompletionParams,
+    }
+  }, [defaultModel, modelMode, selectedModel, storedModel])
   const tryList = [
     {
-      icon: RiTerminalBoxLine,
+      iconClassName: 'i-ri-terminal-box-line',
       key: 'pythonDebugger',
     },
     {
-      icon: RiTranslate,
+      iconClassName: 'i-ri-translate',
       key: 'translation',
     },
     {
-      icon: RiPresentationLine,
+      iconClassName: 'i-ri-presentation-line',
       key: 'meetingTakeaways',
     },
     {
-      icon: RiNewspaperLine,
+      iconClassName: 'i-ri-newspaper-line',
       key: 'writingsPolisher',
     },
     {
-      icon: RiUser2Line,
+      iconClassName: 'i-ri-user-2-line',
       key: 'professionalAnalyst',
     },
     {
-      icon: RiFileExcel2Line,
+      iconClassName: 'i-ri-file-excel-2-line',
       key: 'excelFormulaExpert',
     },
     {
-      icon: RiRoadMapLine,
+      iconClassName: 'i-ri-road-map-line',
       key: 'travelPlanning',
     },
     {
-      icon: RiDatabase2Line,
+      iconClassName: 'i-ri-database-2-line',
       key: 'SQLSorcerer',
     },
     {
-      icon: RiGitCommitLine,
+      iconClassName: 'i-ri-git-commit-line',
       key: 'GitGud',
     },
-  ]
+  ] as const
 
-  const [instruction, setInstruction] = useState<string>('')
-  const handleChooseTemplate = useCallback((key: string) => {
-    return () => {
-      const template = t(`appDebug.generate.template.${key}.instruction`)
-      setInstruction(template)
-    }
-  }, [t])
+  const [instructionFromSessionStorage, setInstructionFromSessionStorage] =
+    useSessionStorageState<string>(
+      `improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}${editorId ? `-${editorId}` : ''}`}`,
+    )
+  const [ideaOutput, setIdeaOutput] = useState<string>('')
+
+  type TemplateKey = (typeof tryList)[number]['key']
+
+  const [editorKey, setEditorKey] = useState(`${flowId}-0`)
+  const handleChooseTemplate = useCallback(
+    (key: TemplateKey) => {
+      return () => {
+        const template = t(($) => $[`generate.template.${key}.instruction` as const], {
+          ns: 'appGeneration',
+        })
+        setInstructionFromSessionStorage(template)
+        setEditorKey(`${flowId}-${Date.now()}`)
+      }
+    },
+    [flowId, setInstructionFromSessionStorage, t],
+  )
+
+  const { data: instructionTemplate } = useQuery({
+    ...consoleQuery.instructionGenerate.template.post.queryOptions({
+      input: { body: { type: GeneratorType.prompt } },
+    }),
+    enabled: !isBasicMode,
+    retry: 0,
+  })
+  const instruction = instructionFromSessionStorage ?? instructionTemplate?.data ?? ''
+  const instructionEditorKey = `${editorKey}-${instructionTemplate ? 'template' : 'pending'}`
+
   const isValid = () => {
     if (instruction.trim() === '') {
-      Toast.notify({
-        type: 'error',
-        message: t('common.errorMsg.fieldRequired', {
-          field: t('appDebug.generate.instruction'),
+      toast.error(
+        t(($) => $['errorMsg.fieldRequired'], {
+          ns: 'common',
+          field: t(($) => $['generate.instruction'], { ns: 'appGeneration' }),
         }),
-      })
+      )
       return false
     }
     return true
   }
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
-  const [res, setRes] = useState<AutomaticRes | null>(null)
-
-  useEffect(() => {
-    if (defaultModel) {
-      const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
-        : null
-      if (localModel) {
-        setModel(localModel)
-      }
-      else {
-        setModel(prev => ({
-          ...prev,
-          name: defaultModel.model,
-          provider: defaultModel.provider.provider,
-        }))
-      }
-    }
-  }, [defaultModel])
-
-  const renderLoading = (
-    <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3'>
-      <Loading />
-      <div className='text-[13px] text-text-tertiary'>{t('appDebug.generate.loading')}</div>
-    </div>
+  const storageKey = `${flowId}${isBasicMode ? '' : `-${nodeId}${editorId ? `-${editorId}` : ''}`}`
+  const { addVersion, current, currentVersionIndex, setCurrentVersionIndex, versions } = useGenData(
+    {
+      storageKey,
+    },
   )
 
-  const renderNoData = (
-    <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8'>
-      <Generator className='h-14 w-14 text-text-tertiary' />
-      <div className='text-center text-[13px] font-normal leading-5 text-text-tertiary'>
-        <div>{t('appDebug.generate.noDataLine1')}</div>
-        <div>{t('appDebug.generate.noDataLine2')}</div>
+  const renderLoading = (
+    <div className="flex min-w-0 flex-col items-center justify-center space-y-3 xl:h-full xl:flex-1">
+      <LoadingPlaceholder />
+      <div className="text-[13px] text-text-tertiary">
+        {t(($) => $['generate.loading'], { ns: 'appGeneration' })}
       </div>
     </div>
   )
 
-  const handleModelChange = useCallback((newValue: { modelId: string; provider: string; mode?: string; features?: string[] }) => {
-    const newModel = {
-      ...model,
-      provider: newValue.provider,
-      name: newValue.modelId,
-      mode: newValue.mode as ModelModeType,
-    }
-    setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+  const handleModelChange = useCallback(
+    (newValue: { modelId: string; provider: string; mode?: string; features?: string[] }) => {
+      const newModel = {
+        ...model,
+        provider: newValue.provider,
+        name: newValue.modelId,
+        mode: newValue.mode as ModelModeType,
+      }
+      setSelectedModel(newModel)
+      setStoredModel(newModel)
+    },
+    [model, setStoredModel],
+  )
 
-  const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
-    const newModel = {
-      ...model,
-      completion_params: newParams as CompletionParams,
-    }
-    setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+  const handleCompletionParamsChange = useCallback(
+    (newParams: FormValue) => {
+      const newModel = {
+        ...model,
+        completion_params: newParams as CompletionParams,
+      }
+      setSelectedModel(newModel)
+      setStoredModel(newModel)
+    },
+    [model, setStoredModel],
+  )
 
   const onGenerate = async () => {
-    if (!isValid())
-      return
-    if (isLoading)
-      return
+    if (!isValid()) return
+    if (isLoading) return
     setLoadingTrue()
     try {
-      const { error, ...res } = await generateRule({
-        instruction,
-        model_config: model,
-        no_variable: !!isInLLMNode,
-      })
-      setRes(res)
-      if (error) {
-        Toast.notify({
-          type: 'error',
-          message: error,
+      let apiRes: GenRes
+      let hasError = false
+      if (isBasicMode || !currentPrompt) {
+        const { error, ...res } = await generateBasicAppFirstTimeRule({
+          instruction,
+          model_config: model,
+          no_variable: false,
         })
+        apiRes = {
+          ...res,
+          modified: res.prompt,
+        } as GenRes
+        if (error) {
+          hasError = true
+          toast.error(error)
+        }
+      } else {
+        const { error, ...res } = await generateRule({
+          flow_id: flowId,
+          node_id: nodeId,
+          current: currentPrompt,
+          instruction,
+          ideal_output: ideaOutput,
+          model_config: model,
+        })
+        apiRes = res
+        if (error) {
+          hasError = true
+          toast.error(error)
+        }
       }
-    }
-    finally {
+      if (!hasError) addVersion(apiRes)
+    } finally {
       setLoadingFalse()
     }
   }
 
-  const [showConfirmOverwrite, setShowConfirmOverwrite] = React.useState(false)
-
   const isShowAutoPromptResPlaceholder = () => {
-    return !isLoading && !res
+    return !isLoading && !current
   }
 
   return (
-    <Modal
-      isShow={isShow}
-      onClose={onClose}
-      className='min-w-[1140px] !p-0'
-      closable
+    <Dialog
+      open={isShow}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
     >
-      <div className='flex h-[680px] flex-wrap'>
-        <div className='h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6'>
-          <div className='mb-8'>
-            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
-            <div className='mt-1 text-[13px] font-normal text-text-tertiary'>{t('appDebug.generate.description')}</div>
-          </div>
-          <div className='mb-8'>
-            <ModelParameterModal
-              popupClassName='!w-[520px]'
-              portalToFollowElemContentClassName='z-[1000]'
-              isAdvancedMode={true}
-              provider={model.provider}
-              mode={model.mode}
-              completionParams={model.completion_params}
-              modelId={model.name}
-              setModel={handleModelChange}
-              onCompletionParamsChange={handleCompletionParamsChange}
-              hideDebugWithMultipleModel
-            />
-          </div>
-          <div >
-            <div className='flex items-center'>
-              <div className='mr-3 shrink-0 text-xs font-semibold uppercase leading-[18px] text-text-tertiary'>{t('appDebug.generate.tryIt')}</div>
-              <div className='h-px grow' style={{
-                background: 'linear-gradient(to right, rgba(243, 244, 246, 1), rgba(243, 244, 246, 0))',
-              }}></div>
-            </div>
-            <div className='flex flex-wrap'>
-              {tryList.map(item => (
-                <TryLabel
-                  key={item.key}
-                  Icon={item.icon}
-                  text={t(`appDebug.generate.template.${item.key}.name`)}
-                  onClick={handleChooseTemplate(item.key)}
-                />
-              ))}
-            </div>
-          </div>
-          {/* inputs */}
-          <div className='mt-6'>
-            <div className='text-[0px]'>
-              <div className='mb-2 text-sm font-medium leading-5 text-text-primary'>{t('appDebug.generate.instruction')}</div>
-              <Textarea
-                className="h-[200px] resize-none"
-                placeholder={t('appDebug.generate.instructionPlaceHolder') as string}
-                value={instruction}
-                onChange={e => setInstruction(e.target.value)} />
-            </div>
-
-            <div className='mt-5 flex justify-end'>
-              <Button
-                className='flex space-x-1'
-                variant='primary'
-                onClick={onGenerate}
-                disabled={isLoading}
+      <DialogContent className="w-285 xl:h-[min(680px,calc(100dvh-2rem))] xl:overflow-hidden">
+        <div className="flex min-h-0 flex-col xl:h-full xl:flex-row">
+          <div className="min-w-0 border-divider-regular p-6 xl:h-full xl:flex-1 xl:overflow-y-auto xl:border-r">
+            <div className="mb-5">
+              <DialogTitle
+                // oxlint-disable-next-line shadcn/no-restyle -- Gradient generator title keeps its own type; the module class paints the gradient.
+                className={`text-lg leading-7 font-bold ${s.textGradient}`}
               >
-                <Generator className='h-4 w-4 text-white' />
-                <span className='text-xs font-semibold text-white'>{t('appDebug.generate.generate')}</span>
-              </Button>
+                {t(($) => $['generate.title'], { ns: 'appGeneration' })}
+              </DialogTitle>
+              <div className="mt-1 text-[13px] font-normal text-text-tertiary">
+                {t(($) => $['generate.description'], { ns: 'appGeneration' })}
+              </div>
             </div>
-          </div>
-        </div>
-
-        {(!isLoading && res) && (
-          <div className='h-full w-0 grow p-6 pb-0'>
-            <div className='mb-3 shrink-0 text-base font-semibold leading-[160%] text-text-secondary'>{t('appDebug.generate.resTitle')}</div>
-            <div className={cn('max-h-[555px] overflow-y-auto', !isInLLMNode && 'pb-2')}>
-              <ConfigPrompt
-                mode={mode}
-                promptTemplate={res?.prompt || ''}
-                promptVariables={[]}
-                readonly
-                noTitle={isInLLMNode}
-                gradientBorder
-                editorHeight={isInLLMNode ? 524 : 0}
-                noResize={isInLLMNode}
+            <div>
+              <ModelParameterModal
+                triggerContainerClassName="min-w-0"
+                popupClassName="w-130! max-w-[calc(100vw-2rem)]"
+                isAdvancedMode={true}
+                provider={model.provider}
+                completionParams={model.completion_params}
+                modelId={model.name}
+                setModel={handleModelChange}
+                onCompletionParamsChange={handleCompletionParamsChange}
+                hideDebugWithMultipleModel
               />
-              {!isInLLMNode && (
-                <>
-                  {(res?.variables?.length && res?.variables?.length > 0)
-                    ? (
-                      <ConfigVar
-                        promptVariables={res?.variables.map(key => ({ key, name: key, type: 'string', required: true })) || []}
-                        readonly
-                      />
-                    )
-                    : ''}
-
-                  {(mode !== AppType.completion && res?.opening_statement) && (
-                    <div className='mt-7'>
-                      <GroupName name={t('appDebug.feature.groupChat.title')} />
-                      <div
-                        className='mb-1 rounded-xl border-l-[0.5px] border-t-[0.5px] border-effects-highlight bg-background-section-burn p-3'
-                      >
-                        <div className='mb-2 flex items-center gap-2'>
-                          <div className='shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs'>
-                            <LoveMessage className='h-4 w-4 text-text-primary-on-surface' />
-                          </div>
-                          <div className='system-sm-semibold flex grow items-center text-text-secondary'>
-                            {t('appDebug.feature.conversationOpener.title')}
-                          </div>
-                        </div>
-                        <div className='system-xs-regular min-h-8 text-text-tertiary'>{res.opening_statement}</div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
             </div>
+            {isBasicMode && (
+              <div className="mt-4">
+                <div className="flex items-center">
+                  <div className="mr-3 shrink-0 text-xs leading-4.5 font-semibold text-text-tertiary uppercase">
+                    {t(($) => $['generate.tryIt'], { ns: 'appGeneration' })}
+                  </div>
+                  <div
+                    className="h-px grow"
+                    style={{
+                      background:
+                        'linear-gradient(to right, rgba(243, 244, 246, 1), rgba(243, 244, 246, 0))',
+                    }}
+                  ></div>
+                </div>
+                <div className="flex flex-wrap">
+                  {tryList.map((item) => (
+                    <TryLabel
+                      key={item.key}
+                      iconClassName={item.iconClassName}
+                      text={t(($) => $[`generate.template.${item.key}.name`], {
+                        ns: 'appGeneration',
+                      })}
+                      onClick={handleChooseTemplate(item.key)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
-            <div className='flex justify-end bg-background-default py-4'>
-              <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
-              <Button variant='primary' className='ml-2' onClick={() => {
-                setShowConfirmOverwrite(true)
-              }}>{t('appDebug.generate.apply')}</Button>
+            {/* inputs */}
+            <div className="mt-4">
+              <div>
+                <div
+                  id={instructionLabelId}
+                  className="mb-1.5 system-sm-semibold-uppercase text-text-secondary"
+                >
+                  {t(($) => $['generate.instruction'], { ns: 'appGeneration' })}
+                </div>
+                {isBasicMode ? (
+                  <InstructionEditorInBasic
+                    aria-labelledby={instructionLabelId}
+                    editorKey={instructionEditorKey}
+                    generatorType={GeneratorType.prompt}
+                    value={instruction}
+                    onChange={setInstructionFromSessionStorage}
+                    availableVars={[]}
+                    availableNodes={[]}
+                    isShowCurrentBlock={!!currentPrompt}
+                    isShowLastRunBlock={false}
+                  />
+                ) : (
+                  <InstructionEditorInWorkflow
+                    aria-labelledby={instructionLabelId}
+                    editorKey={instructionEditorKey}
+                    generatorType={GeneratorType.prompt}
+                    value={instruction}
+                    onChange={setInstructionFromSessionStorage}
+                    nodeId={nodeId || ''}
+                    isShowCurrentBlock={!!currentPrompt}
+                  />
+                )}
+              </div>
+              <IdeaOutput value={ideaOutput} onChange={setIdeaOutput} />
+
+              <div className="mt-7 flex flex-wrap justify-end gap-2">
+                <Button onClick={onClose}>
+                  {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appGeneration' })}
+                </Button>
+                <Button
+                  className="flex"
+                  variant="primary"
+                  onClick={onGenerate}
+                  disabled={isLoading}
+                >
+                  <span aria-hidden className="i-custom-vender-other-generator size-4" />
+                  <span className="text-xs font-semibold">
+                    {t(($) => $['generate.generate'], { ns: 'appGeneration' })}
+                  </span>
+                </Button>
+              </div>
             </div>
           </div>
-        )}
-        {isLoading && renderLoading}
-        {isShowAutoPromptResPlaceholder() && renderNoData}
-        {showConfirmOverwrite && (
-          <Confirm
-            title={t('appDebug.generate.overwriteTitle')}
-            content={t('appDebug.generate.overwriteMessage')}
-            isShow={showConfirmOverwrite}
-            onConfirm={() => {
-              setShowConfirmOverwrite(false)
-              onFinished(res!)
-            }}
-            onCancel={() => setShowConfirmOverwrite(false)}
-          />
-        )}
-      </div>
-    </Modal>
+
+          {!isLoading && current && (
+            <div className="min-w-0 bg-background-default-subtle p-6 pb-0 xl:h-full xl:flex-1">
+              <Result
+                current={current!}
+                isBasicMode={isBasicMode}
+                nodeId={nodeId!}
+                currentVersionIndex={currentVersionIndex || 0}
+                setCurrentVersionIndex={setCurrentVersionIndex}
+                versions={versions || []}
+                onApply={() => onFinished(current!)}
+                generatorType={GeneratorType.prompt}
+              />
+            </div>
+          )}
+          {isLoading && renderLoading}
+          {isShowAutoPromptResPlaceholder() && <ResPlaceholder />}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 export default React.memo(GetAutomaticRes)

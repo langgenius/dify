@@ -1,0 +1,466 @@
+app:
+  description: 'This is a Workflow containing a variable aggregator. The Function
+    of the VariableAggregator is to select the earliest result from multiple branches
+    in each group and discard the other results.
+
+
+    At the beginning of this Workflow, the user can input switch1 and switch2, where
+    the logic for both parameters is that a value of 0 indicates false, and any other
+    value indicates true.
+
+
+    The upper and lower groups will respectively convert the values of switch1 and
+    switch2 into corresponding descriptive text. Finally, the End outputs group1 and
+    group2.
+
+
+    Example:
+
+
+    When switch1 == 1 and switch2 == 0, the final result will be:
+
+
+    ```
+
+    {"group1": "switch 1 on", "group2": "switch 2 off"}
+
+    ```'
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: test_variable_aggregator
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: if-else
+      id: 1754405559643-source-1754405563693-target
+      source: '1754405559643'
+      sourceHandle: source
+      target: '1754405563693'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: start
+        targetType: if-else
+      id: 1754405559643-source-1754405599173-target
+      source: '1754405559643'
+      sourceHandle: source
+      target: '1754405599173'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: template-transform
+      id: 1754405563693-true-1754405621378-target
+      source: '1754405563693'
+      sourceHandle: 'true'
+      target: '1754405621378'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: template-transform
+      id: 1754405563693-false-1754405636857-target
+      source: '1754405563693'
+      sourceHandle: 'false'
+      target: '1754405636857'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: template-transform
+      id: 1754405599173-true-1754405668235-target
+      source: '1754405599173'
+      sourceHandle: 'true'
+      target: '1754405668235'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: template-transform
+      id: 1754405599173-false-1754405680809-target
+      source: '1754405599173'
+      sourceHandle: 'false'
+      target: '1754405680809'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: template-transform
+        targetType: variable-aggregator
+      id: 1754405621378-source-1754405693104-target
+      source: '1754405621378'
+      sourceHandle: source
+      target: '1754405693104'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: template-transform
+        targetType: variable-aggregator
+      id: 1754405636857-source-1754405693104-target
+      source: '1754405636857'
+      sourceHandle: source
+      target: '1754405693104'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: template-transform
+        targetType: variable-aggregator
+      id: 1754405668235-source-1754405693104-target
+      source: '1754405668235'
+      sourceHandle: source
+      target: '1754405693104'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: template-transform
+        targetType: variable-aggregator
+      id: 1754405680809-source-1754405693104-target
+      source: '1754405680809'
+      sourceHandle: source
+      target: '1754405693104'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: variable-aggregator
+        targetType: end
+      id: 1754405693104-source-1754405725407-target
+      source: '1754405693104'
+      sourceHandle: source
+      target: '1754405725407'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: switch1
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: switch1
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - image
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: switch2
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: switch2
+      height: 116
+      id: '1754405559643'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: '='
+            id: 6113a363-95e9-4475-a75d-e0ec57c31e42
+            value: '1'
+            varType: number
+            variable_selector:
+            - '1754405559643'
+            - switch1
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: IF/ELSE
+        type: if-else
+      height: 126
+      id: '1754405563693'
+      position:
+        x: 389
+        y: 195
+      positionAbsolute:
+        x: 389
+        y: 195
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: '='
+            id: e06b6c04-79a2-4c68-ab49-46ee35596746
+            value: '1'
+            varType: number
+            variable_selector:
+            - '1754405559643'
+            - switch2
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: IF/ELSE 2
+        type: if-else
+      height: 126
+      id: '1754405599173'
+      position:
+        x: 389
+        y: 426
+      positionAbsolute:
+        x: 389
+        y: 426
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        template: switch 1 on
+        title: switch 1 on
+        type: template-transform
+        variables: []
+      height: 54
+      id: '1754405621378'
+      position:
+        x: 705
+        y: 149
+      positionAbsolute:
+        x: 705
+        y: 149
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        template: switch 1 off
+        title: switch 1 off
+        type: template-transform
+        variables: []
+      height: 54
+      id: '1754405636857'
+      position:
+        x: 705
+        y: 303
+      positionAbsolute:
+        x: 705
+        y: 303
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        template: switch 2 on
+        title: switch 2 on
+        type: template-transform
+        variables: []
+      height: 54
+      id: '1754405668235'
+      position:
+        x: 705
+        y: 426
+      positionAbsolute:
+        x: 705
+        y: 426
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        template: switch 2 off
+        title: switch 2 off
+        type: template-transform
+        variables: []
+      height: 54
+      id: '1754405680809'
+      position:
+        x: 705
+        y: 549
+      positionAbsolute:
+        x: 705
+        y: 549
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        advanced_settings:
+          group_enabled: true
+          groups:
+          - groupId: a924f802-235c-47c1-85f6-922569221a39
+            group_name: Group1
+            output_type: string
+            variables:
+            - - '1754405621378'
+              - output
+            - - '1754405636857'
+              - output
+          - groupId: 940f08b5-dc9a-4907-b17a-38f24d3377e7
+            group_name: Group2
+            output_type: string
+            variables:
+            - - '1754405668235'
+              - output
+            - - '1754405680809'
+              - output
+        desc: ''
+        output_type: string
+        selected: false
+        title: Variable Aggregator
+        type: variable-aggregator
+        variables:
+        - - '1754405621378'
+          - output
+        - - '1754405636857'
+          - output
+      height: 218
+      id: '1754405693104'
+      position:
+        x: 1162
+        y: 346
+      positionAbsolute:
+        x: 1162
+        y: 346
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1754405693104'
+          - Group1
+          - output
+          value_type: object
+          variable: group1
+        - value_selector:
+          - '1754405693104'
+          - Group2
+          - output
+          value_type: object
+          variable: group2
+        selected: false
+        title: End
+        type: end
+      height: 116
+      id: '1754405725407'
+      position:
+        x: 1466
+        y: 346
+      positionAbsolute:
+        x: 1466
+        y: 346
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: -613.9603256773148
+      y: 113.20026978990225
+      zoom: 0.5799498272527172

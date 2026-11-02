@@ -1,9 +1,10 @@
 import logging
 from collections.abc import Generator
+from typing import override
 
-import boto3  # type: ignore
-from botocore.client import Config  # type: ignore
-from botocore.exceptions import ClientError  # type: ignore
+import boto3
+from botocore.client import Config
+from botocore.exceptions import ClientError
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
@@ -39,49 +40,103 @@ class AwsS3Storage(BaseStorage):
             self.client.head_bucket(Bucket=self.bucket_name)
         except ClientError as e:
             # if bucket not exists, create it
-            if e.response["Error"]["Code"] == "404":
+            if e.response.get("Error", {}).get("Code") == "404":
                 self.client.create_bucket(Bucket=self.bucket_name)
             # if bucket is not accessible, pass, maybe the bucket is existing but not accessible
-            elif e.response["Error"]["Code"] == "403":
+            elif e.response.get("Error", {}).get("Code") == "403":
                 pass
             else:
                 # other error, raise exception
                 raise
 
+    @override
     def save(self, filename, data):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
 
+    @override
     def load_once(self, filename: str) -> bytes:
         try:
             data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
         except ClientError as ex:
-            if ex.response["Error"]["Code"] == "NoSuchKey":
-                raise FileNotFoundError("File not found")
+            if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
+                raise FileNotFoundError("File not found") from ex
             else:
                 raise
         return data
 
+    @override
     def load_stream(self, filename: str) -> Generator:
         try:
             response = self.client.get_object(Bucket=self.bucket_name, Key=filename)
             yield from response["Body"].iter_chunks()
         except ClientError as ex:
-            if ex.response["Error"]["Code"] == "NoSuchKey":
-                raise FileNotFoundError("file not found")
+            if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
+                raise FileNotFoundError("file not found") from ex
             elif "reached max retries" in str(ex):
-                raise ValueError("please do not request the same file too frequently")
+                raise ValueError("please do not request the same file too frequently") from ex
             else:
                 raise
 
+    @override
     def download(self, filename, target_filepath):
         self.client.download_file(self.bucket_name, filename, target_filepath)
 
+    @override
     def exists(self, filename):
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=filename)
             return True
-        except:
+        except ClientError:
             return False
 
-    def delete(self, filename):
+    @override
+    def delete(self, filename: str):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)
+
+    @override
+    def generate_presigned_url(
+        self,
+        filename: str,
+        *,
+        expires_in: int,
+        content_type: str | None = None,
+    ) -> str:
+        params = {"Bucket": self.bucket_name, "Key": filename}
+        if content_type:
+            params["ResponseContentType"] = content_type
+
+        return self.client.generate_presigned_url(
+            "get_object",
+            Params=params,
+            ExpiresIn=expires_in,
+        )
+
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        """Recursively list keys below a portable storage directory."""
+        if not files and not directories:
+            raise ValueError("At least one of files or directories must be True")
+
+        normalized_path = path.strip("/")
+        prefix = f"{normalized_path}/" if normalized_path else ""
+        results: set[str] = set()
+        paginator = self.client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=self.bucket_name, Prefix=prefix):
+            for item in page.get("Contents", []):
+                key = item.get("Key")
+                if not isinstance(key, str) or not key.startswith(prefix):
+                    continue
+                if key.endswith("/"):
+                    if directories:
+                        results.add(key)
+                    continue
+
+                if files:
+                    results.add(key)
+                if directories:
+                    current = prefix
+                    for segment in key[len(prefix) :].split("/")[:-1]:
+                        current = f"{current}{segment}/"
+                        results.add(current)
+
+        return sorted(results)

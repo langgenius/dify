@@ -1,23 +1,18 @@
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  RiAddLine,
-} from '@remixicon/react'
-import VarList from './components/var-list'
-import useConfig from './use-config'
 import type { AssignerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { RiAddLine } from '@remixicon/react'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import VarList from './components/var-list'
 import { useHandleAddOperationItem } from './hooks'
-import ActionButton from '@/app/components/base/action-button'
+import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.assigner'
+const i18nPrefix = 'nodes.assigner'
 
-const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
-  id,
-  data,
-}) => {
-  const { t } = useTranslation()
+const Panel: FC<NodePanelProps<AssignerNodeType>> = ({ id, data }) => {
+  const { t } = useTranslation(['common', 'workflowLogic'])
   const handleAddOperationItem = useHandleAddOperationItem()
   const {
     readOnly,
@@ -32,18 +27,25 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
     filterToAssignedVar,
   } = useConfig(id, data)
   const handleAddOperation = () => {
+    if (readOnly) return
     const newList = handleAddOperationItem(inputs.items || [])
     handleOperationListChanges(newList)
   }
 
   return (
-    <div className='flex flex-col items-start self-stretch py-2'>
-      <div className='flex w-full flex-col items-start justify-center gap-1 self-stretch px-4 py-2'>
-        <div className='flex items-start gap-2 self-stretch'>
-          <div className='system-sm-semibold-uppercase flex grow flex-col items-start justify-center text-text-secondary'>{t(`${i18nPrefix}.variables`)}</div>
-          <ActionButton onClick={handleAddOperation}>
-            <RiAddLine className='h-4 w-4 shrink-0 text-text-tertiary' />
-          </ActionButton>
+    <div className="flex flex-col items-start self-stretch py-2">
+      <div className="flex w-full flex-col items-start justify-center gap-1 self-stretch px-4 py-2">
+        <div className="flex items-start gap-2 self-stretch">
+          <div className="flex grow flex-col items-start justify-center system-sm-semibold-uppercase text-text-secondary">
+            {t(($) => $[`${i18nPrefix}.variables`], { ns: 'workflowLogic' })}
+          </div>
+          <IconButton
+            aria-label={t(($) => $['operation.add'], { ns: 'common' })}
+            disabled={readOnly}
+            onClick={handleAddOperation}
+          >
+            <RiAddLine aria-hidden="true" className="size-4 shrink-0 text-text-tertiary" />
+          </IconButton>
         </div>
         <VarList
           readonly={readOnly}

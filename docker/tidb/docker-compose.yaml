@@ -55,7 +55,8 @@ services:
       - ./volumes/data:/data
       - ./volumes/logs:/logs
     command:
-      - --config=/tiflash.toml
+      - server
+      - --config-file=/tiflash.toml
     depends_on:
       - "tikv"
       - "tidb"

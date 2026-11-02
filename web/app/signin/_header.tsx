@@ -1,49 +1,49 @@
 'use client'
-import React from 'react'
-import { useContext } from 'use-context-selector'
-import Select from '@/app/components/base/select/locale'
-import Divider from '@/app/components/base/divider'
-import { languages } from '@/i18n/language'
-import type { Locale } from '@/i18n'
-import I18n from '@/context/i18n'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useLocale } from '#i18n'
+import { DifyLogo } from '@/app/components/base/logo/dify-logo'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { setLocaleOnClient } from '@/i18n/client'
+import { languages } from '@/i18n/language'
+import { useRouter } from '@/next/navigation'
+import LocaleMenu from './_locale-menu'
 
-// Avoid rendering the logo and theme selector on the server
-const DifyLogo = dynamic(() => import('@/app/components/base/logo/dify-logo'), {
-  ssr: false,
-  loading: () => <div className='h-7 w-16 bg-transparent' />,
-})
 const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector'), {
   ssr: false,
-  loading: () => <div className='size-8 bg-transparent' />,
+  loading: () => <div className="size-8 bg-transparent" />,
 })
 
 const Header = () => {
-  const { locale, setLocaleOnClient } = useContext(I18n)
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const locale = useLocale()
+  const router = useRouter()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   return (
-    <div className='flex w-full items-center justify-between p-6'>
-      {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo
-        ? <img
+    <header className="flex w-full items-center justify-between p-6">
+      {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo ? (
+        <img
           src={systemFeatures.branding.login_page_logo}
-          className='block h-7 w-auto object-contain'
-          alt='logo'
+          className="block h-7 w-auto object-contain"
+          alt={systemFeatures.branding.application_title || ''}
         />
-        : <DifyLogo size='large' />}
-      <div className='flex items-center gap-1'>
-        <Select
+      ) : (
+        <DifyLogo alt="Dify" size="large" />
+      )}
+      <div className="flex items-center gap-1">
+        <LocaleMenu
           value={locale}
-          items={languages.filter(item => item.supported)}
-          onChange={(value) => {
-            setLocaleOnClient(value as Locale)
+          items={languages.filter((item) => item.supported)}
+          onChange={async (value) => {
+            await setLocaleOnClient(value)
+            router.refresh()
           }}
         />
-        <Divider type='vertical' className='mx-0 ml-2 h-4' />
+        <Separator decorative orientation="vertical" className="mx-0 ml-2 h-4" />
         <ThemeSelector />
       </div>
-    </div>
+    </header>
   )
 }
 

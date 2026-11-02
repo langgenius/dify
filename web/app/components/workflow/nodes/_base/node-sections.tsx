@@ -1,0 +1,100 @@
+import type { TFunction } from 'i18next'
+import type { ReactElement } from 'react'
+import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
+import type { NodeProps } from '@/app/components/workflow/types'
+import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+
+type HeaderMetaProps = {
+  data: NodeProps['data']
+  hasVarValue: boolean
+  isLoading: boolean
+  loopIndex: ReactElement | null
+  t: WorkflowTranslator
+}
+
+type WorkflowTranslator = TFunction<['workflow']>
+
+export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: HeaderMetaProps) => {
+  return (
+    <>
+      {data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
+        <div className="ml-1 flex items-center gap-1">
+          <span className="rounded-[5px] border border-text-warning px-1.25 py-0.75 system-2xs-medium-uppercase text-text-warning">
+            {t(($) => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
+          </span>
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['nodes.iteration.parallelModeEnableTitle'], {
+                ns: 'workflow',
+              })}
+            />
+            <InfotipContent className="w-45">
+              <InfotipTitle className="font-semibold text-text-primary">
+                {t(($) => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
+              </InfotipTitle>
+              {t(($) => $['nodes.iteration.parallelModeEnableDesc'], { ns: 'workflow' })}
+            </InfotipContent>
+          </Infotip>
+        </div>
+      )}
+      {!!(
+        data._iterationLength &&
+        data._iterationIndex &&
+        data._runningStatus === NodeRunningStatus.Running
+      ) && (
+        <div className="mr-1.5 text-xs font-medium text-text-accent">
+          {data._iterationIndex > data._iterationLength
+            ? data._iterationLength
+            : data._iterationIndex}
+          /{data._iterationLength}
+        </div>
+      )}
+      {!!(data.type === BlockEnum.Loop && data._loopIndex) && loopIndex}
+      {isLoading && <span className="i-ri-loader-2-line size-3.5 animate-spin text-text-accent" />}
+      {!isLoading && data._runningStatus === NodeRunningStatus.Failed && (
+        <span className="i-ri-error-warning-fill size-3.5 text-text-destructive" />
+      )}
+      {!isLoading && data._runningStatus === NodeRunningStatus.Exception && (
+        <span className="i-ri-alert-fill size-3.5 text-text-warning-secondary" />
+      )}
+      {!isLoading &&
+        (data._runningStatus === NodeRunningStatus.Succeeded ||
+          (!data._runningStatus && hasVarValue)) && (
+          <span className="i-ri-checkbox-circle-fill size-3.5 text-text-success" />
+        )}
+      {!isLoading && data._runningStatus === NodeRunningStatus.Paused && (
+        <span className="i-ri-pause-circle-fill size-3.5 text-text-warning-secondary" />
+      )}
+    </>
+  )
+}
+
+type NodeBodyProps = {
+  data: NodeProps['data']
+  child: ReactElement
+}
+
+export const NodeBody = ({ data, child }: NodeBodyProps) => {
+  if (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) {
+    return <div className="grow px-1 pb-1">{child}</div>
+  }
+
+  return child
+}
+
+export const NodeDescription = ({ data }: { data: NodeProps['data'] }) => {
+  if (
+    !data.desc ||
+    data.type === BlockEnum.Iteration ||
+    data.type === BlockEnum.Loop ||
+    data.type === BlockEnum.StartPlaceholder
+  )
+    return null
+
+  return (
+    <div className="px-3 pt-1 pb-2 system-xs-regular wrap-break-word whitespace-pre-line text-text-tertiary">
+      {data.desc}
+    </div>
+  )
+}

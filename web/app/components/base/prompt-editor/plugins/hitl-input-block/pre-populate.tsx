@@ -1,0 +1,146 @@
+'use client'
+import type { FC } from 'react'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { VarType } from '@/app/components/workflow/types'
+import TagLabel from './tag-label'
+import TypeSwitch from './type-switch'
+
+type Props = Readonly<{
+  isVariable?: boolean
+  onIsVariableChange?: (isVariable: boolean) => void
+  nodeId: string
+  valueSelector?: ValueSelector
+  onValueSelectorChange?: (valueSelector: ValueSelector | string) => void
+  value?: string
+  onValueChange?: (value: string) => void
+}>
+
+const i18nPrefix = 'nodes.humanInput.insertInputField'
+
+type PlaceholderProps = {
+  varPickerProps: {
+    nodeId: string
+    value: ValueSelector
+    onChange: (valueSelector: ValueSelector | string) => void
+    readonly: boolean
+    filterVar: (varPayload: Var) => boolean
+    isJustShowValue?: boolean
+  }
+  onTypeClick: (isVariable: boolean) => void
+}
+const Placeholder = ({ varPickerProps, onTypeClick }: PlaceholderProps) => {
+  const { t } = useTranslation(['workflowHumanInput'])
+  return (
+    <div className="mt-1 h-20 rounded-lg bg-components-input-bg-normal px-3 pt-2 system-sm-regular text-text-tertiary">
+      <div className="flex flex-wrap items-center leading-5">
+        <Trans
+          i18nKey={($) => $[`${i18nPrefix}.prePopulateFieldPlaceholder`]}
+          ns="workflowHumanInput"
+          components={{
+            staticContent: (
+              <TagLabel type="edit" className="mx-1" onClick={() => onTypeClick(false)}>
+                {t(($) => $[`${i18nPrefix}.staticContent`], { ns: 'workflowHumanInput' })}
+              </TagLabel>
+            ),
+            variable: (
+              <VarReferencePicker
+                {...varPickerProps}
+                trigger={
+                  <TagLabel type="variable" className="mx-1">
+                    {t(($) => $[`${i18nPrefix}.variable`], { ns: 'workflowHumanInput' })}
+                  </TagLabel>
+                }
+              />
+            ),
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+const PrePopulate: FC<Props> = ({
+  isVariable = false,
+  onIsVariableChange,
+  nodeId,
+  valueSelector,
+  onValueSelectorChange,
+  value,
+  onValueChange,
+}) => {
+  const { t } = useTranslation(['workflowHumanInput'])
+  const [onPlaceholderClicked, setOnPlaceholderClicked] = useState(false)
+  const handleTypeChange = useCallback(
+    (isVar: boolean) => {
+      setOnPlaceholderClicked(true)
+      onIsVariableChange?.(isVar)
+    },
+    [onIsVariableChange],
+  )
+
+  const [isFocus, setIsFocus] = useState(false)
+
+  const varPickerProps = {
+    nodeId,
+    value: valueSelector || [],
+    onChange: onValueSelectorChange!,
+    readonly: false,
+    filterVar: (varPayload: Var) => {
+      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+      return textVariableTypes.includes(varPayload.type)
+    },
+  }
+
+  const isShowPlaceholder =
+    !onPlaceholderClicked && (isVariable ? !valueSelector || valueSelector.length === 0 : !value)
+
+  if (isShowPlaceholder)
+    return <Placeholder varPickerProps={varPickerProps} onTypeClick={handleTypeChange} />
+
+  if (isVariable) {
+    return (
+      <div className="relative h-20 rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2">
+        <VarReferencePicker {...varPickerProps} isJustShowValue />
+        <TypeSwitch
+          className="absolute bottom-1 left-1.5"
+          isVariable={isVariable}
+          onIsVariableChange={handleTypeChange}
+        />
+      </div>
+    )
+  }
+  return (
+    <div
+      className={cn(
+        'relative min-h-20 rounded-lg border border-transparent bg-components-input-bg-normal pb-1',
+        isFocus && 'bg-components-input-bg-active ring-2 ring-state-accent-solid',
+      )}
+    >
+      <Textarea
+        aria-label={t(($) => $[`${i18nPrefix}.staticContent`], { ns: 'workflowHumanInput' })}
+        value={value || ''}
+        // oxlint-disable-next-line shadcn/no-restyle -- The enclosing pre-population surface paints the focus ring around the textarea and type switch.
+        className="h-10.75 min-h-10.75 rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:ring-0"
+        onValueChange={(value) => onValueChange?.(value)}
+        onFocus={() => {
+          setOnPlaceholderClicked(true)
+          setIsFocus(true)
+        }}
+        onBlur={() => setIsFocus(false)}
+        autoFocus
+      />
+      <TypeSwitch
+        className="absolute bottom-1 left-1.5"
+        isVariable={isVariable}
+        onIsVariableChange={handleTypeChange}
+      />
+    </div>
+  )
+}
+export default React.memo(PrePopulate)

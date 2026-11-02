@@ -1,20 +1,23 @@
-import React, { type FC, useCallback, useMemo, useRef, useState } from 'react'
+import type { FC } from 'react'
 import type { SchemaEnumType } from '../../../../types'
-import { ArrayType, Type } from '../../../../types'
+import type { AdvancedOptionsType } from './advanced-options'
 import type { TypeItem } from './type-selector'
-import TypeSelector from './type-selector'
-import RequiredSwitch from './required-switch'
-import Divider from '@/app/components/base/divider'
-import Actions from './actions'
-import AdvancedActions from './advanced-actions'
-import AdvancedOptions, { type AdvancedOptionsType } from './advanced-options'
-import { useTranslation } from 'react-i18next'
-import classNames from '@/utils/classnames'
-import { useVisualEditorStore } from '../store'
-import { useMittContext } from '../context'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useUnmount } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
+import { ArrayType, Type } from '../../../../types'
+import { useMittContext } from '../context'
+import { useVisualEditorStore } from '../store'
+import Actions from './actions'
+import { AdvancedActions } from './advanced-actions'
+import AdvancedOptions from './advanced-options'
 import AutoWidthInput from './auto-width-input'
+import RequiredSwitch from './required-switch'
+import TypeSelector from './type-selector'
 
 export type EditData = {
   name: string
@@ -39,42 +42,39 @@ type EditCardProps = {
 const TYPE_OPTIONS = [
   { value: Type.string, text: 'string' },
   { value: Type.number, text: 'number' },
-  // { value: Type.boolean, text: 'boolean' },
+  { value: Type.boolean, text: 'boolean' },
   { value: Type.object, text: 'object' },
   { value: ArrayType.string, text: 'array[string]' },
   { value: ArrayType.number, text: 'array[number]' },
-  // { value: ArrayType.boolean, text: 'array[boolean]' },
   { value: ArrayType.object, text: 'array[object]' },
 ]
 
 const MAXIMUM_DEPTH_TYPE_OPTIONS = [
   { value: Type.string, text: 'string' },
   { value: Type.number, text: 'number' },
-  // { value: Type.boolean, text: 'boolean' },
+  { value: Type.boolean, text: 'boolean' },
   { value: ArrayType.string, text: 'array[string]' },
   { value: ArrayType.number, text: 'array[number]' },
-  // { value: ArrayType.boolean, text: 'array[boolean]' },
 ]
 
-const EditCard: FC<EditCardProps> = ({
-  fields,
-  depth,
-  path,
-  parentPath,
-}) => {
-  const { t } = useTranslation()
+const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
+  const { t } = useTranslation(['workflowModels'])
   const [currentFields, setCurrentFields] = useState(fields)
   const [backupFields, setBackupFields] = useState<EditData | null>(null)
-  const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
-  const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
-  const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
-  const setAdvancedEditing = useVisualEditorStore(state => state.setAdvancedEditing)
+  const isAddingNewField = useVisualEditorStore((state) => state.isAddingNewField)
+  const setIsAddingNewField = useVisualEditorStore((state) => state.setIsAddingNewField)
+  const advancedEditing = useVisualEditorStore((state) => state.advancedEditing)
+  const setAdvancedEditing = useVisualEditorStore((state) => state.setAdvancedEditing)
   const { emit, useSubscribe } = useMittContext()
   const blurWithActions = useRef(false)
+  const editorRef = useRef<HTMLDivElement>(null)
 
   const maximumDepthReached = depth === JSON_SCHEMA_MAX_DEPTH
-  const disableAddBtn = maximumDepthReached || (currentFields.type !== Type.object && currentFields.type !== ArrayType.object)
-  const hasAdvancedOptions = currentFields.type === Type.string || currentFields.type === Type.number
+  const disableAddBtn =
+    maximumDepthReached ||
+    (currentFields.type !== Type.object && currentFields.type !== ArrayType.object)
+  const hasAdvancedOptions =
+    currentFields.type === Type.string || currentFields.type === Type.number
   const isAdvancedEditing = advancedEditing || isAddingNewField
 
   const advancedOptions = useMemo(() => {
@@ -85,29 +85,45 @@ const EditCard: FC<EditCardProps> = ({
   }, [currentFields.type, currentFields.enum])
 
   useSubscribe('restorePropertyName', () => {
-    setCurrentFields(prev => ({ ...prev, name: fields.name }))
+    setCurrentFields((prev) => ({ ...prev, name: fields.name }))
   })
 
   useSubscribe('fieldChangeSuccess', () => {
-    isAddingNewField && setIsAddingNewField(false)
-    advancedEditing && setAdvancedEditing(false)
+    if (isAddingNewField) setIsAddingNewField(false)
+    if (advancedEditing) setAdvancedEditing(false)
   })
 
   const emitPropertyNameChange = useCallback(() => {
     emit('propertyNameChange', { path, parentPath, oldFields: fields, fields: currentFields })
   }, [fields, currentFields, path, parentPath, emit])
 
-  const emitPropertyTypeChange = useCallback((type: Type | ArrayType) => {
-    emit('propertyTypeChange', { path, parentPath, oldFields: fields, fields: { ...currentFields, type } })
-  }, [fields, currentFields, path, parentPath, emit])
+  const emitPropertyTypeChange = useCallback(
+    (type: Type | ArrayType) => {
+      emit('propertyTypeChange', {
+        path,
+        parentPath,
+        oldFields: fields,
+        fields: { ...currentFields, type },
+      })
+    },
+    [fields, currentFields, path, parentPath, emit],
+  )
 
   const emitPropertyRequiredToggle = useCallback(() => {
     emit('propertyRequiredToggle', { path, parentPath, oldFields: fields, fields: currentFields })
   }, [emit, path, parentPath, fields, currentFields])
 
-  const emitPropertyOptionsChange = useCallback((options: Options) => {
-    emit('propertyOptionsChange', { path, parentPath, oldFields: fields, fields: { ...currentFields, ...options } })
-  }, [emit, path, parentPath, fields, currentFields])
+  const emitPropertyOptionsChange = useCallback(
+    (options: Options) => {
+      emit('propertyOptionsChange', {
+        path,
+        parentPath,
+        oldFields: fields,
+        fields: { ...currentFields, ...options },
+      })
+    },
+    [emit, path, parentPath, fields, currentFields],
+  )
 
   const emitPropertyDelete = useCallback(() => {
     emit('propertyDelete', { path, parentPath, oldFields: fields, fields: currentFields })
@@ -122,7 +138,8 @@ const EditCard: FC<EditCardProps> = ({
   }, [emit, path, parentPath, fields, currentFields])
 
   const handlePropertyNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentFields(prev => ({ ...prev, name: e.target.value }))
+    // fix: when user add name contains space, the variable reference will not work
+    setCurrentFields((prev) => ({ ...prev, name: e.target.value?.trim() }))
   }, [])
 
   const handlePropertyNameBlur = useCallback(() => {
@@ -130,20 +147,23 @@ const EditCard: FC<EditCardProps> = ({
     emitPropertyNameChange()
   }, [isAdvancedEditing, emitPropertyNameChange])
 
-  const handleTypeChange = useCallback((item: TypeItem) => {
-    setCurrentFields(prev => ({ ...prev, type: item.value }))
-    if (isAdvancedEditing) return
-    emitPropertyTypeChange(item.value)
-  }, [isAdvancedEditing, emitPropertyTypeChange])
+  const handleTypeChange = useCallback(
+    (item: TypeItem) => {
+      setCurrentFields((prev) => ({ ...prev, type: item.value }))
+      if (isAdvancedEditing) return
+      emitPropertyTypeChange(item.value)
+    },
+    [isAdvancedEditing, emitPropertyTypeChange],
+  )
 
   const toggleRequired = useCallback(() => {
-    setCurrentFields(prev => ({ ...prev, required: !prev.required }))
+    setCurrentFields((prev) => ({ ...prev, required: !prev.required }))
     if (isAdvancedEditing) return
     emitPropertyRequiredToggle()
   }, [isAdvancedEditing, emitPropertyRequiredToggle])
 
   const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentFields(prev => ({ ...prev, description: e.target.value }))
+    setCurrentFields((prev) => ({ ...prev, description: e.target.value }))
   }, [])
 
   const handleDescriptionBlur = useCallback(() => {
@@ -151,20 +171,23 @@ const EditCard: FC<EditCardProps> = ({
     emitPropertyOptionsChange({ description: currentFields.description, enum: currentFields.enum })
   }, [isAdvancedEditing, emitPropertyOptionsChange, currentFields])
 
-  const handleAdvancedOptionsChange = useCallback((options: AdvancedOptionsType) => {
-    let enumValue: any = options.enum
-    if (enumValue === '') {
-      enumValue = undefined
-    }
-    else {
-      enumValue = options.enum.replace(/\s/g, '').split(',')
-      if (currentFields.type === Type.number)
-        enumValue = (enumValue as SchemaEnumType).map(value => Number(value)).filter(num => !Number.isNaN(num))
-    }
-    setCurrentFields(prev => ({ ...prev, enum: enumValue }))
-    if (isAdvancedEditing) return
-    emitPropertyOptionsChange({ description: currentFields.description, enum: enumValue })
-  }, [isAdvancedEditing, emitPropertyOptionsChange, currentFields])
+  const handleAdvancedOptionsChange = useCallback(
+    (options: AdvancedOptionsType) => {
+      let enumValue: SchemaEnumType | undefined
+      if (options.enum === '') {
+        enumValue = undefined
+      } else {
+        const stringArray = options.enum.replace(/\s/g, '').split(',')
+        if (currentFields.type === Type.number)
+          enumValue = stringArray.map((value) => Number(value)).filter((num) => !Number.isNaN(num))
+        else enumValue = stringArray
+      }
+      setCurrentFields((prev) => ({ ...prev, enum: enumValue }))
+      if (isAdvancedEditing) return
+      emitPropertyOptionsChange({ description: currentFields.description, enum: enumValue })
+    },
+    [isAdvancedEditing, emitPropertyOptionsChange, currentFields],
+  )
 
   const handleDelete = useCallback(() => {
     blurWithActions.current = true
@@ -205,12 +228,17 @@ const EditCard: FC<EditCardProps> = ({
   })
 
   return (
-    <div className='flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4'>
-      <div className='flex h-6 items-center pl-1 pr-0.5'>
-        <div className='flex grow items-center gap-x-1'>
+    <div
+      ref={editorRef}
+      className="flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4"
+    >
+      <div className="flex h-6 items-center pr-0.5 pl-1">
+        <div className="flex grow items-center gap-x-1">
           <AutoWidthInput
             value={currentFields.name}
-            placeholder={t('workflow.nodes.llm.jsonSchema.fieldNamePlaceholder')}
+            placeholder={t(($) => $['nodes.llm.jsonSchema.fieldNamePlaceholder'], {
+              ns: 'workflowModels',
+            })}
             minWidth={80}
             maxWidth={300}
             onChange={handlePropertyNameChange}
@@ -220,23 +248,18 @@ const EditCard: FC<EditCardProps> = ({
             currentValue={currentFields.type}
             items={maximumDepthReached ? MAXIMUM_DEPTH_TYPE_OPTIONS : TYPE_OPTIONS}
             onSelect={handleTypeChange}
-            popupClassName={'z-[1000]'}
           />
-          {
-            currentFields.required && (
-              <div className='system-2xs-medium-uppercase px-1 py-0.5 text-text-warning'>
-                {t('workflow.nodes.llm.jsonSchema.required')}
-              </div>
-            )
-          }
+          {currentFields.required && (
+            <div className="px-1 py-0.5 system-2xs-medium-uppercase text-text-warning">
+              {t(($) => $['nodes.llm.jsonSchema.required'], { ns: 'workflowModels' })}
+            </div>
+          )}
         </div>
-        <RequiredSwitch
-          defaultValue={currentFields.required}
-          toggleRequired={toggleRequired}
-        />
-        <Divider type='vertical' className='h-3' />
+        <RequiredSwitch defaultValue={currentFields.required} toggleRequired={toggleRequired} />
+        <Separator decorative orientation="vertical" className="mx-2 h-3" />
         {isAdvancedEditing ? (
           <AdvancedActions
+            target={editorRef}
             isConfirmDisabled={currentFields.name === ''}
             onCancel={handleCancel}
             onConfirm={handleConfirm}
@@ -252,23 +275,22 @@ const EditCard: FC<EditCardProps> = ({
       </div>
 
       {(fields.description || isAdvancedEditing) && (
-        <div className={classNames('flex', isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
+        <div className={cn('flex', isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
           <input
             value={currentFields.description}
-            className='system-xs-regular placeholder:system-xs-regular h-4 w-full p-0 text-text-tertiary caret-[#295EFF] outline-none placeholder:text-text-placeholder'
-            placeholder={t('workflow.nodes.llm.jsonSchema.descriptionPlaceholder')}
+            className="h-4 w-full p-0 system-xs-regular text-text-tertiary caret-[#295EFF] outline-hidden placeholder:system-xs-regular placeholder:text-text-placeholder"
+            placeholder={t(($) => $['nodes.llm.jsonSchema.descriptionPlaceholder'], {
+              ns: 'workflowModels',
+            })}
             onChange={handleDescriptionChange}
             onBlur={handleDescriptionBlur}
-            onKeyUp={e => e.key === 'Enter' && e.currentTarget.blur()}
+            onKeyUp={(e) => e.key === 'Enter' && e.currentTarget.blur()}
           />
         </div>
       )}
 
       {isAdvancedEditing && hasAdvancedOptions && (
-        <AdvancedOptions
-          options={advancedOptions}
-          onChange={handleAdvancedOptionsChange}
-        />
+        <AdvancedOptions options={advancedOptions} onChange={handleAdvancedOptionsChange} />
       )}
     </div>
   )

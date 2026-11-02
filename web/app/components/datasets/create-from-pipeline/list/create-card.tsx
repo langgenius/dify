@@ -1,0 +1,65 @@
+import { RiAddCircleLine } from '@remixicon/react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
+import { toast } from '@/app/notifications'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
+
+const CreateCard = () => {
+  const { t } = useTranslation(['datasetPipeline'])
+  const { push } = useRouter()
+
+  const { mutateAsync: createEmptyDataset } = useMutation(
+    consoleQuery.rag.pipeline.emptyDataset.post.mutationOptions({ context: { silent: true } }),
+  )
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
+
+  const handleCreate = useCallback(async () => {
+    await createEmptyDataset(undefined, {
+      onSuccess: (data) => {
+        if (data) {
+          const { id } = data
+          toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
+          invalidDatasetList()
+          trackEvent('create_datasets_from_scratch', {
+            dataset_id: id,
+          })
+          push(`/datasets/${id}/pipeline`)
+        }
+      },
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ?? t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }),
+        )
+      },
+    })
+  }, [createEmptyDataset, push, invalidDatasetList, t])
+
+  return (
+    <div
+      className="group relative flex h-33 cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3"
+      onClick={handleCreate}
+    >
+      <div className="flex items-center gap-x-3 p-4 pb-2">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-dashed border-divider-regular bg-background-section group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover">
+          <RiAddCircleLine className="size-5 text-text-quaternary group-hover:text-text-accent" />
+        </div>
+        <div className="truncate system-md-semibold text-text-primary">
+          {t(($) => $['creation.createFromScratch.title'], { ns: 'datasetPipeline' })}
+        </div>
+      </div>
+      <p className="line-clamp-3 px-4 py-1 system-xs-regular text-text-tertiary">
+        {t(($) => $['creation.createFromScratch.description'], { ns: 'datasetPipeline' })}
+      </p>
+    </div>
+  )
+}
+
+export default React.memo(CreateCard)

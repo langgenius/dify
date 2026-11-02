@@ -1,0 +1,349 @@
+import type { Node } from 'reactflow'
+import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
+import type { NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Input } from '@langgenius/dify-ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { useCallback, useId } from 'react'
+import { useTranslation } from 'react-i18next'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import { ToolDatePicker } from '@/app/components/tools/parameters/tool-date-picker'
+import { ToolDateRangePicker } from '@/app/components/tools/parameters/tool-date-range-picker'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
+import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
+import {
+  createPickerProps,
+  getFieldFlags,
+  getFieldTitle,
+  mergeReasoningValue,
+  resolveTargetVarType,
+  updateInputAutoState,
+  updateReasoningValue,
+  updateVariableSelectorValue,
+  updateVariableTypeValue,
+} from './reasoning-config-form.helpers'
+import { SchemaDialog } from './schema-dialog'
+
+export type ReasoningConfigValue = Record<
+  string,
+  {
+    value: {
+      type?: VarKindType
+      value?: unknown
+      [key: string]: unknown
+    } | null
+    auto?: 0 | 1
+  }
+>
+
+type Props = Readonly<{
+  value: ReasoningConfigValue
+  onChange: (val: ReasoningConfigValue) => void
+  schemas: ToolFormSchema[]
+  nodeOutputVars: NodeOutPutVar[]
+  availableNodes: Node[]
+  nodeId: string
+}>
+
+export function ReasoningConfigForm({
+  value,
+  onChange,
+  schemas,
+  nodeOutputVars,
+  availableNodes,
+  nodeId,
+}: Props) {
+  const fieldLabelId = useId()
+
+  const { t } = useTranslation(['plugin', 'tools', 'workflowAgent'])
+  const language = useLanguage()
+
+  const handleAutomatic = (key: string, val: boolean, type: string) => {
+    onChange(updateInputAutoState(value, key, val, type))
+  }
+
+  const handleTypeChange = useCallback(
+    (variable: string, defaultValue: unknown) => {
+      return (newType: VarKindType) => {
+        onChange(updateVariableTypeValue(value, variable, newType, defaultValue))
+      }
+    },
+    [onChange, value],
+  )
+
+  const handleValueChange = useCallback(
+    (variable: string, varType: string) => {
+      return (newValue: unknown) => {
+        onChange(updateReasoningValue(value, variable, varType, newValue))
+      }
+    },
+    [onChange, value],
+  )
+
+  const handleAppChange = useCallback(
+    (variable: string) => {
+      return (app: { app_id: string; inputs: Record<string, unknown>; files?: unknown[] }) => {
+        onChange(updateReasoningValue(value, variable, FormTypeEnum.appSelector, app))
+      }
+    },
+    [onChange, value],
+  )
+
+  const handleModelChange = useCallback(
+    (variable: string) => {
+      return (model: Record<string, unknown>) => {
+        onChange(mergeReasoningValue(value, variable, model))
+      }
+    },
+    [onChange, value],
+  )
+
+  const handleVariableSelectorChange = useCallback(
+    (variable: string) => {
+      return (newValue: ValueSelector | string) => {
+        onChange(updateVariableSelectorValue(value, variable, newValue))
+      }
+    },
+    [onChange, value],
+  )
+
+  const renderField = (schema: ToolFormSchema) => {
+    const {
+      default: defaultValue,
+      variable,
+      label,
+      required,
+      tooltip,
+      type,
+      scope,
+      url,
+      input_schema,
+      placeholder,
+      options,
+    } = schema
+    const auto = value[variable]?.auto
+    const fieldTitle = getFieldTitle(label, language)
+    const tooltipText = tooltip?.[language] || tooltip?.en_US
+    const tooltipContent = tooltipText && (
+      <Infotip>
+        <InfotipTrigger aria-labelledby={`${fieldLabelId}-${variable}`} className="ml-0.5" />
+        <InfotipContent aria-labelledby={`${fieldLabelId}-${variable}`} className="w-50">
+          {tooltipText}
+        </InfotipContent>
+      </Infotip>
+    )
+    const varInput = value[variable]!.value
+    const {
+      isString,
+      isNumber,
+      isShowJSONEditor,
+      isBoolean,
+      isSelect,
+      isAppSelector,
+      isModelSelector,
+      isDate,
+      isDateRange,
+      showTypeSwitch,
+      isConstant,
+      showVariableSelector,
+    } = getFieldFlags(type, varInput)
+    const pickerProps = createPickerProps({
+      type,
+      value,
+      language,
+      schema,
+    })
+    const selectValue = typeof varInput?.value === 'string' ? varInput.value : null
+    const selectedOption =
+      isSelect && options
+        ? (pickerProps.selectItems.find((item) => item.value === selectValue) ?? null)
+        : null
+
+    return (
+      <div key={variable} className="space-y-0.5">
+        <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
+          <div className="flex items-center">
+            <span
+              id={`${fieldLabelId}-${variable}`}
+              className={cn('max-w-35 truncate code-sm-semibold text-text-secondary')}
+            >
+              {fieldTitle}
+            </span>
+            {required && <span className="ml-1 text-red-500">*</span>}
+            {tooltipContent}
+            <span className="mx-1 system-xs-regular text-text-quaternary">·</span>
+            <span className="system-xs-regular text-text-tertiary">
+              {resolveTargetVarType(type)}
+            </span>
+            {isShowJSONEditor && (
+              <SchemaDialog schema={input_schema} rootName={fieldTitle || variable} compact />
+            )}
+          </div>
+          <label className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover">
+            <span className="system-xs-medium text-text-secondary">
+              {t(($) => $['detailPanel.toolSelector.auto'], { ns: 'plugin' })}
+            </span>
+            <Switch
+              size="xs"
+              checked={!!auto}
+              onCheckedChange={(val) => handleAutomatic(variable, val, type)}
+            />
+          </label>
+        </div>
+        {auto === 0 && (
+          <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
+            {showTypeSwitch && (
+              <FormInputTypeSwitch
+                value={varInput?.type || VarKindType.constant}
+                onChange={handleTypeChange(variable, defaultValue)}
+              />
+            )}
+            {isString && (
+              <MixedVariableTextInput
+                value={(varInput?.value as string) || ''}
+                onChange={handleValueChange(variable, type)}
+                nodesOutputVars={nodeOutputVars}
+                availableNodes={availableNodes}
+              />
+            )}
+            {isNumber && isConstant && (
+              <Input
+                aria-label={fieldTitle}
+                className="h-8 grow"
+                type="number"
+                value={(varInput?.value as string | number) || ''}
+                onChange={(e) => handleValueChange(variable, type)(e.target.value)}
+                placeholder={placeholder?.[language] || placeholder?.en_US}
+              />
+            )}
+            {isDate && isConstant && (
+              <div className="min-w-0 grow">
+                <ToolDatePicker
+                  aria-label={fieldTitle || variable}
+                  value={varInput?.value}
+                  onChange={handleValueChange(variable, type)}
+                  placeholder={placeholder?.[language] || placeholder?.en_US}
+                />
+              </div>
+            )}
+            {isDateRange && varInput?.type !== VarKindType.variable && (
+              <div className="grow">
+                <ToolDateRangePicker
+                  label={fieldTitle || variable}
+                  value={varInput?.value}
+                  onChange={handleValueChange(variable, type)}
+                />
+              </div>
+            )}
+            {isBoolean && (
+              <FormInputBoolean
+                value={varInput?.value as boolean}
+                onChange={handleValueChange(variable, type)}
+              />
+            )}
+            {isSelect && options && (
+              <Select<string>
+                value={selectedOption?.value ?? null}
+                onValueChange={(value) => {
+                  if (value == null || value === '') return
+                  handleValueChange(variable, type)(value)
+                }}
+              >
+                <SelectTrigger className="h-8 grow">
+                  {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
+                </SelectTrigger>
+                <SelectContent>
+                  {pickerProps.selectItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      <SelectItemText>{item.name}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {isShowJSONEditor && isConstant && (
+              <div className="mt-1 w-full">
+                <CodeEditor
+                  title="JSON"
+                  value={varInput?.value as string}
+                  isExpand
+                  isInNode
+                  height={100}
+                  language={CodeLanguage.json}
+                  onChange={handleValueChange(variable, type)}
+                  className="w-full"
+                  placeholder={
+                    <div className="whitespace-pre">
+                      {placeholder?.[language] || placeholder?.en_US}
+                    </div>
+                  }
+                />
+              </div>
+            )}
+            {isAppSelector && (
+              <AppSelector
+                disabled={false}
+                value={(varInput?.value ?? varInput) as AppSelectorValue | undefined}
+                onSelect={handleAppChange(variable)}
+              />
+            )}
+            {isModelSelector && (
+              <ModelParameterModal
+                popupClassName="w-[387px]!"
+                isAdvancedMode
+                isInWorkflow
+                value={varInput}
+                setModel={handleModelChange(variable)}
+                scope={scope}
+              />
+            )}
+            {showVariableSelector && (
+              <VarReferencePicker
+                className="h-8 grow"
+                readonly={false}
+                isShowNodeName
+                nodeId={nodeId}
+                value={(varInput?.value as string | ValueSelector) || []}
+                onChange={handleVariableSelectorChange(variable)}
+                filterVar={pickerProps.filterVar}
+                schema={pickerProps.schema}
+                valueTypePlaceHolder={pickerProps.targetVarType}
+              />
+            )}
+          </div>
+        )}
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center text-xs text-text-accent"
+          >
+            {t(($) => $.howToGet, { ns: 'tools' })}
+            <span aria-hidden className="ml-1 i-ri-arrow-right-up-line size-3" />
+          </a>
+        )}
+      </div>
+    )
+  }
+  return <div className="space-y-3 px-4 py-2">{schemas.map(renderField)}</div>
+}

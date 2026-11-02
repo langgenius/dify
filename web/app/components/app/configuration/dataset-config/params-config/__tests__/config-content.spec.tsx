@@ -1,0 +1,290 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { MockInstance } from 'vite-plus/test'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
+import type { DatasetConfigs } from '@/models/debug'
+import type { RetrievalConfig } from '@/types/app'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/components/app/configuration/toast'
+import {
+  ChunkingMode,
+  DataSourceType,
+  RerankingModeEnum,
+  WeightedScoreEnum,
+} from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
+import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import ConfigContent from '../config-content'
+
+const render = createNuqsTestRenderer((ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  return renderWithConsoleQuery(ui, { queryClient })
+})
+
+let toastErrorSpy: MockInstance
+
+const baseRetrievalConfig: RetrievalConfig = {
+  search_method: RETRIEVE_METHOD.semantic,
+  reranking_enable: false,
+  reranking_model: {
+    reranking_provider_name: 'provider',
+    reranking_model_name: 'rerank-model',
+  },
+  top_k: 4,
+  score_threshold_enabled: false,
+  score_threshold: 0,
+}
+
+const defaultIndexingTechnique: IndexingType = 'high_quality' as IndexingType
+
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => {
+  const { retrieval_model_dict, icon_info, ...restOverrides } = overrides
+
+  const resolvedRetrievalModelDict = {
+    ...baseRetrievalConfig,
+    ...retrieval_model_dict,
+  }
+
+  const defaultIconInfo = {
+    icon: '📘',
+    icon_type: 'emoji',
+    icon_background: '#FFEAD5',
+    icon_url: '',
+  }
+
+  const resolvedIconInfo = 'icon_info' in overrides ? icon_info : defaultIconInfo
+
+  return {
+    ...createDatasetFixture(),
+    id: 'dataset-id',
+    name: 'Dataset Name',
+    icon_info: resolvedIconInfo,
+    description: 'A test dataset',
+    permission: PermissionLevel.onlyMe,
+    data_source_type: DataSourceType.FILE,
+    indexing_technique: defaultIndexingTechnique,
+    author_name: 'author',
+    created_by: 'creator',
+    updated_by: 'updater',
+    updated_at: 0,
+    app_count: 0,
+    doc_form: ChunkingMode.text,
+    document_count: 0,
+    total_available_documents: 0,
+    word_count: 0,
+    provider: 'dify',
+    embedding_model: 'text-embedding',
+    embedding_model_provider: 'openai',
+    embedding_available: true,
+    retrieval_model_dict: resolvedRetrievalModelDict,
+    tags: [],
+    external_knowledge_info: {
+      external_knowledge_id: 'external-id',
+      external_knowledge_api_id: 'api-id',
+      external_knowledge_api_name: 'api-name',
+      external_knowledge_api_endpoint: 'https://endpoint',
+    },
+    external_retrieval_model: {
+      top_k: 2,
+      score_threshold: 0.5,
+      score_threshold_enabled: true,
+    },
+    built_in_field_enabled: true,
+    doc_metadata: [],
+    keyword_number: 3,
+    pipeline_id: 'pipeline-id',
+    is_published: true,
+    runtime_mode: 'general',
+    enable_api: true,
+    is_multimodal: false,
+    ...restOverrides,
+  }
+}
+
+const createDatasetConfigs = (overrides: Partial<DatasetConfigs> = {}): DatasetConfigs => {
+  return {
+    retrieval_model: RETRIEVE_TYPE.multiWay,
+    reranking_model: {
+      reranking_provider_name: '',
+      reranking_model_name: '',
+    },
+    top_k: 4,
+    score_threshold_enabled: false,
+    score_threshold: 0,
+    datasets: {
+      datasets: [],
+    },
+    reranking_mode: RerankingModeEnum.WeightedScore,
+    weights: {
+      weight_type: WeightedScoreEnum.Customized,
+      vector_setting: {
+        vector_weight: 0.5,
+        embedding_provider_name: 'openai',
+        embedding_model_name: 'text-embedding',
+      },
+      keyword_setting: {
+        keyword_weight: 0.5,
+      },
+    },
+    reranking_enable: false,
+    ...overrides,
+  }
+}
+
+describe('ConfigContent', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
+  })
+
+  afterEach(() => {
+    toastErrorSpy.mockRestore()
+  })
+
+  describe('Effects', () => {
+    it('should normalize oneWay retrieval mode to multiWay', async () => {
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
+      const datasetConfigs = createDatasetConfigs({ retrieval_model: RETRIEVE_TYPE.oneWay })
+
+      render(<ConfigContent datasetConfigs={datasetConfigs} onChange={onChange} />)
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalled()
+      })
+      const nextConfigs = onChange.mock.calls[0]?.[0]
+      expect(nextConfigs?.retrieval_model).toBe(RETRIEVE_TYPE.multiWay)
+    })
+  })
+
+  describe('User Interactions', () => {
+    it('should update weights when user changes weighted score slider', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
+      const datasetConfigs = createDatasetConfigs({
+        reranking_mode: RerankingModeEnum.WeightedScore,
+        weights: {
+          weight_type: WeightedScoreEnum.Customized,
+          vector_setting: {
+            vector_weight: 0.5,
+            embedding_provider_name: 'openai',
+            embedding_model_name: 'text-embedding',
+          },
+          keyword_setting: {
+            keyword_weight: 0.5,
+          },
+        },
+      })
+      const selectedDatasets: DatasetDetailWithPartialMembersResponse[] = [
+        createDataset({
+          indexing_technique: 'high_quality' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+      ]
+
+      render(
+        <ConfigContent
+          datasetConfigs={datasetConfigs}
+          onChange={onChange}
+          selectedDatasets={selectedDatasets}
+        />,
+      )
+
+      const weightedScoreSlider = screen.getByRole('slider', {
+        name: 'dataset.weightedScore.semantic',
+      })
+      weightedScoreSlider.focus()
+      const callsBefore = onChange.mock.calls.length
+      await user.keyboard('{ArrowRight}')
+
+      expect(onChange.mock.calls.length).toBeGreaterThan(callsBefore)
+      const [nextConfigs] = onChange.mock.calls.at(-1) ?? []
+      expect(nextConfigs?.weights?.vector_setting.vector_weight).toBeCloseTo(0.6, 5)
+      expect(nextConfigs?.weights?.keyword_setting.keyword_weight).toBeCloseTo(0.4, 5)
+    })
+
+    it('should warn when switching to rerank model mode without a valid model', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
+      const datasetConfigs = createDatasetConfigs({
+        reranking_mode: RerankingModeEnum.WeightedScore,
+      })
+      const selectedDatasets: DatasetDetailWithPartialMembersResponse[] = [
+        createDataset({
+          indexing_technique: 'high_quality' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+      ]
+
+      render(
+        <ConfigContent
+          datasetConfigs={datasetConfigs}
+          onChange={onChange}
+          selectedDatasets={selectedDatasets}
+        />,
+      )
+      await user.click(screen.getByText('modelProvider.modelProvider.rerankModel.key'))
+
+      expect(toastErrorSpy).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reranking_mode: RerankingModeEnum.RerankingModel,
+        }),
+      )
+    })
+
+    it('should warn when enabling rerank without a valid model in manual toggle mode', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
+      const datasetConfigs = createDatasetConfigs({
+        reranking_enable: false,
+      })
+      const selectedDatasets: DatasetDetailWithPartialMembersResponse[] = [
+        createDataset({
+          indexing_technique: 'economy' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+      ]
+
+      render(
+        <ConfigContent
+          datasetConfigs={datasetConfigs}
+          onChange={onChange}
+          selectedDatasets={selectedDatasets}
+        />,
+      )
+      await user.click(screen.getByRole('switch'))
+
+      expect(toastErrorSpy).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reranking_enable: true,
+        }),
+      )
+    })
+  })
+})

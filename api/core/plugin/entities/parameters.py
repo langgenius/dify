@@ -1,19 +1,18 @@
-import enum
-from typing import Any, Optional, Union
+import json
+from datetime import date
+from enum import StrEnum, auto
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
 from core.entities.parameter_entities import CommonParameterType
 from core.tools.entities.common_entities import I18nObject
-from core.workflow.nodes.base.entities import NumberType
 
 
 class PluginParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
-    icon: Optional[str] = Field(
-        default=None, description="The icon of the option, can be a url or a base64 encoded image"
-    )
+    icon: str | None = Field(default=None, description="The icon of the option, can be a url or a base64 encoded image")
 
     @field_validator("value", mode="before")
     @classmethod
@@ -24,46 +23,49 @@ class PluginParameterOption(BaseModel):
             return value
 
 
-class PluginParameterType(enum.StrEnum):
+class PluginParameterType(StrEnum):
     """
     all available parameter types
     """
 
-    STRING = CommonParameterType.STRING.value
-    NUMBER = CommonParameterType.NUMBER.value
-    BOOLEAN = CommonParameterType.BOOLEAN.value
-    SELECT = CommonParameterType.SELECT.value
-    SECRET_INPUT = CommonParameterType.SECRET_INPUT.value
-    FILE = CommonParameterType.FILE.value
-    FILES = CommonParameterType.FILES.value
-    APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
-    MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
-    TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR.value
-    ANY = CommonParameterType.ANY.value
-    DYNAMIC_SELECT = CommonParameterType.DYNAMIC_SELECT.value
-
+    STRING = CommonParameterType.STRING
+    NUMBER = CommonParameterType.NUMBER
+    BOOLEAN = CommonParameterType.BOOLEAN
+    SELECT = CommonParameterType.SELECT
+    SECRET_INPUT = CommonParameterType.SECRET_INPUT
+    FILE = CommonParameterType.FILE
+    FILES = CommonParameterType.FILES
+    APP_SELECTOR = CommonParameterType.APP_SELECTOR
+    MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR
+    TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
+    ANY = CommonParameterType.ANY
+    DYNAMIC_SELECT = CommonParameterType.DYNAMIC_SELECT
+    CHECKBOX = CommonParameterType.CHECKBOX
     # deprecated, should not use.
-    SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
+    SYSTEM_FILES = CommonParameterType.SYSTEM_FILES
 
     # MCP object and array type parameters
-    ARRAY = CommonParameterType.ARRAY.value
-    OBJECT = CommonParameterType.OBJECT.value
+    ARRAY = CommonParameterType.ARRAY
+    OBJECT = CommonParameterType.OBJECT
+    DATE = CommonParameterType.DATE
+    DATE_RANGE = CommonParameterType.DATE_RANGE
 
 
-class MCPServerParameterType(enum.StrEnum):
+class MCPServerParameterType(StrEnum):
     """
     MCP server got complex parameter types
     """
 
-    ARRAY = "array"
-    OBJECT = "object"
+    ARRAY = auto()
+    OBJECT = auto()
+
+
+class PluginParameterAutoGenerateType(StrEnum):
+    PROMPT_INSTRUCTION = auto()
 
 
 class PluginParameterAutoGenerate(BaseModel):
-    class Type(enum.StrEnum):
-        PROMPT_INSTRUCTION = "prompt_instruction"
-
-    type: Type
+    type: PluginParameterAutoGenerateType
 
 
 class PluginParameterTemplate(BaseModel):
@@ -73,15 +75,15 @@ class PluginParameterTemplate(BaseModel):
 class PluginParameter(BaseModel):
     name: str = Field(..., description="The name of the parameter")
     label: I18nObject = Field(..., description="The label presented to the user")
-    placeholder: Optional[I18nObject] = Field(default=None, description="The placeholder presented to the user")
+    placeholder: I18nObject | None = Field(default=None, description="The placeholder presented to the user")
     scope: str | None = None
-    auto_generate: Optional[PluginParameterAutoGenerate] = None
-    template: Optional[PluginParameterTemplate] = None
+    auto_generate: PluginParameterAutoGenerate | None = None
+    template: PluginParameterTemplate | None = None
     required: bool = False
-    default: Optional[Union[float, int, str]] = None
-    min: Optional[Union[float, int]] = None
-    max: Optional[Union[float, int]] = None
-    precision: Optional[int] = None
+    default: float | int | str | bool | list | dict | None = None
+    min: float | int | None = None
+    max: float | int | None = None
+    precision: int | None = None
     options: list[PluginParameterOption] = Field(default_factory=list)
 
     @field_validator("options", mode="before")
@@ -92,48 +94,102 @@ class PluginParameter(BaseModel):
         return v
 
 
-def as_normal_type(typ: enum.StrEnum):
+def as_normal_type(typ: StrEnum):
+    if typ.value == PluginParameterType.DATE_RANGE:
+        return "object"
     if typ.value in {
         PluginParameterType.SECRET_INPUT,
         PluginParameterType.SELECT,
+        PluginParameterType.CHECKBOX,
+        PluginParameterType.DATE,
     }:
         return "string"
     return typ.value
 
 
-def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
+def _validate_date(value: Any, name: str = "date") -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"The {name} parameter must be a string in YYYY-MM-DD format.")
+
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"The {name} parameter must be a valid date in YYYY-MM-DD format.") from exc
+
+    if parsed.isoformat() != value:
+        raise ValueError(f"The {name} parameter must use YYYY-MM-DD format.")
+    return value
+
+
+def cast_parameter_value(typ: StrEnum, value: Any, /):
     try:
         match typ.value:
-            case PluginParameterType.STRING | PluginParameterType.SECRET_INPUT | PluginParameterType.SELECT:
+            case (
+                PluginParameterType.STRING
+                | PluginParameterType.SECRET_INPUT
+                | PluginParameterType.SELECT
+                | PluginParameterType.CHECKBOX
+                | PluginParameterType.DYNAMIC_SELECT
+            ):
                 if value is None:
                     return ""
                 else:
                     return value if isinstance(value, str) else str(value)
+            case PluginParameterType.DATE:
+                if value is None or value == "":
+                    return ""
+                return _validate_date(value)
+            case PluginParameterType.DATE_RANGE:
+                if value is None or value == "":
+                    return {}
+                if isinstance(value, dict):
+                    out: dict[str, str] = {}
+                    for key in ("start", "end"):
+                        if key not in value or value[key] is None or value[key] == "":
+                            continue
+                        out[key] = _validate_date(value[key], f"date-range {key}")
+                    if out.get("start") and out.get("end") and out["start"] > out["end"]:
+                        raise ValueError("The date-range start date must not be after the end date.")
+                    return out
+                if isinstance(value, str):
+                    try:
+                        parsed_value = json.loads(value)
+                        if isinstance(parsed_value, dict):
+                            return cast_parameter_value(typ, parsed_value)
+                    except json.JSONDecodeError:
+                        pass
+                    stripped = value.strip()
+                    if not stripped:
+                        return {}
+                    return {"start": _validate_date(stripped, "date-range start")}
+                raise ValueError("The date-range parameter must be a JSON object, JSON string, or empty.")
 
             case PluginParameterType.BOOLEAN:
-                if value is None:
-                    return False
-                elif isinstance(value, str):
-                    # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
-                    # and also '0' for False and '1' for True
-                    match value.lower():
-                        case "true" | "yes" | "y" | "1":
-                            return True
-                        case "false" | "no" | "n" | "0":
-                            return False
-                        case _:
-                            return bool(value)
-                else:
-                    return value if isinstance(value, bool) else bool(value)
+                match value:
+                    case None:
+                        return False
+                    case str():
+                        # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
+                        # and also '0' for False and '1' for True
+                        match value.lower():
+                            case "true" | "yes" | "y" | "1":
+                                return True
+                            case "false" | "no" | "n" | "0":
+                                return False
+                            case _:
+                                return bool(value)
+                    case _:
+                        return value if isinstance(value, bool) else bool(value)
 
             case PluginParameterType.NUMBER:
-                if isinstance(value, int | float):
-                    return value
-                elif isinstance(value, str) and value:
-                    if "." in value:
-                        return float(value)
-                    else:
-                        return int(value)
+                match value:
+                    case int() | float():
+                        return value
+                    case str() if value:
+                        if "." in value:
+                            return float(value)
+                        else:
+                            return int(value)
             case PluginParameterType.SYSTEM_FILES | PluginParameterType.FILES:
                 if not isinstance(value, list):
                     return [value]
@@ -154,7 +210,7 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                     raise ValueError("The tools selector must be a list.")
                 return value
             case PluginParameterType.ANY:
-                if value and not isinstance(value, str | dict | list | NumberType):
+                if value and not isinstance(value, str | dict | list | int | float):
                     raise ValueError("The var selector must be a string, dictionary, list or number.")
                 return value
             case PluginParameterType.ARRAY:
@@ -162,8 +218,6 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                     # Try to parse JSON string for arrays
                     if isinstance(value, str):
                         try:
-                            import json
-
                             parsed_value = json.loads(value)
                             if isinstance(parsed_value, list):
                                 return parsed_value
@@ -176,8 +230,6 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                     # Try to parse JSON string for objects
                     if isinstance(value, str):
                         try:
-                            import json
-
                             parsed_value = json.loads(value)
                             if isinstance(parsed_value, dict):
                                 return parsed_value
@@ -189,19 +241,24 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                 return str(value)
     except ValueError:
         raise
-    except Exception:
-        raise ValueError(f"The tool parameter value {value} is not in correct type of {as_normal_type(typ)}.")
+    except Exception as e:
+        raise ValueError(
+            f"The tool parameter value {repr(value)} is not in correct type of {as_normal_type(typ)}."
+        ) from e
 
 
-def init_frontend_parameter(rule: PluginParameter, type: enum.StrEnum, value: Any):
+def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
     """
     init frontend parameter by rule
     """
     parameter_value = value
-    if not parameter_value and parameter_value != 0:
+    is_empty_tools_selection = (
+        type == PluginParameterType.TOOLS_SELECTOR and isinstance(parameter_value, list) and not parameter_value
+    )
+    if not is_empty_tools_selection and not parameter_value and parameter_value != 0:
         # get default value
         parameter_value = rule.default
-        if not parameter_value and rule.required:
+        if not parameter_value and parameter_value != 0 and rule.required:
             raise ValueError(f"tool parameter {rule.name} not found in tool config")
 
     if type == PluginParameterType.SELECT:

@@ -1,65 +1,97 @@
-import {
-  useCallback,
-  useRef,
-  useState,
-} from 'react'
-import Textarea from 'react-textarea-autosize'
-import { useTranslation } from 'react-i18next'
-import Recorder from 'js-audio-recorder'
-import type {
-  EnableType,
-  OnSend,
-} from '../../types'
-import type { Theme } from '../../embedded-chatbot/theme/theme-context'
+import type { ReactNode } from 'react'
+import type { Theme } from '../../embedded-chatbot/theme/theme'
+import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
+import type { FileUpload } from '@/app/components/base/features/types'
+import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { noop } from 'es-toolkit/function'
+import { decode } from 'html-entities'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Textarea from 'react-textarea-autosize'
+import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
+import { FileListInChatInput } from '@/app/components/base/file-uploader'
+import { useFile } from '@/app/components/base/file-uploader/hooks'
+import { FileContextProvider, useFileStore } from '@/app/components/base/file-uploader/store'
+import VoiceInput from '@/app/components/base/voice-input'
+import { toast } from '@/app/notifications'
+import { TransferMethod } from '@/types/app'
 import { useCheckInputsForms } from '../check-input-forms-hooks'
 import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
-import cn from '@/utils/classnames'
-import { FileListInChatInput } from '@/app/components/base/file-uploader'
-import { useFile } from '@/app/components/base/file-uploader/hooks'
-import {
-  FileContextProvider,
-  useFileStore,
-} from '@/app/components/base/file-uploader/store'
-import VoiceInput from '@/app/components/base/voice-input'
-import { useToastContext } from '@/app/components/base/toast'
-import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
-import type { FileUpload } from '@/app/components/base/features/types'
-import { TransferMethod } from '@/types/app'
+
+type SendAcceptance = void | boolean | Promise<void | boolean>
+
+function isMicrophonePermissionDenied(error: unknown) {
+  return error instanceof DOMException && error.name === 'NotAllowedError'
+}
 
 type ChatInputAreaProps = {
+  readonly?: boolean
   botName?: string
+  customPlaceholder?: string
+  inputLabel?: string
   showFeatureBar?: boolean
   showFileUpload?: boolean
+  featureBarReadonly?: boolean
   featureBarDisabled?: boolean
   onFeatureBarClick?: (state: boolean) => void
   visionConfig?: FileUpload
   speechToTextConfig?: EnableType
+  speechToTextTarget?: SpeechToTextTarget
+  onBeforeSpeechToText?: () => Promise<unknown>
   onSend?: OnSend
-  inputs?: Record<string, any>
+  inputs?: Record<string, unknown>
   inputsForm?: InputForm[]
   theme?: Theme | null
   isResponding?: boolean
   disabled?: boolean
+  sendButtonLabel?: string
+  sendButtonLoading?: boolean
+  footerNotice?: ReactNode
+  footerNoticeTooltip?: ReactNode
+  autoFocus?: boolean
+  /**
+   * Controls whether pressing Enter sends the message.
+   * - true (default): Enter sends, Shift+Enter inserts newline
+   * - false: Enter inserts newline, Shift+Enter sends
+   * Useful for CJK (Japanese/Korean/Chinese) IME users who expect Enter to insert newlines.
+   */
+  sendOnEnter?: boolean
 }
 const ChatInputArea = ({
+  readonly,
   botName,
+  customPlaceholder,
+  inputLabel,
   showFeatureBar,
   showFileUpload,
+  featureBarReadonly = readonly,
   featureBarDisabled,
   onFeatureBarClick,
-  visionConfig,
+  visionConfig = { enabled: false },
   speechToTextConfig = { enabled: true },
+  speechToTextTarget,
+  onBeforeSpeechToText,
   onSend,
   inputs = {},
   inputsForm = [],
   theme,
   isResponding,
   disabled,
+  sendButtonLabel,
+  sendButtonLoading,
+  footerNotice,
+  footerNoticeTooltip,
+  autoFocus = true,
+  sendOnEnter = true,
 }: ChatInputAreaProps) => {
-  const { t } = useTranslation()
-  const { notify } = useToastContext()
+  const footerNoticeLabelId = useId()
+  const textareaId = useId()
+
+  const { t } = useTranslation(['appDebug', 'common'])
   const {
     wrapperRef,
     textareaRef,
@@ -69,6 +101,7 @@ const ChatInputArea = ({
     isMultipleLine,
   } = useTextAreaHeight()
   const [query, setQuery] = useState('')
+  const canSend = !disabled && !readonly && !!query.trim()
   const [showVoiceInput, setShowVoiceInput] = useState(false)
   const filesStore = useFileStore()
   const {
@@ -78,47 +111,87 @@ const ChatInputArea = ({
     handleDropFile,
     handleClipboardPasteFile,
     isDragActive,
-  } = useFile(visionConfig!)
+  } = useFile(visionConfig, false)
   const { checkInputsForm } = useCheckInputsForms()
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
+  const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearCompositionEndTimer = useCallback(() => {
+    if (compositionEndTimerRef.current !== null) clearTimeout(compositionEndTimerRef.current)
+    compositionEndTimerRef.current = null
+  }, [])
+  useEffect(() => clearCompositionEndTimer, [clearCompositionEndTimer])
+  const queryRef = useRef('')
+  const voiceInputReturnFocusRef = useRef<HTMLElement | null>(null)
+  const voiceInputCompletedRef = useRef(false)
+  const handleQueryChange = useCallback(
+    (value: string) => {
+      queryRef.current = value
+      setQuery(value)
+      setTimeout(handleTextareaResize, 0)
+    },
+    [handleTextareaResize],
+  )
+  const resetAcceptedMessage = useCallback(
+    (acceptedQuery: string, acceptedFiles: ReturnType<typeof filesStore.getState>['files']) => {
+      const { files, setFiles } = filesStore.getState()
+      if (queryRef.current === acceptedQuery) handleQueryChange('')
+      if (files === acceptedFiles) setFiles([])
+    },
+    [filesStore, handleQueryChange],
+  )
   const handleSend = () => {
+    if (!canSend) return
+
     if (isResponding) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      toast.info(t(($) => $['errorMessage.waitForResponse'], { ns: 'appDebug' }))
       return
     }
-
     if (onSend) {
-      const { files, setFiles } = filesStore.getState()
-      if (files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)) {
-        notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
-        return
-      }
-      if (!query || !query.trim()) {
-        notify({ type: 'info', message: t('appAnnotation.errorMessage.queryRequired') })
+      const { files } = filesStore.getState()
+      if (
+        files.some((item) => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
+      ) {
+        toast.info(t(($) => $['errorMessage.waitForFileUpload'], { ns: 'appDebug' }))
         return
       }
       if (checkInputsForm(inputs, inputsForm)) {
-        onSend(query, files)
-        setQuery('')
-        setFiles([])
+        const sendResult = onSend(query, files) as SendAcceptance
+        if (sendResult instanceof Promise) {
+          sendResult
+            .then((accepted) => {
+              if (accepted !== false) resetAcceptedMessage(query, files)
+            })
+            .catch(noop)
+          return
+        }
+
+        if (sendResult !== false) resetAcceptedMessage(query, files)
       }
     }
   }
   const handleCompositionStart = () => {
-    // e: React.CompositionEvent<HTMLTextAreaElement>
+    clearCompositionEndTimer()
     isComposingRef.current = true
   }
   const handleCompositionEnd = () => {
     // safari or some browsers will trigger compositionend before keydown.
     // delay 50ms for safari.
-    setTimeout(() => {
+    clearCompositionEndTimer()
+    compositionEndTimerRef.current = setTimeout(() => {
       isComposingRef.current = false
+      compositionEndTimerRef.current = null
     }, 50)
   }
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+    // Determine if this key combo should trigger send:
+    // sendOnEnter=true (default): Enter sends, Shift+Enter inserts newline
+    // sendOnEnter=false: Shift+Enter sends, Enter inserts newline
+    const isSendCombo = sendOnEnter
+      ? e.key === 'Enter' && !e.shiftKey
+      : e.key === 'Enter' && e.shiftKey
+    if (isSendCombo && !e.nativeEvent.isComposing) {
       // if isComposing, exit
       if (isComposingRef.current) return
       e.preventDefault()
@@ -126,83 +199,150 @@ const ChatInputArea = ({
       historyRef.current.push(query)
       setCurrentIndex(historyRef.current.length)
       handleSend()
-    }
-    else if (e.key === 'ArrowUp' && !e.shiftKey && !e.nativeEvent.isComposing && e.metaKey) {
+    } else if (e.key === 'ArrowUp' && !e.shiftKey && !e.nativeEvent.isComposing && e.metaKey) {
       // When the cmd + up key is pressed, output the previous element
       if (currentIndex > 0) {
         setCurrentIndex(currentIndex - 1)
-        setQuery(historyRef.current[currentIndex - 1])
+        handleQueryChange(historyRef.current[currentIndex - 1]!)
       }
-    }
-    else if (e.key === 'ArrowDown' && !e.shiftKey && !e.nativeEvent.isComposing && e.metaKey) {
+    } else if (e.key === 'ArrowDown' && !e.shiftKey && !e.nativeEvent.isComposing && e.metaKey) {
       // When the cmd + down key is pressed, output the next element
       if (currentIndex < historyRef.current.length - 1) {
         setCurrentIndex(currentIndex + 1)
-        setQuery(historyRef.current[currentIndex + 1])
-      }
-      else if (currentIndex === historyRef.current.length - 1) {
+        handleQueryChange(historyRef.current[currentIndex + 1]!)
+      } else if (currentIndex === historyRef.current.length - 1) {
         // If it is the last element, clear the input box
         setCurrentIndex(historyRef.current.length)
-        setQuery('')
+        handleQueryChange('')
       }
     }
   }
-
   const handleShowVoiceInput = useCallback(() => {
-    (Recorder as any).getPermission().then(() => {
-      setShowVoiceInput(true)
-    }, () => {
-      notify({ type: 'error', message: t('common.voiceInput.notAllow') })
-    })
-  }, [t, notify])
+    const textareaElement = textareaRef.current
+    if (textareaElement) {
+      const activeElement = textareaElement.ownerDocument.activeElement
+      voiceInputReturnFocusRef.current =
+        activeElement instanceof HTMLElement && activeElement !== textareaElement.ownerDocument.body
+          ? activeElement
+          : textareaElement
+    }
+    voiceInputCompletedRef.current = false
+    setShowVoiceInput(true)
+  }, [textareaRef])
+  const handleVoiceInputStartError = useCallback(
+    (error: unknown) => {
+      toast.error(
+        t(
+          ($) =>
+            $[isMicrophonePermissionDenied(error) ? 'voiceInput.notAllow' : 'api.actionFailed'],
+          { ns: 'common' },
+        ),
+      )
+    },
+    [t],
+  )
+  const handleVoiceInputError = useCallback(() => {
+    toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+  }, [t])
+  const handleHideVoiceInput = useCallback(() => {
+    setShowVoiceInput(false)
+  }, [])
+  useLayoutEffect(() => {
+    const returnFocusElement = voiceInputReturnFocusRef.current
+    if (showVoiceInput || !returnFocusElement) return
 
+    const voiceInputCompleted = voiceInputCompletedRef.current
+    voiceInputReturnFocusRef.current = null
+    voiceInputCompletedRef.current = false
+    const textareaElement = textareaRef.current
+    if (!textareaElement) return
+    const activeElement = textareaElement.ownerDocument.activeElement
+    if (activeElement !== textareaElement.ownerDocument.body && activeElement !== textareaElement)
+      return
+
+    if (voiceInputCompleted) {
+      textareaElement.focus({ preventScroll: true })
+      const caretPosition = textareaElement.value.length
+      textareaElement.setSelectionRange(caretPosition, caretPosition)
+      return
+    }
+    if (activeElement === textareaElement) return
+
+    const elementToFocus = returnFocusElement.isConnected ? returnFocusElement : textareaElement
+    elementToFocus.focus({ preventScroll: true })
+  }, [showVoiceInput, textareaRef])
+  const handleVoiceInputConverted = (text: string) => {
+    voiceInputCompletedRef.current = true
+    handleQueryChange(text)
+  }
   const operation = (
     <Operation
       ref={holdSpaceRef}
+      readonly={readonly}
       fileConfig={visionConfig}
       speechToTextConfig={speechToTextConfig}
-      onShowVoiceInput={handleShowVoiceInput}
+      onShowVoiceInput={speechToTextTarget ? handleShowVoiceInput : undefined}
       onSend={handleSend}
+      sendButtonLabel={sendButtonLabel}
+      sendButtonLoading={sendButtonLoading}
+      disabled={!canSend}
       theme={theme}
     />
   )
-
+  const shouldShowFooterNotice = footerNotice !== undefined && footerNotice !== null
+  const shouldShowFooterNoticeTooltip =
+    footerNoticeTooltip !== undefined && footerNoticeTooltip !== null
   return (
     <>
       <div
         className={cn(
-          'relative z-10 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
-          isDragActive && 'border border-dashed border-components-option-card-option-selected-border',
+          'pointer-events-auto relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-2.25 shadow-md',
+          isDragActive &&
+            'border border-dashed border-components-option-card-option-selected-border',
           disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none',
         )}
       >
-        <div className='relative max-h-[158px] overflow-y-auto overflow-x-hidden px-[9px] pt-[9px]'>
+        <div className="px-2.25 pt-2.25">
           <FileListInChatInput fileConfig={visionConfig!} />
-          <div
-            ref={wrapperRef}
-            className='flex items-center justify-between'
-          >
-            <div className='relative flex w-full grow items-center'>
+        </div>
+        <div className="relative max-h-39.5 overflow-x-hidden overflow-y-auto px-2.25">
+          <div ref={wrapperRef} className="flex items-center justify-between">
+            <div className="relative flex w-full grow items-center">
               <div
                 ref={textValueRef}
-                className='body-lg-regular pointer-events-none invisible absolute h-auto w-auto whitespace-pre p-1 leading-6'
+                className="pointer-events-none invisible absolute size-auto p-1 body-lg-regular leading-6 whitespace-pre"
               >
                 {query}
               </div>
+              {inputLabel && (
+                <label htmlFor={textareaId} className="sr-only">
+                  {inputLabel}
+                </label>
+              )}
               <Textarea
-                ref={ref => textareaRef.current = ref as any}
-                className={cn(
-                  'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none',
-                )}
-                placeholder={t('common.chat.inputPlaceholder', { botName }) || ''}
-                autoFocus
-                minRows={1}
-                onResize={handleTextareaResize}
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  setTimeout(handleTextareaResize, 0)
+                id={textareaId}
+                ref={(ref) => {
+                  textareaRef.current = ref ?? undefined
                 }}
+                className={cn(
+                  'w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-text-primary outline-hidden',
+                )}
+                placeholder={
+                  !readonly && customPlaceholder?.trim()
+                    ? customPlaceholder
+                    : decode(
+                        t(
+                          ($) =>
+                            $[readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder'],
+                          { ns: 'common', botName: botName ?? '' },
+                        ) || '',
+                      )
+                }
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- Existing chat behavior focuses the composer as soon as it opens.
+                autoFocus={autoFocus}
+                minRows={1}
+                value={query}
+                onChange={(e) => handleQueryChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onCompositionStart={handleCompositionStart}
                 onCompositionEnd={handleCompositionEnd}
@@ -211,32 +351,64 @@ const ChatInputArea = ({
                 onDragLeave={handleDragFileLeave}
                 onDragOver={handleDragFileOver}
                 onDrop={handleDropFile}
+                readOnly={readonly}
+                disabled={disabled}
               />
             </div>
-            {
-              !isMultipleLine && operation
-            }
+            {!isMultipleLine && operation}
           </div>
-          {
-            showVoiceInput && (
-              <VoiceInput
-                onCancel={() => setShowVoiceInput(false)}
-                onConverted={text => setQuery(text)}
-              />
-            )
-          }
         </div>
-        {
-          isMultipleLine && (
-            <div className='px-[9px]'>{operation}</div>
-          )
-        }
+        {showVoiceInput && speechToTextTarget && (
+          <div className="px-2.25">
+            <VoiceInput
+              target={speechToTextTarget}
+              onCancel={handleHideVoiceInput}
+              onBeforeTranscribe={onBeforeSpeechToText}
+              onConverted={handleVoiceInputConverted}
+              onError={handleVoiceInputError}
+              onStartError={handleVoiceInputStartError}
+            />
+          </div>
+        )}
+        {isMultipleLine && <div className="px-2.25">{operation}</div>}
       </div>
-      {showFeatureBar && <FeatureBar showFileUpload={showFileUpload} disabled={featureBarDisabled} onFeatureBarClick={onFeatureBarClick} />}
+      {shouldShowFooterNotice && (
+        <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
+          <div className="flex items-center gap-1">
+            <div
+              id={footerNoticeLabelId}
+              className="min-w-0 flex-1 body-xs-medium text-text-accent"
+            >
+              {footerNotice}
+            </div>
+            {shouldShowFooterNoticeTooltip && (
+              <Infotip>
+                <InfotipTrigger
+                  aria-labelledby={footerNoticeLabelId}
+                  className="ml-auto size-5 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
+                  iconVariant="information"
+                />
+                <InfotipContent aria-labelledby={footerNoticeLabelId} className="max-w-80">
+                  {footerNoticeTooltip}
+                </InfotipContent>
+              </Infotip>
+            )}
+          </div>
+        </div>
+      )}
+      {showFeatureBar && (
+        <div className="pointer-events-auto">
+          <FeatureBar
+            showFileUpload={showFileUpload}
+            disabled={featureBarDisabled}
+            onFeatureBarClick={featureBarReadonly ? noop : onFeatureBarClick}
+            hideEditEntrance={featureBarReadonly}
+          />
+        </div>
+      )}
     </>
   )
 }
-
 const ChatInputAreaWrapper = (props: ChatInputAreaProps) => {
   return (
     <FileContextProvider>
@@ -244,5 +416,4 @@ const ChatInputAreaWrapper = (props: ChatInputAreaProps) => {
     </FileContextProvider>
   )
 }
-
 export default ChatInputAreaWrapper

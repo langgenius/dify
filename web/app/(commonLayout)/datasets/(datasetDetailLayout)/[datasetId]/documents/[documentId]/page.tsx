@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import MainDetail from '@/app/components/datasets/documents/detail'
 
 export type IDocumentDetailProps = {
@@ -8,14 +8,9 @@ export type IDocumentDetailProps = {
 const DocumentDetail = async (props: IDocumentDetailProps) => {
   const params = await props.params
 
-  const {
-    datasetId,
-    documentId,
-  } = params
+  const { datasetId, documentId } = params
 
-  return (
-    <MainDetail datasetId={datasetId} documentId={documentId} />
-  )
+  return <MainDetail datasetId={datasetId} documentId={documentId} />
 }
 
 export default DocumentDetail

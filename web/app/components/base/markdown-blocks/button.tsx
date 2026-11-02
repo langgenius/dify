@@ -1,30 +1,56 @@
+import type { ComponentProps } from 'react'
+import type { ExtraProps } from 'streamdown'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { getMarkdownButtonAppearance } from './button-appearance'
 import { isValidUrl } from './utils'
-const MarkdownButton = ({ node }: any) => {
-  const { onSend } = useChatContext()
-  const variant = node.properties.dataVariant
-  const message = node.properties.dataMessage
-  const link = node.properties.dataLink
-  const size = node.properties.dataSize
 
-  return <Button
-    variant={variant}
-    size={size}
-    className={cn('!h-auto min-h-8 select-none whitespace-normal !px-3')}
-    onClick={() => {
-      if (link && isValidUrl(link)) {
-        window.open(link, '_blank')
-        return
-      }
-      if(!message)
-        return
-      onSend?.(message)
-    }}
-  >
-    <span className='text-[13px]'>{node.children[0]?.value || ''}</span>
-  </Button>
+type MarkdownButtonProps = ComponentProps<'button'> & ExtraProps
+
+function getStringProperty(value: unknown) {
+  return typeof value === 'string' ? value : undefined
+}
+
+const MarkdownButton = ({ node }: MarkdownButtonProps) => {
+  const { onSend } = useChatContext()
+  const appearance = getMarkdownButtonAppearance(
+    node?.properties.dataVariant,
+    node?.properties.dataSize,
+  )
+  const message = getStringProperty(node?.properties.dataMessage)
+  const link = getStringProperty(node?.properties.dataLink)
+  const firstChild = node?.children[0]
+  const label = firstChild?.type === 'text' ? firstChild.value : ''
+  const validLink = link && isValidUrl(link) ? link : undefined
+
+  const className = 'h-auto! min-h-8 px-3! whitespace-normal select-none'
+
+  if (validLink) {
+    return (
+      <a
+        href={validLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(buttonVariants(appearance), className)}
+      >
+        <span className="text-[13px]">{label}</span>
+      </a>
+    )
+  }
+
+  return (
+    <Button
+      {...appearance}
+      className={className}
+      onClick={() => {
+        if (!message) return
+        onSend?.(message)
+      }}
+    >
+      <span className="text-[13px]">{label}</span>
+    </Button>
+  )
 }
 MarkdownButton.displayName = 'MarkdownButton'
 

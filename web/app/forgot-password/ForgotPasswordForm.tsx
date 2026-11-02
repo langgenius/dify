@@ -1,122 +1,120 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import { useRouter } from 'next/navigation'
-
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import Loading from '../components/base/loading'
-import Input from '../components/base/input'
-import Button from '@/app/components/base/button'
+import * as z from 'zod'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
+import { consoleClient } from '@/service/console'
 import { basePath } from '@/utils/var'
 
-import {
-  fetchInitValidateStatus,
-  fetchSetupStatus,
-  sendForgotPasswordEmail,
-} from '@/service/common'
-import type { InitValidateStatusResponse } from '@/models/common'
+type ForgotPasswordFormValues = {
+  email: string
+}
 
-const accountFormSchema = z.object({
-  email: z
-    .string()
-    .min(1, { message: 'login.error.emailInValid' })
-    .email('login.error.emailInValid'),
+const emailSchema = z.email('error.emailInValid').min(1, {
+  error: 'error.emailInValid',
 })
 
-type AccountFormValues = z.infer<typeof accountFormSchema>
-
 const ForgotPasswordForm = () => {
-  const { t } = useTranslation()
-  const router = useRouter()
+  const { t } = useTranslation(['common', 'login'])
   const [loading, setLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [isEmailSent, setIsEmailSent] = useState(false)
-  const { register, trigger, getValues, formState: { errors } } = useForm<AccountFormValues>({
-    resolver: zodResolver(accountFormSchema),
-    defaultValues: { email: '' },
-  })
+  const documentTitle = loading
+    ? t(($) => $.loading, { ns: 'common' })
+    : isEmailSent
+      ? t(($) => $.resetLinkSent, { ns: 'login' })
+      : t(($) => $.forgotPassword, { ns: 'login' })
+  useDocumentTitle(documentTitle)
 
-  const handleSendResetPasswordEmail = async (email: string) => {
+  const handleSubmit = async ({ email }: ForgotPasswordFormValues) => {
+    if (isSubmitting) return
+
+    setIsSubmitting(true)
     try {
-      const res = await sendForgotPasswordEmail({
-        url: '/forgot-password',
-        body: { email },
-      })
-      if (res.result === 'success')
-        setIsEmailSent(true)
-
+      const res = await consoleClient.forgotPassword.post({ body: { email } })
+      if (res.result === 'success') setIsEmailSent(true)
       else console.error('Email verification failed')
-    }
-    catch (error) {
+    } catch (error) {
       console.error('Request failed:', error)
-    }
-  }
-
-  const handleSendResetPasswordClick = async () => {
-    if (isEmailSent) {
-      router.push('/signin')
-    }
-    else {
-      const isValid = await trigger('email')
-      if (isValid) {
-        const email = getValues('email')
-        await handleSendResetPasswordEmail(email)
-      }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   useEffect(() => {
-    fetchSetupStatus().then(() => {
-      fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
-        if (res.status === 'not_started')
-          window.location.href = `${basePath}/init`
+    consoleClient.setup.get().then(() => {
+      consoleClient.init.get().then((res) => {
+        if (res.status === 'not_started') window.location.href = `${basePath}/init`
       })
 
       setLoading(false)
     })
   }, [])
 
-  return (
-    loading
-      ? <Loading />
-      : <>
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2 className="text-[32px] font-bold text-text-primary">
-            {isEmailSent ? t('login.resetLinkSent') : t('login.forgotPassword')}
-          </h2>
-          <p className='mt-1 text-sm text-text-secondary'>
-            {isEmailSent ? t('login.checkEmailForResetLink') : t('login.forgotPasswordDesc')}
-          </p>
+  return loading ? (
+    <LoadingPlaceholder />
+  ) : (
+    <>
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h1 className="text-[32px] font-bold text-text-primary">
+          {isEmailSent
+            ? t(($) => $.resetLinkSent, { ns: 'login' })
+            : t(($) => $.forgotPassword, { ns: 'login' })}
+        </h1>
+        <p className="mt-1 text-sm text-text-secondary">
+          {isEmailSent
+            ? t(($) => $.checkEmailForResetLink, { ns: 'login' })
+            : t(($) => $.forgotPasswordDesc, { ns: 'login' })}
+        </p>
+      </div>
+      <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="relative">
+          <Form<ForgotPasswordFormValues>
+            onFormSubmit={(value) => {
+              void handleSubmit(value)
+            }}
+          >
+            {!isEmailSent && (
+              <Field
+                name="email"
+                validate={(value) =>
+                  emailSchema.validate(value)
+                    ? null
+                    : t(($) => $['error.emailInValid'], { ns: 'login' })
+                }
+                className="mb-5"
+              >
+                <FieldLabel>{t(($) => $.email, { ns: 'login' })}</FieldLabel>
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  spellCheck={false}
+                  required
+                  placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+                />
+                <FieldError>{t(($) => $['error.emailInValid'], { ns: 'login' })}</FieldError>
+              </Field>
+            )}
+            {isEmailSent ? (
+              <Link href="/signin" className={cn(buttonVariants({ variant: 'primary' }), 'w-full')}>
+                {t(($) => $.backToSignIn, { ns: 'login' })}
+              </Link>
+            ) : (
+              <Button type="submit" variant="primary" className="w-full" loading={isSubmitting}>
+                {t(($) => $.sendResetLink, { ns: 'login' })}
+              </Button>
+            )}
+          </Form>
         </div>
-        <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="relative">
-            <form>
-              {!isEmailSent && (
-                <div className='mb-5'>
-                  <label htmlFor="email"
-                    className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                    {t('login.email')}
-                  </label>
-                  <div className="mt-1">
-                    <Input
-                      {...register('email')}
-                      placeholder={t('login.emailPlaceholder') || ''}
-                    />
-                    {errors.email && <span className='text-sm text-red-400'>{t(`${errors.email?.message}`)}</span>}
-                  </div>
-                </div>
-              )}
-              <div>
-                <Button variant='primary' className='w-full' onClick={handleSendResetPasswordClick}>
-                  {isEmailSent ? t('login.backToSignIn') : t('login.sendResetLink')}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </>
+      </div>
+    </>
   )
 }
 

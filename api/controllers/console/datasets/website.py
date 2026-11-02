@@ -1,55 +1,88 @@
-from flask_restful import Resource, reqparse
+from typing import Any, Literal
 
-from controllers.console import api
+from flask_restx import Resource
+from pydantic import BaseModel, RootModel
+
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console import console_ns
 from controllers.console.datasets.error import WebsiteCrawlError
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, model_validate, setup_required
+from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from libs.login import login_required
-from services.website_service import WebsiteService
+from services.data_source.website_service import WebsiteCrawlApiRequest, WebsiteCrawlStatusApiRequest, WebsiteService
 
 
+class WebsiteCrawlPayload(BaseModel):
+    provider: Literal["firecrawl", "watercrawl", "jinareader"]
+    url: str
+    options: dict[str, object]
+
+
+class WebsiteCrawlStatusQuery(BaseModel):
+    provider: Literal["firecrawl", "watercrawl", "jinareader"]
+
+
+class WebsiteCrawlResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
+register_schema_models(console_ns, WebsiteCrawlPayload, WebsiteCrawlStatusQuery)
+register_response_schema_models(console_ns, WebsiteCrawlResponse)
+
+
+@console_ns.route("/website/crawl")
 class WebsiteCrawlApi(Resource):
+    @error_responses(WebsiteCrawlError)
+    @console_ns.doc("crawl_website")
+    @console_ns.doc(description="Crawl website content")
+    @console_ns.expect(console_ns.models[WebsiteCrawlPayload.__name__])
+    @console_ns.response(200, "Website crawl initiated successfully", console_ns.models[WebsiteCrawlResponse.__name__])
+    @console_ns.response(400, "Invalid crawl parameters")
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "provider",
-            type=str,
-            choices=["firecrawl", "watercrawl", "jinareader"],
-            required=True,
-            nullable=True,
-            location="json",
-        )
-        parser.add_argument("url", type=str, required=True, nullable=True, location="json")
-        parser.add_argument("options", type=dict, required=True, nullable=True, location="json")
-        args = parser.parse_args()
-        WebsiteService.document_create_args_validate(args)
-        # crawl url
+    @model_validate(WebsiteCrawlPayload)
+    def post(self, req_data: WebsiteCrawlPayload):
+        # Create typed request and validate
         try:
-            result = WebsiteService.crawl_url(args)
+            api_request = WebsiteCrawlApiRequest.from_args(req_data.model_dump())
+        except ValueError as e:
+            raise WebsiteCrawlError(str(e)) from e
+
+        # Crawl URL using typed request
+        try:
+            result = WebsiteService(providers=application_services().data_sources.providers).crawl_url(api_request)
         except Exception as e:
-            raise WebsiteCrawlError(str(e))
+            raise WebsiteCrawlError(str(e)) from e
         return result, 200
 
 
+@console_ns.route("/website/crawl/status/<string:job_id>")
 class WebsiteCrawlStatusApi(Resource):
+    @error_responses(WebsiteCrawlError)
+    @console_ns.doc("get_crawl_status")
+    @console_ns.doc(description="Get website crawl status")
+    @console_ns.doc(params={"job_id": "Crawl job ID", "provider": "Crawl provider (firecrawl/watercrawl/jinareader)"})
+    @console_ns.doc(params=query_params_from_model(WebsiteCrawlStatusQuery))
+    @console_ns.response(200, "Crawl status retrieved successfully", console_ns.models[WebsiteCrawlResponse.__name__])
+    @console_ns.response(400, "Invalid provider")
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, job_id: str):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "provider", type=str, choices=["firecrawl", "watercrawl", "jinareader"], required=True, location="args"
-        )
-        args = parser.parse_args()
-        # get crawl status
+    @model_validate(WebsiteCrawlStatusQuery)
+    def get(self, req_data: WebsiteCrawlStatusQuery, job_id: str):
+        # Create typed request and validate
         try:
-            result = WebsiteService.get_crawl_status(job_id, args["provider"])
+            api_request = WebsiteCrawlStatusApiRequest.from_args(req_data.model_dump(), job_id)
+        except ValueError as e:
+            raise WebsiteCrawlError(str(e)) from e
+
+        # Get crawl status using typed request
+        try:
+            result = WebsiteService(providers=application_services().data_sources.providers).get_crawl_status_typed(
+                api_request
+            )
         except Exception as e:
-            raise WebsiteCrawlError(str(e))
+            raise WebsiteCrawlError(str(e)) from e
         return result, 200
-
-
-api.add_resource(WebsiteCrawlApi, "/website/crawl")
-api.add_resource(WebsiteCrawlStatusApi, "/website/crawl/status/<string:job_id>")

@@ -1,53 +1,63 @@
+from collections.abc import Callable
 from functools import wraps
 
-from flask_login import current_user
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
+from configs import dify_config
 from extensions.ext_database import db
-from models.account import TenantPluginPermission
+from libs.login import current_account_with_tenant
+from models.account import TenantPluginDebugPermission, TenantPluginInstallPermission, TenantPluginPermission
 
 
 def plugin_permission_required(
     install_required: bool = False,
     debug_required: bool = False,
 ):
-    def interceptor(view):
+    def interceptor[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         @wraps(view)
-        def decorated(*args, **kwargs):
-            user = current_user
-            tenant_id = user.current_tenant_id
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+            if dify_config.RBAC_ENABLED:
+                return view(*args, **kwargs)
 
-            with Session(db.engine) as session:
-                permission = (
-                    session.query(TenantPluginPermission)
-                    .filter(
+            current_user, current_tenant_id = current_account_with_tenant()
+            user = current_user
+            tenant_id = current_tenant_id
+
+            with sessionmaker(db.engine).begin() as session:
+                permission = session.scalar(
+                    select(TenantPluginPermission)
+                    .where(
                         TenantPluginPermission.tenant_id == tenant_id,
                     )
-                    .first()
+                    .limit(1)
                 )
 
-                if not permission:
-                    # no permission set, allow access for everyone
-                    return view(*args, **kwargs)
+                install_permission = (
+                    permission.install_permission if permission else TenantPluginInstallPermission.ADMINS
+                )
+                debug_permission = permission.debug_permission if permission else TenantPluginDebugPermission.EVERYONE
 
                 if install_required:
-                    if permission.install_permission == TenantPluginPermission.InstallPermission.NOBODY:
-                        raise Forbidden()
-                    if permission.install_permission == TenantPluginPermission.InstallPermission.ADMINS:
-                        if not user.is_admin_or_owner:
+                    match install_permission:
+                        case TenantPluginInstallPermission.NOBODY:
                             raise Forbidden()
-                    if permission.install_permission == TenantPluginPermission.InstallPermission.EVERYONE:
-                        pass
+                        case TenantPluginInstallPermission.ADMINS:
+                            if not user.is_admin_or_owner:
+                                raise Forbidden()
+                        case TenantPluginInstallPermission.EVERYONE:
+                            pass
 
                 if debug_required:
-                    if permission.debug_permission == TenantPluginPermission.DebugPermission.NOBODY:
-                        raise Forbidden()
-                    if permission.debug_permission == TenantPluginPermission.DebugPermission.ADMINS:
-                        if not user.is_admin_or_owner:
+                    match debug_permission:
+                        case TenantPluginDebugPermission.NOBODY:
                             raise Forbidden()
-                    if permission.debug_permission == TenantPluginPermission.DebugPermission.EVERYONE:
-                        pass
+                        case TenantPluginDebugPermission.ADMINS:
+                            if not user.is_admin_or_owner:
+                                raise Forbidden()
+                        case TenantPluginDebugPermission.EVERYONE:
+                            pass
 
             return view(*args, **kwargs)
 

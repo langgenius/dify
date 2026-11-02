@@ -1,71 +1,70 @@
-import { MarketplaceContextProvider } from './context'
-import Description from './description'
-import IntersectionLine from './intersection-line'
-import SearchBoxWrapper from './search-box/search-box-wrapper'
-import PluginTypeSwitch from './plugin-type-switch'
-import ListWrapper from './list/list-wrapper'
-import type { SearchParams } from './types'
-import { getMarketplaceCollectionsAndPlugins } from './utils'
-import { TanstackQueryIniter } from '@/context/query-client'
+import type { PluginBanner } from '@dify/contracts/marketplace'
+import type { SearchParams } from 'nuqs'
+import type { MarketplaceViewProps } from './view'
+import { getLocaleOnServer } from '@/i18n/server'
+import { fetchPluginBanners } from './home/banners'
+import { HydrateQueryClient } from './hydration-server'
+import { prefetchMarketplaceDehydratedState } from './prefetch-marketplace-dehydrated-state'
+import { withinServerBudget } from './server-budget'
+import { MarketplaceView } from './view'
 
-type MarketplaceProps = {
-  locale: string
-  searchBoxAutoAnimate?: boolean
-  showInstallButton?: boolean
-  shouldExclude?: boolean
-  searchParams?: SearchParams
-  pluginTypeSwitchClassName?: string
-  intersectionContainerId?: string
-  scrollContainerId?: string
-  showSearchParams?: boolean
+type MarketplaceProps = Omit<MarketplaceViewProps, 'banners'> & {
+  language?: string
+  /**
+   * Pass the search params from the request to prefetch data on the server.
+   */
+  searchParams?: Promise<SearchParams>
 }
+
 const Marketplace = async ({
-  locale,
-  searchBoxAutoAnimate = true,
-  showInstallButton = true,
-  shouldExclude,
+  language,
   searchParams,
-  pluginTypeSwitchClassName,
-  intersectionContainerId,
-  scrollContainerId,
-  showSearchParams = true,
+  variant = 'default',
+  ...viewProps
 }: MarketplaceProps) => {
-  let marketplaceCollections: any = []
-  let marketplaceCollectionPluginsMap = {}
-  if (!shouldExclude) {
-    const marketplaceCollectionsAndPluginsData = await getMarketplaceCollectionsAndPlugins()
-    marketplaceCollections = marketplaceCollectionsAndPluginsData.marketplaceCollections
-    marketplaceCollectionPluginsMap = marketplaceCollectionsAndPluginsData.marketplaceCollectionPluginsMap
+  let trendingBanners: PluginBanner[] = []
+
+  if (variant === 'home') {
+    const locale = language ?? (await getLocaleOnServer())
+    const prefetch = prefetchMarketplaceDehydratedState(searchParams)
+
+    // Banners are decoration on a page whose point is the catalog. Overlap
+    // them with the catalog prefetch so the document waits at most one budget.
+    // A late banner resolution just misses this render; nothing waits on it.
+    await withinServerBudget(
+      Promise.all([
+        fetchPluginBanners(locale)
+          .then((banners) => {
+            trendingBanners = banners
+          })
+          .catch(() => {
+            // Keep the homepage available if Marketplace banner delivery is down.
+          }),
+        prefetch,
+      ]),
+    )
+
+    return (
+      <HydrateQueryClient searchParams={undefined} prefetchedState={await prefetch}>
+        <MarketplaceView
+          {...viewProps}
+          banners={trendingBanners}
+          language={language}
+          variant={variant}
+        />
+      </HydrateQueryClient>
+    )
   }
 
   return (
-    <TanstackQueryIniter>
-      <MarketplaceContextProvider
-        searchParams={searchParams}
-        shouldExclude={shouldExclude}
-        scrollContainerId={scrollContainerId}
-        showSearchParams={showSearchParams}
-      >
-        <Description locale={locale} />
-        <IntersectionLine intersectionContainerId={intersectionContainerId} />
-        <SearchBoxWrapper
-          locale={locale}
-          searchBoxAutoAnimate={searchBoxAutoAnimate}
-        />
-        <PluginTypeSwitch
-          locale={locale}
-          className={pluginTypeSwitchClassName}
-          searchBoxAutoAnimate={searchBoxAutoAnimate}
-          showSearchParams={showSearchParams}
-        />
-        <ListWrapper
-          locale={locale}
-          marketplaceCollections={marketplaceCollections}
-          marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
-          showInstallButton={showInstallButton}
-        />
-      </MarketplaceContextProvider>
-    </TanstackQueryIniter>
+    <HydrateQueryClient searchParams={searchParams}>
+      <MarketplaceView
+        {...viewProps}
+        banners={trendingBanners}
+        language={language}
+        variant={variant}
+      />
+    </HydrateQueryClient>
   )
 }
 

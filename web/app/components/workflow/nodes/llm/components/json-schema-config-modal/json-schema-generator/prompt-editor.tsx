@@ -1,15 +1,16 @@
-import React, { useCallback } from 'react'
 import type { FC } from 'react'
-import { RiCloseLine, RiSparklingFill } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import Textarea from '@/app/components/base/textarea'
-import Tooltip from '@/app/components/base/tooltip'
-import Button from '@/app/components/base/button'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { Model } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { RiCloseLine, RiSparklingFill } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 
-export type ModelInfo = {
+type ModelInfo = {
   modelId: string
   provider: string
   mode?: string
@@ -35,37 +36,45 @@ const PromptEditor: FC<PromptEditorProps> = ({
   onGenerate,
   onModelChange,
 }) => {
-  const { t } = useTranslation()
+  const instructionLabelId = React.useId()
 
-  const handleInstructionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onInstructionChange(e.target.value)
-  }, [onInstructionChange])
+  const { t } = useTranslation(['common', 'modelProvider', 'workflowModels'])
+
+  const handleInstructionChange = useCallback(
+    (value: string) => {
+      onInstructionChange(value)
+    },
+    [onInstructionChange],
+  )
 
   return (
-    <div className='relative flex w-[480px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'>
-      <div className='absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center' onClick={onClose}>
-        <RiCloseLine className='h-4 w-4 text-text-tertiary'/>
-      </div>
+    <div className="relative flex w-120 flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
+      <button
+        type="button"
+        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+        className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center border-none bg-transparent p-0"
+        onClick={onClose}
+      >
+        <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
+      </button>
       {/* Title */}
-      <div className='flex flex-col gap-y-[0.5px] px-3 pb-1 pt-3.5'>
-        <div className='system-xl-semibold flex pl-1 pr-8 text-text-primary'>
-          {t('workflow.nodes.llm.jsonSchema.generateJsonSchema')}
+      <div className="flex flex-col gap-y-[0.5px] px-3 pt-3.5 pb-1">
+        <div className="flex pr-8 pl-1 system-xl-semibold text-text-primary">
+          {t(($) => $['nodes.llm.jsonSchema.generateJsonSchema'], { ns: 'workflowModels' })}
         </div>
-        <div className='system-xs-regular flex px-1 text-text-tertiary'>
-          {t('workflow.nodes.llm.jsonSchema.generationTip')}
+        <div className="flex px-1 system-xs-regular text-text-tertiary">
+          {t(($) => $['nodes.llm.jsonSchema.generationTip'], { ns: 'workflowModels' })}
         </div>
       </div>
       {/* Content */}
-      <div className='flex flex-col gap-y-1 px-4 py-2'>
-        <div className='system-sm-semibold-uppercase flex h-6 items-center text-text-secondary'>
-          {t('common.modelProvider.model')}
+      <div className="flex flex-col gap-y-1 px-4 py-2">
+        <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
+          {t(($) => $['modelProvider.model'], { ns: 'modelProvider' })}
         </div>
         <ModelParameterModal
-          popupClassName='!w-[448px]'
-          portalToFollowElemContentClassName='z-[1000]'
+          popupClassName="w-[448px]!"
           isAdvancedMode={true}
           provider={model.provider}
-          mode={model.mode}
           completionParams={model.completion_params}
           modelId={model.name}
           setModel={onModelChange}
@@ -73,32 +82,38 @@ const PromptEditor: FC<PromptEditorProps> = ({
           hideDebugWithMultipleModel
         />
       </div>
-      <div className='flex flex-col gap-y-1 px-4 py-2'>
-        <div className='system-sm-semibold-uppercase flex h-6 items-center text-text-secondary'>
-          <span>{t('workflow.nodes.llm.jsonSchema.instruction')}</span>
-          <Tooltip popupContent={t('workflow.nodes.llm.jsonSchema.promptTooltip')} />
+      <div className="flex flex-col gap-y-1 px-4 py-2">
+        <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
+          <span id={instructionLabelId}>
+            {t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflowModels' })}
+          </span>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={instructionLabelId} className="size-3.5" />
+            <InfotipContent aria-labelledby={instructionLabelId}>
+              {t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflowModels' })}
+            </InfotipContent>
+          </Infotip>
         </div>
-        <div className='flex items-center'>
+        <div className="flex items-center">
           <Textarea
-            className='h-[364px] resize-none px-2 py-1'
+            aria-label={t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflowModels' })}
+            className="h-91 resize-none px-2 py-1"
             value={instruction}
-            placeholder={t('workflow.nodes.llm.jsonSchema.promptPlaceholder')}
-            onChange={handleInstructionChange}
+            placeholder={t(($) => $['nodes.llm.jsonSchema.promptPlaceholder'], {
+              ns: 'workflowModels',
+            })}
+            onValueChange={handleInstructionChange}
           />
         </div>
       </div>
       {/* Footer */}
-      <div className='flex justify-end gap-x-2 p-4 pt-2'>
-        <Button variant='secondary' onClick={onClose}>
-          {t('common.operation.cancel')}
+      <div className="flex justify-end gap-x-2 p-4 pt-2">
+        <Button variant="secondary" onClick={onClose}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Button
-          variant='primary'
-          className='flex items-center gap-x-0.5'
-          onClick={onGenerate}
-        >
-          <RiSparklingFill className='h-4 w-4' />
-          <span>{t('workflow.nodes.llm.jsonSchema.generate')}</span>
+        <Button variant="primary" className="flex items-center" onClick={onGenerate}>
+          <RiSparklingFill className="size-4" />
+          <span>{t(($) => $['nodes.llm.jsonSchema.generate'], { ns: 'workflowModels' })}</span>
         </Button>
       </div>
     </div>

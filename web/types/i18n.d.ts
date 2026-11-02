@@ -1,0 +1,24 @@
+import type { defaultNS, Namespace } from '../i18n/resources'
+import type Resources from '../i18n/resources.generated'
+import 'i18next'
+
+declare module 'i18next' {
+  interface CustomTypeOptions {
+    defaultNS: typeof defaultNS
+    enableSelector: 'optimize'
+    resources: Resources
+    keySeparator: false
+  }
+}
+
+export type I18nKeysByPrefix<NS extends Namespace, Prefix extends string = ''> = Prefix extends ''
+  ? keyof Resources[NS]
+  : keyof Resources[NS] extends infer K
+    ? K extends `${Prefix}${infer Rest}`
+      ? Rest
+      : never
+    : never
+
+export type I18nKeysWithPrefix<NS extends Namespace, Prefix extends string = ''> = Prefix extends ''
+  ? keyof Resources[NS]
+  : Extract<keyof Resources[NS], `${Prefix}${string}`>

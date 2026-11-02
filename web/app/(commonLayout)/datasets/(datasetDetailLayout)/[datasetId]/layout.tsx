@@ -1,17 +1,11 @@
 import Main from './layout-main'
 
-const DatasetDetailLayout = async (
-  props: {
-    children: React.ReactNode
-    params: Promise<{ datasetId: string }>
-  },
-) => {
-  const params = await props.params
+const DatasetDetailLayout = async (props: {
+  children: React.ReactNode
+  params: Promise<{ datasetId: string }>
+}) => {
+  const { children, params } = props
 
-  const {
-    children,
-  } = props
-
-  return <Main params={(await params)}>{children}</Main>
+  return <Main datasetId={(await params).datasetId}>{children}</Main>
 }
 export default DatasetDetailLayout

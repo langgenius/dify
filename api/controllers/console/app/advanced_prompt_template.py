@@ -1,24 +1,81 @@
-from flask_restful import Resource, reqparse
+from typing import Literal
 
-from controllers.console import api
-from controllers.console.wraps import account_initialization_required, setup_required
-from libs.login import login_required
-from services.advanced_prompt_template_service import AdvancedPromptTemplateService
+from flask_restx import Resource
+from pydantic import BaseModel, Field
+
+from controllers.common.schema import (
+    DEFAULT_REF_TEMPLATE_OPENAPI_3_0,
+    query_params_from_model,
+    register_response_schema_models,
+)
+from controllers.console import console_ns
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import validate_request
+from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
+from machinery.context import RequestContext
 
 
+class AdvancedPromptTemplateQuery(BaseModel):
+    app_mode: str = Field(..., description="Application mode")
+    model_mode: str = Field(..., description="Model mode")
+    has_context: str = Field(default="true", description="Whether has context")
+    model_name: str = Field(..., description="Model name")
+
+
+class PromptTemplateMessageResponse(ResponseModel):
+    role: Literal["system", "user", "assistant"]
+    text: str
+
+
+class ChatPromptTemplateResponse(ResponseModel):
+    prompt: list[PromptTemplateMessageResponse]
+
+
+class CompletionPromptTemplateTextResponse(ResponseModel):
+    text: str
+
+
+class ConversationHistoriesRoleResponse(ResponseModel):
+    user_prefix: str
+    assistant_prefix: str
+
+
+class CompletionPromptTemplateResponse(ResponseModel):
+    prompt: CompletionPromptTemplateTextResponse
+    conversation_histories_role: ConversationHistoriesRoleResponse | None = None
+
+
+class AdvancedPromptTemplateResponse(ResponseModel):
+    chat_prompt_config: ChatPromptTemplateResponse | None = Field(default=None)
+    completion_prompt_config: CompletionPromptTemplateResponse | None = Field(default=None)
+    stop: list[str] | None = Field(default=None, description="Stop words for completion prompts.")
+
+
+console_ns.schema_model(
+    AdvancedPromptTemplateQuery.__name__,
+    AdvancedPromptTemplateQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0),
+)
+register_response_schema_models(console_ns, AdvancedPromptTemplateResponse)
+
+
+@console_ns.route("/app/prompt-templates")
 class AdvancedPromptTemplateList(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("app_mode", type=str, required=True, location="args")
-        parser.add_argument("model_mode", type=str, required=True, location="args")
-        parser.add_argument("has_context", type=str, required=False, default="true", location="args")
-        parser.add_argument("model_name", type=str, required=True, location="args")
-        args = parser.parse_args()
-
-        return AdvancedPromptTemplateService.get_prompt(args)
-
-
-api.add_resource(AdvancedPromptTemplateList, "/app/prompt-templates")
+    @console_ns.doc("get_advanced_prompt_templates")
+    @console_ns.doc(description="Get advanced prompt templates based on app mode and model configuration")
+    @console_ns.doc(params=query_params_from_model(AdvancedPromptTemplateQuery))
+    @console_ns.response(
+        200,
+        "Prompt templates retrieved successfully",
+        console_ns.models[AdvancedPromptTemplateResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request parameters")
+    @console_account_admission()
+    def get(self, context: RequestContext):
+        req_data = validate_request(AdvancedPromptTemplateQuery)
+        result = application_services().advanced_prompt_templates.get_prompt(
+            app_mode=req_data.app_mode,
+            model_mode=req_data.model_mode,
+            has_context=req_data.has_context,
+        )
+        return AdvancedPromptTemplateResponse.model_validate(result).model_dump(mode="json", exclude_unset=True)

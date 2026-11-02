@@ -1,0 +1,835 @@
+import json
+from unittest.mock import Mock, patch
+
+import jsonschema
+import pytest
+
+from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
+from core.mcp import types
+from core.mcp.server.streamable_http import (
+    build_parameter_schema,
+    convert_input_form_to_parameters,
+    extract_answer_from_response,
+    extract_structured_output,
+    handle_call_tool,
+    handle_initialize,
+    handle_list_tools,
+    handle_mcp_request,
+    handle_ping,
+    negotiate_protocol_version,
+    prepare_tool_arguments,
+    process_mapping_response,
+)
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
+from models.model import App, AppMCPServer, AppMode, EndUser
+from services.errors.app import TriggerWorkflowServiceModeUnavailableError
+
+
+class TestHandleMCPRequest:
+    """Test handle_mcp_request function"""
+
+    def setup_method(self):
+        """Setup test fixtures"""
+        self.app = App()
+        self.app.name = "test_app"
+        self.app.mode = AppMode.CHAT
+
+        self.mcp_server = AppMCPServer(
+            tenant_id="tenant-id",
+            app_id="app-id",
+            name="Test Server",
+            description="",
+            server_code="test-server",
+            status="active",
+            parameters="{}",
+        )
+        self.mcp_server.description = "Test server"
+
+        self.end_user = EndUser()
+        self.user_input_form = []
+
+        self.request = types.ClientRequest(root=types.PingRequest())
+
+    def test_handle_ping_request(self):
+        """Test handling ping request"""
+        # Setup ping request
+        self.request.root = types.PingRequest()
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert result.jsonrpc == "2.0"
+        assert result.id == 123
+
+    def test_handle_initialize_request(self):
+        """Test handling initialize request"""
+        # Setup initialize request
+        self.request.root = types.InitializeRequest(
+            params=types.InitializeRequestParams(
+                protocolVersion="2025-06-18",
+                capabilities=types.ClientCapabilities(),
+                clientInfo=types.Implementation(name="test-client", version="1.0"),
+            )
+        )
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert result.jsonrpc == "2.0"
+        assert result.id == 123
+
+    def test_handle_list_tools_request(self):
+        """Test handling list tools request"""
+        # Setup list tools request
+        self.request.root = types.ListToolsRequest()
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert result.jsonrpc == "2.0"
+        assert result.id == 123
+
+    def test_handle_list_tools_request_threads_protocol_version(self):
+        """The negotiated version reaches handle_list_tools through the dispatcher."""
+        self.request.root = types.ListToolsRequest()
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        tool = result.result["tools"][0]
+        assert tool["outputSchema"] == {"type": "object"}
+        assert tool["title"] == "test_app"
+
+    def test_handle_list_tools_request_legacy_serialization_unchanged(self):
+        """A 2024-11-05 tools/list response serializes without any 2025-06-18 fields."""
+        self.request.root = types.ListToolsRequest()
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        tool = result.result["tools"][0]
+        assert set(tool) == {"name", "description", "inputSchema"}
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_request(self, mock_app_generate):
+        """Test handling call tool request"""
+        # Setup call tool request
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+
+        self.request.root = call_request
+
+        # Mock app generate service response
+        mock_response = {"answer": "test answer"}
+        mock_app_generate.generate.return_value = mock_response
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert result.jsonrpc == "2.0"
+        assert result.id == 123
+
+        # Verify AppGenerateService was called
+        mock_app_generate.generate.assert_called_once()
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_returns_trigger_workflow_business_error(self, mock_app_generate):
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        self.request.root = call_request
+        mock_app_generate.generate.side_effect = TriggerWorkflowServiceModeUnavailableError()
+
+        result = handle_mcp_request(
+            Mock(),
+            self.app,
+            self.request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+        )
+
+        assert isinstance(result, types.JSONRPCError)
+        assert result.error.code == types.INVALID_REQUEST
+        assert result.error.data == {"code": "trigger_workflow_service_mode_unavailable"}
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_request_threads_protocol_version(self, mock_app_generate):
+        """The negotiated version reaches handle_call_tool through the dispatcher."""
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        self.request.root = call_request
+
+        mock_app_generate.generate.return_value = {"answer": "test answer"}
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert result.result["structuredContent"] == {"answer": "test answer"}
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_request_legacy_serialization_unchanged(self, mock_app_generate):
+        """A 2024-11-05 tools/call response serializes without structuredContent."""
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        self.request.root = call_request
+
+        mock_app_generate.generate.return_value = {"answer": "test answer"}
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert "structuredContent" not in result.result
+        assert result.result["content"][0]["text"] == "test answer"
+
+    def test_handle_unknown_request_type(self):
+        """Test handling unknown request type"""
+
+        # A valid request type with no application-side handler.
+        self.request.root = types.ListResourcesRequest()
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
+
+        assert isinstance(result, types.JSONRPCError)
+        assert result.jsonrpc == "2.0"
+        assert result.id == 123
+        assert result.error.code == types.METHOD_NOT_FOUND
+
+    def test_handle_value_error(self):
+        """Test handling ValueError"""
+        # Setup request that will cause ValueError
+        self.request.root = types.CallToolRequest(params=types.CallToolRequestParams(name="test_app", arguments={}))
+
+        # Don't provide end_user to cause ValueError
+        result = handle_mcp_request(Mock(), self.app, self.request, self.user_input_form, self.mcp_server, None, 123)
+
+        assert isinstance(result, types.JSONRPCError)
+        assert result.error.code == types.INVALID_PARAMS
+
+    def test_handle_generic_exception(self):
+        """Test handling generic exception"""
+        # Setup request that will cause generic exception
+        self.request.root = types.PingRequest()
+
+        # Inject the handler failure while preserving normal request dispatch.
+        with patch("core.mcp.server.streamable_http.handle_ping", side_effect=Exception("Test error")):
+            result = handle_mcp_request(
+                Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+            )
+
+        assert isinstance(result, types.JSONRPCError)
+        assert result.error.code == types.INTERNAL_ERROR
+
+
+class TestIndividualHandlers:
+    """Test individual handler functions"""
+
+    def test_handle_ping(self):
+        """Test ping handler"""
+        result = handle_ping()
+        assert isinstance(result, types.EmptyResult)
+
+    def test_handle_initialize_echoes_supported_version(self):
+        """A supported requested version is echoed back unchanged."""
+        result = handle_initialize("Test server", "2024-11-05")
+
+        assert isinstance(result, types.InitializeResult)
+        assert result.protocolVersion == "2024-11-05"
+        assert result.instructions == "Test server"
+
+    def test_handle_initialize_echoes_intermediate_version(self):
+        """The intermediate supported version (2025-03-26) is echoed back."""
+        result = handle_initialize("Test server", "2025-03-26")
+
+        assert result.protocolVersion == "2025-03-26"
+
+    def test_handle_initialize_negotiates_latest_for_modern_client(self):
+        """A 2025-06-18 client gets 2025-06-18 back."""
+        result = handle_initialize("Test server", "2025-06-18")
+
+        assert result.protocolVersion == "2025-06-18"
+
+    def test_handle_initialize_falls_back_for_unknown_version(self):
+        """An unsupported requested version falls back to the server latest."""
+        result = handle_initialize("Test server", "1999-01-01")
+
+        assert result.protocolVersion == types.SERVER_LATEST_PROTOCOL_VERSION
+        assert result.protocolVersion == "2025-06-18"
+
+    def test_handle_initialize_non_string_version_falls_back(self):
+        """A malformed (non-string) requested version falls back to the server latest."""
+        result = handle_initialize("Test server", 20250618)
+
+        assert result.protocolVersion == types.SERVER_LATEST_PROTOCOL_VERSION
+
+    def test_handle_list_tools(self):
+        """Test list tools handler"""
+        app_name = "test_app"
+        app_mode = AppMode.CHAT
+        description = "Test server"
+        parameters_dict: dict[str, str] = {}
+        user_input_form: list[VariableEntity] = []
+
+        result = handle_list_tools(app_name, app_mode, user_input_form, description, parameters_dict)
+
+        assert isinstance(result, types.ListToolsResult)
+        assert len(result.tools) == 1
+        assert result.tools[0].name == "test_app"
+        assert result.tools[0].description == "Test server"
+
+    def test_handle_list_tools_adds_structured_output_for_modern_client(self):
+        """Tool advertises outputSchema and title when negotiated >= 2025-06-18."""
+        result = handle_list_tools("test_app", AppMode.CHAT, [], "Test server", {}, "2025-06-18")
+
+        tool = result.tools[0]
+        assert tool.outputSchema == {"type": "object"}
+        assert tool.title == "test_app"
+
+    def test_handle_list_tools_omits_structured_output_for_legacy_client(self):
+        """Tool stays unchanged (no outputSchema/title) for 2024-11-05 clients."""
+        result = handle_list_tools("test_app", AppMode.CHAT, [], "Test server", {}, "2024-11-05")
+
+        tool = result.tools[0]
+        assert tool.outputSchema is None
+        assert tool.title is None
+
+    def test_handle_list_tools_omits_structured_output_for_intermediate_client(self):
+        """The 2025-03-26 negotiated version is below the structured-output threshold."""
+        result = handle_list_tools("test_app", AppMode.CHAT, [], "Test server", {}, "2025-03-26")
+
+        tool = result.tools[0]
+        assert tool.outputSchema is None
+        assert tool.title is None
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool(self, mock_app_generate):
+        """Test call tool handler"""
+        app = App(
+            mode=AppMode.CHAT,
+        )
+
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        request = types.ClientRequest(root=call_request)
+
+        user_input_form: list[VariableEntity] = []
+        end_user = EndUser()
+
+        # Mock app generate service response
+        mock_response = {"answer": "test answer"}
+        mock_app_generate.generate.return_value = mock_response
+
+        result = handle_call_tool(Mock(), app, request, user_input_form, end_user)
+
+        assert isinstance(result, types.CallToolResult)
+        assert len(result.content) == 1
+        # Type assertion needed due to union type
+        text_content = result.content[0]
+        assert hasattr(text_content, "text")
+        assert text_content.text == "test answer"
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_structured_output_modern_client(self, mock_app_generate):
+        """structuredContent is attached alongside TextContent for >= 2025-06-18."""
+        app = App(
+            mode=AppMode.CHAT,
+        )
+
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        request = types.ClientRequest(root=call_request)
+
+        mock_app_generate.generate.return_value = {"answer": "test answer"}
+
+        result = handle_call_tool(Mock(), app, request, [], EndUser(), "2025-06-18")
+
+        assert result.structuredContent == {"answer": "test answer"}
+        assert result.content[0].text == "test answer"
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_no_structured_output_legacy_client(self, mock_app_generate):
+        """structuredContent is omitted for 2024-11-05 clients."""
+        app = App(
+            mode=AppMode.CHAT,
+        )
+
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        request = types.ClientRequest(root=call_request)
+
+        mock_app_generate.generate.return_value = {"answer": "test answer"}
+
+        result = handle_call_tool(Mock(), app, request, [], EndUser(), "2024-11-05")
+
+        assert result.structuredContent is None
+        assert result.content[0].text == "test answer"
+
+    def test_handle_call_tool_no_end_user(self):
+        """Test call tool handler without end user"""
+        app = App()
+        request = types.ClientRequest(root=types.CallToolRequest(params=types.CallToolRequestParams(name="test_app")))
+        user_input_form: list[VariableEntity] = []
+
+        with pytest.raises(ValueError, match="End user not found"):
+            handle_call_tool(Mock(), app, request, user_input_form, None)
+
+
+class TestUtilityFunctions:
+    """Test utility functions"""
+
+    def test_build_parameter_schema_chat_mode(self):
+        """Test building parameter schema for chat mode"""
+        app_mode = AppMode.CHAT
+        parameters_dict: dict[str, str] = {"name": "Enter your name"}
+
+        user_input_form = [
+            VariableEntity(
+                type=VariableEntityType.TEXT_INPUT,
+                variable="name",
+                description="User name",
+                label="Name",
+                required=True,
+            )
+        ]
+
+        schema = build_parameter_schema(app_mode, user_input_form, parameters_dict)
+
+        assert schema["type"] == "object"
+        assert "query" in schema["properties"]
+        assert "name" in schema["properties"]
+        assert "query" in schema["required"]
+        assert "name" in schema["required"]
+
+    def test_build_parameter_schema_workflow_mode(self):
+        """Test building parameter schema for workflow mode"""
+        app_mode = AppMode.WORKFLOW
+        parameters_dict: dict[str, str] = {"input_text": "Enter text"}
+
+        user_input_form = [
+            VariableEntity(
+                type=VariableEntityType.TEXT_INPUT,
+                variable="input_text",
+                description="Input text",
+                label="Input",
+                required=True,
+            )
+        ]
+
+        schema = build_parameter_schema(app_mode, user_input_form, parameters_dict)
+
+        assert schema["type"] == "object"
+        assert "query" not in schema["properties"]
+        assert "input_text" in schema["properties"]
+        assert "input_text" in schema["required"]
+
+    def test_prepare_tool_arguments_chat_mode(self):
+        """Test preparing tool arguments for chat mode"""
+        app = App(
+            mode=AppMode.CHAT,
+        )
+
+        arguments = {"query": "test question", "name": "John"}
+
+        result = prepare_tool_arguments(app, arguments)
+
+        assert result["query"] == "test question"
+        assert result["inputs"]["name"] == "John"
+        # Original arguments should not be modified
+        assert arguments["query"] == "test question"
+
+    def test_prepare_tool_arguments_workflow_mode(self):
+        """Test preparing tool arguments for workflow mode"""
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
+
+        arguments = {"input_text": "test input"}
+
+        result = prepare_tool_arguments(app, arguments)
+
+        assert "inputs" in result
+        assert result["inputs"]["input_text"] == "test input"
+
+    def test_prepare_tool_arguments_completion_mode(self):
+        """Test preparing tool arguments for completion mode"""
+        app = App(
+            mode=AppMode.COMPLETION,
+        )
+
+        arguments = {"name": "John"}
+
+        result = prepare_tool_arguments(app, arguments)
+
+        assert result["query"] == ""
+        assert result["inputs"]["name"] == "John"
+
+    def test_extract_answer_from_mapping_response_chat(self):
+        """Test extracting answer from mapping response for chat mode"""
+        app = App(
+            mode=AppMode.CHAT,
+        )
+
+        response = {"answer": "test answer", "other": "data"}
+
+        result = extract_answer_from_response(app, response)
+
+        assert result == "test answer"
+
+    def test_extract_answer_from_mapping_response_workflow(self):
+        """Test extracting answer from mapping response for workflow mode"""
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
+
+        response = {"data": {"outputs": {"result": "test result"}}}
+
+        result = extract_answer_from_response(app, response)
+
+        expected = json.dumps({"result": "test result"}, ensure_ascii=False)
+        assert result == expected
+
+    def test_extract_answer_from_streaming_response(self, monkeypatch: pytest.MonkeyPatch):
+        """Test extracting answer from streaming response"""
+        app = App()
+
+        events = [
+            'data: {"event": "agent_thought", "thought": "thinking..."}',
+            'data: {"event": "agent_thought", "thought": "more thinking"}',
+            'data: {"event": "other", "content": "ignore this"}',
+            "not data format",
+        ]
+
+        monkeypatch.setattr(RateLimit, "_instance_dict", {})
+        rate_limit = RateLimit(client_id="mcp-stream-fixture", max_active_requests=0)
+        response = RateLimitGenerator(
+            rate_limit=rate_limit, generator=(item for item in events), request_id=rate_limit.enter()
+        )
+        try:
+            result = extract_answer_from_response(app, response)
+        finally:
+            response.close()
+
+        assert result == "thinking...more thinking"
+
+    def test_extract_structured_output_workflow(self):
+        """Workflow mode exposes the raw outputs mapping as structured content."""
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
+
+        response = {"data": {"outputs": {"result": "test result"}}}
+
+        assert extract_structured_output(app, response, "ignored") == {"result": "test result"}
+
+    def test_extract_structured_output_chat(self):
+        """Chat mode wraps the answer string under an 'answer' key."""
+        app = App(
+            mode=AppMode.CHAT,
+        )
+
+        assert extract_structured_output(app, {"answer": "hi"}, "hi") == {"answer": "hi"}
+
+    def test_extract_structured_output_workflow_missing_outputs(self):
+        """Missing or malformed outputs fall back to None."""
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
+
+        assert extract_structured_output(app, {"data": {}}, "ignored") is None
+
+    def test_extract_structured_output_workflow_non_mapping_response(self):
+        """A non-mapping workflow response yields no structured output."""
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
+
+        assert extract_structured_output(app, None, "ignored") is None
+
+    def test_extract_structured_output_workflow_non_mapping_data(self):
+        """A non-mapping 'data' entry yields no structured output."""
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
+
+        assert extract_structured_output(app, {"data": "not a mapping"}, "ignored") is None
+
+    def test_extract_structured_output_workflow_non_mapping_outputs(self):
+        """A non-mapping 'outputs' entry yields no structured output."""
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
+
+        assert extract_structured_output(app, {"data": {"outputs": ["not", "a", "mapping"]}}, "ignored") is None
+
+    @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    def test_extract_structured_output_other_answer_modes(self, mode):
+        """Every chat-style mode wraps the answer string under an 'answer' key."""
+        app = App(
+            mode=mode,
+        )
+
+        assert extract_structured_output(app, {"answer": "hi"}, "hi") == {"answer": "hi"}
+
+    def test_extract_structured_output_unknown_mode(self):
+        """Modes outside the MCP surface produce no structured output."""
+        app = App(
+            mode=AppMode.CHANNEL,
+        )
+
+        assert extract_structured_output(app, {"answer": "hi"}, "hi") is None
+
+    def test_process_mapping_response_invalid_mode(self):
+        """Test processing mapping response with invalid app mode"""
+        app = App(
+            mode="invalid_mode",
+        )
+
+        response = {"answer": "test"}
+
+        with pytest.raises(ValueError, match="Invalid app mode"):
+            process_mapping_response(app, response)
+
+    def test_convert_input_form_to_parameters(self):
+        """Test converting input form to parameters"""
+        user_input_form = [
+            VariableEntity(
+                type=VariableEntityType.TEXT_INPUT,
+                variable="name",
+                description="User name",
+                label="Name",
+                required=True,
+            ),
+            VariableEntity(
+                type=VariableEntityType.SELECT,
+                variable="category",
+                description="Category",
+                label="Category",
+                required=False,
+                options=["A", "B", "C"],
+            ),
+            VariableEntity(
+                type=VariableEntityType.NUMBER,
+                variable="count",
+                description="Count",
+                label="Count",
+                required=True,
+            ),
+            VariableEntity(
+                type=VariableEntityType.FILE,
+                variable="upload",
+                description="File upload",
+                label="Upload",
+                required=False,
+            ),
+            VariableEntity(
+                type=VariableEntityType.CHECKBOX,
+                variable="enabled",
+                description="Enable flag",
+                label="Enabled",
+                required=False,
+            ),
+            VariableEntity(
+                type=VariableEntityType.JSON_OBJECT,
+                variable="config",
+                description="Config object",
+                label="Config",
+                required=True,
+            ),
+            VariableEntity(
+                type=VariableEntityType.JSON_OBJECT,
+                variable="schema_config",
+                description="Config with schema",
+                label="Schema Config",
+                required=False,
+                json_schema={
+                    "properties": {
+                        "host": {"type": "string"},
+                        "port": {"type": "number"},
+                    },
+                    "required": ["host"],
+                    "additionalProperties": False,
+                },
+            ),
+        ]
+
+        parameters_dict: dict[str, str] = {
+            "name": "Enter your name",
+            "category": "Select category",
+            "count": "Enter count",
+            "enabled": "Enable flag",
+            "config": "Config object",
+            "schema_config": "Config with schema",
+        }
+
+        parameters, required = convert_input_form_to_parameters(user_input_form, parameters_dict)
+
+        # Check parameters
+        assert "name" in parameters
+        assert parameters["name"]["type"] == "string"
+        assert parameters["name"]["description"] == "Enter your name"
+
+        assert "category" in parameters
+        assert parameters["category"]["type"] == "string"
+        assert parameters["category"]["enum"] == ["A", "B", "C"]
+
+        assert "count" in parameters
+        assert parameters["count"]["type"] == "number"
+
+        # FILE type is skipped entirely via `continue` — key should not exist
+        assert "upload" not in parameters
+
+        # CHECKBOX maps to boolean
+        assert parameters["enabled"]["type"] == "boolean"
+
+        # JSON_OBJECT without json_schema maps to object
+        assert parameters["config"]["type"] == "object"
+        assert "properties" not in parameters["config"]
+
+        # JSON_OBJECT with json_schema forwards schema keys
+        assert parameters["schema_config"]["type"] == "object"
+        assert parameters["schema_config"]["properties"] == {
+            "host": {"type": "string"},
+            "port": {"type": "number"},
+        }
+        assert parameters["schema_config"]["required"] == ["host"]
+        assert parameters["schema_config"]["additionalProperties"] is False
+
+        # Check required fields
+        assert "name" in required
+        assert "count" in required
+        assert "config" in required
+        assert "category" not in required
+
+    # Note: _get_request_id function has been removed as request_id is now passed as parameter
+
+    def test_convert_input_form_to_parameters_jsonschema_validation_ok(self):
+        """Generated schema with all supported types should be valid JSON Schema."""
+        user_input_form = [
+            VariableEntity(
+                type=VariableEntityType.NUMBER,
+                variable="count",
+                description="Count",
+                label="Count",
+                required=True,
+            ),
+            VariableEntity(
+                type=VariableEntityType.TEXT_INPUT,
+                variable="name",
+                description="User name",
+                label="Name",
+                required=False,
+            ),
+            VariableEntity(
+                type=VariableEntityType.CHECKBOX,
+                variable="enabled",
+                description="Toggle",
+                label="Enabled",
+                required=False,
+            ),
+            VariableEntity(
+                type=VariableEntityType.JSON_OBJECT,
+                variable="metadata",
+                description="Metadata",
+                label="Metadata",
+                required=False,
+            ),
+        ]
+
+        parameters_dict = {
+            "count": "Enter count",
+            "name": "Enter your name",
+            "enabled": "Toggle flag",
+            "metadata": "Metadata object",
+        }
+
+        parameters, required = convert_input_form_to_parameters(user_input_form, parameters_dict)
+
+        # Build a complete JSON Schema
+        schema = {
+            "type": "object",
+            "properties": parameters,
+            "required": required,
+        }
+
+        # 1) The schema itself must be valid
+        jsonschema.Draft202012Validator.check_schema(schema)
+
+        # 2) Validate instances with all types
+        jsonschema.validate(instance={"count": float("3.14"), "name": "alice"}, schema=schema)
+        jsonschema.validate(
+            instance={"count": 2, "enabled": True, "metadata": {"key": "val"}},
+            schema=schema,
+        )
+
+    def test_legacy_float_type_schema_is_invalid(self):
+        """Legacy/buggy behavior: using 'float' should produce an invalid JSON Schema."""
+        # Manually construct a legacy/incorrect schema (simulating old behavior)
+        bad_schema = {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "float",  # Invalid type: JSON Schema does not support 'float'
+                    "description": "Enter count",
+                }
+            },
+            "required": ["count"],
+        }
+
+        # The schema itself should raise a SchemaError
+        with pytest.raises(jsonschema.exceptions.SchemaError):
+            jsonschema.Draft202012Validator.check_schema(bad_schema)
+
+        # Or validation should also raise SchemaError
+        with pytest.raises(jsonschema.exceptions.SchemaError):
+            jsonschema.validate(instance={"count": 1.23}, schema=bad_schema)
+
+
+class TestNegotiateProtocolVersion:
+    """Test the MCP-Protocol-Version header resolver."""
+
+    def test_initialize_ignores_header(self):
+        """Initialize negotiates via the request body, so its header is ignored."""
+        assert negotiate_protocol_version("anything", True) == types.DEFAULT_NEGOTIATED_VERSION
+
+    def test_absent_header_defaults(self):
+        """An absent header defaults to 2025-03-26 per the spec back-compat rule."""
+        assert negotiate_protocol_version(None, False) == types.DEFAULT_NEGOTIATED_VERSION
+
+    def test_empty_header_treated_as_absent(self):
+        """An empty header value is treated as absent and defaults to 2025-03-26."""
+        assert negotiate_protocol_version("", False) == types.DEFAULT_NEGOTIATED_VERSION
+
+    def test_supported_header_passes_through(self):
+        """All supported header values are used as the negotiated version."""
+        assert negotiate_protocol_version("2025-06-18", False) == "2025-06-18"
+        assert negotiate_protocol_version("2025-03-26", False) == "2025-03-26"
+        assert negotiate_protocol_version("2024-11-05", False) == "2024-11-05"
+
+    def test_unsupported_header_returns_none(self):
+        """An explicit but unsupported header signals an error (None)."""
+        assert negotiate_protocol_version("1999-01-01", False) is None

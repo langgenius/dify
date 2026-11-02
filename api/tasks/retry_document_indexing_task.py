@@ -1,102 +1,165 @@
-import datetime
 import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
+from sqlalchemy import delete, select
 
-from core.indexing_runner import IndexingRunner
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from extensions.ext_database import db
+from configs import dify_config
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+from core.db.session_factory import get_session_maker, session_factory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
+from enums import DeploymentEdition
+from extensions.application_services.data_sources import build_data_source_credentials
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
+from models import Account, Tenant
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import IndexingStatus
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.feature_service import FeatureService
+from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.resource_scope import DatasetRef
+from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow_run_agg import WorkflowRunAgg
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
+def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_id: str):
     """
     Async process document
     :param dataset_id:
     :param document_ids:
+    :param user_id:
 
-    Usage: retry_document_indexing_task.delay(dataset_id, document_ids)
+    Usage: retry_document_indexing_task.delay(dataset_id, document_ids, user_id)
     """
-    documents: list[Document] = []
     start_at = time.perf_counter()
-
-    dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
-    if not dataset:
-        logging.info(click.style("Dataset not found: {}".format(dataset_id), fg="red"))
-        db.session.close()
-        return
-    tenant_id = dataset.tenant_id
-    for document_id in document_ids:
-        retry_indexing_cache_key = "document_{}_is_retried".format(document_id)
-        # check document limit
-        features = FeatureService.get_features(tenant_id)
+    with session_factory.create_session() as session:
         try:
-            if features.billing.enabled:
-                vector_space = features.vector_space
-                if 0 < vector_space.limit <= vector_space.size:
-                    raise ValueError(
-                        "Your total number of documents plus the number of uploads have over the limit of "
-                        "your subscription."
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+            if not dataset:
+                logger.info(click.style(f"Dataset not found: {dataset_id}", fg="red"))
+                return
+            user = session.scalar(select(Account).where(Account.id == user_id).limit(1))
+            if not user:
+                logger.info(click.style(f"User not found: {user_id}", fg="red"))
+                return
+            tenant = session.scalar(select(Tenant).where(Tenant.id == dataset.tenant_id).limit(1))
+            if not tenant:
+                raise ValueError("Tenant not found")
+            user.set_current_tenant_with_session(tenant, session=session)
+
+            for document_id in document_ids:
+                retry_indexing_cache_key = f"document_{document_id}_is_retried"
+                # check document limit
+                if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+                    features = FeatureService.get_features(tenant.id)
+                    try:
+                        vector_space = features.vector_space
+                        assert vector_space is not None
+                        if 0 < vector_space.limit <= vector_space.size:
+                            raise ValueError(
+                                "Your total number of documents plus the number of uploads have over the limit of "
+                                "your subscription."
+                            )
+                    except Exception as e:
+                        document = session.scalar(
+                            select(Document)
+                            .where(Document.id == document_id, Document.dataset_id == dataset_id)
+                            .limit(1)
+                        )
+                        if document:
+                            document.indexing_status = IndexingStatus.ERROR
+                            document.error = str(e)
+                            document.stopped_at = naive_utc_now()
+                            session.add(document)
+                            session.commit()
+                        redis_client.delete(retry_indexing_cache_key)
+                        return
+
+                logger.info(click.style(f"Start retry document: {document_id}", fg="green"))
+                document = session.scalar(
+                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                )
+                if not document:
+                    logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
+                    return
+                try:
+                    # clean old data
+                    index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
+
+                    segments = session.scalars(
+                        select(DocumentSegment).where(DocumentSegment.document_id == document_id)
+                    ).all()
+                    if segments:
+                        index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+                        # delete from vector index
+                        index_processor.clean(
+                            dataset,
+                            index_node_ids,
+                            with_keywords=True,
+                            delete_child_chunks=True,
+                            session=session,
+                        )
+
+                    segment_ids = [segment.id for segment in segments]
+                    if segment_ids:
+                        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+                        session.execute(segment_delete_stmt)
+                    session.commit()
+
+                    document.indexing_status = IndexingStatus.PARSING
+                    document.processing_started_at = naive_utc_now()
+                    session.add(document)
+                    document_ref = DatasetRef(document.tenant_id, document.dataset_id).document(document.id)
+                    runtime_mode = dataset.runtime_mode
+                    # Persist preparation before handing off to the selected execution service.
+                    session.commit()
+
+                    if runtime_mode == "rag_pipeline":
+                        with session_factory.create_session() as rag_session:
+                            rag_pipeline_service = RagPipelineService(rag_session)
+                            rag_pipeline_service.retry_error_document(
+                                dataset,
+                                document,
+                                user,
+                                generator=PipelineGenerator(
+                                    execution_driver=WorkflowRunAgg.run,
+                                    documents=SQLAlchemyDocumentRepository(
+                                        session_factory=session_factory.get_session_maker()
+                                    ),
+                                    datasource_providers=build_data_source_credentials(
+                                        database_client=get_session_maker()
+                                    ).providers,
+                                ),
+                            )
+                    else:
+                        indexing_service = build_document_indexing_service(
+                            session_factory=session_factory.get_session_maker(), enforce_vector_space_admission=True
+                        )
+                        indexing_service.run([document_ref])
+                    redis_client.delete(retry_indexing_cache_key)
+                except Exception as ex:
+                    session.rollback()
+                    document = session.scalar(
+                        select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
                     )
+                    if document:
+                        document.indexing_status = IndexingStatus.ERROR
+                        document.error = str(ex)
+                        document.stopped_at = naive_utc_now()
+                        session.add(document)
+                        session.commit()
+                    logger.info(click.style(str(ex), fg="yellow"))
+                    redis_client.delete(retry_indexing_cache_key)
+                    logger.exception("retry_document_indexing_task failed, document_id: %s", document_id)
+            end_at = time.perf_counter()
+            logger.info(click.style(f"Retry dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
         except Exception as e:
-            document = (
-                db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+            logger.exception(
+                "retry_document_indexing_task failed, dataset_id: %s, document_ids: %s", dataset_id, document_ids
             )
-            if document:
-                document.indexing_status = "error"
-                document.error = str(e)
-                document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-                db.session.add(document)
-                db.session.commit()
-            redis_client.delete(retry_indexing_cache_key)
-            db.session.close()
-            return
-
-        logging.info(click.style("Start retry document: {}".format(document_id), fg="green"))
-        document = (
-            db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
-        )
-        if not document:
-            logging.info(click.style("Document not found: {}".format(document_id), fg="yellow"))
-            db.session.close()
-            return
-        try:
-            # clean old data
-            index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
-
-            segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
-            if segments:
-                index_node_ids = [segment.index_node_id for segment in segments]
-                # delete from vector index
-                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
-
-            for segment in segments:
-                db.session.delete(segment)
-            db.session.commit()
-
-            document.indexing_status = "parsing"
-            document.processing_started_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-            db.session.add(document)
-            db.session.commit()
-
-            indexing_runner = IndexingRunner()
-            indexing_runner.run([document])
-            redis_client.delete(retry_indexing_cache_key)
-        except Exception as ex:
-            document.indexing_status = "error"
-            document.error = str(ex)
-            document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-            db.session.add(document)
-            db.session.commit()
-            logging.info(click.style(str(ex), fg="yellow"))
-            redis_client.delete(retry_indexing_cache_key)
-            logging.exception("retry_document_indexing_task failed, document_id: {}".format(document_id))
-        finally:
-            db.session.close()
-    end_at = time.perf_counter()
-    logging.info(click.style("Retry dataset: {} latency: {}".format(dataset_id, end_at - start_at), fg="green"))
+            raise e

@@ -1,17 +1,10 @@
-import {
-  useEffect,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiFilter3Line } from '@remixicon/react'
-import MetadataPanel from './metadata-panel'
-import Button from '@/app/components/base/button'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { RiFilter3Line } from '@remixicon/react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import MetadataPanel from './metadata-panel'
 
 const MetadataTrigger = ({
   metadataFilteringConditions,
@@ -20,40 +13,44 @@ const MetadataTrigger = ({
   selectedDatasetsLoaded,
   ...restProps
 }: MetadataShape) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowModels'])
   const [open, setOpen] = useState(false)
   const conditions = metadataFilteringConditions?.conditions || []
 
   useEffect(() => {
     if (selectedDatasetsLoaded) {
       conditions.forEach((condition) => {
-        if (!metadataList.find(metadata => metadata.name === condition.name))
-          handleRemoveCondition(condition.id)
+        // First try to match by metadata_id for reliable reference
+        const foundById =
+          condition.metadata_id &&
+          metadataList.find((metadata) => metadata.id === condition.metadata_id)
+        // Fallback to name matching only for backward compatibility with old conditions
+        const foundByName =
+          !condition.metadata_id &&
+          metadataList.find((metadata) => metadata.name === condition.name)
+
+        // Only remove condition if both metadata_id and name matching fail
+        if (!foundById && !foundByName) handleRemoveCondition(condition.id)
       })
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metadataList, handleRemoveCondition, selectedDatasetsLoaded])
+  }, [metadataFilteringConditions, metadataList, handleRemoveCondition, selectedDatasetsLoaded])
 
   return (
-    <PortalToFollowElem
-      placement='left'
-      offset={4}
-      open={open}
-      onOpenChange={setOpen}
-    >
-      <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
-        <Button
-          variant='secondary-accent'
-          size='small'
-        >
-          <RiFilter3Line className='mr-1 h-3.5 w-3.5' />
-          {t('workflow.nodes.knowledgeRetrieval.metadata.panel.conditions')}
-          <div className='system-2xs-medium-uppercase ml-1 flex items-center rounded-[5px] border border-divider-deep px-1 text-text-tertiary'>
-            {metadataFilteringConditions?.conditions.length || 0}
-          </div>
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button variant="secondary-accent" size="small">
+            <RiFilter3Line className="size-3.5" />
+            {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.conditions'], {
+              ns: 'workflowModels',
+            })}
+            <div className="flex items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary">
+              {metadataFilteringConditions?.conditions.length || 0}
+            </div>
+          </Button>
+        }
+      />
+      <PopoverContent side="left" sideOffset={4} className="border-none bg-transparent shadow-none">
         <MetadataPanel
           metadataFilteringConditions={metadataFilteringConditions}
           onCancel={() => setOpen(false)}
@@ -61,8 +58,8 @@ const MetadataTrigger = ({
           handleRemoveCondition={handleRemoveCondition}
           {...restProps}
         />
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

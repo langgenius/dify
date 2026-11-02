@@ -1,18 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import type { ValueSelector, Var, VisionSetting } from '@/app/components/workflow/types'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
-import VarReferencePicker from './variable/var-reference-picker'
-import ResolutionPicker from '@/app/components/workflow/nodes/llm/components/resolution-picker'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import Switch from '@/app/components/base/switch'
-import { type ValueSelector, type Var, VarType, type VisionSetting } from '@/app/components/workflow/types'
+import ResolutionPicker from '@/app/components/workflow/nodes/llm/components/resolution-picker'
+import { VarType } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
-import Tooltip from '@/app/components/base/tooltip'
-const i18nPrefix = 'workflow.nodes.llm'
+import VarReferencePicker from './variable/var-reference-picker'
 
-type Props = {
+const i18nPrefix = 'nodes.llm'
+
+type Props = Readonly<{
   isVisionModel: boolean
   readOnly: boolean
   enabled: boolean
@@ -20,7 +23,7 @@ type Props = {
   nodeId: string
   config?: VisionSetting
   onConfigChange: (config: VisionSetting) => void
-}
+}>
 
 const ConfigVision: FC<Props> = ({
   isVisionModel,
@@ -34,57 +37,69 @@ const ConfigVision: FC<Props> = ({
   },
   onConfigChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowModels', 'fileUpload'])
 
   const filterVar = useCallback((payload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(payload.type)
-  }, [])
-  const handleVisionResolutionChange = useCallback((resolution: Resolution) => {
-    const newConfig = produce(config, (draft) => {
-      draft.detail = resolution
-    })
-    onConfigChange(newConfig)
-  }, [config, onConfigChange])
+    const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
 
-  const handleVarSelectorChange = useCallback((valueSelector: ValueSelector | string) => {
-    const newConfig = produce(config, (draft) => {
-      draft.variable_selector = valueSelector as ValueSelector
-    })
-    onConfigChange(newConfig)
-  }, [config, onConfigChange])
+    return fileVariableTypes.includes(payload.type)
+  }, [])
+  const handleVisionResolutionChange = useCallback(
+    (resolution: Resolution) => {
+      const newConfig = produce(config, (draft) => {
+        draft.detail = resolution
+      })
+      onConfigChange(newConfig)
+    },
+    [config, onConfigChange],
+  )
+
+  const handleVarSelectorChange = useCallback(
+    (valueSelector: ValueSelector | string) => {
+      const newConfig = produce(config, (draft) => {
+        draft.variable_selector = valueSelector as ValueSelector
+      })
+      onConfigChange(newConfig)
+    },
+    [config, onConfigChange],
+  )
 
   return (
     <Field
-      title={t(`${i18nPrefix}.vision`)}
-      tooltip={t('appDebug.vision.description')!}
+      title={t(($) => $[`${i18nPrefix}.vision`], { ns: 'workflowModels' })}
+      tooltip={t(($) => $['vision.description'], { ns: 'fileUpload' })!}
       operations={
-        <Tooltip
-          popupContent={t('appDebug.vision.onlySupportVisionModelTip')!}
-          disabled={isVisionModel}
-        >
-          <Switch disabled={readOnly || !isVisionModel} size='md' defaultValue={!isVisionModel ? false : enabled} onChange={onEnabledChange} />
+        <Tooltip>
+          <TooltipTrigger
+            disabled={isVisionModel}
+            render={
+              <Switch
+                disabled={readOnly || !isVisionModel}
+                size="md"
+                checked={!isVisionModel ? false : enabled}
+                onCheckedChange={onEnabledChange}
+              />
+            }
+          />
+          <TooltipContent>
+            {t(($) => $['vision.onlySupportVisionModelTip'], { ns: 'fileUpload' })!}
+          </TooltipContent>
         </Tooltip>
       }
     >
-      {(enabled && isVisionModel)
-        ? (
-          <div>
-            <VarReferencePicker
-              className='mb-4'
-              filterVar={filterVar}
-              nodeId={nodeId}
-              value={config.variable_selector || []}
-              onChange={handleVarSelectorChange}
-              readonly={readOnly}
-            />
-            <ResolutionPicker
-              value={config.detail}
-              onChange={handleVisionResolutionChange}
-            />
-          </div>
-        )
-        : null}
-
+      {enabled && isVisionModel ? (
+        <div>
+          <VarReferencePicker
+            className="mb-4"
+            filterVar={filterVar}
+            nodeId={nodeId}
+            value={config.variable_selector || []}
+            onChange={handleVarSelectorChange}
+            readonly={readOnly}
+          />
+          <ResolutionPicker value={config.detail} onChange={handleVisionResolutionChange} />
+        </div>
+      ) : null}
     </Field>
   )
 }

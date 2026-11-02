@@ -1,9 +1,9 @@
 import contextvars
 import threading
-from typing import Optional
+from contextlib import nullcontext
 
 import pytest
-from flask import Flask
+from flask import Flask, current_app
 from flask_login import LoginManager, UserMixin, current_user, login_user
 
 from libs.flask_utils import preserve_flask_contexts
@@ -29,7 +29,7 @@ def login_app(app: Flask) -> Flask:
     login_manager.init_app(app)
 
     @login_manager.user_loader
-    def load_user(user_id: str) -> Optional[User]:
+    def load_user(user_id: str) -> User | None:
         if user_id == "test_user":
             return User("test_user")
         return None
@@ -68,7 +68,7 @@ def test_current_user_not_accessible_across_threads(login_app: Flask, test_user:
                     # without preserve_flask_contexts
                     result["user_accessible"] = current_user.is_authenticated
             except Exception as e:
-                result["error"] = str(e)  # type: ignore
+                result["error"] = str(e)
 
         # Run the function in a separate thread
         thread = threading.Thread(target=check_user_in_thread)
@@ -111,7 +111,7 @@ def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, 
                     else:
                         result["user_accessible"] = False
             except Exception as e:
-                result["error"] = str(e)  # type: ignore
+                result["error"] = str(e)
 
         # Run the function in a separate thread
         thread = threading.Thread(target=check_user_in_thread_with_manager)
@@ -122,3 +122,38 @@ def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, 
         assert result["error"] is None
         assert result["user_accessible"] is True
         assert result["user_id"] == "test_user"
+
+
+@pytest.mark.parametrize("caller_value", [None, "caller"])
+@pytest.mark.parametrize("failure_stage", [None, "body", "teardown"])
+def test_preserve_flask_contexts_restores_bindings_after_teardown(caller_value, failure_stage):
+    flask_app = Flask(__name__)
+    caller_app = current_app._get_current_object()
+    test_var = contextvars.ContextVar("preserved_var")
+    captured = contextvars.copy_context()
+    captured.run(test_var.set, "captured")
+    token = test_var.set(caller_value) if caller_value is not None else None
+    teardown_values = []
+
+    @flask_app.teardown_appcontext
+    def teardown(_error):
+        teardown_values.append(test_var.get())
+        if failure_stage == "teardown":
+            raise ValueError("teardown failed")
+
+    try:
+        with pytest.raises(ValueError, match=f"{failure_stage} failed") if failure_stage else nullcontext():
+            with preserve_flask_contexts(flask_app, captured):
+                assert current_app == flask_app
+                assert test_var.get() == "captured"
+                test_var.set("body")
+                if failure_stage == "body":
+                    raise ValueError("body failed")
+
+        assert teardown_values == ["body"]
+        assert current_app == caller_app
+        assert test_var.get(None) == caller_value
+        assert (test_var in contextvars.copy_context()) == (caller_value is not None)
+    finally:
+        if token is not None:
+            test_var.reset(token)

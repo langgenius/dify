@@ -15,31 +15,19 @@ const CustomEdgeLinearGradientRender = ({
   stopColor,
   position,
 }: CustomEdgeLinearGradientRenderProps) => {
-  const {
-    x1,
-    x2,
-    y1,
-    y2,
-  } = position
+  const { x1, x2, y1, y2 } = position
   return (
     <defs>
-      <linearGradient
-        id={id}
-        gradientUnits='userSpaceOnUse'
-        x1={x1}
-        y1={y1}
-        x2={x2}
-        y2={y2}
-      >
+      <linearGradient id={id} gradientUnits="userSpaceOnUse" x1={x1} y1={y1} x2={x2} y2={y2}>
         <stop
-          offset='0%'
+          offset="0%"
           style={{
             stopColor: startColor,
             stopOpacity: 1,
           }}
         />
         <stop
-          offset='100%'
+          offset="100%"
           style={{
             stopColor,
             stopOpacity: 1,

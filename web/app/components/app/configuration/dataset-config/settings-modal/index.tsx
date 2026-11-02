@@ -1,42 +1,45 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import { useRef, useState } from 'react'
-import { useMount } from 'ahooks'
-import { useTranslation } from 'react-i18next'
-import { isEqual } from 'lodash-es'
-import { RiCloseLine } from '@remixicon/react'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
-import cn from '@/utils/classnames'
-import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
-import Divider from '@/app/components/base/divider'
-import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
-import { type DataSet, DatasetPermission } from '@/models/datasets'
-import { useToastContext } from '@/app/components/base/toast'
-import { updateDatasetSetting } from '@/service/datasets'
-import { useAppContext } from '@/context/app-context'
-import { useModalContext } from '@/context/modal-context'
 import type { RetrievalConfig } from '@/types/app'
-import RetrievalSettings from '@/app/components/datasets/external-knowledge-base/create/RetrievalSettings'
-import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
-import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
-import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { RiCloseLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
+import { isEqual } from 'es-toolkit/predicate'
+import { useQueryState } from 'nuqs'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/components/app/configuration/toast'
 import {
-  useModelList,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+  isReRankModelSelected,
+  normalizeRetrievalConfigForSave,
+} from '@/app/components/datasets/common/check-rerank-model'
+import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { toRetrievalConfig } from '@/app/components/datasets/dataset-fields'
+import IndexMethod from '@/app/components/datasets/settings/index-method'
+import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
+import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fetchMembers } from '@/service/common'
-import type { Member } from '@/models/common'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useDocLink } from '@/context/i18n'
+import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
+import { updateDatasetSetting } from '@/service/datasets'
+import { getErrorMessage } from '@/utils/error-message'
+import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 type SettingsModalProps = {
-  currentDataset: DataSet
+  currentDataset: DatasetDetailWithPartialMembersResponse
+  height?: string
   onCancel: () => void
-  onSave: (newDataset: DataSet) => void
+  onSave: (newDataset: DatasetDetailWithPartialMembersResponse) => void
 }
 
 const rowClass = `
@@ -49,61 +52,83 @@ const labelClass = `
 
 const SettingsModal: FC<SettingsModalProps> = ({
   currentDataset,
+  height = 'calc(100vh - 72px)',
   onCancel,
   onSave,
 }) => {
-  const { data: embeddingsModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const {
-    modelList: rerankModelList,
-    defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelValid,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
-  const { t } = useTranslation()
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
+  const { t } = useTranslation(['datasetSettings', 'appDebug', 'common'])
   const docLink = useDocLink()
-  const { notify } = useToastContext()
   const ref = useRef(null)
+  const nameInputId = useId()
   const isExternal = currentDataset.provider === 'external'
-  const { setShowAccountSettingModal } = useModalContext()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const [loading, setLoading] = useState(false)
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
-  const [topK, setTopK] = useState(localeCurrentDataset?.external_retrieval_model.top_k ?? 2)
-  const [scoreThreshold, setScoreThreshold] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold ?? 0.5)
-  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
-  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset.partial_member_list || [])
-  const [memberList, setMemberList] = useState<Member[]>([])
+  const [topK, setTopK] = useState(localeCurrentDataset.external_retrieval_model?.top_k ?? 2)
+  const [scoreThreshold, setScoreThreshold] = useState(
+    localeCurrentDataset.external_retrieval_model?.score_threshold ?? 0.5,
+  )
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(
+    localeCurrentDataset.external_retrieval_model?.score_threshold_enabled ?? false,
+  )
+  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
+    currentDataset.partial_member_list || [],
+  )
+  const [memberList, setMemberList] = useState<AccountWithRoleResponse[]>([])
+  const { data: membersData } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
 
-  const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
-  const [retrievalConfig, setRetrievalConfig] = useState(localeCurrentDataset?.retrieval_model_dict as RetrievalConfig)
+  const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique ?? undefined)
+  const [retrievalConfig, setRetrievalConfig] = useState<RetrievalConfig>(() =>
+    toRetrievalConfig(currentDataset.retrieval_model_dict),
+  )
+  const [keywordNumber, setKeywordNumber] = useState(currentDataset.keyword_number ?? 10)
 
   const handleValueChange = (type: string, value: string) => {
     setLocaleCurrentDataset({ ...localeCurrentDataset, [type]: value })
   }
   const [isHideChangedTip, setIsHideChangedTip] = useState(false)
-  const isRetrievalChanged = !isEqual(retrievalConfig, localeCurrentDataset?.retrieval_model_dict) || indexMethod !== localeCurrentDataset?.indexing_technique
+  const isRetrievalChanged =
+    !isEqual(retrievalConfig, toRetrievalConfig(localeCurrentDataset.retrieval_model_dict)) ||
+    indexMethod !== (localeCurrentDataset.indexing_technique ?? undefined)
 
-  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
-    if (data.top_k !== undefined)
-      setTopK(data.top_k)
-    if (data.score_threshold !== undefined)
-      setScoreThreshold(data.score_threshold)
+  const handleSettingsChange = (data: {
+    top_k?: number
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+  }) => {
+    if (data.top_k !== undefined) setTopK(data.top_k)
+    if (data.score_threshold !== undefined) setScoreThreshold(data.score_threshold)
     if (data.score_threshold_enabled !== undefined)
       setScoreThresholdEnabled(data.score_threshold_enabled)
 
     setLocaleCurrentDataset({
       ...localeCurrentDataset,
       external_retrieval_model: {
-        ...localeCurrentDataset?.external_retrieval_model,
-        ...data,
+        top_k: data.top_k ?? topK,
+        score_threshold: data.score_threshold ?? scoreThreshold,
+        score_threshold_enabled: data.score_threshold_enabled ?? scoreThresholdEnabled,
       },
     })
   }
 
   const handleSave = async () => {
-    if (loading)
-      return
+    if (loading) return
     if (!localeCurrentDataset.name?.trim()) {
-      notify({ type: 'error', message: t('datasetSettings.form.nameError') })
+      toast.error(t(($) => $['form.nameError'], { ns: 'datasetSettings' }))
       return
     }
     if (
@@ -113,12 +138,15 @@ const SettingsModal: FC<SettingsModalProps> = ({
         indexMethod,
       })
     ) {
-      notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+      toast.error(t(($) => $['datasetConfig.rerankModelRequired'], { ns: 'appDebug' }))
       return
     }
     try {
       setLoading(true)
       const { id, name, description, permission } = localeCurrentDataset
+      // Hybrid Search renders no rerank on/off switch, so derive `reranking_enable` from the
+      // selected rerank model on save. See `normalizeRetrievalConfigForSave` for details.
+      const retrievalConfigForSave = normalizeRetrievalConfigForSave(retrievalConfig)
       const requestParams = {
         datasetId: id,
         body: {
@@ -126,15 +154,19 @@ const SettingsModal: FC<SettingsModalProps> = ({
           description,
           permission,
           indexing_technique: indexMethod,
+          keyword_number: keywordNumber,
           retrieval_model: {
-            ...retrievalConfig,
-            score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
+            ...retrievalConfigForSave,
+            score_threshold: retrievalConfigForSave.score_threshold_enabled
+              ? retrievalConfigForSave.score_threshold
+              : 0,
           },
           embedding_model: localeCurrentDataset.embedding_model,
           embedding_model_provider: localeCurrentDataset.embedding_model_provider,
           ...(isExternal && {
-            external_knowledge_id: currentDataset!.external_knowledge_info.external_knowledge_id,
-            external_knowledge_api_id: currentDataset!.external_knowledge_info.external_knowledge_api_id,
+            external_knowledge_id: currentDataset.external_knowledge_info?.external_knowledge_id,
+            external_knowledge_api_id:
+              currentDataset.external_knowledge_info?.external_knowledge_api_id,
             external_retrieval_model: {
               top_k: topK,
               score_threshold: scoreThreshold,
@@ -143,246 +175,220 @@ const SettingsModal: FC<SettingsModalProps> = ({
           }),
         },
       } as any
-      if (permission === DatasetPermission.partialMembers) {
+      if (permission === PermissionLevel.partialMembers) {
         requestParams.body.partial_member_list = selectedMemberIDs.map((id) => {
           return {
             user_id: id,
-            role: memberList.find(member => member.id === id)?.role,
+            role: memberList.find((member) => member.id === id)?.role,
           }
         })
       }
-      await updateDatasetSetting(requestParams)
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      await updateDatasetSetting(requestParams, { silent: true })
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onSave({
         ...localeCurrentDataset,
-        indexing_technique: indexMethod,
+        indexing_technique: indexMethod ?? null,
         retrieval_model_dict: retrievalConfig,
       })
-    }
-    catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-    }
-    finally {
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
+    } finally {
       setLoading(false)
     }
   }
 
-  const getMembers = async () => {
-    const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
-    if (!accounts)
-      setMemberList([])
-    else
-      setMemberList(accounts)
-  }
+  useEffect(() => {
+    if (!membersData?.accounts) setMemberList([])
+    else setMemberList(membersData.accounts)
+  }, [membersData])
 
-  useMount(() => {
-    getMembers()
-  })
+  const showMultiModalTip = useMemo(() => {
+    return checkShowMultiModalTip({
+      embeddingModel: {
+        provider: localeCurrentDataset.embedding_model_provider ?? '',
+        model: localeCurrentDataset.embedding_model ?? '',
+      },
+      rerankingEnable: retrievalConfig.reranking_enable,
+      rerankModel: {
+        rerankingProviderName: retrievalConfig.reranking_model.reranking_provider_name,
+        rerankingModelName: retrievalConfig.reranking_model.reranking_model_name,
+      },
+      indexMethod,
+      embeddingModelList,
+      rerankModelList,
+    })
+  }, [
+    localeCurrentDataset.embedding_model,
+    localeCurrentDataset.embedding_model_provider,
+    retrievalConfig.reranking_enable,
+    retrievalConfig.reranking_model,
+    indexMethod,
+    embeddingModelList,
+    rerankModelList,
+  ])
 
   return (
     <div
-      className='flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
+      className="flex min-h-0 w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{
-        height: 'calc(100vh - 72px)',
+        height,
       }}
       ref={ref}
     >
-      <div className='flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5'>
-        <div className='flex flex-col text-base font-semibold text-text-primary'>
-          <div className='leading-6'>{t('datasetSettings.title')}</div>
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
+        <div className="flex flex-col text-base font-semibold text-text-primary">
+          <div className="leading-6">{t(($) => $.title, { ns: 'datasetSettings' })}</div>
         </div>
-        <div className='flex items-center'>
+        <div className="flex items-center">
           <div
             onClick={onCancel}
-            className='flex h-6 w-6 cursor-pointer items-center justify-center'
+            className="flex size-6 cursor-pointer items-center justify-center"
           >
-            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+            <RiCloseLine className="size-4 text-text-tertiary" />
           </div>
         </div>
       </div>
       {/* Body */}
-      <div className='overflow-y-auto border-b border-divider-regular p-6 pb-[68px] pt-5'>
+      <div className="overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-17">
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.name')}</div>
+            <label htmlFor={nameInputId} className="system-sm-semibold text-text-secondary">
+              {t(($) => $['form.name'], { ns: 'datasetSettings' })}
+            </label>
           </div>
           <Input
+            id={nameInputId}
             value={localeCurrentDataset.name}
-            onChange={e => handleValueChange('name', e.target.value)}
-            className='block h-9'
-            placeholder={t('datasetSettings.form.namePlaceholder') || ''}
+            onValueChange={(value) => handleValueChange('name', value)}
+            className="block h-9"
+            placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
           />
         </div>
         <div className={cn(rowClass)}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.desc')}</div>
+            <div className="system-sm-semibold text-text-secondary">
+              {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
+            </div>
           </div>
-          <div className='w-full'>
+          <div className="w-full">
             <Textarea
+              aria-label={t(($) => $['form.desc'], { ns: 'datasetSettings' })}
               value={localeCurrentDataset.description || ''}
-              onChange={e => handleValueChange('description', e.target.value)}
-              className='resize-none'
-              placeholder={t('datasetSettings.form.descPlaceholder') || ''}
+              onValueChange={(value) => handleValueChange('description', value)}
+              className="resize-none"
+              placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
             />
           </div>
         </div>
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.permissions')}</div>
+            <div className="system-sm-semibold text-text-secondary">
+              {t(($) => $['form.permissions'], { ns: 'datasetSettings' })}
+            </div>
           </div>
-          <div className='w-full'>
+          <div className="w-full">
             <PermissionSelector
-              disabled={!localeCurrentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
+              disabled={!localeCurrentDataset?.embedding_available}
               permission={localeCurrentDataset.permission}
               value={selectedMemberIDs}
-              onChange={v => handleValueChange('permission', v!)}
+              onChange={(v) => handleValueChange('permission', v!)}
               onMemberSelect={setSelectedMemberIDs}
               memberList={memberList}
             />
           </div>
         </div>
-        {currentDataset && currentDataset.indexing_technique && (
+        {!!(currentDataset && currentDataset.indexing_technique) && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.indexMethod')}</div>
+              <div className="system-sm-semibold text-text-secondary">
+                {t(($) => $['form.indexMethod'], { ns: 'datasetSettings' })}
+              </div>
             </div>
-            <div className='grow'>
-              <IndexMethodRadio
-                disable={!localeCurrentDataset?.embedding_available}
+            <div className="grow">
+              <IndexMethod
+                disabled={!localeCurrentDataset?.embedding_available}
                 value={indexMethod}
-                onChange={v => setIndexMethod(v!)}
-                docForm={currentDataset.doc_form}
-                currentValue={currentDataset.indexing_technique}
+                onChange={setIndexMethod}
+                currentValue={currentDataset.indexing_technique ?? undefined}
+                keywordNumber={keywordNumber}
+                onKeywordNumberChange={setKeywordNumber}
               />
             </div>
           </div>
         )}
-        {indexMethod === 'high_quality' && (
+        {indexMethod === IndexingType.QUALIFIED && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.embeddingModel')}</div>
+              <div className="system-sm-semibold text-text-secondary">
+                {t(($) => $['form.embeddingModel'], { ns: 'datasetSettings' })}
+              </div>
             </div>
-            <div className='w-full'>
-              <div className='h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60'>
+            <div className="w-full">
+              <div className="h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60">
                 <ModelSelector
-                  readonly
-                  defaultModel={{
-                    provider: localeCurrentDataset.embedding_model_provider,
-                    model: localeCurrentDataset.embedding_model,
+                  disabled
+                  value={{
+                    provider: localeCurrentDataset.embedding_model_provider ?? '',
+                    model: localeCurrentDataset.embedding_model ?? '',
                   }}
-                  modelList={embeddingsModelList}
+                  models={embeddingModelList}
                 />
               </div>
-              <div className='mt-2 w-full text-xs leading-6 text-text-tertiary'>
-                {t('datasetSettings.form.embeddingModelTip')}
-                <span className='cursor-pointer text-text-accent' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+              <div className="mt-2 w-full text-xs/6 text-text-tertiary">
+                {t(($) => $['form.embeddingModelTip'], { ns: 'datasetSettings' })}
+                <button
+                  type="button"
+                  className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={() => setSettingsDestination('provider')}
+                >
+                  {t(($) => $['form.embeddingModelTipLink'], { ns: 'datasetSettings' })}
+                </button>
               </div>
             </div>
           </div>
         )}
 
         {/* Retrieval Method Config */}
-        {currentDataset?.provider === 'external'
-          ? <>
-            <div className={rowClass}><Divider /></div>
-            <div className={rowClass}>
-              <div className={labelClass}>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-              </div>
-              <RetrievalSettings
-                topK={topK}
-                scoreThreshold={scoreThreshold}
-                scoreThresholdEnabled={scoreThresholdEnabled}
-                onChange={handleSettingsChange}
-                isInRetrievalSetting={true}
-              />
-            </div>
-            <div className={rowClass}><Divider /></div>
-            <div className={rowClass}>
-              <div className={labelClass}>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
-              </div>
-              <div className='w-full max-w-[480px]'>
-                <div className='flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2'>
-                  <ApiConnectionMod className='h-4 w-4 text-text-secondary' />
-                  <div className='system-sm-medium overflow-hidden text-ellipsis text-text-secondary'>
-                    {currentDataset?.external_knowledge_info.external_knowledge_api_name}
-                  </div>
-                  <div className='system-xs-regular text-text-tertiary'>·</div>
-                  <div className='system-xs-regular text-text-tertiary'>{currentDataset?.external_knowledge_info.external_knowledge_api_endpoint}</div>
-                </div>
-              </div>
-            </div>
-            <div className={rowClass}>
-              <div className={labelClass}>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.externalKnowledgeID')}</div>
-              </div>
-              <div className='w-full max-w-[480px]'>
-                <div className='flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2'>
-                  <div className='system-xs-regular text-text-tertiary'>{currentDataset?.external_knowledge_info.external_knowledge_id}</div>
-                </div>
-              </div>
-            </div>
-            <div className={rowClass}><Divider /></div>
-          </>
-          : <div className={rowClass}>
-            <div className={cn(labelClass, 'w-auto min-w-[168px]')}>
-              <div>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-                <div className='text-xs font-normal leading-[18px] text-text-tertiary'>
-                  <a target='_blank' rel='noopener noreferrer' href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')} className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
-                  {t('datasetSettings.form.retrievalSetting.description')}
-                </div>
-              </div>
-            </div>
-            <div>
-              {indexMethod === 'high_quality'
-                ? (
-                  <RetrievalMethodConfig
-                    value={retrievalConfig}
-                    onChange={setRetrievalConfig}
-                  />
-                )
-                : (
-                  <EconomicalRetrievalMethodConfig
-                    value={retrievalConfig}
-                    onChange={setRetrievalConfig}
-                  />
-                )}
-            </div>
-          </div>}
+        {isExternal ? (
+          <RetrievalSection
+            isExternal
+            rowClass={rowClass}
+            labelClass={labelClass}
+            t={t}
+            topK={topK}
+            scoreThreshold={scoreThreshold}
+            scoreThresholdEnabled={scoreThresholdEnabled}
+            onExternalSettingChange={handleSettingsChange}
+            currentDataset={currentDataset}
+          />
+        ) : (
+          <RetrievalSection
+            isExternal={false}
+            rowClass={rowClass}
+            labelClass={labelClass}
+            t={t}
+            indexMethod={indexMethod}
+            retrievalConfig={retrievalConfig}
+            showMultiModalTip={showMultiModalTip}
+            onRetrievalConfigChange={setRetrievalConfig}
+            docLink={docLink}
+          />
+        )}
       </div>
-      {isRetrievalChanged && !isHideChangedTip && (
-        <div className='absolute bottom-[76px] left-[30px] right-[30px] z-10 flex h-10 items-center justify-between rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 shadow-lg'>
-          <div className='flex items-center'>
-            <AlertTriangle className='mr-1 h-3 w-3 text-[#F79009]' />
-            <div className='text-xs font-medium leading-[18px] text-gray-700'>{t('appDebug.datasetConfig.retrieveChangeTip')}</div>
-          </div>
-          <div className='cursor-pointer p-1' onClick={(e) => {
-            setIsHideChangedTip(true)
-            e.stopPropagation()
-            e.nativeEvent.stopImmediatePropagation()
-          }}>
-            <RiCloseLine className='h-4 w-4 text-gray-500' />
-          </div>
-        </div>
-      )}
+      <RetrievalChangeTip
+        visible={isRetrievalChanged && !isHideChangedTip}
+        message={t(($) => $['datasetConfig.retrieveChangeTip'], { ns: 'appDebug' })}
+        onDismiss={() => setIsHideChangedTip(true)}
+      />
 
-      <div
-        className='sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4'
-      >
-        <Button
-          onClick={onCancel}
-          className='mr-2'
-        >
-          {t('common.operation.cancel')}
+      <div className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4">
+        <Button onClick={onCancel} className="mr-2">
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Button
-          variant='primary'
-          disabled={loading}
-          onClick={handleSave}
-        >
-          {t('common.operation.save')}
+        <Button variant="primary" disabled={loading} onClick={handleSave}>
+          {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
       </div>
     </div>

@@ -1,27 +1,33 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalTraceSource } from './external-trace-row'
+import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
-import StatusPanel from './status'
-import MetaData from './meta'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
-import type {
-  AgentLogItemWithChildren,
-  NodeTracing,
-} from '@/types/workflow'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { hasRetryNode } from '@/app/components/workflow/utils'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log/agent-log-trigger'
 import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log'
 import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
-import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { hasRetryNode } from '@/app/components/workflow/utils'
+import LargeDataAlert from '../variable-inspect/large-data-alert'
+import { ExternalTraceRow } from './external-trace-row'
+import MetaData from './meta'
+import StatusPanel from './status'
 
 export type ResultPanelProps = {
   nodeInfo?: NodeTracing
   inputs?: string
+  inputs_truncated?: boolean
   process_data?: string
+  process_data_truncated?: boolean
   outputs?: string | Record<string, any>
+  outputs_truncated?: boolean
+  outputs_full_content?: {
+    download_url: string
+  }
   status: string
   error?: string
   elapsed_time?: number
@@ -33,6 +39,10 @@ export type ResultPanelProps = {
   showSteps?: boolean
   exceptionCounts?: number
   execution_metadata?: any
+  isListening?: boolean
+  workflowRunId?: string
+  externalTrace?: ExternalTraceSource
+  onOpenTracingTab?: () => void
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
@@ -42,8 +52,12 @@ export type ResultPanelProps = {
 const ResultPanel: FC<ResultPanelProps> = ({
   nodeInfo,
   inputs,
+  inputs_truncated,
   process_data,
+  process_data_truncated,
   outputs,
+  outputs_truncated,
+  outputs_full_content,
   status,
   error,
   elapsed_time,
@@ -54,12 +68,16 @@ const ResultPanel: FC<ResultPanelProps> = ({
   showSteps,
   exceptionCounts,
   execution_metadata,
+  isListening = false,
+  workflowRunId,
+  externalTrace,
+  onOpenTracingTab,
   handleShowIterationResultList,
   handleShowLoopResultList,
   onShowRetryDetail,
   handleShowAgentOrToolLog,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const isIterationNode = nodeInfo?.node_type === BlockEnum.Iteration && !!nodeInfo?.details?.length
   const isLoopNode = nodeInfo?.node_type === BlockEnum.Loop && !!nodeInfo?.details?.length
   const isRetryNode = hasRetryNode(nodeInfo?.node_type) && !!nodeInfo?.retryDetail?.length
@@ -67,82 +85,89 @@ const ResultPanel: FC<ResultPanelProps> = ({
   const isToolNode = nodeInfo?.node_type === BlockEnum.Tool && !!nodeInfo?.agentLog?.length
 
   return (
-    <div className='bg-components-panel-bg py-2'>
-      <div className='px-4 py-2'>
+    <div className="bg-components-panel-bg py-2">
+      <div className="px-4 py-2">
         <StatusPanel
           status={status}
           time={elapsed_time}
           tokens={total_tokens}
           error={error}
           exceptionCounts={exceptionCounts}
+          isListening={isListening}
+          workflowRunId={workflowRunId}
+          onOpenTracingTab={onOpenTracingTab}
         />
       </div>
-      <div className='px-4'>
-        {
-          isIterationNode && handleShowIterationResultList && (
-            <IterationLogTrigger
-              nodeInfo={nodeInfo}
-              onShowIterationResultList={handleShowIterationResultList}
-            />
-          )
-        }
-        {
-          isLoopNode && handleShowLoopResultList && (
-            <LoopLogTrigger
-              nodeInfo={nodeInfo}
-              onShowLoopResultList={handleShowLoopResultList}
-            />
-          )
-        }
-        {
-          isRetryNode && onShowRetryDetail && (
-            <RetryLogTrigger
-              nodeInfo={nodeInfo}
-              onShowRetryResultList={onShowRetryDetail}
-            />
-          )
-        }
-        {
-          (isAgentNode || isToolNode) && handleShowAgentOrToolLog && (
-            <AgentLogTrigger
-              nodeInfo={nodeInfo}
-              onShowAgentOrToolLog={handleShowAgentOrToolLog}
-            />
-          )
-        }
+      <div className="px-4">
+        {isIterationNode && handleShowIterationResultList && (
+          <IterationLogTrigger
+            nodeInfo={nodeInfo}
+            onShowIterationResultList={handleShowIterationResultList}
+          />
+        )}
+        {isLoopNode && handleShowLoopResultList && (
+          <LoopLogTrigger nodeInfo={nodeInfo} onShowLoopResultList={handleShowLoopResultList} />
+        )}
+        {isRetryNode && onShowRetryDetail && (
+          <RetryLogTrigger nodeInfo={nodeInfo} onShowRetryResultList={onShowRetryDetail} />
+        )}
+        {(isAgentNode || isToolNode) && handleShowAgentOrToolLog && (
+          <AgentLogTrigger nodeInfo={nodeInfo} onShowAgentOrToolLog={handleShowAgentOrToolLog} />
+        )}
       </div>
-      <div className='flex flex-col gap-2 px-4 py-2'>
+      <div className="flex flex-col gap-2 px-4 py-2">
         <CodeEditor
           readOnly
-          title={<div>{t('workflow.common.input').toLocaleUpperCase()}</div>}
+          title={<div>{t(($) => $['common.input'], { ns: 'workflow' }).toLocaleUpperCase()}</div>}
           language={CodeLanguage.json}
           value={inputs}
           isJSONStringifyBeauty
+          footer={inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1" />}
         />
         {process_data && (
           <CodeEditor
             readOnly
-            title={<div>{t('workflow.common.processData').toLocaleUpperCase()}</div>}
+            showFileList
+            title={
+              <div>{t(($) => $['common.processData'], { ns: 'workflow' }).toLocaleUpperCase()}</div>
+            }
             language={CodeLanguage.json}
             value={process_data}
             isJSONStringifyBeauty
+            footer={
+              process_data_truncated && (
+                <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1" />
+              )
+            }
           />
         )}
         {(outputs || status === 'running') && (
           <CodeEditor
             readOnly
-            title={<div>{t('workflow.common.output').toLocaleUpperCase()}</div>}
+            showFileList
+            title={
+              <div>{t(($) => $['common.output'], { ns: 'workflow' }).toLocaleUpperCase()}</div>
+            }
             language={CodeLanguage.json}
             value={outputs}
             isJSONStringifyBeauty
             tip={<ErrorHandleTip type={execution_metadata?.error_strategy} />}
+            footer={
+              outputs_truncated && (
+                <LargeDataAlert
+                  textHasNoExport
+                  downloadUrl={outputs_full_content?.download_url}
+                  className="mx-1 mt-2 mb-1"
+                />
+              )
+            }
           />
         )}
       </div>
-      <div className='px-4 py-2'>
-        <div className='divider-subtle h-[0.5px]' />
+      <div className="px-4 py-2">
+        <div className="divider-subtle h-[0.5px]" />
       </div>
-      <div className='px-4 py-2'>
+      <div className="px-4 py-2">
         <MetaData
           status={status}
           executor={created_by}
@@ -151,7 +176,9 @@ const ResultPanel: FC<ResultPanelProps> = ({
           tokens={total_tokens}
           steps={steps}
           showSteps={showSteps}
-        />
+        >
+          {externalTrace && <ExternalTraceRow source={externalTrace} />}
+        </MetaData>
       </div>
     </div>
   )

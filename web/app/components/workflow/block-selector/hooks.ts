@@ -1,59 +1,134 @@
+import type { ReactNode } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BLOCKS } from './constants'
-import {
-  TabsEnum,
-  ToolTypeEnum,
-} from './types'
+import { TabType, ToolType } from './types'
 
 export const useBlocks = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return BLOCKS.map((block) => {
     return {
       ...block,
-      title: t(`workflow.blocks.${block.type}`),
+      title: t(($) => $[`blocks.${block.type}`], { ns: 'workflow' }),
     }
   })
 }
 
-export const useTabs = () => {
-  const { t } = useTranslation()
+export const useTabs = ({
+  noBlocks,
+  noSources,
+  noTools,
+  noSnippets,
+  noStart = true,
+  defaultActiveTab,
+  hasStartPlaceholderNode = false,
+  disableStartTab = false,
+  forceEnableStartTab = false, // When true, Start tab remains enabled even if trigger/user input nodes already exist.
+}: {
+  noBlocks?: boolean
+  noSources?: boolean
+  noTools?: boolean
+  noSnippets?: boolean
+  noStart?: boolean
+  defaultActiveTab?: TabType
+  hasStartPlaceholderNode?: boolean
+  disableStartTab?: boolean
+  forceEnableStartTab?: boolean
+}) => {
+  const { t } = useTranslation(['workflow'])
+  const shouldShowStartTab = !noStart
+  const shouldDisableStartTab = disableStartTab || (!forceEnableStartTab && hasStartPlaceholderNode)
+  const startDisabledTip: ReactNode = disableStartTab
+    ? t(($) => $['tabs.startNotSupportedTip'], { ns: 'workflow' })
+    : hasStartPlaceholderNode
+      ? t(($) => $['tabs.unconfiguredStartDisabledTip'], { ns: 'workflow' })
+      : t(($) => $['tabs.startDisabledTip'], { ns: 'workflow' })
+  const tabs = useMemo(() => {
+    const tabConfigs = [
+      {
+        key: TabType.Blocks,
+        name: t(($) => $['tabs.blocks'], { ns: 'workflow' }),
+        show: !noBlocks,
+      },
+      {
+        key: TabType.Tools,
+        name: t(($) => $['tabs.tools'], { ns: 'workflow' }),
+        show: !noTools,
+      },
+      {
+        key: TabType.Sources,
+        name: t(($) => $['tabs.sources'], { ns: 'workflow' }),
+        show: !noSources,
+      },
+      {
+        key: TabType.Start,
+        name: t(($) => $['tabs.start'], { ns: 'workflow' }),
+        show: shouldShowStartTab,
+        disabled: shouldDisableStartTab,
+        disabledTip: shouldDisableStartTab ? startDisabledTip : undefined,
+      },
+      {
+        key: TabType.Snippets,
+        name: t(($) => $['tabs.snippets'], { ns: 'workflow' }),
+        show: !noSnippets,
+      },
+    ]
 
-  return [
-    {
-      key: TabsEnum.Blocks,
-      name: t('workflow.tabs.blocks'),
-    },
-    {
-      key: TabsEnum.Tools,
-      name: t('workflow.tabs.tools'),
-    },
-  ]
+    return tabConfigs.filter((tab) => tab.show)
+  }, [
+    t,
+    noBlocks,
+    noSources,
+    noTools,
+    noSnippets,
+    shouldShowStartTab,
+    shouldDisableStartTab,
+    startDisabledTip,
+  ])
+
+  const initialTab = useMemo(() => {
+    const getValidTabKey = (targetKey?: TabType) => {
+      if (!targetKey) return undefined
+      const tab = tabs.find((tabItem) => tabItem.key === targetKey)
+      if (!tab || tab.disabled) return undefined
+      return tab.key
+    }
+    const preferredDefault = getValidTabKey(defaultActiveTab)
+    if (preferredDefault) return preferredDefault
+
+    return tabs.find((tab) => !tab.disabled)?.key ?? TabType.Blocks
+  }, [defaultActiveTab, tabs])
+
+  return {
+    tabs,
+    initialTab,
+  }
 }
 
 export const useToolTabs = (isHideMCPTools?: boolean) => {
-  const { t } = useTranslation()
-  const tabs = [
+  const { t } = useTranslation(['workflow'])
+  const tabs: Array<{ key: ToolType; name: string }> = [
     {
-      key: ToolTypeEnum.All,
-      name: t('workflow.tabs.allTool'),
+      key: ToolType.All,
+      name: t(($) => $['tabs.allTool'], { ns: 'workflow' }),
     },
     {
-      key: ToolTypeEnum.BuiltIn,
-      name: t('workflow.tabs.plugin'),
+      key: ToolType.BuiltIn,
+      name: t(($) => $['tabs.plugin'], { ns: 'workflow' }),
     },
     {
-      key: ToolTypeEnum.Custom,
-      name: t('workflow.tabs.customTool'),
+      key: ToolType.Custom,
+      name: t(($) => $['tabs.customTool'], { ns: 'workflow' }),
     },
     {
-      key: ToolTypeEnum.Workflow,
-      name: t('workflow.tabs.workflowTool'),
+      key: ToolType.Workflow,
+      name: t(($) => $['tabs.workflowTool'], { ns: 'workflow' }),
     },
   ]
-  if(!isHideMCPTools) {
+  if (!isHideMCPTools) {
     tabs.push({
-      key: ToolTypeEnum.MCP,
+      key: ToolType.MCP,
       name: 'MCP',
     })
   }

@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import DatasetUpdateForm from '@/app/components/datasets/create'
 
 export type IProps = {
@@ -8,13 +8,9 @@ export type IProps = {
 const Create = async (props: IProps) => {
   const params = await props.params
 
-  const {
-    datasetId,
-  } = params
+  const { datasetId } = params
 
-  return (
-    <DatasetUpdateForm datasetId={datasetId} />
-  )
+  return <DatasetUpdateForm datasetId={datasetId} />
 }
 
 export default Create

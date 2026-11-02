@@ -1,0 +1,32 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { RiSearchEyeLine } from '@remixicon/react'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+
+type HeaderProps = {
+  onReset: () => void
+  resetDisabled: boolean
+  previewDisabled: boolean
+  onPreview?: () => void
+}
+
+const Header = ({ onReset, resetDisabled, previewDisabled, onPreview }: HeaderProps) => {
+  const { t } = useTranslation(['common', 'datasetPipeline'])
+
+  return (
+    <div className="flex items-center gap-x-1 px-4 py-2">
+      <div className="grow system-sm-semibold-uppercase text-text-secondary">
+        {t(($) => $['addDocuments.stepTwo.chunkSettings'], { ns: 'datasetPipeline' })}
+      </div>
+      <Button variant="ghost" disabled={resetDisabled} onClick={onReset}>
+        {t(($) => $['operation.reset'], { ns: 'common' })}
+      </Button>
+      <Button variant="secondary-accent" onClick={onPreview} disabled={previewDisabled}>
+        <RiSearchEyeLine className="size-4" />
+        <span>{t(($) => $['addDocuments.stepTwo.previewChunks'], { ns: 'datasetPipeline' })}</span>
+      </Button>
+    </div>
+  )
+}
+
+export default React.memo(Header)

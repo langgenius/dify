@@ -1,14 +1,28 @@
 import json
 import logging
+import re
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Any, Optional, Union
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.agent.base_agent_runner import BaseAgentRunner
+from core.agent.errors import AgentMaxIterationError
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
-from core.file import file_manager
-from core.model_runtime.entities import (
+from core.app.file_access import grant_upload_file_access
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.model_context import use_credit_usage_metadata
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.signature import sign_upload_file_preview_url
+from core.tools.tool_engine import ToolEngine
+from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+from core.workflow.file_reference import build_file_reference
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
     LLMResultChunk,
@@ -21,17 +35,72 @@ from core.model_runtime.entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
-from core.tools.entities.tool_entities import ToolInvokeMeta
-from core.tools.tool_engine import ToolEngine
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from models import UploadFile
 from models.model import Message
 
 logger = logging.getLogger(__name__)
 
+_FILE_PREVIEW_ID_PATTERN = re.compile(r"/files/([a-fA-F0-9-]{36})/file-preview")
+_KNOWLEDGE_RETRIEVAL_PROMPT_NAME = "knowledge_retrieval"
+
 
 class FunctionCallAgentRunner(BaseAgentRunner):
-    def run(self, message: Message, query: str, **kwargs: Any) -> Generator[LLMResultChunk, None, None]:
+    def _build_dataset_tool_image_contents(
+        self, session: Session, tool_response: str, tool_instance: Any
+    ) -> list[PromptMessageContentUnionTypes]:
+        if not self.vision_enabled or not isinstance(tool_instance, DatasetRetrieverTool):
+            return []
+
+        upload_file_ids = list(dict.fromkeys(_FILE_PREVIEW_ID_PATTERN.findall(tool_response)))
+        if not upload_file_ids:
+            return []
+
+        upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
+        upload_file_map = {str(upload_file.id): upload_file for upload_file in upload_files}
+        ordered_upload_files = [
+            upload_file_map[upload_file_id] for upload_file_id in upload_file_ids if upload_file_id in upload_file_map
+        ]
+        image_upload_files = [
+            upload_file for upload_file in ordered_upload_files if (upload_file.mime_type or "").startswith("image/")
+        ]
+        if not image_upload_files:
+            return []
+
+        grant_upload_file_access(str(upload_file.id) for upload_file in image_upload_files)
+
+        image_detail_config = (
+            self.application_generate_entity.file_upload_config.image_config.detail
+            if (
+                self.application_generate_entity.file_upload_config
+                and self.application_generate_entity.file_upload_config.image_config
+            )
+            else None
+        )
+        image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+
+        prompt_message_contents: list[PromptMessageContentUnionTypes] = []
+        for upload_file in image_upload_files:
+            prompt_file = File(
+                file_id=upload_file.id,
+                filename=upload_file.name,
+                extension="." + upload_file.extension,
+                mime_type=upload_file.mime_type,
+                file_type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                remote_url=upload_file.source_url,
+                reference=build_file_reference(record_id=str(upload_file.id)),
+                size=upload_file.size,
+                storage_key=upload_file.key,
+                url=sign_upload_file_preview_url(upload_file.id, upload_file.extension),
+            )
+            prompt_message_contents.append(
+                file_manager.to_prompt_message_content(prompt_file, image_detail_config=image_detail_config)
+            )
+
+        return prompt_message_contents
+
+    def run(self, session: Session, message: Message, query: str, **kwargs: Any) -> Generator[LLMResultChunk]:
         """
         Run FunctionCall agent application
         """
@@ -52,13 +121,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         # continue to run until there is not any tool call
         function_call_state = True
-        llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
+        llm_usage: dict[str, LLMUsage | None] = {"usage": None}
         final_answer = ""
+        prompt_messages: list = []  # Initialize prompt_messages
 
-        # get tracing instance
-        trace_manager = app_generate_entity.trace_manager
+        trace_scope = app_generate_entity.trace_scope
 
-        def increase_usage(final_llm_usage_dict: dict[str, Optional[LLMUsage]], usage: LLMUsage):
+        def increase_usage(final_llm_usage_dict: dict[str, LLMUsage | None], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
                 final_llm_usage_dict["usage"] = usage
             else:
@@ -80,22 +149,37 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 prompt_messages_tools = []
 
             message_file_ids: list[str] = []
-            agent_thought = self.create_agent_thought(
-                message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
+            agent_thought_id = self.create_agent_thought(
+                message_id=message.id,
+                message="",
+                tool_name="",
+                tool_input="",
+                messages_ids=message_file_ids,
             )
 
             # recalc llm max tokens
             prompt_messages = self._organize_prompt_messages()
             self.recalc_llm_max_tokens(self.model_config, prompt_messages)
+
+            # Release any setup/tool transaction before waiting on the provider stream.
+            session.commit()
+            session.close()
+
             # invoke model
-            chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = model_instance.invoke_llm(
+            request_metadata: dict[str, object] = {
+                "app_id": self.app_config.app_id,
+                "app_type": CreditUsageAppType.AGENT,
+                "created_by": CreditUsageCreatedBy.APP,
+            }
+
+            chunks: Generator[LLMResultChunk] | LLMResult = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
                 tools=prompt_messages_tools,
                 stop=app_generate_entity.model_conf.stop,
                 stream=self.stream_tool_call,
-                user=self.user_id,
                 callbacks=[],
+                request_metadata=request_metadata,
             )
 
             tool_calls: list[tuple[str, str, dict[str, Any]]] = []
@@ -114,7 +198,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 for chunk in chunks:
                     if is_first_chunk:
                         self.queue_manager.publish(
-                            QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                            QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                         )
                         is_first_chunk = False
                     # check if there is any tool call
@@ -126,8 +210,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             tool_call_inputs = json.dumps(
                                 {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                             )
-                        except json.JSONDecodeError:
-                            # ensure ascii to avoid encoding error
+                        except TypeError:
+                            # fallback: force ASCII to handle non-serializable objects
                             tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
                     if chunk.delta.message and chunk.delta.message.content:
@@ -153,8 +237,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         tool_call_inputs = json.dumps(
                             {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                         )
-                    except json.JSONDecodeError:
-                        # ensure ascii to avoid encoding error
+                    except TypeError:
+                        # fallback: force ASCII to handle non-serializable objects
                         tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
                 if result.usage:
@@ -166,17 +250,17 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         for content in result.message.content:
                             response += content.data
                     else:
-                        response += str(result.message.content)
+                        response += result.message.content
 
                 if not result.message.content:
                     result.message.content = ""
 
                 self.queue_manager.publish(
-                    QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                    QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                 )
 
                 yield LLMResultChunk(
-                    model=model_instance.model,
+                    model=model_instance.model_name,
                     prompt_messages=result.prompt_messages,
                     system_fingerprint=result.system_fingerprint,
                     delta=LLMResultChunkDelta(
@@ -186,7 +270,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     ),
                 )
 
-            assistant_message = AssistantPromptMessage(content="", tool_calls=[])
+            assistant_message = AssistantPromptMessage(content=response, tool_calls=[])
             if tool_calls:
                 assistant_message.tool_calls = [
                     AssistantPromptMessage.ToolCall(
@@ -198,14 +282,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     )
                     for tool_call in tool_calls
                 ]
-            else:
-                assistant_message.content = response
 
             self._current_thoughts.append(assistant_message)
 
             # save thought
             self.save_agent_thought(
-                agent_thought=agent_thought,
+                agent_thought_id=agent_thought_id,
                 tool_name=tool_call_names,
                 tool_input=tool_call_inputs,
                 thought=response,
@@ -216,10 +298,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 llm_usage=current_llm_usage,
             )
             self.queue_manager.publish(
-                QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
             )
 
             final_answer += response + "\n"
+
+            # Check if max iteration is reached and model still wants to call tools
+            if iteration_step == max_iteration_steps and tool_calls:
+                raise AgentMaxIterationError(app_config.agent.max_iteration)
 
             # call tools
             tool_responses = []
@@ -234,19 +320,23 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     }
                 else:
                     # invoke tool
-                    tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
-                        tool=tool_instance,
-                        tool_parameters=tool_call_args,
-                        user_id=self.user_id,
-                        tenant_id=self.tenant_id,
-                        message=self.message,
-                        invoke_from=self.application_generate_entity.invoke_from,
-                        agent_tool_callback=self.agent_callback,
-                        trace_manager=trace_manager,
-                        app_id=self.application_generate_entity.app_config.app_id,
-                        message_id=self.message.id,
-                        conversation_id=self.conversation.id,
-                    )
+                    with use_credit_usage_metadata({"app_type": CreditUsageAppType.AGENT}):
+                        tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+                            session=session,
+                            tool=tool_instance,
+                            tool_parameters=tool_call_args,
+                            user_id=self.user_id,
+                            tenant_id=self.tenant_id,
+                            message=self.message,
+                            invoke_from=self.application_generate_entity.invoke_from,
+                            agent_tool_callback=self.agent_callback,
+                            trace_scope=trace_scope,
+                            app_id=self.application_generate_entity.app_config.app_id,
+                            message_id=self.message.id,
+                            conversation_id=self.conversation.id,
+                        )
+                    session.commit()
+                    session.close()
                     # publish files
                     for message_file_id in message_files:
                         # publish message file
@@ -265,18 +355,34 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
                 tool_responses.append(tool_response)
                 if tool_response["tool_response"] is not None:
+                    tool_response_text = str(tool_response["tool_response"])
+                    dataset_image_contents = self._build_dataset_tool_image_contents(
+                        session=session,
+                        tool_response=tool_response_text,
+                        tool_instance=tool_instance,
+                    )
                     self._current_thoughts.append(
                         ToolPromptMessage(
-                            content=str(tool_response["tool_response"]),
+                            content=tool_response_text,
                             tool_call_id=tool_call_id,
                             name=tool_call_name,
                         )
                     )
+                    if dataset_image_contents:
+                        self._current_thoughts.append(
+                            UserPromptMessage(
+                                name=_KNOWLEDGE_RETRIEVAL_PROMPT_NAME,
+                                content=[
+                                    *dataset_image_contents,
+                                    TextPromptMessageContent(data=self.query or tool_response_text),
+                                ],
+                            )
+                        )
 
             if len(tool_responses) > 0:
                 # save agent thought
                 self.save_agent_thought(
-                    agent_thought=agent_thought,
+                    agent_thought_id=agent_thought_id,
                     tool_name="",
                     tool_input="",
                     thought="",
@@ -291,12 +397,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     messages_ids=message_file_ids,
                 )
                 self.queue_manager.publish(
-                    QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                    QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                 )
 
             # update prompt tool
             for prompt_tool in prompt_messages_tools:
-                self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
+                tool_instance = tool_instances.get(prompt_tool.name)
+                if tool_instance:
+                    self.update_prompt_message_tool(tool_instance, prompt_tool)
 
             iteration_step += 1
 
@@ -304,7 +412,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         self.queue_manager.publish(
             QueueMessageEndEvent(
                 llm_result=LLMResult(
-                    model=model_instance.model,
+                    model=model_instance.model_name,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(content=final_answer),
                     usage=llm_usage["usage"] or LLMUsage.empty_usage(),
@@ -318,17 +426,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         """
         Check if there is any tool call in llm result chunk
         """
-        if llm_result_chunk.delta.message.tool_calls:
-            return True
-        return False
+        return bool(llm_result_chunk.delta.message.tool_calls)
 
     def check_blocking_tool_calls(self, llm_result: LLMResult) -> bool:
         """
         Check if there is any blocking tool call in llm result
         """
-        if llm_result.message.tool_calls:
-            return True
-        return False
+        return bool(llm_result.message.tool_calls)
 
     def extract_tool_calls(self, llm_result_chunk: LLMResultChunk) -> list[tuple[str, str, dict[str, Any]]]:
         """
@@ -395,9 +499,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         Organize user query
         """
         if self.files:
-            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-            prompt_message_contents.append(TextPromptMessageContent(data=query))
-
             # get image detail config
             image_detail_config = (
                 self.application_generate_entity.file_upload_config.image_config.detail
@@ -408,6 +509,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 else None
             )
             image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             for file in self.files:
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(
@@ -415,6 +518,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         image_detail_config=image_detail_config,
                     )
                 )
+            prompt_message_contents.append(TextPromptMessageContent(data=query))
 
             prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         else:
@@ -431,6 +535,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         for prompt_message in prompt_messages:
             if isinstance(prompt_message, UserPromptMessage):
+                if prompt_message.name == _KNOWLEDGE_RETRIEVAL_PROMPT_NAME:
+                    continue
                 if isinstance(prompt_message.content, list):
                     prompt_message.content = "\n".join(
                         [

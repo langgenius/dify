@@ -1,17 +1,25 @@
+from typing import Any, Literal
+
 from core.plugin.entities.endpoint import EndpointEntityWithInstance
 from core.plugin.impl.base import BasePluginClient
+from core.plugin.impl.exc import PluginDaemonInternalServerError
 
 
 class PluginEndpointClient(BasePluginClient):
     def create_endpoint(
-        self, tenant_id: str, user_id: str, plugin_unique_identifier: str, name: str, settings: dict
-    ) -> bool:
+        self,
+        tenant_id: str,
+        user_id: str,
+        plugin_unique_identifier: str,
+        name: str,
+        settings: dict[str, Any],
+    ) -> Literal[True]:
         """
         Create an endpoint for the given plugin.
 
         Errors will be raised if any error occurs.
         """
-        return self._request_with_plugin_daemon_response(
+        success = self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/endpoint/setup",
             bool,
@@ -25,10 +33,16 @@ class PluginEndpointClient(BasePluginClient):
                 "name": name,
             },
         )
+        if not success:
+            raise PluginDaemonInternalServerError("Plugin daemon failed to create the endpoint")
+        return success
 
     def list_endpoints(self, tenant_id: str, user_id: str, page: int, page_size: int):
         """
-        List all endpoints for the given tenant and user.
+        List all endpoints for the given tenant.
+
+        The daemon list route binds only tenant and pagination fields; user_id is
+        retained in this client signature for consistency with endpoint services.
         """
         return self._request_with_plugin_daemon_response(
             "GET",
@@ -39,7 +53,10 @@ class PluginEndpointClient(BasePluginClient):
 
     def list_endpoints_for_single_plugin(self, tenant_id: str, user_id: str, plugin_id: str, page: int, page_size: int):
         """
-        List all endpoints for the given tenant, user and plugin.
+        List all endpoints for the given tenant and plugin.
+
+        The daemon list route binds tenant, plugin and pagination fields; user_id
+        is retained in this client signature for consistency with endpoint services.
         """
         return self._request_with_plugin_daemon_response(
             "GET",
@@ -48,11 +65,13 @@ class PluginEndpointClient(BasePluginClient):
             params={"plugin_id": plugin_id, "page": page, "page_size": page_size},
         )
 
-    def update_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str, name: str, settings: dict):
+    def update_endpoint(
+        self, tenant_id: str, user_id: str, endpoint_id: str, name: str, settings: dict[str, Any]
+    ) -> Literal[True]:
         """
         Update the settings of the given endpoint.
         """
-        return self._request_with_plugin_daemon_response(
+        success = self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/endpoint/update",
             bool,
@@ -66,28 +85,43 @@ class PluginEndpointClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
+        if not success:
+            raise PluginDaemonInternalServerError("Plugin daemon failed to update the endpoint")
+        return success
 
-    def delete_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str):
+    def delete_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str) -> Literal[True]:
         """
         Delete the given endpoint.
-        """
-        return self._request_with_plugin_daemon_response(
-            "POST",
-            f"plugin/{tenant_id}/endpoint/remove",
-            bool,
-            data={
-                "endpoint_id": endpoint_id,
-            },
-            headers={
-                "Content-Type": "application/json",
-            },
-        )
 
-    def enable_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str):
+        This operation is idempotent: if the endpoint is already deleted (record not found),
+        it will return True instead of raising an error.
+        """
+        try:
+            success = self._request_with_plugin_daemon_response(
+                "POST",
+                f"plugin/{tenant_id}/endpoint/remove",
+                bool,
+                data={
+                    "endpoint_id": endpoint_id,
+                },
+                headers={
+                    "Content-Type": "application/json",
+                },
+            )
+        except PluginDaemonInternalServerError as e:
+            # Make delete idempotent: if record is not found, consider it a success
+            if "record not found" in str(e.description).lower():
+                return True
+            raise
+        if not success:
+            raise PluginDaemonInternalServerError("Plugin daemon failed to delete the endpoint")
+        return success
+
+    def enable_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str) -> Literal[True]:
         """
         Enable the given endpoint.
         """
-        return self._request_with_plugin_daemon_response(
+        success = self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/endpoint/enable",
             bool,
@@ -98,12 +132,15 @@ class PluginEndpointClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
+        if not success:
+            raise PluginDaemonInternalServerError("Plugin daemon failed to enable the endpoint")
+        return success
 
-    def disable_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str):
+    def disable_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str) -> Literal[True]:
         """
         Disable the given endpoint.
         """
-        return self._request_with_plugin_daemon_response(
+        success = self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/endpoint/disable",
             bool,
@@ -114,3 +151,6 @@ class PluginEndpointClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
+        if not success:
+            raise PluginDaemonInternalServerError("Plugin daemon failed to disable the endpoint")
+        return success

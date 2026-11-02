@@ -1,78 +1,102 @@
 'use client'
+import type { MarketplaceCollection, SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { Plugin } from '../../types'
-import type { MarketplaceCollection } from '../types'
-import ListWithCollection from './list-with-collection'
-import CardWrapper from './card-wrapper'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useMemo } from 'react'
+import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
+import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
+import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import Empty from '../empty'
-import cn from '@/utils/classnames'
+import CardWrapper from './card-wrapper'
+import { GRID_CLASS } from './collection-constants'
+import ListWithCollection from './list-with-collection'
 
 type ListProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   plugins?: Plugin[]
   showInstallButton?: boolean
-  locale: string
+  linkToMarketplaceDetail?: boolean
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
-  onMoreClick?: () => void
   emptyClassName?: string
+  onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
+  deferOffscreenCollections?: boolean
+  cardSection?: string
 }
 const List = ({
   marketplaceCollections,
   marketplaceCollectionPluginsMap,
   plugins,
   showInstallButton,
-  locale,
+  linkToMarketplaceDetail,
   cardContainerClassName,
   cardRender,
-  onMoreClick,
   emptyClassName,
+  onCollectionMoreClick,
+  deferOffscreenCollections,
+  cardSection = 'list',
 }: ListProps) => {
-  return (
-    <>
-      {
-        !plugins && (
-          <ListWithCollection
-            marketplaceCollections={marketplaceCollections}
-            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
-            showInstallButton={showInstallButton}
-            locale={locale}
-            cardContainerClassName={cardContainerClassName}
-            cardRender={cardRender}
-            onMoreClick={onMoreClick}
-          />
-        )
-      }
-      {
-        plugins && !!plugins.length && (
-          <div className={cn(
-            'grid grid-cols-4 gap-3',
-            cardContainerClassName,
-          )}>
-            {
-              plugins.map((plugin) => {
-                if (cardRender)
-                  return cardRender(plugin)
+  const { canInstallPlugin } = useOptionalPluginInstallPermission()
+  const pluginIds = useMemo(() => {
+    const ids = new Set<string>()
+    const addPluginId = (plugin: Plugin) => ids.add(plugin.plugin_id)
 
-                return (
-                  <CardWrapper
-                    key={plugin.name}
-                    plugin={plugin}
-                    showInstallButton={showInstallButton}
-                    locale={locale}
-                  />
-                )
-              })
-            }
-          </div>
-        )
-      }
-      {
-        plugins && !plugins.length && (
-          <Empty className={emptyClassName} locale={locale} />
-        )
-      }
-    </>
+    if (plugins) plugins.forEach(addPluginId)
+    else
+      Object.values(marketplaceCollectionPluginsMap).forEach((collectionPlugins) => {
+        collectionPlugins.forEach(addPluginId)
+      })
+
+    return [...ids].sort()
+  }, [marketplaceCollectionPluginsMap, plugins])
+
+  const shouldCheckInstalled =
+    !!showInstallButton && canInstallPlugin && !cardRender && pluginIds.length > 0
+  const { installedInfo } = useCheckInstalled({
+    pluginIds,
+    enabled: shouldCheckInstalled,
+  })
+  const installedPluginIds = useMemo(
+    () => new Set(Object.keys(installedInfo ?? {})),
+    [installedInfo],
+  )
+
+  return (
+    <PluginInstallPermissionProviderGuard canInstallPlugin={!!showInstallButton}>
+      {!plugins && (
+        <ListWithCollection
+          marketplaceCollections={marketplaceCollections}
+          marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+          showInstallButton={showInstallButton}
+          linkToMarketplaceDetail={linkToMarketplaceDetail}
+          cardContainerClassName={cardContainerClassName}
+          cardRender={cardRender}
+          onCollectionMoreClick={onCollectionMoreClick}
+          installedPluginIds={installedPluginIds}
+          deferOffscreenCollections={deferOffscreenCollections}
+        />
+      )}
+      {plugins && !!plugins.length && (
+        <div className={cn(GRID_CLASS, cardContainerClassName)}>
+          {plugins.map((plugin) => {
+            if (cardRender) return cardRender(plugin)
+
+            return (
+              <CardWrapper
+                key={`${plugin.org}/${plugin.name}`}
+                plugin={plugin}
+                showInstallButton={showInstallButton}
+                isInstalled={installedPluginIds.has(plugin.plugin_id)}
+                linkToMarketplaceDetail={linkToMarketplaceDetail}
+                section={cardSection}
+              />
+            )
+          })}
+        </div>
+      )}
+      {plugins && !plugins.length && <Empty className={emptyClassName} />}
+    </PluginInstallPermissionProviderGuard>
   )
 }
 

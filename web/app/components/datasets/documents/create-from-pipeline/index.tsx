@@ -1,0 +1,354 @@
+'use client'
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen'
+import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { Node } from '@/app/components/workflow/types'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { selectPublishedPipelineNodes } from '@/app/components/rag-pipeline/utils/query-select'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import {
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+} from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { DatasourceType } from '@/models/pipeline'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { getDatasetACLCapabilities } from '@/utils/permission'
+import { useDataSourceStore } from './data-source/store'
+import DataSourceProvider from './data-source/store/provider'
+import {
+  useAddDocumentsSteps,
+  useDatasourceActions,
+  useDatasourceUIState,
+  useLocalFile,
+  useOnlineDocument,
+  useOnlineDrive,
+  useWebsiteCrawl,
+} from './hooks'
+import LeftHeader from './left-header'
+import { StepOneContent, StepThreeContent, StepTwoContent } from './steps'
+import { StepOnePreview, StepTwoPreview } from './steps/preview-panel'
+
+const CreateFormPipeline = () => {
+  const { t } = useTranslation(['billing', 'datasetPipeline'])
+  const router = useRouter()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
+  const pipelineId = dataset?.pipeline_id ?? undefined
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const dataSourceStore = useDataSourceStore()
+  const canAddDocumentsToDataset = getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: dataset?.maintainer,
+    workspacePermissionKeys,
+  }).canUse
+  const shouldRedirectToDocuments =
+    !!dataset && !isLoadingWorkspacePermissionKeys && !canAddDocumentsToDataset
+
+  // Core state
+  const [datasource, setDatasource] = useState<Datasource>()
+  const [estimateData, setEstimateData] = useState<IndexingEstimateResponse | undefined>(undefined)
+  const [batchId, setBatchId] = useState('')
+  const [documents, setDocuments] = useState<PipelineDocument[]>([])
+
+  // Data fetching
+  const { data: pipelineNodes, isFetching: isFetchingPipelineInfo } = useQuery(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryOptions({
+      input: { params: { pipeline_id: pipelineId || '' } },
+      enabled: !!pipelineId,
+      select: selectPublishedPipelineNodes,
+    }),
+  )
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
+
+  const fileUploadConfig = useMemo(
+    () => ({
+      ...fileUploadConfigResponse,
+      file_size_limit:
+        fileUploadConfigResponse?.knowledge_file_size_limit ??
+        fileUploadConfigResponse?.file_size_limit ??
+        15,
+      batch_count_limit: fileUploadConfigResponse?.batch_count_limit ?? 5,
+    }),
+    [fileUploadConfigResponse],
+  )
+
+  // Steps management
+  const {
+    steps,
+    currentStep,
+    handleNextStep: doHandleNextStep,
+    handleBackStep,
+  } = useAddDocumentsSteps()
+
+  // Datasource-specific hooks
+  const { localFileList, allFileLoaded, currentLocalFile, hidePreviewLocalFile } = useLocalFile()
+
+  const {
+    currentWorkspace,
+    onlineDocuments,
+    currentDocument,
+    PagesMapAndSelectedPagesId,
+    hidePreviewOnlineDocument,
+    clearOnlineDocumentData,
+  } = useOnlineDocument()
+
+  const { websitePages, currentWebsite, hideWebsitePreview, clearWebsiteCrawlData } =
+    useWebsiteCrawl()
+
+  const {
+    onlineDriveFileList,
+    selectedFileIds,
+    selectedOnlineDriveFileList,
+    clearOnlineDriveData,
+  } = useOnlineDrive()
+
+  // Computed values
+  const shouldCheckVectorSpace =
+    deploymentEdition === 'CLOUD' &&
+    (allFileLoaded ||
+      onlineDocuments.length > 0 ||
+      websitePages.length > 0 ||
+      selectedFileIds.length > 0)
+  const {
+    data: vectorSpace,
+    isFetching: isFetchingVectorSpacePlan,
+    refetch: refetchVectorSpace,
+  } = useQuery(
+    consoleQuery.features.vectorSpace.get.queryOptions({ enabled: shouldCheckVectorSpace }),
+  )
+  const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
+  const isVectorSpaceUnavailable =
+    shouldCheckVectorSpace && plan === 'sandbox' && !!vectorSpace?.usage_unknown
+  const isVectorSpaceFull =
+    deploymentEdition === 'CLOUD' &&
+    !!vectorSpace &&
+    !vectorSpace.usage_unknown &&
+    vectorSpace.limit > 0 &&
+    vectorSpace.size >= vectorSpace.limit
+  const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
+  const supportBatchUpload =
+    deploymentEdition !== 'CLOUD' || plan === 'professional' || plan === 'team'
+
+  // UI state
+  const {
+    datasourceType,
+    isShowVectorSpaceFull,
+    nextBtnDisabled,
+    showSelect,
+    totalOptions,
+    selectedOptions,
+    tip,
+  } = useDatasourceUIState({
+    datasource,
+    allFileLoaded,
+    localFileListLength: localFileList.length,
+    onlineDocumentsLength: onlineDocuments.length,
+    websitePagesLength: websitePages.length,
+    selectedFileIdsLength: selectedFileIds.length,
+    onlineDriveFileList,
+    isVectorSpaceFull,
+    isCheckingVectorSpace: isCheckingVectorSpace || isVectorSpaceUnavailable,
+    currentWorkspacePagesLength: currentWorkspace?.pages.length ?? 0,
+    fileUploadConfig,
+  })
+
+  // Plan upgrade modal
+  const [
+    isShowPlanUpgradeModal,
+    { setTrue: showPlanUpgradeModal, setFalse: hidePlanUpgradeModal },
+  ] = useBoolean(false)
+
+  // Next step with batch upload check
+  const handleNextStep = useCallback(() => {
+    if (isPlanUnavailable) return
+    if (!supportBatchUpload) {
+      const multipleCheckMap: Record<string, number> = {
+        [DatasourceType.localFile]: localFileList.length,
+        [DatasourceType.onlineDocument]: onlineDocuments.length,
+        [DatasourceType.websiteCrawl]: websitePages.length,
+        [DatasourceType.onlineDrive]: selectedFileIds.length,
+      }
+      const count = datasourceType ? multipleCheckMap[datasourceType] : 0
+      if (count! > 1) {
+        showPlanUpgradeModal()
+        return
+      }
+    }
+    doHandleNextStep()
+  }, [
+    datasourceType,
+    doHandleNextStep,
+    localFileList.length,
+    onlineDocuments.length,
+    selectedFileIds.length,
+    showPlanUpgradeModal,
+    isPlanUnavailable,
+    supportBatchUpload,
+    websitePages.length,
+  ])
+
+  // Datasource actions
+  const {
+    isPreview,
+    formRef,
+    isIdle,
+    isPending,
+    onClickProcess,
+    onClickPreview,
+    handleSubmit,
+    handlePreviewFileChange,
+    handlePreviewOnlineDocumentChange,
+    handlePreviewWebsiteChange,
+    handlePreviewOnlineDriveFileChange,
+    handleSelectAll,
+    handleSwitchDataSource,
+    handleCredentialChange,
+  } = useDatasourceActions({
+    datasource,
+    datasourceType,
+    pipelineId,
+    dataSourceStore,
+    setEstimateData,
+    setBatchId,
+    setDocuments,
+    handleNextStep: doHandleNextStep,
+    PagesMapAndSelectedPagesId,
+    currentWorkspacePages: currentWorkspace?.pages,
+    clearOnlineDocumentData,
+    clearWebsiteCrawlData,
+    clearOnlineDriveData,
+    setDatasource,
+    canProcess: canAddDocumentsToDataset,
+  })
+
+  useEffect(() => {
+    if (shouldRedirectToDocuments && dataset?.id)
+      router.replace(`/datasets/${dataset.id}/documents`)
+  }, [dataset, router, shouldRedirectToDocuments])
+
+  if (isFetchingPipelineInfo) return <LoadingPlaceholder className="h-full" />
+
+  if (isLoadingWorkspacePermissionKeys || shouldRedirectToDocuments)
+    return <LoadingPlaceholder className="h-full" />
+
+  return (
+    <div className="relative flex h-[calc(100vh-56px)] w-full min-w-5xl overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
+      <div className="h-full min-w-0 flex-1">
+        <div className="flex h-full flex-col px-14">
+          <LeftHeader
+            steps={steps}
+            title={t(($) => $['addDocuments.title'], { ns: 'datasetPipeline' })}
+            currentStep={currentStep}
+          />
+          <div className="grow overflow-y-auto">
+            {currentStep === 1 && (
+              <StepOneContent
+                datasource={datasource}
+                datasourceType={datasourceType}
+                pipelineNodes={(pipelineNodes || []) as Node<DataSourceNodeType>[]}
+                supportBatchUpload={supportBatchUpload}
+                showBatchUploadUpgrade={deploymentEdition === 'CLOUD' && plan === 'sandbox'}
+                isShowVectorSpaceFull={isShowVectorSpaceFull}
+                isShowVectorSpaceUnavailable={isVectorSpaceUnavailable}
+                isRetryingVectorSpace={isFetchingVectorSpacePlan}
+                showSelect={showSelect}
+                totalOptions={totalOptions}
+                selectedOptions={selectedOptions}
+                tip={tip}
+                nextBtnDisabled={isPlanUnavailable || nextBtnDisabled}
+                onSelectDataSource={handleSwitchDataSource}
+                onCredentialChange={handleCredentialChange}
+                onSelectAll={handleSelectAll}
+                onRetryVectorSpace={() => void refetchVectorSpace()}
+                onNextStep={handleNextStep}
+              />
+            )}
+            {currentStep === 2 && (
+              <StepTwoContent
+                formRef={formRef}
+                dataSourceNodeId={datasource!.nodeId}
+                isRunning={isPending}
+                onProcess={onClickProcess}
+                onPreview={onClickPreview}
+                onSubmit={handleSubmit}
+                onBack={handleBackStep}
+              />
+            )}
+            {currentStep === 3 && <StepThreeContent batchId={batchId} documents={documents} />}
+          </div>
+        </div>
+      </div>
+
+      {/* Preview Panel */}
+      {currentStep === 1 && (
+        <StepOnePreview
+          datasource={datasource}
+          currentLocalFile={currentLocalFile}
+          currentDocument={currentDocument}
+          currentWebsite={currentWebsite}
+          hidePreviewLocalFile={hidePreviewLocalFile}
+          hidePreviewOnlineDocument={hidePreviewOnlineDocument}
+          hideWebsitePreview={hideWebsitePreview}
+        />
+      )}
+      {currentStep === 2 && (
+        <StepTwoPreview
+          datasourceType={datasourceType}
+          localFileList={localFileList}
+          onlineDocuments={onlineDocuments}
+          websitePages={websitePages}
+          selectedOnlineDriveFileList={selectedOnlineDriveFileList}
+          isIdle={isIdle}
+          isPendingPreview={isPending && isPreview.current}
+          estimateData={estimateData}
+          onPreview={onClickPreview}
+          handlePreviewFileChange={handlePreviewFileChange}
+          handlePreviewOnlineDocumentChange={handlePreviewOnlineDocumentChange}
+          handlePreviewWebsitePageChange={handlePreviewWebsiteChange}
+          handlePreviewOnlineDriveFileChange={handlePreviewOnlineDriveFileChange}
+        />
+      )}
+
+      {/* Plan Upgrade Modal */}
+      {isShowPlanUpgradeModal && (
+        <PlanUpgradeModal
+          show
+          onClose={hidePlanUpgradeModal}
+          title={t(($) => $['upgrade.uploadMultiplePages.title'], { ns: 'billing' })!}
+          description={t(($) => $['upgrade.uploadMultiplePages.description'], { ns: 'billing' })!}
+        />
+      )}
+    </div>
+  )
+}
+
+const CreateFormPipelineWrapper = () => {
+  return (
+    <DataSourceProvider>
+      <CreateFormPipeline />
+    </DataSourceProvider>
+  )
+}
+
+export default CreateFormPipelineWrapper

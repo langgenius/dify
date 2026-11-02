@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+import logging
+from typing import Any, override
+
+from extensions.redis_names import serialize_redis_name
+from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
+from libs.broadcast_channel.signals import SIG_CLOSE
+from redis import Redis, RedisCluster
+
+from ._subscription import RedisSubscriptionBase
+
+logger = logging.getLogger(__name__)
+
+
+class ShardedRedisBroadcastChannel:
+    """
+    Redis 7.0+ Sharded Pub/Sub based broadcast channel implementation.
+
+    Provides "at most once" delivery semantics using SPUBLISH/SSUBSCRIBE commands,
+    distributing channels across Redis cluster nodes for better scalability.
+    """
+
+    def __init__(
+        self,
+        redis_client: Redis | RedisCluster,
+    ):
+        self._client = redis_client
+
+    def topic(self, topic: str) -> ShardedTopic:
+        return ShardedTopic(self._client, topic)
+
+
+class ShardedTopic:
+    def __init__(
+        self,
+        redis_client: Redis | RedisCluster,
+        topic: str,
+    ):
+        self._client = redis_client
+        self._topic = topic
+        self._redis_topic = serialize_redis_name(topic)
+
+    def as_producer(self) -> Producer:
+        return self
+
+    def publish(self, payload: bytes) -> None:
+        self._client.spublish(self._redis_topic, payload)  # type: ignore[attr-defined,union-attr]
+
+    def as_subscriber(self) -> Subscriber:
+        return self
+
+    def subscribe(self) -> Subscription:
+        return _RedisShardedSubscription(
+            client=self._client,
+            pubsub=self._client.pubsub(),
+            topic=self._redis_topic,
+        )
+
+
+class _RedisShardedSubscription(RedisSubscriptionBase):
+    """Redis 7.0+ sharded pub/sub subscription implementation."""
+
+    @override
+    def _get_subscription_type(self) -> str:
+        return "sharded"
+
+    @override
+    def _publish_close_event(self) -> None:
+        try:
+            self._client.spublish(self._topic, SIG_CLOSE)  # type: ignore[attr-defined,union-attr]
+        except Exception:
+            logger.exception("failed to publish close event")
+
+    @override
+    def _subscribe(self) -> None:
+        assert self._pubsub is not None
+        self._pubsub.ssubscribe(self._topic)  # type: ignore[attr-defined]
+
+    @override
+    def _unsubscribe(self) -> None:
+        assert self._pubsub is not None
+        self._pubsub.sunsubscribe(self._topic)  # type: ignore[attr-defined]
+
+    @override
+    def _get_message(self) -> dict[str, Any] | None:
+        assert self._pubsub is not None
+        # NOTE(QuantumGhost): this is an issue in
+        # upstream code. If Sharded PubSub is used with Cluster, the
+        # `ClusterPubSub.get_sharded_message` will return `None` regardless of
+        # message['type'].
+        #
+        # Since we have already filtered at the caller's site, we can safely set
+        # `ignore_subscribe_messages=False`.
+        match self._client:
+            case RedisCluster():
+                # NOTE(QuantumGhost): due to an issue in upstream code, calling `get_sharded_message` without
+                # specifying the `target_node` argument would use busy-looping to wait
+                # for incoming message, consuming excessive CPU quota.
+                #
+                # Here we specify the `target_node` to mitigate this problem.
+                node = self._client.get_node_from_key(self._topic)
+                return self._pubsub.get_sharded_message(  # type: ignore[attr-defined]
+                    ignore_subscribe_messages=False,
+                    timeout=1,
+                    target_node=node,
+                )
+            case Redis():
+                return self._pubsub.get_sharded_message(ignore_subscribe_messages=False, timeout=1)  # type: ignore[attr-defined]
+            case _:
+                raise AssertionError("client should be either Redis or RedisCluster.")
+
+    @override
+    def _get_message_type(self) -> str:
+        return "smessage"

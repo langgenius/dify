@@ -1,24 +1,25 @@
 from collections.abc import Sequence
-from enum import Enum
-from typing import Optional
+from enum import StrEnum, auto
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import ModelType, ProviderModel
-from core.model_runtime.entities.provider_entities import ProviderEntity
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelPropertyKey, ModelType, ProviderModel
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
 
-class ModelStatus(Enum):
+class ModelStatus(StrEnum):
     """
     Enum class for model status.
     """
 
-    ACTIVE = "active"
+    ACTIVE = auto()
     NO_CONFIGURE = "no-configure"
     QUOTA_EXCEEDED = "quota-exceeded"
     NO_PERMISSION = "no-permission"
-    DISABLED = "disabled"
+    DISABLED = auto()
+    CREDENTIAL_REMOVED = "credential-removed"
 
 
 class SimpleModelProviderEntity(BaseModel):
@@ -28,11 +29,11 @@ class SimpleModelProviderEntity(BaseModel):
 
     provider: str
     label: I18nObject
-    icon_small: Optional[I18nObject] = None
-    icon_large: Optional[I18nObject] = None
+    icon_small: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
     supported_model_types: list[ModelType]
 
-    def __init__(self, provider_entity: ProviderEntity) -> None:
+    def __init__(self, provider_entity: ProviderEntity):
         """
         Init simple provider.
 
@@ -42,7 +43,7 @@ class SimpleModelProviderEntity(BaseModel):
             provider=provider_entity.provider,
             label=provider_entity.label,
             icon_small=provider_entity.icon_small,
-            icon_large=provider_entity.icon_large,
+            icon_small_dark=provider_entity.icon_small_dark,
             supported_model_types=provider_entity.supported_model_types,
         )
 
@@ -52,10 +53,20 @@ class ProviderModelWithStatusEntity(ProviderModel):
     Model class for model response.
     """
 
-    status: ModelStatus
+    label: I18nObject = Field(description="Localized display name of the model.")
+    model_type: ModelType = Field(description="Type of the model, matching the `model_type` path parameter.")
+    fetch_from: FetchFrom = Field(
+        description=(
+            "Where the model definition comes from. `predefined-model` for built-in models, "
+            "`customizable-model` for user-configured models."
+        )
+    )
+    model_properties: dict[ModelPropertyKey, Any]
+    status: ModelStatus = Field(description="Model availability status. `active` when ready to use.")
     load_balancing_enabled: bool = False
+    has_invalid_load_balancing_configs: bool = False
 
-    def raise_for_status(self) -> None:
+    def raise_for_status(self):
         """
         Check model status and raise ValueError if not active.
 
@@ -90,8 +101,7 @@ class DefaultModelProviderEntity(BaseModel):
 
     provider: str
     label: I18nObject
-    icon_small: Optional[I18nObject] = None
-    icon_large: Optional[I18nObject] = None
+    icon_small: I18nObject | None = None
     supported_model_types: Sequence[ModelType] = []
 
 
@@ -106,3 +116,9 @@ class DefaultModelEntity(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+
+
+class DefaultModelSetting(BaseModel):
+    model_type: ModelType
+    provider: str
+    model: str

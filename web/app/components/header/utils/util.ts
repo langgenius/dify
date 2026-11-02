@@ -1,16 +1,19 @@
 export const generateMailToLink = (email: string, subject?: string, body?: string): string => {
   let mailtoLink = `mailto:${email}`
 
-  if (subject)
-    mailtoLink += `?subject=${encodeURIComponent(subject)}`
+  if (subject) mailtoLink += `?subject=${encodeURIComponent(subject)}`
 
-  if (body)
-    mailtoLink += `&body=${encodeURIComponent(body)}`
+  if (body) mailtoLink += `&body=${encodeURIComponent(body)}`
 
   return mailtoLink
 }
 
-export const mailToSupport = (account: string, plan: string, version: string) => {
+export const mailToSupport = (
+  account: string,
+  plan: string,
+  version: string,
+  supportEmailAddress?: string,
+) => {
   const subject = `Technical Support Request ${plan} ${account}`
   const body = `
     Please do not remove the following information:
@@ -21,5 +24,5 @@ export const mailToSupport = (account: string, plan: string, version: string) =>
     Platform:
     Problem Description:
   `
-  return generateMailToLink('support@dify.ai', subject, body)
+  return generateMailToLink(supportEmailAddress || 'support@dify.ai', subject, body)
 }

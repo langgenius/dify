@@ -1,59 +1,37 @@
 import type { FC } from 'react'
-import {
-  memo,
-  useEffect,
-} from 'react'
-import {
-  Background,
-  useNodesInitialized,
-  useViewport,
-} from 'reactflow'
-import { LoopStartNodeDumb } from '../loop-start'
-import { useNodeLoopInteractions } from './use-interactions'
 import type { LoopNodeType } from './types'
-import AddBlock from './add-block'
-import cn from '@/utils/classnames'
-
 import type { NodeProps } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { memo, useEffect } from 'react'
+import { Background, useNodesInitialized, useViewport } from 'reactflow'
+import { LoopStartNodeDumb } from '../loop-start'
+import AddBlock from './add-block'
+import { useNodeLoopInteractions } from './use-interactions'
 
-const Node: FC<NodeProps<LoopNodeType>> = ({
-  id,
-  data,
-}) => {
+const Node: FC<NodeProps<LoopNodeType>> = ({ id, data }) => {
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()
   const { handleNodeLoopRerender } = useNodeLoopInteractions()
 
   useEffect(() => {
-    if (nodesInitialized)
-      handleNodeLoopRerender(id)
+    if (nodesInitialized) handleNodeLoopRerender(id)
   }, [nodesInitialized, id, handleNodeLoopRerender])
 
   return (
-    <div className={cn(
-      'relative h-full min-h-[90px] w-full min-w-[240px] rounded-2xl bg-workflow-canvas-workflow-bg',
-    )}>
+    <div
+      className={cn(
+        'relative h-full min-h-22.5 w-full min-w-60 rounded-2xl bg-workflow-canvas-workflow-bg',
+      )}
+    >
       <Background
         id={`loop-background-${id}`}
-        className='!z-0 rounded-2xl'
+        className="z-0! rounded-2xl"
         gap={[14 / zoom, 14 / zoom]}
         size={2 / zoom}
-        color='var(--color-workflow-canvas-workflow-dot-color)'
+        color="var(--color-workflow-canvas-workflow-dot-color)"
       />
-      {
-        data._isCandidate && (
-          <LoopStartNodeDumb />
-        )
-      }
-      {
-        data._children!.length === 1 && (
-          <AddBlock
-            loopNodeId={id}
-            loopNodeData={data}
-          />
-        )
-      }
-
+      {data._isCandidate && <LoopStartNodeDumb />}
+      {data._children?.length === 1 && <AddBlock loopNodeId={id} loopNodeData={data} />}
     </div>
   )
 }

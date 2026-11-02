@@ -1,146 +1,157 @@
 'use client'
-import type { FC } from 'react'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import EditItem, { EditItemType } from './edit-item'
-import Drawer from '@/app/components/base/drawer-plus'
-import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
-import Confirm from '@/app/components/base/confirm'
-import { addAnnotation, editAnnotation } from '@/service/annotation'
-import Toast from '@/app/components/base/toast'
-import { useProviderContext } from '@/context/provider-context'
-import AnnotationFull from '@/app/components/billing/annotation-full'
-import useTimestamp from '@/hooks/use-timestamp'
 
-type Props = {
-  isShow: boolean
-  onHide: () => void
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMutation } from '@tanstack/react-query'
+import { useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import useTimestamp from '@/hooks/use-timestamp'
+import { consoleQuery } from '@/service/console'
+import { AnnotationEditor } from './annotation-editor'
+import { RemoveAnnotationDialog } from './remove-annotation-dialog'
+
+export type EditAnnotationDialogProps = {
   appId: string
-  messageId?: string
-  annotationId?: string
-  query: string
+  annotationId: string
+  question: string
   answer: string
-  onEdited: (editedQuery: string, editedAnswer: string) => void
-  onAdded: (annotationId: string, authorName: string, editedQuery: string, editedAnswer: string) => void
   createdAt?: number
-  onRemove: () => void
   onlyEditResponse?: boolean
+  onEdited: (question: string, answer: string) => void
+  onRemoved: () => void
 }
 
-const EditAnnotationModal: FC<Props> = ({
-  isShow,
-  onHide,
-  query,
-  answer,
-  onEdited,
-  onAdded,
+export default function EditAnnotationDialog({
   appId,
-  messageId,
   annotationId,
+  question,
+  answer,
   createdAt,
-  onRemove,
   onlyEditResponse,
-}) => {
-  const { t } = useTranslation()
+  onEdited,
+  onRemoved,
+}: EditAnnotationDialogProps) {
+  const { t } = useTranslation(['appAnnotation', 'appDebug', 'appLog', 'common'])
   const { formatTime } = useTimestamp()
-  const { plan, enableBilling } = useProviderContext()
-  const isAdd = !annotationId
-  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
-  const handleSave = async (type: EditItemType, editedContent: string) => {
-    let postQuery = query
-    let postAnswer = answer
-    if (type === EditItemType.Query)
-      postQuery = editedContent
-    else
-      postAnswer = editedContent
-    if (!isAdd) {
-      await editAnnotation(appId, annotationId, {
-        message_id: messageId,
-        question: postQuery,
-        answer: postAnswer,
-      })
-      onEdited(postQuery, postAnswer)
-    }
-    else {
-      const res: any = await addAnnotation(appId, {
-        question: postQuery,
-        answer: postAnswer,
-        message_id: messageId,
-      })
-      onAdded(res.id, res.account?.name, postQuery, postAnswer)
-    }
-
-    Toast.notify({
-      message: t('common.api.actionSuccess') as string,
-      type: 'success',
-    })
-  }
-  const [showModal, setShowModal] = useState(false)
-
+  const actionsRef = useRef<DialogActions>(null)
+  const removed = useRef(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const update = useMutation(
+    consoleQuery.apps.byAppId.annotations.byAnnotationId.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   return (
-    <div>
-      <Drawer
-        isShow={isShow}
-        onHide={onHide}
-        maxWidthClassName='!max-w-[480px]'
-        title={t('appAnnotation.editModal.title') as string}
-        body={(
-          <div>
-            <div className='space-y-6 p-6 pb-4'>
-              <EditItem
-                type={EditItemType.Query}
-                content={query}
-                readonly={(isAdd && isAnnotationFull) || onlyEditResponse}
-                onSave={editedContent => handleSave(EditItemType.Query, editedContent)}
-              />
-              <EditItem
-                type={EditItemType.Answer}
-                content={answer}
-                readonly={isAdd && isAnnotationFull}
-                onSave={editedContent => handleSave(EditItemType.Answer, editedContent)}
-              />
-              <Confirm
-                isShow={showModal}
-                onCancel={() => setShowModal(false)}
-                onConfirm={() => {
-                  onRemove()
-                  setShowModal(false)
-                  onHide()
-                }}
-                title={t('appDebug.feature.annotation.removeConfirm')}
-              />
-            </div>
-          </div>
-        )}
-        foot={
-          <div>
-            {isAnnotationFull && (
-              <div className='mb-4 mt-6 px-6'>
-                <AnnotationFull />
-              </div>
-            )}
-
-            {
-              annotationId
-                ? (
-                  <div className='system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary'>
-                    <div
-                      className='flex cursor-pointer items-center space-x-2 pl-3'
-                      onClick={() => setShowModal(true)}
-                    >
-                      <MessageCheckRemove />
-                      <div>{t('appAnnotation.editModal.removeThisCache')}</div>
-                    </div>
-                    {createdAt && <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{formatTime(createdAt, t('appLog.dateTimeFormat') as string)}</div>}
-                  </div>
-                )
-                : undefined
-            }
-          </div>
+    <Dialog
+      actionsRef={actionsRef}
+      disablePointerDismissal
+      onOpenChange={(open, details) => {
+        if (open) removed.current = false
+        if (!open && update.isPending && details.reason !== 'imperative-action') details.cancel()
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) {
+          update.reset()
+          if (removed.current) onRemoved()
         }
-      />
-    </div>
-
+      }}
+    >
+      <Tooltip>
+        <DialogTrigger
+          ref={triggerRef}
+          render={
+            <TooltipTrigger
+              render={
+                <IconButton aria-label={t(($) => $['feature.annotation.edit'], { ns: 'appDebug' })}>
+                  <span aria-hidden className="i-ri-edit-line size-4" />
+                </IconButton>
+              }
+            />
+          }
+        >
+          <span aria-hidden className="i-ri-edit-line size-4" />
+        </DialogTrigger>
+        <TooltipContent>
+          {t(($) => $['feature.annotation.edit'], { ns: 'appDebug' })}
+        </TooltipContent>
+      </Tooltip>
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogPopup
+          finalFocus={() => {
+            if (!removed.current) return true
+            return (
+              Array.from(
+                triggerRef.current?.parentElement?.querySelectorAll<HTMLButtonElement>(
+                  'button:not([disabled])',
+                ) ?? [],
+              ).find((button) => button !== triggerRef.current) ?? true
+            )
+          }}
+          className="fixed inset-e-2 top-16 bottom-3 flex min-h-0 w-120 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg text-text-primary shadow-xl"
+        >
+          <DialogHeader>
+            <DialogTitle>{t(($) => $['editModal.title'], { ns: 'appAnnotation' })}</DialogTitle>
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              disabled={update.isPending}
+            />
+          </DialogHeader>
+          <DialogBody>
+            <AnnotationEditor
+              question={question}
+              answer={answer}
+              onlyEditResponse={onlyEditResponse}
+              isPending={update.isPending}
+              isError={update.isError}
+              onSave={(body, onSuccess) =>
+                update.mutate(
+                  { params: { app_id: appId, annotation_id: annotationId }, body },
+                  {
+                    onSuccess: () => {
+                      onEdited(body.question, body.answer)
+                      onSuccess()
+                    },
+                  },
+                )
+              }
+            />
+          </DialogBody>
+          <DialogFooter>
+            <RemoveAnnotationDialog
+              appId={appId}
+              annotationId={annotationId}
+              disabled={update.isPending}
+              onRemoved={() => {
+                removed.current = true
+                actionsRef.current?.close()
+              }}
+            />
+            {createdAt != null && (
+              <span className="ms-auto system-xs-regular text-text-tertiary">
+                {t(($) => $['editModal.createdAt'], { ns: 'appAnnotation' })}{' '}
+                {formatTime(
+                  createdAt,
+                  t(($) => $.dateTimeFormat, { ns: 'appLog' }),
+                )}
+              </span>
+            )}
+          </DialogFooter>
+        </DialogPopup>
+      </DialogPortal>
+    </Dialog>
   )
 }
-export default React.memo(EditAnnotationModal)

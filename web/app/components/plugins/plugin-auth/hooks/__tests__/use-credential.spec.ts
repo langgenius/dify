@@ -1,0 +1,187 @@
+import type { PluginPayload } from '../../types'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { renderHook } from '@testing-library/react'
+import { createElement } from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { AuthCategory, CredentialTypeEnum } from '../../types'
+import {
+  useAddPluginCredentialHook,
+  useDeletePluginCredentialHook,
+  useDeletePluginOAuthCustomClientHook,
+  useGetPluginCredentialInfoHook,
+  useGetPluginCredentialSchemaHook,
+  useGetPluginOAuthClientSchemaHook,
+  useGetPluginOAuthUrlHook,
+  useInvalidPluginCredentialInfoHook,
+  useInvalidPluginOAuthClientSchemaHook,
+  useSetPluginDefaultCredentialHook,
+  useSetPluginOAuthCustomClientHook,
+  useUpdatePluginCredentialHook,
+} from '../use-credential'
+
+// Mock service hooks
+const mockUseGetPluginCredentialInfo = vi.fn().mockReturnValue({ data: null, isLoading: false })
+const mockUseDeletePluginCredential = vi.fn().mockReturnValue({ mutateAsync: vi.fn() })
+const mockUseInvalidPluginCredentialInfo = vi.fn().mockReturnValue(vi.fn())
+const mockUseSetPluginDefaultCredential = vi.fn().mockReturnValue({ mutateAsync: vi.fn() })
+const mockUseGetPluginCredentialSchema = vi.fn().mockReturnValue({ data: [], isLoading: false })
+const mockUseAddPluginCredential = vi.fn().mockReturnValue({ mutateAsync: vi.fn() })
+const mockUseUpdatePluginCredential = vi.fn().mockReturnValue({ mutateAsync: vi.fn() })
+const mockUseGetPluginOAuthUrl = vi.fn().mockReturnValue({ mutateAsync: vi.fn() })
+const mockUseGetPluginOAuthClientSchema = vi.fn().mockReturnValue({ data: null, isLoading: false })
+const mockUseInvalidPluginOAuthClientSchema = vi.fn().mockReturnValue(vi.fn())
+const mockUseSetPluginOAuthCustomClient = vi.fn().mockReturnValue({ mutateAsync: vi.fn() })
+const mockUseDeletePluginOAuthCustomClient = vi.fn().mockReturnValue({ mutateAsync: vi.fn() })
+
+vi.mock('@/service/use-plugins-auth', () => ({
+  useGetPluginCredentialInfo: (...args: unknown[]) => mockUseGetPluginCredentialInfo(...args),
+  useDeletePluginCredential: (...args: unknown[]) => mockUseDeletePluginCredential(...args),
+  useInvalidPluginCredentialInfo: (...args: unknown[]) =>
+    mockUseInvalidPluginCredentialInfo(...args),
+  useSetPluginDefaultCredential: (...args: unknown[]) => mockUseSetPluginDefaultCredential(...args),
+  useGetPluginCredentialSchema: (...args: unknown[]) => mockUseGetPluginCredentialSchema(...args),
+  useAddPluginCredential: (...args: unknown[]) => mockUseAddPluginCredential(...args),
+  useUpdatePluginCredential: (...args: unknown[]) => mockUseUpdatePluginCredential(...args),
+  useGetPluginOAuthUrl: (...args: unknown[]) => mockUseGetPluginOAuthUrl(...args),
+  useGetPluginOAuthClientSchema: (...args: unknown[]) => mockUseGetPluginOAuthClientSchema(...args),
+  useInvalidPluginOAuthClientSchema: (...args: unknown[]) =>
+    mockUseInvalidPluginOAuthClientSchema(...args),
+  useSetPluginOAuthCustomClient: (...args: unknown[]) => mockUseSetPluginOAuthCustomClient(...args),
+  useDeletePluginOAuthCustomClient: (...args: unknown[]) =>
+    mockUseDeletePluginOAuthCustomClient(...args),
+}))
+
+const toolPayload = {
+  category: AuthCategory.tool,
+  provider: 'test-provider',
+  providerType: 'builtin',
+} satisfies PluginPayload
+
+describe('use-credential hooks', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('useGetPluginCredentialInfoHook', () => {
+    it('should call service with correct URL when enabled', () => {
+      renderHook(() => useGetPluginCredentialInfoHook(toolPayload, true))
+      expect(mockUseGetPluginCredentialInfo).toHaveBeenCalledWith(
+        `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/credential/info`,
+      )
+    })
+
+    it('should pass empty string when disabled', () => {
+      renderHook(() => useGetPluginCredentialInfoHook(toolPayload, false))
+      expect(mockUseGetPluginCredentialInfo).toHaveBeenCalledWith('')
+    })
+  })
+
+  describe('useDeletePluginCredentialHook', () => {
+    it('should call service with correct URL', () => {
+      renderHook(() => useDeletePluginCredentialHook(toolPayload))
+      expect(mockUseDeletePluginCredential).toHaveBeenCalledWith(toolPayload)
+    })
+  })
+
+  describe('useInvalidPluginCredentialInfoHook', () => {
+    it('should return a function that invalidates both credential info and tools', () => {
+      const queryClient = new QueryClient()
+      const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
+      const customToolsKey = consoleQuery.workspaces.current.tools.api.get.queryKey()
+      queryClient.setQueryData(builtInToolsKey, [])
+      queryClient.setQueryData(customToolsKey, [])
+      const { result } = renderHook(() => useInvalidPluginCredentialInfoHook(toolPayload), {
+        wrapper: ({ children }) =>
+          createElement(QueryClientProvider, { client: queryClient }, children),
+      })
+
+      result.current()
+
+      const invalidFn = mockUseInvalidPluginCredentialInfo.mock.results[0]!.value
+      expect(invalidFn).toHaveBeenCalled()
+      expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(customToolsKey)?.isInvalidated).toBe(false)
+    })
+  })
+
+  describe('useSetPluginDefaultCredentialHook', () => {
+    it('should call service with correct URL', () => {
+      renderHook(() => useSetPluginDefaultCredentialHook(toolPayload))
+      expect(mockUseSetPluginDefaultCredential).toHaveBeenCalledWith(toolPayload)
+    })
+  })
+
+  describe('useGetPluginCredentialSchemaHook', () => {
+    it('should call service with correct schema URL for API_KEY', () => {
+      renderHook(() => useGetPluginCredentialSchemaHook(toolPayload, CredentialTypeEnum.API_KEY))
+      expect(mockUseGetPluginCredentialSchema).toHaveBeenCalledWith(
+        toolPayload,
+        CredentialTypeEnum.API_KEY,
+      )
+    })
+
+    it('should call service with correct schema URL for OAUTH2', () => {
+      renderHook(() => useGetPluginCredentialSchemaHook(toolPayload, CredentialTypeEnum.OAUTH2))
+      expect(mockUseGetPluginCredentialSchema).toHaveBeenCalledWith(
+        toolPayload,
+        CredentialTypeEnum.OAUTH2,
+      )
+    })
+  })
+
+  describe('useAddPluginCredentialHook', () => {
+    it('should call service with correct URL', () => {
+      renderHook(() => useAddPluginCredentialHook(toolPayload))
+      expect(mockUseAddPluginCredential).toHaveBeenCalledWith(toolPayload)
+    })
+  })
+
+  describe('useUpdatePluginCredentialHook', () => {
+    it('should call service with correct URL', () => {
+      renderHook(() => useUpdatePluginCredentialHook(toolPayload))
+      expect(mockUseUpdatePluginCredential).toHaveBeenCalledWith(toolPayload)
+    })
+  })
+
+  describe('useGetPluginOAuthUrlHook', () => {
+    it('should call service with correct URL', () => {
+      renderHook(() => useGetPluginOAuthUrlHook(toolPayload))
+      expect(mockUseGetPluginOAuthUrl).toHaveBeenCalledWith(toolPayload)
+    })
+  })
+
+  describe('useGetPluginOAuthClientSchemaHook', () => {
+    it('should call service with correct URL', () => {
+      renderHook(() => useGetPluginOAuthClientSchemaHook(toolPayload))
+      expect(mockUseGetPluginOAuthClientSchema).toHaveBeenCalledWith(toolPayload, true)
+    })
+
+    it('should disable the service query when OAuth data is provided by the caller', () => {
+      renderHook(() => useGetPluginOAuthClientSchemaHook(toolPayload, false))
+
+      expect(mockUseGetPluginOAuthClientSchema).toHaveBeenCalledWith(toolPayload, false)
+    })
+  })
+
+  describe('useInvalidPluginOAuthClientSchemaHook', () => {
+    it('should call service with correct URL', () => {
+      renderHook(() => useInvalidPluginOAuthClientSchemaHook(toolPayload))
+      expect(mockUseInvalidPluginOAuthClientSchema).toHaveBeenCalledWith(toolPayload)
+    })
+  })
+
+  describe('useSetPluginOAuthCustomClientHook', () => {
+    it('should call service with correct URL', () => {
+      renderHook(() => useSetPluginOAuthCustomClientHook(toolPayload))
+      expect(mockUseSetPluginOAuthCustomClient).toHaveBeenCalledWith(toolPayload)
+    })
+  })
+
+  describe('useDeletePluginOAuthCustomClientHook', () => {
+    it('should call service with correct URL', () => {
+      renderHook(() => useDeletePluginOAuthCustomClientHook(toolPayload))
+      expect(mockUseDeletePluginOAuthCustomClient).toHaveBeenCalledWith(toolPayload)
+    })
+  })
+})

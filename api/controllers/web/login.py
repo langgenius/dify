@@ -1,108 +1,258 @@
-from flask_restful import Resource, reqparse
-from jwt import InvalidTokenError  # type: ignore
+from http import HTTPStatus
 
-import services
-from controllers.console.auth.error import EmailCodeError, EmailOrPasswordMismatchError, InvalidEmailError
-from controllers.console.error import AccountBannedError, AccountNotFound
-from controllers.console.wraps import only_edition_enterprise, setup_required
-from controllers.web import api
-from libs.helper import email
+from flask import make_response, request
+from flask_restx import Resource
+from jwt import InvalidTokenError
+from pydantic import BaseModel, Field, field_validator
+from werkzeug.exceptions import Unauthorized
+
+from controllers.common.fields import (
+    AccessTokenData,
+    AccessTokenResultResponse,
+    LoginStatusResponse,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+)
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.auth.error import (
+    AuthenticationFailedError,
+    EmailCodeError,
+    InvalidEmailError,
+)
+from controllers.console.error import AccountBannedError
+from controllers.console.wraps import (
+    decrypt_code_field,
+    decrypt_password_field,
+    model_validate,
+)
+from controllers.web import web_ns
+from controllers.web.error import WebAppAccessServiceUnavailableError, WebAppNotFoundError
+from controllers.web.flask_admission import web_anonymous_admission
+from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
+from libs.helper import EmailStr
 from libs.password import valid_password
-from services.account_service import AccountService
-from services.webapp_auth_service import WebAppAuthService
+from libs.token import (
+    clear_webapp_access_token_from_cookie,
+    extract_webapp_access_token,
+    extract_webapp_passport,
+)
+from machinery.context import RequestContext
+from services.entities.auth_entities import LoginPayloadBase
+from services.web_authentication_service import (
+    WebAccountBannedError,
+    WebAuthenticationFailedError,
+    WebInvalidCodeError,
+    WebInvalidEmailError,
+    WebInvalidTokenError,
+)
+from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
+
+_ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 
 
+class LoginPayload(LoginPayloadBase):
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return valid_password(value)
+
+
+class EmailCodeLoginSendPayload(BaseModel):
+    email: EmailStr
+    language: str | None = None
+
+
+class EmailCodeLoginVerifyPayload(BaseModel):
+    email: EmailStr
+    code: str
+    token: str = Field(min_length=1)
+
+
+class LoginStatusQuery(BaseModel):
+    app_code: str | None = Field(default=None, description="Web app code")
+    user_id: str | None = Field(default=None, description="End user session ID")
+
+
+register_schema_models(web_ns, LoginPayload, EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload, LoginStatusQuery)
+register_response_schema_models(
+    web_ns,
+    AccessTokenResultResponse,
+    LoginStatusResponse,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+)
+
+
+@web_ns.route("/login")
 class LoginApi(Resource):
     """Resource for web app email/password login."""
 
-    @setup_required
-    @only_edition_enterprise
-    def post(self):
+    @error_responses(AccountBannedError, AuthenticationFailedError)
+    @web_ns.expect(web_ns.models[LoginPayload.__name__])
+    @web_anonymous_admission(editions=_ENTERPRISE_ONLY)
+    @web_ns.doc("web_app_login")
+    @web_ns.doc(description="Authenticate user for web application access")
+    @web_ns.doc(
+        responses={
+            200: "Authentication successful",
+            400: "Bad request - invalid email or password format",
+            401: "Authentication failed - email or password mismatch",
+            404: "Account not found",
+        }
+    )
+    @web_ns.response(200, "Authentication successful", web_ns.models[AccessTokenResultResponse.__name__])
+    @decrypt_password_field
+    @model_validate(LoginPayload)
+    def post(self, payload: LoginPayload, request_context: RequestContext):
         """Authenticate user and login."""
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("password", type=valid_password, required=True, location="json")
-        args = parser.parse_args()
-
         try:
-            account = WebAppAuthService.authenticate(args["email"], args["password"])
-        except services.errors.account.AccountLoginError:
-            raise AccountBannedError()
-        except services.errors.account.AccountPasswordError:
-            raise EmailOrPasswordMismatchError()
-        except services.errors.account.AccountNotFoundError:
-            raise AccountNotFound()
+            token = application_services().web_authentication.login_with_password(
+                request_context,
+                email=payload.email,
+                password=payload.password,
+            )
+        except WebAccountBannedError as error:
+            raise AccountBannedError() from error
+        except WebAuthenticationFailedError as error:
+            raise AuthenticationFailedError() from error
 
-        token = WebAppAuthService.login(account=account)
-        return {"result": "success", "data": {"access_token": token}}
-
-
-# class LogoutApi(Resource):
-#     @setup_required
-#     def get(self):
-#         account = cast(Account, flask_login.current_user)
-#         if isinstance(account, flask_login.AnonymousUserMixin):
-#             return {"result": "success"}
-#         flask_login.logout_user()
-#         return {"result": "success"}
+        # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
+        return AccessTokenResultResponse(result="success", data=AccessTokenData(access_token=token)).model_dump(
+            mode="json"
+        )
 
 
+# this api helps frontend to check whether user is authenticated
+# TODO: remove in the future. frontend should redirect to login page by catching 401 status
+@web_ns.route("/login/status")
+class LoginStatusApi(Resource):
+    @web_anonymous_admission()
+    @web_ns.doc("web_app_login_status")
+    @web_ns.doc(description="Check login status")
+    @web_ns.doc(params=query_params_from_model(LoginStatusQuery))
+    @web_ns.doc(
+        responses={
+            200: "Login status",
+            401: "Login status",
+            404: "App not found",
+            503: "Web app access service unavailable",
+            HTTPStatus.OK: "Login status",
+            HTTPStatus.UNAUTHORIZED: "Login status",
+        }
+    )
+    @web_ns.response(HTTPStatus.OK, "Login status", web_ns.models[LoginStatusResponse.__name__])
+    @model_validate(LoginStatusQuery)
+    def get(self, query: LoginStatusQuery, _request_context: RequestContext):
+        try:
+            status = application_services().web_authentication.get_login_status(
+                app_code=query.app_code,
+                user_id=query.user_id,
+                access_token=extract_webapp_access_token(request),
+                app_session_token=extract_webapp_passport(query.app_code, request) if query.app_code else None,
+            )
+        except WebAppAccessAppNotFoundError as error:
+            raise WebAppNotFoundError() from error
+        except WebAppAccessUnavailableError as error:
+            raise WebAppAccessServiceUnavailableError() from error
+        return LoginStatusResponse(
+            logged_in=status.logged_in,
+            app_logged_in=status.app_logged_in,
+        ).model_dump(mode="json")
+
+
+@web_ns.route("/logout")
+class LogoutApi(Resource):
+    @web_anonymous_admission()
+    @web_ns.doc("web_app_logout")
+    @web_ns.doc(description="Logout user from web application")
+    @web_ns.doc(
+        responses={
+            200: "Logout successful",
+        }
+    )
+    @web_ns.response(200, "Logout successful", web_ns.models[SimpleResultResponse.__name__])
+    def post(self, _request_context: RequestContext):
+        # response-contract:ignore hand-crafted response
+        response = make_response(SimpleResultResponse(result="success").model_dump(mode="json"))
+        # enterprise SSO sets same site to None in https deployment
+        # so we need to logout by calling api
+        clear_webapp_access_token_from_cookie(response, samesite="None")
+        return response
+
+
+@web_ns.route("/email-code-login")
 class EmailCodeLoginSendEmailApi(Resource):
-    @setup_required
-    @only_edition_enterprise
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
-        args = parser.parse_args()
+    @error_responses(AuthenticationFailedError)
+    @web_anonymous_admission(editions=_ENTERPRISE_ONLY)
+    @web_ns.doc("send_email_code_login")
+    @web_ns.doc(description="Send email verification code for login")
+    @web_ns.expect(web_ns.models[EmailCodeLoginSendPayload.__name__])
+    @web_ns.doc(
+        responses={
+            200: "Email code sent successfully",
+            400: "Bad request - invalid email format",
+            404: "Account not found",
+        }
+    )
+    @web_ns.response(200, "Email code sent successfully", web_ns.models[SimpleResultDataResponse.__name__])
+    @model_validate(EmailCodeLoginSendPayload)
+    def post(self, payload: EmailCodeLoginSendPayload, _request_context: RequestContext):
+        try:
+            token = application_services().web_authentication.send_email_login_code(
+                email=payload.email,
+                language=payload.language,
+            )
+        except WebAccountBannedError as error:
+            raise Unauthorized("Account is banned.") from error
+        except WebAuthenticationFailedError as error:
+            raise AuthenticationFailedError() from error
+        return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
 
-        if args["language"] is not None and args["language"] == "zh-Hans":
-            language = "zh-Hans"
-        else:
-            language = "en-US"
 
-        account = WebAppAuthService.get_user_through_email(args["email"])
-        if account is None:
-            raise AccountNotFound()
-        else:
-            token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
-
-        return {"result": "success", "data": token}
-
-
+@web_ns.route("/email-code-login/validity")
 class EmailCodeLoginApi(Resource):
-    @setup_required
-    @only_edition_enterprise
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=str, required=True, location="json")
-        parser.add_argument("code", type=str, required=True, location="json")
-        parser.add_argument("token", type=str, required=True, location="json")
-        args = parser.parse_args()
+    @error_responses(AccountBannedError, AuthenticationFailedError, EmailCodeError, InvalidEmailError)
+    @web_anonymous_admission(editions=_ENTERPRISE_ONLY)
+    @web_ns.doc("verify_email_code_login")
+    @web_ns.doc(description="Verify email code and complete login")
+    @web_ns.expect(web_ns.models[EmailCodeLoginVerifyPayload.__name__])
+    @web_ns.doc(
+        responses={
+            200: "Email code verified and login successful",
+            400: "Bad request - invalid code or token",
+            401: "Invalid token or expired code",
+            404: "Account not found",
+        }
+    )
+    @web_ns.response(
+        200,
+        "Email code verified and login successful",
+        web_ns.models[AccessTokenResultResponse.__name__],
+    )
+    @decrypt_code_field
+    @model_validate(EmailCodeLoginVerifyPayload)
+    def post(self, payload: EmailCodeLoginVerifyPayload, request_context: RequestContext):
+        try:
+            token = application_services().web_authentication.login_with_email_code(
+                request_context,
+                email=payload.email,
+                code=payload.code,
+                token=payload.token,
+            )
+        except WebInvalidTokenError as error:
+            raise InvalidTokenError() from error
+        except WebInvalidEmailError as error:
+            raise InvalidEmailError() from error
+        except WebInvalidCodeError as error:
+            raise EmailCodeError() from error
+        except WebAccountBannedError as error:
+            raise AccountBannedError() from error
+        except WebAuthenticationFailedError as error:
+            raise AuthenticationFailedError() from error
 
-        user_email = args["email"]
-
-        token_data = WebAppAuthService.get_email_code_login_data(args["token"])
-        if token_data is None:
-            raise InvalidTokenError()
-
-        if token_data["email"] != args["email"]:
-            raise InvalidEmailError()
-
-        if token_data["code"] != args["code"]:
-            raise EmailCodeError()
-
-        WebAppAuthService.revoke_email_code_login_token(args["token"])
-        account = WebAppAuthService.get_user_through_email(user_email)
-        if not account:
-            raise AccountNotFound()
-
-        token = WebAppAuthService.login(account=account)
-        AccountService.reset_login_error_rate_limit(args["email"])
-        return {"result": "success", "data": {"access_token": token}}
-
-
-api.add_resource(LoginApi, "/login")
-# api.add_resource(LogoutApi, "/logout")
-api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
-api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
+        # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
+        return AccessTokenResultResponse(result="success", data=AccessTokenData(access_token=token)).model_dump(
+            mode="json"
+        )

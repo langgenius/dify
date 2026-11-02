@@ -1,33 +1,32 @@
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import MemoryConfig from '../_base/components/memory-config'
-import VarReferencePicker from '../_base/components/variable/var-reference-picker'
-import Editor from '../_base/components/prompt/editor'
-import ConfigVision from '../_base/components/config-vision'
-import useConfig from './use-config'
 import type { ParameterExtractorNodeType } from './types'
-import ExtractParameter from './components/extract-parameter/list'
-import ImportFromTool from './components/extract-parameter/import-from-tool'
-import AddExtractParameter from './components/extract-parameter/update'
-import ReasoningModePicker from './components/reasoning-mode-picker'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import Tooltip from '@/app/components/base/tooltip'
-import { VarType } from '@/app/components/workflow/types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { VarType } from '@/app/components/workflow/types'
+import ConfigVision from '../_base/components/config-vision'
+import MemoryConfig from '../_base/components/memory-config'
+import Editor from '../_base/components/prompt/editor'
+import VarReferencePicker from '../_base/components/variable/var-reference-picker'
+import ImportFromTool from './components/extract-parameter/import-from-tool'
+import { ExtractParameterList } from './components/extract-parameter/list'
+import { ParameterDialog } from './components/extract-parameter/update'
+import ReasoningModePicker from './components/reasoning-mode-picker'
+import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.parameterExtractor'
-const i18nCommonPrefix = 'workflow.common'
+const i18nPrefix = 'nodes.parameterExtractor'
+const i18nCommonPrefix = 'common'
 
-const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
-  id,
-  data,
-}) => {
-  const { t } = useTranslation()
+const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => {
+  const instructionLabelId = React.useId()
+
+  const { t } = useTranslation(['workflow', 'workflowModels'])
 
   const {
     readOnly,
@@ -35,7 +34,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     handleInputVarChange,
     filterVar,
     isChatModel,
-    isChatMode,
+    isChatflow,
     isCompletionModel,
     handleModelChanged,
     handleImportFromTool,
@@ -57,17 +56,13 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
   const model = inputs.model
 
   return (
-    <div className='pt-2'>
-      <div className='space-y-4 px-4'>
-        <Field
-          title={t(`${i18nCommonPrefix}.model`)}
-          required
-        >
+    <div className="pt-2">
+      <div className="space-y-4 px-4">
+        <Field title={t(($) => $[`${i18nCommonPrefix}.model`], { ns: 'workflow' })} required>
           <ModelParameterModal
-            popupClassName='!w-[387px]'
+            popupClassName="w-[387px]!"
             isInWorkflow
             isAdvancedMode={true}
-            mode={model?.mode}
             provider={model?.provider}
             completionParams={model?.completion_params}
             modelId={model?.name}
@@ -76,12 +71,11 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
             readonly={readOnly}
+            nodesOutputVars={availableVars}
+            availableNodes={availableNodesWithParent}
           />
         </Field>
-        <Field
-          title={t(`${i18nPrefix}.inputVar`)}
-          required
-        >
+        <Field title={t(($) => $[`${i18nPrefix}.inputVar`], { ns: 'workflow' })} required>
           <>
             <VarReferencePicker
               readonly={readOnly}
@@ -104,23 +98,19 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           onConfigChange={handleVisionResolutionChange}
         />
         <Field
-          title={t(`${i18nPrefix}.extractParameters`)}
+          title={t(($) => $[`${i18nPrefix}.extractParameters`], { ns: 'workflow' })}
           required
           operations={
-            !readOnly
-              ? (
-                <div className='flex items-center space-x-1'>
-                  {!readOnly && (
-                    <ImportFromTool onImport={handleImportFromTool} />
-                  )}
-                  {!readOnly && (<div className='h-3 w-px bg-divider-regular'></div>)}
-                  <AddExtractParameter type='add' onSave={addExtractParameter} />
-                </div>
-              )
-              : undefined
+            !readOnly ? (
+              <div className="flex items-center space-x-1">
+                {!readOnly && <ImportFromTool onImport={handleImportFromTool} />}
+                {!readOnly && <div className="h-3 w-px bg-divider-regular"></div>}
+                <ParameterDialog type="add" onSave={addExtractParameter} />
+              </div>
+            ) : undefined
           }
         >
-          <ExtractParameter
+          <ExtractParameterList
             readonly={readOnly}
             list={inputs.parameters || []}
             onChange={handleExactParamsChange}
@@ -128,34 +118,34 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
         </Field>
         <Editor
           title={
-            <div className='flex items-center space-x-1'>
-              <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
-              <Tooltip
-                popupContent={
-                  <div className='w-[120px]'>
-                    {t(`${i18nPrefix}.instructionTip`)}
-                  </div>
-                }
-                triggerClassName='w-3.5 h-3.5 ml-0.5'
-              />
+            <div className="flex items-center space-x-1">
+              <span id={instructionLabelId} className="uppercase">
+                {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflowModels' })}
+              </span>
+              <Infotip>
+                <InfotipTrigger aria-labelledby={instructionLabelId} className="ml-0.5 size-3.5" />
+                <InfotipContent aria-labelledby={instructionLabelId} className="w-30">
+                  {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflowModels' })}
+                </InfotipContent>
+              </Infotip>
             </div>
           }
           value={inputs.instruction}
           onChange={handleInstructionChange}
           readOnly={readOnly}
           isChatModel={isChatModel}
-          isChatApp={isChatMode}
+          isChatApp={isChatflow}
           isShowContext={false}
           hasSetBlockStatus={hasSetBlockStatus}
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
         />
       </div>
-      <FieldCollapse title={t(`${i18nPrefix}.advancedSetting`)}>
+      <FieldCollapse title={t(($) => $[`${i18nPrefix}.advancedSetting`], { ns: 'workflowModels' })}>
         <>
           {/* Memory */}
-          {isChatMode && (
-            <div className='mt-4'>
+          {isChatflow && (
+            <div className="mt-4">
               <MemoryConfig
                 readonly={readOnly}
                 config={{ data: inputs.memory }}
@@ -165,7 +155,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             </div>
           )}
           {isSupportFunctionCall && (
-            <div className='mt-2'>
+            <div className="mt-2">
               <ReasoningModePicker
                 type={inputs.reasoning_mode}
                 onChange={handleReasoningModeChange}
@@ -174,38 +164,46 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           )}
         </>
       </FieldCollapse>
-      {inputs.parameters?.length > 0 && (<>
-        <Split />
-        <div>
-          <OutputVars>
-            <>
-              {inputs.parameters.map((param, index) => (
+      {inputs.parameters?.length > 0 && (
+        <>
+          <Split />
+          <div>
+            <OutputVars>
+              <>
+                {inputs.parameters.map((param, index) => (
+                  <VarItem
+                    key={index}
+                    name={param.name}
+                    type={param.type}
+                    description={param.description}
+                  />
+                ))}
                 <VarItem
-                  key={index}
-                  name={param.name}
-                  type={param.type}
-                  description={param.description}
+                  name="__is_success"
+                  type={VarType.number}
+                  description={t(($) => $[`${i18nPrefix}.outputVars.isSuccess`], {
+                    ns: 'workflowModels',
+                  })}
                 />
-              ))}
-              <VarItem
-                name='__is_success'
-                type={VarType.number}
-                description={t(`${i18nPrefix}.outputVars.isSuccess`)}
-              />
-              <VarItem
-                name='__reason'
-                type={VarType.string}
-                description={t(`${i18nPrefix}.outputVars.errorReason`)}
-              />
-              <VarItem
-                name='__usage'
-                type='object'
-                description={t(`${i18nPrefix}.outputVars.usage`)}
-              />
-            </>
-          </OutputVars>
-        </div>
-      </>)}
+                <VarItem
+                  name="__reason"
+                  type={VarType.string}
+                  description={t(($) => $[`${i18nPrefix}.outputVars.errorReason`], {
+                    ns: 'workflowModels',
+                  })}
+                />
+                <VarItem
+                  name="__usage"
+                  type="object"
+                  description={t(($) => $[`${i18nPrefix}.outputVars.usage`], {
+                    ns: 'workflowModels',
+                  })}
+                />
+              </>
+            </OutputVars>
+          </div>
+        </>
+      )}
     </div>
   )
 }

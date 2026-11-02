@@ -1,52 +1,51 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { env } from '@/env'
 import ParamItem from '.'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   value: number
   onChange: (key: string, value: number) => void
   enable: boolean
-}
+  disabled?: boolean
+  max?: number
+}>
 
-const maxTopK = (() => {
-  const configValue = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-top-k-max-value') || '', 10)
-  if (configValue && !isNaN(configValue))
-    return configValue
-  return 10
-})()
 const VALUE_LIMIT = {
   default: 2,
   step: 1,
   min: 1,
-  max: maxTopK,
 }
 
-const key = 'top_k'
 const TopKItem: FC<Props> = ({
   className,
   value,
   enable,
   onChange,
+  disabled = false,
+  max = env.NEXT_PUBLIC_TOP_K_MAX_VALUE,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const handleParamChange = (key: string, value: number) => {
-    let notOutRangeValue = Number.parseFloat(value.toFixed(2))
+    let notOutRangeValue = Number.parseInt(value.toFixed(0))
     notOutRangeValue = Math.max(VALUE_LIMIT.min, notOutRangeValue)
-    notOutRangeValue = Math.min(VALUE_LIMIT.max, notOutRangeValue)
+    notOutRangeValue = Math.min(max, notOutRangeValue)
     onChange(key, notOutRangeValue)
   }
   return (
     <ParamItem
       className={className}
-      id={key}
-      name={t(`appDebug.datasetConfig.${key}`)}
-      tip={t(`appDebug.datasetConfig.${key}Tip`) as string}
+      id="top_k"
+      name={t(($) => $['datasetConfig.top_k'], { ns: 'appDebug' })}
+      tip={t(($) => $['datasetConfig.top_kTip'], { ns: 'appDebug' }) as string}
       {...VALUE_LIMIT}
+      max={max}
       value={value}
       enable={enable}
+      disabled={disabled}
       onChange={handleParamChange}
     />
   )

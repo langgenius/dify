@@ -1,119 +1,197 @@
-from flask_login import current_user
-from flask_restful import marshal_with, reqparse
-from flask_restful.inputs import int_range
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+"""HTTP admission and response contracts for installed-app conversations."""
 
-from controllers.console.explore.error import NotChatAppError
-from controllers.console.explore.wraps import InstalledAppResource
-from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
-from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
-from libs.helper import uuid_value
-from models.model import AppMode
-from services.conversation_service import ConversationService
+from collections.abc import Callable
+from functools import wraps
+from http import HTTPStatus
+from uuid import UUID
+
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
+
+from controllers.common.controller_schemas import ConversationRenamePayload
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console import console_ns
+from controllers.console.explore.error import (
+    ConversationCursorNotFoundHTTPError,
+    ConversationFirstMessageNotFoundHTTPError,
+    ConversationNameRequiredHTTPError,
+    ConversationNotFoundHTTPError,
+    InstalledAppNotFoundHTTPError,
+    NotChatAppError,
+)
+from controllers.console.explore.installed_app_admission import get_installed_app
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
+from extensions.ext_application_services import application_services
+from fields.conversation_fields import ConversationInfiniteScrollPagination, ResultResponse, SimpleConversation
+from libs.external_api import error_responses
+from libs.helper import UUIDStrOrEmpty, dump_response
+from machinery.context import RequestContext
+from services.conversation_name_service import ConversationNameRequiredError
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
-from services.web_conversation_service import WebConversationService
+from services.errors.message import MessageNotExistsError
+from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
+from services.installed_app_conversation_service import ConversationNotChatAppError
 
 
-class ConversationListApi(InstalledAppResource):
-    @marshal_with(conversation_infinite_scroll_pagination_fields)
-    def get(self, installed_app):
-        app_model = installed_app.app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
+class ConversationListQuery(BaseModel):
+    last_id: UUIDStrOrEmpty | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+    pinned: bool | None = None
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("last_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument("pinned", type=str, choices=["true", "false", None], location="args")
-        args = parser.parse_args()
+    @field_validator("limit", mode="before")
+    @classmethod
+    def parse_limit(cls, value: object) -> object:
+        # Preserve request.args.get(..., default=20, type=int) coercion.
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return 20
+        return value
 
-        pinned = None
-        if "pinned" in args and args["pinned"] is not None:
-            pinned = args["pinned"] == "true"
+    @field_validator("pinned", mode="before")
+    @classmethod
+    def parse_pinned(cls, value: object) -> object:
+        # Existing callers use the literal query string "true" for pinned items.
+        return value == "true" if isinstance(value, str) else value
 
+
+register_schema_models(console_ns, ConversationListQuery, ConversationRenamePayload)
+register_response_schema_models(console_ns, ConversationInfiniteScrollPagination, ResultResponse, SimpleConversation)
+
+
+def _conversation_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Translate the shared conversation use-case errors at the Console boundary."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
-            with Session(db.engine) as session:
-                return WebConversationService.pagination_by_last_id(
-                    session=session,
-                    app_model=app_model,
-                    user=current_user,
-                    last_id=args["last_id"],
-                    limit=args["limit"],
-                    invoke_from=InvokeFrom.EXPLORE,
-                    pinned=pinned,
-                )
-        except LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+            return view(*args, **kwargs)
+        except InstalledAppNotFoundError as error:
+            raise InstalledAppNotFoundHTTPError() from error
+        except ConversationNotChatAppError as error:
+            raise NotChatAppError() from error
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        except LastConversationNotExistsError as error:
+            raise ConversationCursorNotFoundHTTPError() from error
+        except MessageNotExistsError as error:
+            raise ConversationFirstMessageNotFoundHTTPError() from error
+        except ConversationNameRequiredError as error:
+            raise ConversationNameRequiredHTTPError() from error
+
+    return decorated
 
 
-class ConversationApi(InstalledAppResource):
-    def delete(self, installed_app, c_id):
-        app_model = installed_app.app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
-
-        conversation_id = str(c_id)
-        try:
-            ConversationService.delete(app_model, conversation_id, current_user)
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        WebConversationService.unpin(app_model, conversation_id, current_user)
-
-        return {"result": "success"}, 204
-
-
-class ConversationRenameApi(InstalledAppResource):
-    @marshal_with(simple_conversation_fields)
-    def post(self, installed_app, c_id):
-        app_model = installed_app.app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
-
-        conversation_id = str(c_id)
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=False, location="json")
-        parser.add_argument("auto_generate", type=bool, required=False, default=False, location="json")
-        args = parser.parse_args()
-
-        try:
-            return ConversationService.rename(
-                app_model, conversation_id, current_user, args["name"], args["auto_generate"]
-            )
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+@console_ns.route("/installed-apps/<uuid:installed_app_id>/conversations", endpoint="installed_app_conversations")
+class ConversationListApi(Resource):
+    @error_responses(ConversationCursorNotFoundHTTPError, NotChatAppError)
+    @console_ns.doc(params=query_params_from_model(ConversationListQuery))
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ConversationInfiniteScrollPagination.__name__])
+    @console_account_admission()
+    @get_installed_app
+    @model_validate(ConversationListQuery)
+    @_conversation_errors
+    def get(
+        self, query: ConversationListQuery, request_context: RequestContext, installed_app: InstalledAppRef
+    ) -> dict[str, object]:
+        page = application_services().installed_apps.conversations.get_page(
+            installed_app=installed_app,
+            account_id=request_context.account_id,
+            last_id=query.last_id or None,
+            limit=query.limit,
+            pinned=query.pinned,
+        )
+        return dump_response(ConversationInfiniteScrollPagination, page)
 
 
-class ConversationPinApi(InstalledAppResource):
-    def patch(self, installed_app, c_id):
-        app_model = installed_app.app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>", endpoint="installed_app_conversation"
+)
+class ConversationApi(Resource):
+    @error_responses(ConversationNotFoundHTTPError, NotChatAppError)
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Conversation deleted successfully")
+    @console_account_admission()
+    @get_installed_app
+    @_conversation_errors
+    def delete(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> tuple[str, int]:
+        application_services().installed_apps.conversations.delete(
+            installed_app=installed_app, account_id=request_context.account_id, conversation_id=str(c_id)
+        )
+        return "", HTTPStatus.NO_CONTENT
 
-        conversation_id = str(c_id)
 
-        try:
-            WebConversationService.pin(app_model, conversation_id, current_user)
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/name",
+    endpoint="installed_app_conversation_rename",
+)
+class ConversationRenameApi(Resource):
+    @error_responses(
+        ConversationFirstMessageNotFoundHTTPError,
+        ConversationNameRequiredHTTPError,
+        ConversationNotFoundHTTPError,
+        NotChatAppError,
+    )
+    @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Conversation renamed successfully", console_ns.models[SimpleConversation.__name__]
+    )
+    @console_account_admission()
+    @get_installed_app
+    @model_validate(ConversationRenamePayload)
+    @_conversation_errors
+    def post(
+        self,
+        payload: ConversationRenamePayload,
+        request_context: RequestContext,
+        installed_app: InstalledAppRef,
+        c_id: UUID,
+    ) -> dict[str, object]:
+        conversation = application_services().installed_apps.conversations.rename(
+            installed_app=installed_app,
+            account_id=request_context.account_id,
+            conversation_id=str(c_id),
+            name=payload.name,
+            auto_generate=payload.auto_generate,
+        )
+        return dump_response(SimpleConversation, conversation)
 
-        return {"result": "success"}
+
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/pin", endpoint="installed_app_conversation_pin"
+)
+class ConversationPinApi(Resource):
+    @error_responses(ConversationNotFoundHTTPError, NotChatAppError)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
+    @console_account_admission()
+    @get_installed_app
+    @_conversation_errors
+    def patch(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> dict[str, object]:
+        application_services().installed_apps.conversations.set_pinned(
+            installed_app=installed_app,
+            account_id=request_context.account_id,
+            conversation_id=str(c_id),
+            is_pinned=True,
+        )
+        return dump_response(ResultResponse, {"result": "success"})
 
 
-class ConversationUnPinApi(InstalledAppResource):
-    def patch(self, installed_app, c_id):
-        app_model = installed_app.app
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
-
-        conversation_id = str(c_id)
-        WebConversationService.unpin(app_model, conversation_id, current_user)
-
-        return {"result": "success"}
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/unpin",
+    endpoint="installed_app_conversation_unpin",
+)
+class ConversationUnPinApi(Resource):
+    @error_responses(ConversationNotFoundHTTPError, NotChatAppError)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
+    @console_account_admission()
+    @get_installed_app
+    @_conversation_errors
+    def patch(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> dict[str, object]:
+        application_services().installed_apps.conversations.set_pinned(
+            installed_app=installed_app,
+            account_id=request_context.account_id,
+            conversation_id=str(c_id),
+            is_pinned=False,
+        )
+        return dump_response(ResultResponse, {"result": "success"})

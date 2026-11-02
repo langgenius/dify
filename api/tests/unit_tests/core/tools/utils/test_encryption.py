@@ -1,0 +1,200 @@
+import copy
+from unittest.mock import patch
+
+import pytest
+
+from core.entities.provider_entities import BasicProviderConfig, ProviderConfig, ProviderConfigType
+from core.helper.provider_cache import NoOpProviderCredentialCache, SingletonProviderCredentialsCache
+from core.helper.provider_encryption import ProviderConfigEncrypter
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin, ToolProviderIdentity
+from core.tools.plugin_tool.provider import PluginToolProviderController
+from core.tools.utils.encryption import create_tool_provider_encrypter
+
+
+@pytest.fixture
+def secret_field() -> BasicProviderConfig:
+    """A SECRET_INPUT field named 'password'."""
+    return BasicProviderConfig(
+        name="password",
+        type=ProviderConfigType.SECRET_INPUT,
+    )
+
+
+@pytest.fixture
+def normal_field() -> BasicProviderConfig:
+    """A TEXT_INPUT field named 'username'."""
+    return BasicProviderConfig(
+        name="username",
+        type=ProviderConfigType.TEXT_INPUT,
+    )
+
+
+@pytest.fixture
+def encrypter_obj(secret_field: BasicProviderConfig, normal_field: BasicProviderConfig) -> ProviderConfigEncrypter:
+    """
+    Build ProviderConfigEncrypter with:
+    - tenant_id = tenant123
+    - one secret field (password) and one normal field (username)
+    - NoOpProviderCredentialCache as cache
+    """
+    return ProviderConfigEncrypter(
+        tenant_id="tenant123",
+        config=[secret_field, normal_field],
+        provider_config_cache=NoOpProviderCredentialCache(),
+    )
+
+
+# ============================================================
+# ProviderConfigEncrypter.encrypt()
+# ============================================================
+
+
+def test_encrypt_only_secret_is_encrypted_and_non_secret_unchanged(encrypter_obj: ProviderConfigEncrypter) -> None:
+    """
+    Secret field should be encrypted, non-secret field unchanged.
+    Verify encrypt_token called only for secret field.
+    Also check deep copy (input not modified).
+    """
+    data_in = {"username": "alice", "password": "plain_pwd"}
+    data_copy = copy.deepcopy(data_in)
+
+    with patch("core.helper.provider_encryption.encrypter.encrypt_token", return_value="CIPHERTEXT") as mock_encrypt:
+        out = encrypter_obj.encrypt(data_in)
+
+    assert out["username"] == "alice"
+    assert out["password"] == "CIPHERTEXT"
+    mock_encrypt.assert_called_once_with("tenant123", "plain_pwd")
+    assert data_in == data_copy  # deep copy semantics
+
+
+def test_encrypt_missing_secret_key_is_ok(encrypter_obj: ProviderConfigEncrypter) -> None:
+    """If secret field missing in input, no error and no encryption called."""
+    with patch("core.helper.provider_encryption.encrypter.encrypt_token") as mock_encrypt:
+        out = encrypter_obj.encrypt({"username": "alice"})
+    assert out["username"] == "alice"
+    mock_encrypt.assert_not_called()
+
+
+# ============================================================
+# ProviderConfigEncrypter.mask_plugin_credentials()
+# ============================================================
+
+
+@pytest.mark.parametrize(
+    ("raw", "prefix", "suffix"),
+    [
+        ("longsecret", "lo", "et"),
+        ("abcdefg", "ab", "fg"),
+        ("1234567", "12", "67"),
+    ],
+)
+def test_mask_tool_credentials_long_secret(
+    encrypter_obj: ProviderConfigEncrypter, raw: str, prefix: str, suffix: str
+) -> None:
+    """
+    For length > 6: keep first 2 and last 2, mask middle with '*'.
+    """
+    data_in = {"username": "alice", "password": raw}
+    data_copy = copy.deepcopy(data_in)
+
+    out = encrypter_obj.mask_plugin_credentials(data_in)
+    masked = out["password"]
+
+    assert masked == prefix + "*" * (len(raw) - 4) + suffix
+    assert data_in == data_copy  # deep copy semantics
+
+
+@pytest.mark.parametrize("raw", ["", "1", "12", "123", "123456"])
+def test_mask_tool_credentials_short_secret(encrypter_obj: ProviderConfigEncrypter, raw: str) -> None:
+    """
+    For length <= 6: fully mask with '*' of same length.
+    """
+    out = encrypter_obj.mask_plugin_credentials({"password": raw})
+    assert out["password"] == ("*" * len(raw))
+
+
+def test_mask_tool_credentials_missing_key_noop(encrypter_obj: ProviderConfigEncrypter) -> None:
+    """If secret key missing, leave other fields unchanged."""
+    data_in = {"username": "alice"}
+    data_copy = copy.deepcopy(data_in)
+
+    out = encrypter_obj.mask_plugin_credentials(data_in)
+    assert out["username"] == "alice"
+    assert data_in == data_copy
+
+
+# ============================================================
+# ProviderConfigEncrypter.decrypt()
+# ============================================================
+
+
+def test_decrypt_normal_flow(encrypter_obj: ProviderConfigEncrypter) -> None:
+    """
+    Normal decrypt flow:
+    - decrypt_token called for secret field
+    - secret replaced with decrypted value
+    - non-secret unchanged
+    """
+    data_in = {"username": "alice", "password": "ENC"}
+    data_copy = copy.deepcopy(data_in)
+
+    with patch("core.helper.provider_encryption.encrypter.decrypt_token", return_value="PLAIN") as mock_decrypt:
+        out = encrypter_obj.decrypt(data_in)
+
+    assert out["username"] == "alice"
+    assert out["password"] == "PLAIN"
+    mock_decrypt.assert_called_once_with("tenant123", "ENC")
+    assert data_in == data_copy  # deep copy semantics
+
+
+@pytest.mark.parametrize("empty_val", ["", None])
+def test_decrypt_skip_empty_values(encrypter_obj: ProviderConfigEncrypter, empty_val: str | None) -> None:
+    """Skip decrypt if value is empty or None, keep original."""
+    with patch("core.helper.provider_encryption.encrypter.decrypt_token") as mock_decrypt:
+        out = encrypter_obj.decrypt({"password": empty_val})
+
+    mock_decrypt.assert_not_called()
+    assert out["password"] == empty_val
+
+
+def test_decrypt_swallow_exception_and_keep_original(encrypter_obj: ProviderConfigEncrypter) -> None:
+    """
+    If decrypt_token raises, exception should be swallowed,
+    and original value preserved.
+    """
+    with patch("core.helper.provider_encryption.encrypter.decrypt_token", side_effect=Exception("boom")):
+        out = encrypter_obj.decrypt({"password": "ENC_ERR"})
+
+    assert out["password"] == "ENC_ERR"
+
+
+def test_create_tool_provider_encrypter_builds_cache_and_encrypter() -> None:
+    basic_config = BasicProviderConfig(name="key", type=ProviderConfigType.TEXT_INPUT)
+    controller = PluginToolProviderController(
+        entity=ToolProviderEntityWithPlugin(
+            identity=ToolProviderIdentity(
+                author="author",
+                name="provider-a",
+                description=I18nObject(en_US="Description"),
+                icon="icon.svg",
+                label=I18nObject(en_US="Provider"),
+            ),
+            credentials_schema=[ProviderConfig(name="key", type=ProviderConfigType.TEXT_INPUT)],
+            plugin_id="plugin-id",
+            tools=[],
+        ),
+        plugin_id="plugin-id",
+        plugin_unique_identifier="plugin-uid",
+        tenant_id="tenant-1",
+    )
+
+    encrypter, cache = create_tool_provider_encrypter("tenant-1", controller)
+
+    assert isinstance(encrypter, ProviderConfigEncrypter)
+    assert isinstance(cache, SingletonProviderCredentialsCache)
+    assert encrypter.tenant_id == "tenant-1"
+    assert encrypter.config == [basic_config]
+    assert encrypter.provider_config_cache is cache
+    assert cache.cache_key == "plugin_credentials:tenant_id:tenant-1:id:plugin.provider-a"
+    assert encrypter.encrypt({"key": "value"}) == {"key": "value"}

@@ -1,15 +1,12 @@
+import { produce } from 'immer'
 import { useCallback } from 'react'
-import produce from 'immer'
 import { useStoreApi } from 'reactflow'
 
 export const useEdgesInteractionsWithoutSync = () => {
   const store = useStoreApi()
 
   const handleEdgeCancelRunningStatus = useCallback(() => {
-    const {
-      edges,
-      setEdges,
-    } = store.getState()
+    const { edges, setEdges } = store.getState()
 
     const newEdges = produce(edges, (draft) => {
       draft.forEach((edge) => {

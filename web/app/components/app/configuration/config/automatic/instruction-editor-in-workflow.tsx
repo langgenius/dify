@@ -1,0 +1,66 @@
+'use client'
+import type { FC } from 'react'
+import type { GeneratorType } from './types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useWorkflowVariableType } from '@/app/components/workflow/hooks/use-workflow-variables'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { VarType } from '@/app/components/workflow/types'
+import InstructionEditor from './instruction-editor'
+
+type Props = Readonly<{
+  nodeId: string
+  value: string
+  'aria-labelledby'?: string
+  editorKey: string
+  onChange: (text: string) => void
+  generatorType: GeneratorType
+  isShowCurrentBlock: boolean
+}>
+
+const InstructionEditorInWorkflow: FC<Props> = ({
+  'aria-labelledby': ariaLabelledBy,
+  nodeId,
+  value,
+  editorKey,
+  onChange,
+  generatorType,
+  isShowCurrentBlock,
+}) => {
+  const workflowStore = useWorkflowStore()
+  const filterVar = useCallback(
+    (payload: Var, selector: ValueSelector) => {
+      const { nodesWithInspectVars } = workflowStore.getState()
+      const nodeId = selector?.[0]
+      return (
+        !!nodesWithInspectVars.find((node) => node.nodeId === nodeId) &&
+        payload.type !== VarType.file &&
+        payload.type !== VarType.arrayFile
+      )
+    },
+    [workflowStore],
+  )
+  const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar,
+  })
+  const getVarType = useWorkflowVariableType()
+
+  return (
+    <InstructionEditor
+      aria-labelledby={ariaLabelledBy}
+      value={value}
+      onChange={onChange}
+      editorKey={editorKey}
+      generatorType={generatorType}
+      availableVars={availableVars}
+      availableNodes={availableNodes}
+      getVarType={getVarType}
+      isShowCurrentBlock={isShowCurrentBlock}
+      isShowLastRunBlock
+    />
+  )
+}
+export default React.memo(InstructionEditorInWorkflow)

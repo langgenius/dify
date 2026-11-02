@@ -1,16 +1,16 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
+import type { CodeNodeType } from './types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
 import useNodeCrud from '../_base/hooks/use-node-crud'
-import type { CodeNodeType } from './types'
 
 type Params = {
-  id: string,
-  payload: CodeNodeType,
-  runInputData: Record<string, any>
-  runInputDataRef: MutableRefObject<Record<string, any>>
+  id: string
+  payload: CodeNodeType
+  runInputData: Record<string, unknown>
+  runInputDataRef: RefObject<Record<string, unknown>>
   getInputVars: (textList: string[]) => InputVar[]
-  setRunInputData: (data: Record<string, any>) => void
+  setRunInputData: (data: Record<string, unknown>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({
@@ -23,15 +23,17 @@ const useSingleRunFormParams = ({
   const { inputs } = useNodeCrud<CodeNodeType>(id, payload)
 
   const varInputs = toVarInputs(inputs.variables)
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
+  const setInputVarValues = useCallback(
+    (newPayload: Record<string, unknown>) => {
+      setRunInputData(newPayload)
+    },
+    [setRunInputData],
+  )
   const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
+    const vars: Record<string, unknown> = {}
+    Object.keys(runInputData).forEach((key) => {
+      vars[key] = runInputData[key]
+    })
     return vars
   })()
 
@@ -46,13 +48,12 @@ const useSingleRunFormParams = ({
   }, [inputVarValues, setInputVarValues, varInputs])
 
   const getDependentVars = () => {
-    return payload.variables.map(v => v.value_selector)
+    return payload.variables.map((v) => v.value_selector)
   }
 
   const getDependentVar = (variable: string) => {
-    const varItem = payload.variables.find(v => v.variable === variable)
-    if (varItem)
-      return varItem.value_selector
+    const varItem = payload.variables.find((v) => v.variable === variable)
+    if (varItem) return varItem.value_selector
   }
 
   return {

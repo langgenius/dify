@@ -1,0 +1,60 @@
+'use client'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
+import CheckEmail from './components/check-email'
+import FeedBack from './components/feed-back'
+import VerifyEmail from './components/verify-email'
+
+type DeleteAccountProps = {
+  onCancel: () => void
+  onConfirm: () => void
+}
+
+export default function DeleteAccount(props: DeleteAccountProps) {
+  const { t } = useTranslation(['accountSettings'])
+  const setCountdownLeftTime = useSetCountdownLeftTime()
+
+  const [showVerifyEmail, setShowVerifyEmail] = useState(false)
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
+
+  const handleEmailCheckSuccess = useCallback(async () => {
+    try {
+      setShowVerifyEmail(true)
+      setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
+    } catch (error) {
+      console.error(error)
+    }
+  }, [setCountdownLeftTime])
+
+  if (showFeedbackDialog) return <FeedBack onCancel={props.onCancel} onConfirm={props.onConfirm} />
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) props.onCancel()
+      }}
+    >
+      <DialogContent
+        backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
+      >
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['account.delete'], { ns: 'accountSettings' })}</DialogTitle>
+        </DialogHeader>
+        {!showVerifyEmail && (
+          <CheckEmail onCancel={props.onCancel} onConfirm={handleEmailCheckSuccess} />
+        )}
+        {showVerifyEmail && (
+          <VerifyEmail
+            onCancel={props.onCancel}
+            onConfirm={() => {
+              setShowFeedbackDialog(true)
+            }}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}

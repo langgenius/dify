@@ -1,42 +1,51 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import Image from 'next/image'
-import RetrievalParamConfig from '../retrieval-param-config'
-import { OptionCard } from '../../create/step-two/option-card'
-import { retrievalIcon } from '../../create/icons'
-import { RETRIEVE_METHOD } from '@/types/app'
 import type { RetrievalConfig } from '@/types/app'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import { RETRIEVE_METHOD } from '@/types/app'
+import { EffectColor } from '../../settings/chunk-structure/types'
+import OptionCard from '../../settings/option-card'
+import RetrievalParamConfig from '../retrieval-param-config'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   value: RetrievalConfig
   onChange: (value: RetrievalConfig) => void
-}
+}>
 
-const EconomicalRetrievalMethodConfig: FC<Props> = ({
-  disabled = false,
-  value,
-  onChange,
-}) => {
-  const { t } = useTranslation()
+const EconomicalRetrievalMethodConfig: FC<Props> = ({ disabled = false, value, onChange }) => {
+  const { t } = useTranslation(['dataset', 'datasetSettings'])
 
   return (
-    <div className='space-y-2'>
+    <RadioGroup<RETRIEVE_METHOD>
+      aria-label={t(($) => $['form.retrievalSetting.method'], { ns: 'datasetSettings' })}
+      className="block"
+      value={RETRIEVE_METHOD.keywordSearch}
+      disabled={disabled}
+    >
       <OptionCard
-        disabled={disabled} icon={<Image className='h-4 w-4' src={retrievalIcon.vector} alt='' />}
-        title={t('dataset.retrieval.invertedIndex.title')}
-        description={t('dataset.retrieval.invertedIndex.description')} isActive
-        activeHeaderClassName='bg-dataset-option-card-purple-gradient'
+        id={RETRIEVE_METHOD.keywordSearch}
+        disabled={disabled}
+        icon={<span aria-hidden className="i-custom-vender-knowledge-vector-search size-4" />}
+        iconActiveColor="text-util-colors-purple-purple-600"
+        title={t(($) => $['retrieval.keyword_search.title'], { ns: 'dataset' })}
+        description={t(($) => $['retrieval.keyword_search.description'], { ns: 'dataset' })}
+        isActive
+        effectColor={EffectColor.purple}
+        showEffectColor
+        showChildren
+        className="gap-x-2"
       >
         <RetrievalParamConfig
-          type={RETRIEVE_METHOD.invertedIndex}
+          type={RETRIEVE_METHOD.keywordSearch}
           value={value}
           onChange={onChange}
+          disabled={disabled}
         />
       </OptionCard>
-    </div>
+    </RadioGroup>
   )
 }
 export default React.memo(EconomicalRetrievalMethodConfig)

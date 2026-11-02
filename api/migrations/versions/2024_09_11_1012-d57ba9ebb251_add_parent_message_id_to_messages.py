@@ -10,6 +10,10 @@ from alembic import op
 
 import models as models
 
+
+def _is_pg(conn):
+    return conn.dialect.name == "postgresql"
+
 # revision identifiers, used by Alembic.
 revision = 'd57ba9ebb251'
 down_revision = '675b5321501b'
@@ -22,8 +26,14 @@ def upgrade():
     with op.batch_alter_table('messages', schema=None) as batch_op:
         batch_op.add_column(sa.Column('parent_message_id', models.types.StringUUID(), nullable=True))
 
-    # Set parent_message_id for existing messages to uuid_nil() to distinguish them from new messages with actual parent IDs or NULLs
-    op.execute('UPDATE messages SET parent_message_id = uuid_nil() WHERE parent_message_id IS NULL')
+    # Set parent_message_id for existing messages to distinguish them from new messages with actual parent IDs or NULLs
+    conn = op.get_bind()
+    if _is_pg(conn):
+        # PostgreSQL: Use uuid_nil() function
+        op.execute('UPDATE messages SET parent_message_id = uuid_nil() WHERE parent_message_id IS NULL')
+    else:
+        # MySQL: Use a specific UUID value to represent nil
+        op.execute("UPDATE messages SET parent_message_id = '00000000-0000-0000-0000-000000000000' WHERE parent_message_id IS NULL")
 
     # ### end Alembic commands ###
 

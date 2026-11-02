@@ -1,73 +1,91 @@
 'use client'
+import type { ComponentProps } from 'react'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import {
-  RiAddCircleFill,
-  RiArrowRightUpLine,
-  RiBookOpenLine,
-} from '@remixicon/react'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
+import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
+import { useDocLink } from '@/context/i18n'
+import { consoleQuery } from '@/service/console'
+import CreateEntryCard from '../provider/create-entry-card'
+import { selectToolProvider } from '../utils/query-select'
 import MCPModal from './modal'
-import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
-import { useAppContext } from '@/context/app-context'
-import { useCreateMCP } from '@/service/use-tools'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
 
-type Props = {
-  handleCreate: (provider: ToolWithProvider) => void
-}
+type MCPModalConfirmPayload = Parameters<ComponentProps<typeof MCPModal>['onConfirm']>[0]
 
-const NewMCPCard = ({ handleCreate }: Props) => {
-  const { t } = useTranslation()
-  const { locale } = useContext(I18n)
-  const language = getLanguage(locale)
-  const { isCurrentWorkspaceManager } = useAppContext()
+type Props = Readonly<{
+  handleCreate: (provider: ToolWithProvider) => Promise<void> | void
+}>
 
-  const { mutateAsync: createMCP } = useCreateMCP()
+function useMCPCreateAction({ handleCreate }: Props) {
+  const canManageMCP = useCanManageMCP()
+  const { mutateAsync: createMCP } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.mcp.post.mutationOptions(),
+  )
+  const [showModal, setShowModal] = useState(false)
 
-  const create = async (info: any) => {
-    const provider = await createMCP(info)
-    handleCreate(provider)
+  const create = async (info: MCPModalConfirmPayload) => {
+    if (!canManageMCP) return
+
+    const provider = await createMCP({ body: info })
+    await handleCreate(selectToolProvider(provider))
   }
 
-  const linkUrl = useMemo(() => {
-    if (language.startsWith('zh_'))
-      return 'https://docs.dify.ai/zh-hans/guides/tools/mcp'
-    if (language.startsWith('ja_jp'))
-      return 'https://docs.dify.ai/ja_jp/guides/tools/mcp'
-    return 'https://docs.dify.ai/en/guides/tools/mcp'
-  }, [language])
+  return {
+    canManageMCP,
+    create,
+    setShowModal,
+    showModal,
+  }
+}
 
-  const [showModal, setShowModal] = useState(false)
+export function NewMCPButton({ handleCreate }: Props) {
+  const { t } = useTranslation(['tools'])
+  const addMCPServerLabel = t(($) => $['mcp.create.cardTitle'], { ns: 'tools' })
+  const { canManageMCP, create, setShowModal, showModal } = useMCPCreateAction({ handleCreate })
+
+  if (!canManageMCP) return null
 
   return (
     <>
-      {isCurrentWorkspaceManager && (
-        <div className='col-span-1 flex min-h-[108px] cursor-pointer flex-col rounded-xl bg-background-default-dimmed transition-all duration-200 ease-in-out'>
-          <div className='group grow rounded-t-xl' onClick={() => setShowModal(true)}>
-            <div className='flex shrink-0 items-center p-4 pb-3'>
-              <div className='flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-divider-deep group-hover:border-solid group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover'>
-                <RiAddCircleFill className='h-4 w-4 text-text-quaternary group-hover:text-text-accent'/>
-              </div>
-              <div className='system-md-semibold ml-3 text-text-secondary group-hover:text-text-accent'>{t('tools.mcp.create.cardTitle')}</div>
-            </div>
-          </div>
-          <div className='rounded-b-xl border-t-[0.5px] border-divider-subtle px-4 py-3 text-text-tertiary hover:text-text-accent'>
-            <a href={linkUrl} target='_blank' rel='noopener noreferrer' className='flex items-center space-x-1'>
-              <RiBookOpenLine className='h-3 w-3 shrink-0' />
-              <div className='system-xs-regular grow truncate' title={t('tools.mcp.create.cardLink') || ''}>{t('tools.mcp.create.cardLink')}</div>
-              <RiArrowRightUpLine className='h-3 w-3 shrink-0' />
-            </a>
-          </div>
-        </div>
+      <Button
+        variant="secondary"
+        className="px-3!"
+        data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationMcpAdd}
+        onClick={() => setShowModal(true)}
+        title={addMCPServerLabel}
+      >
+        <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
+        {addMCPServerLabel}
+      </Button>
+      {canManageMCP && showModal && (
+        <MCPModal show={showModal} onConfirm={create} onHide={() => setShowModal(false)} />
       )}
-      {showModal && (
-        <MCPModal
-          show={showModal}
-          onConfirm={create}
-          onHide={() => setShowModal(false)}
+    </>
+  )
+}
+
+const NewMCPCard = ({ handleCreate }: Props) => {
+  const { t } = useTranslation(['tools'])
+  const docLink = useDocLink()
+  const { canManageMCP, create, setShowModal, showModal } = useMCPCreateAction({ handleCreate })
+
+  const linkUrl = useMemo(() => docLink('/use-dify/workspace/tools#mcp'), [docLink])
+
+  return (
+    <>
+      {canManageMCP && (
+        <CreateEntryCard
+          title={t(($) => $['mcp.create.cardTitle'], { ns: 'tools' })}
+          linkText={t(($) => $['mcp.create.cardLink'], { ns: 'tools' })}
+          linkUrl={linkUrl}
+          onCreate={() => setShowModal(true)}
         />
+      )}
+      {canManageMCP && showModal && (
+        <MCPModal show={showModal} onConfirm={create} onHide={() => setShowModal(false)} />
       )}
     </>
   )

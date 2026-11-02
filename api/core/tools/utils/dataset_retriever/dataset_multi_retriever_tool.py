@@ -1,23 +1,27 @@
 import threading
-from typing import Any
+from typing import override
 
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
-from core.rag.datasource.retrieval_service import RetrievalService
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
+from core.rag.entities import RetrievalSourceMetadata
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document as RagDocument
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Document, DocumentSegment
+from repositories.knowledge.segment_read_adapter import sign_segment_content
 
-default_retrieval_model: dict[str, Any] = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+default_retrieval_model: DefaultRetrievalModelDict = {
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "top_k": 2,
@@ -45,7 +49,8 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             name=f"dataset_{tenant_id.replace('-', '_')}", tenant_id=tenant_id, dataset_ids=dataset_ids, **kwargs
         )
 
-    def _run(self, query: str) -> str:
+    @override
+    def _run(self, session: Session, query: str) -> str:
         threads = []
         all_documents: list[RagDocument] = []
         for dataset_id in self.dataset_ids:
@@ -64,7 +69,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
         for thread in threads:
             thread.join()
         # do rerank for searched documents
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=self.tenant_id)
         rerank_model_instance = model_manager.get_model_instance(
             tenant_id=self.tenant_id,
             provider=self.reranking_provider_name,
@@ -72,11 +77,11 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             model=self.reranking_model_name,
         )
 
-        rerank_runner = RerankModelRunner(rerank_model_instance)
+        rerank_runner = RerankModelRunner(rerank_model_instance, session=session)
         all_documents = rerank_runner.run(query, all_documents, self.score_threshold, self.top_k)
 
         for hit_callback in self.hit_callbacks:
-            hit_callback.on_tool_end(all_documents)
+            hit_callback.on_tool_end(all_documents, session)
 
         document_score_list = {}
         for item in all_documents:
@@ -85,17 +90,14 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
 
         document_context_list = []
         index_node_ids = [document.metadata["doc_id"] for document in all_documents if document.metadata]
-        segments = (
-            db.session.query(DocumentSegment)
-            .filter(
-                DocumentSegment.dataset_id.in_(self.dataset_ids),
-                DocumentSegment.completed_at.isnot(None),
-                DocumentSegment.status == "completed",
-                DocumentSegment.enabled == True,
-                DocumentSegment.index_node_id.in_(index_node_ids),
-            )
-            .all()
+        document_segment_stmt = select(DocumentSegment).where(
+            DocumentSegment.dataset_id.in_(self.dataset_ids),
+            DocumentSegment.completed_at.isnot(None),
+            DocumentSegment.status == "completed",
+            DocumentSegment.enabled.is_(True),
+            DocumentSegment.index_node_id.in_(index_node_ids),
         )
+        segments = session.scalars(document_segment_stmt).all()
 
         if segments:
             index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
@@ -104,23 +106,21 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             )
             for segment in sorted_segments:
                 if segment.answer:
-                    document_context_list.append(f"question:{segment.get_sign_content()} answer:{segment.answer}")
+                    document_context_list.append(
+                        f"question:{sign_segment_content(segment, session=session)} answer:{segment.answer}"
+                    )
                 else:
-                    document_context_list.append(segment.get_sign_content())
+                    document_context_list.append(sign_segment_content(segment, session=session))
             if self.return_resource:
                 context_list: list[RetrievalSourceMetadata] = []
-                resource_number = 1
-                for segment in sorted_segments:
-                    dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
-                    document = (
-                        db.session.query(Document)
-                        .filter(
-                            Document.id == segment.document_id,
-                            Document.enabled == True,
-                            Document.archived == False,
-                        )
-                        .first()
+                for resource_number, segment in enumerate(sorted_segments, start=1):
+                    dataset = session.get(Dataset, segment.dataset_id)
+                    document_stmt = select(Document).where(
+                        Document.id == segment.document_id,
+                        Document.enabled.is_(True),
+                        Document.archived.is_(False),
                     )
+                    document = session.scalar(document_stmt)
                     if dataset and document:
                         source = RetrievalSourceMetadata(
                             position=resource_number,
@@ -131,7 +131,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                             data_source_type=document.data_source_type,
                             segment_id=segment.id,
                             retriever_from=self.retriever_from,
-                            score=document_score_list.get(segment.index_node_id, None),
+                            score=document_score_list.get(segment.index_node_id),
                             doc_metadata=document.doc_metadata,
                         )
 
@@ -145,12 +145,11 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                         else:
                             source.content = segment.content
                         context_list.append(source)
-                    resource_number += 1
 
                 for hit_callback in self.hit_callbacks:
                     hit_callback.return_retriever_resource_info(context_list)
 
-            return str("\n".join(document_context_list))
+            return "\n".join(document_context_list)
         return ""
 
     def _retriever(
@@ -162,26 +161,27 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
         hit_callbacks: list[DatasetIndexToolCallbackHandler],
     ):
         with flask_app.app_context():
-            dataset = (
-                db.session.query(Dataset).filter(Dataset.tenant_id == self.tenant_id, Dataset.id == dataset_id).first()
-            )
+            stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == dataset_id)
+            dataset = db.session.scalar(stmt)
 
             if not dataset:
                 return []
 
             for hit_callback in hit_callbacks:
-                hit_callback.on_query(query, dataset.id)
+                hit_callback.on_query(query, dataset.id, db.session())
 
             # get retrieval model , if the model is not setting , using default
             retrieval_model = dataset.retrieval_model or default_retrieval_model
+            dataset_top_k = retrieval_model.get("top_k")
 
-            if dataset.indexing_technique == "economy":
+            if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 # use keyword table query
                 documents = RetrievalService.retrieve(
-                    retrieval_method="keyword_search",
+                    retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
                     dataset_id=dataset.id,
                     query=query,
-                    top_k=retrieval_model.get("top_k") or 2,
+                    # top_k=0 is a legal explicit value; only None falls back to 4.
+                    top_k=dataset_top_k if dataset_top_k is not None else 4,
                 )
                 if documents:
                     all_documents.extend(documents)
@@ -192,7 +192,8 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                         retrieval_method=retrieval_model["search_method"],
                         dataset_id=dataset.id,
                         query=query,
-                        top_k=retrieval_model.get("top_k") or 2,
+                        # top_k=0 is a legal explicit value; only None falls back to 4.
+                        top_k=dataset_top_k if dataset_top_k is not None else 4,
                         score_threshold=retrieval_model.get("score_threshold", 0.0)
                         if retrieval_model["score_threshold_enabled"]
                         else 0.0,

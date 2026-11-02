@@ -1,107 +1,165 @@
-import {
-  useMemo,
-} from 'react'
-import useSWR from 'swr'
-import {
-  SupportUploadFileTypes,
-} from '@/app/components/workflow/types'
-import {
-  useWorkflowInit,
-} from './hooks'
-import {
-  initialEdges,
-  initialNodes,
-} from '@/app/components/workflow/utils'
-import Loading from '@/app/components/base/loading'
-import { FeaturesProvider } from '@/app/components/base/features'
+'use client'
+
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { fetchFileUploadConfig } from '@/service/common'
+import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useEffect, useMemo } from 'react'
+import { isWorkflowAppMode } from '@/app/components/apps/app-type'
+import { FeaturesProvider } from '@/app/components/base/features'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
-import {
-  WorkflowContextProvider,
-} from '@/app/components/workflow/context'
-import { createWorkflowSlice } from './store/workflow/workflow-slice'
+import { WorkflowContextProvider } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
+import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useParams, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { fetchRunDetail } from '@/service/log'
+import { getAppACLCapabilities } from '@/utils/permission'
 import WorkflowAppMain from './components/workflow-main'
+import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
+import { useWorkflowInit } from './hooks/use-workflow-init'
+import { createWorkflowSlice } from './store/workflow/workflow-slice'
+import { buildInitialFeatures, buildTriggerStatusMap, coerceReplayUserInputs } from './utils'
 
 const WorkflowAppWithAdditionalContext = () => {
-  const {
-    data,
-    isLoading,
-  } = useWorkflowInit()
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  const { data, isLoading, fileUploadConfigResponse } = useWorkflowInit()
+  const workflowStore = useWorkflowStore()
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+
+  // Initialize trigger status at application level
+  const { setTriggerStatuses } = useTriggerStatusStore()
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
+  const appACLCapabilities = useMemo(
+    () =>
+      getAppACLCapabilities(appDetail.permission_keys, {
+        currentUserId,
+        resourceMaintainer: appDetail.maintainer,
+        workspacePermissionKeys,
+      }),
+    [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
+  )
+  const isWorkflowMode = appDetail.mode === 'workflow'
+  const { data: triggersResponse } = useQuery(
+    consoleQuery.apps.byAppId.triggers.get.queryOptions({
+      input: { params: { app_id: appId } },
+      enabled: isWorkflowMode && !!appId,
+      staleTime: 5 * 60 * 1000, // 5 minutes cache
+      refetchOnWindowFocus: false,
+    }),
+  )
+
+  // Sync trigger statuses to store when data loads
+  useEffect(() => {
+    if (triggersResponse?.data) {
+      setTriggerStatuses(buildTriggerStatusMap(triggersResponse.data))
+    }
+  }, [triggersResponse?.data, setTriggerStatuses])
 
   const nodesData = useMemo(() => {
-    if (data)
-      return initialNodes(data.graph.nodes, data.graph.edges)
-
+    if (data) {
+      const processedNodes = initialNodes(data.graph.nodes, data.graph.edges)
+      return processedNodes
+    }
     return []
   }, [data])
+
   const edgesData = useMemo(() => {
-    if (data)
-      return initialEdges(data.graph.edges, data.graph.nodes)
-
+    if (data) {
+      const processedEdges = initialEdges(data.graph.edges, data.graph.nodes)
+      return processedEdges
+    }
     return []
   }, [data])
 
-  if (!data || isLoading) {
+  const searchParams = useSearchParams()
+  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
+  const replayRunId = searchParams.get('replayRunId')
+
+  useEffect(() => {
+    if (!replayRunId || !appACLCapabilities.canTestAndRun) return
+    const { runUrl } = getWorkflowRunAndTraceUrl(replayRunId)
+    if (!runUrl) return
+    fetchRunDetail(runUrl).then((res) => {
+      const { setInputs, setShowInputsPanel, setShowDebugAndPreviewPanel } =
+        workflowStore.getState()
+      const rawInputs = res.inputs
+      let parsedInputs: unknown = rawInputs
+
+      if (typeof rawInputs === 'string') {
+        try {
+          parsedInputs = JSON.parse(rawInputs) as unknown
+        } catch (error) {
+          console.error('Failed to parse workflow run inputs', error)
+          return
+        }
+      }
+
+      const userInputs = coerceReplayUserInputs(parsedInputs)
+
+      if (!userInputs || !Object.keys(userInputs).length) return
+
+      setInputs(userInputs)
+      setShowInputsPanel(true)
+      setShowDebugAndPreviewPanel(true)
+    })
+  }, [appACLCapabilities.canTestAndRun, replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
+
+  if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
-      <div className='relative flex h-full w-full items-center justify-center'>
-        <Loading />
+      <div className="relative flex size-full items-center justify-center">
+        <LoadingPlaceholder />
       </div>
     )
   }
 
-  const features = data.features || {}
-  const initialFeatures: FeaturesData = {
-    file: {
-      image: {
-        enabled: !!features.file_upload?.image?.enabled,
-        number_limits: features.file_upload?.image?.number_limits || 3,
-        transfer_methods: features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-      },
-      enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
-      allowed_file_types: features.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-      allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
-      allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-      number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
-      fileUploadConfig: fileUploadConfigResponse,
-    },
-    opening: {
-      enabled: !!features.opening_statement,
-      opening_statement: features.opening_statement,
-      suggested_questions: features.suggested_questions,
-    },
-    suggested: features.suggested_questions_after_answer || { enabled: false },
-    speech2text: features.speech_to_text || { enabled: false },
-    text2speech: features.text_to_speech || { enabled: false },
-    citation: features.retriever_resource || { enabled: false },
-    moderation: features.sensitive_word_avoidance || { enabled: false },
-  }
+  const initialFeatures: FeaturesData = buildInitialFeatures(
+    data.features,
+    fileUploadConfigResponse,
+  )
 
   return (
-    <WorkflowWithDefaultContext
-      edges={edgesData}
-      nodes={nodesData}
-    >
+    <WorkflowWithDefaultContext edges={edgesData} nodes={nodesData}>
       <FeaturesProvider features={initialFeatures}>
-        <WorkflowAppMain
-          nodes={nodesData}
-          edges={edgesData}
-          viewport={data.graph.viewport}
-        />
+        <WorkflowAppMain nodes={nodesData} edges={edgesData} viewport={data.graph.viewport} />
       </FeaturesProvider>
     </WorkflowWithDefaultContext>
   )
 }
 
 const WorkflowAppWrapper = () => {
+  const { appId } = useParams<{ appId: string }>()
+  const { data: mode } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+      select: (app) => app.mode,
+    }),
+  )
+  if (!isWorkflowAppMode(mode)) throw new Error('This app does not have a workflow editor')
+
   return (
-    <WorkflowContextProvider
-      injectWorkflowStoreSliceFn={createWorkflowSlice}
-    >
-      <WorkflowAppWithAdditionalContext />
-    </WorkflowContextProvider>
+    <EditorResourceScope resource={{ kind: 'app', appId, mode }}>
+      <WorkflowContextProvider
+        injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
+      >
+        <WorkflowAppWithAdditionalContext />
+      </WorkflowContextProvider>
+    </EditorResourceScope>
   )
 }
 

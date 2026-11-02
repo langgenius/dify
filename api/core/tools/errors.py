@@ -29,6 +29,25 @@ class ToolApiSchemaError(ValueError):
     pass
 
 
+class ToolSSRFError(ValueError):
+    pass
+
+
+class ToolCredentialPolicyViolationError(ValueError):
+    pass
+
+
+class ApiToolProviderNotFoundError(ValueError):
+    error_code = "api_tool_provider_not_found"
+    provider_name: str
+    tenant_id: str
+
+    def __init__(self, provider_name: str, tenant_id: str):
+        self.provider_name = provider_name
+        self.tenant_id = tenant_id
+        super().__init__(f"api provider {provider_name} does not exist")
+
+
 class ToolEngineInvokeError(Exception):
     meta: ToolInvokeMeta
 

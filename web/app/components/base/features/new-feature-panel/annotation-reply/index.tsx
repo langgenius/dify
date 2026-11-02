@@ -1,50 +1,51 @@
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { usePathname, useRouter } from 'next/navigation'
-import produce from 'immer'
-import { RiEqualizer2Line, RiExternalLinkLine } from '@remixicon/react'
-import { MessageFast } from '@/app/components/base/icons/src/vender/features'
-import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
-import Button from '@/app/components/base/button'
-import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
-import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
-import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
-import { ANNOTATION_DEFAULT } from '@/config'
 import type { AnnotationReplyConfig } from '@/models/debug'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiEqualizer2Line, RiExternalLinkLine } from '@remixicon/react'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
+import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
+import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
+import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
+import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import { toast } from '@/app/notifications'
+import { ANNOTATION_DEFAULT } from '@/config'
+import Link from '@/next/link'
+import { usePathname } from '@/next/navigation'
+import { getErrorMessage } from '@/utils/error-message'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
-const AnnotationReply = ({
-  disabled,
-  onChange,
-}: Props) => {
-  const { t } = useTranslation()
-  const router = useRouter()
+const AnnotationReply = ({ disabled, onChange }: Props) => {
+  const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
   const pathname = usePathname()
-  const matched = pathname.match(/\/app\/([^/]+)/)
-  const appId = (matched?.length && matched[1]) ? matched[1] : ''
+  const matched = /\/app\/([^/]+)/.exec(pathname)
+  const appId = matched?.length && matched[1] ? matched[1] : ''
   const featuresStore = useFeaturesStore()
-  const annotationReply = useFeatures(s => s.features.annotationReply)
+  const annotationReply = useFeatures((s) => s.features.annotationReply)
+  const [isDisabling, setIsDisabling] = useState(false)
 
-  const updateAnnotationReply = useCallback((newConfig: AnnotationReplyConfig) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
-    const newFeatures = produce(features, (draft) => {
-      draft.annotationReply = newConfig
-    })
-    setFeatures(newFeatures)
-    if (onChange)
-      onChange(newFeatures)
-  }, [featuresStore, onChange])
+  const updateAnnotationReply = useCallback(
+    (newConfig: AnnotationReplyConfig) => {
+      const { features, setFeatures } = featuresStore!.getState()
+      const newFeatures = produce(features, (draft) => {
+        draft.annotationReply = newConfig
+      })
+      setFeatures(newFeatures)
+      onChange?.()
+    },
+    [featuresStore, onChange],
+  )
 
   const {
+    isAnnotationQuotaUnavailable,
     handleEnableAnnotation,
     handleDisableAnnotation,
     isShowAnnotationConfigInit,
@@ -53,7 +54,7 @@ const AnnotationReply = ({
     setIsShowAnnotationFullModal,
   } = useAnnotationConfig({
     appId,
-    annotationConfig: annotationReply as any || {
+    annotationConfig: (annotationReply as any) || {
       id: '',
       enabled: false,
       score_threshold: ANNOTATION_DEFAULT.score_threshold,
@@ -65,12 +66,29 @@ const AnnotationReply = ({
     setAnnotationConfig: updateAnnotationReply,
   })
 
-  const handleSwitch = useCallback((enabled: boolean) => {
-    if (enabled)
-      setIsShowAnnotationConfigInit(true)
-    else
-      handleDisableAnnotation(annotationReply?.embedding_model as any)
-  }, [annotationReply?.embedding_model, handleDisableAnnotation, setIsShowAnnotationConfigInit])
+  const handleSwitch = useCallback(
+    async (enabled: boolean) => {
+      if (isDisabling) return
+      if (enabled) setIsShowAnnotationConfigInit(true)
+      else {
+        setIsDisabling(true)
+        try {
+          await handleDisableAnnotation(annotationReply?.embedding_model as any)
+        } catch (error) {
+          toast.error(getErrorMessage(error) || t(($) => $['api.actionFailed'], { ns: 'common' }))
+        } finally {
+          setIsDisabling(false)
+        }
+      }
+    },
+    [
+      annotationReply?.embedding_model,
+      handleDisableAnnotation,
+      isDisabling,
+      setIsShowAnnotationConfigInit,
+      t,
+    ],
+  )
 
   const [isHovering, setIsHovering] = useState(false)
 
@@ -78,68 +96,89 @@ const AnnotationReply = ({
     <>
       <FeatureCard
         icon={
-          <div className='shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs'>
-            <MessageFast className='h-4 w-4 text-text-primary-on-surface' />
+          <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
+            <span
+              aria-hidden
+              className="i-custom-vender-features-message-fast size-4 text-text-primary-on-surface"
+            />
           </div>
         }
-        title={t('appDebug.feature.annotation.title')}
+        title={t(($) => $['feature.annotation.title'], { ns: 'appDebug' })}
         value={!!annotationReply?.enabled}
-        onChange={state => handleSwitch(state)}
+        onChange={(state) => handleSwitch(state)}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
-        disabled={disabled}
+        disabled={disabled || (!annotationReply?.enabled && isAnnotationQuotaUnavailable)}
+        loading={isDisabling}
       >
         <>
           {!annotationReply?.enabled && (
-            <div className='system-xs-regular line-clamp-2 min-h-8 text-text-tertiary'>{t('appDebug.feature.annotation.description')}</div>
+            <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+              {t(($) => $['feature.annotation.description'], { ns: 'appDebug' })}
+            </div>
           )}
           {!!annotationReply?.enabled && (
             <>
-              {!isHovering && (
-                <div className='flex items-center gap-4 pt-0.5'>
-                  <div className=''>
-                    <div className='system-2xs-medium-uppercase mb-0.5 text-text-tertiary'>{t('appDebug.feature.annotation.scoreThreshold.title')}</div>
-                    <div className='system-xs-regular text-text-secondary'>{annotationReply.score_threshold || '-'}</div>
+              {(!isHovering || isDisabling) && (
+                <div className="flex items-center gap-4 pt-0.5">
+                  <div className="">
+                    <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                      {t(($) => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
+                    </div>
+                    <div className="system-xs-regular text-text-secondary">
+                      {annotationReply.score_threshold ?? '-'}
+                    </div>
                   </div>
-                  <div className='h-[27px] w-px rotate-12 bg-divider-subtle'></div>
-                  <div className=''>
-                    <div className='system-2xs-medium-uppercase mb-0.5 text-text-tertiary'>{t('common.modelProvider.embeddingModel.key')}</div>
-                    <div className='system-xs-regular text-text-secondary'>{annotationReply.embedding_model?.embedding_model_name}</div>
+                  <div className="h-6.75 w-px rotate-12 bg-divider-subtle"></div>
+                  <div className="">
+                    <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                      {t(($) => $['modelProvider.embeddingModel.key'], { ns: 'modelProvider' })}
+                    </div>
+                    <div className="system-xs-regular text-text-secondary">
+                      {annotationReply.embedding_model?.embedding_model_name}
+                    </div>
                   </div>
                 </div>
               )}
-              {isHovering && (
-                <div className='flex items-center justify-between'>
-                  <Button className='w-[178px]' onClick={() => setIsShowAnnotationConfigInit(true)} disabled={disabled}>
-                    <RiEqualizer2Line className='mr-1 h-4 w-4' />
-                    {t('common.operation.params')}
+              {isHovering && !isDisabling && (
+                <div className="flex items-center justify-between">
+                  <Button
+                    className="w-44.5"
+                    onClick={() => setIsShowAnnotationConfigInit(true)}
+                    disabled={disabled}
+                  >
+                    <RiEqualizer2Line className="size-4" />
+                    {t(($) => $['operation.params'], { ns: 'common' })}
                   </Button>
-                  <Button className='w-[178px]' onClick={() => {
-                    router.push(`/app/${appId}/annotations`)
-                  }}>
-                    <RiExternalLinkLine className='mr-1 h-4 w-4' />
-                    {t('appDebug.feature.annotation.cacheManagement')}
-                  </Button>
+                  <Link
+                    href={`/app/${appId}/annotations`}
+                    className={cn(buttonVariants(), 'w-44.5')}
+                  >
+                    <RiExternalLinkLine className="size-4" />
+                    {t(($) => $['feature.annotation.cacheManagement'], { ns: 'appDebug' })}
+                  </Link>
                 </div>
               )}
             </>
           )}
         </>
       </FeatureCard>
-      <ConfigParamModal
-        appId={appId}
-        isInit
-        isShow={isShowAnnotationConfigInit}
-        onHide={() => {
-          setIsShowAnnotationConfigInit(false)
-          // showChooseFeatureTrue()
-        }}
-        onSave={async (embeddingModel, score) => {
-          await handleEnableAnnotation(embeddingModel, score)
-          setIsShowAnnotationConfigInit(false)
-        }}
-        annotationConfig={annotationReply as any}
-      />
+      {isShowAnnotationConfigInit && (
+        <ConfigParamModal
+          appId={appId}
+          isInit
+          isShow={isShowAnnotationConfigInit}
+          onHide={() => {
+            setIsShowAnnotationConfigInit(false)
+            // showChooseFeatureTrue()
+          }}
+          onSave={async (embeddingModel, score) => {
+            await handleEnableAnnotation(embeddingModel, score)
+            setIsShowAnnotationConfigInit(false)
+          }}
+          annotationConfig={annotationReply as any}
+        />
+      )}
       {isShowAnnotationFullModal && (
         <AnnotationFullModal
           show={isShowAnnotationFullModal}

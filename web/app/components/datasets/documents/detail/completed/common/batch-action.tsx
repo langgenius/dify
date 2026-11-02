@@ -1,112 +1,179 @@
-import React, { type FC } from 'react'
-import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDraftLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import type { FC } from 'react'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
+import {
+  RiArchive2Line,
+  RiCheckboxCircleLine,
+  RiCloseCircleLine,
+  RiDeleteBinLine,
+  RiDownload2Line,
+  RiDraftLine,
+  RiRefreshLine,
+} from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
-import Divider from '@/app/components/base/divider'
-import classNames from '@/utils/classnames'
-import Confirm from '@/app/components/base/confirm'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
-const i18nPrefix = 'dataset.batchAction'
+const i18nPrefix = 'batchAction'
 type IBatchActionProps = {
   className?: string
   selectedIds: string[]
-  onBatchEnable: () => void
-  onBatchDisable: () => void
-  onBatchDelete: () => Promise<void>
+  disabled?: boolean
+  onBatchEnable?: () => void
+  onBatchDisable?: () => void
+  onBatchDownload?: () => void
+  onBatchDelete?: () => Promise<void>
+  onBatchSummary?: () => void
   onArchive?: () => void
   onEditMetadata?: () => void
+  onBatchReIndex?: () => void
   onCancel: () => void
 }
 
 const BatchAction: FC<IBatchActionProps> = ({
   className,
   selectedIds,
+  disabled = false,
   onBatchEnable,
   onBatchDisable,
+  onBatchSummary,
+  onBatchDownload,
   onArchive,
   onBatchDelete,
   onEditMetadata,
+  onBatchReIndex,
   onCancel,
 }) => {
-  const { t } = useTranslation()
-  const [isShowDeleteConfirm, {
-    setTrue: showDeleteConfirm,
-    setFalse: hideDeleteConfirm,
-  }] = useBoolean(false)
-  const [isDeleting, {
-    setTrue: setIsDeleting,
-  }] = useBoolean(false)
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
+  const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
+    useBoolean(false)
+  const [isDeleting, { setTrue: setIsDeleting }] = useBoolean(false)
 
   const handleBatchDelete = async () => {
+    if (!onBatchDelete) return
+
     setIsDeleting()
     await onBatchDelete()
     hideDeleteConfirm()
   }
   return (
-    <div className={classNames('w-full flex justify-center gap-x-2', className)}>
-      <div className='flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]'>
-        <div className='inline-flex items-center gap-x-2 py-1 pl-2 pr-3'>
-          <span className='flex h-5 w-5 items-center justify-center rounded-md bg-text-accent px-1 py-0.5 text-xs font-medium text-text-primary-on-surface'>
+    <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
+      <div className="pointer-events-auto flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
+        <div className="inline-flex items-center gap-x-2 py-1 ps-2 pe-3">
+          <span className="flex size-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
             {selectedIds.length}
           </span>
-          <span className='text-[13px] font-semibold leading-[16px] text-text-accent'>{t(`${i18nPrefix}.selected`)}</span>
+          <span className="system-sm-semibold text-text-accent">
+            {t(($) => $[`${i18nPrefix}.selected`], { ns: 'dataset' })}
+          </span>
         </div>
-        <Divider type='vertical' className='mx-0.5 h-3.5 bg-divider-regular' />
-        <div className='flex items-center gap-x-0.5 px-3 py-2'>
-          <RiCheckboxCircleLine className='h-4 w-4 text-components-button-ghost-text' />
-          <button type='button' className='px-0.5 text-[13px] font-medium leading-[16px] text-components-button-ghost-text' onClick={onBatchEnable}>
-            {t(`${i18nPrefix}.enable`)}
-          </button>
-        </div>
-        <div className='flex items-center gap-x-0.5 px-3 py-2'>
-          <RiCloseCircleLine className='h-4 w-4 text-components-button-ghost-text' />
-          <button type='button' className='px-0.5 text-[13px] font-medium leading-[16px] text-components-button-ghost-text' onClick={onBatchDisable}>
-            {t(`${i18nPrefix}.disable`)}
-          </button>
-        </div>
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
+        {onBatchEnable && (
+          <Button variant="ghost" disabled={disabled} onClick={onBatchEnable}>
+            <RiCheckboxCircleLine className="size-4" />
+            <span>{t(($) => $[`${i18nPrefix}.enable`], { ns: 'dataset' })}</span>
+          </Button>
+        )}
+        {onBatchDisable && (
+          <Button variant="ghost" disabled={disabled} onClick={onBatchDisable}>
+            <RiCloseCircleLine className="size-4" />
+            <span>{t(($) => $[`${i18nPrefix}.disable`], { ns: 'dataset' })}</span>
+          </Button>
+        )}
         {onEditMetadata && (
-          <div className='flex items-center gap-x-0.5 px-3 py-2'>
-            <RiDraftLine className='h-4 w-4 text-components-button-ghost-text' />
-            <button type='button' className='px-0.5 text-[13px] font-medium leading-[16px] text-components-button-ghost-text' onClick={onEditMetadata}>
-              {t('dataset.metadata.metadata')}
-            </button>
-          </div>
+          <Button variant="ghost" disabled={disabled} onClick={onEditMetadata}>
+            <RiDraftLine className="size-4" />
+            <span>{t(($) => $['metadata.metadata'], { ns: 'dataset' })}</span>
+          </Button>
         )}
-
+        {onBatchSummary && isNonCloudEdition && (
+          <Button variant="ghost" disabled={disabled} onClick={onBatchSummary}>
+            <span aria-hidden className="i-custom-vender-knowledge-search-lines-sparkle size-4" />
+            <span>{t(($) => $['list.action.summary'], { ns: 'datasetDocuments' })}</span>
+          </Button>
+        )}
         {onArchive && (
-          <div className='flex items-center gap-x-0.5 px-3 py-2'>
-            <RiArchive2Line className='h-4 w-4 text-components-button-ghost-text' />
-            <button type='button' className='px-0.5 text-[13px] font-medium leading-[16px] text-components-button-ghost-text' onClick={onArchive}>
-              {t(`${i18nPrefix}.archive`)}
-            </button>
-          </div>
+          <Button variant="ghost" disabled={disabled} onClick={onArchive}>
+            <RiArchive2Line className="size-4" />
+            <span>{t(($) => $[`${i18nPrefix}.archive`], { ns: 'dataset' })}</span>
+          </Button>
         )}
-        <div className='flex items-center gap-x-0.5 px-3 py-2'>
-          <RiDeleteBinLine className='h-4 w-4 text-components-button-destructive-ghost-text' />
-          <button type='button' className='px-0.5 text-[13px] font-medium leading-[16px] text-components-button-destructive-ghost-text' onClick={showDeleteConfirm}>
-            {t(`${i18nPrefix}.delete`)}
-          </button>
-        </div>
+        {onBatchReIndex && (
+          <Button variant="ghost" disabled={disabled} onClick={onBatchReIndex}>
+            <RiRefreshLine className="size-4" />
+            <span>{t(($) => $[`${i18nPrefix}.reIndex`], { ns: 'dataset' })}</span>
+          </Button>
+        )}
+        {onBatchDownload && (
+          <Button variant="ghost" disabled={disabled} onClick={onBatchDownload}>
+            <RiDownload2Line className="size-4" />
+            <span>{t(($) => $[`${i18nPrefix}.download`], { ns: 'dataset' })}</span>
+          </Button>
+        )}
+        {onBatchDelete && (
+          <Button
+            variant="ghost"
+            tone="destructive"
+            disabled={disabled}
+            onClick={showDeleteConfirm}
+          >
+            <RiDeleteBinLine className="size-4" />
+            <span>{t(($) => $[`${i18nPrefix}.delete`], { ns: 'dataset' })}</span>
+          </Button>
+        )}
 
-        <Divider type='vertical' className='mx-0.5 h-3.5 bg-divider-regular' />
-        <button type='button' className='px-3.5 py-2 text-[13px] font-medium leading-[16px] text-components-button-ghost-text' onClick={onCancel}>
-          {t(`${i18nPrefix}.cancel`)}
-        </button>
+        <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
+        <Button variant="ghost" onClick={onCancel}>
+          <span>{t(($) => $[`${i18nPrefix}.cancel`], { ns: 'dataset' })}</span>
+        </Button>
       </div>
-      {
-        isShowDeleteConfirm && (
-          <Confirm
-            isShow
-            title={t('datasetDocuments.list.delete.title')}
-            content={t('datasetDocuments.list.delete.content')}
-            confirmText={t('common.operation.sure')}
-            onConfirm={handleBatchDelete}
-            onCancel={hideDeleteConfirm}
-            isLoading={isDeleting}
-            isDisabled={isDeleting}
-          />
-        )
-      }
+      {onBatchDelete && (
+        <AlertDialog
+          open={isShowDeleteConfirm}
+          onOpenChange={(open) => !open && hideDeleteConfirm()}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t(($) => $['list.delete.content'], { ns: 'datasetDocuments' })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancelButton>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton
+                disabled={disabled}
+                loading={isDeleting}
+                onClick={handleBatchDelete}
+              >
+                {t(($) => $['operation.sure'], { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }

@@ -1,55 +1,219 @@
 name: Web Tests
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - web/**
+  workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: false
 
-concurrency:
-  group: web-tests-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+permissions:
+  contents: read
 
 jobs:
+  openapi-sdk-test:
+    name: OpenAPI SDK and Next.js adapters
+    runs-on: depot-ubuntu-24.04-4
+    # Leave time for contract checks after a cold toolchain installation.
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup web environment
+        timeout-minutes: 15
+        uses: ./.github/actions/setup-web
+
+      - name: Setup Python for in-memory Console schema export
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          python-version: '3.13'
+          cache-dependency-glob: api/uv.lock
+
+      - name: Install schema exporter dependencies
+        run: uv sync --project api --frozen
+
+      - name: Test SDK types, runtime and Vite integration
+        run: pnpm --filter @dify/openapi-content-mapper test
+
+      - name: Verify the packed SDK in an independent npm project
+        run: pnpm --filter @dify/openapi-content-mapper test:package
+
+      - name: Test Next.js adapters and tree-shaking
+        run: pnpm --filter @dify/openapi-content-mapper test:next
+
+      - name: Verify standalone Console imports, error maps and editor support
+        run: pnpm --filter @dify/openapi-content-mapper exec node --test --test-concurrency=1 integration/knowledge-fs-console.test.mjs integration/orpc-errors.test.mjs integration/console-preparation.test.mjs integration/console-editor.test.mjs integration/type-navigation.test.mjs
+
+      - name: Check all Console types against the reviewed migration differences
+        run: pnpm --filter @dify/openapi-content-mapper check:console
+
   test:
-    name: Web Tests
-    runs-on: ubuntu-latest
+    name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    runs-on: depot-ubuntu-24.04-4
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
     defaults:
       run:
+        shell: bash
         working-directory: ./web
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v45
-        with:
-          files: web/**
-
-      - name: Install pnpm
-        if: steps.changed-files.outputs.any_changed == 'true'
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-          run_install: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        if: steps.changed-files.outputs.any_changed == 'true'
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: ./web/package.json
-
-      - name: Install dependencies
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: pnpm install --frozen-lockfile
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
 
       - name: Run tests
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: pnpm test
+        run: vp test run --project unit --reporter=minimal --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+
+      # Codecov combines the shard uploads under the same commit and web flag.
+      - name: Report coverage
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: web/coverage/coverage-final.json
+          disable_search: true
+          fail_ci_if_error: true
+          flags: web
+          name: web-${{ matrix.shardIndex }}-${{ matrix.shardTotal }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  browser-test:
+    name: Web Browser Tests
+    runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./web
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Install Chromium for Browser Mode
+        timeout-minutes: 15
+        run: vp exec playwright install --with-deps --only-shell chromium
+
+      - name: Run browser tests
+        run: vp test run --project browser --silent=passed-only --coverage
+
+      - name: Report browser coverage
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: web/coverage/coverage-final.json
+          disable_search: true
+          fail_ci_if_error: true
+          flags: web
+          name: web-browser
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload browser failure artifacts
+        if: ${{ failure() && !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-test-failures
+          path: web/.vitest-browser/
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
+
+  dify-ui-test:
+    name: dify-ui Tests
+    runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./packages/dify-ui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Install Chromium for Browser Mode
+        timeout-minutes: 15
+        run: vp exec playwright install --with-deps --only-shell chromium
+
+      - name: Run dify-ui tests
+        run: vp test run --project unit --coverage --silent=passed-only
+
+      - name: Upload dify-ui test failure artifacts
+        if: ${{ failure() && !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dify-ui-test-failures
+          path: |
+            packages/dify-ui/.vitest/attachments/
+            packages/dify-ui/.vitest-browser/
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
+
+      - name: Report coverage
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: packages/dify-ui/coverage/coverage-final.json
+          disable_search: true
+          fail_ci_if_error: true
+          flags: dify-ui
+          name: dify-ui
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  dify-ui-storybook-test:
+    name: dify-ui Storybook Tests
+    runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./packages/dify-ui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Install Chromium for Browser Mode
+        timeout-minutes: 15
+        run: vp exec playwright install --with-deps --only-shell chromium
+
+      - name: Run dify-ui Storybook tests
+        run: vp run test:storybook
+
+      - name: Upload dify-ui Storybook test failure artifacts
+        if: ${{ failure() && !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dify-ui-storybook-test-failures
+          path: |
+            packages/dify-ui/.vitest/attachments/
+            packages/dify-ui/.vitest-browser/
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7

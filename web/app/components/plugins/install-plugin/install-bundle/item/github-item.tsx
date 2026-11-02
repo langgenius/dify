@@ -1,21 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
-import type { GitHubItemAndMarketPlaceDependency, Plugin } from '../../../types'
-import { pluginManifestToCardPluginProps } from '../../utils'
+import type { GitHubItemAndMarketPlaceDependency, Plugin, VersionProps } from '../../../types'
+import * as React from 'react'
+import { useEffect } from 'react'
 import { useUploadGitHub } from '@/service/use-plugins'
 import Loading from '../../base/loading'
+import { pluginDeclarationToCardPluginProps } from '../../utils'
 import LoadedItem from './loaded-item'
-import type { VersionProps } from '@/app/components/plugins/types'
 
-type Props = {
+type Props = Readonly<{
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
   dependency: GitHubItemAndMarketPlaceDependency
   versionInfo: VersionProps
   onFetchedPayload: (payload: Plugin) => void
   onFetchError: () => void
-}
+}>
 
 const Item: FC<Props> = ({
   checked,
@@ -35,19 +35,14 @@ const Item: FC<Props> = ({
   useEffect(() => {
     if (data) {
       const payload = {
-        ...pluginManifestToCardPluginProps(data.manifest),
-        plugin_id: data.unique_identifier,
+        ...pluginDeclarationToCardPluginProps(data.manifest, data.unique_identifier),
       }
       onFetchedPayload(payload)
       setPayload({ ...payload, from: dependency.type })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
   useEffect(() => {
-    if (error)
-      onFetchError()
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (error) onFetchError()
   }, [error])
   if (!payload) return <Loading />
   return (

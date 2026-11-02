@@ -1,9 +1,19 @@
 from libs.exception import BaseHTTPException
+from services.errors.app import (
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE,
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE,
+)
 
 
 class AppUnavailableError(BaseHTTPException):
     error_code = "app_unavailable"
     description = "App unavailable, please check your app configurations."
+    code = 400
+
+
+class AgentNotPublishedError(BaseHTTPException):
+    error_code = "agent_not_published"
+    description = "Agent has not been published. Please publish the Agent before using the web app."
     code = 400
 
 
@@ -23,6 +33,12 @@ class NotWorkflowAppError(BaseHTTPException):
     error_code = "not_workflow_app"
     description = "Please check if your Workflow app mode matches the right API route."
     code = 400
+
+
+class TriggerWorkflowServiceModeUnavailableError(BaseHTTPException):
+    error_code = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE
+    description = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE
+    code = 403
 
 
 class ConversationCompletedError(BaseHTTPException):
@@ -97,28 +113,10 @@ class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     code = 400
 
 
-class NoFileUploadedError(BaseHTTPException):
-    error_code = "no_file_uploaded"
-    description = "Please upload your file."
+class SpeechToTextDisabledError(BaseHTTPException):
+    error_code = "speech_to_text_disabled"
+    description = "Speech to text is disabled."
     code = 400
-
-
-class TooManyFilesError(BaseHTTPException):
-    error_code = "too_many_files"
-    description = "Only one file is allowed."
-    code = 400
-
-
-class FileTooLargeError(BaseHTTPException):
-    error_code = "file_too_large"
-    description = "File size exceeded. {message}"
-    code = 413
-
-
-class UnsupportedFileTypeError(BaseHTTPException):
-    error_code = "unsupported_file_type"
-    description = "File type not allowed."
-    code = 415
 
 
 class WebAppAuthRequiredError(BaseHTTPException):
@@ -133,6 +131,18 @@ class WebAppAuthAccessDeniedError(BaseHTTPException):
     code = 401
 
 
+class WebAppNotFoundError(BaseHTTPException):
+    error_code = "app_not_found"
+    description = "App not found."
+    code = 404
+
+
+class WebAppAccessServiceUnavailableError(BaseHTTPException):
+    error_code = "web_app_access_unavailable"
+    description = "Web app access service is unavailable."
+    code = 503
+
+
 class InvokeRateLimitError(BaseHTTPException):
     """Raised when the Invoke returns rate limit error."""
 
@@ -141,11 +151,7 @@ class InvokeRateLimitError(BaseHTTPException):
     code = 429
 
 
-class NotFoundError(BaseHTTPException):
-    error_code = "not_found"
-    code = 404
-
-
-class InvalidArgumentError(BaseHTTPException):
-    error_code = "invalid_param"
-    code = 400
+class WebFormRateLimitExceededError(BaseHTTPException):
+    error_code = "web_form_rate_limit_exceeded"
+    description = "Too many form requests. Please try again later."
+    code = 429

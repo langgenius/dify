@@ -1,66 +1,341 @@
-import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { FC, MouseEvent } from 'react'
 import type { ModelProvider } from '../declarations'
-import {
-  CustomConfigurationStatusEnum,
-  PreferredProviderTypeEnum,
-  QuotaUnitEnum,
-} from '../declarations'
+import type { PluginManifestInMarket } from '@/app/components/plugins/types'
+import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
+import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import useTimestamp from '@/hooks/use-timestamp'
+import { consoleQuery } from '@/service/console'
+import { fetchManifestFromMarketPlace, fetchPluginInfoFromMarketPlace } from '@/service/plugins'
+import { formatNumber } from '@/utils/format'
+import { PreferredProviderTypeEnum } from '../declarations'
 import {
   MODEL_PROVIDER_QUOTA_GET_PAID,
+  modelNameMap,
+  providerKeyToPluginId,
+  providerLogoMap,
 } from '../utils'
-import PriorityUseTip from './priority-use-tip'
-import Tooltip from '@/app/components/base/tooltip'
-import { formatNumber } from '@/utils/format'
+import styles from './quota-panel.module.css'
+import { useTrialCredits } from './use-trial-credits'
 
-type QuotaPanelProps = {
-  provider: ModelProvider
+const allProviders = MODEL_PROVIDER_QUOTA_GET_PAID.map((key) => ({
+  key,
+  logo: providerLogoMap[key],
+}))
+
+type QuotaInfotipProps = {
+  tipText: string
 }
-const QuotaPanel: FC<QuotaPanelProps> = ({
-  provider,
-}) => {
-  const { t } = useTranslation()
 
-  const customConfig = provider.custom_configuration
-  const priorityUseType = provider.preferred_provider_type
-  const systemConfig = provider.system_configuration
-  const currentQuota = systemConfig.enabled && systemConfig.quota_configurations.find(item => item.quota_type === systemConfig.current_quota_type)
-  const openaiOrAnthropic = MODEL_PROVIDER_QUOTA_GET_PAID.includes(provider.provider)
+const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+  }
 
   return (
-    <div className='group relative min-w-[112px] shrink-0 rounded-lg border-[0.5px] border-components-panel-border bg-white/[0.18] px-3 py-2 shadow-xs'>
-      <div className='system-xs-medium-uppercase mb-2 flex h-4 items-center text-text-tertiary'>
-        {t('common.modelProvider.quota')}
-        <Tooltip popupContent={
-          openaiOrAnthropic
-            ? t('common.modelProvider.card.tip')
-            : t('common.modelProvider.quotaTip')
-        }
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        delay={300}
+        closeDelay={200}
+        aria-label={tipText}
+        onClick={handleClick}
+        className="ms-0.5 inline-flex size-3 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0"
+      >
+        <span
+          aria-hidden
+          className="i-ri-information-2-line size-3 text-text-tertiary hover:text-text-secondary"
         />
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        className="max-w-75 rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
+      >
+        {tipText}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+type QuotaPanelProps = {
+  providers: Array<ModelProviderSummaryResponse | ModelProvider>
+}
+
+type MarketplacePluginToInstall = {
+  manifest: PluginManifestInMarket
+  uniqueIdentifier: string
+}
+
+const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
+  const { t } = useTranslation(['common', 'modelProvider'])
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const {
+    usedCredits,
+    totalCredits,
+    isUnlimited,
+    isExhausted,
+    isLoading,
+    exhaustedAt,
+    nextCreditResetDate,
+  } = useTrialCredits()
+  const { data: trialModels = [] } = useQuery(
+    consoleQuery.trialModels.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.trial_models,
+    }),
+  )
+  const providerMap = useMemo(
+    () => new Map(providers.map((p) => [p.provider, p.preferred_provider_type])),
+    [providers],
+  )
+  const installedProvidersMap = useMemo(
+    () => new Map(providers.map((p) => [p.provider, p.custom_configuration.available_credentials])),
+    [providers],
+  )
+  const { formatMonthDay } = useTimestamp()
+  const [selectedPlugin, setSelectedPlugin] = useState<MarketplacePluginToInstall | null>(null)
+  const [loadingPluginId, setLoadingPluginId] = useState<string | null>(null)
+  const [
+    isShowInstallModal,
+    { setTrue: showInstallFromMarketplace, setFalse: hideInstallFromMarketplace },
+  ] = useBoolean(false)
+  const { canInstallPlugin, canUpdatePlugin, currentDifyVersion } =
+    useWorkspacePluginInstallPermission()
+  const selectedPluginIdRef = useRef<string | null>(null)
+
+  const handleIconClick = useCallback(
+    async (key: ModelProviderQuotaGetPaid) => {
+      if (loadingPluginId) return
+
+      const isInstalled = providerMap.get(key)
+      if (!isInstalled && canInstallPlugin) {
+        const pluginId = providerKeyToPluginId[key]
+        const [org, name] = pluginId.split('/')
+        if (!org || !name) return
+
+        setLoadingPluginId(pluginId)
+        try {
+          const pluginInfo = await fetchPluginInfoFromMarketPlace({ org, name })
+          const uniqueIdentifier = pluginInfo.data.plugin.latest_package_identifier
+          if (!uniqueIdentifier) return
+          const manifest = await fetchManifestFromMarketPlace(uniqueIdentifier)
+          setSelectedPlugin({
+            manifest: {
+              ...manifest.data.plugin,
+              org,
+              name,
+              from: 'marketplace',
+              icon: manifest.data.plugin.icon || 'marketplace',
+            },
+            uniqueIdentifier,
+          })
+          selectedPluginIdRef.current = pluginId
+          showInstallFromMarketplace()
+        } catch {
+          // Keep the provider actionable so the user can retry the marketplace request.
+        } finally {
+          setLoadingPluginId(null)
+        }
+      }
+    },
+    [canInstallPlugin, loadingPluginId, providerMap, showInstallFromMarketplace],
+  )
+
+  useEffect(() => {
+    if (isShowInstallModal && selectedPluginIdRef.current) {
+      const isInstalled = providers.some((p) => p.provider.startsWith(selectedPluginIdRef.current!))
+      if (isInstalled) {
+        hideInstallFromMarketplace()
+        selectedPluginIdRef.current = null
+      }
+    }
+  }, [providers, isShowInstallModal, hideInstallFromMarketplace])
+
+  const tipText = t(($) => $['modelProvider.card.tip'], {
+    ns: 'modelProvider',
+    modelNames: trialModels
+      .map((key) => modelNameMap[key as keyof typeof modelNameMap])
+      .filter(Boolean)
+      .join(', '),
+  })
+
+  if (isLoading) {
+    return (
+      <div className="flex h-16 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default shadow-xs">
+        <LoadingPlaceholder />
       </div>
-      {
-        currentQuota && (
-          <div className='flex h-4 items-center text-xs text-text-tertiary'>
-            <span className='system-md-semibold-uppercase mr-0.5 text-text-secondary'>{formatNumber(Math.max((currentQuota?.quota_limit || 0) - (currentQuota?.quota_used || 0), 0))}</span>
-            {
-              currentQuota?.quota_unit === QuotaUnitEnum.tokens && 'Tokens'
-            }
-            {
-              currentQuota?.quota_unit === QuotaUnitEnum.times && t('common.modelProvider.callTimes')
-            }
-            {
-              currentQuota?.quota_unit === QuotaUnitEnum.credits && t('common.modelProvider.credits')
-            }
+    )
+  }
+
+  const creditUsageTextClassName = isExhausted ? 'text-text-destructive' : 'text-text-secondary'
+
+  return (
+    <div
+      className={cn(
+        'relative h-16 min-w-18 shrink-0 overflow-hidden rounded-xl border-[0.5px] ps-4 pe-2.5 pt-3 pb-2.5 shadow-xs',
+        isExhausted
+          ? 'border-state-destructive-border hover:bg-state-destructive-hover'
+          : 'border-components-panel-border bg-third-party-model-bg-default',
+      )}
+    >
+      <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
+      <div className="relative">
+        <div className="mb-0.5 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
+          {t(($) => $['modelProvider.quotaLabel'], { ns: 'modelProvider' })}
+          <QuotaInfotip tipText={tipText} />
+        </div>
+        <div className="flex h-6 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <div className="flex shrink-0 items-baseline gap-1">
+              {isUnlimited ? (
+                <span className="system-xl-semibold text-text-secondary">
+                  {t(($) => $['license.unlimited'], { ns: 'common' })}
+                </span>
+              ) : (
+                <>
+                  <span className={cn('system-xl-semibold', creditUsageTextClassName)}>
+                    {formatNumber(usedCredits)}
+                  </span>
+                  <span className="text-base leading-6 font-normal text-text-tertiary">/</span>
+                  <span className={cn('system-xl-semibold', creditUsageTextClassName)}>
+                    {formatNumber(totalCredits)}
+                  </span>
+                  <span className={cn('system-md-medium', creditUsageTextClassName)}>
+                    {t(($) => $['modelProvider.used'], { ns: 'modelProvider' })}
+                  </span>
+                </>
+              )}
+            </div>
+            {isExhausted && exhaustedAt ? (
+              <>
+                <span aria-hidden className="shrink-0 system-sm-regular text-text-tertiary">
+                  ·
+                </span>
+                <span className="min-w-0 truncate system-sm-regular text-text-tertiary">
+                  {t(($) => $['modelProvider.ranOutDate'], {
+                    ns: 'modelProvider',
+                    date: formatMonthDay(exhaustedAt),
+                    interpolation: { escapeValue: false },
+                  })}
+                </span>
+              </>
+            ) : null}
+            {nextCreditResetDate ? (
+              <>
+                <span aria-hidden className="shrink-0 system-sm-regular text-text-tertiary">
+                  ·
+                </span>
+                <span className="min-w-0 truncate system-sm-regular text-text-tertiary">
+                  {t(($) => $['modelProvider.resetDate'], {
+                    ns: 'modelProvider',
+                    date: formatMonthDay(nextCreditResetDate),
+                    interpolation: { escapeValue: false },
+                  })}
+                </span>
+              </>
+            ) : null}
           </div>
-        )
-      }
-      {
-        priorityUseType === PreferredProviderTypeEnum.system && customConfig.status === CustomConfigurationStatusEnum.active && (
-          <PriorityUseTip />
-        )
-      }
+          <div className="flex shrink-0 items-center gap-1">
+            {allProviders
+              .filter(({ key }) => trialModels.includes(key))
+              .map(({ key, logo }) => {
+                const providerType = providerMap.get(key)
+                const isLoadingPlugin = loadingPluginId === providerKeyToPluginId[key]
+                const isConfigured = (installedProvidersMap.get(key)?.length ?? 0) > 0
+                const tooltipText = !providerType
+                  ? t(($) => $['modelProvider.card.modelNotSupported'], {
+                      modelName: modelNameMap[key],
+                      ns: 'modelProvider',
+                    })
+                  : isConfigured && providerType === PreferredProviderTypeEnum.custom
+                    ? t(($) => $['modelProvider.card.modelAPI'], {
+                        modelName: modelNameMap[key],
+                        ns: 'modelProvider',
+                      })
+                    : t(($) => $['modelProvider.card.modelSupported'], {
+                        modelName: modelNameMap[key],
+                        ns: 'modelProvider',
+                      })
+                return (
+                  <Tooltip key={key}>
+                    <TooltipTrigger
+                      aria-label={tooltipText}
+                      render={
+                        <button
+                          type="button"
+                          aria-busy={isLoadingPlugin}
+                          aria-disabled={isLoadingPlugin}
+                          className={cn(
+                            'relative size-6 border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                            !providerType && canInstallPlugin && 'cursor-pointer hover:opacity-80',
+                          )}
+                          onClick={() => handleIconClick(key)}
+                        >
+                          {'image' in logo ? (
+                            <img
+                              aria-hidden
+                              src={logo.image.src}
+                              width={24}
+                              height={24}
+                              alt=""
+                              className="size-6 rounded-lg"
+                            />
+                          ) : (
+                            <span
+                              aria-hidden
+                              className={cn(logo.iconClassName, 'size-6 rounded-lg')}
+                            />
+                          )}
+                          {isLoadingPlugin && (
+                            <span
+                              aria-hidden
+                              className="absolute inset-1 i-ri-loader-2-line animate-spin text-text-accent"
+                            />
+                          )}
+                          {!providerType && (
+                            <div className="absolute inset-0 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge opacity-30" />
+                          )}
+                        </button>
+                      }
+                    />
+                    <TooltipContent>{tooltipText}</TooltipContent>
+                  </Tooltip>
+                )
+              })}
+          </div>
+        </div>
+      </div>
+      {isShowInstallModal && selectedPlugin && canInstallPlugin && (
+        <PluginInstallPermissionProvider
+          canInstallPlugin={canInstallPlugin}
+          canUpdatePlugin={canUpdatePlugin}
+          currentDifyVersion={currentDifyVersion}
+        >
+          <InstallFromMarketplace
+            manifest={selectedPlugin.manifest}
+            uniqueIdentifier={selectedPlugin.uniqueIdentifier}
+            onClose={hideInstallFromMarketplace}
+            onSuccess={hideInstallFromMarketplace}
+          />
+        </PluginInstallPermissionProvider>
+      )}
     </div>
   )
 }
 
-export default QuotaPanel
+export default React.memo(QuotaPanel)

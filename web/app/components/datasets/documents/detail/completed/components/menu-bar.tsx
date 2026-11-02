@@ -1,0 +1,94 @@
+'use client'
+import type {
+  SegmentStatusFilterOption,
+  SegmentStatusFilterValue,
+} from '../hooks/use-search-filter'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useTranslation } from 'react-i18next'
+import { SearchInput } from '@/app/components/base/search-input'
+import DisplayToggle from '../display-toggle'
+import s from '../style.module.css'
+
+type MenuBarProps = {
+  hasSelectableSegments: boolean
+  isLoading: boolean
+  totalText: string
+  statusList: SegmentStatusFilterOption[]
+  selectDefaultValue: SegmentStatusFilterValue
+  onChangeStatus: (item: SegmentStatusFilterOption) => void
+  inputValue: string
+  onInputChange: (value: string) => void
+  isCollapsed: boolean
+  toggleCollapsed: () => void
+}
+
+function MenuBar({
+  hasSelectableSegments,
+  isLoading,
+  totalText,
+  statusList,
+  selectDefaultValue,
+  onChangeStatus,
+  inputValue,
+  onInputChange,
+  isCollapsed,
+  toggleCollapsed,
+}: MenuBarProps) {
+  const { t } = useTranslation(['common', 'datasetDocuments'])
+  const selectedStatus = statusList.find((item) => item.value === selectDefaultValue) ?? null
+
+  return (
+    <div className={s.docSearchWrapper}>
+      {hasSelectableSegments ? (
+        <Checkbox
+          className="shrink-0"
+          parent
+          aria-label={t(($) => $['operation.selectAll'], { ns: 'common' })}
+          disabled={isLoading}
+        />
+      ) : (
+        <span className="size-4 shrink-0" aria-hidden />
+      )}
+      <div className="flex-1 pl-5 system-sm-semibold-uppercase text-text-secondary">
+        {totalText}
+      </div>
+      <Select<SegmentStatusFilterValue>
+        value={selectedStatus?.value ?? null}
+        onValueChange={(nextValue) => {
+          if (nextValue == null) return
+          const nextItem = statusList.find((item) => item.value === nextValue)
+          if (nextItem) onChangeStatus(nextItem)
+        }}
+      >
+        <SelectTrigger
+          aria-label={t(($) => $['segment.statusFilterLabel'], { ns: 'datasetDocuments' })}
+          className="mr-2 w-25 shrink-0 shadow-none"
+        >
+          {selectedStatus?.name ?? ''}
+        </SelectTrigger>
+        <SelectContent className="w-40">
+          {statusList.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              <SelectItemText>{item.name}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <SearchInput className="w-52!" value={inputValue} onValueChange={onInputChange} />
+      <Separator orientation="vertical" className="mx-3 h-3.5" />
+      <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={toggleCollapsed} />
+    </div>
+  )
+}
+
+export default MenuBar

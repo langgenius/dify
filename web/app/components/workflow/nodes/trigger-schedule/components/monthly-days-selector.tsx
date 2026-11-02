@@ -1,0 +1,107 @@
+import { cn } from '@langgenius/dify-ui/cn'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Toggle } from '@langgenius/dify-ui/toggle'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+
+const dayToggleClassName =
+  'rounded-lg border border-divider-subtle bg-components-option-card-option-bg py-1 text-xs text-text-tertiary outline-state-accent-solid transition-colors hover:border-divider-regular hover:text-text-secondary focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid data-pressed:border-util-colors-blue-brand-blue-brand-600 data-pressed:text-text-secondary data-pressed:hover:border-util-colors-blue-brand-blue-brand-600'
+
+type MonthlyDaysSelectorProps = {
+  disabled?: boolean
+  selectedDays: (number | 'last')[]
+  onChange: (days: (number | 'last')[]) => void
+}
+
+const MonthlyDaysSelector = ({ selectedDays, onChange, disabled }: MonthlyDaysSelectorProps) => {
+  const lastDayLabelId = React.useId()
+
+  const { t } = useTranslation(['workflowIntegrations'])
+
+  const handleDayClick = (day: number | 'last') => {
+    const current = selectedDays || []
+    const newSelected = current.includes(day) ? current.filter((d) => d !== day) : [...current, day]
+    // Ensure at least one day is selected (consistent with WeekdaySelector)
+    onChange(newSelected.length > 0 ? newSelected : [day])
+  }
+
+  const isDaySelected = (day: number | 'last') => selectedDays?.includes(day) || false
+
+  const days = Array.from({ length: 31 }, (_, i) => i + 1)
+  const rows = [
+    days.slice(0, 7),
+    days.slice(7, 14),
+    days.slice(14, 21),
+    days.slice(21, 28),
+    [29, 30, 31, 'last' as const],
+  ]
+
+  return (
+    <Fieldset className="space-y-2">
+      <FieldsetLegend className="mb-2 py-0 text-xs font-medium text-text-tertiary">
+        {t(($) => $['nodes.triggerSchedule.days'], { ns: 'workflowIntegrations' })}
+      </FieldsetLegend>
+
+      <div className="space-y-1.5">
+        {rows.map((row, rowIndex) => (
+          <div key={rowIndex} className="grid grid-cols-7 gap-1.5">
+            {row.map((day) =>
+              day === 'last' ? (
+                <div key={day} className="relative col-span-2 min-w-0">
+                  <Toggle
+                    disabled={disabled}
+                    id={lastDayLabelId}
+                    pressed={isDaySelected(day)}
+                    onPressedChange={() => handleDayClick(day)}
+                    className={cn(dayToggleClassName, 'w-full pe-4')}
+                  >
+                    {t(($) => $['nodes.triggerSchedule.lastDay'], { ns: 'workflowIntegrations' })}
+                  </Toggle>
+                  <Infotip>
+                    <InfotipTrigger
+                      aria-labelledby={lastDayLabelId}
+                      className="absolute inset-e-1 top-1/2 size-3 -translate-y-1/2"
+                      iconSize="small"
+                    />
+                    <InfotipContent aria-labelledby={lastDayLabelId}>
+                      {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], {
+                        ns: 'workflowIntegrations',
+                      })}
+                    </InfotipContent>
+                  </Infotip>
+                </div>
+              ) : (
+                <Toggle
+                  disabled={disabled}
+                  key={day}
+                  pressed={isDaySelected(day)}
+                  onPressedChange={() => handleDayClick(day)}
+                  className={dayToggleClassName}
+                >
+                  {day}
+                </Toggle>
+              ),
+            )}
+            {/* Fill empty cells in the last row (Last day takes 2 cols, so need 1 less) */}
+            {rowIndex === rows.length - 1 &&
+              Array.from({ length: 7 - row.length - 1 }, (_, i) => (
+                <div key={`empty-${i}`} className="invisible"></div>
+              ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Warning message for day 31 - aligned with grid */}
+      {selectedDays?.includes(31) && (
+        <div className="mt-1.5 grid grid-cols-7 gap-1.5">
+          <div className="col-span-7 text-xs text-text-tertiary">
+            {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflowIntegrations' })}
+          </div>
+        </div>
+      )}
+    </Fieldset>
+  )
+}
+
+export default MonthlyDaysSelector

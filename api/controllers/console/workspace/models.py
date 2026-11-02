@@ -1,387 +1,631 @@
 import logging
+from typing import Any, cast
 
-from flask_login import current_user
-from flask_restful import Resource, reqparse
-from werkzeug.exceptions import Forbidden
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
 
-from controllers.console import api
-from controllers.console.wraps import account_initialization_required, setup_required
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.utils.encoders import jsonable_encoder
+from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
+from controllers.common.rbac import RBACCheck, Workspace
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
+from controllers.console import console_ns
+from controllers.console.wraps import (
+    RBACPermission,
+    account_initialization_required,
+    is_admin_or_owner_required,
+    model_validate,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
+from core.entities.model_entities import DefaultModelSetting
+from core.entities.provider_entities import CredentialConfiguration
+from extensions.ext_application_services import application_services
+from extensions.ext_database import db
+from fields.base import ResponseModel
+from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from libs.helper import uuid_value
 from libs.login import login_required
+from models import Account
+from services.entities.model_provider_entities import (
+    DefaultModelResponse,
+    ModelWithProviderEntityResponse,
+    ProviderWithModelsResponse,
+)
 from services.model_load_balancing_service import ModelLoadBalancingService
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
+
+logger = logging.getLogger(__name__)
 
 
+class ParserGetDefault(BaseModel):
+    model_type: ModelType
+
+
+class Inner(BaseModel):
+    model_type: ModelType
+    model: str | None = None
+    provider: str | None = None
+
+
+class ParserPostDefault(BaseModel):
+    model_settings: list[Inner]
+
+
+class ParserDeleteModels(BaseModel):
+    model: str
+    model_type: ModelType
+
+
+class LoadBalancingPayload(BaseModel):
+    configs: list[dict[str, Any]] | None = None
+    enabled: bool | None = None
+
+
+class ParserPostModels(BaseModel):
+    model: str
+    model_type: ModelType
+    load_balancing: LoadBalancingPayload | None = None
+    config_from: str | None = None
+    credential_id: str | None = None
+
+    @field_validator("credential_id")
+    @classmethod
+    def validate_credential_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+class ParserGetCredentials(BaseModel):
+    model: str
+    model_type: ModelType
+    config_from: str | None = None
+    credential_id: str | None = None
+
+    @field_validator("credential_id")
+    @classmethod
+    def validate_get_credential_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+class ParserCredentialBase(BaseModel):
+    model: str
+    model_type: ModelType
+
+
+class ParserCreateCredential(ParserCredentialBase):
+    name: str | None = Field(default=None, max_length=30)
+    credentials: dict[str, Any]
+
+
+class ParserUpdateCredential(ParserCredentialBase):
+    credential_id: str
+    credentials: dict[str, Any]
+    name: str | None = Field(default=None, max_length=30)
+
+    @field_validator("credential_id")
+    @classmethod
+    def validate_update_credential_id(cls, value: str) -> str:
+        return uuid_value(value)
+
+
+class ParserDeleteCredential(ParserCredentialBase):
+    credential_id: str
+
+    @field_validator("credential_id")
+    @classmethod
+    def validate_delete_credential_id(cls, value: str) -> str:
+        return uuid_value(value)
+
+
+class ParserParameter(BaseModel):
+    model: str
+
+
+class ParserSwitch(BaseModel):
+    model: str
+    model_type: ModelType
+    credential_id: str
+
+
+class DefaultModelDataResponse(ResponseModel):
+    data: DefaultModelResponse | None = None
+
+
+class ProviderModelListResponse(ResponseModel):
+    data: list[ModelWithProviderEntityResponse]
+
+
+class AvailableModelListResponse(ResponseModel):
+    data: list[ProviderWithModelsResponse]
+
+
+class ModelLoadBalancingConfigResponse(ResponseModel):
+    id: str
+    name: str
+    credentials: dict[str, Any]
+    credential_id: str | None = None
+    enabled: bool
+    in_cooldown: bool
+    ttl: int
+
+
+class ModelLoadBalancingResponse(ResponseModel):
+    enabled: bool
+    configs: list[ModelLoadBalancingConfigResponse]
+
+
+class ModelCredentialResponse(ResponseModel):
+    credentials: dict[str, Any]
+    current_credential_id: str | None = None
+    current_credential_name: str | None = None
+    load_balancing: ModelLoadBalancingResponse
+    available_credentials: list[CredentialConfiguration]
+
+
+class ModelParameterRuleListResponse(ResponseModel):
+    data: list[ParameterRule]
+
+
+register_schema_models(
+    console_ns,
+    ParserGetDefault,
+    ParserPostDefault,
+    ParserDeleteModels,
+    ParserPostModels,
+    ParserGetCredentials,
+    ParserCreateCredential,
+    ParserUpdateCredential,
+    ParserDeleteCredential,
+    ParserParameter,
+    Inner,
+    ParserSwitch,
+)
+register_response_schema_models(
+    console_ns,
+    SimpleResultResponse,
+    ValidationResultResponse,
+    DefaultModelDataResponse,
+    ProviderModelListResponse,
+    ModelCredentialResponse,
+    ModelParameterRuleListResponse,
+    AvailableModelListResponse,
+)
+
+register_enum_models(console_ns, ModelType)
+
+
+@console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ParserGetDefault))
+    @console_ns.response(
+        200, "Default model retrieved successfully", console_ns.models[DefaultModelDataResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="args",
-        )
-        args = parser.parse_args()
-
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    @model_validate(ParserGetDefault)
+    def get(self, req_data: ParserGetDefault, tenant_id: str):
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
-            tenant_id=tenant_id, model_type=args["model_type"]
+            tenant_id=tenant_id, model_type=req_data.model_type
         )
 
-        return jsonable_encoder({"data": default_model_entity})
+        return DefaultModelDataResponse(data=default_model_entity).model_dump(mode="json")
 
+    @console_ns.expect(console_ns.models[ParserPostDefault.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
-    def post(self):
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("model_settings", type=list, required=True, nullable=False, location="json")
-        args = parser.parse_args()
-
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    @model_validate(ParserPostDefault)
+    def post(self, req_data: ParserPostDefault, tenant_id: str):
         model_provider_service = ModelProviderService()
-        model_settings = args["model_settings"]
-        for model_setting in model_settings:
-            if "model_type" not in model_setting or model_setting["model_type"] not in [mt.value for mt in ModelType]:
-                raise ValueError("invalid model type")
+        model_settings = [
+            DefaultModelSetting(
+                model_type=setting.model_type,
+                provider=setting.provider,
+                model=setting.model,
+            )
+            for setting in req_data.model_settings
+            if setting.provider is not None and setting.model is not None
+        ]
+        model_provider_service.update_default_models(tenant_id=tenant_id, model_settings=model_settings)
 
-            if "provider" not in model_setting:
-                continue
-
-            if "model" not in model_setting:
-                raise ValueError("invalid model")
-
-            try:
-                model_provider_service.update_default_model_of_model_type(
-                    tenant_id=tenant_id,
-                    model_type=model_setting["model_type"],
-                    provider=model_setting["provider"],
-                    model=model_setting["model"],
-                )
-            except Exception as ex:
-                logging.exception(
-                    f"Failed to update default model, model type: {model_setting['model_type']},"
-                    f" model:{model_setting.get('model')}"
-                )
-                raise ex
-
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models")
 class ModelProviderModelApi(Resource):
+    @console_ns.response(
+        200, "Provider models retrieved successfully", console_ns.models[ProviderModelListResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_provider(tenant_id=tenant_id, provider=provider)
 
-        return jsonable_encoder({"data": models})
+        return ProviderModelListResponse(data=models).model_dump(mode="json")
 
+    @console_ns.expect(console_ns.models[ParserPostModels.__name__])
+    @console_ns.response(200, "Model updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
-    def post(self, provider: str):
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+    @with_current_tenant_id
+    @model_validate(ParserPostModels)
+    def post(self, req_data: ParserPostModels, tenant_id: str, provider: str):
+        # To save the model's load balance configs
 
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
-        )
-        parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("load_balancing", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("config_from", type=str, required=False, nullable=True, location="json")
-        args = parser.parse_args()
+        if req_data.config_from == "custom-model":
+            if not req_data.credential_id:
+                raise ValueError("credential_id is required when configuring a custom-model")
+            service = ModelProviderService()
+            service.switch_active_custom_model_credential(
+                tenant_id=tenant_id,
+                provider=provider,
+                model_type=req_data.model_type,
+                model=req_data.model,
+                credential_id=req_data.credential_id,
+            )
 
         model_load_balancing_service = ModelLoadBalancingService()
 
-        if (
-            "load_balancing" in args
-            and args["load_balancing"]
-            and "enabled" in args["load_balancing"]
-            and args["load_balancing"]["enabled"]
-        ):
-            if "configs" not in args["load_balancing"]:
-                raise ValueError("invalid load balancing configs")
-
+        if req_data.load_balancing and req_data.load_balancing.configs:
             # save load balancing configs
             model_load_balancing_service.update_load_balancing_configs(
                 tenant_id=tenant_id,
                 provider=provider,
-                model=args["model"],
-                model_type=args["model_type"],
-                configs=args["load_balancing"]["configs"],
+                model=req_data.model,
+                model_type=req_data.model_type,
+                configs=req_data.load_balancing.configs,
+                config_from=req_data.config_from or "",
+                session=db.session(),
             )
 
-            # enable load balancing
-            model_load_balancing_service.enable_model_load_balancing(
-                tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
-            )
-        else:
-            # disable load balancing
-            model_load_balancing_service.disable_model_load_balancing(
-                tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
-            )
+            if req_data.load_balancing.enabled:
+                model_load_balancing_service.enable_model_load_balancing(
+                    tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
+                )
+            else:
+                model_load_balancing_service.disable_model_load_balancing(
+                    tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
+                )
 
-            if args.get("config_from", "") != "predefined-model":
-                model_provider_service = ModelProviderService()
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
-                try:
-                    model_provider_service.save_model_credentials(
-                        tenant_id=tenant_id,
-                        provider=provider,
-                        model=args["model"],
-                        model_type=args["model_type"],
-                        credentials=args["credentials"],
-                    )
-                except CredentialsValidateFailedError as ex:
-                    logging.exception(
-                        f"Failed to save model credentials, tenant_id: {tenant_id},"
-                        f" model: {args.get('model')}, model_type: {args.get('model_type')}"
-                    )
-                    raise ValueError(str(ex))
-
-        return {"result": "success"}, 200
-
+    @console_ns.doc(params=query_params_from_model(ParserDeleteModels))
+    @console_ns.response(204, "Model deleted successfully")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
-    def delete(self, provider: str):
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
-        )
-        args = parser.parse_args()
-
+    @with_current_tenant_id
+    @model_validate(ParserDeleteModels)
+    def delete(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
-        model_provider_service.remove_model_credentials(
-            tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
+        model_provider_service.remove_model(
+            tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
         )
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
 class ModelProviderModelCredentialApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ParserGetCredentials))
+    @console_ns.response(
+        200,
+        "Model credentials retrieved successfully",
+        console_ns.models[ModelCredentialResponse.__name__],
+    )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
-    def get(self, provider: str):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="args")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="args",
-        )
-        args = parser.parse_args()
-
+    @with_current_user
+    @with_current_tenant_id
+    @model_validate(ParserGetCredentials)
+    def get(self, req_data: ParserGetCredentials, tenant_id: str, user: Account, provider: str):
         model_provider_service = ModelProviderService()
-        credentials = model_provider_service.get_model_credentials(
-            tenant_id=tenant_id, provider=provider, model_type=args["model_type"], model=args["model"]
+        current_credential = model_provider_service.get_model_credential(
+            tenant_id=tenant_id,
+            provider=provider,
+            model_type=req_data.model_type,
+            model=req_data.model,
+            credential_id=req_data.credential_id,
         )
 
         model_load_balancing_service = ModelLoadBalancingService()
         is_load_balancing_enabled, load_balancing_configs = model_load_balancing_service.get_load_balancing_configs(
-            tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
+            tenant_id=tenant_id,
+            provider=provider,
+            model=req_data.model,
+            model_type=req_data.model_type,
+            session=db.session(),
+            config_from=req_data.config_from or "",
         )
 
-        return {
-            "credentials": credentials,
-            "load_balancing": {"enabled": is_load_balancing_enabled, "configs": load_balancing_configs},
-        }
+        if req_data.config_from == "predefined-model":
+            # Only the predefined-model branch needs visibility filtering by user.
+            # The account is injected once by the handler and only passed into the
+            # service branch that needs user-scoped credential visibility.
+            available_credentials = model_provider_service.get_provider_available_credentials(
+                tenant_id=tenant_id,
+                provider=provider,
+                user=user,
+                credential_query=application_services().credential_queries,
+            )
+        else:
+            available_credentials = model_provider_service.get_provider_model_available_credentials(
+                tenant_id=tenant_id,
+                provider=provider,
+                model_type=req_data.model_type,
+                model=req_data.model,
+            )
 
+        credentials: dict[str, Any] = {}
+        # TODO: make this throw error when type mismatches?
+        if current_credential and isinstance(current_credential.get("credentials"), dict):
+            credentials = cast(dict[str, Any], current_credential["credentials"])
 
-class ModelProviderModelEnableApi(Resource):
+        return ModelCredentialResponse(
+            credentials=credentials,
+            current_credential_id=current_credential.get("current_credential_id") if current_credential else None,
+            current_credential_name=current_credential.get("current_credential_name") if current_credential else None,
+            load_balancing=ModelLoadBalancingResponse.model_validate(
+                {"enabled": is_load_balancing_enabled, "configs": load_balancing_configs}
+            ),
+            available_credentials=available_credentials,
+        ).model_dump(mode="json")
+
+    @console_ns.expect(console_ns.models[ParserCreateCredential.__name__])
+    @console_ns.response(201, "Model credential created successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_CREATE, Workspace()))
     @account_initialization_required
-    def patch(self, provider: str):
-        tenant_id = current_user.current_tenant_id
+    @with_current_tenant_id
+    @model_validate(ParserCreateCredential)
+    def post(self, req_data: ParserCreateCredential, tenant_id: str, provider: str):
+        model_provider_service = ModelProviderService()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        try:
+            model_provider_service.create_model_credential(
+                tenant_id=tenant_id,
+                provider=provider,
+                model=req_data.model,
+                model_type=req_data.model_type,
+                credentials=req_data.credentials,
+                credential_name=req_data.name,
+            )
+        except CredentialsValidateFailedError as ex:
+            logger.exception(
+                "Failed to save model credentials, tenant_id: %s, model: %s, model_type: %s",
+                tenant_id,
+                req_data.model,
+                req_data.model_type,
+            )
+            raise ValueError(str(ex)) from ex
+
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 201
+
+    @console_ns.expect(console_ns.models[ParserUpdateCredential.__name__])
+    @console_ns.response(200, "Model credential updated successfully", console_ns.models[SimpleResultResponse.__name__])
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
+    @account_initialization_required
+    @with_current_tenant_id
+    @model_validate(ParserUpdateCredential)
+    def put(self, req_data: ParserUpdateCredential, current_tenant_id: str, provider: str):
+        model_provider_service = ModelProviderService()
+
+        try:
+            model_provider_service.update_model_credential(
+                tenant_id=current_tenant_id,
+                provider=provider,
+                model_type=req_data.model_type,
+                model=req_data.model,
+                credentials=req_data.credentials,
+                credential_id=req_data.credential_id,
+                credential_name=req_data.name,
+            )
+        except CredentialsValidateFailedError as ex:
+            raise ValueError(str(ex)) from ex
+
+        return SimpleResultResponse(result="success").model_dump(mode="json")
+
+    @console_ns.doc(params=query_params_from_model(ParserDeleteCredential))
+    @console_ns.response(204, "Credential deleted successfully")
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
+    @account_initialization_required
+    @with_current_tenant_id
+    @model_validate(ParserDeleteCredential)
+    def delete(self, req_data: ParserDeleteCredential, current_tenant_id: str, provider: str):
+        model_provider_service = ModelProviderService()
+        model_provider_service.remove_model_credential(
+            tenant_id=current_tenant_id,
+            provider=provider,
+            model_type=req_data.model_type,
+            model=req_data.model,
+            credential_id=req_data.credential_id,
         )
-        args = parser.parse_args()
 
+        return "", 204
+
+
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
+class ModelProviderModelCredentialSwitchApi(Resource):
+    @console_ns.expect(console_ns.models[ParserSwitch.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_USE, Workspace()))
+    @account_initialization_required
+    @with_current_tenant_id
+    @model_validate(ParserSwitch)
+    def post(self, req_data: ParserSwitch, current_tenant_id: str, provider: str):
+        service = ModelProviderService()
+        service.add_model_credential_to_model_list(
+            tenant_id=current_tenant_id,
+            provider=provider,
+            model_type=req_data.model_type,
+            model=req_data.model,
+            credential_id=req_data.credential_id,
+        )
+        return SimpleResultResponse(result="success").model_dump(mode="json")
+
+
+@console_ns.route(
+    "/workspaces/current/model-providers/<path:provider>/models/enable", endpoint="model-provider-model-enable"
+)
+class ModelProviderModelEnableApi(Resource):
+    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @account_initialization_required
+    @with_current_tenant_id
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
+    @model_validate(ParserDeleteModels)
+    def patch(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
         model_provider_service.enable_model(
-            tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
+            tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
         )
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
+@console_ns.route(
+    "/workspaces/current/model-providers/<path:provider>/models/disable", endpoint="model-provider-model-disable"
+)
 class ModelProviderModelDisableApi(Resource):
+    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
-    def patch(self, provider: str):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
-        )
-        args = parser.parse_args()
-
+    @with_current_tenant_id
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
+    @model_validate(ParserDeleteModels)
+    def patch(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
         model_provider_service.disable_model(
-            tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
+            tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
         )
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
+class ParserValidate(BaseModel):
+    model: str
+    model_type: ModelType
+    credentials: dict[str, Any]
+
+
+register_schema_models(console_ns, ParserSwitch, ParserValidate)
+
+
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")
 class ModelProviderModelValidateApi(Resource):
+    @console_ns.expect(console_ns.models[ParserValidate.__name__])
+    @console_ns.response(
+        200,
+        "Model credentials validated successfully",
+        console_ns.models[ValidationResultResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, provider: str):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
-        )
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        args = parser.parse_args()
-
+    @with_current_tenant_id
+    @model_validate(ParserValidate)
+    def post(self, req_data: ParserValidate, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
 
         result = True
         error = ""
 
         try:
-            model_provider_service.model_credentials_validate(
+            model_provider_service.validate_model_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
-                model=args["model"],
-                model_type=args["model_type"],
-                credentials=args["credentials"],
+                model=req_data.model,
+                model_type=req_data.model_type,
+                credentials=req_data.credentials,
             )
         except CredentialsValidateFailedError as ex:
             result = False
             error = str(ex)
 
-        response = {"result": "success" if result else "error"}
-
         if not result:
-            response["error"] = error or ""
+            return ValidationResultResponse(result="error", error=error or "").model_dump(mode="json")
 
-        return response
+        return ValidationResultResponse(result="success").model_dump(mode="json")
 
 
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")
 class ModelProviderModelParameterRuleApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ParserParameter))
+    @console_ns.response(
+        200,
+        "Model parameter rules retrieved successfully",
+        console_ns.models[ModelParameterRuleListResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider: str):
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="args")
-        args = parser.parse_args()
-
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    @model_validate(ParserParameter)
+    def get(self, req_data: ParserParameter, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
         parameter_rules = model_provider_service.get_model_parameter_rules(
-            tenant_id=tenant_id, provider=provider, model=args["model"]
+            tenant_id=tenant_id, provider=provider, model=req_data.model
         )
 
-        return jsonable_encoder({"data": parameter_rules})
+        return ModelParameterRuleListResponse(data=parameter_rules).model_dump(mode="json")
 
 
+@console_ns.route("/workspaces/current/models/model-types/<string:model_type>")
 class ModelProviderAvailableModelApi(Resource):
+    @console_ns.response(
+        200, "Available models retrieved successfully", console_ns.models[AvailableModelListResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, model_type):
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str, model_type: str):
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(tenant_id=tenant_id, model_type=model_type)
 
-        return jsonable_encoder({"data": models})
-
-
-api.add_resource(ModelProviderModelApi, "/workspaces/current/model-providers/<path:provider>/models")
-api.add_resource(
-    ModelProviderModelEnableApi,
-    "/workspaces/current/model-providers/<path:provider>/models/enable",
-    endpoint="model-provider-model-enable",
-)
-api.add_resource(
-    ModelProviderModelDisableApi,
-    "/workspaces/current/model-providers/<path:provider>/models/disable",
-    endpoint="model-provider-model-disable",
-)
-api.add_resource(
-    ModelProviderModelCredentialApi, "/workspaces/current/model-providers/<path:provider>/models/credentials"
-)
-api.add_resource(
-    ModelProviderModelValidateApi, "/workspaces/current/model-providers/<path:provider>/models/credentials/validate"
-)
-
-api.add_resource(
-    ModelProviderModelParameterRuleApi, "/workspaces/current/model-providers/<path:provider>/models/parameter-rules"
-)
-api.add_resource(ModelProviderAvailableModelApi, "/workspaces/current/models/model-types/<string:model_type>")
-api.add_resource(DefaultModelApi, "/workspaces/current/default-model")
+        return AvailableModelListResponse(data=models).model_dump(mode="json")

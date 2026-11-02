@@ -1,19 +1,16 @@
 'use client'
-import { memo } from 'react'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import SettingContent from '@/app/components/base/features/new-feature-panel/file-upload/setting-content'
+import type { ComponentPropsWithRef, ReactElement } from 'react'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { memo } from 'react'
+import SettingContent from '@/app/components/base/features/new-feature-panel/file-upload/setting-content'
 
 type FileUploadSettingsProps = {
   open: boolean
-  onOpen: (state: any) => void
+  onOpen: (state: boolean) => void
   onChange?: OnFeaturesChange
   disabled?: boolean
-  children?: React.ReactNode
+  children: ReactElement<ComponentPropsWithRef<'button'>>
   imageUpload?: boolean
 }
 const FileUploadSettings = ({
@@ -25,29 +22,31 @@ const FileUploadSettings = ({
   imageUpload,
 }: FileUploadSettingsProps) => {
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={onOpen}
-      placement='left'
-      offset={{
-        mainAxis: 32,
+      onOpenChange={(nextOpen) => {
+        if (disabled) return
+        onOpen(nextOpen)
       }}
     >
-      <PortalToFollowElemTrigger className='flex' onClick={() => !disabled && onOpen((open: boolean) => !open)}>
-        {children}
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent style={{ zIndex: 50 }}>
-        <div className='w-[360px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-2xl'>
+      <PopoverTrigger disabled={disabled} render={children} />
+      <PopoverContent
+        side="left"
+        sideOffset={32}
+        className="border-none bg-transparent shadow-none"
+      >
+        <div className="max-h-[calc(100vh-20px)] w-90 overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-2xl">
           <SettingContent
             imageUpload={imageUpload}
             onClose={() => onOpen(false)}
             onChange={(v) => {
               onChange?.(v)
               onOpen(false)
-            }} />
+            }}
+          />
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 export default memo(FileUploadSettings)

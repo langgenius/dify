@@ -1,124 +1,186 @@
-import { memo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ModelItem, ModelProvider } from '../declarations'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
-import type { CustomConfigurationModelFixedFields, ModelItem, ModelProvider } from '../declarations'
-import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
-import ModelBadge from '../model-badge'
+import { useAtomValue } from 'jotai'
+import { memo, useCallback, useId } from 'react'
+import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { hasPermission } from '@/utils/permission'
+import { ModelStatusEnum } from '../declarations'
+import { useUpdateModelList } from '../hooks'
+import { ConfigModel } from '../model-auth'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
-import classNames from '@/utils/classnames'
-import Button from '@/app/components/base/button'
-import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
-import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
-import { disableModel, enableModel } from '@/service/common'
-import { Plan } from '@/app/components/billing/type'
-import { useAppContext } from '@/context/app-context'
 
-export type ModelListItemProps = {
+type ModelListItemProps = {
   model: ModelItem
-  provider: ModelProvider
+  provider: ModelProvider | ModelProviderSummaryResponse
   isConfigurable: boolean
-  onConfig: (currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => void
+  isLoadingLoadBalancing?: boolean
+  isLoadBalancingDisabled?: boolean
+  onChange?: (provider: string) => void
   onModifyLoadBalancing?: (model: ModelItem) => void
 }
 
-const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoadBalancing }: ModelListItemProps) => {
-  const { t } = useTranslation()
-  const { plan } = useProviderContext()
-  const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
-  const { isCurrentWorkspaceManager } = useAppContext()
+const ModelListItem = ({
+  model,
+  provider,
+  isConfigurable,
+  isLoadingLoadBalancing,
+  isLoadBalancingDisabled,
+  onChange,
+  onModifyLoadBalancing,
+}: ModelListItemProps) => {
+  const { t } = useTranslation(['modelProvider'])
+  const modelNameId = useId()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: features } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => ({
+        plan: features.billing.subscription.plan,
+        model_load_balancing_enabled: features.model_load_balancing_enabled,
+      }),
+    }),
+  )
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const configurableStatuses: ModelStatusEnum[] = [ModelStatusEnum.active, ModelStatusEnum.disabled]
+  const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
+  const queryClient = useQueryClient()
+  const updateModelList = useUpdateModelList()
+  const modelProviderModelListQueryKey =
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
+      input: {
+        params: {
+          provider: provider.provider,
+        },
+      },
+    })
 
-  const toggleModelEnablingStatus = useCallback(async (enabled: boolean) => {
-    if (enabled)
-      await enableModel(`/workspaces/current/model-providers/${provider.provider}/models/enable`, { model: model.model, model_type: model.model_type })
-    else
-      await disableModel(`/workspaces/current/model-providers/${provider.provider}/models/disable`, { model: model.model, model_type: model.model_type })
-  }, [model.model, model.model_type, provider.provider])
+  const toggleModelEnablingStatus = useCallback(
+    async (enabled: boolean) => {
+      if (enabled)
+        await consoleClient.workspaces.current.modelProviders.byProvider.models.enable.patch({
+          params: { provider: provider.provider },
+          body: { model: model.model, model_type: model.model_type },
+        })
+      else
+        await consoleClient.workspaces.current.modelProviders.byProvider.models.disable.patch({
+          params: { provider: provider.provider },
+          body: { model: model.model, model_type: model.model_type },
+        })
 
-  const { run: debouncedToggleModelEnablingStatus } = useDebounceFn(toggleModelEnablingStatus, { wait: 500 })
+      queryClient.invalidateQueries({
+        queryKey: modelProviderModelListQueryKey,
+        exact: true,
+        refetchType: 'none',
+      })
+      updateModelList(model.model_type)
+      onChange?.(provider.provider)
+    },
+    [
+      model.model,
+      model.model_type,
+      modelProviderModelListQueryKey,
+      onChange,
+      provider.provider,
+      queryClient,
+      updateModelList,
+    ],
+  )
 
-  const onEnablingStateChange = useCallback(async (value: boolean) => {
-    debouncedToggleModelEnablingStatus(value)
-  }, [debouncedToggleModelEnablingStatus])
+  const { run: debouncedToggleModelEnablingStatus } = useDebounceFn(toggleModelEnablingStatus, {
+    wait: 500,
+  })
+
+  const onEnablingStateChange = useCallback(
+    async (value: boolean) => {
+      debouncedToggleModelEnablingStatus(value)
+    },
+    [debouncedToggleModelEnablingStatus],
+  )
 
   return (
     <div
-      key={model.model}
-      className={classNames(
-        'group flex h-8 items-center rounded-lg pl-2 pr-2.5',
+      key={`${model.model}-${model.fetch_from}`}
+      className={cn(
+        'group flex h-8 items-center rounded-lg ps-2 pe-2.5',
         isConfigurable && 'hover:bg-components-panel-on-panel-item-bg-hover',
         model.deprecated && 'opacity-60',
       )}
     >
-      <ModelIcon
-        className='mr-2 shrink-0'
-        provider={provider}
-        modelName={model.model}
-      />
+      <ModelIcon className="me-2 shrink-0" provider={provider} modelName={model.model} />
       <ModelName
-        className='system-md-regular grow text-text-secondary'
+        className="grow system-md-regular text-text-secondary"
         modelItem={model}
+        nameId={modelNameId}
+        nameClassName={model.deprecated ? 'line-through' : undefined}
         showModelType
         showMode
         showContextSize
-      >
-        {modelLoadBalancingEnabled && !model.deprecated && model.load_balancing_enabled && (
-          <ModelBadge className='ml-1 border-text-accent-secondary uppercase text-text-accent-secondary'>
-            <Balance className='mr-0.5 h-3 w-3' />
-            {t('common.modelProvider.loadBalancingHeadline')}
-          </ModelBadge>
-        )}
-      </ModelName>
-      <div className='flex shrink-0 items-center'>
-        {
-          model.fetch_from === ConfigurationMethodEnum.customizableModel
-            ? (isCurrentWorkspaceManager && (
-              <Button
-                size='small'
-                className='hidden group-hover:flex'
-                onClick={() => onConfig({ __model_name: model.model, __model_type: model.model_type })}
-              >
-                <Settings01 className='mr-1 h-3.5 w-3.5' />
-                {t('common.modelProvider.config')}
-              </Button>
-            ))
-            : (isCurrentWorkspaceManager && (modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status))
-              ? (
-                <Button
-                  size='small'
-                  className='opacity-0 transition-opacity group-hover:opacity-100'
-                  onClick={() => onModifyLoadBalancing?.(model)}
-                >
-                  <Balance className='mr-1 h-3.5 w-3.5' />
-                  {t('common.modelProvider.configLoadBalancing')}
-                </Button>
-              )
-              : null
-        }
-        {
-          model.deprecated
-            ? (
-              <Tooltip
-                popupContent={
-                  <span className='font-semibold'>{t('common.modelProvider.modelHasBeenDeprecated')}</span>} offset={{ mainAxis: 4 }
-                }
-              >
-                <Switch defaultValue={false} disabled size='md' />
-              </Tooltip>
-            )
-            : (isCurrentWorkspaceManager && (
-              <Switch
-                className='ml-2'
-                defaultValue={model?.status === ModelStatusEnum.active}
-                disabled={![ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)}
-                size='md'
-                onChange={onEnablingStateChange}
+        showFeatures
+        showFeaturesLabel
+      ></ModelName>
+      <div className="flex shrink-0 items-center">
+        {features?.model_load_balancing_enabled &&
+          !model.deprecated &&
+          model.load_balancing_enabled &&
+          !model.has_invalid_load_balancing_configs && (
+            <Badge className="me-1 h-4.5 w-4.5 items-center justify-center border-text-accent-secondary p-0">
+              <span
+                aria-hidden
+                className="i-custom-vender-line-financeAndECommerce-balance size-3 text-text-accent-secondary"
               />
-            ))
-        }
+            </Badge>
+          )}
+        {canConfigureModels &&
+          (deploymentEdition !== 'CLOUD' ||
+            features?.model_load_balancing_enabled ||
+            features?.plan === 'sandbox') &&
+          !model.deprecated &&
+          configurableStatuses.includes(model.status) && (
+            <ConfigModel
+              onClick={() => onModifyLoadBalancing?.(model)}
+              loading={isLoadingLoadBalancing}
+              disabled={isLoadBalancingDisabled}
+              loadBalancingEnabled={model.load_balancing_enabled}
+              loadBalancingInvalid={model.has_invalid_load_balancing_configs}
+              credentialRemoved={model.status === ModelStatusEnum.credentialRemoved}
+            />
+          )}
+        {model.deprecated ? (
+          <Popover>
+            <PopoverTrigger
+              nativeButton={false}
+              openOnHover
+              render={
+                <span>
+                  <Switch aria-labelledby={modelNameId} checked={false} disabled size="md" />
+                </span>
+              }
+            />
+            <PopoverContent className="px-3 py-2 system-xs-regular font-semibold text-text-tertiary">
+              {t(($) => $['modelProvider.modelHasBeenDeprecated'], { ns: 'modelProvider' })}
+            </PopoverContent>
+          </Popover>
+        ) : (
+          canConfigureModels && (
+            <Switch
+              aria-labelledby={modelNameId}
+              className="ms-2"
+              checked={model?.status === ModelStatusEnum.active}
+              disabled={!configurableStatuses.includes(model.status)}
+              size="md"
+              onCheckedChange={onEnablingStateChange}
+            />
+          )
+        )}
       </div>
     </div>
   )

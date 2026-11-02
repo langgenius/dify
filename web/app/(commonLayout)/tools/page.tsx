@@ -1,22 +1,15 @@
-'use client'
-import type { FC } from 'react'
-import { useRouter } from 'next/navigation'
-import React, { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import ToolProviderList from '@/app/components/tools/provider-list'
-import { useAppContext } from '@/context/app-context'
-import useDocumentTitle from '@/hooks/use-document-title'
-const ToolsList: FC = () => {
-  const router = useRouter()
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
-  const { t } = useTranslation()
-  useDocumentTitle(t('common.menus.tools'))
+import type { LegacyToolsSearchParams } from '@/app/components/integrations/routes'
+import { getIntegrationRedirectPathByLegacyToolsSearchParams } from '@/app/components/integrations/routes'
+import { redirect } from '@/next/navigation'
 
-  useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return router.replace('/datasets')
-  }, [isCurrentWorkspaceDatasetOperator, router])
-
-  return <ToolProviderList />
+type ToolsPageProps = {
+  searchParams?: Promise<LegacyToolsSearchParams>
 }
-export default React.memo(ToolsList)
+
+const ToolsPage = async ({ searchParams }: ToolsPageProps) => {
+  const resolvedSearchParams = await searchParams
+
+  redirect(getIntegrationRedirectPathByLegacyToolsSearchParams(resolvedSearchParams))
+}
+
+export default ToolsPage
