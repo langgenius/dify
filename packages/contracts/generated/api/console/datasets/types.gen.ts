@@ -3088,7 +3088,7 @@ export type GetDatasetsByDatasetIdKnowledgeFsUpgradesResponse =
   GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses]
 
 export type PostDatasetsByDatasetIdKnowledgeFsUpgradesData = {
-  body?: KnowledgeFsUpgradeStartPayload
+  body: KnowledgeFsUpgradeStartPayload
   headers: {
     'Idempotency-Key': string
   }
