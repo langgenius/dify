@@ -1,7 +1,6 @@
 import json
 from datetime import datetime
 from decimal import Decimal
-from typing import cast
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -11,7 +10,6 @@ from models.workflow import Workflow
 from services.app.generation.ports import (
     ConversationSnapshot,
     MessageSnapshot,
-    StoredWorkflowSnapshot,
     WorkflowSnapshot,
 )
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_message, make_workflow
@@ -81,8 +79,7 @@ def test_generation_snapshots_remain_usable_after_session_close_and_source_mutat
         assert conversation is not None
         assert message is not None
 
-        # Pyrefly does not match SQLAlchemy Mapped descriptors to read-only Protocol properties.
-        workflow_snapshot = WorkflowSnapshot.from_workflow(cast(StoredWorkflowSnapshot, workflow))
+        workflow_snapshot = WorkflowSnapshot.from_workflow(workflow)
         conversation_snapshot = ConversationSnapshot.from_conversation(conversation)
         message_snapshot = MessageSnapshot.from_message(message)
 
