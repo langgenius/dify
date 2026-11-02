@@ -384,9 +384,8 @@ describe('ExternalContactDialog pending state', () => {
       await user.paste('中'.repeat(256))
       await user.click(save)
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'contacts.external.validation.name_too_long',
-      )
+      await waitFor(() => expect(name).toHaveFocus())
+      expect(name).toHaveAccessibleDescription(/contacts\.external\.validation\.name_too_long/)
       expect(name).toHaveAttribute('aria-invalid', 'true')
       expect(contacts.external.post).not.toHaveBeenCalled()
       expect(contacts.external.byContactId.patch).not.toHaveBeenCalled()

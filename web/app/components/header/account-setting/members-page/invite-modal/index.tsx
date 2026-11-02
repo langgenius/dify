@@ -3,6 +3,7 @@ import type { MemberInviteResponse } from '@dify/contracts/api/console/workspace
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { Ref } from 'react'
 import type { EmailRecipient } from './email-recipients'
+import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -121,12 +122,11 @@ function InviteForm({
     >
       <DialogBody className="grid gap-5">
         {!isEmailSetup && (
-          <div className="flex items-start gap-1.5 rounded-lg bg-state-warning-hover p-2 text-text-warning">
-            <span aria-hidden="true" className="i-ri-error-warning-fill size-4 shrink-0" />
-            <span className="system-xs-medium text-text-primary">
+          <Alert type="warning">
+            <AlertTitle>
               {t(($) => $['members.emailNotSetup'], { ns: 'workspaceMembers' })}
-            </span>
-          </div>
+            </AlertTitle>
+          </Alert>
         )}
         <EmailRecipientsField
           recipients={recipients}
@@ -138,20 +138,17 @@ function InviteForm({
         />
         <RoleSelector hasServerError={Boolean(fieldErrors?.role)} disabled={isPending} />
         {exceedsRemainingSeats && (
-          <div
-            role="status"
-            className="flex items-start gap-1.5 rounded-lg bg-state-warning-hover p-2 body-xs-regular text-text-warning"
-          >
-            <span aria-hidden="true" className="i-ri-error-warning-line size-4 shrink-0" />
-            <span>
+          <Alert type="warning">
+            <AlertTitle>
               {t(($) => $['members.seatsRemaining'], {
                 ns: 'workspaceMembers',
                 count: remainingSeats,
               })}
-              <span aria-hidden="true"> · </span>
+            </AlertTitle>
+            <AlertDescription>
               {t(($) => $['members.recipientCountExceedsSeats'], { ns: 'workspaceMembers' })}
-            </span>
-          </div>
+            </AlertDescription>
+          </Alert>
         )}
         {formError && (
           <div role="alert" className="body-xs-regular text-text-destructive">

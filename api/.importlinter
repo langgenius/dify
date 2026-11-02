@@ -313,6 +313,35 @@ forbidden_modules =
     flask
 allow_indirect_imports = True
 
+[importlinter:contract:tool-credential-application-boundary]
+name = Runtime credential refresh policies are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.credentials.tool_runtime
+    services.credentials.refresh
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:tool-credential-adapter-boundary]
+name = Tool runtime credential persistence is reached only through composition
+type = forbidden
+source_modules =
+    core.tools.tool_manager
+forbidden_modules =
+    repositories
+    services.credentials.tool_runtime_adapters
+    services.credentials.redis_refresh_lock
+allow_indirect_imports = True
+
 [importlinter:contract:credential-query-implementation-boundary]
 name = Credential query implementations are wired only by composition or other repositories
 type = forbidden

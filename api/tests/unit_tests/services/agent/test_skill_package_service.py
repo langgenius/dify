@@ -103,7 +103,7 @@ def test_normalized_highly_compressible_skill_passes_reinspection() -> None:
         assert archive.read("data.bin") == payload
 
 
-def test_inspect_reports_uncompressed_size_without_rebuilding(monkeypatch: pytest.MonkeyPatch):
+def test_inspect_reports_uncompressed_size_without_rebuilding(monkeypatch: pytest.MonkeyPatch) -> None:
     members = {"SKILL.md": _SKILL_MD.encode(), "scripts/run.py": b"print('hi')\n"}
 
     def fail_if_called(*_args: object, **_kwargs: object) -> bytes:
@@ -141,7 +141,7 @@ def test_inspection_and_normalization_keep_distinct_size_meanings(prefix: str, c
         assert inspection.uncompressed_size > normalized.manifest.size
 
 
-def test_shallowest_skill_md_preferred_during_normalization():
+def test_shallowest_skill_md_preferred_during_normalization() -> None:
     manifest = _normalize({"SKILL.md": _SKILL_MD.encode(), "nested/SKILL.md": _SKILL_MD.encode()}).manifest
     assert manifest.entry_path == "SKILL.md"
     assert manifest.files == ["SKILL.md", "nested/SKILL.md"]
@@ -235,7 +235,7 @@ def test_normalization_preserves_selected_skill_contents(prefix: str, extra_memb
         ),
     ],
 )
-def test_invalid_packages_rejected(members: dict[str, bytes], filename: str, code: str):
+def test_invalid_packages_rejected(members: dict[str, bytes], filename: str, code: str) -> None:
     with pytest.raises(SkillPackageError) as exc_info:
         _normalize(members, filename=filename)
     assert exc_info.value.code == code
@@ -263,19 +263,19 @@ def test_opening_delimiter_with_trailing_text_is_not_frontmatter() -> None:
     assert exc_info.value.code == "missing_skill_name"
 
 
-def test_non_zip_content_rejected():
+def test_non_zip_content_rejected() -> None:
     with pytest.raises(SkillPackageError) as exc_info:
         SkillPackageService().validate_and_normalize(content=b"not a zip", filename="skill.zip")
     assert exc_info.value.code == "invalid_archive"
 
 
-def test_empty_archive_rejected():
+def test_empty_archive_rejected() -> None:
     with pytest.raises(SkillPackageError) as exc_info:
         SkillPackageService().validate_and_normalize(content=b"", filename="skill.zip")
     assert exc_info.value.code == "empty_archive"
 
 
-def test_validate_and_normalize_rejects_skill_md_too_large(monkeypatch: pytest.MonkeyPatch):
+def test_validate_and_normalize_rejects_skill_md_too_large(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_SKILL_MD_BYTES=8)
 
     with pytest.raises(SkillPackageError) as exc_info:
@@ -283,7 +283,7 @@ def test_validate_and_normalize_rejects_skill_md_too_large(monkeypatch: pytest.M
     assert exc_info.value.code == "skill_md_too_large"
 
 
-def test_validate_and_normalize_rejects_too_many_entries(monkeypatch: pytest.MonkeyPatch):
+def test_validate_and_normalize_rejects_too_many_entries(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_ENTRIES=1)
 
     with pytest.raises(SkillPackageError) as exc_info:
@@ -291,7 +291,7 @@ def test_validate_and_normalize_rejects_too_many_entries(monkeypatch: pytest.Mon
     assert exc_info.value.code == "too_many_entries"
 
 
-def test_validate_and_normalize_rejects_archive_too_large_uncompressed(monkeypatch: pytest.MonkeyPatch):
+def test_validate_and_normalize_rejects_archive_too_large_uncompressed(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES=32)
 
     with pytest.raises(SkillPackageError) as exc_info:
@@ -299,7 +299,7 @@ def test_validate_and_normalize_rejects_archive_too_large_uncompressed(monkeypat
     assert exc_info.value.code == "archive_too_large"
 
 
-def test_validate_and_normalize_rejects_archive_too_large_uploaded_bytes(monkeypatch: pytest.MonkeyPatch):
+def test_validate_and_normalize_rejects_archive_too_large_uploaded_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=1)
 
     with pytest.raises(SkillPackageError) as exc_info:
@@ -317,14 +317,16 @@ def test_high_compression_ratio_uses_absolute_expansion_limit(monkeypatch: pytes
     assert exc_info.value.code == "archive_too_large"
 
 
-def test_validate_and_normalize_maps_member_decompression_failures_to_invalid_archive(monkeypatch: pytest.MonkeyPatch):
+def test_validate_and_normalize_maps_member_decompression_failures_to_invalid_archive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     original_read = zipfile.ZipFile.read
 
-    def corrupted_read(self: zipfile.ZipFile, member: str | zipfile.ZipInfo, *args: object, **kwargs: object) -> bytes:
+    def corrupted_read(self: zipfile.ZipFile, member: str | zipfile.ZipInfo, pwd: bytes | None = None) -> bytes:
         filename = member.filename if isinstance(member, zipfile.ZipInfo) else member
         if filename == "scripts/run.py":
             raise zlib.error("invalid distance too far back")
-        return original_read(self, member, *args, **kwargs)
+        return original_read(self, member, pwd=pwd)
 
     monkeypatch.setattr(zipfile.ZipFile, "read", corrupted_read)
 
