@@ -30,10 +30,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
 vi.mock('../chat-wrapper', () => ({
   __esModule: true,
   default: () => <div>chat area</div>,
@@ -49,11 +45,6 @@ vi.mock('../header', () => ({
       </span>
     </div>
   ),
-}))
-
-const mockIsDify = vi.fn(() => false)
-vi.mock('../utils', () => ({
-  isDify: () => mockIsDify(),
 }))
 
 type EmbeddedChatbotHookReturn = ReturnType<typeof useEmbeddedChatbot>
@@ -140,15 +131,13 @@ describe('EmbeddedChatbot index', () => {
         createHookReturn({ appChatListDataLoading: true }),
       )
 
-      render(<EmbeddedChatbot />)
+      const { rerender } = render(<EmbeddedChatbot />)
 
       expect(screen.getByRole('progressbar')).toBeInTheDocument()
       expect(screen.queryByText('chat area')).not.toBeInTheDocument()
-    })
-
-    it('should render chat content when loading finishes', () => {
-      render(<EmbeddedChatbot />)
-
+      vi.mocked(useEmbeddedChatbot).mockReturnValue(createHookReturn())
+      rerender(<EmbeddedChatbot />)
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
       expect(screen.getByText('chat area')).toBeInTheDocument()
     })
   })
@@ -272,7 +261,6 @@ describe('EmbeddedChatbot index', () => {
     it('should not show powered by section on desktop', () => {
       vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
       vi.mocked(useEmbeddedChatbot).mockReturnValue(createHookReturn({ appData: null }))
-      mockIsDify.mockReturnValue(true)
 
       render(<EmbeddedChatbot />)
 

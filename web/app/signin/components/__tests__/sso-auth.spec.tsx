@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import SSOAuth from '../sso-auth'
 
 const mocks = vi.hoisted(() => ({
@@ -30,6 +30,12 @@ const clickSSOButton = async () => {
   return button
 }
 
+afterEach(() => {
+  vi.restoreAllMocks()
+  for (const key of ['user-oidc-state', 'user-oauth2-state'])
+    document.cookie = `${key}=; Max-Age=0; Path=/`
+})
+
 describe('SSOAuth', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
@@ -50,6 +56,7 @@ describe('SSOAuth', () => {
       expect(String((fetchSpy.mock.calls[0]![0] as Request).url)).toContain(
         `/enterprise/sso/${protocol}/login`,
       )
+      if (protocol !== 'saml') expect(document.cookie).toContain(`user-${protocol}-state=state`)
       expect(mocks.toastError).not.toHaveBeenCalled()
     },
   )

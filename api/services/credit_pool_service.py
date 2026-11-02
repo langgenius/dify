@@ -213,9 +213,9 @@ class CreditPoolService:
             return CreditPoolBalance(
                 tenant_id=tenant_id,
                 pool_type=normalized_pool_type,
-                quota_limit=balance["quota"],
-                quota_used=balance["usage"],
-                exhausted_at=balance.get("exhausted_at"),
+                quota_limit=balance.quota,
+                quota_used=balance.usage,
+                exhausted_at=balance.exhausted_at,
             )
 
         session = cls._require_session(session)
@@ -273,7 +273,7 @@ class CreditPoolService:
                 amount=credits_required,
                 meta=reservation_meta,
             )
-            reservation_id = result.get("reservation_id", "")
+            reservation_id = result.reservation_id
             if not reservation_id:
                 raise QuotaExceededError("Insufficient credits remaining")
             return CreditPoolReservation(
@@ -306,10 +306,10 @@ class CreditPoolService:
         except QuotaExceededError:
             session.rollback()
             raise
-        except Exception:
+        except Exception as caught_error:
             session.rollback()
             logger.exception("Failed to reserve credits for tenant %s", tenant_id)
-            raise QuotaExceededError("Failed to reserve credits")
+            raise QuotaExceededError("Failed to reserve credits") from caught_error
 
         return CreditPoolReservation(
             tenant_id=tenant_id,
@@ -376,7 +376,7 @@ class CreditPoolService:
                 amount=credits_required,
                 meta=billing_metadata,
             )
-            reservation_id = result.get("reservation_id", "")
+            reservation_id = result.reservation_id
             if not reservation_id:
                 raise QuotaExceededError("Insufficient credits remaining")
             try:
@@ -428,9 +428,9 @@ class CreditPoolService:
             return cls._deduct_with_tenant_lock(tenant_id, deduct)
         except QuotaExceededError:
             raise
-        except Exception:
+        except Exception as caught_error:
             logger.exception("Failed to deduct credits for tenant %s", tenant_id)
-            raise QuotaExceededError("Failed to deduct credits")
+            raise QuotaExceededError("Failed to deduct credits") from caught_error
 
     @classmethod
     def deduct_credits_capped(
@@ -460,7 +460,7 @@ class CreditPoolService:
                 amount=credits_required,
                 meta=billing_metadata,
             )
-            return result["deducted"]
+            return result.deducted
 
         session = cls._require_session(session)
 
@@ -482,6 +482,6 @@ class CreditPoolService:
             return cls._deduct_with_tenant_lock(tenant_id, deduct)
         except QuotaExceededError:
             raise
-        except Exception:
+        except Exception as caught_error:
             logger.exception("Failed to deduct capped credits for tenant %s", tenant_id)
-            raise QuotaExceededError("Failed to deduct credits")
+            raise QuotaExceededError("Failed to deduct credits") from caught_error

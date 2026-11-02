@@ -83,7 +83,7 @@ const AgentOutputBlockComponent = ({
   }, [name])
 
   useEffect(() => {
-    if (!isEditing) return
+    if (!isEditing || openTypeSelectOnEdit) return
     if (skipNameFocusRef.current) {
       skipNameFocusRef.current = false
       return
@@ -95,7 +95,7 @@ const AgentOutputBlockComponent = ({
     input.focus()
     if (selectNameOnEdit) input.setSelectionRange(0, input.value.length)
     else input.setSelectionRange(input.value.length, input.value.length)
-  }, [isEditing, selectNameOnEdit])
+  }, [isEditing, openTypeSelectOnEdit, selectNameOnEdit])
 
   if (name !== lastNodeName) {
     setLastNodeName(name)

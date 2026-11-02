@@ -1,20 +1,24 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import type { AlertDialogActions } from '.'
 import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
+  createAlertDialogHandle,
 } from '.'
 import { Button } from '../button'
-
-const triggerButtonClassName =
-  'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover'
+import { Field, FieldLabel } from '../field'
+import { Form } from '../form'
+import { Input } from '../input'
 
 const meta = {
   title: 'Base/UI/AlertDialog',
@@ -23,8 +27,11 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component:
-          'Compound alert dialog built on Base UI AlertDialog. Use it for destructive or high-risk confirmations that require an explicit user decision. Compose title, description, and actions via `AlertDialogFooter`, `AlertDialogCancelButton`, and `AlertDialogConfirmButton`.',
+        component: [
+          'Compound alert dialog built on Base UI AlertDialog. Use it for a destructive or must-confirm decision that needs an explicit answer: an outside press does not dismiss it, only Escape, `AlertDialogCancelButton` or your confirm action do. Compose `AlertDialogTitle` and `AlertDialogDescription` in `AlertDialogHeader`, anything the user fills in or reviews before answering in `AlertDialogBody`, and the actions in `AlertDialogFooter`.',
+          '',
+          '`AlertDialogCancelButton` closes on its own. `AlertDialogConfirmButton` is a primary destructive button that only runs your handler; close it afterwards through `actionsRef`, a handle, or controlled `open`. Pass `tone="default"` when the confirmation is not destructive.',
+        ].join('\n'),
       },
     },
   },
@@ -37,19 +44,17 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   render: () => (
     <AlertDialog>
-      <AlertDialogTrigger render={<button type="button" className={triggerButtonClassName} />}>
+      <AlertDialogTrigger render={<Button variant="secondary" tone="destructive" />}>
         Delete project
       </AlertDialogTrigger>
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 p-6 pb-4">
-          <AlertDialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-            Delete project?
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete project?</AlertDialogTitle>
+          <AlertDialogDescription>
             This action cannot be undone. All workflows, datasets, and API keys will be permanently
             removed.
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary">Cancel</AlertDialogCancelButton>
           <AlertDialogConfirmButton>Delete</AlertDialogConfirmButton>
@@ -61,100 +66,154 @@ export const Default: Story = {
     const body = within(canvasElement.ownerDocument.body)
 
     await userEvent.click(canvas.getByRole('button', { name: 'Delete project' }))
-
-    const dialog = body.getByRole('alertdialog', { name: 'Delete project?' })
+    const dialog = await body.findByRole('alertdialog', { name: 'Delete project?' })
     await waitFor(async () => {
       await expect(dialog).toBeVisible()
     })
 
-    await userEvent.click(body.getByRole('button', { name: 'Delete' }))
-    await expect(dialog).toBeVisible()
+    await userEvent.click(canvasElement.ownerDocument.body)
+    await expect(dialog).toHaveAttribute('data-open')
 
-    await userEvent.click(body.getByRole('button', { name: 'Cancel' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     await waitFor(async () => {
-      await expect(
-        body.queryByRole('alertdialog', { name: 'Delete project?' }),
-      ).not.toBeInTheDocument()
+      await expect(body.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+    await expect(canvas.getByRole('button', { name: 'Delete project' })).toHaveFocus()
+  },
+}
+
+function TypeToConfirmDemo() {
+  const [value, setValue] = React.useState('')
+  const actionsRef = React.useRef<AlertDialogActions>(null)
+
+  return (
+    <AlertDialog actionsRef={actionsRef}>
+      <AlertDialogTrigger render={<Button variant="secondary" tone="destructive" />}>
+        Delete workspace
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete this workspace?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Deleting the workspace is irreversible. Members lose access and every app in it is
+            permanently removed.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <Form className="contents" onFormSubmit={() => actionsRef.current?.close()}>
+          <AlertDialogBody>
+            <Field name="confirm">
+              <FieldLabel>To confirm, type Acme in the box below:</FieldLabel>
+              <Input placeholder="Enter workspace name..." value={value} onValueChange={setValue} />
+            </Field>
+          </AlertDialogBody>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton variant="secondary">Cancel</AlertDialogCancelButton>
+            <AlertDialogConfirmButton type="submit" disabled={value !== 'Acme'}>
+              Delete
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </Form>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+export const TypeToConfirm: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The field sits in `AlertDialogBody` and receives initial focus. The confirm is the form submit, disabled until the typed name matches, so Enter cannot confirm early; `onFormSubmit` closes through `actionsRef`.',
+      },
+    },
+  },
+  render: () => <TypeToConfirmDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Delete workspace' }))
+    const dialog = await body.findByRole('alertdialog', { name: 'Delete this workspace?' })
+    const input = within(dialog).getByRole('textbox', { name: /To confirm/ })
+    await waitFor(async () => {
+      await expect(input).toHaveFocus()
+    })
+    const confirmButton = within(dialog).getByRole('button', { name: 'Delete' })
+    await expect(confirmButton).toBeDisabled()
+
+    await userEvent.type(input, 'Acm')
+    await userEvent.keyboard('{Enter}')
+    await expect(confirmButton).toBeDisabled()
+    await expect(dialog).toHaveAttribute('data-open')
+
+    await userEvent.type(input, 'e')
+    await waitFor(async () => {
+      await expect(confirmButton).toBeEnabled()
+    })
+
+    await userEvent.keyboard('{Enter}')
+    await waitFor(async () => {
+      await expect(body.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
   },
 }
 
-export const NonDestructive: Story = {
-  render: () => (
-    <AlertDialog>
-      <AlertDialogTrigger render={<button type="button" className={triggerButtonClassName} />}>
-        Publish changes
-      </AlertDialogTrigger>
+function NonDestructiveDemo() {
+  const actionsRef = React.useRef<AlertDialogActions>(null)
+
+  return (
+    <AlertDialog actionsRef={actionsRef}>
+      <AlertDialogTrigger render={<Button variant="primary" />}>Publish changes</AlertDialogTrigger>
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 p-6 pb-4">
-          <AlertDialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-            Publish the latest draft?
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Publish the latest draft?</AlertDialogTitle>
+          <AlertDialogDescription>
             Collaborators will immediately see the new workflow. You can still revert from version
             history.
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary">Not now</AlertDialogCancelButton>
-          <AlertDialogConfirmButton tone="default">Publish</AlertDialogConfirmButton>
+          <AlertDialogConfirmButton tone="default" onClick={() => actionsRef.current?.close()}>
+            Publish
+          </AlertDialogConfirmButton>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  ),
-}
-
-function ControlledDemo() {
-  const [open, setOpen] = React.useState(false)
-  const [count, setCount] = React.useState(0)
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <Button variant="secondary" onClick={() => setOpen(true)}>
-        Open controlled dialog
-      </Button>
-      <span className="text-xs text-text-tertiary">
-        Confirmed
-        {count} times
-      </span>
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-              Revoke API token?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
-              Any integration using this token will immediately stop working. You can issue a new
-              token afterwards.
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton variant="secondary">Keep token</AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              onClick={() => {
-                setCount((prev) => prev + 1)
-                setOpen(false)
-              }}
-            >
-              Revoke
-            </AlertDialogConfirmButton>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
   )
 }
 
-export const Controlled: Story = {
-  render: () => <ControlledDemo />,
+export const NonDestructive: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A must-confirm decision that is not destructive keeps the alert semantics and uses `tone="default"` on the confirm.',
+      },
+    },
+  },
+  render: () => <NonDestructiveDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Publish changes' }))
+    const dialog = await body.findByRole('alertdialog', { name: 'Publish the latest draft?' })
+    await waitFor(async () => {
+      await expect(dialog).toBeVisible()
+    })
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Publish' }))
+    await waitFor(async () => {
+      await expect(body.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+  },
 }
 
-function LoadingConfirmDemo() {
-  const [pending, setPending] = React.useState(false)
+function PendingConfirmDemo() {
   const [open, setOpen] = React.useState(false)
+  const [pending, setPending] = React.useState(false)
   const confirmLabelId = React.useId()
 
-  const handleConfirm = () => {
+  function archive() {
     setPending(true)
     window.setTimeout(() => {
       setPending(false)
@@ -163,20 +222,27 @@ function LoadingConfirmDemo() {
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger render={<button type="button" className={triggerButtonClassName} />}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && pending) {
+          details.cancel()
+          return
+        }
+        setOpen(nextOpen)
+      }}
+    >
+      <AlertDialogTrigger render={<Button variant="secondary" />}>
         Archive workspace
       </AlertDialogTrigger>
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 p-6 pb-4">
-          <AlertDialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-            Archive this workspace?
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Archive this workspace?</AlertDialogTitle>
+          <AlertDialogDescription>
             Members will lose access until the workspace is restored. This may take a moment to
             finalize.
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary" disabled={pending}>
             Cancel
@@ -185,7 +251,7 @@ function LoadingConfirmDemo() {
             tone="default"
             loading={pending}
             aria-labelledby={confirmLabelId}
-            onClick={handleConfirm}
+            onClick={archive}
           >
             <span id={confirmLabelId}>{pending ? 'Archiving…' : 'Archive'}</span>
           </AlertDialogConfirmButton>
@@ -195,18 +261,150 @@ function LoadingConfirmDemo() {
   )
 }
 
-export const LoadingConfirm: Story = {
-  render: () => <LoadingConfirmDemo />,
+export const PendingConfirm: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'While the confirm is `loading`, Cancel is disabled and `onOpenChange` cancels Escape; the dialog closes itself once the action settles.',
+      },
+    },
+  },
+  render: () => <PendingConfirmDemo />,
   play: async ({ canvas, canvasElement, userEvent }) => {
     const body = within(canvasElement.ownerDocument.body)
 
     await userEvent.click(canvas.getByRole('button', { name: 'Archive workspace' }))
-    const confirmButton = body.getByRole('button', { name: 'Archive' })
+    const dialog = await body.findByRole('alertdialog', { name: 'Archive this workspace?' })
+    await waitFor(async () => {
+      await expect(dialog).toBeVisible()
+    })
+    const confirmButton = within(dialog).getByRole('button', { name: 'Archive' })
     await userEvent.click(confirmButton)
-
-    await expect(confirmButton).toHaveAccessibleName('Archiving…')
-    await expect(confirmButton).toHaveAttribute('aria-disabled', 'true')
-    await expect(confirmButton).not.toHaveAttribute('aria-busy')
+    await waitFor(async () => {
+      await expect(confirmButton).toHaveAccessibleName('Archiving…')
+    })
     await expect(confirmButton).toHaveFocus()
+
+    await userEvent.keyboard('{Escape}')
+    await expect(dialog).toHaveAttribute('data-open')
+
+    await waitFor(
+      async () => {
+        await expect(body.queryByRole('alertdialog')).not.toBeInTheDocument()
+      },
+      { timeout: 3000 },
+    )
   },
+}
+
+type ApiKeyPayload = {
+  name: string
+}
+
+const apiKeys = [
+  { name: 'Production' },
+  { name: 'Staging' },
+] as const satisfies readonly ApiKeyPayload[]
+
+function DetachedTriggersDemo() {
+  const [dialogHandle] = React.useState(() => createAlertDialogHandle<ApiKeyPayload>())
+
+  return (
+    <React.Fragment>
+      <ul className="flex w-96 flex-col divide-y divide-divider-subtle">
+        {apiKeys.map((apiKey) => (
+          <li key={apiKey.name} className="flex items-center justify-between gap-4 py-2">
+            <span className="system-sm-medium text-text-primary">{apiKey.name}</span>
+            <AlertDialogTrigger
+              handle={dialogHandle}
+              payload={apiKey}
+              render={<Button size="small" variant="ghost" tone="destructive" />}
+            >
+              Delete {apiKey.name}
+            </AlertDialogTrigger>
+          </li>
+        ))}
+      </ul>
+      <AlertDialog handle={dialogHandle}>
+        {({ payload }) => (
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete the {payload?.name} key?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Requests signed with this key will start failing immediately.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancelButton variant="secondary">Cancel</AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={() => dialogHandle.close()}>
+                Delete
+              </AlertDialogConfirmButton>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
+    </React.Fragment>
+  )
+}
+
+export const DetachedTriggers: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'One alert dialog serves every row: each Delete is an `AlertDialogTrigger` bound to a `createAlertDialogHandle` with its row as `payload`.',
+      },
+    },
+  },
+  render: () => <DetachedTriggersDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Delete Staging' }))
+    const dialog = await body.findByRole('alertdialog', { name: 'Delete the Staging key?' })
+    await waitFor(async () => {
+      await expect(dialog).toBeVisible()
+    })
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
+    await waitFor(async () => {
+      await expect(body.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+    await expect(canvas.getByRole('button', { name: 'Delete Staging' })).toHaveFocus()
+  },
+}
+
+export const LongObjectName: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A user-named object wraps in the title, and a description with a line break keeps it.',
+      },
+    },
+  },
+  render: () => (
+    <AlertDialog>
+      <AlertDialogTrigger render={<Button variant="secondary" tone="destructive" />}>
+        Delete knowledge base
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            Delete “Customer support escalation playbook for enterprise accounts (2026 Q3)”?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {
+              'Documents, segments, and retrieval settings will be removed.\nApps that use this knowledge base will stop retrieving from it.'
+            }
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancelButton variant="secondary">Cancel</AlertDialogCancelButton>
+          <AlertDialogConfirmButton>Delete</AlertDialogConfirmButton>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  ),
 }

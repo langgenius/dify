@@ -24,8 +24,8 @@ from services.annotation_reply_index import AnnotationVectorIndex
 from services.annotation_reply_service import AnnotationIndexBinding, AnnotationReplyService
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_app
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_app
 
 PROVIDER = "annotation-provider"
 MODEL = "annotation-embedding"

@@ -162,9 +162,7 @@ const AutoParametersForm = ({
   const formSchemas = React.useMemo(
     () =>
       schemas.map((schema) => {
-        const normalizedType = normalizeFormType(
-          (schema.type || FormTypeEnum.textInput) as FormTypeEnum | string,
-        )
+        const normalizedType = normalizeFormType(schema.type || FormTypeEnum.textInput)
         return {
           ...schema,
           tooltip: schema.description,

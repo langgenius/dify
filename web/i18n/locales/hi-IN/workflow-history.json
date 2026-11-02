@@ -13,7 +13,6 @@
   "versionHistory.action.copyIdSuccess": "आईडी क्लिपबोर्ड पर कॉपी हो गई",
   "versionHistory.action.deleteDeployedVersionError": "यह वर्कफ़्लो संस्करण एक या अधिक एनवायरनमेंट में डिप्लॉय है या डिप्लॉय किया जा रहा है। संस्करण हटाने से पहले इसे सभी एनवायरनमेंट से अनडिप्लॉय करें।",
   "versionHistory.action.deleteFailure": "संस्करण को हटाने में विफल",
-  "versionHistory.action.deleteSuccess": "संस्करण हटाया गया",
   "versionHistory.action.restoreFailure": "संस्करण को पुनर्स्थापित करने में विफल",
   "versionHistory.action.restoreInProgress": "{{userName}} संस्करण {{versionName}} को पुनर्स्थापित कर रहे हैं...",
   "versionHistory.action.restoreSuccess": "संस्करण पुनर्स्थापित किया गया",

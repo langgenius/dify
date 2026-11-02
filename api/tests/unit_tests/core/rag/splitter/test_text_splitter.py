@@ -817,6 +817,19 @@ class TestEnhanceRecursiveCharacterTextSplitter:
         assert splitter.split_text("") == []
         mock_model.get_text_embedding_num_tokens.assert_not_called()
 
+    def test_character_fallback_preserves_single_newlines(self):
+        text = "\n".join(f"SKU{i:04d}" for i in range(20))
+        splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
+            embedding_model_instance=None,
+            separators=["\n\n", "。", ". ", " ", ""],
+            chunk_size=50,
+            chunk_overlap=0,
+        )
+
+        chunks = splitter.split_text(text)
+
+        assert chunks[0] == "SKU0000\nSKU0001\nSKU0002\nSKU0003\nSKU0004\nSKU0005\nSK"
+
 
 # ============================================================================
 # Test FixedRecursiveCharacterTextSplitter
@@ -935,6 +948,18 @@ class TestFixedRecursiveCharacterTextSplitter:
         for chunk in result:
             assert len(chunk) <= 12  # chunk_size + some tolerance for overlap
 
+    def test_character_fallback_preserves_single_newlines(self):
+        text = "\n".join(f"SKU{i:04d}" for i in range(20))
+        splitter = FixedRecursiveCharacterTextSplitter(
+            separators=["\n\n", "。", ". ", " ", ""],
+            chunk_size=50,
+            chunk_overlap=0,
+        )
+
+        chunks = splitter.split_text(text)
+
+        assert chunks[0] == "SKU0000\nSKU0001\nSKU0002\nSKU0003\nSKU0004\nSKU0005\nSK"
+
     def test_overlap_in_character_splitting(self):
         """Test that overlap is correctly applied in character-level splitting."""
         text = string.ascii_uppercase
@@ -1040,6 +1065,7 @@ class TestFixedRecursiveCharacterTextSplitter:
 
         assert chunks
         assert all(chunk != "" for chunk in chunks)
+        assert chunks == ["line1\n\nline2\n\nline3"]
         assert "line1" in "".join(chunks)
         assert "line2" in "".join(chunks)
         assert "line3" in "".join(chunks)

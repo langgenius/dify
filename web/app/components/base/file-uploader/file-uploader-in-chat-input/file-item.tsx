@@ -11,6 +11,7 @@ import FileTypeIcon from '../file-type-icon'
 import {
   fileIsUploaded,
   getFileAppearanceType,
+  getFileDownloadUrl,
   getFileExtension,
   getFilePreviewKind,
 } from '../utils'
@@ -35,7 +36,7 @@ export function FileItem({
   const { id, name, type, progress, url, base64Url, isRemote } = file
   const ext = getFileExtension(name, type, isRemote)
   const uploadError = progress === -1
-  const download_url = url ? `${url}&as_attachment=true` : base64Url
+  const download_url = url ? getFileDownloadUrl(url) : base64Url
   const previewKind = canPreview ? getFilePreviewKind(file) : undefined
 
   return (

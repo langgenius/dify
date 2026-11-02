@@ -105,11 +105,13 @@ class AnnotationReplyIndex(Protocol):
 
 
 class AnnotationReplyJobStore(Protocol):
-    def get_processing(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction) -> str | None:
-        """Return an owned processing job ID, or None when no such job is cached."""
+    def reserve(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str) -> str:
+        """Reserve this job or return the existing owned job ID without another publication."""
         ...
 
-    def create(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str) -> None: ...
+    def fail(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str, error_msg: str) -> None:
+        """Release the reservation while retaining a bounded, queryable error result."""
+        ...
 
     def finish(
         self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str, error: str | None
@@ -169,31 +171,52 @@ class AnnotationReplyService:
         embedding_model_name: str,
     ) -> AnnotationReplyJob:
         self._annotations.require_app(tenant_id=tenant_id, app_id=app_id)
-        pending = self._jobs.get_processing(tenant_id=tenant_id, app_id=app_id, action="enable")
-        if pending is not None:
-            return AnnotationReplyJob(job_id=pending, job_status="processing")
         job_id = str(uuid4())
-        self._jobs.create(tenant_id=tenant_id, app_id=app_id, action="enable", job_id=job_id)
-        self._enable_task(
-            job_id=job_id,
-            app_id=app_id,
-            user_id=account_id,
-            tenant_id=tenant_id,
-            score_threshold=score_threshold,
-            embedding_provider_name=embedding_provider_name,
-            embedding_model_name=embedding_model_name,
-        )
+        try:
+            pending = self._jobs.reserve(tenant_id=tenant_id, app_id=app_id, action="enable", job_id=job_id)
+            if pending != job_id:
+                return AnnotationReplyJob(job_id=pending, job_status="processing")
+            self._enable_task(
+                job_id=job_id,
+                app_id=app_id,
+                user_id=account_id,
+                tenant_id=tenant_id,
+                score_threshold=score_threshold,
+                embedding_provider_name=embedding_provider_name,
+                embedding_model_name=embedding_model_name,
+            )
+        except Exception as exc:
+            self._record_failed_job(
+                tenant_id=tenant_id, app_id=app_id, action="enable", job_id=job_id, error_msg=str(exc)
+            )
+            raise
         return AnnotationReplyJob(job_id=job_id, job_status="waiting")
 
     def request_disable(self, *, tenant_id: str, app_id: str) -> AnnotationReplyJob:
         self._annotations.require_app(tenant_id=tenant_id, app_id=app_id)
-        pending = self._jobs.get_processing(tenant_id=tenant_id, app_id=app_id, action="disable")
-        if pending is not None:
-            return AnnotationReplyJob(job_id=pending, job_status="processing")
         job_id = str(uuid4())
-        self._jobs.create(tenant_id=tenant_id, app_id=app_id, action="disable", job_id=job_id)
-        self._disable_task(job_id=job_id, app_id=app_id, tenant_id=tenant_id)
+        try:
+            pending = self._jobs.reserve(tenant_id=tenant_id, app_id=app_id, action="disable", job_id=job_id)
+            if pending != job_id:
+                return AnnotationReplyJob(job_id=pending, job_status="processing")
+            self._disable_task(job_id=job_id, app_id=app_id, tenant_id=tenant_id)
+        except Exception as exc:
+            self._record_failed_job(
+                tenant_id=tenant_id, app_id=app_id, action="disable", job_id=job_id, error_msg=str(exc)
+            )
+            raise
         return AnnotationReplyJob(job_id=job_id, job_status="waiting")
+
+    def _record_failed_job(
+        self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str, error_msg: str
+    ) -> None:
+        try:
+            # Even a failed reservation call may have exposed this ID before Redis disconnected.
+            self._jobs.fail(tenant_id=tenant_id, app_id=app_id, action=action, job_id=job_id, error_msg=error_msg)
+        except Exception:
+            logger.exception(
+                "Failed to record annotation reply job failure %s for app %s in workspace %s", job_id, app_id, tenant_id
+            )
 
     def get_status(
         self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str

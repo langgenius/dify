@@ -39,6 +39,7 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.dataset_fields import DatasetDetailResponse as BaseDatasetDetailResponse
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_user
 from libs.pagination import clamp_pagination
@@ -56,6 +57,7 @@ from services.knowledge.entities.knowledge_entities import (
     RetrievalModel,
     SummaryIndexSetting,
 )
+from services.rbac import contracts as rbac_contracts
 from services.tag_service import (
     SaveTagPayload,
     TagBindingCreatePayload,
@@ -93,11 +95,12 @@ PartialMemberList = Annotated[
 
 
 class DatasetDetailResponse(BaseDatasetDetailResponse):
-    # The Service API dump helpers exclude Console permission metadata.
+    # The Service API dump helpers exclude Console permission metadata and form settings.
     permission_keys: list[str] = Field(default_factory=list, exclude=True)
+    keyword_number: int | None = Field(default=None, exclude=True)
 
 
-_SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys"}
+_SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys", "keyword_number"}
 _SERVICE_DATASET_LIST_EXCLUDE = {"data": {"__all__": _SERVICE_DATASET_DETAIL_EXCLUDE}}
 
 
@@ -483,6 +486,7 @@ class DatasetListApi(DatasetApiResource):
         }
         return _dump_service_dataset_list(response), HTTPStatus.OK
 
+    @error_responses(DatasetNameDuplicateError)
     @service_api_ns.doc(
         summary="Create an Empty Knowledge Base",
         description=(
@@ -552,15 +556,15 @@ class DatasetListApi(DatasetApiResource):
                 retrieval_model=payload.retrieval_model,
                 summary_index_setting=payload.summary_index_setting,
             )
-        except services.errors.dataset.DatasetNameDuplicateError:
-            raise DatasetNameDuplicateError()
+        except services.errors.dataset.DatasetNameDuplicateError as caught_error:
+            raise DatasetNameDuplicateError() from caught_error
 
         if dify_config.RBAC_ENABLED:
             enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
                 tenant_id,
                 current_user.id,
                 dataset.id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
 
         return _dump_service_dataset_detail(load_dataset_detail(dataset, session=session)), 200
@@ -608,7 +612,7 @@ class DatasetApi(DatasetApiResource):
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.base.NoPermissionError as e:
-            raise Forbidden(str(e))
+            raise Forbidden(str(e)) from e
         data = _dump_service_dataset_detail(load_dataset_detail(dataset, session=session))
         # check embedding setting
         assert isinstance(current_user, Account)
@@ -788,14 +792,15 @@ class DatasetApi(DatasetApiResource):
                 return "", 204
             else:
                 raise NotFound("Dataset not found.")
-        except services.errors.dataset.DatasetInUseError:
-            raise DatasetInUseError()
+        except services.errors.dataset.DatasetInUseError as caught_error:
+            raise DatasetInUseError() from caught_error
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>")
 class DocumentStatusApi(DatasetApiResource):
     """Resource for batch document status operations."""
 
+    @error_responses(InvalidActionError)
     @service_api_ns.doc(
         summary="Update Document Status in Batch",
         description="Enable, disable, archive, or unarchive multiple documents at once.",
@@ -865,7 +870,7 @@ class DocumentStatusApi(DatasetApiResource):
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.base.NoPermissionError as e:
-            raise Forbidden(str(e))
+            raise Forbidden(str(e)) from e
 
         # Check dataset model setting
         DatasetService.check_dataset_model_setting(dataset)
@@ -877,9 +882,9 @@ class DocumentStatusApi(DatasetApiResource):
         try:
             DocumentService.batch_update_document_status(dataset, document_ids, action, current_user, session)
         except services.errors.document.DocumentIndexingError as e:
-            raise InvalidActionError(str(e))
+            raise InvalidActionError(str(e)) from e
         except ValueError as e:
-            raise InvalidActionError(str(e))
+            raise InvalidActionError(str(e)) from e
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 

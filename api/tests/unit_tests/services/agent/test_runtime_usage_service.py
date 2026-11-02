@@ -24,9 +24,9 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.agent_sandbox_usage import AgentSandboxExecution, AgentSandboxUsageEvent
-from models.model import App
+from models.model import App, AppMode
 from services.agent.runtime_usage_service import SandboxUsageError, SandboxUsageEvent, SandboxUsageService
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 PROJECT = "431de237-596f-4d59-8a85-20a9846bf243"
 START = "2026-09-20T00:00:00Z"
@@ -484,7 +484,7 @@ def business_owner(
                 tenant_id=tenant_id,
                 name="Metering test",
                 description="",
-                mode="agent",
+                mode=AppMode.AGENT,
                 enable_site=False,
                 enable_api=False,
                 max_active_requests=None,

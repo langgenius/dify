@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Hubungi administrator aplikasi jika Anda memerlukan bantuan.",
+  "appNotAccessible.documentTitle": "Aplikasi tidak dapat diakses · Dify",
+  "appNotAccessible.ipAddress": "Alamat IP Anda adalah <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Aplikasi ini tidak ada atau tidak dapat diakses dari jaringan Anda.",
   "chat.chatFormTip": "Pengaturan obrolan tidak dapat dimodifikasi setelah obrolan dimulai.",
   "chat.chatSettingsTitle": "Penyiapan obrolan baru",
   "chat.collapse": "Roboh",
@@ -45,6 +49,7 @@
   "generation.tabs.saved": "Disimpan",
   "generation.title": "Penyelesaian AI",
   "humanInput.completed": "Sepertinya permintaan ini telah ditangani di tempat lain.",
+  "humanInput.currentAccount": "Akun saat ini: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Tindakan ini akan kedaluwarsa {{relativeTime}}.",
   "humanInput.expired": "Sepertinya permintaan ini telah kedaluwarsa.",
   "humanInput.expiredTip": "Tindakan ini telah kedaluwarsa.",
@@ -53,6 +58,9 @@
   "humanInput.recorded": "Input Anda telah dicatat.",
   "humanInput.sorry": "Maaf!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Ganti akun",
   "humanInput.thanks": "Terima kasih!",
+  "humanInput.unavailableDescription": "Tautan mungkin tidak tersedia atau tidak sesuai dengan akun yang Anda gunakan untuk masuk. Buka formulir dari notifikasi yang Anda terima, atau coba ganti akun.",
+  "humanInput.unavailableTitle": "Formulir ini tidak dapat dibuka",
   "login.backToHome": "Kembali ke Beranda"
 }

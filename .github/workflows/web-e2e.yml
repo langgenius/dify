@@ -91,7 +91,7 @@ jobs:
   chromium-full:
     name: Chromium Full (${{ matrix.shard }}/3)
     if: ${{ !inputs.run-external-runtime }}
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -115,10 +115,10 @@ jobs:
           run-install: 'false'
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: api/uv.lock
 
       # API and web installs are independent, so overlap them; the browser
@@ -172,7 +172,7 @@ jobs:
   webkit-smoke:
     name: WebKit Browser Smoke
     if: ${{ !inputs.run-external-runtime }}
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 45
     env:
       E2E_ADMIN_EMAIL: e2e-admin@example.com
@@ -193,10 +193,10 @@ jobs:
           run-install: 'false'
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: api/uv.lock
 
       # API and web installs are independent, so overlap them; the browser
@@ -265,10 +265,10 @@ jobs:
           run-install: 'false'
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
-          python-version: '3.12'
+          python-version: '3.13'
           cache-dependency-glob: |
             api/uv.lock
             dify-agent/uv.lock

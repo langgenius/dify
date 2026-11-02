@@ -6,6 +6,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -76,7 +77,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   return (
     <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
       <div className="pointer-events-auto flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
-        <div className="inline-flex items-center gap-x-2 py-1 pr-3 pl-2">
+        <div className="inline-flex items-center gap-x-2 py-1 ps-2 pe-3">
           <span className="flex size-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
             {selectedIds.length}
           </span>
@@ -150,14 +151,14 @@ const BatchAction: FC<IBatchActionProps> = ({
           onOpenChange={(open) => !open && hideDeleteConfirm()}
         >
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              <AlertDialogDescription>
                 {t(($) => $['list.delete.content'], { ns: 'datasetDocuments' })}
               </AlertDialogDescription>
-            </div>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}

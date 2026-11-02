@@ -1,7 +1,10 @@
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
+import { safe } from '@orpc/client'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
@@ -9,12 +12,13 @@ import {
 } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
+import { consoleClient } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
-import { syncWorkflowDraft } from '@/service/workflow'
 import { usePipelineRefreshDraft } from './use-pipeline-refresh-draft'
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
+  const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const workflowStore = useWorkflowStore()
   const { handleRefreshWorkflowDraft } = usePipelineRefreshDraft()
 
@@ -23,7 +27,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const nodesOriginal = getNodes()
     const nodes = nodesOriginal.filter((node) => !node.data._isTempNode)
     const [x, y, zoom] = transform
-    const { pipelineId, environmentVariables, syncWorkflowDraftHash, ragPipelineVariables } =
+    const { environmentVariables, syncWorkflowDraftHash, ragPipelineVariables } =
       workflowStore.getState()
 
     if (pipelineId && !!nodes.length) {
@@ -42,6 +46,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         })
       })
       return {
+        pipelineId,
         url: `/rag/pipelines/${pipelineId}/workflows/draft`,
         params: {
           graph: {
@@ -59,7 +64,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         },
       }
     }
-  }, [store, workflowStore])
+  }, [store, workflowStore, pipelineId])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return
@@ -78,27 +83,25 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
       const { setSyncWorkflowDraftHash, setDraftUpdatedAt, syncWorkflowDraftHash } =
         workflowStore.getState()
-      const postParams = {
-        ...baseParams,
-        params: {
-          ...baseParams.params,
-          hash: syncWorkflowDraftHash,
-        },
-      }
-
+      const [error, res, isDefined] = await safe(
+        consoleClient.rag.pipelines.byPipelineId.workflows.draft.post(
+          {
+            params: { pipeline_id: baseParams.pipelineId },
+            body: { ...baseParams.params, hash: syncWorkflowDraftHash },
+          },
+          { context: { silent: true } },
+        ),
+      )
       try {
-        const res = await syncWorkflowDraft(postParams)
+        if (error) {
+          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+            handleRefreshWorkflowDraft()
+          callback?.onError?.()
+          return
+        }
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()
-      } catch (error: any) {
-        if (error && error.json && !error.bodyUsed) {
-          error.json().then((err: any) => {
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft()
-          })
-        }
-        callback?.onError?.()
       } finally {
         callback?.onSettled?.()
       }

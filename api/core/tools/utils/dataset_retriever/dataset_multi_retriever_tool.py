@@ -94,7 +94,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             DocumentSegment.dataset_id.in_(self.dataset_ids),
             DocumentSegment.completed_at.isnot(None),
             DocumentSegment.status == "completed",
-            DocumentSegment.enabled == True,
+            DocumentSegment.enabled.is_(True),
             DocumentSegment.index_node_id.in_(index_node_ids),
         )
         segments = session.scalars(document_segment_stmt).all()
@@ -113,13 +113,12 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                     document_context_list.append(sign_segment_content(segment, session=session))
             if self.return_resource:
                 context_list: list[RetrievalSourceMetadata] = []
-                resource_number = 1
-                for segment in sorted_segments:
+                for resource_number, segment in enumerate(sorted_segments, start=1):
                     dataset = session.get(Dataset, segment.dataset_id)
                     document_stmt = select(Document).where(
                         Document.id == segment.document_id,
-                        Document.enabled == True,
-                        Document.archived == False,
+                        Document.enabled.is_(True),
+                        Document.archived.is_(False),
                     )
                     document = session.scalar(document_stmt)
                     if dataset and document:
@@ -146,7 +145,6 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                         else:
                             source.content = segment.content
                         context_list.append(source)
-                    resource_number += 1
 
                 for hit_callback in self.hit_callbacks:
                     hit_callback.return_retriever_resource_info(context_list)
@@ -174,6 +172,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
 
             # get retrieval model , if the model is not setting , using default
             retrieval_model = dataset.retrieval_model or default_retrieval_model
+            dataset_top_k = retrieval_model.get("top_k")
 
             if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 # use keyword table query
@@ -181,7 +180,8 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                     retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
                     dataset_id=dataset.id,
                     query=query,
-                    top_k=retrieval_model.get("top_k") or 4,
+                    # top_k=0 is a legal explicit value; only None falls back to 4.
+                    top_k=dataset_top_k if dataset_top_k is not None else 4,
                 )
                 if documents:
                     all_documents.extend(documents)
@@ -192,7 +192,8 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                         retrieval_method=retrieval_model["search_method"],
                         dataset_id=dataset.id,
                         query=query,
-                        top_k=retrieval_model.get("top_k") or 4,
+                        # top_k=0 is a legal explicit value; only None falls back to 4.
+                        top_k=dataset_top_k if dataset_top_k is not None else 4,
                         score_threshold=retrieval_model.get("score_threshold", 0.0)
                         if retrieval_model["score_threshold_enabled"]
                         else 0.0,

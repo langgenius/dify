@@ -127,7 +127,9 @@ class AnnotationImportJobStore(Protocol):
 
     def create(self, *, tenant_id: str, app_id: str, job_id: str, now_ms: int) -> None: ...
 
-    def release(self, *, tenant_id: str, job_id: str) -> None: ...
+    def release(self, *, tenant_id: str, app_id: str, job_id: str) -> None:
+        """Remove the owned job and its active reservation after publication fails."""
+        ...
 
     def finish(self, *, tenant_id: str, app_id: str, job_id: str, error: str | None) -> None:
         """Publish success when error is None, otherwise failure; release this job's slot."""
@@ -234,7 +236,7 @@ class AnnotationImportService:
         except Exception:
             # Preserve the publishing error even when Redis cleanup also fails.
             try:
-                self._jobs.release(tenant_id=tenant_id, job_id=job_id)
+                self._jobs.release(tenant_id=tenant_id, app_id=app_id, job_id=job_id)
             except Exception:
                 logger.exception("Failed to release annotation import job %s in workspace %s", job_id, tenant_id)
             raise

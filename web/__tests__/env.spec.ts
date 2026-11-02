@@ -1,41 +1,68 @@
 describe('env runtime transport', () => {
-  const originalAgentV2Env = process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
-  const originalMarkdownFormFieldNameExtraChars =
-    process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
-  const originalMarkdownFormFieldNameMaxLength =
-    process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH
-  const originalTurnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+  const envKeys = [
+    'NEXT_PUBLIC_ENABLE_AGENT_V2',
+    'NEXT_PUBLIC_ENABLE_HITL_IM',
+    'NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS',
+    'NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH',
+    'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+  ] as const
+  const attributes = [
+    'data-enable-agent-v2',
+    'data-enable-hitl-im',
+    'data-enable-agent-v-2',
+    'data-markdown-form-field-name-extra-chars',
+    'data-markdown-form-field-name-max-length',
+    'data-turnstile-site-key',
+  ]
+  let previousAttributes: (string | null)[]
 
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.resetModules()
     vi.doUnmock('../utils/client')
-    document.body.removeAttribute('data-enable-agent-v2')
-    document.body.removeAttribute('data-enable-agent-v-2')
-    document.body.removeAttribute('data-markdown-form-field-name-extra-chars')
-    document.body.removeAttribute('data-markdown-form-field-name-max-length')
-    document.body.removeAttribute('data-turnstile-site-key')
-    delete process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
-    delete process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
-    delete process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH
-    delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    previousAttributes = attributes.map((name) => document.body.getAttribute(name))
+    attributes.forEach((name) => document.body.removeAttribute(name))
+    envKeys.forEach((name) => vi.stubEnv(name, undefined))
   })
 
-  afterAll(() => {
-    if (originalAgentV2Env === undefined) delete process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
-    else process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 = originalAgentV2Env
-    if (originalMarkdownFormFieldNameExtraChars === undefined)
-      delete process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
-    else
-      process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS =
-        originalMarkdownFormFieldNameExtraChars
-    if (originalMarkdownFormFieldNameMaxLength === undefined)
-      delete process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH
-    else
-      process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH =
-        originalMarkdownFormFieldNameMaxLength
-    if (originalTurnstileSiteKey === undefined) delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
-    else process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = originalTurnstileSiteKey
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.doUnmock('../utils/client')
+    attributes.forEach((name, index) => {
+      const value = previousAttributes[index]
+      if (value == null) document.body.removeAttribute(name)
+      else document.body.setAttribute(name, value)
+    })
+  })
+
+  it.each([
+    [undefined, false],
+    ['false', false],
+    ['true', true],
+    ['0', false],
+    ['1', true],
+  ] as const)(
+    'transports the HITL IM release gate from server to browser for %s',
+    async (value, enabled) => {
+      vi.stubEnv('NEXT_PUBLIC_ENABLE_HITL_IM', value)
+      vi.doMock('../utils/client', () => ({ isClient: false, isServer: true }))
+      const { env: serverEnv, getDatasetMap } = await import('../env')
+      expect(serverEnv.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(enabled)
+      const dataset = getDatasetMap()
+      expect(dataset['data-enable-hitl-im']).toBe(enabled)
+
+      document.body.setAttribute('data-enable-hitl-im', String(dataset['data-enable-hitl-im']))
+      vi.stubEnv('NEXT_PUBLIC_ENABLE_HITL_IM', String(!enabled))
+      vi.resetModules()
+      vi.doMock('../utils/client', () => ({ isClient: true, isServer: false }))
+      const { env: browserEnv } = await import('../env')
+      expect(browserEnv.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(enabled)
+    },
+  )
+
+  it('keeps HITL IM disabled when the browser runtime attribute is absent', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_HITL_IM', 'true')
+    const { env } = await import('../env')
+    expect(env.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(false)
   })
 
   it('should read NEXT_PUBLIC_ENABLE_AGENT_V2 from the browser runtime dataset key', async () => {
@@ -47,7 +74,7 @@ describe('env runtime transport', () => {
   })
 
   it('should emit the Agent v2 runtime dataset attribute from getDatasetMap on the server', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 = 'true'
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_AGENT_V2', 'true')
 
     vi.doMock('../utils/client', () => ({
       isClient: false,
@@ -70,7 +97,7 @@ describe('env runtime transport', () => {
   })
 
   it('should emit Markdown form field name extra characters in the server runtime dataset', async () => {
-    process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS = '()!*&（）！＊＆－'
+    vi.stubEnv('NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS', '()!*&（）！＊＆－')
 
     vi.doMock('../utils/client', () => ({
       isClient: false,
@@ -98,7 +125,7 @@ describe('env runtime transport', () => {
   })
 
   it('should emit the Markdown form field name maximum length in the server runtime dataset', async () => {
-    process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH = '64'
+    vi.stubEnv('NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH', '64')
 
     vi.doMock('../utils/client', () => ({
       isClient: false,
@@ -120,7 +147,7 @@ describe('env runtime transport', () => {
   })
 
   it('should emit the Turnstile site key in the server runtime dataset', async () => {
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'site-key-for-tests'
+    vi.stubEnv('NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'site-key-for-tests')
 
     vi.doMock('../utils/client', () => ({
       isClient: false,

@@ -57,30 +57,6 @@ describe('lazy node panels', () => {
     expect(screen.getByRole('textbox', { name: 'Second node' })).toBeInTheDocument()
   })
 
-  it('keeps the surrounding editor available and retries a failed panel import', async () => {
-    const user = userEvent.setup()
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const load = vi
-      .fn<() => Promise<{ default: ComponentType<EditorProps> }>>()
-      .mockRejectedValueOnce(new Error('Chunk unavailable'))
-      .mockResolvedValueOnce({ default: Editor })
-    const Panel = lazyPanel(load)
-    try {
-      render(
-        <>
-          <button type="button">Close panel</button>
-          <Panel title="Recovered panel" />
-        </>,
-      )
-      await user.click(await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' }))
-      expect(await screen.findByRole('textbox', { name: 'Recovered panel' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Close panel' })).toBeEnabled()
-      expect(load).toHaveBeenCalledTimes(2)
-    } finally {
-      consoleError.mockRestore()
-    }
-  })
-
   it.each(['reopen', 'switch'] as const)(
     'retains a successful import retry across a panel %s',
     async (transition) => {

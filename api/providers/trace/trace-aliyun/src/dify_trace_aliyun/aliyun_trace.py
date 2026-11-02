@@ -18,9 +18,9 @@ from core.ops.entities.trace_entity import (
 )
 from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_aliyun.config import AliyunConfig
+from dify_trace_aliyun.configuration import console_url, ingestion_url, verify_configuration
 from dify_trace_aliyun.data_exporter.traceclient import (
     TraceClient,
-    build_endpoint,
     convert_datetime_to_nanoseconds,
     convert_to_span_id,
     convert_to_trace_id,
@@ -90,38 +90,38 @@ class AliyunDataTrace(BaseTraceInstance):
         aliyun_config: AliyunConfig,
     ):
         super().__init__(aliyun_config)
-        endpoint = build_endpoint(aliyun_config.endpoint, aliyun_config.license_key)
-        self.trace_client = TraceClient(service_name=aliyun_config.app_name, endpoint=endpoint)
+        self._config = aliyun_config.model_copy(deep=True)
+        self.trace_client = TraceClient(
+            service_name=self._config.app_name, endpoint=ingestion_url(self._config.model_dump())
+        )
 
     @override
     def trace(self, trace_info: BaseTraceInfo):
-        match trace_info:
-            case WorkflowTraceInfo():
-                self.workflow_trace(trace_info)
-            case MessageTraceInfo():
-                self.message_trace(trace_info)
-            case ModerationTraceInfo():
-                pass
-            case SuggestedQuestionTraceInfo():
-                self.suggested_question_trace(trace_info)
-            case DatasetRetrievalTraceInfo():
-                self.dataset_retrieval_trace(trace_info)
-            case ToolTraceInfo():
-                self.tool_trace(trace_info)
-            case GenerateNameTraceInfo():
-                pass
-            case _:
-                pass
+        with self.trace_client.batch():
+            match trace_info:
+                case WorkflowTraceInfo():
+                    self.workflow_trace(trace_info)
+                case MessageTraceInfo():
+                    self.message_trace(trace_info)
+                case ModerationTraceInfo():
+                    pass
+                case SuggestedQuestionTraceInfo():
+                    self.suggested_question_trace(trace_info)
+                case DatasetRetrievalTraceInfo():
+                    self.dataset_retrieval_trace(trace_info)
+                case ToolTraceInfo():
+                    self.tool_trace(trace_info)
+                case GenerateNameTraceInfo():
+                    pass
+                case _:
+                    pass
 
-    def api_check(self):
-        return self.trace_client.api_check()
+    def api_check(self) -> bool:
+        verify_configuration(self._config)
+        return True
 
     def get_project_url(self):
-        try:
-            return self.trace_client.get_project_url()
-        except Exception as e:
-            logger.info("Aliyun get project url failed: %s", str(e), exc_info=True)
-            raise ValueError(f"Aliyun get project url failed: {str(e)}")
+        return console_url()
 
     def _extract_app_id(self, trace_info: BaseTraceInfo) -> str:
         """Extract app_id from trace_info, trying metadata first then message_data."""

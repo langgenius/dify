@@ -39,12 +39,12 @@ Import `styles.css` once from the consumer's root stylesheet or entrypoint.
 | Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                                              |
 | Controls         | `./segmented-control`                                                                                                                                                                |
 | Display          | `./collapsible`, `./kbd`                                                                                                                                                             |
-| Feedback         | `./meter`, `./progress`, `./spinner`, `./status-dot`, `./toast`                                                                                                                      |
+| Feedback         | `./alert`, `./meter`, `./progress`, `./spinner`, `./status-dot`, `./toast`                                                                                                           |
 | Form             | `./form`, `./field`, `./fieldset`, `./input`, `./input-group`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` |
 | Layout           | `./scroll-area`, `./separator`                                                                                                                                                       |
 | Media            | `./avatar`                                                                                                                                                                           |
 | Navigation       | `./breadcrumb`, `./file-tree`, `./pagination`, `./tabs`                                                                                                                              |
-| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./infotip`, `./popover`, `./preview-card`, `./tooltip`                                               |
+| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./menu`, `./infotip`, `./popover`, `./preview-card`, `./tooltip`                                                        |
 | Search and pick  | `./autocomplete`, `./combobox`, `./select`, `./date-picker`, `./time-picker`, `./date-time-picker`                                                                                   |
 
 Utilities:
@@ -52,6 +52,9 @@ Utilities:
 - `./direction-provider` exports Base UI `DirectionProvider` and `useDirection`. Set HTML `dir` as well for CSS layout; pickers propagate their resolved direction to their trigger and portaled content.
 
 - `./cn` re-exports `cn` from the `cn` package through Dify UI's public subpath.
+- `./use-merged-refs` exports `useMergedRefs` for combining internal and caller refs, including callback cleanup.
+- `./use-ref-with-init` exports `useRefWithInit` for lazy ref initialization. Later initializer or argument changes do not reset the ref; initialization runs during render and must be safe to retry or discard.
+- `./use-render` exports `useRender` for building a part with Base UI's `render` prop, `className(state)` callback and state data attributes; `./merge-props` exports `mergeProps` for chaining event handlers and merging `className`/`style` when composing parts.
 - `./styles.css` provides design tokens, theme variables, and shared utilities.
 
 ## Guides

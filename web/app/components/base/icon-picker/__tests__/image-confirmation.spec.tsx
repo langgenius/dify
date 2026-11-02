@@ -102,6 +102,13 @@ it('opens the file input directly and preserves the existing image on cancellati
     </QueryClientProvider>,
   )
   await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+  expect(screen.getByRole('tab', { name: 'app.iconPicker.image' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'common.operation.change' })).toHaveFocus(),
+  )
   const input = screen.getByTestId('image-input')
   const openFilePicker = vi.spyOn(input, 'click')
   await user.click(screen.getByRole('button', { name: 'common.operation.change' }))
@@ -277,6 +284,15 @@ it('replaces an existing image only after selecting a file and confirms the new 
 })
 
 it('preserves a linked icon on cancellation and only replaces it after confirmation', async () => {
+  function loadedImage() {
+    const image = document.createElement('img')
+    Object.defineProperties(image, {
+      complete: { value: true },
+      naturalWidth: { value: 32 },
+    })
+    return image
+  }
+  vi.spyOn(window, 'Image').mockImplementation(loadedImage)
   const user = userEvent.setup()
   const client = new QueryClient()
   client.setQueryData(emojiCatalogOptions.queryKey, [])

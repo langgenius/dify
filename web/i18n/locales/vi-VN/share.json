@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Hãy liên hệ với quản trị viên ứng dụng nếu bạn cần trợ giúp.",
+  "appNotAccessible.documentTitle": "Không thể truy cập ứng dụng · Dify",
+  "appNotAccessible.ipAddress": "Địa chỉ IP của bạn là <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Ứng dụng này không tồn tại hoặc không thể truy cập từ mạng của bạn.",
   "chat.chatFormTip": "Cài đặt trò chuyện không thể được thay đổi sau khi cuộc trò chuyện đã bắt đầu.",
   "chat.chatSettingsTitle": "Cài đặt trò chuyện mới",
   "chat.collapse": "Thu gọn",
@@ -45,6 +49,7 @@
   "generation.tabs.saved": "Đã lưu",
   "generation.title": "Hoàn thiện AI",
   "humanInput.completed": "Có vẻ như yêu cầu này đã được xử lý ở nơi khác.",
+  "humanInput.currentAccount": "Tài khoản hiện tại: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Hành động này sẽ hết hạn {{relativeTime}}.",
   "humanInput.expired": "Có vẻ như yêu cầu này đã hết hạn.",
   "humanInput.expiredTip": "Hành động này đã hết hạn.",
@@ -53,6 +58,9 @@
   "humanInput.recorded": "Đầu vào của bạn đã được ghi lại.",
   "humanInput.sorry": "Xin lỗi!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Chuyển tài khoản",
   "humanInput.thanks": "Cảm ơn!",
+  "humanInput.unavailableDescription": "Liên kết có thể không khả dụng hoặc không khớp với tài khoản bạn đang đăng nhập. Hãy mở biểu mẫu từ thông báo bạn đã nhận hoặc thử chuyển tài khoản.",
+  "humanInput.unavailableTitle": "Không thể mở biểu mẫu này",
   "login.backToHome": "Trở về Trang Chủ"
 }

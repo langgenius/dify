@@ -1,18 +1,15 @@
 import hashlib
-import logging
 import random
 import socket
-import threading
 import uuid
-from collections import deque
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime
 from typing import Final
-from urllib.parse import urljoin
 
-import httpx
 from opentelemetry import trace as trace_api
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
@@ -26,28 +23,25 @@ from opentelemetry.semconv.attributes import service_attributes
 from opentelemetry.trace import Link, SpanContext, TraceFlags
 
 from configs import dify_config
+from dify_trace_aliyun.configuration import ingestion_url
 from dify_trace_aliyun.entities.aliyun_trace_entity import SpanData
 from dify_trace_aliyun.entities.semconv import ACS_ARMS_SERVICE_FEATURE
+from services.tracing.otlp_export import export_http
 
 INVALID_SPAN_ID: Final[int] = 0x0000000000000000
 INVALID_TRACE_ID: Final[int] = 0x00000000000000000000000000000000
-DEFAULT_TIMEOUT: Final[int] = 5
-DEFAULT_MAX_QUEUE_SIZE: Final[int] = 1000
-DEFAULT_SCHEDULE_DELAY_SEC: Final[int] = 5
-DEFAULT_MAX_EXPORT_BATCH_SIZE: Final[int] = 50
-
-logger = logging.getLogger(__name__)
 
 
 class TraceClient:
-    def __init__(
-        self,
-        service_name: str,
-        endpoint: str,
-        max_queue_size: int = DEFAULT_MAX_QUEUE_SIZE,
-        schedule_delay_sec: int = DEFAULT_SCHEDULE_DELAY_SEC,
-        max_export_batch_size: int = DEFAULT_MAX_EXPORT_BATCH_SIZE,
-    ):
+    """Collect one dispatch locally and synchronously acknowledge its exact batch.
+
+    Instances are cached, so pending spans belong to the current context rather
+    than the client. A mapper failure discards only that dispatch; an uncertain
+    response propagates to the durable task instead of silently retrying a batch.
+    No SDK exporter, process-global configuration or background queue is created.
+    """
+
+    def __init__(self, service_name: str, endpoint: str) -> None:
         self.endpoint = endpoint
         self.resource = Resource(
             attributes={
@@ -59,80 +53,31 @@ class TraceClient:
             }
         )
         self.span_builder = SpanBuilder(self.resource)
-        self.exporter = OTLPSpanExporter(endpoint=endpoint)
+        self._dispatch_spans: ContextVar[list[ReadableSpan] | None] = ContextVar("aliyun_dispatch_spans", default=None)
 
-        self.max_queue_size = max_queue_size
-        self.schedule_delay_sec = schedule_delay_sec
-        self.max_export_batch_size = max_export_batch_size
-
-        self.queue: deque = deque(maxlen=max_queue_size)
-        self.condition = threading.Condition(threading.Lock())
-        self.done = False
-
-        self.worker_thread = threading.Thread(target=self._worker, daemon=True)
-        self.worker_thread.start()
-
-        self._spans_dropped = False
-
-    def export(self, spans: Sequence[ReadableSpan]):
-        self.exporter.export(spans)
-
-    def api_check(self) -> bool:
+    @contextmanager
+    def batch(self) -> Generator[None]:
+        """Export only after the whole mapper succeeds, and always restore context."""
+        spans: list[ReadableSpan] = []
+        token = self._dispatch_spans.set(spans)
         try:
-            response = httpx.head(self.endpoint, timeout=DEFAULT_TIMEOUT)
-            if response.status_code == 405:
-                return True
-            else:
-                logger.warning("AliyunTrace API check failed: Unexpected status code: %s", response.status_code)
-                return False
-        except httpx.RequestError as e:
-            logger.warning("AliyunTrace API check failed", exc_info=True)
-            raise ValueError(f"AliyunTrace API check failed: {str(e)}")
+            yield
+            if spans:
+                self.export(spans)
+        finally:
+            self._dispatch_spans.reset(token)
 
-    def get_project_url(self) -> str:
-        return "https://arms.console.aliyun.com/#/llm"
+    def export(self, spans: Sequence[ReadableSpan]) -> None:
+        if spans:
+            export_http("aliyun", self.endpoint, {}, encode_spans(spans))
 
     def add_span(self, span_data: SpanData | None) -> None:
         if span_data is None:
             return
-
-        span: ReadableSpan = self.span_builder.build_span(span_data)
-        with self.condition:
-            if len(self.queue) == self.max_queue_size:
-                if not self._spans_dropped:
-                    logger.warning("Queue is full, likely spans will be dropped.")
-                    self._spans_dropped = True
-
-            self.queue.appendleft(span)
-            if len(self.queue) >= self.max_export_batch_size:
-                self.condition.notify()
-
-    def _worker(self) -> None:
-        while not self.done:
-            with self.condition:
-                if len(self.queue) < self.max_export_batch_size and not self.done:
-                    self.condition.wait(timeout=self.schedule_delay_sec)
-            self._export_batch()
-
-    def _export_batch(self) -> None:
-        spans_to_export: list[ReadableSpan] = []
-        with self.condition:
-            while len(spans_to_export) < self.max_export_batch_size and self.queue:
-                spans_to_export.append(self.queue.pop())
-
-        if spans_to_export:
-            try:
-                self.exporter.export(spans_to_export)
-            except Exception as e:
-                logger.warning("Error exporting spans: %s", e)
-
-    def shutdown(self) -> None:
-        with self.condition:
-            self.done = True
-            self.condition.notify_all()
-        self.worker_thread.join()
-        self._export_batch()
-        self.exporter.shutdown()
+        spans = self._dispatch_spans.get()
+        if spans is None:
+            raise RuntimeError("Aliyun spans require an active trace dispatch")
+        spans.append(self.span_builder.build_span(span_data))
 
 
 class SpanBuilder:
@@ -238,7 +183,5 @@ def convert_datetime_to_nanoseconds(start_time_a: datetime | None) -> int | None
 
 
 def build_endpoint(base_url: str, license_key: str) -> str:
-    if "log.aliyuncs.com" in base_url:  # cms2.0 endpoint
-        return urljoin(base_url, f"adapt_{license_key}/api/v1/traces")
-    else:  # xtrace endpoint
-        return urljoin(base_url, f"adapt_{license_key}/api/otlp/traces")
+    """Compatibility wrapper around the shared, credential-safe URL builder."""
+    return ingestion_url({"endpoint": base_url, "license_key": license_key})

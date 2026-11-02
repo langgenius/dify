@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import inspect
+from collections.abc import Callable
 from unittest.mock import patch
 
+import pytest
 from flask import Flask
 
 from controllers.inner_api.plugin.agent_config import (
@@ -12,9 +14,11 @@ from controllers.inner_api.plugin.agent_config import (
     AgentConfigEnvApi,
     AgentConfigManifestApi,
     AgentConfigNoteApi,
+    AgentConfigPromptApi,
     AgentConfigPushApi,
     AgentConfigSkillInspectApi,
 )
+from libs.exception import RelayedHTTPError
 from services.agent_config_service import AgentConfigServiceError
 
 MODULE = "controllers.inner_api.plugin.agent_config"
@@ -231,6 +235,91 @@ def test_note_happy_path_calls_service() -> None:
     assert body == {"note": "hello"}
     assert service.return_value.update_note.call_args.kwargs["user_id"] == "account-user-1"
     assert service.return_value.update_note.call_args.kwargs["note"] == "hello"
+
+
+@pytest.mark.parametrize("prompt", ["  原文 [§file:guide.md:Guide§]\r\n\n", ""])
+def test_prompt_reads_and_replaces_raw_text(prompt: str) -> None:
+    target = {
+        "tenant_id": "tenant-1",
+        "user_id": "account-user-1",
+        "config_version_id": "cfg-1",
+        "config_version_kind": "build_draft",
+    }
+    with patch(f"{MODULE}.AgentConfigService") as service:
+        service.return_value.get_prompt.return_value = {"prompt": prompt}
+        service.return_value.update_prompt.return_value = {"prompt": prompt}
+        with app.test_request_context("/", query_string=target):
+            assert _raw(AgentConfigPromptApi.get)(AgentConfigPromptApi(), "agent-1") == {"prompt": prompt}
+        with app.test_request_context("/", method="PUT", json={**target, "prompt": prompt}):
+            assert _raw(AgentConfigPromptApi.put)(AgentConfigPromptApi(), "agent-1") == {"prompt": prompt}
+
+    assert service.return_value.get_prompt.call_args.kwargs == {**target, "agent_id": "agent-1"}
+    assert service.return_value.update_prompt.call_args.kwargs == {**target, "agent_id": "agent-1", "prompt": prompt}
+
+
+@pytest.mark.parametrize("prompt_body", [{}, {"prompt": None}, {"prompt": 123}])
+def test_prompt_rejects_missing_null_or_non_string_text(prompt_body: dict[str, object]) -> None:
+    with (
+        app.test_request_context(
+            "/",
+            method="PUT",
+            json={
+                "tenant_id": "tenant-1",
+                "user_id": "user-1",
+                "config_version_id": "cfg-1",
+                "config_version_kind": "build_draft",
+                **prompt_body,
+            },
+        ),
+        patch(f"{MODULE}.AgentConfigService") as service,
+    ):
+        with pytest.raises(RelayedHTTPError) as exc_info:
+            _raw(AgentConfigPromptApi.put)(AgentConfigPromptApi(), "agent-1")
+    assert exc_info.value.code == 400
+    assert exc_info.value.error_code == "invalid_request"
+    service.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("method", "error_code", "status"), [("get", "config_version_not_found", 404), ("put", "config_not_writable", 403)]
+)
+def test_prompt_http_routes_require_inner_key_and_serialize_errors(
+    method: str, error_code: str, status: int, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    from controllers.inner_api import bp
+
+    config_overrides(PLUGIN_DAEMON_KEY="enabled", INNER_API_KEY_FOR_PLUGIN="prompt-secret")
+    monkeypatch.setattr("controllers.console.wraps._is_setup_completed", lambda: True)
+    served_app = Flask(__name__)
+    served_app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
+    served_app.register_blueprint(bp)
+    client = served_app.test_client()
+    path = "/inner/api/agent-config/agent-1/prompt"
+    target = {
+        "tenant_id": "tenant-1",
+        "user_id": "user-1",
+        "config_version_id": "cfg-1",
+        "config_version_kind": "build_draft",
+    }
+    body = {**target, "prompt": "raw [§skill:research:Research§]\n"}
+    with patch(f"{MODULE}.AgentConfigService") as service:
+        service.return_value.get_prompt.return_value = {"prompt": body["prompt"]}
+        service.return_value.update_prompt.return_value = {"prompt": body["prompt"]}
+        unauthorized_headers: list[dict[str, str]] = [{}, {"X-Inner-Api-Key": "wrong"}]
+        for headers in unauthorized_headers:
+            response = client.open(path, method=method.upper(), headers=headers, query_string=target, json=body)
+            assert response.status_code == 404
+        service.assert_not_called()
+        headers = {"X-Inner-Api-Key": "prompt-secret"}
+        response = client.open(path, method=method.upper(), headers=headers, query_string=target, json=body)
+        assert response.status_code == 200
+        assert response.json == {"prompt": body["prompt"]}
+        error = AgentConfigServiceError(error_code, "config unavailable", status_code=status)
+        service.return_value.get_prompt.side_effect = error
+        service.return_value.update_prompt.side_effect = error
+        response = client.open(path, method=method.upper(), headers=headers, query_string=target, json=body)
+    assert response.status_code == status
+    assert response.json == {"code": error_code, "message": "config unavailable", "status": status}
 
 
 def test_manifest_invalid_query_returns_400() -> None:

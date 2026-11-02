@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import cast
 from unittest.mock import MagicMock
 
@@ -11,18 +12,12 @@ from libs import token
 from libs.token import extract_access_token, extract_webapp_access_token, set_csrf_token_to_cookie
 
 
+@dataclass(eq=False, repr=False)
 class MockRequest:
-    def __init__(
-        self,
-        headers: dict[str, str],
-        cookies: dict[str, str],
-        args: dict[str, str],
-        path: str = "/console/api/test",
-    ):
-        self.headers: dict[str, str] = headers
-        self.cookies: dict[str, str] = cookies
-        self.args: dict[str, str] = args
-        self.path = path
+    headers: dict[str, str]
+    cookies: dict[str, str]
+    args: dict[str, str]
+    path: str = "/console/api/test"
 
 
 def test_extract_access_token():

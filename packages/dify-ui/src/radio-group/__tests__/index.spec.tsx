@@ -1,4 +1,4 @@
-import type { RadioGroupProps } from '../index'
+import type { RadioGroupProps, RadioProps } from '../index'
 import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { Field, FieldItem, FieldLabel } from '../../field'
@@ -27,7 +27,7 @@ function TestRadioGroup<Value = string>({
   )
 }
 
-type TestRadioOptionProps = React.ComponentProps<typeof Radio> & {
+type TestRadioOptionProps = RadioProps & {
   children: React.ReactNode
 }
 

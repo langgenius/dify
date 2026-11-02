@@ -5,7 +5,7 @@ from pytest_mock import MockerFixture
 
 import core.callback_handler.agent_tool_callback_handler as module
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 # -----------------------------
 # Fixtures

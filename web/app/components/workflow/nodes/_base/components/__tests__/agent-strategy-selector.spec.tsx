@@ -14,7 +14,10 @@ const { request, searchMarketplace, marketplaceResults, marketplace, install } =
   marketplace: vi.fn(),
   install: vi.fn(),
 }))
-vi.mock('@/service/base', () => ({ request }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request,
+}))
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: () => ({
     queryPluginsWithDebounced: searchMarketplace,
@@ -27,15 +30,9 @@ vi.mock('@/service/use-plugins', () => ({
   useInstallPackageFromMarketPlace: () => ({ mutate: install, isPending: false }),
 }))
 
-vi.mock(
-  '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
-  () => ({
-    default: () => ({ canInstallPlugin: true, canUpdatePlugin: true }),
-  }),
-)
-
 beforeEach(() => {
   vi.clearAllMocks()
+  request.mockReset()
   marketplaceResults.mockReturnValue([])
   marketplace.mockReturnValue({
     isLoading: false,
@@ -195,7 +192,9 @@ it('keeps marketplace search and its category link alongside the installed catal
   })
   await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
   const link = screen.getByRole('link', { name: 'plugin.findMoreInMarketplace' })
-  expect(link.getAttribute('href')).toContain('/plugins/agent-strategy')
+  expect(new URL(link.getAttribute('href')!, window.location.href).pathname).toBe(
+    '/plugins/agent-strategy',
+  )
   await user.type(
     screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
     'react',
@@ -234,7 +233,7 @@ it('preserves an older saved selection with no plugin identifier until the user 
   const onChange = vi.fn()
   const provider = createProvider()
   request.mockImplementation((url: string) =>
-    Promise.resolve(Response.json(url.includes('agent-providers') ? [provider] : provider)),
+    Promise.resolve(Response.json(url.endsWith('/agent-providers') ? [provider] : provider)),
   )
   render(
     <AgentStrategySelector
@@ -270,11 +269,9 @@ it('keeps the install action for a saved marketplace strategy that is no longer 
     refetch: vi.fn(),
   })
   request.mockImplementation((url: string) =>
-    Promise.resolve(
-      url.includes('agent-providers')
-        ? Response.json([])
-        : Response.json({ message: 'Provider not installed' }, { status: 404 }),
-    ),
+    url.endsWith('/agent-providers')
+      ? Promise.resolve(Response.json([]))
+      : Promise.reject(new Error('Provider not installed')),
   )
   render(
     <AgentStrategySelector
@@ -287,7 +284,7 @@ it('keeps the install action for a saved marketplace strategy that is no longer 
       }}
       onChange={vi.fn()}
     />,
-    { systemFeatures: { enable_marketplace: true } },
+    { systemFeatures: { enable_marketplace: true }, workspacePermissionKeys: ['plugin.install'] },
   )
   await user.click(
     await screen.findByRole('button', {

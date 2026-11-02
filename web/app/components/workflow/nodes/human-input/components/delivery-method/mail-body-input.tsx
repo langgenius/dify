@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +12,9 @@ type MailBodyInputProps = {
   availableNodes?: Node[]
   value?: string
   onChange?: (text: string) => void
+  children?: ReactNode
+  requestURLSelectable?: boolean
+  'aria-labelledby'?: string
 }
 
 const MailBodyInput = ({
@@ -19,6 +23,9 @@ const MailBodyInput = ({
   availableNodes = [],
   value = '',
   onChange,
+  children,
+  requestURLSelectable = true,
+  'aria-labelledby': ariaLabelledby,
 }: MailBodyInputProps) => {
   const { t } = useTranslation(['workflow'])
 
@@ -31,10 +38,11 @@ const MailBodyInput = ({
       )}
       className="min-h-32"
       editable={!readOnly}
+      aria-labelledby={ariaLabelledby}
       value={value}
       requestURLBlock={{
         show: true,
-        selectable: true,
+        selectable: requestURLSelectable,
       }}
       workflowVariableBlock={{
         show: true,
@@ -58,7 +66,9 @@ const MailBodyInput = ({
       }}
       placeholder={<Placeholder hideBadge />}
       onChange={onChange}
-    />
+    >
+      {children}
+    </PromptEditor>
   )
 }
 

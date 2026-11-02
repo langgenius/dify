@@ -2,10 +2,12 @@
 import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -39,11 +41,11 @@ const PipelineExportConfirmContent = ({
   }, [exportSecrets, isExporting, onClose, onConfirm])
 
   return (
-    <AlertDialogContent className="w-120 max-w-120">
-      <div className="px-6 pt-6">
-        <AlertDialogTitle className="pb-6 title-2xl-semi-bold text-text-primary">
-          {t(($) => $['env.export.title'], { ns: 'workflow' })}
-        </AlertDialogTitle>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{t(($) => $['env.export.title'], { ns: 'workflow' })}</AlertDialogTitle>
+      </AlertDialogHeader>
+      <AlertDialogBody>
         <div className="relative">
           <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
             <thead className="system-xs-medium-uppercase text-text-tertiary">
@@ -113,7 +115,7 @@ const PipelineExportConfirmContent = ({
             {t(($) => $['env.export.checkbox'], { ns: 'workflow' })}
           </span>
         </label>
-      </div>
+      </AlertDialogBody>
       <AlertDialogFooter>
         <AlertDialogCancelButton disabled={isExporting}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}

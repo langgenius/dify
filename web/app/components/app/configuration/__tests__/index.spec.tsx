@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import Configuration from '../index'
 import { toast } from '../toast'
 
@@ -20,10 +20,10 @@ describe('Configuration', () => {
     toast.dismiss()
   })
 
-  it('should render configuration notifications in its offset viewport', async () => {
+  it('routes configuration notifications to their own viewport', async () => {
     render(
       <>
-        <AppToastHost />
+        <AppToaster />
         <Configuration />
       </>,
     )
@@ -36,7 +36,7 @@ describe('Configuration', () => {
     const configurationViewport = toastItem.closest<HTMLElement>('[role="region"]')
     if (!configurationViewport) throw new Error('Configuration toast viewport was not rendered')
 
-    expect(configurationViewport).toHaveStyle({ top: '60px' })
+    expect(configurationViewport).toHaveTextContent('Configuration error')
 
     const globalViewport = screen
       .getAllByRole('region', { name: 'Notifications' })

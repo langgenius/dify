@@ -55,7 +55,7 @@ class UpstashVector(BaseVector):
                 metadata=doc.metadata,
                 data=doc.page_content,
             )
-            for doc, embedding in zip(documents, embeddings)
+            for doc, embedding in zip(documents, embeddings, strict=False)
         ]
         self.index.upsert(vectors=vectors)
 

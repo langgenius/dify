@@ -17,10 +17,20 @@ const { getSettings, saveSettings } = vi.hoisted(() => ({
   saveSettings: vi.fn(),
 }))
 
+// The console client sends through `request`; adapt it back to path + params/body calls.
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  get: getSettings,
-  post: saveSettings,
+  request: async (url: string, _init: RequestInit, options: { request?: Request }) => {
+    const { pathname, searchParams } = new URL(url)
+    const path = pathname.replace('/console/api', '')
+    const data =
+      options.request?.method === 'POST'
+        ? await saveSettings(path, { body: await options.request.json() })
+        : await getSettings(path, { params: Object.fromEntries(searchParams) })
+    return new Response(JSON.stringify(data ?? {}), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  },
 }))
 
 const savedConfig: AutoUpdateConfig = {
@@ -77,7 +87,7 @@ const strategy = (value: 'disabled' | 'fixOnly' | 'latest') =>
   screen.getByRole('radio', { name: `plugin.autoUpdate.strategy.${value}.name` })
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
   getSettings.mockImplementation(
     async (_url, { params }: { params: { category: PluginCategoryEnum } }) => ({
       category: params.category,
@@ -142,24 +152,63 @@ it('keeps an earlier category rollback separate from the current category sessio
   )
   changeCategory(PluginCategoryEnum.tool)
   await waitFor(() =>
-    expect(settingsTrigger()).toHaveTextContent('plugin.autoUpdate.strategy.fixOnly.name'),
+    expect(getSettings).toHaveBeenCalledWith('/workspaces/current/plugin/auto-upgrade/fetch', {
+      params: { category: PluginCategoryEnum.tool },
+    }),
   )
-  await user.click(settingsTrigger())
-  expect(strategy('fixOnly')).toBeChecked()
   await act(async () => {
     pendingSave.reject(new Error('Save failed'))
   })
-  expect(strategy('fixOnly')).toBeChecked()
   await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(settingsTrigger()).toHaveTextContent('plugin.autoUpdate.strategy.fixOnly.name')
+  await user.click(settingsTrigger())
+  expect(strategy('fixOnly')).toBeChecked()
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   changeCategory(PluginCategoryEnum.model)
   await waitFor(() =>
     expect(settingsTrigger()).toHaveTextContent('plugin.autoUpdate.strategy.disabled.name'),
   )
 })
 
-it('reports success after the submitted form has closed', async () => {
+it('keeps a failed save open for retry and blocks dismissal while pending', async () => {
+  const pendingSave = deferred<void>()
+  saveSettings.mockReturnValue(pendingSave.promise)
+  const user = userEvent.setup()
+  renderSettings()
+  await waitFor(() =>
+    expect(settingsTrigger()).toHaveTextContent('plugin.autoUpdate.strategy.disabled.name'),
+  )
+  await user.click(settingsTrigger())
+  await user.click(strategy('latest'))
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  const dialog = screen.getByRole('dialog')
+  const save = screen.getByRole('button', { name: 'common.operation.save' })
+  const cancel = screen.getByRole('button', { name: 'common.operation.cancel' })
+  expect(dialog).toBeVisible()
+  expect(save).toBeDisabled()
+  expect(cancel).toBeDisabled()
+  await user.click(save)
+  await user.keyboard('{Escape}')
+  expect(dialog).toBeVisible()
+  expect(saveSettings).toHaveBeenCalledOnce()
+  await act(async () => {
+    pendingSave.reject(new Error('Save failed'))
+  })
+  expect(dialog).toBeVisible()
+  await waitFor(() => expect(save).toBeEnabled())
+  expect(cancel).toBeEnabled()
+  expect(strategy('latest')).toBeChecked()
+  await user.click(cancel)
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(settingsTrigger()).toHaveTextContent('plugin.autoUpdate.strategy.disabled.name')
+  await user.click(settingsTrigger())
+  expect(strategy('disabled')).toBeChecked()
+  expect(saveSettings).toHaveBeenCalledOnce()
+})
+
+it('closes and reports success only after the save succeeds', async () => {
   const pendingSave = deferred<void>()
   saveSettings.mockReturnValue(pendingSave.promise)
   const success = vi.spyOn(toast, 'success')
@@ -169,10 +218,11 @@ it('reports success after the submitted form has closed', async () => {
   await user.click(settingsTrigger())
   await user.click(strategy('latest'))
   await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(screen.getByRole('dialog')).toBeVisible()
   expect(success).not.toHaveBeenCalled()
   await act(async () => {
     pendingSave.resolve()
   })
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   await waitFor(() => expect(success).toHaveBeenCalledWith('common.api.actionSuccess'))
 })

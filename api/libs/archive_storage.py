@@ -88,11 +88,11 @@ class ArchiveStorage:
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")
             if error_code == "404":
-                raise ArchiveStorageNotConfiguredError(f"Archive bucket '{self.bucket}' does not exist")
+                raise ArchiveStorageNotConfiguredError(f"Archive bucket '{self.bucket}' does not exist") from e
             elif error_code == "403":
-                raise ArchiveStorageNotConfiguredError(f"Access denied to archive bucket '{self.bucket}'")
+                raise ArchiveStorageNotConfiguredError(f"Access denied to archive bucket '{self.bucket}'") from e
             else:
-                raise ArchiveStorageError(f"Failed to access archive bucket: {e}")
+                raise ArchiveStorageError(f"Failed to access archive bucket: {e}") from e
 
     def put_object(self, key: str, data: bytes) -> str:
         """
@@ -125,7 +125,7 @@ class ArchiveStorage:
             logger.debug("Uploaded object: %s (size=%d, checksum=%s)", key, len(data), checksum)
             return checksum
         except ClientError as e:
-            raise ArchiveStorageError(f"Failed to upload object '{key}': {e}")
+            raise ArchiveStorageError(f"Failed to upload object '{key}': {e}") from e
 
     def get_object(self, key: str) -> bytes:
         """
@@ -151,7 +151,7 @@ class ArchiveStorage:
         except BotoCoreError as e:
             raise ArchiveStorageError(f"Failed to download object '{key}': {e}") from e
 
-    def get_object_stream(self, key: str) -> Generator[bytes, None, None]:
+    def get_object_stream(self, key: str) -> Generator[bytes]:
         """
         Stream an object from the archive storage.
 
@@ -254,7 +254,7 @@ class ArchiveStorage:
                 ExpiresIn=expires_in,
             )
         except ClientError as e:
-            raise ArchiveStorageError(f"Failed to generate pre-signed URL for '{key}': {e}")
+            raise ArchiveStorageError(f"Failed to generate pre-signed URL for '{key}': {e}") from e
 
     def list_objects(self, prefix: str) -> list[str]:
         """
@@ -274,7 +274,7 @@ class ArchiveStorage:
                 for obj in page.get("Contents", []):
                     keys.append(obj["Key"])
         except ClientError as e:
-            raise ArchiveStorageError(f"Failed to list objects with prefix '{prefix}': {e}")
+            raise ArchiveStorageError(f"Failed to list objects with prefix '{prefix}': {e}") from e
 
         return keys
 

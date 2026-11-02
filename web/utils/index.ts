@@ -4,7 +4,7 @@ export const sleep = (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-export async function asyncRunSafe<T = any>(fn: Promise<T>): Promise<[Error] | [null, T]> {
+export async function asyncRunSafe<T>(fn: Promise<T>): Promise<[Error] | [null, T]> {
   try {
     return [null, await fn]
   } catch (e: any) {
@@ -30,10 +30,7 @@ export const getPurifyHref = (href: string) => {
   return escape(href)
 }
 
-export async function fetchWithRetry<T = any>(
-  fn: Promise<T>,
-  retries = 3,
-): Promise<[Error] | [null, T]> {
+export async function fetchWithRetry<T>(fn: Promise<T>, retries = 3): Promise<[Error] | [null, T]> {
   const [error, res] = await asyncRunSafe(fn)
   if (error) {
     if (retries > 0) {

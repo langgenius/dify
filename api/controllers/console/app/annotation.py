@@ -16,13 +16,14 @@ from controllers.common.errors import (
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.error import AnnotationImportRateLimitError, AppNotFoundError
+from controllers.console.app.error import AnnotationIdsRequiredError, AnnotationImportRateLimitError, AppNotFoundError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     model_validate,
 )
 from core.helper.csv_sanitizer import CSVSanitizer
+from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.annotation_fields import (
     Annotation,
@@ -34,9 +35,9 @@ from fields.annotation_fields import (
     AnnotationList,
 )
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from machinery.context import RequestContext
-from models.account import TenantAccountRole
 from services.annotation_command_service import AnnotationSettingNotFoundError
 from services.annotation_import_service import (
     AnnotationImportJobNotFoundError,
@@ -62,6 +63,13 @@ class AnnotationListQuery(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number")
     limit: int = Field(default=20, ge=1, description="Page size")
     keyword: str = Field(default="", description="Search keyword")
+
+
+class AnnotationBatchDeleteQuery(BaseModel):
+    annotation_id: list[str] = Field(
+        default_factory=list,
+        description="Annotation IDs to delete; omitting it clears all annotations of the app",
+    )
 
 
 class CreateAnnotationPayload(BaseModel):
@@ -132,11 +140,6 @@ class AnnotationBatchImportResponse(ResponseModel):
 
 register_schema_models(
     console_ns,
-    Annotation,
-    AnnotationList,
-    AnnotationExportList,
-    AnnotationHitHistory,
-    AnnotationHitHistoryList,
     AnnotationReplyPayload,
     AnnotationSettingUpdatePayload,
     AnnotationListQuery,
@@ -164,6 +167,7 @@ register_response_schema_models(
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/count")
 class MessageAnnotationCountApi(Resource):
+    @error_responses(AppNotFoundError)
     @console_ns.doc("get_annotation_count")
     @console_ns.doc(description="Get count of message annotations for the app")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -383,18 +387,17 @@ class AnnotationApi(Resource):
             raise NotFoundError("Message Not Exists.") from exc
         return dump_response(Annotation, annotation), HTTPStatus.CREATED
 
+    @error_responses(AnnotationIdsRequiredError)
     @console_account_admission(
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
         rbac_checks=(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp()),),
     )
+    @console_ns.doc(params=query_params_from_model(AnnotationBatchDeleteQuery))
     @console_ns.response(HTTPStatus.NO_CONTENT, "Annotations deleted successfully")
-    def delete(self, context: RequestContext, app_id: UUID) -> tuple[str | dict[str, str], HTTPStatus]:
+    def delete(self, context: RequestContext, app_id: UUID) -> tuple[str, HTTPStatus]:
         annotation_ids = request.args.getlist("annotation_id")
         if not all(annotation_id.strip() for annotation_id in annotation_ids if annotation_id):
-            return {
-                "code": "bad_request",
-                "message": "annotation_ids are required if the parameter is provided.",
-            }, HTTPStatus.BAD_REQUEST
+            raise AnnotationIdsRequiredError()
         try:
             commands = application_services().annotation_commands
             if annotation_ids:
@@ -498,6 +501,7 @@ class AnnotationUpdateDeleteApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import")
 class AnnotationBatchImportApi(Resource):
+    @error_responses(NoFileUploadedError, TooManyFilesError)
     @console_ns.doc("batch_import_annotations")
     @console_ns.doc(description="Batch import annotations from CSV file with rate limiting and security checks")
     @console_ns.doc(params={"app_id": "Application ID"})

@@ -5,8 +5,11 @@ import type { HttpNodeType } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -26,6 +29,7 @@ function CurlImportForm({ onImport }: Pick<CurlImportDialogProps, 'onImport'>) {
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         const command = new FormData(event.currentTarget).get('curl')
@@ -34,20 +38,22 @@ function CurlImportForm({ onImport }: Pick<CurlImportDialogProps, 'onImport'>) {
         else toast.error(result.error)
       }}
     >
-      <Textarea
-        name="curl"
-        aria-label={t(($) => $['nodes.http.curl.title'], { ns: 'workflowIntegrations' })}
-        className="my-3 h-40 w-full grow"
-        placeholder={t(($) => $['nodes.http.curl.placeholder'], { ns: 'workflowIntegrations' })}
-      />
-      <div className="mt-4 flex justify-end space-x-2">
-        <DialogClose render={<Button className="w-23.75!" />}>
+      <DialogBody>
+        <Textarea
+          name="curl"
+          aria-label={t(($) => $['nodes.http.curl.title'], { ns: 'workflowIntegrations' })}
+          className="h-40 w-full grow"
+          placeholder={t(($) => $['nodes.http.curl.placeholder'], { ns: 'workflowIntegrations' })}
+        />
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose render={<Button className="min-w-24" />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
-        <Button type="submit" className="w-23.75!" variant="primary">
+        <Button type="submit" className="min-w-24" variant="primary">
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }
@@ -78,10 +84,12 @@ export function CurlImportDialog({ readOnly, onImport }: CurlImportDialogProps) 
         />
         {label}
       </DialogTrigger>
-      <DialogContent className="w-100! max-w-100! overflow-hidden! border-none p-4! text-left align-middle">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['nodes.http.curl.title'], { ns: 'workflowIntegrations' })}
-        </DialogTitle>
+      <DialogContent className="w-100">
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $['nodes.http.curl.title'], { ns: 'workflowIntegrations' })}
+          </DialogTitle>
+        </DialogHeader>
         <CurlImportForm onImport={handleImport} />
       </DialogContent>
     </Dialog>

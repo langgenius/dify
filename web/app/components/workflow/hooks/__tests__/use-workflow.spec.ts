@@ -1,9 +1,5 @@
 import type { NodeDefault } from '../../types'
 import { act } from '@testing-library/react'
-import { consoleQuery } from '@/service/console'
-import { createAppDetailFixture } from '@/test/fixtures/app'
-import { createTestQueryClient } from '@/test/query-client'
-import { AppModeEnum } from '@/types/app'
 import { createNode } from '../../__tests__/fixtures'
 import {
   baseRunningData,
@@ -13,7 +9,6 @@ import {
 import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum, WorkflowRunningStatus } from '../../types'
 import {
-  useIsChatMode,
   useIsNodeInIteration,
   useIsNodeInLoop,
   useNodesReadOnly,
@@ -39,80 +34,6 @@ function createNodeDefault(type: BlockEnum): NodeDefault {
     checkValid: () => ({ isValid: true }),
   }
 }
-
-// ---------------------------------------------------------------------------
-// useIsChatMode
-// ---------------------------------------------------------------------------
-
-describe('useIsChatMode', () => {
-  let queryClient: ReturnType<typeof createTestQueryClient>
-
-  beforeEach(() => {
-    queryClient = createTestQueryClient()
-  })
-
-  afterEach(() => {
-    queryClient.clear()
-  })
-
-  it.each([
-    { mode: AppModeEnum.ADVANCED_CHAT, expected: true },
-    { mode: AppModeEnum.WORKFLOW, expected: false },
-  ])('should return $expected for the current $mode app', ({ mode, expected }) => {
-    queryClient.setQueryData(
-      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
-      createAppDetailFixture({ id: 'app-1', mode }),
-    )
-
-    const { result } = renderWorkflowHook(() => useIsChatMode(), {
-      initialStoreState: { appId: 'app-1' },
-      queryClient,
-    })
-
-    expect(result.current).toBe(expected)
-  })
-
-  it('should return false without an app id even when another chatflow is cached', () => {
-    queryClient.setQueryData(
-      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'chatflow-app' } } }),
-      createAppDetailFixture({ id: 'chatflow-app', mode: AppModeEnum.ADVANCED_CHAT }),
-    )
-
-    const { result } = renderWorkflowHook(() => useIsChatMode(), { queryClient })
-
-    expect(result.current).toBe(false)
-    expect(globalThis.fetch).not.toHaveBeenCalled()
-  })
-
-  it('should follow the current app id when switching between cached workflow and chatflow apps', () => {
-    for (const [appId, mode] of [
-      ['workflow-app', AppModeEnum.WORKFLOW],
-      ['chatflow-app', AppModeEnum.ADVANCED_CHAT],
-    ] as const) {
-      queryClient.setQueryData(
-        consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appId } } }),
-        createAppDetailFixture({ id: appId, mode }),
-      )
-    }
-
-    const { result, store } = renderWorkflowHook(() => useIsChatMode(), {
-      initialStoreState: { appId: 'workflow-app' },
-      queryClient,
-    })
-
-    expect(result.current).toBe(false)
-
-    act(() => store.setState({ appId: 'chatflow-app' }))
-    expect(result.current).toBe(true)
-
-    act(() => store.setState({ appId: 'workflow-app' }))
-    expect(result.current).toBe(false)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// useWorkflowReadOnly
-// ---------------------------------------------------------------------------
 
 describe('useWorkflowReadOnly', () => {
   it('should return workflowReadOnly true when status is Running', () => {
@@ -165,10 +86,6 @@ describe('useWorkflowReadOnly', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
-// useNodesReadOnly
-// ---------------------------------------------------------------------------
-
 describe('useNodesReadOnly', () => {
   it('should use the default HooksStoreContext from the workflow test helper', () => {
     const { result } = renderWorkflowHook(() => useNodesReadOnly())
@@ -182,13 +99,6 @@ describe('useNodesReadOnly', () => {
     expect(result.current.getNodesReadOnly()).toBe(true)
   })
 
-  it('should return false when edit permission is allowed by HooksStoreContext', () => {
-    const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
-      hooksStoreProps: {},
-    })
-    expect(result.current.nodesReadOnly).toBe(false)
-  })
-
   it('should expose getNodesReadOnly that reads from store state', () => {
     const { result, store } = renderWorkflowHook(() => useNodesReadOnly(), {
       hooksStoreProps: {},
@@ -200,6 +110,10 @@ describe('useNodesReadOnly', () => {
       store.setState({ isRestoring: true })
     })
     expect(result.current.getNodesReadOnly()).toBe(true)
+    expect(result.current.nodesReadOnly).toBe(true)
+    act(() => store.setState({ isRestoring: false }))
+    expect(result.current.nodesReadOnly).toBe(false)
+    expect(result.current.getNodesReadOnly()).toBe(false)
   })
 
   it('should return true when status is Running', () => {
@@ -232,14 +146,6 @@ describe('useNodesReadOnly', () => {
     expect(result.current.nodesReadOnly).toBe(true)
   })
 
-  it('should return true when isRestoring is true', () => {
-    const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
-      hooksStoreProps: {},
-      initialStoreState: { isRestoring: true },
-    })
-    expect(result.current.nodesReadOnly).toBe(true)
-  })
-
   it('should return true when canvas is read only', () => {
     const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
       initialStoreState: {
@@ -248,13 +154,6 @@ describe('useNodesReadOnly', () => {
     })
 
     expect(result.current.nodesReadOnly).toBe(true)
-  })
-
-  it('should return false when none of the conditions are met', () => {
-    const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
-      hooksStoreProps: {},
-    })
-    expect(result.current.nodesReadOnly).toBe(false)
   })
 
   it('should return true when edit permission is denied by HooksStoreContext', () => {
@@ -272,10 +171,6 @@ describe('useNodesReadOnly', () => {
     expect(result.current.getNodesReadOnly()).toBe(true)
   })
 })
-
-// ---------------------------------------------------------------------------
-// useWorkflow connection validation
-// ---------------------------------------------------------------------------
 
 describe('useWorkflow connection validation', () => {
   it('should validate Agent V2 graph nodes against the Agent V2 catalog type', () => {
@@ -319,108 +214,30 @@ describe('useWorkflow connection validation', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
-// useIsNodeInIteration
-// ---------------------------------------------------------------------------
-
-describe('useIsNodeInIteration', () => {
-  const createIterationNodes = () => [
-    createNode({ id: 'iter-1' }),
-    createNode({ id: 'child-1', parentId: 'iter-1' }),
-    createNode({ id: 'grandchild-1', parentId: 'child-1' }),
-    createNode({ id: 'outside-1' }),
-  ]
-
-  it('should return true when node is a direct child of the iteration', () => {
-    const { result } = renderWorkflowFlowHook(() => useIsNodeInIteration('iter-1'), {
-      nodes: createIterationNodes(),
-      edges: [],
-    })
-    expect(result.current.isNodeInIteration('child-1')).toBe(true)
-  })
-
-  it('should return false for a grandchild (only checks direct parentId)', () => {
-    const { result } = renderWorkflowFlowHook(() => useIsNodeInIteration('iter-1'), {
-      nodes: createIterationNodes(),
-      edges: [],
-    })
-    expect(result.current.isNodeInIteration('grandchild-1')).toBe(false)
-  })
-
-  it('should return false when node is outside the iteration', () => {
-    const { result } = renderWorkflowFlowHook(() => useIsNodeInIteration('iter-1'), {
-      nodes: createIterationNodes(),
-      edges: [],
-    })
-    expect(result.current.isNodeInIteration('outside-1')).toBe(false)
-  })
-
-  it('should return false when node does not exist', () => {
-    const { result } = renderWorkflowFlowHook(() => useIsNodeInIteration('iter-1'), {
-      nodes: createIterationNodes(),
-      edges: [],
-    })
-    expect(result.current.isNodeInIteration('nonexistent')).toBe(false)
-  })
-
-  it('should return false when iteration id has no children', () => {
-    const { result } = renderWorkflowFlowHook(() => useIsNodeInIteration('no-such-iter'), {
-      nodes: createIterationNodes(),
-      edges: [],
-    })
-    expect(result.current.isNodeInIteration('child-1')).toBe(false)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// useIsNodeInLoop
-// ---------------------------------------------------------------------------
-
-describe('useIsNodeInLoop', () => {
-  const createLoopNodes = () => [
-    createNode({ id: 'loop-1' }),
-    createNode({ id: 'child-1', parentId: 'loop-1' }),
-    createNode({ id: 'grandchild-1', parentId: 'child-1' }),
-    createNode({ id: 'outside-1' }),
-  ]
-
-  it('should return true when node is a direct child of the loop', () => {
-    const { result } = renderWorkflowFlowHook(() => useIsNodeInLoop('loop-1'), {
-      nodes: createLoopNodes(),
-      edges: [],
-    })
-    expect(result.current.isNodeInLoop('child-1')).toBe(true)
-  })
-
-  it('should return false for a grandchild (only checks direct parentId)', () => {
-    const { result } = renderWorkflowFlowHook(() => useIsNodeInLoop('loop-1'), {
-      nodes: createLoopNodes(),
-      edges: [],
-    })
-    expect(result.current.isNodeInLoop('grandchild-1')).toBe(false)
-  })
-
-  it('should return false when node is outside the loop', () => {
-    const { result } = renderWorkflowFlowHook(() => useIsNodeInLoop('loop-1'), {
-      nodes: createLoopNodes(),
-      edges: [],
-    })
-    expect(result.current.isNodeInLoop('outside-1')).toBe(false)
-  })
-
-  it('should return false when node does not exist', () => {
-    const { result } = renderWorkflowFlowHook(() => useIsNodeInLoop('loop-1'), {
-      nodes: createLoopNodes(),
-      edges: [],
-    })
-    expect(result.current.isNodeInLoop('nonexistent')).toBe(false)
-  })
-
-  it('should return false when loop id has no children', () => {
-    const { result } = renderWorkflowFlowHook(() => useIsNodeInLoop('no-such-loop'), {
-      nodes: createLoopNodes(),
-      edges: [],
-    })
-    expect(result.current.isNodeInLoop('child-1')).toBe(false)
+describe.each([
+  { name: 'iteration', useMembership: (id: string) => useIsNodeInIteration(id).isNodeInIteration },
+  { name: 'loop', useMembership: (id: string) => useIsNodeInLoop(id).isNodeInLoop },
+])('$name membership', ({ useMembership }) => {
+  it('recognizes only direct children and tolerates missing nodes or parents', () => {
+    const { result } = renderWorkflowFlowHook(
+      () => ({
+        contains: useMembership('parent'),
+        missingParentContains: useMembership('missing-parent'),
+      }),
+      {
+        nodes: [
+          createNode({ id: 'parent' }),
+          createNode({ id: 'child', parentId: 'parent' }),
+          createNode({ id: 'grandchild', parentId: 'child' }),
+          createNode({ id: 'outside' }),
+        ],
+        edges: [],
+      },
+    )
+    expect(result.current.contains('child')).toBe(true)
+    expect(result.current.contains('grandchild')).toBe(false)
+    expect(result.current.contains('outside')).toBe(false)
+    expect(result.current.contains('missing-node')).toBe(false)
+    expect(result.current.missingParentContains('child')).toBe(false)
   })
 })

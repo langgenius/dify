@@ -199,7 +199,7 @@ def unauthorized_handler() -> Response:
     # Keep this as a concrete `Response`; `DifyLoginManager.unauthorized()` narrows
     # Flask-Login's callback contract based on this override.
     return Response(
-        json.dumps({"code": "unauthorized", "message": "Unauthorized."}),
+        json.dumps({"code": "unauthorized", "message": "Unauthorized.", "status": 401}),
         status=401,
         content_type="application/json",
     )

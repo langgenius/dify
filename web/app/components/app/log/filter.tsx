@@ -3,14 +3,15 @@ import type { FC } from 'react'
 import type { QueryParam } from './index'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { RiCalendarLine } from '@remixicon/react'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
-import Sort from '@/app/components/base/sort'
-import { useAnnotationsCount } from '@/service/use-log'
+import { Sort } from '@/app/components/base/sort'
+import { consoleQuery } from '@/service/console'
 import {
   CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
   CLOUD_SANDBOX_TIME_PERIOD_KEYS,
@@ -50,7 +51,11 @@ const Filter: FC<IFilterProps> = ({
   queryParams,
   setQueryParams,
 }: IFilterProps) => {
-  const { data, isLoading } = useAnnotationsCount(appId)
+  const { data } = useQuery(
+    consoleQuery.apps.byAppId.annotations.count.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
   const { t } = useTranslation(['appLog', 'common'])
   const planState = useCloudSandboxPlanStatus()
   const isTimePeriodRestricted = isLogTimePeriodRestricted(planState)
@@ -58,7 +63,6 @@ const Filter: FC<IFilterProps> = ({
     .filter(([key]) => !isTimePeriodRestricted || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key))
     .map(([key, option]) => [key, resolveLogTimePeriodOption(key, option, planState)] as const)
 
-  if (isLoading || !data) return null
   return (
     <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
       <Chip
@@ -83,17 +87,24 @@ const Filter: FC<IFilterProps> = ({
       <Chip
         className="min-w-37.5"
         panelClassName="w-[270px]"
+        disabled={!data}
         showLeftIcon={false}
         value={queryParams.annotation_status || 'all'}
         onSelect={(item) => {
-          setQueryParams({ ...queryParams, annotation_status: item.value as string })
+          setQueryParams({
+            ...queryParams,
+            annotation_status: item.value as QueryParam['annotation_status'],
+          })
         }}
         onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
         items={[
           { value: 'all', name: t(($) => $['filter.annotation.all'], { ns: 'appLog' }) },
           {
             value: 'annotated',
-            name: t(($) => $['filter.annotation.annotated'], { ns: 'appLog', count: data?.count }),
+            name: t(($) => $['filter.annotation.annotated'], {
+              ns: 'appLog',
+              count: data?.count ?? 0,
+            }),
           },
           {
             value: 'not_annotated',
@@ -113,8 +124,10 @@ const Filter: FC<IFilterProps> = ({
         <>
           <div className="h-3.5 w-px bg-divider-regular"></div>
           <Sort
-            order={queryParams.sort_by?.startsWith('-') ? '-' : ''}
-            value={queryParams.sort_by?.replace('-', '') || 'created_at'}
+            value={{
+              field: queryParams.sort_by?.endsWith('updated_at') ? 'updated_at' : 'created_at',
+              order: queryParams.sort_by?.startsWith('-') ? 'desc' : 'asc',
+            }}
             items={[
               { value: 'created_at', name: t(($) => $['table.header.time'], { ns: 'appLog' }) },
               {
@@ -122,8 +135,8 @@ const Filter: FC<IFilterProps> = ({
                 name: t(($) => $['table.header.updatedTime'], { ns: 'appLog' }),
               },
             ]}
-            onSelect={(value) => {
-              setQueryParams({ ...queryParams, sort_by: value as string })
+            onValueChange={({ field, order }) => {
+              setQueryParams({ ...queryParams, sort_by: order === 'desc' ? `-${field}` : field })
             }}
           />
         </>

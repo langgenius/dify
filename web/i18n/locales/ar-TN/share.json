@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "تواصل مع مسؤول التطبيق إذا كنت بحاجة إلى مساعدة.",
+  "appNotAccessible.documentTitle": "التطبيق غير متاح · Dify",
+  "appNotAccessible.ipAddress": "عنوان IP الخاص بك هو <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "هذا التطبيق غير موجود أو لا يمكن الوصول إليه من شبكتك.",
   "chat.chatFormTip": "لا يمكن تعديل إعدادات الدردشة بعد بدء الدردشة.",
   "chat.chatSettingsTitle": "إعداد الدردشة الجديدة",
   "chat.collapse": "طي",
@@ -45,6 +49,7 @@
   "generation.tabs.saved": "محفوظ",
   "generation.title": "إكمال الذكاء الاصطناعي",
   "humanInput.completed": "يبدو أن هذا الطلب تمت معالجته في مكان آخر.",
+  "humanInput.currentAccount": "الحساب الحالي: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "سينتهي هذا الإجراء {{relativeTime}}.",
   "humanInput.expired": "يبدو أن هذا الطلب قد انتهت صلاحيته.",
   "humanInput.expiredTip": "انتهت صلاحية هذا الإجراء.",
@@ -53,6 +58,9 @@
   "humanInput.recorded": "تم تسجيل مدخلاتك.",
   "humanInput.sorry": "عذراً!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "تبديل الحساب",
   "humanInput.thanks": "شكراً!",
+  "humanInput.unavailableDescription": "قد يكون الرابط غير متاح أو غير متوافق مع الحساب الذي سجلت الدخول به. افتح النموذج من الإشعار الذي تلقيته، أو جرّب تبديل الحساب.",
+  "humanInput.unavailableTitle": "تعذّر فتح هذا النموذج",
   "login.backToHome": "العودة إلى الصفحة الرئيسية"
 }

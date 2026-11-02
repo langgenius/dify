@@ -1,15 +1,27 @@
 import type { CatalogOp } from '@/plugins/catalog'
 import type { HttpRequest } from '@/plugins/http'
 import type { Bind } from '@/protocol/bind'
+import { join } from 'node:path'
 import { inputInvalid } from '@/call/errors'
 import { BIND, isBind } from '@/protocol/bind'
 import { isRecord } from '@/util/is-record'
 
 export type FileReader = (
   path: string,
-) => Promise<{ readonly bytes: Uint8Array; readonly name: string }>
+) => Promise<{ readonly bytes: Uint8Array<ArrayBuffer>; readonly name: string }>
+
+export type FolderCheck = (path: string) => Promise<boolean>
+
+export type FolderLister = (path: string) => Promise<readonly string[]>
+
+export type FileDeps = {
+  readonly readFile: FileReader
+  readonly isFolder: FolderCheck
+  readonly listFolder: FolderLister
+}
 
 const LIST_SUFFIX = '[]'
+const RESERVED_KEY_CHARS = /[[\]]/
 
 const HttpMethod = { Get: 'GET', Delete: 'DELETE' } as const
 const BODYLESS_METHODS: ReadonlySet<string> = new Set(Object.values(HttpMethod))
@@ -88,66 +100,102 @@ function partName(field: string, key: string | undefined, many: boolean): string
   return many ? `${base}${LIST_SUFFIX}` : base
 }
 
-async function readAsFile(path: string, readFile: FileReader): Promise<File> {
-  let resolved: { bytes: Uint8Array; name: string }
+async function readAsFile(path: string, { readFile }: FileDeps): Promise<File> {
+  let resolved: Awaited<ReturnType<FileReader>>
   try {
     resolved = await readFile(path)
   } catch (cause) {
     throw inputInvalid(`cannot read file "${path}"`, cause)
   }
-  return new File([Uint8Array.from(resolved.bytes)], resolved.name)
+  return new File([resolved.bytes], resolved.name)
 }
 
 function assertPathString(value: unknown, field: string): asserts value is string {
   if (typeof value !== 'string')
     throw inputInvalid(
-      `file field "${field}" must be a path string, an array of paths, or an object mapping names to paths`,
+      `file field "${field}" must be a path string, a folder, an array of paths, or an object mapping names to paths`,
     )
 }
 
-async function appendFileParts(
-  form: FormData,
-  name: string,
-  value: unknown,
-  field: string,
-  readFile: FileReader,
-): Promise<void> {
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      assertPathString(item, field)
-      form.append(name, await readAsFile(item, readFile))
-    }
-    return
-  }
-  assertPathString(value, field)
-  form.append(name, await readAsFile(value, readFile))
+async function assertNotFolder(path: string, field: string, deps: FileDeps): Promise<void> {
+  if (await deps.isFolder(path))
+    throw inputInvalid(`"${path}" is a folder; a folder can only be the whole value of ${field}`)
 }
 
-async function appendFileField(
-  form: FormData,
-  field: string,
-  value: unknown,
-  readFile: FileReader,
-): Promise<void> {
+type FieldTarget = {
+  readonly form: FormData
+  // Top-level input key bound to `file`.
+  readonly field: string
+  readonly deps: FileDeps
+}
+
+type FolderParts = FieldTarget & {
+  readonly folder: string
+  // File paths relative to `folder`, as returned by `listFolder`.
+  readonly keys: readonly string[]
+}
+
+type FileParts = FieldTarget & {
+  // Multipart part name, e.g. `field`, `field[]`, `field[key]`, `field[key][]`.
+  readonly name: string
+  // A path string or an array of path strings; validated per item.
+  readonly value: unknown
+  // Input location for error messages, e.g. `field` or `field.key`.
+  readonly label: string
+}
+
+async function appendFolderParts({ form, field, deps, folder, keys }: FolderParts): Promise<void> {
+  if (keys.length === 0) throw inputInvalid(`folder "${folder}" has no files`)
+  const reserved = keys.find((key) => RESERVED_KEY_CHARS.test(key))
+  if (reserved !== undefined)
+    throw inputInvalid(
+      `"${reserved}" in folder "${folder}" contains "[" or "]", which a part name cannot carry`,
+    )
+  for (const key of keys)
+    form.append(partName(field, key, false), await readAsFile(join(folder, key), deps))
+}
+
+async function appendFileParts({
+  form,
+  field,
+  deps,
+  name,
+  value,
+  label,
+}: FileParts): Promise<void> {
+  const items = Array.isArray(value) ? value : [value]
+  for (const item of items) {
+    assertPathString(item, label)
+    await assertNotFolder(item, field, deps)
+    form.append(name, await readAsFile(item, deps))
+  }
+}
+
+async function appendFileField(target: FieldTarget, value: unknown): Promise<void> {
+  const { form, field, deps } = target
   if (value === null || value === undefined) return
-  if (isRecord(value)) {
-    for (const [key, item] of Object.entries(value))
-      await appendFileParts(
-        form,
-        partName(field, key, Array.isArray(item)),
-        item,
-        `${field}.${key}`,
-        readFile,
-      )
+  if (typeof value === 'string') {
+    if (await deps.isFolder(value))
+      return appendFolderParts({ ...target, folder: value, keys: await deps.listFolder(value) })
+    form.append(partName(field, undefined, false), await readAsFile(value, deps))
     return
   }
-  await appendFileParts(
-    form,
-    partName(field, undefined, Array.isArray(value)),
+  if (isRecord(value)) {
+    for (const [key, item] of Object.entries(value))
+      await appendFileParts({
+        ...target,
+        name: partName(field, key, Array.isArray(item)),
+        value: item,
+        label: `${field}.${key}`,
+      })
+    return
+  }
+  await appendFileParts({
+    ...target,
+    name: partName(field, undefined, Array.isArray(value)),
     value,
-    field,
-    readFile,
-  )
+    label: field,
+  })
 }
 
 function hasFileValue(values: Map<string, unknown>): boolean {
@@ -157,7 +205,7 @@ function hasFileValue(values: Map<string, unknown>): boolean {
 export async function buildRequest(
   op: CatalogOp,
   input: Record<string, unknown>,
-  deps: { readonly readFile: FileReader },
+  deps: FileDeps,
 ): Promise<HttpRequest> {
   const buckets = classify(op, input)
   const path = substitutePath(op.path, buckets[Placement.Path])
@@ -176,7 +224,7 @@ export async function buildRequest(
     form.append(key, JSON.stringify(value))
   }
   for (const [field, value] of buckets[Placement.File])
-    await appendFileField(form, field, value, deps.readFile)
+    await appendFileField({ form, field, deps }, value)
 
   return { method: op.method, path, query, form }
 }

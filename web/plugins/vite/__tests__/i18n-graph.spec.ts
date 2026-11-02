@@ -257,7 +257,10 @@ describe('translation graph analysis', () => {
       `,
       )
       const result = checkTranslationGraph(webRoot, modules)
-      expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toHaveLength(2)
+      expect(result.evidence.filter((item) => item.kind === 'unknown-namespace')).toEqual([
+        expect.objectContaining({ file: 'entry.tsx', kind: 'unknown-namespace' }),
+        expect.objectContaining({ file: 'entry.tsx', kind: 'unknown-namespace' }),
+      ])
     })
 
     it('reports explicit namespace loads even when no translation key is consumed', () => {
@@ -698,45 +701,31 @@ describe('translation graph analysis', () => {
       expect(sortedUnusedKeysByNamespace(result)).toEqual({})
     })
 
-    it('should protect known selector properties that dynamic entries can override', () => {
-      // Arrange
-      writeJson('i18n/locales/en-US/app.json', {
-        hidden: 'Potentially used by the dynamic selector',
-        used: 'Used',
-      })
-      writeSource(
-        'src/overridden-selector-map.ts',
-        `
-        import type { SelectorParam } from 'i18next'
-        import { useTranslation } from 'react-i18next'
-
-        export function ComputedOverrideExample(dynamicKey: string, dynamic: SelectorParam<'app'>) {
-          const { t } = useTranslation()
-          const selectors = {
-            known: $ => $['used'],
-            [dynamicKey]: dynamic,
+    it.each(['computed property', 'spread'] as const)(
+      'protects known selector properties overridden by a dynamic %s',
+      (kind) => {
+        writeJson('i18n/locales/en-US/app.json', { hidden: 'Potentially used', used: 'Used' })
+        writeSource(
+          'src/overridden-selector-map.ts',
+          `
+          import type { SelectorParam } from 'i18next'
+          import { useTranslation } from 'react-i18next'
+          export function label(dynamicKey: string, dynamic: SelectorParam<'app'>,
+            dynamicMap: Record<string, SelectorParam<'app'>>) {
+            const { t } = useTranslation()
+            const selectors = {
+              known: $ => $['used'],
+              ${kind === 'computed property' ? '[dynamicKey]: dynamic' : '...dynamicMap'},
+            }
+            return t(selectors.known)
           }
-          return t(selectors.known)
-        }
-
-        export function SpreadOverrideExample(dynamicMap: Record<string, SelectorParam<'app'>>) {
-          const { t } = useTranslation()
-          const selectors = {
-            known: $ => $['used'],
-            ...dynamicMap,
-          }
-          return t(selectors.known)
-        }
-      `,
-      )
-
-      // Act
-      const result = checkTranslationGraph(webRoot, modules)
-
-      // Assert
-      expect(result.protectedNamespaces).toEqual(['app'])
-      expect(sortedUnusedKeysByNamespace(result)).toEqual({})
-    })
+        `,
+        )
+        const result = checkTranslationGraph(webRoot, modules)
+        expect(result.protectedNamespaces).toEqual(['app'])
+        expect(result.unused).toEqual({})
+      },
+    )
 
     it('should resolve statically computed selector map properties', () => {
       // Arrange
@@ -1309,6 +1298,7 @@ describe('translation graph analysis', () => {
       })
       writeJson('i18n/locales/en-US/common.json', {
         'operation.close': 'Close',
+        'operation.confirm': 'Confirm',
         'trans.shared': 'Shared common',
         'unused.common': 'Unused common',
       })
@@ -1324,7 +1314,7 @@ describe('translation graph analysis', () => {
           t('literal.title')
           t('withDefault', 'Fallback', { ns: 'app' })
           tCommon('operation.close')
-          t('common:operation.close')
+          t('common:operation.confirm')
 
           return (
             <>

@@ -131,7 +131,7 @@ class RelytVector(BaseVector):
 
         chunks_table_data = []
         with self.client.connect() as conn, conn.begin():
-            for document, metadata, chunk_id, embedding in zip(texts, metadatas, ids, embeddings):
+            for document, metadata, chunk_id, embedding in zip(texts, metadatas, ids, embeddings, strict=False):
                 chunks_table_data.append(
                     {
                         "id": chunk_id,

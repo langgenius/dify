@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -31,8 +31,8 @@ class LangSmithMultiModel(BaseModel):
 
 class LangSmithRunModel(LangSmithTokenUsage, LangSmithMultiModel):
     name: str | None = Field(..., description="Name of the run")
-    inputs: Union[str, Mapping[str, Any], list, None] | None = Field(None, description="Inputs of the run")
-    outputs: Union[str, Mapping[str, Any], list, None] | None = Field(None, description="Outputs of the run")
+    inputs: str | Mapping[str, Any] | list | None | None = Field(None, description="Inputs of the run")
+    outputs: str | Mapping[str, Any] | list | None | None = Field(None, description="Outputs of the run")
     run_type: LangSmithRunType = Field(..., description="Type of the run")
     start_time: datetime | str | None = Field(None, description="Start time of the run")
     end_time: datetime | str | None = Field(None, description="End time of the run")

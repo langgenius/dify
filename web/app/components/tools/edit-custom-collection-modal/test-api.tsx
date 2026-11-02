@@ -96,7 +96,7 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
             >
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                 <div className="shrink-0 border-b border-divider-regular py-4">
-                  <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                  <div className="flex h-6 items-center justify-between ps-6 pe-5">
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                       {`${t(($) => $['test.title'], { ns: 'tools' })}  ${toolName}`}
                     </DrawerTitle>
@@ -146,10 +146,10 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                         <table className="w-full body-xs-regular text-text-secondary">
                           <thead className="text-text-tertiary uppercase">
                             <tr className="border-b border-divider-regular">
-                              <th className="p-2 pl-3 font-medium">
+                              <th className="p-2 ps-3 font-medium">
                                 {t(($) => $['test.parameters'], { ns: 'tools' })}
                               </th>
-                              <th className="p-2 pl-3 font-medium">
+                              <th className="p-2 ps-3 font-medium">
                                 {t(($) => $['test.value'], { ns: 'tools' })}
                               </th>
                             </tr>
@@ -160,7 +160,7 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                                 key={index}
                                 className="border-b border-divider-regular last:border-0"
                               >
-                                <td className="py-2 pr-2.5 pl-3">
+                                <td className="py-2 ps-3 pe-2.5">
                                   <label htmlFor={`${parameterId}-${item.name}`}>
                                     {item.label[language]}
                                   </label>

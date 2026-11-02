@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Contactați administratorul aplicației dacă aveți nevoie de ajutor.",
+  "appNotAccessible.documentTitle": "Aplicație inaccesibilă · Dify",
+  "appNotAccessible.ipAddress": "Adresa dvs. IP este <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Această aplicație nu există sau nu poate fi accesată din rețeaua dvs.",
   "chat.chatFormTip": "Setările chat-ului nu pot fi modificate după ce chat-ul a început.",
   "chat.chatSettingsTitle": "Nouă configurare a chatului",
   "chat.collapse": "Restrânge",
@@ -45,6 +49,7 @@
   "generation.tabs.saved": "Salvat",
   "generation.title": "Completare AI",
   "humanInput.completed": "Se pare că această cerere a fost tratată în altă parte.",
+  "humanInput.currentAccount": "Contul curent: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Această acțiune va expira {{relativeTime}}.",
   "humanInput.expired": "Se pare că această cerere a expirat.",
   "humanInput.expiredTip": "Această acțiune a expirat.",
@@ -53,6 +58,9 @@
   "humanInput.recorded": "Datele dumneavoastră au fost înregistrate.",
   "humanInput.sorry": "Ne pare rău!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Schimbă contul",
   "humanInput.thanks": "Mulțumim!",
+  "humanInput.unavailableDescription": "Linkul poate fi indisponibil sau poate să nu corespundă contului cu care ești conectat. Deschide formularul din notificarea primită sau încearcă să schimbi contul.",
+  "humanInput.unavailableTitle": "Acest formular nu poate fi deschis",
   "login.backToHome": "Înapoi la Acasă"
 }

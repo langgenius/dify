@@ -1,7 +1,7 @@
 #!/usr/bin/env -S bun
 // scripts/run-smoke.ts — five checks against a running Dify server (or mock),
-// through `bun bin/dev.js`. DIFY_SERVER, DIFY_TOKEN, DIFY_CONFIG_DIR, and
-// DIFY_CACHE_DIR are read from the environment and passed through unchanged.
+// through `bun bin/dev.js`. DIFY_SERVER, DIFY_TOKEN and DIFY_CONFIG_DIR are
+// read from the environment and passed through unchanged.
 import { execFileSync, spawnSync } from 'node:child_process'
 import { ExitCode } from '../src/errors/codes.js'
 

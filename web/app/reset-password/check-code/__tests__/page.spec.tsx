@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { verifyResetPasswordCode } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import CheckCodePage from '../page'
 
 const mockPush = vi.fn()
@@ -25,9 +25,16 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/common', () => ({
-  sendResetPasswordCode: vi.fn(),
-  verifyResetPasswordCode: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    forgotPassword: {
+      post: vi.fn(),
+      validity: {
+        post: vi.fn(),
+      },
+    },
+  },
 }))
 
 describe('ResetPasswordCheckCodePage', () => {
@@ -41,10 +48,10 @@ describe('ResetPasswordCheckCodePage', () => {
       new URLSearchParams({
         email: 'user@example.com',
         token: 'email-token',
-      }) as unknown as ReturnType<typeof useSearchParams>,
+      }) as ReturnType<typeof useSearchParams>,
     )
-    vi.mocked(verifyResetPasswordCode).mockResolvedValue({
-      result: 'success',
+    vi.mocked(consoleClient.forgotPassword.validity.post).mockResolvedValue({
+      email: 'user@example.com',
       is_valid: true,
       token: 'verified-token',
     })
@@ -63,10 +70,12 @@ describe('ResetPasswordCheckCodePage', () => {
     await user.type(codeInput, '123456{Enter}')
 
     await waitFor(() => {
-      expect(verifyResetPasswordCode).toHaveBeenCalledWith({
-        code: '123456',
-        email: 'user@example.com',
-        token: 'email-token',
+      expect(consoleClient.forgotPassword.validity.post).toHaveBeenCalledWith({
+        body: {
+          code: '123456',
+          email: 'user@example.com',
+          token: 'email-token',
+        },
       })
     })
     expect(mockPush).toHaveBeenCalledWith(
@@ -87,6 +96,6 @@ describe('ResetPasswordCheckCodePage', () => {
     expect(codeInput).toHaveAttribute('aria-invalid', 'true')
     expect(codeInput).toHaveAccessibleDescription(error.textContent ?? '')
     expect(codeInput).toHaveFocus()
-    expect(verifyResetPasswordCode).not.toHaveBeenCalled()
+    expect(consoleClient.forgotPassword.validity.post).not.toHaveBeenCalled()
   })
 })

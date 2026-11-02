@@ -94,7 +94,7 @@ function RemoteModelChangeFixture({ onChange }: { onChange: (inputs: LLMNodeType
     inputRef: inputManager.inputRef,
     setInputs: inputManager.setInputs,
     isChatModel,
-    isChatMode: true,
+    isChatflow: true,
   })
 
   return (

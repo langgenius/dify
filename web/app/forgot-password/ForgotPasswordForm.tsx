@@ -1,5 +1,4 @@
 'use client'
-import type { InitValidateStatusResponse } from '@/models/common'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -11,11 +10,7 @@ import * as z from 'zod'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
-import {
-  fetchInitValidateStatus,
-  fetchSetupStatus,
-  sendForgotPasswordEmail,
-} from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { basePath } from '@/utils/var'
 
 type ForgotPasswordFormValues = {
@@ -43,10 +38,7 @@ const ForgotPasswordForm = () => {
 
     setIsSubmitting(true)
     try {
-      const res = await sendForgotPasswordEmail({
-        url: '/forgot-password',
-        body: { email },
-      })
+      const res = await consoleClient.forgotPassword.post({ body: { email } })
       if (res.result === 'success') setIsEmailSent(true)
       else console.error('Email verification failed')
     } catch (error) {
@@ -57,8 +49,8 @@ const ForgotPasswordForm = () => {
   }
 
   useEffect(() => {
-    fetchSetupStatus().then(() => {
-      fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
+    consoleClient.setup.get().then(() => {
+      consoleClient.init.get().then((res) => {
         if (res.status === 'not_started') window.location.href = `${basePath}/init`
       })
 

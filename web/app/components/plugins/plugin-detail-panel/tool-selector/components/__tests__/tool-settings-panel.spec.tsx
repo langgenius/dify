@@ -12,7 +12,7 @@ vi.mock('@/app/components/workflow/nodes/tool/components/tool-form', () => ({
 }))
 
 vi.mock('../reasoning-config-form', () => ({
-  default: ({ schemas }: { schemas: Array<{ name: string }> }) => (
+  ReasoningConfigForm: ({ schemas }: { schemas: Array<{ name: string }> }) => (
     <div data-testid="reasoning-config-form">{schemas.map((item) => item.name).join(',')}</div>
   ),
 }))

@@ -17,7 +17,7 @@ def stream_topic_events(
     ping_interval: float | None = None,
     on_subscribe: Callable[[], None] | None = None,
     terminal_events: Iterable[str | StreamEvent] | None = None,
-) -> Generator[Mapping[str, Any] | str, None, None]:
+) -> Generator[Mapping[str, Any] | str]:
     # send a PING event immediately to prevent the connection staying in pending state for a long time.
     #
     # This simplify the debugging process as the DevTools in Chrome does not

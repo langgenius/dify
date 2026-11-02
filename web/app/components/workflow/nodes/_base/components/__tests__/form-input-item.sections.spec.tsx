@@ -1,37 +1,32 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { JsonEditorField, MultiSelectField } from '../form-input-item.sections'
+import { MultiSelectField } from '../form-input-item.sections'
 
 describe('form-input-item sections', () => {
-  it('should render a loading multi-select label', () => {
+  it('prevents selecting options while they are loading', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
     renderWorkflowComponent(
       <MultiSelectField
         disabled={false}
         isLoading
         items={[{ name: 'Alpha', value: 'alpha' }]}
-        onChange={vi.fn()}
+        onChange={onChange}
         selectedLabel=""
         value={[]}
       />,
     )
 
-    expect(screen.getByRole('combobox', { name: 'Options' })).toHaveTextContent('Loading')
+    const trigger = screen.getByRole('combobox', { name: 'Options' })
+    expect(trigger).toHaveTextContent('Loading')
+    expect(trigger).toBeDisabled()
+    await user.click(trigger)
+    expect(screen.queryByRole('option')).not.toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('should render the shared json editor section', () => {
-    renderWorkflowComponent(
-      <JsonEditorField
-        value={'{"enabled":true}'}
-        onChange={vi.fn()}
-        placeholder={<div>JSON placeholder</div>}
-      />,
-    )
-
-    expect(screen.getByText('JSON')).toBeInTheDocument()
-  })
-
-  it('should render placeholder, icons, and select multi-select options', async () => {
+  it('emits the selected option value', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
@@ -53,7 +48,6 @@ describe('form-input-item sections', () => {
     await user.click(screen.getByRole('combobox', { name: 'Choose options' }))
     await user.click(await screen.findByRole('option', { name: 'Alpha' }))
 
-    expect(document.querySelector('img[src="/alpha.svg"]')).toBeInTheDocument()
-    expect(onChange).toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalledWith(['alpha'], expect.anything())
   })
 })

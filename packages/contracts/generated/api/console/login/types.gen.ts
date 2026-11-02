@@ -16,12 +16,84 @@ export type SimpleResultOptionalDataResponse = {
   result: string
 }
 
+export type AccountBannedError = ErrorResponse & {
+  code: 'account_banned'
+  status: 400
+}
+
+export type AccountInFreezeError = ErrorResponse & {
+  code: 'account_in_freeze'
+  status: 400
+}
+
+export type AccountNotFoundError = ErrorResponse & {
+  code: 'account_not_found'
+  status: 400
+}
+
+export type EmailDomainSuspendedError = ErrorResponse & {
+  code: 'email_domain_suspended'
+  status: 400
+}
+
+export type InvalidAccountPasswordError = ErrorResponse & {
+  code: 'invalid_account_password'
+  status: 400
+}
+
+export type InvalidEmailError = ErrorResponse & {
+  code: 'invalid_email'
+  status: 400
+}
+
+export type LimitExceededError = ErrorResponse & {
+  code: 'limit_exceeded'
+  status: 400
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type AuthenticationFailedError = ErrorResponse & {
+  code: 'authentication_failed'
+  status: 401
+}
+
+export type EmailCodeLoginLimitError = ErrorResponse & {
+  code: 'email_code_login_limit'
+  status: 429
+}
+
 export type PostLoginData = {
   body: LoginPayload
   path?: never
   query?: never
   url: '/login'
 }
+
+export type PostLoginErrors = {
+  400:
+    | AccountBannedError
+    | AccountInFreezeError
+    | AccountNotFoundError
+    | EmailDomainSuspendedError
+    | InvalidAccountPasswordError
+    | InvalidEmailError
+    | LimitExceededError
+    | ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
+  429: EmailCodeLoginLimitError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostLoginError = PostLoginErrors[keyof PostLoginErrors]
 
 export type PostLoginResponses = {
   200: SimpleResultOptionalDataResponse

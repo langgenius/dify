@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import ErrorMessageResponse, SimpleResultResponse
 from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import (
     query_params_from_model,
@@ -38,6 +38,7 @@ from fields.segment_fields import (
     SegmentDetailResponse,
     SegmentResponse,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
@@ -155,6 +156,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    ErrorMessageResponse,
     SegmentResponse,
     ConsoleSegmentListResponse,
     SegmentDetailResponse,
@@ -167,6 +169,7 @@ register_response_schema_models(
 
 
 def _raise_segment_error(error: Exception) -> Never:
+    """Translate the scope and validation errors every segment operation can raise."""
     if isinstance(error, SegmentDatasetNotFoundError):
         raise NotFound("Dataset not found.") from error
     if isinstance(error, SegmentDocumentNotFoundError):
@@ -179,19 +182,42 @@ def _raise_segment_error(error: Exception) -> Never:
         raise NotFound("UploadFile not found.") from error
     if isinstance(error, SegmentPermissionDeniedError):
         raise Forbidden(str(error)) from error
-    if isinstance(error, SegmentEmbeddingModelUnavailableError):
-        raise ProviderNotInitializeError(str(error)) from error
     if isinstance(error, SegmentDatasetModelUnavailableError):
         raise ValueError(str(error)) from error
-    if isinstance(error, (SegmentDocumentIndexingError, SegmentStatusUpdateError)):
-        raise InvalidActionError(str(error)) from error
     if isinstance(error, SegmentInvalidFileTypeError):
         raise ValueError(str(error)) from error
+    raise error
+
+
+def _raise_segment_embedding_error(error: Exception) -> Never:
+    """Writing segment content also needs the dataset's embedding model."""
+    if isinstance(error, SegmentEmbeddingModelUnavailableError):
+        raise ProviderNotInitializeError(str(error)) from error
+    _raise_segment_error(error)
+
+
+def _raise_segment_status_error(error: Exception) -> Never:
+    if isinstance(error, (SegmentDocumentIndexingError, SegmentStatusUpdateError)):
+        raise InvalidActionError(str(error)) from error
+    _raise_segment_embedding_error(error)
+
+
+def _raise_child_chunk_write_error(error: Exception) -> Never:
     if isinstance(error, ChildChunkIndexingApplicationError):
         raise ChildChunkIndexingError(str(error)) from error
+    _raise_segment_error(error)
+
+
+def _raise_child_chunk_create_error(error: Exception) -> Never:
+    if isinstance(error, ChildChunkIndexingApplicationError):
+        raise ChildChunkIndexingError(str(error)) from error
+    _raise_segment_embedding_error(error)
+
+
+def _raise_child_chunk_delete_error(error: Exception) -> Never:
     if isinstance(error, ChildChunkDeleteIndexApplicationError):
         raise ChildChunkDeleteIndexError(str(error)) from error
-    raise error
+    _raise_segment_error(error)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
@@ -258,6 +284,7 @@ class DatasetDocumentSegmentListApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>")
 class DatasetDocumentSegmentApi(Resource):
+    @error_responses(InvalidActionError, ProviderNotInitializeError)
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_ACTION)
     @console_ns.doc(params=query_params_from_model(SegmentIdListQuery))
     @console_account_admission(
@@ -286,12 +313,13 @@ class DatasetDocumentSegmentApi(Resource):
                 action=action,
             )
         except Exception as error:
-            _raise_segment_error(error)
+            _raise_segment_status_error(error)
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment")
 class DatasetDocumentSegmentAddApi(Resource):
+    @error_responses(ProviderNotInitializeError)
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
@@ -318,7 +346,7 @@ class DatasetDocumentSegmentAddApi(Resource):
                 values=req_data.model_dump(exclude_none=True),
             )
         except Exception as error:
-            _raise_segment_error(error)
+            _raise_segment_embedding_error(error)
         response = {
             "data": result.data,
             "doc_form": result.doc_form,
@@ -328,6 +356,7 @@ class DatasetDocumentSegmentAddApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
 class DatasetDocumentSegmentUpdateApi(Resource):
+    @error_responses(ProviderNotInitializeError)
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_SEGMENT)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
@@ -355,7 +384,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
                 values=req_data.model_dump(exclude_none=True),
             )
         except Exception as error:
-            _raise_segment_error(error)
+            _raise_segment_embedding_error(error)
         response = {
             "data": result.data,
             "doc_form": result.doc_form,
@@ -391,6 +420,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/batch_import")
 class DatasetDocumentSegmentBatchImportApi(Resource):
     @console_ns.response(200, "Batch import started", console_ns.models[SegmentBatchImportStatusResponse.__name__])
+    @console_ns.response(500, "Batch import failed", console_ns.models[ErrorMessageResponse.__name__])
     @console_account_admission(
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )
@@ -434,6 +464,7 @@ class DatasetDocumentSegmentBatchImportStatusApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks")
 class ChildChunkAddApi(Resource):
+    @error_responses(ChildChunkIndexingError, ProviderNotInitializeError)
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_PARENT_SEGMENT)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
@@ -462,7 +493,7 @@ class ChildChunkAddApi(Resource):
                 content=req_data.content,
             )
         except Exception as error:
-            _raise_segment_error(error)
+            _raise_child_chunk_create_error(error)
         return dump_response(ChildChunkDetailResponse, {"data": child_chunk}), 200
 
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_PARENT_SEGMENT)
@@ -492,6 +523,7 @@ class ChildChunkAddApi(Resource):
         }
         return dump_response(ChildChunkListResponse, response), 200
 
+    @error_responses(ChildChunkIndexingError)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
@@ -523,7 +555,7 @@ class ChildChunkAddApi(Resource):
                 chunks=req_data.chunks,
             )
         except Exception as error:
-            _raise_segment_error(error)
+            _raise_child_chunk_write_error(error)
         return dump_response(ChildChunkBatchUpdateResponse, {"data": child_chunks}), 200
 
 
@@ -531,6 +563,7 @@ class ChildChunkAddApi(Resource):
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>"
 )
 class ChildChunkUpdateApi(Resource):
+    @error_responses(ChildChunkDeleteIndexError)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
@@ -555,9 +588,10 @@ class ChildChunkUpdateApi(Resource):
                 child_chunk_id=str(child_chunk_id),
             )
         except Exception as error:
-            _raise_segment_error(error)
+            _raise_child_chunk_delete_error(error)
         return "", 204
 
+    @error_responses(ChildChunkIndexingError)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
@@ -587,5 +621,5 @@ class ChildChunkUpdateApi(Resource):
                 content=req_data.content,
             )
         except Exception as error:
-            _raise_segment_error(error)
+            _raise_child_chunk_write_error(error)
         return dump_response(ChildChunkDetailResponse, {"data": child_chunk}), 200

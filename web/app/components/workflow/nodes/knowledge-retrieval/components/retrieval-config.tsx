@@ -1,9 +1,9 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
 import type { ModelConfig } from '../../../types'
 import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -27,10 +27,11 @@ type Props = Readonly<{
   onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']
   onSingleRetrievalModelParamsChange?: ModelParameterModalProps['onCompletionParamsChange']
   readonly?: boolean
+  preserveRetrievalMode?: boolean
   modal?: boolean
   rerankModalOpen: boolean
   onRerankModelOpenChange: (open: boolean) => void
-  selectedDatasets: DataSet[]
+  selectedDatasets: DatasetDetailWithPartialMembersResponse[]
 }>
 
 const RetrievalConfig: FC<Props> = ({
@@ -41,6 +42,7 @@ const RetrievalConfig: FC<Props> = ({
   onSingleRetrievalModelChange,
   onSingleRetrievalModelParamsChange,
   readonly,
+  preserveRetrievalMode,
   modal,
   rerankModalOpen,
   onRerankModelOpenChange,
@@ -136,7 +138,7 @@ const RetrievalConfig: FC<Props> = ({
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        align="end"
         sideOffset={0}
         alignOffset={-2}
         className="border-none bg-transparent shadow-none"
@@ -147,6 +149,7 @@ const RetrievalConfig: FC<Props> = ({
             onChange={handleChange}
             selectedDatasets={selectedDatasets}
             isInWorkflow
+            preserveRetrievalMode={preserveRetrievalMode}
             singleRetrievalModelConfig={singleRetrievalModelConfig}
             onSingleRetrievalModelChange={onSingleRetrievalModelChange}
             onSingleRetrievalModelParamsChange={onSingleRetrievalModelParamsChange}

@@ -252,8 +252,8 @@ def migrate_knowledge_vector_database():
                     select(DatasetDocument).where(
                         DatasetDocument.dataset_id == dataset.id,
                         DatasetDocument.indexing_status == IndexingStatus.COMPLETED,
-                        DatasetDocument.enabled == True,
-                        DatasetDocument.archived == False,
+                        DatasetDocument.enabled.is_(True),
+                        DatasetDocument.archived.is_(False),
                     )
                 ).all()
 
@@ -264,7 +264,7 @@ def migrate_knowledge_vector_database():
                         select(DocumentSegment).where(
                             DocumentSegment.document_id == dataset_document.id,
                             DocumentSegment.status == SegmentStatus.COMPLETED,
-                            DocumentSegment.enabled == True,
+                            DocumentSegment.enabled.is_(True),
                         )
                     ).all()
 

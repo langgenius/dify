@@ -24,6 +24,7 @@ import SuggestedQuestions from './suggested-questions'
 import WorkflowProcessItem from './workflow-process'
 
 type AnswerProps = {
+  footer?: ReactNode
   answerActionPosition?: AnswerActionPosition
   item: ChatItem
   question: string
@@ -45,6 +46,7 @@ type AnswerProps = {
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
 }
 const Answer: FC<AnswerProps> = ({
+  footer,
   answerActionPosition,
   item,
   question,
@@ -61,7 +63,7 @@ const Answer: FC<AnswerProps> = ({
   renderAgentContent,
   onHumanInputFormSubmit,
 }) => {
-  const { t } = useTranslation(['appAnnotation'])
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const {
     content,
     citation,
@@ -394,6 +396,12 @@ const Answer: FC<AnswerProps> = ({
           </div>
         )}
         <More more={more} />
+        {item.isError && (
+          <p role="alert" className="system-sm-regular text-text-destructive">
+            {t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
+        )}
+        {footer}
       </div>
     </div>
   )

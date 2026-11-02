@@ -27,11 +27,13 @@ const createInputs = (version: AssignerNodeType['version'] = '1'): AssignerNodeT
 
 describe('assigner use-config helpers', () => {
   it('filters vars and selectors by supported targets', () => {
-    expect(filterVarByType(VarType.any)({ type: VarType.string } as never)).toBe(true)
-    expect(filterVarByType(VarType.number)({ type: VarType.any } as never)).toBe(true)
-    expect(filterVarByType(VarType.number)({ type: VarType.string } as never)).toBe(false)
-    expect(canAssignVar({} as never, ['conversation', 'total'])).toBe(true)
-    expect(canAssignVar({} as never, ['sys', 'total'])).toBe(false)
+    expect(filterVarByType(VarType.any)({ variable: 'value', type: VarType.string })).toBe(true)
+    expect(filterVarByType(VarType.number)({ variable: 'value', type: VarType.any })).toBe(true)
+    expect(filterVarByType(VarType.number)({ variable: 'value', type: VarType.string })).toBe(false)
+    expect(
+      canAssignVar({ variable: 'total', type: VarType.number }, ['conversation', 'total']),
+    ).toBe(true)
+    expect(canAssignVar({ variable: 'total', type: VarType.number }, ['sys', 'total'])).toBe(false)
   })
 
   it('normalizes assigned variable types for append and passthrough write modes', () => {
@@ -45,26 +47,50 @@ describe('assigner use-config helpers', () => {
 
   it('validates assignment targets for append, arithmetic and fallback modes', () => {
     expect(
-      canAssignToVar({ type: VarType.number } as never, VarType.number, WriteMode.multiply),
+      canAssignToVar(
+        { variable: 'value', type: VarType.number },
+        VarType.number,
+        WriteMode.multiply,
+      ),
     ).toBe(true)
     expect(
-      canAssignToVar({ type: VarType.string } as never, VarType.number, WriteMode.multiply),
+      canAssignToVar(
+        { variable: 'value', type: VarType.string },
+        VarType.number,
+        WriteMode.multiply,
+      ),
     ).toBe(false)
     expect(
-      canAssignToVar({ type: VarType.string } as never, VarType.arrayString, WriteMode.append),
+      canAssignToVar(
+        { variable: 'value', type: VarType.string },
+        VarType.arrayString,
+        WriteMode.append,
+      ),
     ).toBe(true)
     expect(
-      canAssignToVar({ type: VarType.number } as never, VarType.arrayNumber, WriteMode.append),
+      canAssignToVar(
+        { variable: 'value', type: VarType.number },
+        VarType.arrayNumber,
+        WriteMode.append,
+      ),
     ).toBe(true)
     expect(
-      canAssignToVar({ type: VarType.object } as never, VarType.arrayObject, WriteMode.append),
+      canAssignToVar(
+        { variable: 'value', type: VarType.object },
+        VarType.arrayObject,
+        WriteMode.append,
+      ),
     ).toBe(true)
     expect(
-      canAssignToVar({ type: VarType.boolean } as never, VarType.arrayString, WriteMode.append),
+      canAssignToVar(
+        { variable: 'value', type: VarType.boolean },
+        VarType.arrayString,
+        WriteMode.append,
+      ),
     ).toBe(false)
-    expect(canAssignToVar({ type: VarType.string } as never, VarType.string, WriteMode.set)).toBe(
-      true,
-    )
+    expect(
+      canAssignToVar({ variable: 'value', type: VarType.string }, VarType.string, WriteMode.set),
+    ).toBe(true)
   })
 
   it('ensures version 2 and replaces operation items immutably', () => {
@@ -81,7 +107,7 @@ describe('assigner use-config helpers', () => {
     expect(ensureAssignerVersion(legacyInputs).version).toBe('2')
     expect(ensureAssignerVersion(createInputs('2')).version).toBe('2')
     expect(updateOperationItems(legacyInputs, nextItems).items).toEqual(nextItems)
-    expect(legacyInputs.items).toHaveLength(1)
+    expect(legacyInputs).toEqual(createInputs('1'))
   })
 
   it('sanitizes variable-selector items restored from collaboration payloads', () => {

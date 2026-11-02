@@ -1,20 +1,21 @@
 'use client'
+
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import { AppModeEnum } from '@/types/app'
 
 type CustomizeDialogProps = {
   disabled?: boolean
@@ -62,7 +63,7 @@ export function CustomizeDialog({
 }: CustomizeDialogProps) {
   const { t } = useTranslation(['appOverview', 'common'])
   const docLink = useDocLink()
-  const isChatApp = mode === AppModeEnum.CHAT || mode === AppModeEnum.ADVANCED_CHAT
+  const isChatApp = mode === 'chat' || mode === 'advanced-chat'
   const repository =
     sourceCodeRepository ?? (isChatApp ? 'webapp-conversation' : 'webapp-text-generator')
   const apiDocLink = docLink('/api-reference/guides/get-started')
@@ -76,25 +77,17 @@ export function CustomizeDialog({
         <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
         {triggerLabel ?? t(($) => $['overview.appInfo.customize.entry'], { ns: 'appOverview' })}
       </DialogTrigger>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden!">
-        <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}
-        </DialogTitle>
-        <DialogDescription className="mt-2 shrink-0 body-md-regular text-text-secondary">
-          {t(($) => $[`${prefixCustomize}.explanation`], { ns: 'appOverview' })}
-        </DialogDescription>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}
+          </DialogTitle>
+          <DialogDescription>
+            {t(($) => $[`${prefixCustomize}.explanation`], { ns: 'appOverview' })}
+          </DialogDescription>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
           <div className="w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
             <span className="inline-flex shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $[`${prefixCustomize}.way`], { ns: 'appOverview' })} 1
@@ -186,7 +179,7 @@ export function CustomizeDialog({
               />
             </a>
           </div>
-        </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

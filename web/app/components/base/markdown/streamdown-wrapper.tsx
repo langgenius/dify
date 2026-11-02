@@ -1,10 +1,11 @@
 import type { ComponentType } from 'react'
-import type { Components, StreamdownProps } from 'streamdown'
+import type { Components, ExtraProps, StreamdownProps } from 'streamdown'
 import { createMathPlugin } from '@streamdown/math'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import RemarkBreaks from 'remark-breaks'
 import { defaultRehypePlugins, defaultRemarkPlugins, Streamdown } from 'streamdown'
+import { visit } from 'unist-util-visit'
 import {
   AudioBlock,
   Img,
@@ -77,6 +78,17 @@ const ALLOWED_TAGS: Record<string, string[]> = {
   section: ['dataName'],
 }
 
+function rehypePluginAssetPaths() {
+  return (tree: Parameters<typeof visit>[0]) => {
+    visit(tree, 'element', (value) => {
+      const node = value as NonNullable<ExtraProps['node']>
+      if (node.tagName !== 'img' || typeof node.properties.src !== 'string') return
+      if (node.properties.src.startsWith('_assets/'))
+        node.properties.src = `./${node.properties.src}`
+    })
+  }
+}
+
 /**
  * Build a rehype plugin list that includes the default raw → sanitize → harden
  * pipeline with `ALLOWED_TAGS` baked into the sanitize schema, plus any extra
@@ -85,7 +97,7 @@ const ALLOWED_TAGS: Record<string, string[]> = {
  * This sidesteps the streamdown `allowedTags` prop, which only takes effect
  * when `rehypePlugins` is the exact default reference (identity check).
  */
-function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
+function buildRehypePlugins(extraPlugins?: PluggableList, isPlugin = false): PluggableList {
   const [sanitizePlugin, defaultSanitizeSchema] = defaultRehypePlugins.sanitize as [
     Pluggable,
     SanitizeSchema,
@@ -110,7 +122,7 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
       const overrideNames = new Set(ALLOWED_TAGS[tag])
       const filtered = existing.filter((entry) => {
         const name = typeof entry === 'string' ? entry : entry[0]
-        return !overrideNames.has(name as string)
+        return !overrideNames.has(name)
       })
       mergedAttributes[tag] = [...filtered, ...(ALLOWED_TAGS[tag] ?? [])]
     } else {
@@ -144,6 +156,7 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
     defaultRehypePlugins.raw!,
     ...(extraPlugins ?? []),
     [sanitizePlugin, customSchema] as Pluggable,
+    ...(isPlugin ? [rehypePluginAssetPaths] : []),
     defaultRehypePlugins.harden!,
   ]
 }
@@ -163,6 +176,7 @@ export type StreamdownWrapperProps = {
   isAnimating?: boolean
   className?: string
   mode?: StreamdownProps['mode']
+  renderSoftBreaks?: boolean
 }
 
 const StreamdownWrapper = (props: StreamdownWrapperProps) => {
@@ -173,6 +187,7 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
     isAnimating,
     className,
     mode = 'streaming',
+    renderSoftBreaks = true,
   } = props
   // Remend treats Markdown punctuation inside raw HTML attributes as incomplete syntax.
   // Form markup must reach the HTML parser unchanged or a field name such as `field()!*&-`
@@ -187,15 +202,15 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
           : defaultRemarkPlugins.gfm,
         { singleTilde: false },
       ] as Pluggable,
-      RemarkBreaks,
+      ...(renderSoftBreaks ? [RemarkBreaks] : []),
       ...(props.remarkPlugins ?? []),
     ],
-    [props.remarkPlugins],
+    [props.remarkPlugins, renderSoftBreaks],
   )
 
   const rehypePlugins = useMemo(
-    () => buildRehypePlugins(props.rehypePlugins ?? undefined),
-    [props.rehypePlugins],
+    () => buildRehypePlugins(props.rehypePlugins ?? undefined, !!pluginInfo),
+    [props.rehypePlugins, pluginInfo],
   )
 
   const plugins = useMemo(

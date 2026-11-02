@@ -180,7 +180,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
             tenant_id=tenant_id,
             datasource_provider_id=datasource_provider_id,
         )
-        if not oauth_config:
+        if not oauth_config or not oauth_config.credentials:
             raise ValueError(f"No OAuth Client Config for {provider_id}")
 
         # Visibility is chosen by the user in the frontend before the redirect,
@@ -203,7 +203,10 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
             plugin_id=plugin_id,
             provider=provider_name,
             credential_id=credential_id,
-            extra_data={"visibility": requested_visibility.value},
+            extra_data={
+                "visibility": requested_visibility.value,
+                "plugin_unique_identifier": oauth_config.plugin_unique_identifier,
+            },
         )
         oauth_handler = OAuthHandler()
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
@@ -213,7 +216,8 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
             plugin_id=plugin_id,
             provider=provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_config,
+            system_credentials=dict(oauth_config.credentials),
+            plugin_unique_identifier=oauth_config.plugin_unique_identifier,
         )
         # response-contract:ignore cookie-bearing Flask response
         response = make_response(dump_response(PluginOAuthAuthorizationUrlResponse, authorization_url_response))
@@ -251,8 +255,18 @@ class DatasourceOAuthCallback(Resource):
             tenant_id=tenant_id,
             datasource_provider_id=datasource_provider_id,
         )
-        if not oauth_client_params:
+        if not oauth_client_params or not oauth_client_params.credentials:
             raise NotFound()
+        try:
+            OAuthProxyService.validate_plugin_context(
+                context,
+                plugin_id=plugin_id,
+                provider=datasource_provider_id.provider_name,
+                plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
+            )
+        except ValueError as error:
+            raise Forbidden(str(error)) from error
+
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
         oauth_handler = OAuthHandler()
         oauth_response = oauth_handler.get_credentials(
@@ -261,7 +275,8 @@ class DatasourceOAuthCallback(Resource):
             plugin_id=plugin_id,
             provider=datasource_provider_id.provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_client_params,
+            system_credentials=dict(oauth_client_params.credentials),
+            plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
             request=request,
         )
         credential_id: str | None = context.get("credential_id")
@@ -325,7 +340,7 @@ class DatasourceAuth(Resource):
                 name=req_data.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
     @console_ns.response(

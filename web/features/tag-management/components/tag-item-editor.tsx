@@ -6,6 +6,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -16,6 +17,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type TagItemEditorProps = {
   tag: Tag
@@ -23,8 +25,12 @@ type TagItemEditorProps = {
 }
 export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
   const { t } = useTranslation(['common'])
-  const updateTagMutation = useMutation(consoleQuery.tags.byTagId.patch.mutationOptions())
-  const deleteTagMutation = useMutation(consoleQuery.tags.byTagId.delete.mutationOptions())
+  const updateTagMutation = useMutation(
+    consoleQuery.tags.byTagId.patch.mutationOptions({ context: { silent: true } }),
+  )
+  const deleteTagMutation = useMutation(
+    consoleQuery.tags.byTagId.delete.mutationOptions({ context: { silent: true } }),
+  )
   const [isEditing, setIsEditing] = useState(false)
   const editTag = (tagId: string, name: string) => {
     if (name === tag.name) {
@@ -48,12 +54,14 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           setIsEditing(false)
           onTagsChange?.()
         },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+          )
           setIsEditing(false)
         },
       },
@@ -71,11 +79,13 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           onTagsChange?.()
         },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+          )
         },
       },
     )
@@ -90,7 +100,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
     <>
       <div
         className={cn(
-          'flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 pr-1 pl-2 text-sm/5 text-text-secondary',
+          'flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 ps-2 pe-1 text-sm/5 text-text-secondary',
         )}
       >
         {!isEditing && (
@@ -152,17 +162,14 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
         onOpenChange={(open) => !open && setShowRemoveModal(false)}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              title={`${t(($) => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-            >
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {`${t(($) => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['tag.deleteTip'], { ns: 'common' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

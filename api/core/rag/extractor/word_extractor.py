@@ -14,6 +14,7 @@ from typing import override
 from urllib.parse import urlparse
 
 from docx import Document as DocxDocument
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
@@ -123,7 +124,7 @@ class WordExtractor(BaseExtractor):
         base_url = dify_config.FILES_URL
 
         for r_id, rel in doc.part.rels.items():
-            if "image" in rel.target_ref:
+            if rel.reltype == RT.IMAGE:
                 image_count += 1
                 if rel.is_external:
                     url = rel.target_ref
@@ -201,8 +202,7 @@ class WordExtractor(BaseExtractor):
 
         header_row = table.rows[0]
         headers = self._parse_row(header_row, image_map, total_cols)
-        markdown.append("| " + " | ".join(headers) + " |")
-        markdown.append("| " + " | ".join(["---"] * total_cols) + " |")
+        markdown.extend(("| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * total_cols) + " |"))
 
         for row in table.rows[1:]:
             row_cells = self._parse_row(row, image_map, total_cols)

@@ -1,6 +1,8 @@
 import type { TestWorld } from '@test/fixtures/kernel'
+import type { BaseError } from '@/errors/base'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
+import { ExitCode } from '@/errors/codes'
 import { commands } from '@/plugins/commands'
 import { ENV } from '@/plugins/env'
 import { session } from '@/plugins/session'
@@ -10,13 +12,28 @@ afterEach(async () => {
   for (const w of worlds.splice(0)) await w.stop()
 })
 
-it('pins the workspace locally without a server call', async () => {
-  const w = await testContext({ login: true, argv: ['use', 'workspace', 'ws-9'] })
+it('pins a workspace the account belongs to and names it', async () => {
+  const w = await testContext({ login: true, argv: ['use', 'workspace', 'ws-2'] })
   worlds.push(w)
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(JSON.parse(w.io.outBuf())).toEqual({ workspace_id: 'ws-9' })
-  expect(await (await w.ctx.get(session)).workspaceId()).toBe('ws-9')
-  expect(w.mock.requestCount).toBe(0)
+  expect(JSON.parse(w.io.outBuf())).toEqual({ workspace_id: 'ws-2', name: 'Other' })
+  expect(await (await w.ctx.get(session)).workspaceId()).toBe('ws-2')
+})
+
+it('describe workspace with no id shows the pinned workspace', async () => {
+  const w = await testContext({ login: true, argv: ['describe', 'workspace'] })
+  worlds.push(w)
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({ id: 'ws-1', name: 'Default' })
+})
+
+it('refuses a workspace the account does not belong to and keeps the old pin', async () => {
+  const w = await testContext({ login: true, argv: ['use', 'workspace', 'ws-9'] })
+  worlds.push(w)
+  const err = await (await w.ctx.get(commands)).run().catch((e: unknown) => e)
+  expect(err).toMatchObject({ message: 'workspace not found' })
+  expect((err as BaseError).exit()).toBe(ExitCode.Generic)
+  expect(await (await w.ctx.get(session)).workspaceId()).toBe('ws-1')
 })
 
 it('refuses under an env login and without a login', async () => {

@@ -1,18 +1,14 @@
 'use client'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
+import { getAvatarInitial } from '@/utils/avatar'
 
 export default function AppSelector() {
   const { t } = useTranslation(['common'])
@@ -36,21 +32,20 @@ export default function AppSelector() {
   if (!userProfile) return null
 
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger
+    <Menu modal={false}>
+      <MenuTrigger
         aria-label={userProfile.name}
         className={cn(
           'inline-flex size-8 items-center justify-center rounded-full border-none bg-transparent p-0 text-sm text-text-primary',
           'hover:opacity-80 active:opacity-70 data-popup-open:opacity-80',
         )}
       >
-        <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        className="w-60 max-w-80 divide-y divide-divider-subtle bg-components-panel-bg-blur p-0"
-      >
+        <Avatar aria-hidden="true">
+          <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+        </Avatar>
+      </MenuTrigger>
+      <MenuContent className="w-60 max-w-80 divide-y divide-divider-subtle bg-components-panel-bg-blur p-0">
         <div className="p-1">
           <div className="flex flex-nowrap items-center px-3 py-2">
             <div className="min-w-0 grow">
@@ -67,11 +62,14 @@ export default function AppSelector() {
                 {userProfile.email}
               </div>
             </div>
-            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
+            <Avatar aria-hidden="true">
+              <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+              <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+            </Avatar>
           </div>
         </div>
         <div className="p-1">
-          <DropdownMenuItem className="h-9 justify-start px-3" onClick={() => logout()}>
+          <MenuItem className="h-9 justify-start px-3" onClick={() => logout()}>
             <span
               aria-hidden="true"
               className="mr-1 i-custom-vender-line-general-log-out-01 flex size-4 text-text-tertiary"
@@ -79,9 +77,9 @@ export default function AppSelector() {
             <span className="text-[14px] font-normal text-text-secondary">
               {t(($) => $['userProfile.logout'], { ns: 'common' })}
             </span>
-          </DropdownMenuItem>
+          </MenuItem>
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }

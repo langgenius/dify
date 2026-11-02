@@ -354,12 +354,15 @@ class MilvusVector(BaseVector):
                 ):
                     content_field_kwargs["analyzer_params"] = self._client_config.analyzer_params
 
-                fields.append(FieldSchema(Field.CONTENT_KEY, DataType.VARCHAR, **content_field_kwargs))
-
-                # Create the primary key field
-                fields.append(FieldSchema(Field.PRIMARY_KEY, DataType.INT64, is_primary=True, auto_id=True))
-                # Create the vector field, supports binary or float vectors
-                fields.append(FieldSchema(Field.VECTOR, infer_dtype_bydata(embeddings[0]), dim=dim))
+                fields.extend(
+                    [
+                        FieldSchema(Field.CONTENT_KEY, DataType.VARCHAR, **content_field_kwargs),
+                        # Create the primary key field
+                        FieldSchema(Field.PRIMARY_KEY, DataType.INT64, is_primary=True, auto_id=True),
+                        # Create the vector field, supports binary or float vectors
+                        FieldSchema(Field.VECTOR, infer_dtype_bydata(embeddings[0]), dim=dim),
+                    ]
+                )
                 # Create Sparse Vector Index for the collection
                 if self._hybrid_search_enabled:
                     fields.append(FieldSchema(Field.SPARSE_VECTOR, DataType.SPARSE_FLOAT_VECTOR))

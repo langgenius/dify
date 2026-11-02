@@ -25,8 +25,8 @@ from services.annotation_command_service import AnnotationCommandService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
 from tasks.annotation.delete_annotation_index_task import delete_annotation_index_task
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_app
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_app
 
 INVALID_BACKEND = "annotation-test-uninstalled-vector-backend"
 WriteOperation = Literal["add", "update"]

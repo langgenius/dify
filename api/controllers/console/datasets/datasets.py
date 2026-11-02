@@ -1,26 +1,28 @@
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import datetime
 from http import HTTPStatus
-from typing import Any, Never
+from typing import Annotated, Any, Never
 from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
-from werkzeug.exceptions import Forbidden, NotFound
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError, field_validator, model_validator
+from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_errors
+from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_create_errors, api_key_errors
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
-    DatasetInUseError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
+from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
@@ -29,6 +31,7 @@ from controllers.console.wraps import (
 )
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.query_type import QueryType
 from extensions.ext_application_services import application_services
 from fields.api_key_fields import ApiKeyItem, ApiKeyList, build_masked_api_key_list
 from fields.base import ResponseModel
@@ -36,14 +39,23 @@ from fields.dataset_fields import (
     DatasetDetailResponse,
     NotionEstimateWorkspacePayload,
 )
+from fields.document_fields import DocumentStatusListResponse
+from libs.external_api import error_responses
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
+from models.enums import CreatorUserRole, DatasetQuerySource
 from models.enums import PermissionEnum as DatasetPermissionEnum
-from services.errors.dataset import DatasetInUseError as DatasetInUseFailure
+from models.model import AppMode, IconType
+from services.dataset_knowledge_fs_upgrade_service import (
+    KnowledgeFSUpgradeConflictError,
+    KnowledgeFSUpgradeNotFoundError,
+    upgrade_job_response,
+)
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetListFilter
+from services.knowledge.datasets.upgrades import KnowledgeFSUpgradeUnavailableError
 from services.knowledge.entities.indexing_estimate import (
     NewEstimateSource,
     NewSourcesEstimateCommand,
@@ -59,25 +71,67 @@ from services.knowledge.indexing.estimate import (
     IndexingEstimateProviderUnavailableError,
     UnsupportedEstimateSourceError,
 )
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSIdempotencyHeader,
+    KnowledgeFSUpgradeDiscoveryResponse,
+    KnowledgeFSUpgradeJobListResponse,
+    KnowledgeFSUpgradeJobResponse,
+    KnowledgeFSUpgradeRetryResponse,
+)
 
 _DATASET_EDIT_ROLES = frozenset(
     {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.DATASET_OPERATOR}
 )
+_KNOWLEDGE_FS_UPGRADE_IDEMPOTENCY_HEADER_PARAMS = {
+    "Idempotency-Key": {
+        "description": "Stable key used to make the Dataset upgrade safe to retry",
+        "in": "header",
+        "maxLength": 255,
+        "minLength": 8,
+        "required": True,
+        "type": "string",
+    }
+}
 
 
 def _raise_dataset_error(error: Exception) -> Never:
+    """Translate the scope errors every dataset operation can raise."""
     if isinstance(error, DatasetNotFoundError):
         raise NotFound("Dataset not found.") from error
     if isinstance(error, DatasetAccessDeniedError):
         raise Forbidden(str(error)) from error
-    if isinstance(error, DatasetNameDuplicateFailure):
-        raise DatasetNameDuplicateError() from error
-    if isinstance(error, DatasetInUseFailure):
-        raise DatasetInUseError() from error
     raise error
 
 
+def _raise_dataset_create_error(error: Exception) -> Never:
+    if isinstance(error, DatasetNameDuplicateFailure):
+        raise DatasetNameDuplicateError() from error
+    _raise_dataset_error(error)
+
+
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
+
+
+@contextmanager
+def _upgrade_errors() -> Generator[None]:
+    try:
+        yield
+    except (DatasetNotFoundError, DatasetAccessDeniedError) as error:
+        _raise_dataset_error(error)
+    except (KnowledgeFSUpgradeNotFoundError, KnowledgeFSUpgradeUnavailableError) as error:
+        raise NotFound(str(error) or None) from error
+    except KnowledgeFSUpgradeConflictError as error:
+        raise Conflict(str(error)) from error
+
+
+def _knowledge_fs_upgrade_idempotency_key() -> str:
+    try:
+        header = KnowledgeFSIdempotencyHeader.model_validate(
+            {"idempotency-key": request.headers.get("Idempotency-Key")}
+        )
+    except ValidationError as error:
+        raise BadRequest("A valid Idempotency-Key header is required") from error
+    return header.idempotency_key
 
 
 def _validate_indexing_technique(value: str | None) -> str | None:
@@ -204,9 +258,12 @@ def _new_estimate_sources(info_list: dict[str, Any]) -> tuple[NewEstimateSource,
 
 
 class DatasetApiKeyCreatePayload(BaseModel):
-    # Knowledge bases to scope the key to. Absent/empty => the key can access every
-    # dataset in the tenant (default). Declared so the generated client can send it.
+    # Knowledge bases to scope the key to. Both lists absent/empty => the key can access
+    # every knowledge base in the tenant (default). Legacy datasets and KnowledgeFS spaces
+    # live in different tables, so they are listed separately. Declared so the generated
+    # client can send them.
     dataset_ids: list[str] = Field(default_factory=list)
+    knowledge_space_ids: list[str] = Field(default_factory=list)
 
 
 class ConsoleDatasetListQuery(BaseModel):
@@ -216,10 +273,16 @@ class ConsoleDatasetListQuery(BaseModel):
     include_all: bool = Field(default=False, description="Include all datasets")
     ids: list[str] = Field(default_factory=list, description="Filter by dataset IDs")
     tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
+    creator_ids: list[Annotated[str, Field(min_length=1, max_length=255)]] = Field(
+        default_factory=list,
+        max_length=100,
+        description="Filter by creator account IDs",
+    )
 
 
 class DatasetListItemResponse(DatasetDetailResponse):
     partial_member_list: list[str]
+    knowledge_fs_upgrade: KnowledgeFSUpgradeDiscoveryResponse
 
 
 class DatasetListResponse(ResponseModel):
@@ -244,7 +307,7 @@ class DatasetQueryFileInfoResponse(ResponseModel):
 
 
 class DatasetQueryContentResponse(ResponseModel):
-    content_type: str
+    content_type: QueryType
     content: str
     file_info: DatasetQueryFileInfoResponse | None = None
 
@@ -252,9 +315,9 @@ class DatasetQueryContentResponse(ResponseModel):
 class DatasetQueryDetailResponse(ResponseModel):
     id: str
     queries: list[DatasetQueryContentResponse]
-    source: str
+    source: DatasetQuerySource
     source_app_id: str | None
-    created_by_role: str
+    created_by_role: CreatorUserRole
     created_by: str
     created_at: int
 
@@ -276,8 +339,8 @@ class RelatedAppResponse(ResponseModel):
     id: str
     name: str
     description: str
-    mode: str = Field(validation_alias="mode_compatible_with_agent")
-    icon_type: str | None
+    mode: AppMode = Field(validation_alias="mode_compatible_with_agent")
+    icon_type: IconType | None
     icon: str | None
     icon_background: str | None
     icon_url: str | None = None
@@ -291,39 +354,6 @@ class RelatedAppResponse(ResponseModel):
 class RelatedAppListResponse(ResponseModel):
     data: list[RelatedAppResponse]
     total: int
-
-
-class DocumentStatusResponse(ResponseModel):
-    id: str
-    indexing_status: str
-    processing_started_at: int | None
-    parsing_completed_at: int | None
-    cleaning_completed_at: int | None
-    splitting_completed_at: int | None
-    completed_at: int | None
-    paused_at: int | None
-    error: str | None
-    stopped_at: int | None
-    completed_segments: int | None = None
-    total_segments: int | None = None
-
-    @field_validator(
-        "processing_started_at",
-        "parsing_completed_at",
-        "cleaning_completed_at",
-        "splitting_completed_at",
-        "completed_at",
-        "paused_at",
-        "stopped_at",
-        mode="before",
-    )
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
-class DocumentStatusListResponse(ResponseModel):
-    data: list[DocumentStatusResponse]
 
 
 class ErrorDocsResponse(DocumentStatusListResponse):
@@ -370,6 +400,10 @@ register_response_schema_models(
     RetrievalSettingResponse,
     PartialMemberListResponse,
     AutoDisableLogsResponse,
+    KnowledgeFSUpgradeJobResponse,
+    KnowledgeFSUpgradeRetryResponse,
+    KnowledgeFSUpgradeDiscoveryResponse,
+    KnowledgeFSUpgradeJobListResponse,
 )
 
 
@@ -384,7 +418,7 @@ class DatasetListApi(Resource):
     @console_account_admission(require_valid_enterprise_license=True)
     def get(self, request_context: RequestContext):
         query_params: dict[str, str | list[str]] = dict(request.args.to_dict())
-        for key in ("ids", "tag_ids"):
+        for key in ("ids", "tag_ids", "creator_ids"):
             if key in request.args:
                 query_params[key] = request.args.getlist(key)
         query = ConsoleDatasetListQuery.model_validate(query_params)
@@ -393,6 +427,7 @@ class DatasetListApi(Resource):
         )
         return dump_response(DatasetListResponse, result), HTTPStatus.OK
 
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.doc("create_dataset")
     @console_ns.doc(description="Create a new dataset")
     @console_ns.expect(console_ns.models[DatasetCreatePayload.__name__])
@@ -412,7 +447,7 @@ class DatasetListApi(Resource):
                 request_context, values=req_data.model_dump()
             )
         except Exception as error:
-            _raise_dataset_error(error)
+            _raise_dataset_create_error(error)
         return dump_response(DatasetDetailWithPartialMembersResponse, result), 201
 
 
@@ -473,6 +508,85 @@ class DatasetApi(Resource):
         return "", 204
 
 
+@console_ns.route("/datasets/knowledge-fs-upgrade-jobs")
+class DatasetKnowledgeFSUpgradeJobsApi(Resource):
+    @console_ns.response(
+        200,
+        "Recoverable upgrade jobs from the Classic Knowledge Base to an Agent Knowledge Base",
+        console_ns.models[KnowledgeFSUpgradeJobListResponse.__name__],
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, Workspace()),))
+    def get(self, request_context: RequestContext):
+        jobs = application_services().knowledge.upgrades.list_recoverable_jobs(request_context)
+        return dump_response(KnowledgeFSUpgradeJobListResponse, {"data": [upgrade_job_response(job) for job in jobs]})
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/knowledge-fs-upgrades")
+class DatasetKnowledgeFSUpgradeApi(Resource):
+    @console_ns.response(
+        200,
+        "Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base",
+        console_ns.models[KnowledgeFSUpgradeDiscoveryResponse.__name__],
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    def get(self, request_context: RequestContext, dataset_id: UUID):
+        with _upgrade_errors():
+            discovery = application_services().knowledge.upgrades.discovery(request_context, dataset_id=str(dataset_id))
+        return dump_response(KnowledgeFSUpgradeDiscoveryResponse, discovery)
+
+    @console_ns.doc(params=_KNOWLEDGE_FS_UPGRADE_IDEMPOTENCY_HEADER_PARAMS)
+    @console_ns.response(
+        202,
+        "Upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted",
+        console_ns.models[KnowledgeFSUpgradeJobResponse.__name__],
+    )
+    @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
+    )
+    def post(self, request_context: RequestContext, dataset_id: UUID):
+        upgrades = application_services().knowledge.upgrades
+        with _upgrade_errors():
+            job = upgrades.start(
+                request_context,
+                dataset_id=str(dataset_id),
+                idempotency_key=_knowledge_fs_upgrade_idempotency_key(),
+            )
+        return dump_response(KnowledgeFSUpgradeJobResponse, upgrade_job_response(job)), 202
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/knowledge-fs-upgrades/<string:job_id>")
+class DatasetKnowledgeFSUpgradeJobApi(Resource):
+    @console_ns.response(
+        200,
+        "Status of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base",
+        console_ns.models[KnowledgeFSUpgradeJobResponse.__name__],
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    def get(self, request_context: RequestContext, dataset_id: UUID, job_id: str):
+        with _upgrade_errors():
+            job = application_services().knowledge.upgrades.get_job(
+                request_context, dataset_id=str(dataset_id), job_id=job_id
+            )
+        return dump_response(KnowledgeFSUpgradeJobResponse, upgrade_job_response(job))
+
+    @console_ns.response(
+        202,
+        "Retry of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted",
+        console_ns.models[KnowledgeFSUpgradeRetryResponse.__name__],
+    )
+    @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
+    )
+    def post(self, request_context: RequestContext, dataset_id: UUID, job_id: str):
+        with _upgrade_errors():
+            job = application_services().knowledge.upgrades.retry(
+                request_context, dataset_id=str(dataset_id), job_id=job_id
+            )
+        return dump_response(KnowledgeFSUpgradeRetryResponse, {"id": job.id, "status": "queued"}), 202
+
+
 @console_ns.route("/datasets/<uuid:dataset_id>/use-check")
 class DatasetUseCheckApi(Resource):
     @console_ns.doc("check_dataset_use")
@@ -492,11 +606,16 @@ class DatasetUseCheckApi(Resource):
         return dump_response(UsageCheckResponse, {"is_using": result}), 200
 
 
+class DatasetQueryListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
+
+
 @console_ns.route("/datasets/<uuid:dataset_id>/queries")
 class DatasetQueryApi(Resource):
     @console_ns.doc("get_dataset_queries")
     @console_ns.doc(description="Get dataset query history")
-    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.doc(params={"dataset_id": "Dataset ID", **query_params_from_model(DatasetQueryListQuery)})
     @console_ns.response(
         200,
         "Query history retrieved successfully",
@@ -518,6 +637,7 @@ class DatasetQueryApi(Resource):
 
 @console_ns.route("/datasets/indexing-estimate")
 class DatasetIndexingEstimateApi(Resource):
+    @error_responses(DatasetAccessDeniedRequestError, IndexingEstimateError, ProviderNotInitializeError)
     @console_ns.doc("estimate_dataset_indexing")
     @console_ns.doc(description="Estimate dataset indexing cost")
     @console_ns.response(
@@ -636,6 +756,7 @@ class DatasetApiKeyApi(Resource):
             keys = application_services().dataset_api_keys.list_workspace_keys(request_context)
         return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
+    @error_responses(ApiKeyLimitExceededHTTPError)
     @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
@@ -646,12 +767,21 @@ class DatasetApiKeyApi(Resource):
     def post(self, request_context: RequestContext):
         # Preserve the optional scope and validation response of the workspace route.
         payload = request.get_json(silent=True) or {}
-        dataset_ids = payload.get("dataset_ids") or []
-        if not isinstance(dataset_ids, list) or any(not isinstance(item, str) for item in dataset_ids):
-            console_ns.abort(400, message="dataset_ids must be a list of strings.")
-        with api_key_errors():
-            key = application_services().dataset_api_keys.create_workspace_key(request_context, tuple(dataset_ids))
+        raw_dataset_ids = self._id_list(payload, "dataset_ids")
+        knowledge_space_ids = self._id_list(payload, "knowledge_space_ids")
+        with api_key_create_errors():
+            key = application_services().dataset_api_keys.create_workspace_key(
+                request_context, tuple(raw_dataset_ids), knowledge_space_ids=tuple(knowledge_space_ids)
+            )
         return dump_response(ApiKeyItem, key), 200
+
+    @staticmethod
+    def _id_list(payload: object, key: str) -> list[str]:
+        raw = payload.get(key) if isinstance(payload, dict) else None
+        raw = raw or []
+        if not isinstance(raw, list) or any(not isinstance(item, str) for item in raw):
+            raise BadRequest(f"{key} must be a list of strings.")
+        return list(dict.fromkeys(raw))
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")

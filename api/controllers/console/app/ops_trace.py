@@ -1,4 +1,3 @@
-from typing import Any
 from uuid import UUID
 
 from flask_restx import Resource
@@ -11,6 +10,7 @@ from controllers.console.app.error import (
     AppNotFoundError,
     InvalidTracingConfigError,
     TracingConfigAlreadyExistsError,
+    TracingConfigConflictError,
     TracingConfigNotFoundError,
     TracingConfigProcessingError,
     TracingConfigVerificationFailedError,
@@ -24,12 +24,14 @@ from controllers.console.wraps import (
 )
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from services.app_tracing_config_service import (
     AppTracingConfigAlreadyExistsError,
     AppTracingConfigAppNotFoundError,
+    AppTracingConfigConflictError,
     AppTracingConfigInvalidConfigurationError,
     AppTracingConfigInvalidProviderError,
     AppTracingConfigNotFoundError,
@@ -53,8 +55,12 @@ class TraceProviderQuery(BaseModel):
 
 
 class TraceConfigPayload(BaseModel):
+    activate: bool = Field(
+        default=False,
+        description="Save, select this provider, and enable tracing atomically; preserve capture settings",
+    )
     tracing_provider: str = Field(..., description="Tracing provider name")
-    tracing_config: dict[str, Any] = Field(
+    tracing_config: dict[str, str | None] = Field(
         ...,
         description="Tracing configuration data",
     )
@@ -67,7 +73,7 @@ class TraceAppConfigResponse(ResponseModel):
     id: str | None = None
     app_id: str | None = None
     tracing_provider: str | None = None
-    tracing_config: dict[str, Any] | None = Field(default=None)
+    tracing_config: dict[str, str | None] | None = Field(default=None)
     is_active: bool | None = None
     created_at: str | None = None
     updated_at: str | None = None
@@ -95,6 +101,9 @@ class TraceAppConfigApi(Resource):
     Manage trace app configurations
     """
 
+    @error_responses(
+        AppNotFoundError, TracingConfigProcessingError, TracingProviderUnavailableError, UnsupportedTracingProviderError
+    )
     @console_ns.doc("get_trace_app_config")
     @console_ns.doc(description="Get tracing configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -142,6 +151,15 @@ class TraceAppConfigApi(Resource):
             exclude_none=True,
         )
 
+    @error_responses(
+        AppNotFoundError,
+        InvalidTracingConfigError,
+        TracingConfigAlreadyExistsError,
+        TracingConfigProcessingError,
+        TracingConfigVerificationFailedError,
+        TracingProviderUnavailableError,
+        UnsupportedTracingProviderError,
+    )
     @console_ns.doc("create_trace_app_config")
     @console_ns.doc(description="Create a new tracing configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -174,6 +192,7 @@ class TraceAppConfigApi(Resource):
                 app_id=str(app_id),
                 tracing_provider=req_data.tracing_provider,
                 tracing_config=req_data.tracing_config,
+                activate=req_data.activate,
             )
         except AppTracingConfigAppNotFoundError as error:
             raise AppNotFoundError() from error
@@ -194,6 +213,16 @@ class TraceAppConfigApi(Resource):
 
         return dump_response(TraceAppConfigResponse, {"result": "success"}, exclude_none=True), 201
 
+    @error_responses(
+        AppNotFoundError,
+        InvalidTracingConfigError,
+        TracingConfigNotFoundError,
+        TracingConfigConflictError,
+        TracingConfigProcessingError,
+        TracingConfigVerificationFailedError,
+        TracingProviderUnavailableError,
+        UnsupportedTracingProviderError,
+    )
     @console_ns.doc("update_trace_app_config")
     @console_ns.doc(description="Update an existing tracing configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -225,9 +254,12 @@ class TraceAppConfigApi(Resource):
                 app_id=str(app_id),
                 tracing_provider=req_data.tracing_provider,
                 tracing_config=req_data.tracing_config,
+                activate=req_data.activate,
             )
         except AppTracingConfigAppNotFoundError as error:
             raise AppNotFoundError() from error
+        except AppTracingConfigConflictError as error:
+            raise TracingConfigConflictError() from error
         except AppTracingConfigNotFoundError as error:
             raise TracingConfigNotFoundError() from error
         except AppTracingConfigInvalidProviderError as error:
@@ -245,6 +277,9 @@ class TraceAppConfigApi(Resource):
 
         return dump_response(TraceAppConfigResponse, {"result": "success"}, exclude_none=True)
 
+    @error_responses(
+        AppNotFoundError, TracingConfigNotFoundError, TracingConfigProcessingError, UnsupportedTracingProviderError
+    )
     @console_ns.doc("delete_trace_app_config")
     @console_ns.doc(description="Delete an existing tracing configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})

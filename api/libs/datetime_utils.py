@@ -77,7 +77,7 @@ def parse_time_range(
         try:
             dt = datetime.datetime.strptime(time_str, "%Y-%m-%d %H:%M").replace(second=0)
         except ValueError as e:
-            raise ValueError(f"Invalid {label} time format: {e}")
+            raise ValueError(f"Invalid {label} time format: {e}") from e
 
         try:
             return tz.localize(dt, is_dst=None).astimezone(utc)

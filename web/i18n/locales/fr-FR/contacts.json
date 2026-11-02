@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "Les contacts sélectionnés seront définitivement supprimés de cet espace de travail. Cette action est irréversible.",
+  "directory.removalTitle": "Supprimer les contacts ?",
+  "imPlatform.bindingDialog.clearSavedCredential": "Effacer la valeur enregistrée",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Cette valeur enregistrée sera effacée lors de la sauvegarde.",
+  "imPlatform.bindingDialog.replacementRequired": "Ces identifiants appartiennent à un autre locataire IM et ne peuvent pas être enregistrés directement. Pour changer de locataire, vous devez remplacer le canal IM actuel, ce qui supprime toutes les associations IM automatiques et manuelles. Synchronisez à nouveau les contacts après le remplacement.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "La configuration a été enregistrée, mais ses détails n’ont pas pu être chargés. Fermez cette boîte de dialogue et rouvrez-la.",
+  "imPlatform.bindingDialog.undoClearCredential": "Annuler l’effacement"
+}

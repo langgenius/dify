@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Если вам нужна помощь, обратитесь к администратору приложения.",
+  "appNotAccessible.documentTitle": "Приложение недоступно · Dify",
+  "appNotAccessible.ipAddress": "Ваш IP-адрес — <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Это приложение не существует или недоступно из вашей сети.",
   "chat.chatFormTip": "Настройки чата не могут быть изменены после его начала.",
   "chat.chatSettingsTitle": "Новая настройка чата",
   "chat.collapse": "Свернуть",
@@ -45,6 +49,7 @@
   "generation.tabs.saved": "Сохраненные",
   "generation.title": "Завершение ИИ",
   "humanInput.completed": "Похоже, этот запрос был обработан в другом месте.",
+  "humanInput.currentAccount": "Текущий аккаунт: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Это действие истечет {{relativeTime}}.",
   "humanInput.expired": "Похоже, срок действия этого запроса истёк.",
   "humanInput.expiredTip": "Срок действия этого действия истёк.",
@@ -53,6 +58,9 @@
   "humanInput.recorded": "Ваш ввод был записан.",
   "humanInput.sorry": "Извините!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Сменить аккаунт",
   "humanInput.thanks": "Спасибо!",
+  "humanInput.unavailableDescription": "Возможно, ссылка недоступна или не соответствует аккаунту, в который вы вошли. Откройте форму из полученного уведомления или попробуйте сменить аккаунт.",
+  "humanInput.unavailableTitle": "Не удалось открыть эту форму",
   "login.backToHome": "Назад на главную"
 }

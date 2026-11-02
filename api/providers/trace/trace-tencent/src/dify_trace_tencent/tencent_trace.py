@@ -1,9 +1,8 @@
-from typing import override
-
 """Tencent APM tracing with idempotent client cleanup."""
 
 import inspect
 import logging
+from typing import override
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker

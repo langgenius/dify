@@ -1,54 +1,18 @@
 import { render, screen } from '@testing-library/react'
-import * as React from 'react'
+import userEvent from '@testing-library/user-event'
+import { captureDownloads } from '@/test/download'
 import ResDownload from '../index'
 
-const mockType = { Link: 'mock-link' }
-let capturedProps: Record<string, unknown> | undefined
+afterEach(() => vi.restoreAllMocks())
 
-vi.mock('react-papaparse', () => ({
-  useCSVDownloader: () => {
-    const CSVDownloader = ({
-      children,
-      ...props
-    }: React.PropsWithChildren<Record<string, unknown>>) => {
-      capturedProps = props
-      return (
-        <div data-testid="csv-downloader" className={props.className as string}>
-          {children}
-        </div>
-      )
-    }
-    return {
-      CSVDownloader,
-      Type: mockType,
-    }
-  },
-}))
+it('downloads generated results with commas, quotes, and newlines preserved', async () => {
+  const user = userEvent.setup()
+  const downloads = captureDownloads()
+  render(<ResDownload isMobile={false} values={[{ text: 'Hello, "world"\nNext line' }]} />)
 
-describe('ResDownload', () => {
-  const values = [{ text: 'Hello' }]
+  await user.click(screen.getByRole('button', { name: 'common.operation.download' }))
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    capturedProps = undefined
-  })
-
-  it('should render desktop download button with CSV downloader props', () => {
-    render(<ResDownload isMobile={false} values={values} />)
-
-    expect(screen.getByTestId('csv-downloader')).toBeInTheDocument()
-    expect(screen.getByText('common.operation.download')).toBeInTheDocument()
-    expect(capturedProps?.data).toEqual(values)
-    expect(capturedProps?.filename).toBe('result')
-    expect(capturedProps?.bom).toBe(true)
-    expect(capturedProps?.type).toBe(mockType.Link)
-  })
-
-  it('should render mobile action button without desktop label', () => {
-    render(<ResDownload isMobile={true} values={values} />)
-
-    expect(screen.getByTestId('csv-downloader')).toBeInTheDocument()
-    expect(screen.queryByText('common.operation.download')).not.toBeInTheDocument()
-    expect(screen.getByRole('button')).toBeInTheDocument()
-  })
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0]!.filename).toBe('result.csv')
+  expect(await downloads[0]!.blob.text()).toBe('\uFEFFtext\r\n"Hello, ""world""\nNext line"')
 })

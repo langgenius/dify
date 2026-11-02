@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * VectorSpaceLimitationModel
  */
 export const zVectorSpaceLimitationModel = z.object({
@@ -71,7 +87,7 @@ export const zCloudPlan = z.enum(['professional', 'sandbox', 'team'])
  * SubscriptionModel
  */
 export const zSubscriptionModel = z.object({
-  interval: z.string().default(''),
+  interval: z.enum(['', 'month', 'year']).default(''),
   plan: zCloudPlan.default('sandbox'),
 })
 
@@ -99,8 +115,10 @@ export const zFeatureModel = z.object({
   can_replace_logo: z.boolean().default(false),
   documents_upload_quota: zLimitationModel.default({ limit: 50, size: 0 }),
   education: zEducationModel.default({ activated: false, enabled: false }),
+  enable_knowledge_fs: z.boolean().default(false),
   enable_skill: z.boolean().default(true),
   human_input_email_delivery_enabled: z.boolean().default(false),
+  im_centrally_managed: z.boolean().default(false),
   is_allow_transfer_workspace: z.boolean().default(true),
   knowledge_pipeline: zKnowledgePipeline.default({ publish_enabled: false }),
   members: zLimitationModel.default({ limit: 1, size: 0 }),

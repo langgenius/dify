@@ -1,5 +1,4 @@
 'use client'
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { zPostSetupBody } from '@dify/contracts/api/console/setup/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -13,7 +12,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,8 +23,7 @@ import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { encryptPassword as encodePassword } from '@/utils/encryption'
 
 const accountFormSchema = zPostSetupBody.pick({ email: true, name: true, password: true }).extend({
@@ -43,8 +41,27 @@ const InstallForm = () => {
   const { push, replace } = useRouter()
   const queryClient = useQueryClient()
   const [showPassword, setShowPassword] = React.useState(false)
-  const [loading, setLoading] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const setupStatus = useQuery(
+    consoleQuery.setup.get.queryOptions({
+      staleTime: 0,
+      retry: false,
+      throwOnError: true,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    }),
+  )
+  const initStatus = useQuery(
+    consoleQuery.init.get.queryOptions({
+      enabled:
+        setupStatus.isSuccess && !setupStatus.isFetching && setupStatus.data.step !== 'finished',
+      staleTime: 0,
+      retry: false,
+      throwOnError: true,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    }),
+  )
 
   const handleSubmit = async (value: AccountFormValues) => {
     if (isSubmitting) return
@@ -52,7 +69,7 @@ const InstallForm = () => {
     setIsSubmitting(true)
     try {
       // First, setup the admin account
-      await setup({
+      await consoleClient.setup.post({
         body: {
           ...value,
           language: i18n.language,
@@ -60,8 +77,7 @@ const InstallForm = () => {
       })
 
       // Then, automatically login with the same credentials
-      const loginRes = await login({
-        url: '/login',
+      const loginRes = await consoleClient.login.post({
         body: {
           email: value.email,
           password: encodePassword(value.password),
@@ -82,19 +98,35 @@ const InstallForm = () => {
   }
 
   useEffect(() => {
-    fetchSetupStatus().then((res: SetupStatusResponse) => {
-      if (res.step === 'finished') {
-        push('/signin')
-      } else {
-        fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
-          if (res.status === 'not_started') push('/init')
-        })
-      }
-      setLoading(false)
-    })
-  }, [push])
+    if (!setupStatus.isSuccess || setupStatus.isFetching) return
+    if (setupStatus.data.step === 'finished') {
+      push('/signin')
+    } else if (
+      initStatus.isSuccess &&
+      !initStatus.isFetching &&
+      initStatus.data.status === 'not_started'
+    ) {
+      push('/init')
+    }
+  }, [
+    push,
+    setupStatus.isSuccess,
+    setupStatus.isFetching,
+    setupStatus.data,
+    initStatus.isSuccess,
+    initStatus.isFetching,
+    initStatus.data,
+  ])
 
-  return loading ? (
+  const canSetup =
+    setupStatus.isSuccess &&
+    !setupStatus.isFetching &&
+    setupStatus.data.step !== 'finished' &&
+    initStatus.isSuccess &&
+    !initStatus.isFetching &&
+    initStatus.data.status !== 'not_started'
+
+  return !canSetup ? (
     <LoadingPlaceholder />
   ) : (
     <>

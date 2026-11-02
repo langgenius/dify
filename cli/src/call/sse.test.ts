@@ -1,3 +1,5 @@
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { describe, expect, it } from 'vite-plus/test'
 import { parseSSE } from './sse'
 
@@ -64,6 +66,46 @@ describe('parseSSE', () => {
       },
     })
     expect((await collect(s))[0]?.data).toBe('😀')
+  })
+
+  it('propagates a response body error to the consumer', async () => {
+    const error = new Error('network disconnected')
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.error(error)
+      },
+    })
+    await expect(collect(body)).rejects.toBe(error)
+  })
+
+  it('observes read failures while the consumer is processing a yielded event', async () => {
+    // Isolate Node's strict unhandled-rejection policy from the test runner.
+    const source = new URL('./sse.ts', import.meta.url).href
+    const script = `
+      import assert from 'node:assert/strict'
+      import { setImmediate } from 'node:timers/promises'
+      import { parseSSE } from ${JSON.stringify(source)}
+      let controller
+      const body = new ReadableStream({ start(c) { controller = c } })
+      const events = parseSSE(body)
+      controller.enqueue(new TextEncoder().encode('data: first\\n\\ndata: second\\n\\n'))
+      const decoder = new TextDecoder()
+      assert.equal(decoder.decode((await events.next()).value.data), 'first')
+      const error = new Error('network disconnected')
+      controller.error(error)
+      await setImmediate()
+      assert.equal(decoder.decode((await events.next()).value.data), 'second')
+      await assert.rejects(events.next(), (failure) => failure === error)
+      console.log('stream error reached the consumer')
+    `
+    const { stdout, stderr } = await promisify(execFile)(process.execPath, [
+      '--unhandled-rejections=strict',
+      '--input-type=module',
+      '-e',
+      script,
+    ])
+    expect(stdout.trim()).toBe('stream error reached the consumer')
+    expect(stderr).toBe('')
   })
 
   it('aborts when signal fires', async () => {

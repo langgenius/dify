@@ -7,21 +7,22 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
+import { ValueType } from '@/app/components/workflow/types'
 
 type InputModeSelectProps = {
-  value?: string
-  onChange: (value: string) => void
+  value?: ValueType
+  onChange: (value: ValueType) => void
 }
 const InputModeSelect = ({ value, onChange }: InputModeSelectProps) => {
   const { t } = useTranslation(['workflowLogic'])
   const options = [
     {
       label: 'Variable',
-      value: 'variable',
+      value: ValueType.variable,
     },
     {
       label: 'Constant',
-      value: 'constant',
+      value: ValueType.constant,
     },
   ]
   const selectedOption = options.find((option) => option.value === value) ?? null

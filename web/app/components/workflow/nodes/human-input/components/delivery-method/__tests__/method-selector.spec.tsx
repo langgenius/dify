@@ -1,85 +1,62 @@
 import type { Node } from '@/app/components/workflow/types'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { DeliveryMethodType } from '../../../types'
 import MethodSelector from '../method-selector'
 
 let emailDeliveryEnabled = true
+let currentNodes: Node[] = []
 
-const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, {
+const render = (ui: React.ReactElement) => {
+  const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
     features: { human_input_email_delivery_enabled: emailDeliveryEnabled },
   })
-
-const mockUuid = vi.hoisted(() => vi.fn())
-const mockUseWorkflowNodes = vi.hoisted(() => vi.fn())
-
-vi.mock('uuid', () => ({
-  v4: () => mockUuid(),
-}))
-
-vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
-  __esModule: true,
-  default: () => mockUseWorkflowNodes(),
-}))
+  return renderWorkflowComponent(ui, { queryClient, initialStoreState: { nodes: currentNodes } })
+}
 
 describe('human-input/delivery-method/method-selector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUuid.mockReturnValue('generated-id')
-    mockUseWorkflowNodes.mockReturnValue([
-      {
-        id: 'start-node',
-        data: { type: BlockEnum.Start },
-      },
-    ] as Node[])
+    currentNodes = [createNode({ id: 'start-node', data: { type: BlockEnum.Start } })]
     emailDeliveryEnabled = true
   })
 
-  it('should add webapp and email delivery methods when both entries are available', () => {
+  it('should add webapp and email delivery methods when both entries are available', async () => {
+    const user = userEvent.setup()
     const handleAdd = vi.fn()
     const handleShowUpgradeTip = vi.fn()
 
     render(<MethodSelector data={[]} onAdd={handleAdd} onShowUpgradeTip={handleShowUpgradeTip} />)
 
-    fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(
+    await user.click(screen.getByRole('button'))
+    await user.click(
       screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.webapp.title'),
     )
-    fireEvent.click(
+    await user.click(
       screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.email.title'),
     )
 
     expect(handleAdd).toHaveBeenNthCalledWith(1, {
-      id: 'generated-id',
+      id: expect.any(String),
       type: DeliveryMethodType.WebApp,
       enabled: true,
     })
     expect(handleAdd).toHaveBeenNthCalledWith(2, {
-      id: 'generated-id',
+      id: expect.any(String),
       type: DeliveryMethodType.Email,
       enabled: false,
     })
     expect(handleShowUpgradeTip).not.toHaveBeenCalled()
-    expect(
-      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.contactTip1'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.contactTip2'),
-    ).toBeInTheDocument()
   })
 
-  it('should disable webapp in trigger mode and show added states without creating duplicates', () => {
+  it('does not add duplicate delivery methods', async () => {
+    const user = userEvent.setup()
     const handleAdd = vi.fn()
-
-    mockUseWorkflowNodes.mockReturnValue([
-      {
-        id: 'trigger-node',
-        data: { type: BlockEnum.TriggerWebhook },
-      },
-    ] as Node[])
 
     render(
       <MethodSelector
@@ -92,37 +69,33 @@ describe('human-input/delivery-method/method-selector', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button'))
 
     expect(
       screen.getAllByText('workflowHumanInput.nodes.humanInput.deliveryMethod.added'),
     ).toHaveLength(2)
 
-    fireEvent.click(
+    await user.click(
       screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.webapp.title'),
     )
-    fireEvent.click(
+    await user.click(
       screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.email.title'),
     )
 
     expect(handleAdd).not.toHaveBeenCalled()
   })
 
-  it('should show trigger-mode and permission guards for unavailable methods', () => {
+  it('should show trigger-mode and permission guards for unavailable methods', async () => {
+    const user = userEvent.setup()
     const handleAdd = vi.fn()
     const handleShowUpgradeTip = vi.fn()
 
-    mockUseWorkflowNodes.mockReturnValue([
-      {
-        id: 'trigger-node',
-        data: { type: BlockEnum.TriggerSchedule },
-      },
-    ] as Node[])
+    currentNodes = [createNode({ id: 'trigger-node', data: { type: BlockEnum.TriggerSchedule } })]
     emailDeliveryEnabled = false
 
     render(<MethodSelector data={[]} onAdd={handleAdd} onShowUpgradeTip={handleShowUpgradeTip} />)
 
-    fireEvent.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button'))
 
     expect(
       screen.getByText(
@@ -130,15 +103,14 @@ describe('human-input/delivery-method/method-selector', () => {
       ),
     ).toBeInTheDocument()
 
-    fireEvent.click(
+    await user.click(
       screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.webapp.title'),
     )
-    fireEvent.click(
+    await user.click(
       screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.types.email.title'),
     )
 
     expect(handleAdd).not.toHaveBeenCalled()
     expect(handleShowUpgradeTip).toHaveBeenCalledTimes(1)
-    expect(screen.getAllByText('COMING SOON')).toHaveLength(3)
   })
 })

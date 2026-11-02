@@ -1,4 +1,3 @@
-import type { VarType } from '../types'
 import type { ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import type { ParentMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,7 +13,7 @@ import { PreviewType, ViewMode } from './types'
 
 type DisplayContentProps = {
   previewType: PreviewType
-  varType: VarType
+  varType: string
   schemaType?: string
   mdString?: string
   jsonString?: string
@@ -112,6 +111,7 @@ export function DisplayContent(props: DisplayContentProps) {
               })}
               readOnly={readonly}
               disabled={readonly}
+              // oxlint-disable-next-line shadcn/no-restyle -- The enclosing editor surface paints the focus ring around the content and view controls.
               className="h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:ring-0"
               value={mdString}
               onValueChange={(value) => handleTextChange?.(value)}

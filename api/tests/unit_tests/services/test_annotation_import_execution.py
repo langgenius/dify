@@ -28,8 +28,8 @@ from services.annotation_import_service import (
 from services.annotation_query import AnnotationAppNotFoundError
 from services.annotation_reply_index import AnnotationVectorIndex
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_app
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_app
 
 INVALID_BACKEND = "annotation-test-uninstalled-vector-backend"
 RECORDS: tuple[AnnotationImportRecord, ...] = (

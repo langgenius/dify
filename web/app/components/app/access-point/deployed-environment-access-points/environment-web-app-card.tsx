@@ -7,14 +7,14 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CustomizeDialog } from '@/app/components/app/overview/customize'
-import SettingsModal from '@/app/components/app/overview/settings'
+import { SettingsDialog } from '@/app/components/app/overview/settings'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
@@ -22,6 +22,7 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import {
@@ -65,7 +66,6 @@ export function EnvironmentWebAppCard({
   )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const actions = useAccessPointActions(appId, canManageAccessPoint)
-  const [showSettings, setShowSettings] = useState(false)
   const [showAccess, setShowAccess] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const params = {
@@ -102,24 +102,32 @@ export function EnvironmentWebAppCard({
     subjectsQuery.data.subjects.length > 0
   const siteMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentSite.mutationOptions({
+      context: { silent: true },
       scope: {
         id: `environment-web-app-toggle:${appId}:${environmentId}`,
       },
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )
   const resetAccessTokenMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.resetEnvironmentSiteAccessToken.mutationOptions(
       {
+        context: { silent: true },
         onSuccess: (updatedSite) => {
           queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
           setShowRegenerate(false)
           toast.success(t(($) => $['actionMsg.generatedSuccessfully'], { ns: 'common' }))
         },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }),
+          )
         },
       },
     ),
@@ -168,19 +176,7 @@ export function EnvironmentWebAppCard({
         description={t(($) => $['studio.accessPoint.webAppDescription'], {
           ns: 'deployments',
         })}
-        icon={
-          appInfo ? (
-            <AppIcon
-              size="large"
-              iconType={appInfo.icon_type}
-              icon={appInfo.icon ?? undefined}
-              background={appInfo.icon_background}
-              imageUrl={appInfo.icon_url}
-            />
-          ) : (
-            'i-ri-robot-2-line'
-          )
-        }
+        icon={appInfo ? <AppIcon size="large" icon={appInfo} /> : 'i-ri-robot-2-line'}
         status={status}
         statusLabel={statusLabel}
         highlighted={highlighted}
@@ -195,15 +191,18 @@ export function EnvironmentWebAppCard({
               mode={appInfo?.mode}
               disabled={!actionsAvailable || !apiQuery.isSuccess || !canManageAccessPoint}
             />
-            <Button
-              className="flex items-center gap-1 px-3"
-              variant="secondary"
-              disabled={!appInfo?.site || !siteQuery.isSuccess || !canManageAccessPoint}
-              onClick={() => setShowSettings(true)}
-            >
-              <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-              {t(($) => $['settings.settings'], { ns: 'navigation' })}
-            </Button>
+            <SettingsDialog
+              key={appId}
+              isChat={false}
+              canDeploy
+              appInfo={
+                appInfo?.site
+                  ? { id: appInfo.id, mode: appInfo.mode, site: appInfo.site }
+                  : undefined
+              }
+              disabled={!siteQuery.isSuccess || !canManageAccessPoint}
+              onSave={actions.saveSiteConfig}
+            />
           </>
         }
       >
@@ -242,16 +241,6 @@ export function EnvironmentWebAppCard({
           ))}
       </AccessPointCard>
 
-      {appInfo?.site && (
-        <SettingsModal
-          isChat={false}
-          canDeploy
-          appInfo={{ id: appInfo.id, mode: appInfo.mode, site: appInfo.site }}
-          isShow={showSettings}
-          onClose={() => setShowSettings(false)}
-          onSave={actions.saveSiteConfig}
-        />
-      )}
       {showAccess && (
         <EnvironmentAccessControl
           appId={appId}
@@ -264,16 +253,16 @@ export function EnvironmentWebAppCard({
       )}
       <AlertDialog open={showRegenerate} onOpenChange={setShowRegenerate}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['overview.appInfo.regenerateNotice'], {
                 ns: 'appOverview',
               })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

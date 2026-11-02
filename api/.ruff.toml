@@ -58,35 +58,10 @@ select = [
 ]
 
 ignore = [
-    "E402",    # module-import-not-at-top-of-file
-    "E711",    # none-comparison
-    "E712",    # true-false-comparison
-    "E721",    # type-comparison
-    "E722",    # bare-except
-    "F821",    # undefined-name
-    "F841",    # unused-variable
-    "FURB113", # repeated-append
-    "FURB152", # math-constant
-    "UP007",   # non-pep604-annotation
-    "UP032",   # f-string
-    "B006",    # mutable-argument-default
-    "B007",    # unused-loop-control-variable
-    "B026",    # star-arg-unpacking-after-keyword-arg
     "B901",    # allow return in yield
-    "B903",    # class-as-data-structure
-    "B904",    # raise-without-from-inside-except
-    "B905",    # zip-without-explicit-strict
-    "N806",    # non-lowercase-variable-in-function
     "N815",    # mixed-case-variable-in-class-scope
-    "PT011",   # pytest-raises-too-broad
     "SIM102",  # collapsible-if
-    "SIM103",  # needless-bool
-    "SIM105",  # suppressible-exception
-    "SIM108",  # if-else-block-instead-of-if-exp
-    "SIM113",  # enumerate-for-loop
     "SIM117",  # multiple-with-statements
-    "SIM210",  # if-expr-with-true-false
-    "TID252",  # allow relative imports from parent modules
 ]
 
 [lint.per-file-ignores]
@@ -95,6 +70,9 @@ ignore = [
 ]
 "libs/gmpy2_pkcs10aep_cipher.py" = [
     "N803", # invalid-argument-name
+]
+"services/billing_client/*" = [
+    "TID251", # the billing client is the one place that reads billing settings and calls the transport
 ]
 "tests/*" = [
     "T201", # allow print in tests,
@@ -106,6 +84,21 @@ msg = "Use Pydantic payload/query models instead of reqparse."
 
 [lint.flake8-tidy-imports.banned-api."flask_restx.reqparse.RequestParser"]
 msg = "Use Pydantic payload/query models instead of reqparse."
+
+[lint.flake8-tidy-imports.banned-api."configs.dify_config.BILLING_API_URL"]
+msg = "Only services.billing_client reaches billing/saas. Call a generated operation from services.billing_client instead."
+
+[lint.flake8-tidy-imports.banned-api."configs.dify_config.BILLING_API_SECRET_KEY"]
+msg = "Only services.billing_client reaches billing/saas. Call a generated operation from services.billing_client instead."
+
+[lint.flake8-tidy-imports.banned-api."configs.dify_config.BILLING_QUOTA_API_URL"]
+msg = "Only services.billing_client reaches billing/saas. Call a generated operation from services.billing_client instead."
+
+[lint.flake8-tidy-imports.banned-api."configs.dify_config.NETWORK_ACCESS_API_URL"]
+msg = "Only services.billing_client reaches billing/saas. Call a generated operation from services.billing_client instead."
+
+[lint.flake8-tidy-imports.banned-api."services.billing_client.transport.request"]
+msg = "Allowlist the operation in api/dev/generate_billing_client.py, regenerate, and call the generated function."
 
 [lint.isort]
 known-first-party = ["graphon"]

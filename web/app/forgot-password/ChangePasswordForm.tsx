@@ -17,7 +17,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
-import { changePasswordWithToken } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
 import { basePath } from '@/utils/var'
 
@@ -56,8 +56,7 @@ const ChangePasswordForm = () => {
 
       setIsSubmitting(true)
       try {
-        await changePasswordWithToken({
-          url: '/forgot-password/resets',
+        await consoleClient.forgotPassword.resets.post({
           body: {
             token: resetToken,
             new_password: formValues.password,

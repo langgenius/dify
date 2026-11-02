@@ -25,8 +25,8 @@ export function useAccessPointActions(appId: string, canManageAccessPoint: boole
   )
 
   const saveSiteConfig = useCallback(
-    async (params: AppSiteUpdatePayload) => {
-      if (!canManageAccessPoint) return
+    async (params: AppSiteUpdatePayload): Promise<boolean> => {
+      if (!canManageAccessPoint) return false
       const [error] = await asyncRunSafe(
         updateSiteConfig({
           params: { app_id: appId },
@@ -41,6 +41,7 @@ export function useAccessPointActions(appId: string, canManageAccessPoint: boole
           type: error ? 'error' : 'success',
         },
       )
+      return !error
     },
     [appId, canManageAccessPoint, t, updateSiteConfig],
   )

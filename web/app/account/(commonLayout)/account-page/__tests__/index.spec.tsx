@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import AccountPage from '../index'
 
@@ -17,7 +18,10 @@ vi.mock('@/service/base', () => ({
   get: mocks.get,
   patch: vi.fn(),
   post: vi.fn(),
-  request: mocks.request,
+  request: (url: string, init: RequestInit, options: { request: Request }) =>
+    url.endsWith('/account/profile') && options.request.method === 'GET'
+      ? mocks.get(url, init, options)
+      : mocks.request(url, init, options),
   sseGeneratorPost: vi.fn(),
 }))
 
@@ -74,6 +78,7 @@ describe('AccountPage', () => {
         }),
     )
   })
+  afterEach(() => vi.restoreAllMocks())
 
   it('updates the account name through the profile endpoint', async () => {
     const user = userEvent.setup()
@@ -93,7 +98,8 @@ describe('AccountPage', () => {
     expect(request.method).toBe('PATCH')
     await expect(request.json()).resolves.toEqual({ name: 'Alice Cooper' })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(screen.getAllByText('Alice Cooper')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeEnabled()
+    expect(screen.getAllByText('Alice Cooper')[0]).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     expect(screen.getByRole('textbox', { name: 'accountSettings.account.name' })).toHaveValue(
       'Alice Cooper',
@@ -178,9 +184,7 @@ describe('AccountPage', () => {
     expect(dialog).toBeInTheDocument()
     expect(mocks.request).toHaveBeenCalledOnce()
 
-    await act(async () =>
-      saving.resolve(new Response(JSON.stringify(createAccountResponse('Alice Cooper')))),
-    )
+    await act(async () => saving.resolve(Response.json(createAccountResponse('Alice Cooper'))))
     await waitFor(() => expect(mocks.get).toHaveBeenCalled())
     expect(cancel).toBeDisabled()
     expect(within(dialog).getByRole('button', { name: 'common.operation.save' })).toHaveAttribute(
@@ -190,11 +194,10 @@ describe('AccountPage', () => {
     await user.keyboard('{Escape}')
     expect(dialog).toBeInTheDocument()
 
-    await act(async () =>
-      refreshing.resolve(new Response(JSON.stringify(createAccountResponse('Alice Cooper')))),
-    )
+    await act(async () => refreshing.resolve(Response.json(createAccountResponse('Alice Cooper'))))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(screen.getAllByText('Alice Cooper')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeEnabled()
+    expect(screen.getAllByText('Alice Cooper')[0]).toBeInTheDocument()
   })
 
   it.each([false, true])(
@@ -255,7 +258,7 @@ describe('AccountPage', () => {
     const user = userEvent.setup()
     mocks.request.mockRejectedValueOnce(new Error('Password update failed'))
     mocks.get.mockResolvedValue(
-      new Response(JSON.stringify({ ...createAccountResponse(), is_password_set: true })),
+      Response.json({ ...createAccountResponse(), is_password_set: true }),
     )
     renderPage({ isPasswordSet: true })
     await user.click(screen.getByRole('button', { name: 'accountSettings.account.resetPassword' }))
@@ -322,9 +325,7 @@ describe('AccountPage', () => {
     expect(mocks.request).toHaveBeenCalledOnce()
 
     await act(async () =>
-      saving.resolve(
-        new Response(JSON.stringify({ ...createAccountResponse(), is_password_set: true })),
-      ),
+      saving.resolve(Response.json({ ...createAccountResponse(), is_password_set: true })),
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(mocks.get).toHaveBeenCalled()
@@ -333,9 +334,7 @@ describe('AccountPage', () => {
     ).toBeInTheDocument()
 
     await act(async () =>
-      refreshing.resolve(
-        new Response(JSON.stringify({ ...createAccountResponse(), is_password_set: true })),
-      ),
+      refreshing.resolve(Response.json({ ...createAccountResponse(), is_password_set: true })),
     )
     expect(
       await screen.findByRole('button', { name: 'accountSettings.account.resetPassword' }),
@@ -378,13 +377,18 @@ describe('AccountPage', () => {
   it.each(['name', 'password'])(
     'leaves a server-reported %s failure to the request layer',
     async (field) => {
-      // The request layer reports the server message and rejects with the Response.
+      // The request layer reports the server message and rejects with an ORPCError.
       const error = vi.spyOn(toast, 'error')
       const user = userEvent.setup()
       mocks.request.mockRejectedValueOnce(
-        new Response(JSON.stringify({ code: 'invalid_param', message: 'Rejected', status: 400 }), {
-          status: 400,
-        }),
+        await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({ code: 'invalid_param', message: 'Rejected', status: 400 }),
+            {
+              status: 400,
+            },
+          ),
+        ),
       )
       renderPage({ isPasswordSet: true })
 

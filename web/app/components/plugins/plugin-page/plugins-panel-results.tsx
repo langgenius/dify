@@ -3,6 +3,7 @@ import type { PluginDetail } from '../types'
 import type { EmbeddedMarketplaceCategory } from './category-marketplace'
 import type { PluginPageContentInset } from './content-inset'
 import type { Collection } from '@/app/components/tools/types'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -36,6 +37,7 @@ type PluginsPanelResultsProps = {
   filteredBuiltinTools: Collection[]
   filteredList: Array<PluginDetail & { latest_version: string }>
   hasToolMarketplacePanel: boolean
+  marketplace: MarketplaceLinks | null
   hasVisibleBuiltinTools: boolean
   hasVisiblePlugins: boolean
   hasEmbeddedMarketplace: boolean
@@ -64,6 +66,7 @@ const PluginsPanelResults = ({
   filteredBuiltinTools,
   filteredList,
   hasToolMarketplacePanel,
+  marketplace,
   hasVisibleBuiltinTools,
   hasVisiblePlugins,
   hasEmbeddedMarketplace,
@@ -157,7 +160,7 @@ const PluginsPanelResults = ({
                 <button
                   key={collection.id}
                   type="button"
-                  aria-pressed={currentBuiltinToolID === collection.id}
+                  aria-current={currentBuiltinToolID === collection.id ? 'true' : undefined}
                   className="min-w-0 cursor-pointer appearance-none border-0 bg-transparent p-0 text-left"
                   data-step-by-step-tour-target={
                     filteredList.length === 0 && index === 0 ? firstBuiltinToolTarget : undefined
@@ -187,16 +190,18 @@ const PluginsPanelResults = ({
               )}
             </div>
           )}
-          {hasToolMarketplacePanel && (
+          {marketplace && hasToolMarketplacePanel && (
             <BuiltinMarketplacePanel
+              marketplace={marketplace}
               containerRef={containerRef}
               contentInset={contentInset}
               keywords={keywords}
               tagFilterValue={tagFilterValue}
             />
           )}
-          {categoryMarketplace && (
+          {marketplace && categoryMarketplace && (
             <CategoryMarketplacePanel
+              marketplace={marketplace}
               category={categoryMarketplace}
               searchText={keywords}
               tags={categoryMarketplace === 'trigger' ? tagFilterValue : []}

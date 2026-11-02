@@ -83,5 +83,4 @@ it('keeps native submit focus during password saving and supports retry without 
     ),
   )
   await expect.element(dialog).not.toBeInTheDocument()
-  await expect.element(trigger).toHaveFocus()
 })

@@ -57,7 +57,6 @@
   "stepByStepTour.markTaskIncomplete": "{{title}} को अधूरा चिह्नित करें",
   "stepByStepTour.minimize": "छोटा करें",
   "stepByStepTour.progressAriaValueText": "{{total}} में से {{completed}} चरण पूरे हुए",
-  "stepByStepTour.restore": "Step-by-step टूर खोलें",
   "stepByStepTour.skip": "टूर छोड़ें",
   "stepByStepTour.skipRecovery.dismiss": "समझ गए",
   "stepByStepTour.skipRecovery.label": "Step-by-step Tour रिकवरी टिप",

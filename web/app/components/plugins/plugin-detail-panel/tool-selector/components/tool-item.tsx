@@ -106,8 +106,11 @@ export function ToolItem({
             <AppIcon
               className="h-7 w-7 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge"
               size="xs"
-              icon={icon?.content}
-              background={icon?.background}
+              icon={{
+                icon_type: 'emoji',
+                icon: icon?.content,
+                icon_background: icon?.background,
+              }}
             />
           )}
         </div>

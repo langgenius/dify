@@ -54,7 +54,7 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
       <Chip
         value={queryParams.status || 'all'}
         onSelect={(item) => {
-          setQueryParams({ ...queryParams, status: item.value as string })
+          setQueryParams({ ...queryParams, status: item.value as QueryParam['status'] })
           trackEvent('workflow_log_filter_status_selected', {
             workflow_log_filter_status: item.value as string,
           })
