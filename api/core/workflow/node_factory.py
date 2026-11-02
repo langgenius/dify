@@ -50,7 +50,6 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
@@ -59,6 +58,7 @@ from core.workflow.nodes.human_input_v2.node import HumanInputNode as HumanInput
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from core.workflow.workflow_tool_node import DifyWorkflowToolNode
+from domain.workflow.agent_node import is_dify_agent_node_data
 from extensions.application_services.data_sources import build_data_source_credentials
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter

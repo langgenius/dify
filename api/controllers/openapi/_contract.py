@@ -18,7 +18,7 @@ from __future__ import annotations
 import inspect
 from collections.abc import Callable, Sequence
 from functools import wraps
-from typing import Any, Final, cast, override
+from typing import Any, Final, cast, get_args, get_origin, override
 
 from flask import request
 from flask_restx import abort
@@ -26,6 +26,7 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import RequestEntityTooLarge
 
+from constants import BYTES_PER_MIB
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody, RequestOverRouteLimits
@@ -40,10 +41,22 @@ from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, Effect,
 from controllers.openapi.auth.subjects import Subject
 from enums import DeploymentEdition
 
-__all__ = ["CapRequestBody", "Effect", "Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
+__all__ = [
+    "MULTIPART_HEADER_BYTES_PER_PART",
+    "CapRequestBody",
+    "Effect",
+    "Example",
+    "Kind",
+    "accepts",
+    "endpoint",
+    "multipart_header_allowance",
+    "op_of",
+    "paginated",
+    "returns",
+]
 
 _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
-_BYTES_PER_MIB: Final = 1024 * 1024
+MULTIPART_HEADER_BYTES_PER_PART: Final = 1024
 
 
 def paginated(op: str) -> Callable:
@@ -82,6 +95,10 @@ class CapRequestBody(Requirement):
         request.max_form_parts = self.max_parts()
 
 
+def multipart_header_allowance(parts: int) -> int:
+    return parts * MULTIPART_HEADER_BYTES_PER_PART
+
+
 def _read_body(body_file_fields: frozenset[str]) -> dict[str, Any]:
     try:
         return body_from_request(file_fields=body_file_fields)
@@ -91,8 +108,17 @@ def _read_body(body_file_fields: frozenset[str]) -> dict[str, Any]:
             raise
         raise RequestOverRouteLimits(
             f"{RequestOverRouteLimits.description}: at most {request.max_form_parts} parts"
-            f" and {limit / _BYTES_PER_MIB:g} MiB"
+            f" and {limit / BYTES_PER_MIB:g} MiB"
         ) from exc
+
+
+def _list_fields(model: type[BaseModel]) -> tuple[str, ...]:
+    """Query fields typed as a list, which a repeated parameter fills."""
+    return tuple(
+        name
+        for name, field in model.model_fields.items()
+        if any(get_origin(part) is list for part in (field.annotation, *get_args(field.annotation)))
+    )
 
 
 def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
@@ -100,12 +126,13 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
 
     def decorator(view: Callable) -> Callable:
         body_file_fields = file_fields(body) if body is not None else frozenset()
+        query_list_fields = _list_fields(query) if query is not None else ()
 
         @wraps(view)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 if query is not None:
-                    kwargs["query"] = query_params_from_request(query)
+                    kwargs["query"] = query_params_from_request(query, list_fields=query_list_fields)
                 if body is not None:
                     kwargs["body"] = body.model_validate(_read_body(body_file_fields))
             except ValidationError as exc:

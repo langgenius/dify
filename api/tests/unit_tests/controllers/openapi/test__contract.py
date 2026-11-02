@@ -18,7 +18,14 @@ from werkzeug.exceptions import RequestEntityTooLarge, UnprocessableEntity
 
 from controllers.common.schema import register_response_schema_model, register_schema_model
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import CapRequestBody, accepts, paginated, returns
+from controllers.openapi._contract import (
+    MULTIPART_HEADER_BYTES_PER_PART,
+    CapRequestBody,
+    accepts,
+    multipart_header_allowance,
+    paginated,
+    returns,
+)
 from controllers.openapi._errors import RequestOverRouteLimits
 from controllers.openapi._models import Hint, PaginationEnvelope
 from controllers.openapi._upload import UploadPart
@@ -127,6 +134,23 @@ def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app):
     assert isinstance(result, ContractQuery)
     assert result.page == 3
     assert result.limit == 20
+
+
+class ContractListQuery(BaseModel):
+    tag: list[str] | None = None
+    word: str | None = None
+
+
+def test_accepts_fills_list_typed_query_fields_from_repeated_parameters(app: Flask) -> None:
+    @accepts(query=ContractListQuery)
+    def view(*, query: ContractListQuery) -> ContractListQuery:
+        return query
+
+    with app.test_request_context("/?tag=a&tag=b&word=x&word=y"):
+        result = view()
+
+    assert result.tag == ["a", "b"]
+    assert result.word == "x"
 
 
 @pytest.mark.parametrize("query_string", ["page=abc", "unknown=1"])
@@ -278,3 +302,8 @@ def test_an_uncapped_route_keeps_the_generic_413(app: Flask, view: Callable[[], 
     with _post(app, 1, extra="y"), pytest.raises(RequestEntityTooLarge) as exc:
         view()
     assert not isinstance(exc.value, RequestOverRouteLimits)
+
+
+def test_multipart_header_allowance_scales_with_the_part_count() -> None:
+    assert multipart_header_allowance(0) == 0
+    assert multipart_header_allowance(5002) == 5002 * MULTIPART_HEADER_BYTES_PER_PART

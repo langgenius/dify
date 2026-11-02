@@ -143,7 +143,14 @@ def test_editing_roles_can_select_contacts(
     options = client.get(f"{_BASE_URL}/contact-options")
     assert options.status_code == 200
     assert options.get_json()["data"] == [
-        {"id": contact_id, "type": "external", "name": "Reviewer", "email": "contact@example.com", "avatar_url": None}
+        {
+            "id": contact_id,
+            "type": "external",
+            "name": "Reviewer",
+            "email": "contact@example.com",
+            "avatar_url": None,
+            "im_providers": [],
+        }
     ]
 
     resolved = client.get(f"{_BASE_URL}/contact-options/batch", query_string={"contact_ids": contact_id})

@@ -1,25 +1,11 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ContactsManagementRepository } from '@/features/contacts/management/repository'
-import type {
-  ContactsFeatureContextValue,
-  RemoveMemberResult,
-} from '@/features/contacts/management/types'
 import type { Role } from '@/models/access-control'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
-import { QueryObserver } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { onTestFinished } from 'vite-plus/test'
-import { createContactsMockRepository } from '@/features/contacts/management/__tests__/fixtures/repository'
-import {
-  ContactsMockScenario,
-  createContactsMockScenario,
-} from '@/features/contacts/management/__tests__/fixtures/scenarios'
-import { ContactsManagementProvider } from '@/features/contacts/management/composition'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
 import MembersPage from '../index'
 
 const {
@@ -113,26 +99,20 @@ const choices = [
   createRole({ id: 'role-next', name: 'Next role' }),
   createRole({ id: 'role-extra', name: 'Extra role' }),
 ]
-async function renderMembersPage(
-  options: ConsoleQueryTestOptions = {},
-  contacts?: { context: ContactsFeatureContextValue; repository: ContactsManagementRepository },
-) {
+async function renderMembersPage(options: ConsoleQueryTestOptions = {}) {
   const page = (
     <NuqsTestingAdapter>
       <MembersPage />
     </NuqsTestingAdapter>
   )
-  const view = renderWithConsoleQuery(
-    contacts ? <ContactsManagementProvider {...contacts}>{page}</ContactsManagementProvider> : page,
-    {
-      accountProfile: { id: '1', email: 'owner@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'owner' },
-      workspacePermissionKeys: ['workspace.member.manage'],
-      features: { is_allow_transfer_workspace: true },
-      systemFeatures: { is_email_setup: true },
-      ...options,
-    },
-  )
+  const view = renderWithConsoleQuery(page, {
+    accountProfile: { id: '1', email: 'owner@example.com' },
+    currentWorkspace: { name: 'Test Workspace', role: 'owner' },
+    workspacePermissionKeys: ['workspace.member.manage'],
+    features: { is_allow_transfer_workspace: true },
+    systemFeatures: { is_email_setup: true },
+    ...options,
+  })
   await screen.findByRole('button', { name: 'Admin User' })
   return view
 }
@@ -184,22 +164,6 @@ beforeEach(() => {
   })
 })
 
-function contactRemoval() {
-  const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
-  const context: ContactsFeatureContextValue = {
-    deployment: scenario.deployment,
-    imCentrallyManaged: true,
-    permissions: scenario.permissions,
-    workspaceId: scenario.workspaceId,
-  }
-  const repository = createContactsMockRepository({ scenario })
-  const remove = vi.spyOn(repository, 'removeMember').mockImplementation(async ({ memberId }) => {
-    accounts = accounts.filter((account) => account.id !== memberId)
-    return { kind: 'removed', contactId: null, contactOutcome: 'not_found' }
-  })
-  return { context, repository, remove }
-}
-
 async function openAdminRemoval(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: /members\.memberActions: Admin User/ }))
   await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam$/ }))
@@ -210,113 +174,18 @@ const contactOptionsKey = consoleQuery.workspaces.current.humanInput.v2.contactO
   type: 'query',
 })
 
-describe('MembersPage contact removal', () => {
-  it('submits the contact retention choice and removes the member from the list', async () => {
-    contactsEnabled.mockReturnValue(true)
-    const contacts = contactRemoval()
-    const user = userEvent.setup()
-    const { queryClient } = await renderMembersPage({}, contacts)
-    queryClient.setQueryData(contactOptionsKey, { cached: true })
-    const refresh = createDeferred<{ cached: boolean }>()
-    const contactOptions = new QueryObserver(queryClient, {
-      queryKey: contactOptionsKey,
-      queryFn: () => refresh.promise,
-      staleTime: Infinity,
-    })
-    const unsubscribe = contactOptions.subscribe(() => {})
-    onTestFinished(() => {
-      refresh.resolve({ cached: false })
-      unsubscribe()
-    })
-    const dialog = await openAdminRemoval(user)
-    const retention = within(dialog).getByRole('checkbox', { name: /memberRemoval\.keepPlatform/ })
-    expect(retention).toBeChecked()
-    await user.click(retention)
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }))
-
-    await waitFor(() =>
-      expect(contacts.remove).toHaveBeenCalledExactlyOnceWith({
-        memberId: '2',
-        keepAsPlatformContact: false,
-      }),
-    )
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    expect(screen.queryByRole('row', { name: /admin@example.com/ })).not.toBeInTheDocument()
-    expect(removeMember).not.toHaveBeenCalled()
-    expect(queryClient.getQueryState(contactOptionsKey)?.isInvalidated).toBe(true)
-  })
-
-  it('blocks dismissal during contact removal and starts a fresh choice after closing a failure', async () => {
-    contactsEnabled.mockReturnValue(true)
-    const contacts = contactRemoval()
-    const request = createDeferred<RemoveMemberResult>()
-    contacts.remove.mockReturnValueOnce(request.promise)
-    const user = userEvent.setup()
-    await renderMembersPage({}, contacts)
-    const dialog = await openAdminRemoval(user)
-    const retention = within(dialog).getByRole('checkbox', { name: /memberRemoval\.keepPlatform/ })
-    await user.click(retention)
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }))
-    await user.keyboard('{Escape}')
-    expect(dialog).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'contacts.action.cancel' })).toBeDisabled()
-    expect(contacts.remove).toHaveBeenCalledOnce()
-    await act(async () => request.resolve({ kind: 'failed' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'contacts.memberRemoval.failed',
-    )
-    expect(retention).not.toBeChecked()
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.action.cancel' }))
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-
-    const reopened = await openAdminRemoval(user)
-    expect(
-      within(reopened).getByRole('checkbox', { name: /memberRemoval\.keepPlatform/ }),
-    ).toBeChecked()
-    expect(within(reopened).queryByRole('alert')).not.toBeInTheDocument()
-    await user.click(
-      within(reopened).getByRole('button', { name: 'contacts.memberRemoval.remove' }),
-    )
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    expect(contacts.remove).toHaveBeenLastCalledWith({ memberId: '2', keepAsPlatformContact: true })
-  })
-
-  it('retains the contact choice after failure and submits it on a successful retry', async () => {
-    contactsEnabled.mockReturnValue(true)
-    const contacts = contactRemoval()
-    contacts.remove.mockResolvedValueOnce({ kind: 'failed' })
-    const user = userEvent.setup()
-    await renderMembersPage({}, contacts)
-    const dialog = await openAdminRemoval(user)
-    const retention = within(dialog).getByRole('checkbox', { name: /memberRemoval\.keepPlatform/ })
-    await user.click(retention)
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'contacts.memberRemoval.failed',
-    )
-    expect(retention).not.toBeChecked()
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }))
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    expect(contacts.remove).toHaveBeenCalledTimes(2)
-    expect(contacts.remove).toHaveBeenLastCalledWith({
-      memberId: '2',
-      keepAsPlatformContact: false,
-    })
-  })
-
+describe('MembersPage removal', () => {
   it.each([
-    { status: 'active', supportsMemberManagement: false, enabled: true, contactCopy: true },
-    { status: 'pending', supportsMemberManagement: true, enabled: true, contactCopy: false },
-    { status: 'active', supportsMemberManagement: true, enabled: false, contactCopy: false },
+    { status: 'active', enabled: true, contactCopy: true },
+    { status: 'pending', enabled: true, contactCopy: false },
+    { status: 'active', enabled: false, contactCopy: false },
   ])(
-    'uses standard removal for status=$status with contact support=$supportsMemberManagement',
-    async ({ status, supportsMemberManagement, enabled, contactCopy }) => {
+    'uses the supported member endpoint for status=$status and gate=$enabled',
+    async ({ status, enabled, contactCopy }) => {
       contactsEnabled.mockReturnValue(enabled)
       accounts[1] = { ...accounts[1]!, status }
-      const contacts = contactRemoval()
-      contacts.repository.supportsMemberManagement = supportsMemberManagement
       const user = userEvent.setup()
-      const { queryClient } = await renderMembersPage({}, contacts)
+      const { queryClient } = await renderMembersPage()
       queryClient.setQueryData(contactOptionsKey, { cached: true })
       const dialog = await openAdminRemoval(user)
       expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
@@ -329,7 +198,6 @@ describe('MembersPage contact removal', () => {
       await waitFor(() =>
         expect(removeMember).toHaveBeenCalledExactlyOnceWith({ params: { member_id: '2' } }),
       )
-      expect(contacts.remove).not.toHaveBeenCalled()
       expect(queryClient.getQueryState(contactOptionsKey)?.isInvalidated).toBe(true)
     },
   )

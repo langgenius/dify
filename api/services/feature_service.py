@@ -1,7 +1,8 @@
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from services.account_education_service import EDUCATION_EDITIONS
-from services.billing_service import BillingInfo, BillingService
+from services.billing_client import billing
+from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities import feature_entities
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
@@ -31,7 +32,7 @@ class FeatureService:
             return CloudPlan.SANDBOX
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
-        return CloudPlan(billing_info["subscription"]["plan"])
+        return CloudPlan(billing_info.subscription.plan)
 
     @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> feature_entities.FeatureModel:
@@ -68,9 +69,9 @@ class FeatureService:
             billing_vector_space = BillingService.get_vector_space(tenant_id)
             # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
             # but feature API keeps LimitationModel.size as int for compatibility.
-            vector_space.size = int(billing_vector_space["size"])
-            vector_space.limit = billing_vector_space["limit"]
-            vector_space.usage_unknown = billing_vector_space.get("usage_unknown", False)
+            vector_space.size = int(billing_vector_space.size)
+            vector_space.limit = billing_vector_space.limit
+            vector_space.usage_unknown = billing_vector_space.usage_unknown or False
 
         return vector_space
 
@@ -80,8 +81,8 @@ class FeatureService:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             knowledge_rate_limit.enabled = True
             limit_info = BillingService.get_knowledge_rate_limit(tenant_id)
-            knowledge_rate_limit.limit = limit_info.get("limit", 10)
-            knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", CloudPlan.SANDBOX)
+            knowledge_rate_limit.limit = limit_info.limit
+            knowledge_rate_limit.subscription_plan = limit_info.subscription_plan
         return knowledge_rate_limit
 
     @classmethod
@@ -158,67 +159,53 @@ class FeatureService:
         else:
             billing_info = BillingService.get_info(tenant_id)
 
+        features.billing.subscription.plan = CloudPlan(billing_info.subscription.plan)
+        features.billing.subscription.interval = billing_info.subscription.interval
+        features.education.activated = billing_info.subscription.education
         features_usage_info = BillingService.get_quota_info(tenant_id)
-
-        features.billing.subscription.plan = CloudPlan(billing_info["subscription"]["plan"])
-        features.billing.subscription.interval = billing_info["subscription"]["interval"]
-        features.education.activated = billing_info["subscription"].get("education", False)
 
         if features.billing.subscription.plan != CloudPlan.SANDBOX:
             features.webapp_copyright_enabled = True
         else:
             features.is_allow_transfer_workspace = False
 
-        if "trigger_event" in features_usage_info:
-            features.trigger_event.usage = features_usage_info["trigger_event"]["usage"]
-            features.trigger_event.limit = features_usage_info["trigger_event"]["limit"]
-            features.trigger_event.reset_date = features_usage_info["trigger_event"].get("reset_date", -1)
+        features.trigger_event.usage = features_usage_info.trigger_event.usage
+        features.trigger_event.limit = features_usage_info.trigger_event.limit
+        features.trigger_event.reset_date = features_usage_info.trigger_event.reset_date
 
-        if "api_rate_limit" in features_usage_info:
-            features.api_rate_limit.usage = features_usage_info["api_rate_limit"]["usage"]
-            features.api_rate_limit.limit = features_usage_info["api_rate_limit"]["limit"]
-            features.api_rate_limit.reset_date = features_usage_info["api_rate_limit"].get("reset_date", -1)
+        features.api_rate_limit.usage = features_usage_info.api_rate_limit.usage
+        features.api_rate_limit.limit = features_usage_info.api_rate_limit.limit
+        features.api_rate_limit.reset_date = features_usage_info.api_rate_limit.reset_date
 
-        if "members" in billing_info:
-            features.members.size = billing_info["members"]["size"]
-            features.members.limit = billing_info["members"]["limit"]
+        features.members.size = billing_info.members.size
+        features.members.limit = billing_info.members.limit
 
-        if "apps" in billing_info:
-            features.apps.size = billing_info["apps"]["size"]
-            features.apps.limit = billing_info["apps"]["limit"]
+        features.apps.size = billing_info.apps.size
+        features.apps.limit = billing_info.apps.limit
 
         if not exclude_vector_space:
             assert features.vector_space is not None
             cls._fulfill_vector_space_from_billing_info(features.vector_space, billing_info)
 
-        if "documents_upload_quota" in billing_info:
-            features.documents_upload_quota.size = billing_info["documents_upload_quota"]["size"]
-            features.documents_upload_quota.limit = billing_info["documents_upload_quota"]["limit"]
+        features.documents_upload_quota.size = billing_info.documents_upload_quota.size
+        features.documents_upload_quota.limit = billing_info.documents_upload_quota.limit
 
-        if "annotation_quota_limit" in billing_info:
-            features.annotation_quota_limit.size = billing_info["annotation_quota_limit"]["size"]
-            features.annotation_quota_limit.limit = billing_info["annotation_quota_limit"]["limit"]
+        features.annotation_quota_limit.size = billing_info.annotation_quota_limit.size
+        features.annotation_quota_limit.limit = billing_info.annotation_quota_limit.limit
 
-        if "can_replace_logo" in billing_info:
-            features.can_replace_logo = billing_info["can_replace_logo"]
-
-        if "model_load_balancing_enabled" in billing_info:
-            features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
-
-        if "knowledge_pipeline_publish_enabled" in billing_info:
-            features.knowledge_pipeline.publish_enabled = billing_info["knowledge_pipeline_publish_enabled"]
-
-        if "next_credit_reset_date" in billing_info:
-            features.next_credit_reset_date = billing_info["next_credit_reset_date"]
+        features.can_replace_logo = billing_info.can_replace_logo
+        features.model_load_balancing_enabled = billing_info.model_load_balancing_enabled
+        features.knowledge_pipeline.publish_enabled = billing_info.knowledge_pipeline_publish_enabled
+        features.next_credit_reset_date = billing_info.next_credit_reset_date
 
     @classmethod
     def _fulfill_vector_space_from_billing_info(
-        cls, vector_space: feature_entities.LimitationModel, billing_info: BillingInfo
+        cls, vector_space: feature_entities.LimitationModel, billing_info: billing.GetSubscriptionInfoReply
     ):
-        if "vector_space" not in billing_info:
+        if billing_info.vector_space is None:
             return
 
         # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
         # but feature API keeps LimitationModel.size as int for compatibility.
-        vector_space.size = int(billing_info["vector_space"]["size"])
-        vector_space.limit = billing_info["vector_space"]["limit"]
+        vector_space.size = int(billing_info.vector_space.size)
+        vector_space.limit = billing_info.vector_space.limit

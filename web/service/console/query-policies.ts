@@ -359,7 +359,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 platform: {
                   post: {
                     mutationOptions: {
-                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                      onSettled: (_data, _error, _variables, _onMutateResult, context) =>
                         invalidateHumanInputContactQueries(consoleQuery, context.client),
                     },
                   },
@@ -419,6 +419,22 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   },
                 },
               },
+              imSyncRuns: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (data, _variables, _onMutateResult, context) => {
+                      context.client.setQueryData(
+                        consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.get.queryKey(),
+                        data,
+                      )
+                      return context.client.resetQueries({
+                        queryKey:
+                          consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.results.key(),
+                      })
+                    },
+                  },
+                },
+              },
               channels: {
                 email: {
                   post: {
@@ -430,13 +446,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   byChannelId: {
                     put: {
                       mutationOptions: {
-                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
                           invalidateHumanInputChannelQueries(consoleQuery, context.client),
                       },
                     },
                     delete: {
                       mutationOptions: {
-                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
                           invalidateHumanInputChannelQueries(consoleQuery, context.client),
                       },
                     },
@@ -452,20 +468,20 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   byChannelId: {
                     put: {
                       mutationOptions: {
-                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
                           invalidateHumanInputChannelQueries(consoleQuery, context.client),
                       },
                     },
                     delete: {
                       mutationOptions: {
-                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
                           invalidateHumanInputChannelQueries(consoleQuery, context.client),
                       },
                     },
                     replacement: {
                       post: {
                         mutationOptions: {
-                          onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          onSettled: (_data, _error, _variables, _onMutateResult, context) =>
                             invalidateHumanInputChannelQueries(consoleQuery, context.client),
                         },
                       },
@@ -2997,13 +3013,11 @@ function invalidateAgentAccessQueries(
   ])
 }
 
-export function invalidateHumanInputContactQueries(
+function invalidateHumanInputContactQueries(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,
-  workspaceId?: string,
 ) {
   return invalidateQueryKeys(client, [
-    workspaceId ? ['contacts-management', workspaceId] : ['contacts-management'],
     query.workspaces.current.humanInput.v2.contacts.key(),
     query.workspaces.current.humanInput.v2.contactOptions.key(),
     query.workspaces.current.humanInput.v2.imIdentities.key(),
@@ -3011,15 +3025,13 @@ export function invalidateHumanInputContactQueries(
   ])
 }
 
-export function invalidateHumanInputChannelQueries(
+function invalidateHumanInputChannelQueries(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,
-  workspaceId?: string,
 ) {
   return Promise.all([
-    invalidateHumanInputContactQueries(query, client, workspaceId),
+    invalidateHumanInputContactQueries(query, client),
     invalidateQueryKeys(client, [
-      workspaceId ? ['contacts', 'im-platform', `api:${workspaceId}`] : ['contacts', 'im-platform'],
       query.workspaces.current.humanInput.v2.channels.key(),
       query.workspaces.current.humanInput.v2.imIdentities.key(),
       query.workspaces.current.humanInput.v2.imSyncRuns.key(),

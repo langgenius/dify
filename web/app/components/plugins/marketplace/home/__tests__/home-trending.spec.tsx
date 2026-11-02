@@ -177,7 +177,7 @@ const originalNavigation = navigationSettings.disableMainFrameNavigation
 
 beforeEach(() => {
   navigationSettings.disableMainFrameNavigation = true
-  document.body.setAttribute('data-is-marketplace', '')
+  document.documentElement.setAttribute('data-is-marketplace', '')
   window.__marketplaceTracking__ = {
     track: mockTrackMarketplaceSiteEvent,
     rememberReferrer: vi.fn(),
@@ -190,7 +190,7 @@ beforeEach(() => {
 
 afterEach(() => {
   delete window.__marketplaceTracking__
-  document.body.removeAttribute('data-is-marketplace')
+  document.documentElement.removeAttribute('data-is-marketplace')
   navigationSettings.disableMainFrameNavigation = originalNavigation
   vi.unstubAllGlobals()
   vi.restoreAllMocks()

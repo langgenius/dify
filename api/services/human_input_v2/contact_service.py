@@ -106,20 +106,21 @@ class ContactManagementService:
         page: int,
         limit: int,
         keyword: str,
-    ) -> Page[Contact]:
-        return self._contacts.list_contact(
+    ) -> Page[ContactWithIMBindings]:
+        contact_page = self._contacts.list_contact(
             tenant_id,
             page,
             limit,
             ContactQuery(keyword=keyword),
         )
+        return Page(self._with_bindings(tenant_id, contact_page.items), contact_page.page, contact_page.limit)
 
     def get_contact_options(
         self,
         tenant_id: TenantId,
         contact_ids: Sequence[ContactId],
-    ) -> Sequence[Contact]:
-        return self._contacts.get_contacts_by_ids(tenant_id, contact_ids)
+    ) -> tuple[ContactWithIMBindings, ...]:
+        return self._with_bindings(tenant_id, self._contacts.get_contacts_by_ids(tenant_id, contact_ids))
 
     def create_external_contact(
         self,
