@@ -203,6 +203,42 @@ describe('next runs', () => {
         'Sunday, January 17, 2027, 9:00 AM (UTC+9)',
       ])
     })
+
+    it('lists monthly runs with the last day once and matches the same cron', () => {
+      const visual = createData({
+        frequency: 'monthly',
+        timezone: 'Asia/Seoul',
+        visual_config: { time: '09:00 AM', monthly_days: [31, 15, 'last', 15] },
+      })
+      const cron = createData({
+        mode: 'cron',
+        cron_expression: '0 9 15,31,L * *',
+        timezone: 'Asia/Seoul',
+      })
+      const expected = [
+        'January 15, 2027, 9:00 AM (UTC+9)',
+        'January 31, 2027, 9:00 AM (UTC+9)',
+        'February 15, 2027, 9:00 AM (UTC+9)',
+        'February 28, 2027, 9:00 AM (UTC+9)',
+        'March 15, 2027, 9:00 AM (UTC+9)',
+      ]
+
+      expect(runsAt('2027-01-04T15:00:00Z', cron, 5)).toEqual(expected)
+      expect(runsAt('2027-01-04T15:00:00Z', visual, 5)).toEqual(expected)
+    })
+
+    it('uses the first day when no monthly day is selected', () => {
+      const data = createData({
+        frequency: 'monthly',
+        timezone: 'Asia/Seoul',
+        visual_config: { time: '09:00 AM', monthly_days: [] },
+      })
+
+      expect(runsAt('2027-01-04T15:00:00Z', data, 2)).toEqual([
+        'February 1, 2027, 9:00 AM (UTC+9)',
+        'March 1, 2027, 9:00 AM (UTC+9)',
+      ])
+    })
   })
 
   describe('cron syntax', () => {
@@ -226,6 +262,15 @@ describe('next runs', () => {
     it('lists no runs when the backend cannot find one', () => {
       for (const expression of ['0 0 31 2 *', '0 9 1 * 1#2', '0 0 * * 5L'])
         expect(runsAt('2026-10-12T03:17:42Z', cronData(expression), 2)).toEqual([])
+    })
+
+    it('shows today at 12:00 PM in the schedule timezone on the node card when no run is found', () => {
+      // 2026-10-12 20:00 UTC is already October 13 in Seoul.
+      vi.setSystemTime(new Date('2026-10-12T20:00:00Z'))
+
+      expect(getNextExecutionTime(cronData('0 9 1 * 1#2')).replace(/\s/g, ' ')).toBe(
+        'October 13, 2026, 12:00 PM',
+      )
     })
   })
 
