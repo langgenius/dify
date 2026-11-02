@@ -60,6 +60,11 @@ redis_mock.expire = MagicMock()
 redis_mock.hgetall = MagicMock(return_value={})
 redis_mock.hdel = MagicMock()
 redis_mock.incr = MagicMock(return_value=1)
+# pytest 9.2's monkeypatch undo deletes a mock child that isn't in the mock's __dict__. Keep every Redis
+# method there, so a test that patches one leaves it in place for the tests after it.
+for _name in {*dir(ext_redis.RedisClientWrapper), *dir(Redis)}:
+    if not _name.startswith("_"):
+        setattr(redis_mock, _name, getattr(redis_mock, _name))  # guard-ignore: no-new-getattr -- names come from dir()
 
 if TYPE_CHECKING:
     from extensions.application_services.app import AppServices
