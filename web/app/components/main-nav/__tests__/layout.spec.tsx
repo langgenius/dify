@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider, useAtomValue, useSetAtom } from 'jotai'
 import { renderToString } from 'react-dom/server'
+import AgentAccessConfigDetailSidebarSlot from '@/app/(commonLayout)/@detailSidebar/agents/[agentId]/access-config/page'
 import DatasetDocumentCreateFromPipelineDetailSidebarSlot from '@/app/(commonLayout)/@detailSidebar/datasets/[datasetId]/documents/create-from-pipeline/page'
 import DatasetDocumentCreateDetailSidebarSlot from '@/app/(commonLayout)/@detailSidebar/datasets/[datasetId]/documents/create/page'
 import {
@@ -62,6 +63,10 @@ vi.mock('../index', () => ({
 
 vi.mock('@/app/components/app-sidebar/dataset-detail-sidebar', () => ({
   DatasetDetailSidebar: () => <aside aria-label="Knowledge sidebar">Knowledge sidebar</aside>,
+}))
+
+vi.mock('@/features/agent-v2/agent-detail/detail-sidebar', () => ({
+  AgentDetailSidebar: () => <aside aria-label="Agent sidebar">Agent sidebar</aside>,
 }))
 
 describe('MainNavLayout', () => {
@@ -254,6 +259,23 @@ describe('MainNavLayout', () => {
       expect(screen.getByRole('main')).toHaveTextContent('document upload')
     },
   )
+
+  it('keeps the Agent sidebar on the resource access route', () => {
+    vi.mocked(usePathname).mockReturnValue('/agents/agent-1/access-config')
+
+    render(
+      <MainNavLayout
+        initialDetailSidebarMode="expand"
+        detailSidebar={<AgentAccessConfigDetailSidebarSlot />}
+      >
+        <div>resource access</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.getByRole('complementary', { name: 'Agent sidebar' })).toBeInTheDocument()
+    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent('resource access')
+  })
 
   it.each([
     '/datasets/create',
