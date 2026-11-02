@@ -6,12 +6,21 @@ and data_source_detail_dict for all data_source_type values, including "local_fi
 """
 
 import json
+import time
+from datetime import UTC, datetime
 from typing import Literal, NotRequired, TypedDict
 from unittest.mock import MagicMock
 
+import pytest
+
 from models.dataset import Document
 from models.enums import DataSourceType, DocumentCreatedFrom
-from services.knowledge.dataset_read_service import get_document_source_detail
+from services.knowledge.dataset_read_service import (
+    format_document_built_in_fields,
+    format_document_source_detail,
+    get_document_source_detail,
+)
+from tests.helpers.unit.model_factories import make_upload_file
 from tests.unit_tests.controllers.conftest import app_query_services as app_query_services  # noqa: PLC0414
 from tests.unit_tests.controllers.conftest import (
     datasource_application_dependencies as datasource_application_dependencies,  # noqa: PLC0414
@@ -86,6 +95,70 @@ def make_document(*, data_source_type: str, data_source_info: str) -> Document:
         created_by="account-id",
         data_source_info=data_source_info,
     )
+
+
+UPLOADED_AT = datetime(2024, 1, 1)
+
+
+def _uploaded_document(uploaded_at: datetime) -> Document:
+    document = make_document(
+        data_source_type="upload_file",
+        data_source_info=json.dumps({"upload_file_id": "file-1"}),
+    )
+    document.created_at = uploaded_at
+    document.updated_at = uploaded_at
+    return document
+
+
+class TestDocumentDetailTimestamps:
+    """Built-in metadata must not shift with the host timezone."""
+
+    @staticmethod
+    @pytest.fixture
+    def non_utc_host_timezone(monkeypatch: pytest.MonkeyPatch):
+        if not hasattr(time, "tzset"):
+            pytest.skip("tzset is only available on POSIX platforms")
+        monkeypatch.setenv("TZ", "Asia/Tokyo")
+        time.tzset()
+        try:
+            yield
+        finally:
+            monkeypatch.undo()
+            time.tzset()
+
+    @staticmethod
+    @pytest.mark.usefixtures("non_utc_host_timezone")
+    def test_source_detail_reads_a_naive_file_creation_time_as_utc() -> None:
+        document = _uploaded_document(UPLOADED_AT)
+        upload_file = make_upload_file(created_at=UPLOADED_AT)
+
+        detail = format_document_source_detail(document, upload_file)
+
+        assert detail == {
+            "upload_file": {
+                "id": upload_file.id,
+                "name": "test.txt",
+                "size": 10,
+                "extension": "txt",
+                "mime_type": "text/plain",
+                "created_by": "account-1",
+                "created_at": int(UPLOADED_AT.replace(tzinfo=UTC).timestamp()),
+            }
+        }
+
+    @staticmethod
+    @pytest.mark.usefixtures("non_utc_host_timezone")
+    def test_built_in_fields_read_naive_document_times_as_utc() -> None:
+        document = _uploaded_document(UPLOADED_AT)
+
+        fields = {
+            field["name"]: field["value"]
+            for field in format_document_built_in_fields(document, uploader_name="account-id")
+        }
+
+        expected = str(int(UPLOADED_AT.replace(tzinfo=UTC).timestamp()))
+        assert fields["upload_date"] == expected
+        assert fields["last_update_date"] == expected
 
 
 class TestDocumentDetailDataSourceInfo:

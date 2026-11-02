@@ -11,7 +11,15 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.index_processor.constant.query_type import QueryType
 from core.tools.signature import sign_upload_file_preview_url
-from models.dataset import Dataset, DatasetMetadata, DatasetQuery, DocMetadataDetailItem, Document, DocumentSegment
+from models.dataset import (
+    Dataset,
+    DatasetMetadata,
+    DatasetQuery,
+    DocMetadataDetailItem,
+    Document,
+    DocumentSegment,
+    _utc_epoch_seconds,
+)
 from models.model import UploadFile
 from repositories.knowledge.dataset_read_repository import (
     DatasetDetailPrefetch,
@@ -199,7 +207,7 @@ def format_document_source_detail(document: Document, file: UploadFile | None) -
                 "extension": file.extension,
                 "mime_type": file.mime_type,
                 "created_by": file.created_by,
-                "created_at": file.created_at.timestamp(),
+                "created_at": _utc_epoch_seconds(file.created_at),
             }
         }
     if document.data_source_type in {"notion_import", "website_crawl"}:
@@ -275,13 +283,13 @@ def format_document_built_in_fields(document: Document, *, uploader_name: str | 
                 "id": "built-in",
                 "name": BuiltInField.upload_date,
                 "type": "time",
-                "value": str(document.created_at.timestamp()),
+                "value": str(_utc_epoch_seconds(document.created_at)),
             },
             {
                 "id": "built-in",
                 "name": BuiltInField.last_update_date,
                 "type": "time",
-                "value": str(document.updated_at.timestamp()),
+                "value": str(_utc_epoch_seconds(document.updated_at)),
             },
             {
                 "id": "built-in",
