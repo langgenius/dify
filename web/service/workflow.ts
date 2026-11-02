@@ -180,15 +180,22 @@ export const submitHumanInputForm = (
     action: string
   },
   formVersion?: HumanInputFormData['form_version'],
+  context?: ConsoleClientContext,
 ) => {
   if (formVersion === '2') {
-    return consoleClient.form.humanInput.v2.byFormToken.post({
-      params: { form_token: token },
-      body: zConsoleHumanInputV2SubmitPayload.parse(data),
-    })
+    return consoleClient.form.humanInput.v2.byFormToken.post(
+      {
+        params: { form_token: token },
+        body: zConsoleHumanInputV2SubmitPayload.parse(data),
+      },
+      { context },
+    )
   }
-  return consoleClient.form.humanInput.byFormToken.post({
-    params: { form_token: token },
-    body: data,
-  })
+  return consoleClient.form.humanInput.byFormToken.post(
+    {
+      params: { form_token: token },
+      body: data,
+    },
+    { context },
+  )
 }
