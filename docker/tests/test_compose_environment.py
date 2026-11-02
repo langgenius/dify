@@ -114,6 +114,47 @@ class ComposeEnvironmentTests(unittest.TestCase):
             for key, value in service.get("environment", {}).items():
                 self.assertEqual(actual[name]["environment"].get(key), value, f"{name}.{key}")
 
+    def test_api_and_weaviate_defaults_and_isolated_overrides(self):
+        cases = [
+            ("core-services/shared", "api", "SERVER_WORKER_CLASS", "SERVER_WORKER_CLASS", "gevent", "sync", "gthread"),
+            ("core-services/shared", "api", "GUNICORN_TIMEOUT", "GUNICORN_TIMEOUT", "360", "120", "240"),
+            (
+                "vectorstores/weaviate",
+                "weaviate",
+                "WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED",
+                "AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED",
+                "true",
+                "false",
+                "true",
+            ),
+        ]
+        root = self.project / ".env"
+        initial_root = root.read_text()
+        for path, service, key, native, default, custom, root_value in cases:
+            with self.subTest(setting=key):
+                source = f"envs/{path}.defaults"
+                target = f"envs/{path}.env"
+                try:
+                    self.assertEqual(self.render()[service]["environment"].get(native), default, "fresh deployment")
+
+                    # Exercise root customization without any service override file.
+                    self.override_root({key: custom})
+                    self.assertEqual(self.render()[service]["environment"][native], custom, "root only")
+                    root.write_text(initial_root)
+                    self.assertEqual(self.render()[service]["environment"][native], default, "restored root")
+
+                    self.copy_template(source, target)
+                    self.assertEqual(self.render()[service]["environment"][native], default, "unchanged copy")
+                    self.copy_template(source, target, {key: custom})
+                    self.assertEqual(self.render()[service]["environment"][native], custom, "service only")
+
+                    # Leave the service file unchanged while changing only the root file.
+                    self.override_root({key: root_value})
+                    self.assertEqual(self.render()[service]["environment"][native], root_value, "root precedence")
+                finally:
+                    (self.project / target).unlink(missing_ok=True)
+                    root.write_text(initial_root)
+
     def test_service_overrides_and_root_precedence(self):
         cases = [
             (
