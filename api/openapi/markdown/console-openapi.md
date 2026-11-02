@@ -7174,7 +7174,7 @@ Get dataset indexing status
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [KnowledgeFSUpgradeStartPayload](#knowledgefsupgradestartpayload)<br> |
+|  No | **application/json**: [KnowledgeFSUpgradeStartPayload](#knowledgefsupgradestartpayload)<br> |
 
 #### Responses
 

@@ -1568,7 +1568,7 @@ export const post19 = oc
   })
   .input(
     z.object({
-      body: zPostDatasetsByDatasetIdKnowledgeFsUpgradesBody,
+      body: zPostDatasetsByDatasetIdKnowledgeFsUpgradesBody.optional(),
       headers: zPostDatasetsByDatasetIdKnowledgeFsUpgradesHeaders,
       params: zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath,
     }),
