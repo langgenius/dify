@@ -76,7 +76,7 @@
   "list.table.name": "Ad",
   "list.table.rename": "Yeniden Adlandır",
   "list.title": "Belgeler",
-  "metadata.dateTimeFormat": "MMMM D, YYYY ss:dd ÖÖ/ÖS",
+  "metadata.dateTimeFormat": "D MMMM YYYY HH:mm",
   "metadata.field.IMChat.chatPartiesGroupName": "Sohbet Tarafları/Grup Adı",
   "metadata.field.IMChat.chatPlatform": "Sohbet Platformu",
   "metadata.field.IMChat.endDate": "Bitiş Tarihi",
