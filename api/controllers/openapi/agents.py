@@ -24,10 +24,10 @@ from controllers.openapi._models import (
     AppDescribeQuery,
     Hint,
 )
-from controllers.openapi.agent_run import AgentRunApi, AgentTestApi, agent_target
+from controllers.openapi.agent_run import AgentRunApi, agent_target, run_refusal
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
-    CheckAppApiEnabled,
+    CheckAppMode,
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
@@ -38,6 +38,7 @@ from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import AppParametersDict
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response
+from models.model import AppMode
 from services.agent.roster_service import AgentRosterService, RosterAgentEntry
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
 
@@ -51,11 +52,8 @@ def _row(entry: RosterAgentEntry) -> AgentListRow:
         role=entry.role,
         published=entry.published,
         updated_at=entry.updated_at.isoformat(),
+        service_api_enabled=entry.service_api_enabled,
     )
-
-
-def _describe_info(entry: RosterAgentEntry) -> AgentDescribeInfo:
-    return AgentDescribeInfo(**_row(entry).model_dump(), service_api_enabled=entry.service_api_enabled)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/agents")
@@ -114,7 +112,7 @@ class AgentDescribeApi(Resource):
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckWorkspaceMember(),
-            CheckAppApiEnabled(),
+            CheckAppMode(AppMode.AGENT),
             CheckScope(Scope.APPS_READ),
             CheckRBACPermission(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())),
         ),
@@ -128,11 +126,12 @@ class AgentDescribeApi(Resource):
         target = agent_target(workspace_id, agent_id)
         response = AgentDescribeResponse()
         if wants_block(query.fields, "info"):
-            response.info = _describe_info(entry)
-        if entry.published:
+            response.info = AgentDescribeInfo.model_validate(_row(entry).model_dump())
+        refusal = run_refusal(entry, ctx.app, target)
+        if refusal is None:
             response.hints = [Hint(summary="Run this Agent", op=op_of(AgentRunApi.post), input=target)]
         else:
-            response.hints = [Hint(summary="Run this Agent's draft", op=op_of(AgentTestApi.post), input=target)]
+            response.hints = refusal.hints or []
         want_parameters = wants_block(query.fields, "parameters")
         want_input_schema = wants_block(query.fields, "input_schema")
         if not any((want_parameters, want_input_schema)):

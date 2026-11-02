@@ -36,7 +36,7 @@ from controllers.openapi.auth.loaders import load_app, load_caller, load_workspa
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject, Subject
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
-from models import AppMode
+from models import App, AppMode
 from models.account import TenantAccountRole, TenantPluginInstallPermission
 from models.enums import CreatorUserRole
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
@@ -97,6 +97,11 @@ SET_SERVICE_API_OP: Final = "set.service_api"
 SET_AGENT_SERVICE_API_OP: Final = "set.service_api.agent"
 
 
+def service_api_hint(app: App) -> Hint:
+    op = SET_AGENT_SERVICE_API_OP if app.mode == AppMode.AGENT else SET_SERVICE_API_OP
+    return Hint(summary="Turn the Service API on", op=op, input={"app_id": app.id, "enabled": True})
+
+
 class CheckAppApiEnabled(Requirement):
     rank = Rank.EARLY
 
@@ -104,9 +109,7 @@ class CheckAppApiEnabled(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         app = load_app(ctx)
         if not app.enable_api:
-            op = SET_AGENT_SERVICE_API_OP if app.mode == AppMode.AGENT else SET_SERVICE_API_OP
-            hint = Hint(summary="Turn the Service API on", op=op, input={"app_id": app.id, "enabled": True})
-            raise ServiceApiDisabled(hints=[hint])
+            raise ServiceApiDisabled(hints=[service_api_hint(app)])
 
 
 class CheckWorkspaceMember(Requirement):

@@ -29,7 +29,16 @@ from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext
 from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
-from models.agent import Agent, AgentScope, AgentSource, AgentStatus
+from models.agent import (
+    Agent,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+)
+from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
 from models.model import AppMode, IconType
 from services.enterprise.enterprise_service import WebAppSettings
@@ -48,6 +57,8 @@ SESSION_ID = "00000000-0000-0000-0000-000000000005"
 OTHER_TENANT_ID = "00000000-0000-0000-0000-000000000006"
 AGENT_ID = "00000000-0000-0000-0000-000000000007"
 AGENT_APP_ID = "00000000-0000-0000-0000-000000000008"
+AGENT_SNAPSHOT_ID = "00000000-0000-0000-0000-000000000009"
+AGENT_REVISION_ID = "00000000-0000-0000-0000-00000000000a"
 CLIENT_ID = "openapi-client"
 ACCOUNT_EMAIL = "account@example.com"
 SSO_EMAIL = "user@sso.com"
@@ -113,6 +124,29 @@ def make_agent(
         app_id=AGENT_APP_ID,
         status=status,
     )
+
+
+def make_published_agent(*, tenant_id: str = TENANT_ID) -> list[object]:
+    """`make_agent` with a published version, so `run.agent` can use it."""
+    agent = make_agent(tenant_id=tenant_id)
+    agent.active_config_snapshot_id = AGENT_SNAPSHOT_ID
+    agent.active_config_is_published = True
+    snapshot = AgentConfigSnapshot(
+        id=AGENT_SNAPSHOT_ID,
+        tenant_id=tenant_id,
+        agent_id=AGENT_ID,
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate({}),
+    )
+    revision = AgentConfigRevision(
+        id=AGENT_REVISION_ID,
+        tenant_id=tenant_id,
+        agent_id=AGENT_ID,
+        current_snapshot_id=AGENT_SNAPSHOT_ID,
+        revision=1,
+        operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+    )
+    return [agent, snapshot, revision]
 
 
 def make_tenant(*, tenant_id: str = TENANT_ID, status: TenantStatus = TenantStatus.NORMAL) -> Tenant:

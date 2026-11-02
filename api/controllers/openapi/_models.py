@@ -126,6 +126,7 @@ class AgentListRow(BaseModel):
         description="true when the Agent has a published version a run can use, even if its draft was edited since"
     )
     updated_at: str
+    service_api_enabled: bool = Field(description="run.agent needs it on; describe.agent and test.agent do not")
 
 
 class AgentListResponse(PaginationEnvelope[AgentListRow]):
@@ -133,7 +134,7 @@ class AgentListResponse(PaginationEnvelope[AgentListRow]):
 
 
 class AgentDescribeInfo(AgentListRow):
-    service_api_enabled: bool
+    pass
 
 
 class AgentDescribeResponse(Hinted):

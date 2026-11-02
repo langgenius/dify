@@ -2425,7 +2425,7 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | name | string |  | Yes |
 | published | boolean | true when the Agent has a published version a run can use, even if its draft was edited since | Yes |
 | role | string |  | Yes |
-| service_api_enabled | boolean |  | Yes |
+| service_api_enabled | boolean | run.agent needs it on; describe.agent and test.agent do not | Yes |
 | updated_at | string |  | Yes |
 
 #### AgentDescribeResponse
@@ -2467,6 +2467,7 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | name | string |  | Yes |
 | published | boolean | true when the Agent has a published version a run can use, even if its draft was edited since | Yes |
 | role | string |  | Yes |
+| service_api_enabled | boolean | run.agent needs it on; describe.agent and test.agent do not | Yes |
 | updated_at | string |  | Yes |
 
 #### AgentRunPayload

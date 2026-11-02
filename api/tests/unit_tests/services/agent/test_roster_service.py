@@ -7488,11 +7488,11 @@ def _list_openapi_agents(
 @pytest.mark.parametrize(
     ("published", "accessible_agent_ids", "expected"),
     [
-        (None, None, {"agent-published", "agent-draft", "agent-edited", "agent-seeded"}),
-        (True, None, {"agent-published", "agent-edited"}),
+        (None, None, {"agent-published", "agent-draft", "agent-edited", "agent-seeded", "agent-api-off"}),
+        (True, None, {"agent-published", "agent-edited", "agent-api-off"}),
         (False, None, {"agent-draft", "agent-seeded"}),
         (None, {"agent-draft"}, {"agent-draft"}),
-        (None, {"agent-draft", "agent-api-off", "agent-workflow-only"}, {"agent-draft"}),
+        (None, {"agent-draft", "agent-api-off", "agent-workflow-only"}, {"agent-draft", "agent-api-off"}),
         (True, {"agent-draft"}, set()),
         (None, set(), set()),
     ],
@@ -7525,6 +7525,13 @@ def test_list_openapi_roster_agents_maps_the_entry(openapi_roster: Session) -> N
         entry.published,
         entry.service_api_enabled,
     ) == ("agent-published", "app-published", "App published", "", "assistant", True, True)
+
+
+def test_list_openapi_roster_agents_keeps_an_agent_with_its_service_api_off(openapi_roster: Session) -> None:
+    entries, _ = _list_openapi_agents(openapi_roster, name="App api-off")
+
+    [entry] = entries
+    assert (entry.agent_id, entry.published, entry.service_api_enabled) == ("agent-api-off", True, False)
 
 
 @pytest.mark.parametrize("published", [True, False], ids=["published", "unpublished"])
@@ -7565,7 +7572,7 @@ def test_list_openapi_roster_agents_drops_an_app_without_a_roster_agent(
 
     entries, total = _list_openapi_agents(openapi_roster)
 
-    assert (entries, total) == ([], 4)
+    assert (entries, total) == ([], 5)
 
 
 def test_list_openapi_roster_agents_writes_nothing(openapi_roster: Session) -> None:
