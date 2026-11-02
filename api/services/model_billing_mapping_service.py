@@ -14,6 +14,7 @@ from typing import Any, Literal, cast
 from packaging.version import InvalidVersion, Version
 
 from core.entities.provider_entities import (
+    HostedEmbeddingSourceFact,
     HostedSourceVariantFact,
     ProviderQuotaType,
     QuotaConfiguration,
@@ -25,6 +26,10 @@ from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.provider_ids import ModelProviderID
+from services.entities.model_billing_embedding_mapping import EmbeddingSourceSettings, SourceEmbeddingVariantMapping
+from services.entities.model_billing_embedding_mapping import (
+    SelectedEmbeddingSourceVariant as SelectedEmbeddingSourceVariant,  # noqa: PLC0414
+)
 from services.entities.model_billing_mapping import ModelMapping, SourceVariantSettings
 from services.entities.model_billing_mapping import SelectedSourceVariant as SelectedSourceVariant  # noqa: PLC0414
 from services.entities.model_billing_mapping import SourceParameterContract as SourceParameterContract  # noqa: PLC0414
@@ -43,6 +48,21 @@ from services.model_billing_openai_chat_adapter import (
     openai_chat_source_marker,
     restore_openai_chat_source_contract,
 )
+from services.model_billing_openai_embedding_adapter import (
+    OPENAI_EMBEDDING_SOURCE_UIDS,
+    OpenAIEmbeddingSourceContract,
+    OpenAIEmbeddingSourceSettings,
+    build_openai_embedding_source_contract,
+    openai_embedding_source_marker,
+    restore_openai_embedding_source_contract,
+)
+from services.model_billing_openai_provider042_adapter import (
+    OpenAI042SourceSettings,
+    OpenAIProvider042SourceContract,
+    build_openai_provider042_source_contract,
+    openai_provider042_source_marker,
+    restore_openai_provider042_source_contract,
+)
 from services.model_billing_openai_provider110_adapter import (
     OpenAI110SourceSettings,
     OpenAIProvider110SourceContract,
@@ -56,6 +76,7 @@ from services.model_billing_source_capability_policy import (
     resolve_source_capability_policy as resolve_source_capability_policy,  # noqa: PLC0414
 )
 from services.model_billing_source_variants import (
+    EmbeddingSourceVariantContext,
     MappingDeclaration,
     ModelMappingRevision,
     SelectedModelMapping,
@@ -92,10 +113,34 @@ def build_source_adapter_contract(
         "source_plugin_unique_identifier": source_plugin_unique_identifier,
         "expected_source_schema_digest": mapping.source_schema_digest,
     }
+    if isinstance(mapping, SelectedEmbeddingSourceVariant):
+        embedding_contract = build_openai_embedding_source_contract(
+            **arguments,
+            source_schema=source_schema,
+            target_model=mapping.target.model,
+            source_settings=OpenAIEmbeddingSourceSettings(
+                source_endpoint_class=mapping.variant.source_settings.source_endpoint_class,
+                request_metadata_behavior=mapping.variant.source_settings.request_metadata_behavior,
+            ),
+        )
+        if embedding_contract != restore_variant_source_contract(mapping):
+            raise ValueError("Embedding source variant evidence changed")
+        return embedding_contract
     if isinstance(mapping, SelectedSourceVariant):
         settings = mapping.variant.source_settings
-        if mapping.parameter_adapter.id == "openai_provider110_source_v1":
-            contract: SourceParameterContract = build_openai_provider110_source_contract(
+        if mapping.parameter_adapter.id == "openai_provider042_source_v1":
+            contract: SourceParameterContract = build_openai_provider042_source_contract(
+                **arguments,
+                source_schema=source_schema,
+                target_model=mapping.target.model,
+                source_settings=OpenAI042SourceSettings(
+                    protocol_selector=settings.protocol_selector,
+                    source_base_is_set=settings.source_base_is_set,
+                    request_metadata_enabled=settings.request_metadata_enabled,
+                ),
+            )
+        elif mapping.parameter_adapter.id == "openai_provider110_source_v1":
+            contract = build_openai_provider110_source_contract(
                 **arguments,
                 source_schema=source_schema,
                 target_model=mapping.target.model,
@@ -148,6 +193,10 @@ def source_parameter_marker(
     }
     if isinstance(contract, OpenAIChatSourceContract):
         return openai_chat_source_marker(contract, **arguments, model_type=model_type)
+    if isinstance(contract, OpenAIProvider042SourceContract):
+        return openai_provider042_source_marker(contract, **arguments, model_type=model_type)
+    if isinstance(contract, OpenAIEmbeddingSourceContract):
+        return openai_embedding_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, OpenAIProvider110SourceContract):
         return openai_provider110_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, AnthropicSourceContract):
@@ -356,6 +405,7 @@ def mapped_dynamic_source_candidates(
     raw_registry: str,
     revision: str,
     source_fact: HostedSourceVariantFact | None = None,
+    embedding_source_fact: HostedEmbeddingSourceFact | None = None,
     allow_source_variants: bool = False,
 ) -> tuple[HostedSourceSchemaCandidate, ...]:
     """Plan bounded source lookups; this policy never performs RPC or inference."""
@@ -380,6 +430,7 @@ def mapped_dynamic_source_candidates(
                 (provider_id, kind, model),
                 source_uid=getattr(provider, "plugin_unique_identifier", ""),
                 fact=source_fact,
+                embedding_fact=embedding_source_fact,
             )
         except ValueError:
             continue
@@ -567,6 +618,7 @@ def additional_hosted_availability(
     preserve_independent_units: bool = False,
     source_uid: str = "",
     source_fact: HostedSourceVariantFact | None = None,
+    embedding_source_fact: HostedEmbeddingSourceFact | None = None,
     allow_source_variants: bool = False,
 ) -> HostedCompatibilityAvailability | None:
     """Build trusted hosted availability using explicit, frozen contracts.
@@ -618,6 +670,7 @@ def additional_hosted_availability(
                             (provider_id, schema.model_type, schema.model),
                             source_uid=source_uid,
                             fact=source_fact,
+                            embedding_fact=embedding_source_fact,
                             schema=schema,
                         )
                         if registry is not None
@@ -728,6 +781,36 @@ def mappings_for_revision(raw_registry: str, revision: str) -> dict[MappingIdent
     return {key: item for key, item in registry.declarations.items() if isinstance(item, ModelMapping)}
 
 
+def hosted_embedding_source_fact(
+    *, provider: str, source_uid: str, models: Sequence[AIModelEntity], credentials: object
+) -> HostedEmbeddingSourceFact | None:
+    """Capture only actual SYSTEM embedding facts, without LLM flag inference.
+
+    api_protocol and enable_request_metadata are intentionally never read:
+    exact042/110 embedding methods ignore both, proved through the real source
+    SDK's schema/request/result boundary. This function never edits the original
+    dictionary, invents a raw False flag or retains credential/URL values.
+    """
+    if (
+        str(ModelProviderID(provider)) != "langgenius/openai/openai"
+        or type(source_uid) is not str
+        or source_uid not in OPENAI_EMBEDDING_SOURCE_UIDS
+        or not isinstance(credentials, dict)
+    ):
+        return None
+    return HostedEmbeddingSourceFact(
+        provider=str(ModelProviderID(provider)),
+        plugin_unique_identifier=source_uid,
+        catalog_schema_digests=tuple(
+            (item.model_type, item.model, model_schema_digest(item))
+            for item in models
+            if item.model_type == ModelType.TEXT_EMBEDDING
+        ),
+        source_endpoint_class=source_endpoint_class(source_uid, credentials.get("openai_api_base")),
+        request_metadata_behavior="not_used",
+    )
+
+
 def hosted_source_variant_fact(
     *, provider: str, source_uid: str, models: Sequence[AIModelEntity], credentials: object
 ) -> HostedSourceVariantFact | None:
@@ -774,7 +857,35 @@ def source_variant_context(
     )
 
 
-def restore_variant_source_contract(mapping: SelectedSourceVariant) -> SourceParameterContract:
+def embedding_source_variant_context(
+    fact: HostedEmbeddingSourceFact | None, *, provider: str, source_uid: str, schema: AIModelEntity | None = None
+) -> EmbeddingSourceVariantContext | None:
+    if (
+        fact is None
+        or fact.provider != str(ModelProviderID(provider))
+        or fact.plugin_unique_identifier != source_uid
+        or fact.source_endpoint_class not in {"unset", "official_root"}
+        or fact.request_metadata_behavior != "not_used"
+    ):
+        return None
+    if schema is not None and [
+        digest
+        for kind, model, digest in fact.catalog_schema_digests
+        if (kind, model) == (schema.model_type, schema.model)
+    ] != [model_schema_digest(schema)]:
+        return None
+    return EmbeddingSourceVariantContext(
+        source_uid,
+        EmbeddingSourceSettings(
+            source_endpoint_class=fact.source_endpoint_class,
+            request_metadata_behavior=fact.request_metadata_behavior,
+        ),
+    )
+
+
+def restore_variant_source_contract(
+    mapping: SelectedSourceVariant | SelectedEmbeddingSourceVariant,
+) -> SourceParameterContract:
     variant = mapping.variant
     marker = {
         "schema_version": 1,
@@ -790,8 +901,35 @@ def restore_variant_source_contract(mapping: SelectedSourceVariant) -> SourcePar
         "model_type": mapping.source.model_type,
         "target_model": mapping.target.model,
     }
-    settings = variant.source_settings
-    if (
+    if isinstance(mapping, SelectedEmbeddingSourceVariant):
+        contract = restore_openai_embedding_source_contract(
+            marker,
+            **arguments,
+            source_settings=OpenAIEmbeddingSourceSettings(
+                source_endpoint_class=mapping.variant.source_settings.source_endpoint_class,
+                request_metadata_behavior=mapping.variant.source_settings.request_metadata_behavior,
+            ),
+        )
+        if (
+            contract.source_runtime_schema_digest != mapping.variant.source_runtime_schema_digest
+            or contract.adapter_id != mapping.parameter_adapter.id
+            or contract.algorithm_revision != mapping.parameter_adapter.revision
+            or contract.target_model != mapping.target.model
+        ):
+            raise ValueError("Embedding source variant profile mismatch")
+        return contract
+    settings = mapping.variant.source_settings
+    if variant.parameter_adapter.id == "openai_provider042_source_v1":
+        contract: SourceParameterContract = restore_openai_provider042_source_contract(
+            marker,
+            **arguments,
+            source_settings=OpenAI042SourceSettings(
+                protocol_selector=settings.protocol_selector,
+                source_base_is_set=settings.source_base_is_set,
+                request_metadata_enabled=settings.request_metadata_enabled,
+            ),
+        )
+    elif (
         settings.request_metadata_enabled
         or settings.source_base_is_set
         and variant.parameter_adapter.revision
@@ -801,10 +939,10 @@ def restore_variant_source_contract(mapping: SelectedSourceVariant) -> SourcePar
         # profiles may restore True prospectively; actual selected sources
         # separately require a positive request-local endpoint classification.
         raise ValueError("Unreviewed V2 source public settings")
-    if variant.parameter_adapter.id == "openai_chat_source_v1":
+    elif variant.parameter_adapter.id == "openai_chat_source_v1":
         if settings.protocol_selector not in {"absent", "chat"}:
             raise ValueError("Unreviewed source protocol")
-        contract: SourceParameterContract = restore_openai_chat_source_contract(
+        contract = restore_openai_chat_source_contract(
             marker,
             **arguments,
             source_api_protocol=None if settings.protocol_selector == "absent" else "chat",
@@ -881,7 +1019,7 @@ def validate_frozen_mapping_evidence(
         source_contract.source_schema_digest != mapping.source_schema_digest
         or (source_contract.adapter_id, source_contract.algorithm_revision, source_contract.rules_digest)
         != (adapter.id, adapter.revision, adapter.rules_digest)
-        or isinstance(mapping, SelectedSourceVariant)
+        or isinstance(mapping, (SelectedSourceVariant, SelectedEmbeddingSourceVariant))
         and source_contract != restore_variant_source_contract(mapping)
     ):
         raise ValueError("Source parameter mapping changed")
@@ -893,11 +1031,16 @@ def resolve_source_mapping(
     *,
     source_uid: str,
     fact: HostedSourceVariantFact | None,
+    embedding_fact: HostedEmbeddingSourceFact | None = None,
     schema: AIModelEntity | None = None,
 ) -> SelectedModelMapping:
-    context = source_variant_context(fact, provider=identity[0], source_uid=source_uid, schema=schema)
+    context = (
+        embedding_source_variant_context(embedding_fact, provider=identity[0], source_uid=source_uid, schema=schema)
+        if isinstance(registry.declarations.get(identity), SourceEmbeddingVariantMapping)
+        else source_variant_context(fact, provider=identity[0], source_uid=source_uid, schema=schema)
+    )
     selected = registry.resolve(identity, context=context, schema=schema)
-    if isinstance(selected, SelectedSourceVariant):
+    if isinstance(selected, (SelectedSourceVariant, SelectedEmbeddingSourceVariant)):
         restore_variant_source_contract(selected)
     return selected
 

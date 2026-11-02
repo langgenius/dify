@@ -1576,6 +1576,7 @@ class ProviderManager:
         from services.model_billing_mapping_service import (
             additional_hosted_availability,
             has_finite_hosted_credit_pool,
+            hosted_embedding_source_fact,
             hosted_source_variant_fact,
             mapped_dynamic_source_candidates,
             model_schema_digest,
@@ -1718,6 +1719,12 @@ class ProviderManager:
             models=provider_entity.models,
             credentials=provider_hosting_configuration.credentials,
         )
+        embedding_fact = hosted_embedding_source_fact(
+            provider=provider_entity.provider,
+            source_uid=plugin_provider_entity.plugin_unique_identifier,
+            models=provider_entity.models,
+            credentials=provider_hosting_configuration.credentials,
+        )
         if published_balance and routing_state is not None:
             for candidate in mapped_dynamic_source_candidates(
                 provider=provider_entity,
@@ -1725,6 +1732,7 @@ class ProviderManager:
                 raw_registry=dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON,
                 revision=routing_state.get("model_mapping_version", ""),
                 source_fact=variant_fact,
+                embedding_source_fact=embedding_fact,
                 allow_source_variants=stable_inventory,
             ):
                 source_credentials = dict(provider_hosting_configuration.credentials or {})
@@ -1752,6 +1760,12 @@ class ProviderManager:
                 models=[*provider_entity.models, *resolved_source_schemas],
                 credentials=provider_hosting_configuration.credentials,
             )
+            embedding_fact = hosted_embedding_source_fact(
+                provider=provider_entity.provider,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                models=[*provider_entity.models, *resolved_source_schemas],
+                credentials=provider_hosting_configuration.credentials,
+            )
             availability = additional_hosted_availability(
                 provider=provider_entity.provider,
                 hosting=provider_hosting_configuration,
@@ -1764,6 +1778,7 @@ class ProviderManager:
                 preserve_independent_units=stable_inventory,
                 source_uid=plugin_provider_entity.plugin_unique_identifier,
                 source_fact=variant_fact,
+                embedding_source_fact=embedding_fact,
                 allow_source_variants=stable_inventory,
             )
             if availability is None:
@@ -1860,6 +1875,7 @@ class ProviderManager:
         result._tokener_source_plugin_unique_identifier = plugin_provider_entity.plugin_unique_identifier
         result._tokener_source_protocol_fact = source_protocol_fact
         result._tokener_source_variant_fact = variant_fact
+        result._tokener_embedding_source_fact = embedding_fact
         return result
 
     @staticmethod

@@ -35,6 +35,7 @@ from services.model_billing_dependency_provenance import (
 )
 from services.model_billing_mapping_service import (
     additional_hosted_availability,
+    hosted_embedding_source_fact,
     hosted_source_variant_fact,
     provider_has_prepared_ownership,
     published_original_quotas,
@@ -230,6 +231,12 @@ class SavedModelSelectionRuntimeQuery:
                             preserve_independent_units=stable_inventory,
                             source_uid=declaration.plugin_unique_identifier,
                             source_fact=hosted_source_variant_fact(
+                                provider=name,
+                                source_uid=declaration.plugin_unique_identifier,
+                                models=declaration.declaration.models,
+                                credentials=hosting.credentials,
+                            ),
+                            embedding_source_fact=hosted_embedding_source_fact(
                                 provider=name,
                                 source_uid=declaration.plugin_unique_identifier,
                                 models=declaration.declaration.models,

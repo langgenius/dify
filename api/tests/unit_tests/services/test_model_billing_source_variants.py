@@ -7,33 +7,54 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
 from core.hosting_configuration import HostingProvider, PaidHostingQuota
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from services.entities.model_billing_embedding_mapping import SelectedEmbeddingSourceVariant
 from services.entities.model_billing_mapping import (
     ModelMapping,
     SelectedSourceVariant,
     SourceParameterContract,
+    SourceVariantMapping,
     SourceVariantSettings,
 )
 from services.model_billing_mapping_service import (
     additional_hosted_availability,
     build_source_adapter_contract,
+    hosted_embedding_source_fact,
     hosted_source_variant_fact,
     mappings_for_revision,
     resolve_source_mapping,
     restore_variant_source_contract,
     source_mapping_revision,
+    source_parameter_marker,
     source_variant_context,
     validate_frozen_mapping_evidence,
 )
 from services.model_billing_openai_chat_adapter import _OFFICIAL_ROOT_REVIEWED_CONTRACT as OFFICIAL042
+from services.model_billing_openai_provider042_adapter import OPENAI_PROVIDER042_SOURCE_UID
 from services.model_billing_openai_provider110_adapter import (
     _OFFICIAL_ROOT_REVIEWED_CONTRACTS as OFFICIAL110,
 )
 from services.model_billing_openai_provider110_adapter import _REVIEWED_CONTRACTS
+from services.model_billing_openai_provider110_adapter import _REVIEWED_CONTRACTS as CURRENT_SOURCE_CONTRACTS
 from services.model_billing_source_variants import SourceVariantContext, selection_payload, source_endpoint_class
+from tests.helpers.unit.model_billing_source_profiles import (
+    EMBEDDING_MODELS,
+    EMBEDDING_REVISION,
+    GPT55_IDENTITY,
+    GPT55_REVISION,
+    SOURCE_PROVIDER,
+    embedding_profiles,
+    embedding_schemas,
+    full_embedding_registry,
+    full_gpt55_registry,
+    gpt55_schemas,
+    gpt55_variant_record,
+    profile_digest,
+)
 from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema, section
 from tests.unit_tests.services.test_model_billing_openai_chat_adapter import build_inputs
 
@@ -323,7 +344,7 @@ def test_official_root_requires_the_exact_source_archive_and_an_actual_dictionar
         assert fact is not None
         assert fact.source_endpoint_class == "unreviewed"
         assert source_variant_context(fact, provider=IDENTITY[0], source_uid=unknown) is None
-    for missing in (None, [], ""):
+    for missing in (None, list[object](), ""):
         assert hosted_source_variant_fact(provider=IDENTITY[0], source_uid=uid, models=[], credentials=missing) is None
     fact = hosted_source_variant_fact(
         provider=IDENTITY[0], source_uid=uid, models=[], credentials={"openai_api_base": "https://api.openai.com"}
@@ -642,3 +663,491 @@ def test_unknown_managed_source_variant_keeps_original_independent_owner(
     assert result is not None
     assert result.current_quota_type == kind
     assert result.quotas == [original]
+
+
+def test_gpt55_and_mini_prospective_profiles_restore_without_inventing_an_embedding_route() -> None:
+    registry = source_mapping_revision(json.dumps(full_gpt55_registry()), GPT55_REVISION)
+    assert set(registry.declarations) == {
+        (GPT55_IDENTITY[0], ModelType.LLM, "gpt-4o-mini"),
+        GPT55_IDENTITY,
+    }
+    assert registry.has_variants
+    selected = registry.selected_prospective()
+    assert len(selected) == 16
+    assert len([item for item in selected if item.source.model == "gpt-5.5"]) == 6
+    for item in selected:
+        contract = restore_variant_source_contract(item)
+        assert item.registry_digest == registry.digest
+        assert contract.source_model == contract.target_model == item.source.model
+        assert (
+            registry.restore_selection(
+                (GPT55_IDENTITY[0], ModelType.LLM, item.source.model), selection_payload(item).model_dump(mode="json")
+            )
+            == item
+        )
+    with pytest.raises(ValueError, match="Unmapped"):
+        registry.resolve((GPT55_IDENTITY[0], ModelType.TEXT_EMBEDDING, "text-embedding-3-small"), context=None)
+
+
+@pytest.mark.parametrize("selector", ["absent", "chat", "responses"])
+@pytest.mark.parametrize("official", [False, True])
+def test_fresh_gpt55_fact_selects_its_protocol_and_exact_profile(selector: str, official: bool) -> None:
+    catalog, runtime = gpt55_schemas()
+    registry = source_mapping_revision(json.dumps(full_gpt55_registry()), GPT55_REVISION)
+    credentials: dict[str, object] = {"api_key": "NEVER_FORWARD_ORIGINAL_SOURCE"}
+    if selector != "absent":
+        credentials["api_protocol"] = selector
+    if official:
+        credentials["openai_api_base"] = "https://api.openai.com"
+    fact = hosted_source_variant_fact(
+        provider=GPT55_IDENTITY[0], source_uid=OPENAI_PROVIDER042_SOURCE_UID, models=[catalog], credentials=credentials
+    )
+    selected = resolve_source_mapping(
+        registry, GPT55_IDENTITY, source_uid=OPENAI_PROVIDER042_SOURCE_UID, fact=fact, schema=catalog
+    )
+    assert isinstance(selected, SelectedSourceVariant)
+    assert selected.variant.variant_id == "openai042-gpt55-" + ("official-root-" if official else "") + selector
+    contract = restore_variant_source_contract(selected)
+    protocol = "responses" if selector == "responses" else "chat"
+    assert contract.profile_id == (
+        "openai-042-" + protocol + ("-official-root" if official else "") + "-runtime-v1:gpt-5.5"
+    )
+    assert contract.adapter_id == "openai_provider042_source_v1"
+    assert contract.source_runtime_schema_digest == profile_digest(runtime.model_dump(mode="json"))
+    assert contract.source_schema_digest == profile_digest(catalog.model_dump(mode="json"))
+    assert contract.source_schema_digest != contract.source_runtime_schema_digest
+    assert (
+        build_source_adapter_contract(
+            selected,
+            source_provider=GPT55_IDENTITY[0],
+            source_plugin_unique_identifier=OPENAI_PROVIDER042_SOURCE_UID,
+            source_schema=catalog,
+            source_credentials=credentials,
+        )
+        == contract
+    )
+    marker = source_parameter_marker(
+        contract,
+        source_provider=GPT55_IDENTITY[0],
+        source_model=GPT55_IDENTITY[2],
+        model_type=GPT55_IDENTITY[1],
+        target_model=GPT55_IDENTITY[2],
+    )
+    assert marker["profile_id"] == contract.profile_id
+    assert "NEVER_FORWARD" not in json.dumps(marker)
+    validate_frozen_mapping_evidence(
+        selected,
+        provider=GPT55_IDENTITY[0],
+        model=GPT55_IDENTITY[2],
+        model_type=GPT55_IDENTITY[1],
+        target_model=GPT55_IDENTITY[2],
+        operations=tuple(selected.operations),
+        source_contract=contract,
+        tts_contract=None,
+    )
+
+
+@pytest.mark.parametrize(
+    ("version", "selector"),
+    [("042", "absent"), ("042", "chat"), ("110", "absent"), ("110", "chat"), ("110", "responses")],
+)
+@pytest.mark.parametrize("official", [False, True])
+def test_new_sibling_does_not_relabel_any_existing_mini_variant(version: str, selector: str, official: bool) -> None:
+    catalog = build_inputs(runtime=True)["source_schema"] if version == "042" else current_source_schemas()[0]
+    uid = (
+        OPENAI_PROVIDER042_SOURCE_UID
+        if version == "042"
+        else CURRENT_SOURCE_CONTRACTS[0].source_plugin_unique_identifier
+    )
+    fact = hosted_source_variant_fact(
+        provider=GPT55_IDENTITY[0],
+        source_uid=uid,
+        models=[catalog],
+        credentials={
+            "api_protocol": None if selector == "absent" else selector,
+            "openai_api_base": "https://api.openai.com" if official else None,
+        },
+    )
+    selected = resolve_source_mapping(
+        source_mapping_revision(json.dumps(full_gpt55_registry()), GPT55_REVISION),
+        (GPT55_IDENTITY[0], ModelType.LLM, "gpt-4o-mini"),
+        source_uid=uid,
+        fact=fact,
+        schema=catalog,
+    )
+    assert isinstance(selected, SelectedSourceVariant)
+    assert selected.variant.variant_id == "openai" + version + ("-official-root-" if official else "-") + selector
+    assert restore_variant_source_contract(selected).adapter_id != "openai_provider042_source_v1"
+
+
+def test_full_revision_digest_changes_for_an_unselected_sibling_but_not_an_unrelated_revision() -> None:
+    records = full_gpt55_registry()
+    registry = source_mapping_revision(json.dumps(records), GPT55_REVISION)
+    frozen = registry.selected_prospective()[0]
+    payload = selection_payload(frozen).model_dump(mode="json")
+    reordered = deepcopy(records)
+    reordered.reverse()
+    for record in reordered:
+        variants(record).reverse()
+    assert source_mapping_revision(json.dumps(reordered), GPT55_REVISION).digest == registry.digest
+    assert source_mapping_revision(json.dumps([mapping(revision="unrelated-v1"), *records]), GPT55_REVISION).digest == (
+        registry.digest
+    )
+    changed = deepcopy(records)
+    section(variants(changed[1])[-1], "parameter_adapter")["rules_digest"] = profile_digest({"unreviewed": "changed"})
+    changed_registry = source_mapping_revision(json.dumps(changed), GPT55_REVISION)
+    assert changed_registry.digest != registry.digest
+    with pytest.raises(ValueError, match="Frozen source variant changed"):
+        changed_registry.restore_selection((GPT55_IDENTITY[0], frozen.source.model_type, frozen.source.model), payload)
+
+
+def test_appending_gpt55_revision_preserves_old_v1_and_v2_bytes_and_digest() -> None:
+    old = variant_record()
+    legacy = mapping(revision="legacy-v1")
+    old_registry = source_mapping_revision(json.dumps([old]), REVISION)
+    legacy_registry = source_mapping_revision(json.dumps([legacy]), "legacy-v1")
+    combined = json.dumps([legacy, old, *full_gpt55_registry()])
+    restored_old = source_mapping_revision(combined, REVISION)
+    restored_legacy = source_mapping_revision(combined, "legacy-v1")
+    assert restored_old.digest == old_registry.digest
+    assert restored_legacy.digest == legacy_registry.digest
+    for before, after in ((old_registry, restored_old), (legacy_registry, restored_legacy)):
+        assert [item.model_dump_json() for item in before.declarations.values()] == [
+            item.model_dump_json() for item in after.declarations.values()
+        ]
+    assert all(isinstance(item, ModelMapping) for item in restored_legacy.declarations.values())
+    assert all(isinstance(item, SourceVariantMapping) for item in restored_old.declarations.values())
+
+
+@pytest.mark.parametrize(
+    "change", ["uid110", "uid_unknown", "metadata_enabled", "metadata_unknown", "metadata_boolean", "selector", "base"]
+)
+def test_unreviewed_actual_source_facts_do_not_gain_gpt55_authority(change: str) -> None:
+    catalog, _runtime = gpt55_schemas()
+    uid = OPENAI_PROVIDER042_SOURCE_UID
+    credentials: dict[str, object] = {}
+    if change == "uid110":
+        uid = CURRENT_SOURCE_CONTRACTS[0].source_plugin_unique_identifier
+    elif change == "uid_unknown":
+        uid += "changed"
+    elif change.startswith("metadata"):
+        credentials["enable_request_metadata"] = {
+            "metadata_enabled": "enabled",
+            "metadata_unknown": "unknown",
+            "metadata_boolean": False,
+        }[change]
+    elif change == "selector":
+        credentials["api_protocol"] = "default_chat"
+    else:
+        credentials["openai_api_base"] = "https://api.openai.com/v1"
+    fact = hosted_source_variant_fact(
+        provider=GPT55_IDENTITY[0], source_uid=uid, models=[catalog], credentials=credentials
+    )
+    with pytest.raises(ValueError, match="[Ss]ource|[Vv]ariant"):
+        resolve_source_mapping(
+            source_mapping_revision(json.dumps(full_gpt55_registry()), GPT55_REVISION),
+            GPT55_IDENTITY,
+            source_uid=uid,
+            fact=fact,
+            schema=catalog,
+        )
+
+
+@pytest.mark.parametrize("change", ["mini_family", "110_family", "model", "target", "mode"])
+def test_declaration_cannot_mix_gpt55_with_another_model_or_adapter_family(change: str) -> None:
+    record = gpt55_variant_record()
+    if change in {"mini_family", "110_family"}:
+        for row in variants(record):
+            section(row, "parameter_adapter")["id"] = (
+                "openai_chat_source_v1" if change == "mini_family" else "openai_provider110_source_v1"
+            )
+    elif change == "model":
+        section(record, "source")["model"] = "gpt-5.5-2026-04-23"
+    elif change == "target":
+        section(variants(record)[0], "target")["model"] = "gpt-4o-mini"
+    else:
+        section(record, "source")["mode"] = "responses"
+    with pytest.raises(ValidationError, match="Invalid bounded source variant"):
+        source_mapping_revision(json.dumps([record]), GPT55_REVISION)
+
+
+@pytest.mark.parametrize("change", ["uid110", "metadata", "revision", "profile_protocol", "runtime_schema"])
+def test_matching_prospective_row_is_not_authority_without_its_exact_new042_contract(change: str) -> None:
+    record = gpt55_variant_record()
+    row = variants(record)[0]
+    record["variants"] = [row]
+    if change == "uid110":
+        row["source_plugin_uid"] = CURRENT_SOURCE_CONTRACTS[0].source_plugin_unique_identifier
+    elif change == "metadata":
+        section(row, "source_settings")["request_metadata_enabled"] = True
+    elif change == "revision":
+        section(row, "parameter_adapter")["revision"] = "unreviewed"
+    elif change == "profile_protocol":
+        section(row, "source_settings")["protocol_selector"] = "responses"
+    else:
+        row["source_runtime_schema_digest"] = row["source_schema_digest"]
+    registry = source_mapping_revision(json.dumps([record]), GPT55_REVISION)
+    selected = next(item for item in registry.selected_prospective() if item.variant.variant_id == row["variant_id"])
+    with pytest.raises(ValueError, match="[Ss]ource|[Vv]ariant|OpenAI"):
+        restore_variant_source_contract(selected)
+
+
+def test_all_twenty_eight_variants_restore_under_one_complete_revision() -> None:
+    registry = source_mapping_revision(json.dumps(full_embedding_registry()), EMBEDDING_REVISION)
+    assert len(registry.declarations) == 5
+    selected = registry.selected_prospective()
+    assert len(selected) == 28
+    assert sum(isinstance(item, SelectedEmbeddingSourceVariant) for item in selected) == 12
+    for item in selected:
+        assert restore_variant_source_contract(item).source_model == item.source.model
+        payload = selection_payload(item).model_dump(mode="json")
+        assert (payload.get("schema_version") == 3) == isinstance(item, SelectedEmbeddingSourceVariant)
+        assert registry.restore_selection((SOURCE_PROVIDER, item.source.model_type, item.source.model), payload) == item
+
+
+@pytest.mark.parametrize("model", EMBEDDING_MODELS)
+@pytest.mark.parametrize("version", ["042", "110"])
+@pytest.mark.parametrize("endpoint", ["unset", "official_root"])
+@pytest.mark.parametrize("rawflag", [None, "enabled", "unknown", True, 0, {}, []])
+def test_embedding_effective_fact_does_not_rewrite_or_interpret_ignored_source_flags(
+    model: str, version: str, endpoint: str, rawflag: object
+) -> None:
+    profile = next(p for p in embedding_profiles() if (p["source_model"], p["source_version"]) == (model, version))
+    uid = profile["source_plugin_uid"]
+    catalog, _ = embedding_schemas(model, version)
+    original = {
+        "api_key": "ORIGINAL_SOURCE_NEVER_FORWARD",
+        "api_protocol": rawflag,
+        "enable_request_metadata": rawflag,
+        "openai_api_base": "https://api.openai.com" if endpoint == "official_root" else None,
+    }
+    before = deepcopy(original)
+    fact = hosted_embedding_source_fact(
+        provider=SOURCE_PROVIDER, source_uid=uid, models=[catalog], credentials=original
+    )
+    selected = resolve_source_mapping(
+        source_mapping_revision(json.dumps(full_embedding_registry()), EMBEDDING_REVISION),
+        (SOURCE_PROVIDER, ModelType.TEXT_EMBEDDING, model),
+        source_uid=uid,
+        fact=hosted_source_variant_fact(
+            provider=SOURCE_PROVIDER, source_uid=uid, models=[catalog], credentials=original
+        ),
+        embedding_fact=fact,
+        schema=catalog,
+    )
+    assert isinstance(selected, SelectedEmbeddingSourceVariant)
+    assert selected.variant.source_settings.source_endpoint_class == endpoint
+    assert selected.variant.source_settings.request_metadata_behavior == "not_used"
+    contract = build_source_adapter_contract(
+        selected,
+        source_provider=SOURCE_PROVIDER,
+        source_plugin_unique_identifier=uid,
+        source_schema=catalog,
+        source_credentials=original,
+    )
+    assert contract == restore_variant_source_contract(selected)
+    assert isinstance(contract, SourceParameterContract)
+    marker = source_parameter_marker(
+        contract,
+        source_provider=SOURCE_PROVIDER,
+        source_model=model,
+        model_type=ModelType.TEXT_EMBEDDING,
+        target_model=model,
+    )
+    assert len(marker) == 6
+    assert "ORIGINAL_SOURCE_NEVER_FORWARD" not in json.dumps(marker)
+    validate_frozen_mapping_evidence(
+        selected,
+        provider=SOURCE_PROVIDER,
+        model=model,
+        model_type=ModelType.TEXT_EMBEDDING,
+        target_model=model,
+        operations=tuple(selected.operations),
+        source_contract=contract,
+        tts_contract=None,
+    )
+    assert original == before
+
+
+@pytest.mark.parametrize("settings", [None, "malformed", [], False])
+def test_no_original_dictionary_never_becomes_a_positive_embedding_fact(settings: object) -> None:
+    profile = embedding_profiles()[0]
+    catalog, _ = embedding_schemas(EMBEDDING_MODELS[0])
+    assert (
+        hosted_embedding_source_fact(
+            provider=SOURCE_PROVIDER, source_uid=profile["source_plugin_uid"], models=[catalog], credentials=settings
+        )
+        is None
+    )
+    with pytest.raises(ValueError, match="Positive source variant facts required"):
+        resolve_source_mapping(
+            source_mapping_revision(json.dumps(full_embedding_registry()), EMBEDDING_REVISION),
+            (SOURCE_PROVIDER, ModelType.TEXT_EMBEDDING, EMBEDDING_MODELS[0]),
+            source_uid=profile["source_plugin_uid"],
+            fact=None,
+            embedding_fact=None,
+            schema=catalog,
+        )
+
+
+@pytest.mark.parametrize(
+    "base", ["https://api.openai.com/v1", "https://api.openai.com/", "https://custom.invalid", False, {}, []]
+)
+def test_unknown_or_custom_source_endpoint_does_not_reuse_official_profile(base: object) -> None:
+    profile = embedding_profiles()[0]
+    catalog, _ = embedding_schemas(EMBEDDING_MODELS[0])
+    fact = hosted_embedding_source_fact(
+        provider=SOURCE_PROVIDER,
+        source_uid=profile["source_plugin_uid"],
+        models=[catalog],
+        credentials={"openai_api_base": base},
+    )
+    with pytest.raises(ValueError, match="Positive source variant facts required"):
+        resolve_source_mapping(
+            source_mapping_revision(json.dumps(full_embedding_registry()), EMBEDDING_REVISION),
+            (SOURCE_PROVIDER, ModelType.TEXT_EMBEDDING, EMBEDDING_MODELS[0]),
+            source_uid=profile["source_plugin_uid"],
+            fact=None,
+            embedding_fact=fact,
+            schema=catalog,
+        )
+
+
+@pytest.mark.parametrize("change", ["profile", "runtime", "rules", "uid", "fact_catalog", "fact_uid"])
+def test_v3_has_no_identity_or_another_source_profile_fallback(change: str) -> None:
+    records = full_embedding_registry()
+    profile = embedding_profiles()[0]
+    uid = profile["source_plugin_uid"]
+    catalog, _ = embedding_schemas(EMBEDDING_MODELS[0])
+    fact = hosted_embedding_source_fact(provider=SOURCE_PROVIDER, source_uid=uid, models=[catalog], credentials={})
+    assert fact is not None
+    if change == "fact_catalog":
+        fact = replace(fact, catalog_schema_digests=())
+    elif change == "fact_uid":
+        fact = replace(fact, plugin_unique_identifier=uid + "unreviewed")
+    else:
+        row = variants(records[2])[0]
+        if change == "rules":
+            section(row, "parameter_adapter")["rules_digest"] = "sha256:" + "a" * 64
+        elif change == "runtime":
+            row["source_runtime_schema_digest"] = "sha256:" + "a" * 64
+        elif change == "uid":
+            row["source_plugin_uid"] = uid + "unreviewed"
+        else:
+            row["source_profile_id"] = "unreviewed"
+    with pytest.raises(ValueError, match="source|Source|Embedding"):
+        resolve_source_mapping(
+            source_mapping_revision(json.dumps(records), EMBEDDING_REVISION),
+            (SOURCE_PROVIDER, ModelType.TEXT_EMBEDDING, EMBEDDING_MODELS[0]),
+            source_uid=uid,
+            fact=None,
+            embedding_fact=fact,
+            schema=catalog,
+        )
+
+
+def test_v3_sibling_digest_is_complete_and_old_v1_v2_bytes_are_unchanged() -> None:
+    records = full_embedding_registry()
+    raw = json.dumps(records)
+    registry = source_mapping_revision(raw, EMBEDDING_REVISION)
+    first = registry.selected_prospective()[0]
+    payload = selection_payload(first).model_dump(mode="json")
+    old = variant_record()
+    legacy = mapping(revision="old-identity-only")
+    old_raw = json.dumps([legacy, old])
+    combined = json.dumps([*records, legacy, old])
+    assert source_mapping_revision(combined, REVISION).digest == source_mapping_revision(old_raw, REVISION).digest
+    for revision in (REVISION, "old-identity-only"):
+        assert [d.model_dump_json() for d in source_mapping_revision(combined, revision).declarations.values()] == [
+            d.model_dump_json() for d in source_mapping_revision(old_raw, revision).declarations.values()
+        ]
+    assert source_mapping_revision(combined, EMBEDDING_REVISION).digest == registry.digest
+    reversed_records = deepcopy(records)
+    reversed_records.reverse()
+    for item in reversed_records:
+        variants(item).reverse()
+    assert source_mapping_revision(json.dumps(reversed_records), EMBEDDING_REVISION).digest == registry.digest
+    drifted = deepcopy(records)
+    variants(drifted[-1]).pop()
+    new_registry = source_mapping_revision(json.dumps(drifted), EMBEDDING_REVISION)
+    assert new_registry.digest != registry.digest
+    with pytest.raises(ValueError, match="Frozen source variant changed"):
+        new_registry.restore_selection((SOURCE_PROVIDER, first.source.model_type, first.source.model), payload)
+    # Logical duplicates remain illegal even when one row has legacy shape.
+    catalog, _ = embedding_schemas(EMBEDDING_MODELS[0])
+    with pytest.raises(ValueError, match="Duplicate source within revision"):
+        source_mapping_revision(
+            json.dumps([*records, mapping(catalog, revision=EMBEDDING_REVISION, target=EMBEDDING_MODELS[0])]),
+            EMBEDDING_REVISION,
+        )
+    llm = next(s for s in registry.selected_prospective() if isinstance(s, SelectedSourceVariant))
+    embedding = next(s for s in registry.selected_prospective() if isinstance(s, SelectedEmbeddingSourceVariant))
+    with pytest.raises(ValidationError):
+        registry.restore_selection(
+            (SOURCE_PROVIDER, llm.source.model_type, llm.source.model),
+            selection_payload(embedding).model_dump(mode="json"),
+        )
+
+
+@pytest.mark.parametrize("version", ["042", "110"])
+@pytest.mark.parametrize("source_settings", ["valid", "custom", "missing"])
+@pytest.mark.parametrize("byok", [False, True])
+def test_saved_dependency_selection_uses_the_same_independent_embedding_fact(
+    version: str, source_settings: str, byok: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from core.entities.provider_entities import RestrictModel
+    from tests.helpers.unit.config_override import config_overrides_context
+    from tests.unit_tests.services.test_model_billing_dependency_runtime import TENANT, runtime_facts
+
+    facts = runtime_facts(monkeypatch, preferred="custom" if byok else None, custom_available=byok)
+    catalog, _ = embedding_schemas(EMBEDDING_MODELS[0], version)
+    profile = next(
+        p for p in embedding_profiles() if (p["source_model"], p["source_version"]) == (EMBEDDING_MODELS[0], version)
+    )
+    uid = profile["source_plugin_uid"]
+    facts.bindings[0].plugin_unique_identifier = uid
+    facts.declarations[0].plugin_unique_identifier = uid
+    facts.declarations[0].declaration.models = [catalog]
+    facts.declarations[0].declaration.supported_model_types = [ModelType.TEXT_EMBEDDING]
+    hosting = facts.hosting[SOURCE_PROVIDER]
+    hosting.quotas[0].restrict_models = [RestrictModel(model=EMBEDDING_MODELS[0], model_type=ModelType.TEXT_EMBEDDING)]
+    original: dict[str, object] = {
+        "api_key": "ORIGINAL_SYSTEM_NEVER_FORWARD",
+        "api_protocol": {"ignored": True},
+        "enable_request_metadata": "enabled",
+        "openai_api_base": "https://api.openai.com" if source_settings == "valid" else "https://custom.invalid",
+    }
+    before = deepcopy(original)
+    hosting.credentials = None if source_settings == "missing" else original
+    monkeypatch.setattr(
+        "services.model_billing_dependency_runtime.migration_routing_state",
+        lambda _: {
+            "phase": "active",
+            "persisted_model_billing_source": "tokener",
+            "model_mapping_version": EMBEDDING_REVISION,
+            "source_ownership": {},
+        },
+    )
+    with config_overrides_context(
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps(full_embedding_registry()),
+        TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=json.dumps(
+            [
+                {
+                    "schema_version": 1,
+                    "mapping_revision": EMBEDDING_REVISION,
+                    "inventory_policy": "saved_system_dependencies_v2",
+                }
+            ]
+        ),
+    ):
+        snapshot = facts.query.selection_snapshot(TENANT)
+    provider = snapshot.providers[0]
+    assert provider.trustworthy
+    assert provider.source_plugin_unique_identifier == uid
+    assert provider.system_enabled == (source_settings == "valid")
+    assert provider.preferred == ("custom" if byok else None)
+    assert provider.custom_available is byok
+    if source_settings == "valid":
+        assert provider.quotas[0].models == (("text-embedding", EMBEDDING_MODELS[0]),)
+    assert original == before
+    assert facts.calls == [("declarations", TENANT), ("bindings", TENANT)]

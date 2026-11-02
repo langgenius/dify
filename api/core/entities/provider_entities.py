@@ -111,6 +111,22 @@ class HostedSourceVariantFact:
     source_endpoint_class: Literal["unset", "official_root", "unreviewed"]
 
 
+@dataclass(frozen=True, slots=True)
+class HostedEmbeddingSourceFact:
+    """Request-local embedding facts; LLM protocol selection is not applicable.
+
+    Metadata behavior is proved by the exact source implementation, not inferred
+    from a credential default. It does not claim a False value for the original
+    dictionary. No raw source URL, key or dictionary is retained in this record.
+    """
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    source_endpoint_class: Literal["unset", "official_root", "unreviewed"]
+    request_metadata_behavior: Literal["not_used"]
+
+
 class SystemConfiguration(BaseModel):
     """
     Model class for provider system configuration.
@@ -126,6 +142,7 @@ class SystemConfiguration(BaseModel):
     _tokener_source_plugin_unique_identifier: str | None = PrivateAttr(default=None)
     _tokener_source_protocol_fact: HostedSourceProtocolFact | None = PrivateAttr(default=None)
     _tokener_source_variant_fact: HostedSourceVariantFact | None = PrivateAttr(default=None)
+    _tokener_embedding_source_fact: HostedEmbeddingSourceFact | None = PrivateAttr(default=None)
 
 
 class CustomProviderConfiguration(BaseModel):

@@ -30,13 +30,14 @@ class HistoricalReadinessQuery:
 
 
 @pytest.mark.parametrize("pin_kind", ["valid", "missing", "wrong"])
-@pytest.mark.parametrize("official_variants", [False, True])
+@pytest.mark.parametrize(("official_variants", "embedding_variants"), [(False, False), (True, False), (False, True)])
 def test_variant_readiness_pin_flows_internally_worker_sql_claim_and_narrow_runtime_projection(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     pin_kind: str,
     official_variants: bool,
+    embedding_variants: bool,
 ) -> None:
     from core.repositories import model_billing_migration_repository
     from services.model_billing_mapping_service import source_mapping_revision
@@ -50,10 +51,16 @@ def test_variant_readiness_pin_flows_internally_worker_sql_claim_and_narrow_runt
     )
 
     revision = OFFICIAL_ROOT_REVISION if official_variants else REVISION
+    records = full_official_registry() if official_variants else [variant_record()]
+    if embedding_variants:
+        from tests.helpers.unit.model_billing_source_profiles import EMBEDDING_REVISION, full_embedding_registry
+
+        revision = EMBEDDING_REVISION
+        records = full_embedding_registry()
     tenant = Tenant(name="New source-variant internal preparation")
     sqlite_session.add(tenant)
     sqlite_session.commit()
-    raw = json.dumps(full_official_registry() if official_variants else [variant_record()])
+    raw = json.dumps(records)
     registry = source_mapping_revision(raw, revision)
     apply_config_overrides(
         monkeypatch,

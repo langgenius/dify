@@ -22,6 +22,7 @@ from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFr
 from services.model_billing_mapping_service import (
     additional_hosted_availability,
     additional_model_is_authorized,
+    hosted_embedding_source_fact,
     hosted_migration_sources,
     mapping_has_required_operations,
     mapping_supports_installed_plugin,
@@ -34,6 +35,74 @@ from services.model_billing_mapping_service import (
     retirement_policy_for_revision,
     uses_published_tokener_balance,
 )
+
+
+@pytest.mark.parametrize("protocol", [None, "chat", "responses", "unknown", False, {}, []])
+@pytest.mark.parametrize("endpoint", [None, "https://api.openai.com"])
+def test_embedding_fact_is_independent_from_ignored_llm_protocol_and_does_not_modify_source(
+    protocol: object, endpoint: str | None
+) -> None:
+    from services.model_billing_openai_embedding_adapter import OPENAI_EMBEDDING_SOURCE_UIDS
+
+    original = {"api_key": "NEVER_EXPORT_SOURCE", "api_protocol": protocol, "openai_api_base": endpoint}
+    before = deepcopy(original)
+    embedding = schema("text-embedding-3-small", ModelType.TEXT_EMBEDDING)
+    fact = hosted_embedding_source_fact(
+        provider="langgenius/openai/openai",
+        source_uid=min(OPENAI_EMBEDDING_SOURCE_UIDS),
+        models=[schema(), embedding],
+        credentials=original,
+    )
+    assert fact is not None
+    assert fact.source_endpoint_class == ("unset" if endpoint is None else "official_root")
+    assert fact.catalog_schema_digests == ((ModelType.TEXT_EMBEDDING, embedding.model, model_schema_digest(embedding)),)
+    assert fact.request_metadata_behavior == "not_used"
+    assert not hasattr(fact, "selector")
+    assert original == before
+    assert "NEVER_EXPORT_SOURCE" not in repr(fact)
+    configuration = SystemConfiguration(enabled=True, credentials=None)
+    serialized = configuration.model_dump(mode="json")
+    configuration._tokener_embedding_source_fact = fact
+    assert configuration.model_dump(mode="json") == serialized
+    assert (
+        SystemConfiguration.model_validate(
+            {**serialized, "_tokener_embedding_source_fact": fact}
+        )._tokener_embedding_source_fact
+        is None
+    )
+
+
+@pytest.mark.parametrize("original", [None, "malformed", [], True])
+def test_embedding_fact_never_fabricates_a_dictionary_for_missing_original_settings(original: object) -> None:
+    from services.model_billing_openai_embedding_adapter import OPENAI_EMBEDDING_SOURCE_UIDS
+
+    assert (
+        hosted_embedding_source_fact(
+            provider="langgenius/openai/openai",
+            source_uid=min(OPENAI_EMBEDDING_SOURCE_UIDS),
+            models=[],
+            credentials=original,
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize("metadata", [None, "disabled", "enabled", "unknown", True, False, 0, {}, []])
+def test_embedding_fact_describes_ignored_metadata_without_changing_the_original_flag(metadata: object) -> None:
+    from services.model_billing_openai_embedding_adapter import OPENAI_EMBEDDING_SOURCE_UIDS
+
+    original = {"enable_request_metadata": metadata}
+    before = deepcopy(original)
+    fact = hosted_embedding_source_fact(
+        provider="langgenius/openai/openai",
+        source_uid=min(OPENAI_EMBEDDING_SOURCE_UIDS),
+        models=[],
+        credentials=original,
+    )
+    assert fact is not None
+    assert fact.request_metadata_behavior == "not_used"
+    assert not hasattr(fact, "request_metadata_enabled")
+    assert original == before
 
 
 @pytest.mark.parametrize(

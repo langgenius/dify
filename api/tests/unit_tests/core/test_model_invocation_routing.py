@@ -49,9 +49,23 @@ from core.provider_manager import ProviderManager
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType, ParameterRule, ParameterType
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
-from models.provider import ProviderType
+from models.provider import ProviderType, TenantPreferredModelProvider
 from services.entities.model_billing_migration import canonical_hash
-from tests.helpers.unit.config_override import apply_config_overrides
+from services.model_billing_mapping_service import source_mapping_revision
+from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
+from tests.helpers.unit.model_billing_source_profiles import (
+    EMBEDDING_MODELS,
+    EMBEDDING_REVISION,
+    GPT55_REVISION,
+    SOURCE_PROVIDER,
+    embedding_profiles,
+    embedding_schemas,
+    full_embedding_registry,
+    full_gpt55_registry,
+    gpt55_schemas,
+)
+from tests.unit_tests.core.test_provider_manager import TENANT_ID, ProviderCase
+from tests.unit_tests.core.test_provider_manager import provider_case as provider_case  # noqa: PLC0414
 
 TEST_ENCRYPTED_CONFIG = '{"api_key":"encrypted","endpoint_url":"https://fixture.invalid"}'
 
@@ -2023,3 +2037,300 @@ def test_missing_pin_never_retrusts_the_current_edited_row() -> None:
 
     with pytest.raises(ModelRouteUnavailable):
         _pinned_credential_fingerprint({}, plan().tenant_id, plan().credential_id, allow_provisioned=True)
+
+
+def _configure_gpt55_case(case: ProviderCase) -> tuple[str, str]:
+    catalog, _ = gpt55_schemas()
+    case.provider.models = [catalog]
+    case.provider.plugin_unique_identifier = (
+        "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468"
+    )
+    case.integration.plugin_unique_identifier = "langgenius/tokener:0.4.3-dev12@" + "c" * 64
+    raw = json.dumps(full_gpt55_registry())
+    digest = source_mapping_revision(raw, GPT55_REVISION).digest
+    case.state["model_mapping_version"] = GPT55_REVISION
+    case.state["source_variant_registry_digest"] = digest
+    preparation = case.state["preparation"]
+    assert isinstance(preparation, dict)
+    preparation["source_variant_registry_digest"] = digest
+    policy = json.dumps(
+        [{"schema_version": 1, "mapping_revision": GPT55_REVISION, "inventory_policy": "saved_system_dependencies_v2"}]
+    )
+    return raw, policy
+
+
+@pytest.fixture
+def gpt55_case(request: pytest.FixtureRequest) -> ProviderCase:
+    return request.getfixturevalue("provider_case")
+
+
+@pytest.mark.parametrize("selector", ["absent", "chat", "responses"])
+@pytest.mark.parametrize("official", [False, True])
+def test_exact_gpt55_source_routes_without_rewriting_original_settings_and_admits_fresh_facts(
+    selector: str, official: bool, gpt55_case: ProviderCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = gpt55_case
+    raw, policy = _configure_gpt55_case(case)
+    hosting = case.hosting[case.provider.provider]
+    original = {"api_key": "ORIGINAL_SYSTEM_NEVER_FORWARD"}
+    if selector != "absent":
+        original["api_protocol"] = selector
+    if official:
+        original["openai_api_base"] = "https://api.openai.com"
+    hosting.credentials = original
+    snapshot = deepcopy(original)
+    state_snapshot = deepcopy(case.state)
+    with config_overrides_context(
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=raw, TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=policy
+    ):
+        configuration = case.manager.get_configurations(TENANT_ID).get(case.provider.provider)
+        assert configuration is not None
+        assert configuration.system_configuration.credentials is None
+        routed = configuration.get_current_credentials(ModelType.LLM, "gpt-5.5")
+        assert isinstance(routed, RoutedModelCredentials)
+        assert dict(routed) == {}
+        plan = routed.plan
+        assert plan.logical_model == plan.target_model == "gpt-5.5"
+        assert plan.source_variant_binding is not None
+        assert plan.mapping_revision_digest == case.state["source_variant_registry_digest"]
+        contract = plan.source_parameter_contract
+        assert contract is not None
+        assert contract.adapter_id == "openai_provider042_source_v1"
+        protocol = "responses" if selector == "responses" else "chat"
+        family = "official-root-runtime-v1" if official else "runtime-v1"
+        assert contract.profile_id == f"openai-042-{protocol}-{family}:gpt-5.5"
+
+        def admit(credentials: RoutedModelCredentials = routed) -> None:
+            validate_invocation_admission(
+                credentials,
+                tenant_id=TENANT_ID,
+                provider=case.provider.provider,
+                model_type=ModelType.LLM,
+                model="gpt-5.5",
+            )
+
+        admit()
+        for changed in (
+            replace(plan, source_variant_binding=None),
+            replace(plan, source_parameter_contract=None),
+            replace(plan, mapping_revision_digest=None),
+            replace(plan, source_parameter_contract=replace(contract, rules_digest="sha256:" + "f" * 64)),
+        ):
+            with pytest.raises(ModelInvocationReprepare):
+                admit(RoutedModelCredentials(changed))
+        # Existing private marker projection remains six fields, with no
+        # original vendor credential or public source endpoint forwarded.
+        monkeypatch.setattr(
+            "core.model_invocation_routing.managed_credentials", lambda _: {"api_key": "MANAGED_TEST_KEY"}
+        )
+        payload = redirect_payload(plan, {"provider": "openai", "model": "gpt-5.5", "model_type": "llm"})
+        serialized = json.dumps(payload)
+        assert "ORIGINAL_SYSTEM_NEVER_FORWARD" not in serialized
+        assert "https://api.openai.com" not in serialized
+        assert contract.profile_id in serialized
+        if official:
+            original["openai_api_base"] = "https://api.openai.com/v1"
+            with pytest.raises(ModelInvocationReprepare):
+                admit()
+            original["openai_api_base"] = snapshot["openai_api_base"]
+        original["enable_request_metadata"] = "enabled"
+        with pytest.raises(ModelInvocationReprepare):
+            admit()
+        original.pop("enable_request_metadata")
+    assert original == snapshot
+    assert case.state == state_snapshot
+
+
+def test_gpt55_byok_preference_stays_original_not_managed_key(gpt55_case: ProviderCase) -> None:
+    case = gpt55_case
+    raw, policy = _configure_gpt55_case(case)
+    cast(dict[str, TenantPreferredModelProvider], case.preferences)[case.provider.provider] = (
+        TenantPreferredModelProvider(
+            tenant_id=TENANT_ID, provider_name=case.provider.provider, preferred_provider_type=ProviderType.CUSTOM
+        )
+    )
+    case.hosting[case.provider.provider].credentials = {"api_key": "ORIGINAL_SYSTEM_NEVER_FORWARD"}
+    with config_overrides_context(
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=raw, TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=policy
+    ):
+        configuration = case.manager.get_configurations(TENANT_ID).get(case.provider.provider)
+        assert configuration is not None
+        assert configuration.using_provider_type == ProviderType.CUSTOM
+        assert configuration.get_current_credentials(ModelType.LLM, "gpt-5.5") == {"api_key": "USER_SECRET"}
+
+
+@pytest.fixture
+def embedding_case(request: pytest.FixtureRequest) -> ProviderCase:
+    return request.getfixturevalue("provider_case")
+
+
+def _configure_embedding_case(case: ProviderCase, model: str, version: str) -> tuple[str, str]:
+    catalog, _ = embedding_schemas(model, version)
+    profile = next(p for p in embedding_profiles() if (p["source_model"], p["source_version"]) == (model, version))
+    case.provider.models = [catalog]
+    case.provider.supported_model_types = [ModelType.TEXT_EMBEDDING]
+    case.provider.plugin_unique_identifier = profile["source_plugin_uid"]
+    case.integration.plugin_unique_identifier = "langgenius/tokener:0.4.3-dev12@" + "c" * 64
+    raw = json.dumps(full_embedding_registry())
+    digest = source_mapping_revision(raw, EMBEDDING_REVISION).digest
+    case.state["model_mapping_version"] = EMBEDDING_REVISION
+    case.state["source_variant_registry_digest"] = digest
+    preparation = case.state["preparation"]
+    assert isinstance(preparation, dict)
+    preparation["source_variant_registry_digest"] = digest
+    return raw, json.dumps(
+        [
+            {
+                "schema_version": 1,
+                "mapping_revision": EMBEDDING_REVISION,
+                "inventory_policy": "saved_system_dependencies_v2",
+            }
+        ]
+    )
+
+
+@pytest.mark.parametrize("model", EMBEDDING_MODELS)
+@pytest.mark.parametrize("version", ["042", "110"])
+@pytest.mark.parametrize("endpoint", ["unset", "official_root"])
+def test_embedding_actual_source_fact_routes_the_exact_codec_and_keeps_ignored_flags_original(
+    model: str, version: str, endpoint: str, embedding_case: ProviderCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = embedding_case
+    raw, policy = _configure_embedding_case(case, model, version)
+    original: dict[str, object] = {
+        "api_key": "ORIGINAL_EMBEDDING_SOURCE_NEVER_FORWARD",
+        "api_protocol": {"unknown_ignored_by_exact_embedding_source": True},
+        "enable_request_metadata": "enabled",
+        "openai_api_base": "https://api.openai.com" if endpoint == "official_root" else None,
+    }
+    snapshot = deepcopy(original)
+    case.hosting[SOURCE_PROVIDER].credentials = original
+    with config_overrides_context(
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=raw, TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=policy
+    ):
+        configuration = case.manager.get_configurations(TENANT_ID).get(SOURCE_PROVIDER)
+        assert configuration is not None
+        assert configuration.system_configuration.credentials is None
+        # LLM flags are not embedding authority. Its independently derived
+        # private fact remains positive even when the LLM fact is unavailable.
+        assert configuration.system_configuration._tokener_source_variant_fact is None
+        assert configuration.system_configuration._tokener_embedding_source_fact is not None
+        credentials = configuration.get_current_credentials(ModelType.TEXT_EMBEDDING, model)
+        assert isinstance(credentials, RoutedModelCredentials)
+        assert not dict(credentials)
+        plan = credentials.plan
+        contract = plan.source_parameter_contract
+        assert contract is not None
+        assert contract.profile_id == f"openai-{version}-embedding-runtime-v1:{model}"
+        assert contract.source_plugin_unique_identifier == case.provider.plugin_unique_identifier
+        assert plan.source_variant_binding is not None
+        assert plan.mapping_revision_digest == plan.source_variant_binding.registry_digest
+
+        def admit(value: RoutedModelCredentials = credentials) -> None:
+            validate_invocation_admission(
+                value, tenant_id=TENANT_ID, provider=SOURCE_PROVIDER, model_type=ModelType.TEXT_EMBEDDING, model=model
+            )
+
+        admit()
+        ignored_flags: tuple[object, ...] = (None, "unknown", True, 0, list[object](), dict[str, object]())
+        for flag in ignored_flags:
+            original["api_protocol"] = flag
+            original["enable_request_metadata"] = flag
+            admit()  # The source implementations demonstrably ignore both.
+        original["api_protocol"] = snapshot["api_protocol"]
+        original["enable_request_metadata"] = snapshot["enable_request_metadata"]
+        for changed in (
+            replace(plan, source_variant_binding=None),
+            replace(plan, source_parameter_contract=None),
+            replace(plan, mapping_revision_digest=None),
+            replace(plan, source_parameter_contract=replace(contract, rules_digest="sha256:" + "f" * 64)),
+        ):
+            with pytest.raises(ModelInvocationReprepare):
+                admit(RoutedModelCredentials(changed))
+        monkeypatch.setattr(
+            "core.model_invocation_routing.managed_credentials", lambda _: {"api_key": "MANAGED_TEST_KEY"}
+        )
+        payload = redirect_payload(plan, {"provider": "openai", "model": model, "model_type": "text-embedding"})
+        serialized = json.dumps(payload)
+        assert "ORIGINAL_EMBEDDING_SOURCE_NEVER_FORWARD" not in serialized
+        assert "https://api.openai.com" not in serialized
+        assert "enable_request_metadata" not in serialized
+        assert contract.profile_id in serialized
+        for custom in ("https://api.openai.com/v1", "https://custom.invalid?secret=DO_NOT_LOG"):
+            original["openai_api_base"] = custom
+            with pytest.raises(ModelInvocationReprepare) as denied:
+                admit()
+            assert "DO_NOT_LOG" not in str(denied.value)
+        original["openai_api_base"] = snapshot["openai_api_base"]
+        case.hosting[SOURCE_PROVIDER].credentials = None
+        with pytest.raises(ModelInvocationReprepare):
+            admit()
+        case.hosting[SOURCE_PROVIDER].credentials = original
+        admit()
+    assert original == snapshot
+
+
+def test_embedding_fresh_official_class_changes_variant_pin_without_changing_codec(
+    embedding_case: ProviderCase,
+) -> None:
+    case = embedding_case
+    model = EMBEDDING_MODELS[0]
+    raw, policy = _configure_embedding_case(case, model, "042")
+    original = {"api_key": "ORIGINAL_SYSTEM_NEVER_FORWARD"}
+    case.hosting[SOURCE_PROVIDER].credentials = original
+    with config_overrides_context(
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=raw, TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=policy
+    ):
+        config = case.manager.get_configurations(TENANT_ID).get(SOURCE_PROVIDER)
+        assert config is not None
+        first = config.get_current_credentials(ModelType.TEXT_EMBEDDING, model)
+        assert isinstance(first, RoutedModelCredentials)
+        original["openai_api_base"] = "https://api.openai.com"
+        with pytest.raises(ModelInvocationReprepare):
+            validate_invocation_admission(
+                first, tenant_id=TENANT_ID, provider=SOURCE_PROVIDER, model_type=ModelType.TEXT_EMBEDDING, model=model
+            )
+        case.manager.clear_configurations_cache(TENANT_ID)
+        config = case.manager.get_configurations(TENANT_ID).get(SOURCE_PROVIDER)
+        assert config is not None
+        second = config.get_current_credentials(ModelType.TEXT_EMBEDDING, model)
+        assert isinstance(second, RoutedModelCredentials)
+        assert first.plan.source_parameter_contract == second.plan.source_parameter_contract
+        assert first.plan.source_variant_binding != second.plan.source_variant_binding
+        assert first.plan.cache_identity != second.plan.cache_identity
+        validate_invocation_admission(
+            second, tenant_id=TENANT_ID, provider=SOURCE_PROVIDER, model_type=ModelType.TEXT_EMBEDDING, model=model
+        )
+
+
+def test_new_embedding_requires_dev12_not_native_dev11(embedding_case: ProviderCase) -> None:
+    case = embedding_case
+    raw, policy = _configure_embedding_case(case, EMBEDDING_MODELS[0], "042")
+    case.integration.plugin_unique_identifier = "langgenius/tokener:0.4.3-dev11@" + "c" * 64
+    with config_overrides_context(
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=raw, TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=policy
+    ):
+        config = case.manager.get_configurations(TENANT_ID).get(SOURCE_PROVIDER)
+        assert config is not None
+        with pytest.raises(ModelRouteUnavailable):
+            config.get_current_credentials(ModelType.TEXT_EMBEDDING, EMBEDDING_MODELS[0])
+
+
+def test_embedding_byok_stays_original_even_when_shared_source_settings_are_unavailable(
+    embedding_case: ProviderCase,
+) -> None:
+    case = embedding_case
+    raw, policy = _configure_embedding_case(case, EMBEDDING_MODELS[0], "110")
+    case.hosting[SOURCE_PROVIDER].credentials = None
+    cast(dict[str, TenantPreferredModelProvider], case.preferences)[SOURCE_PROVIDER] = TenantPreferredModelProvider(
+        tenant_id=TENANT_ID, provider_name=SOURCE_PROVIDER, preferred_provider_type=ProviderType.CUSTOM
+    )
+    with config_overrides_context(
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=raw, TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=policy
+    ):
+        config = case.manager.get_configurations(TENANT_ID).get(SOURCE_PROVIDER)
+        assert config is not None
+        assert config.using_provider_type == ProviderType.CUSTOM
+        assert config.get_current_credentials(ModelType.TEXT_EMBEDDING, EMBEDDING_MODELS[0]) == {
+            "api_key": "USER_SECRET"
+        }

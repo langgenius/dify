@@ -39,6 +39,7 @@ from extensions import ext_hosting_provider
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from models.provider_ids import ModelProviderID
 from repositories.model_billing_dependency_repository import ModelBillingDependencyRepository
+from services.entities.model_billing_embedding_mapping import SelectedEmbeddingSourceVariant
 from services.entities.model_billing_mapping import SelectedSourceVariant, SourceParameterContract
 from services.model_billing_dependency_inventory import DependencyInventoryPolicy, SavedModelReference
 from services.model_billing_dependency_provenance import (
@@ -49,6 +50,7 @@ from services.model_billing_dependency_provenance import (
 )
 from services.model_billing_mapping_service import (
     build_source_adapter_contract,
+    hosted_embedding_source_fact,
     hosted_source_variant_fact,
     mapping_has_required_operations,
     model_schema_digest,
@@ -311,6 +313,12 @@ class SavedDependencyMigrationEvidenceGateway:
                         models=[schema] if schema is not None else [],
                         credentials=credentials if actual_system_settings is not None else None,
                     ),
+                    embedding_fact=hosted_embedding_source_fact(
+                        provider=provider,
+                        source_uid=binding.plugin_unique_identifier,
+                        models=[schema] if schema is not None else [],
+                        credentials=credentials if actual_system_settings is not None else None,
+                    ),
                     schema=schema,
                 )
             except ValueError:
@@ -334,7 +342,7 @@ class SavedDependencyMigrationEvidenceGateway:
                 "target_model": mapping.target.model,
                 "source_mode": mapping.source.mode,
             }
-            if isinstance(mapping, SelectedSourceVariant):
+            if isinstance(mapping, (SelectedSourceVariant, SelectedEmbeddingSourceVariant)):
                 item["source_variant"] = selection_payload(mapping).model_dump(mode="json")
             if kind == ModelType.TEXT_EMBEDDING:
                 item["embedding_dimensions"] = embedding_dimensions_contract(schema)
@@ -373,7 +381,7 @@ class SavedDependencyMigrationEvidenceGateway:
                     )
                     settings = (
                         None
-                        if isinstance(mapping, SelectedSourceVariant)
+                        if isinstance(mapping, (SelectedSourceVariant, SelectedEmbeddingSourceVariant))
                         else source_parameter_public_settings(contract, source_credentials=credentials)
                     )
                     if settings is not None:
@@ -447,7 +455,7 @@ class SavedDependencyMigrationEvidenceGateway:
                     item.get("source_variant"),
                 )
                 if (
-                    not isinstance(selected, SelectedSourceVariant)
+                    not isinstance(selected, (SelectedSourceVariant, SelectedEmbeddingSourceVariant))
                     or item.get("evidence") != "reviewed_target_profile_only"
                 ):
                     raise ModelRouteUnmapped
@@ -472,7 +480,7 @@ class SavedDependencyMigrationEvidenceGateway:
             ):
                 raise ModelRouteUnavailable
             contract = None
-            if isinstance(mapping, SelectedSourceVariant):
+            if isinstance(mapping, (SelectedSourceVariant, SelectedEmbeddingSourceVariant)):
                 contract = restore_variant_source_contract(mapping)
                 if source.get("evidence") != "reviewed_target_profile_only":
                     marker = source.get("source_parameter_contract")
@@ -537,8 +545,17 @@ class SavedDependencyMigrationEvidenceGateway:
                     raise ModelRouteUnmapped
             if kind == ModelType.LLM and schema.model_properties.get(ModelPropertyKey.MODE) != mapping.source.mode:
                 raise ModelRouteUnmapped
-            if kind == ModelType.TEXT_EMBEDDING and source["embedding_dimensions"] != embedding_dimensions_contract(
-                schema
+            # A prospective V3 row has no installed-source dimension fact.
+            # Its exact versioned runtime schema was checked above; selected
+            # source rows still retain the original dimension-contract check.
+            # Neither path maps or infers a vector width from a model name.
+            if (
+                kind == ModelType.TEXT_EMBEDDING
+                and not (
+                    isinstance(mapping, SelectedEmbeddingSourceVariant)
+                    and source.get("evidence") == "reviewed_target_profile_only"
+                )
+                and source["embedding_dimensions"] != embedding_dimensions_contract(schema)
             ):
                 raise ModelRouteUnmapped
         return expected

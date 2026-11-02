@@ -1,0 +1,2617 @@
+{
+  "schema_version": 1,
+  "profiles": [
+    {
+      "profile_id": "openai-042-chat-runtime-v1:gpt-5.5",
+      "source_plugin_uid": "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+      "source_model": "gpt-5.5",
+      "target_model": "gpt-5.5",
+      "source_schema_digest": "sha256:ff2991e8c7fa82e2ce383a8f556d6f449a48e2c23604e1b30fe508729ac29ae6",
+      "source_runtime_schema_digest": "sha256:b9d1e507d1fddfcda398ff3d120e3f46b278545a3ac45a7123982fee960c1159",
+      "source_codec_schema_digest": "sha256:2665bee723d98e9c863d9bab49d80c4c6ee46bcb3b9ad76486a717c54d77e1da",
+      "source_schema": {
+        "model": "gpt-5.5",
+        "label": {
+          "zh_Hans": "gpt-5.5",
+          "en_US": "gpt-5.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "mode": "chat",
+          "context_size": 1050000
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "最大标记",
+              "en_US": "Max Tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 8192,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理努力程度",
+              "en_US": "Reasoning Effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束推理模型的推理努力程度。支持的值包括 none、low、medium、high 和 xhigh。",
+              "en_US": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh."
+            },
+            "required": false,
+            "default": "none",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "verbosity",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "详细程度",
+              "en_US": "Verbosity"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束模型响应的详细程度。较低的值将产生更简洁的响应，而较高的值将产生更详细的响应。支持的值包括 low、medium 和 high",
+              "en_US": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high"
+            },
+            "required": false,
+            "default": "medium",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "enable_stream",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "流式响应",
+              "en_US": "Streaming"
+            },
+            "type": "boolean",
+            "help": {
+              "zh_Hans": "GPT-5 系列模型流式输出需要 KYC 验证，若想跳过这个限制使用模型，请关闭流式响应。",
+              "en_US": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses."
+            },
+            "required": true,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "默认使用标准处理。选择 Flex 时请求会携带 service_tier=flex（[OpenAI Flex 处理](https://developers.openai.com/api/docs/guides/flex-processing)）：与 Batch 同档 token 价格，响应更慢，可能遇到 429（不计费），请提高客户端超时。",
+              "en_US": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts."
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "flex"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "5.00",
+          "output": "30.00",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "gpt-5.5",
+        "label": {
+          "zh_Hans": "gpt-5.5",
+          "pt_BR": "gpt-5.5",
+          "ja_JP": "gpt-5.5",
+          "en_US": "gpt-5.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "mode": "chat",
+          "context_size": 1050000
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "最大标记",
+              "pt_BR": "Max Tokens",
+              "ja_JP": "Max Tokens",
+              "en_US": "Max Tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "pt_BR": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+              "ja_JP": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 8192,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "pt_BR": "Response Format",
+              "ja_JP": "Response Format",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "pt_BR": "specifying the format that the model must output",
+              "ja_JP": "specifying the format that the model must output",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "pt_BR": "JSON Schema",
+              "ja_JP": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "pt_BR": "Set a response json schema will ensure LLM to adhere it.",
+              "ja_JP": "Set a response json schema will ensure LLM to adhere it.",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理努力程度",
+              "pt_BR": "Reasoning Effort",
+              "ja_JP": "Reasoning Effort",
+              "en_US": "Reasoning Effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束推理模型的推理努力程度。支持的值包括 none、low、medium、high 和 xhigh。",
+              "pt_BR": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh.",
+              "ja_JP": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh.",
+              "en_US": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh."
+            },
+            "required": false,
+            "default": "none",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "verbosity",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "详细程度",
+              "pt_BR": "Verbosity",
+              "ja_JP": "Verbosity",
+              "en_US": "Verbosity"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束模型响应的详细程度。较低的值将产生更简洁的响应，而较高的值将产生更详细的响应。支持的值包括 low、medium 和 high",
+              "pt_BR": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high",
+              "ja_JP": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high",
+              "en_US": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high"
+            },
+            "required": false,
+            "default": "medium",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "enable_stream",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "流式响应",
+              "pt_BR": "Streaming",
+              "ja_JP": "Streaming",
+              "en_US": "Streaming"
+            },
+            "type": "boolean",
+            "help": {
+              "zh_Hans": "GPT-5 系列模型流式输出需要 KYC 验证，若想跳过这个限制使用模型，请关闭流式响应。",
+              "pt_BR": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses.",
+              "ja_JP": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses.",
+              "en_US": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses."
+            },
+            "required": true,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "pt_BR": "Service tier",
+              "ja_JP": "Service tier",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "默认使用标准处理。选择 Flex 时请求会携带 service_tier=flex（[OpenAI Flex 处理](https://developers.openai.com/api/docs/guides/flex-processing)）：与 Batch 同档 token 价格，响应更慢，可能遇到 429（不计费），请提高客户端超时。",
+              "pt_BR": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts.",
+              "ja_JP": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts.",
+              "en_US": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts."
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "flex"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "5.00",
+          "output": "30.00",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_catalog_schema": {
+        "model": "gpt-5.5",
+        "label": {
+          "zh_Hans": "gpt-5.5",
+          "en_US": "gpt-5.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 1050000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "max_tokens",
+              "en_US": "max_tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 8192,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "json_schema",
+              "en_US": "json_schema"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理努力程度",
+              "en_US": "Reasoning Effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束推理模型的推理努力程度。支持的值包括 none、low、medium、high 和 xhigh。",
+              "en_US": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh."
+            },
+            "required": false,
+            "default": "none",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "verbosity",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "详细程度",
+              "en_US": "Verbosity"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束模型响应的详细程度。较低的值将产生更简洁的响应，而较高的值将产生更详细的响应。支持的值包括 low、medium 和 high",
+              "en_US": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high"
+            },
+            "required": false,
+            "default": "medium",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "enable_stream",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "流式响应",
+              "en_US": "Streaming"
+            },
+            "type": "boolean",
+            "help": {
+              "zh_Hans": "GPT-5 系列模型流式输出需要 KYC 验证，若想跳过这个限制使用模型，请关闭流式响应。",
+              "en_US": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses."
+            },
+            "required": true,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "默认使用标准处理。选择 Flex 时请求会携带 service_tier=flex（[OpenAI Flex 处理](https://developers.openai.com/api/docs/guides/flex-processing)）：与 Batch 同档 token 价格，响应更慢，可能遇到 429（不计费），请提高客户端超时。",
+              "en_US": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts."
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "flex"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "5",
+          "output": "30",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "protocol": "chat",
+      "source_endpoint_class": "unset",
+      "source_settings": {
+        "source_base_is_set": false,
+        "request_metadata_enabled": false
+      },
+      "source_protocol_selectors": [
+        "absent",
+        "chat"
+      ],
+      "adapter_id": "openai_provider042_source_v1",
+      "adapter_revision": "1",
+      "source_archive_sha256": "c1da1055814117e269e74d177489cd9fb45cbd14774d95cc2ad1846f2ff999b3",
+      "source_sdk_version": "0.9.0",
+      "source_openai_version": "2.38.0",
+      "target_sdk_version": "0.10.2",
+      "target_openai_version": "3.37.0",
+      "source_inventory_evidence_sha256": "785c965ac7bcc0d8a58ebcde2ad6933f5127e85c9feccae6304baa5047a067d6",
+      "source_runtime_evidence": "Exact local source SDK schema projected through real Core parser; readiness still requires fresh exact-UID actual source RPC.",
+      "codec_rules": {
+        "implementation": "attributed_exact_source042_class_per_rpc_fixed_managed_client_v1",
+        "source_llm_sha256": "6ad5e953331cc6291d493dce11144e5e85bd7bcb148e47fac7edb272b15d5071",
+        "vendored_llm_sha256": "8f627dfa6da4b77181e329bd69337d53397071039b1c3abe024a51d4a4a4959a",
+        "source_method_ast_sha256": {
+          "_normalize_service_tier_params": "0b9efa078864d4c3b4f451aa0b93fe735816120ebfbf01f95b8f38a8561f204d",
+          "_invoke": "00e051b66e93545861174fc4fdce41db30558013222acbb4332535ea0bfe6f6f",
+          "_code_block_mode_wrapper": "24aa7508476ef835b6538b7144aa0aa7e3176d4f2418f54434ca87197a5d93fb",
+          "_transform_chat_json_prompts": "9a4c964913cc2582eae5981a9502b104153f2e773fe399e52fb5c1e431a3fe78",
+          "_transform_completion_json_prompts": "a69f4c37bbf0d58e124d304adcd6843d1527693ef5a05f11e5104f94ee9ada51",
+          "get_num_tokens": "b44182c6108add0277956e3288db19a355a22934fdb627586a95437a882ce029",
+          "validate_credentials": "342e07413cd90c96ea16d0d979945cd1bf43f982b01ca24cb7d84e71f24f483b",
+          "remote_models": "89644c133d005b6d2de915c5ee57063ed117691f151ddbbe531ad3ad9305ff95",
+          "_generate": "653c00037514101348653a1c8b03f2598318d91aa1df2c9eab63ff0f00d1d463",
+          "_handle_generate_response": "15205b8fdc3e3d03bdb6f28d0e6f8128d15e86a8efb5465d2d896b6f5ac07e4b",
+          "_handle_generate_stream_response": "d00600972ac0ffa8b1c4d9f227e5736b05fafaa9dbe818e90b4d902ddbc5b85c",
+          "_chat_generate": "1581ec66b525f2764b2a50eaa83e21313b964f69830b4e31d54413bc55f0896b",
+          "_build_responses_api_params": "e859553eac40f09a98abcb0ff8cafa4a033f23ccb2e7baefc7092b8f6769d371",
+          "_convert_prompt_messages_to_responses_input": "da3f8ac8c5181a518e4a499b662e9a327ea63b7635996cb05639243e9f1b088e",
+          "_build_responses_api_tools": "de23f9f0a6e0174520438758fb8fda1ff8d12de91e2d67e4cb37b43c9dd04df9",
+          "_chat_generate_responses_api": "334500f0d0031f7289c8f4823a345a78fc700ac97de64f3e3fbf1d0de503d263",
+          "_chat_generate_responses_api_stream": "87b9467d177a7b05363a68706c67d2c8201c1198e7cb5c221a45e773f07a1f7d",
+          "_handle_chat_block_as_stream_response": "385908196c2f6fc18b7333d812667b6985e6652b547f56a9a9c656b621334062",
+          "_handle_chat_generate_response": "26d16b19a43a72807dbfced33ff9d8ea508da92281bda06451cc7f3cd3193bb0",
+          "_handle_chat_generate_stream_response": "7ddd71bfb345cb66cc8ed73637dced543000db18eeae29a1aad13fe13b9e1ebd",
+          "_extract_response_tool_calls": "507f310c1c81a7a6b8f2f82390b351bf50c50483759cec882d5877381745990a",
+          "_extract_response_function_call": "7f605450e6e21925e88194a81f6b1867589442cd3a039785b4264a396c7ed782",
+          "_clear_illegal_prompt_messages": "eae341f25d24d9edb8af3c9eb904c7ac42fb8319d00a942ddb8d06c522f20288",
+          "_convert_prompt_message_to_dict": "eb837e8dca0d46c77e96294da3e8812304760ee9bdbc91d87f109f7a0e5f7f10",
+          "_num_tokens_from_string": "35b39d7069e7a99a507883c571c1e7972722b0bf7046c39ffe2d2630927598b1",
+          "_num_tokens_from_messages": "6cf73bef3fdee4adbed86a5db2cb67207fc56b2e1b563192b33ed3b05867adaa",
+          "_num_tokens_for_tools": "9f07212ca70343504e9620fc37fbef1489ac96a1c2ede6932a9ea0dbaf5edd0f",
+          "get_customizable_model_schema": "ba1cd764ae9c3d2f3cb634a5e060783844e3e4208f6e28afec936a84a47efe32"
+        },
+        "narrow_nonwire_source_edits": {
+          "validate_credentials": "explicit raise cause only; private codec never calls validation",
+          "_chat_generate": "explicit malformed-json raise cause and remove unused except binding; same request/error classes"
+        },
+        "sdk_parameter_filter_ast_sha256": "6e296afdc843a3621e9115f47a4512cc3df480aad1011f2c57c41c5591dd4482",
+        "parameter_schema": "source_codec_schema, never native model YAML; only source required defaults",
+        "max_tokens_wire_key": "max_completion_tokens",
+        "source_responses_top_level_verbosity": "OpenAI2.38 pre-HTTP TypeError retained; source public nonstream maps to InvokeError, stream lazy exposes TypeError",
+        "source_usage": "preserve authoritative usage including zero; retain exact source missing-usage counter/error behavior; no synthetic SSE usage",
+        "source_stream_error_mapping": "exact source public SDK eager/lazy boundaries retained",
+        "transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1",
+          "auth": "managed org key only",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10.0,
+            "read": 120.0,
+            "write": 120.0,
+            "pool": 10.0
+          },
+          "override_parameters": "deny before vendor SDK",
+          "constructor_context": "request-local ContextVar; clients closed on success/error/cancel"
+        },
+        "managed_transport_sha256": "e5368fa107748e4e27f7e55805b80e6877dbc6f8b490e424a11730b64081cd89",
+        "source_request_counter_proof_sha256": "a65163dbc8cb3fcb70acdf12f0de6630e6db6fa8d30a42fdada337524947534a",
+        "source_response_tool_vision_error_proof_sha256": "193c28cdb0f696f599ec3dd4a3e1c67baa1f210083144b251ec4f735630dea2d",
+        "proof_scope": "offline synthetic HTTP source/target differential only; not live model, metering, ACL, or deployment proof"
+      }
+    },
+    {
+      "profile_id": "openai-042-chat-official-root-runtime-v1:gpt-5.5",
+      "source_plugin_uid": "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+      "source_model": "gpt-5.5",
+      "target_model": "gpt-5.5",
+      "source_schema_digest": "sha256:ff2991e8c7fa82e2ce383a8f556d6f449a48e2c23604e1b30fe508729ac29ae6",
+      "source_runtime_schema_digest": "sha256:b9d1e507d1fddfcda398ff3d120e3f46b278545a3ac45a7123982fee960c1159",
+      "source_codec_schema_digest": "sha256:2665bee723d98e9c863d9bab49d80c4c6ee46bcb3b9ad76486a717c54d77e1da",
+      "source_schema": {
+        "model": "gpt-5.5",
+        "label": {
+          "zh_Hans": "gpt-5.5",
+          "en_US": "gpt-5.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "mode": "chat",
+          "context_size": 1050000
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "最大标记",
+              "en_US": "Max Tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 8192,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理努力程度",
+              "en_US": "Reasoning Effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束推理模型的推理努力程度。支持的值包括 none、low、medium、high 和 xhigh。",
+              "en_US": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh."
+            },
+            "required": false,
+            "default": "none",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "verbosity",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "详细程度",
+              "en_US": "Verbosity"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束模型响应的详细程度。较低的值将产生更简洁的响应，而较高的值将产生更详细的响应。支持的值包括 low、medium 和 high",
+              "en_US": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high"
+            },
+            "required": false,
+            "default": "medium",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "enable_stream",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "流式响应",
+              "en_US": "Streaming"
+            },
+            "type": "boolean",
+            "help": {
+              "zh_Hans": "GPT-5 系列模型流式输出需要 KYC 验证，若想跳过这个限制使用模型，请关闭流式响应。",
+              "en_US": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses."
+            },
+            "required": true,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "默认使用标准处理。选择 Flex 时请求会携带 service_tier=flex（[OpenAI Flex 处理](https://developers.openai.com/api/docs/guides/flex-processing)）：与 Batch 同档 token 价格，响应更慢，可能遇到 429（不计费），请提高客户端超时。",
+              "en_US": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts."
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "flex"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "5.00",
+          "output": "30.00",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "gpt-5.5",
+        "label": {
+          "zh_Hans": "gpt-5.5",
+          "pt_BR": "gpt-5.5",
+          "ja_JP": "gpt-5.5",
+          "en_US": "gpt-5.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "mode": "chat",
+          "context_size": 1050000
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "最大标记",
+              "pt_BR": "Max Tokens",
+              "ja_JP": "Max Tokens",
+              "en_US": "Max Tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "pt_BR": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+              "ja_JP": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 8192,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "pt_BR": "Response Format",
+              "ja_JP": "Response Format",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "pt_BR": "specifying the format that the model must output",
+              "ja_JP": "specifying the format that the model must output",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "pt_BR": "JSON Schema",
+              "ja_JP": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "pt_BR": "Set a response json schema will ensure LLM to adhere it.",
+              "ja_JP": "Set a response json schema will ensure LLM to adhere it.",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理努力程度",
+              "pt_BR": "Reasoning Effort",
+              "ja_JP": "Reasoning Effort",
+              "en_US": "Reasoning Effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束推理模型的推理努力程度。支持的值包括 none、low、medium、high 和 xhigh。",
+              "pt_BR": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh.",
+              "ja_JP": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh.",
+              "en_US": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh."
+            },
+            "required": false,
+            "default": "none",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "verbosity",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "详细程度",
+              "pt_BR": "Verbosity",
+              "ja_JP": "Verbosity",
+              "en_US": "Verbosity"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束模型响应的详细程度。较低的值将产生更简洁的响应，而较高的值将产生更详细的响应。支持的值包括 low、medium 和 high",
+              "pt_BR": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high",
+              "ja_JP": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high",
+              "en_US": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high"
+            },
+            "required": false,
+            "default": "medium",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "enable_stream",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "流式响应",
+              "pt_BR": "Streaming",
+              "ja_JP": "Streaming",
+              "en_US": "Streaming"
+            },
+            "type": "boolean",
+            "help": {
+              "zh_Hans": "GPT-5 系列模型流式输出需要 KYC 验证，若想跳过这个限制使用模型，请关闭流式响应。",
+              "pt_BR": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses.",
+              "ja_JP": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses.",
+              "en_US": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses."
+            },
+            "required": true,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "pt_BR": "Service tier",
+              "ja_JP": "Service tier",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "默认使用标准处理。选择 Flex 时请求会携带 service_tier=flex（[OpenAI Flex 处理](https://developers.openai.com/api/docs/guides/flex-processing)）：与 Batch 同档 token 价格，响应更慢，可能遇到 429（不计费），请提高客户端超时。",
+              "pt_BR": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts.",
+              "ja_JP": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts.",
+              "en_US": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts."
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "flex"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "5.00",
+          "output": "30.00",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_catalog_schema": {
+        "model": "gpt-5.5",
+        "label": {
+          "zh_Hans": "gpt-5.5",
+          "en_US": "gpt-5.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 1050000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "max_tokens",
+              "en_US": "max_tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 8192,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "json_schema",
+              "en_US": "json_schema"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理努力程度",
+              "en_US": "Reasoning Effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束推理模型的推理努力程度。支持的值包括 none、low、medium、high 和 xhigh。",
+              "en_US": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh."
+            },
+            "required": false,
+            "default": "none",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "verbosity",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "详细程度",
+              "en_US": "Verbosity"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束模型响应的详细程度。较低的值将产生更简洁的响应，而较高的值将产生更详细的响应。支持的值包括 low、medium 和 high",
+              "en_US": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high"
+            },
+            "required": false,
+            "default": "medium",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "enable_stream",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "流式响应",
+              "en_US": "Streaming"
+            },
+            "type": "boolean",
+            "help": {
+              "zh_Hans": "GPT-5 系列模型流式输出需要 KYC 验证，若想跳过这个限制使用模型，请关闭流式响应。",
+              "en_US": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses."
+            },
+            "required": true,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "默认使用标准处理。选择 Flex 时请求会携带 service_tier=flex（[OpenAI Flex 处理](https://developers.openai.com/api/docs/guides/flex-processing)）：与 Batch 同档 token 价格，响应更慢，可能遇到 429（不计费），请提高客户端超时。",
+              "en_US": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts."
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "flex"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "5",
+          "output": "30",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "protocol": "chat",
+      "source_endpoint_class": "official_root",
+      "source_settings": {
+        "source_base_is_set": true,
+        "request_metadata_enabled": false
+      },
+      "source_protocol_selectors": [
+        "absent",
+        "chat"
+      ],
+      "adapter_id": "openai_provider042_source_v1",
+      "adapter_revision": "1",
+      "source_archive_sha256": "c1da1055814117e269e74d177489cd9fb45cbd14774d95cc2ad1846f2ff999b3",
+      "source_sdk_version": "0.9.0",
+      "source_openai_version": "2.38.0",
+      "target_sdk_version": "0.10.2",
+      "target_openai_version": "3.37.0",
+      "source_inventory_evidence_sha256": "785c965ac7bcc0d8a58ebcde2ad6933f5127e85c9feccae6304baa5047a067d6",
+      "source_runtime_evidence": "Exact local source SDK schema projected through real Core parser; readiness still requires fresh exact-UID actual source RPC.",
+      "codec_rules": {
+        "implementation": "attributed_exact_source042_class_per_rpc_fixed_managed_client_v1",
+        "source_llm_sha256": "6ad5e953331cc6291d493dce11144e5e85bd7bcb148e47fac7edb272b15d5071",
+        "vendored_llm_sha256": "8f627dfa6da4b77181e329bd69337d53397071039b1c3abe024a51d4a4a4959a",
+        "source_method_ast_sha256": {
+          "_normalize_service_tier_params": "0b9efa078864d4c3b4f451aa0b93fe735816120ebfbf01f95b8f38a8561f204d",
+          "_invoke": "00e051b66e93545861174fc4fdce41db30558013222acbb4332535ea0bfe6f6f",
+          "_code_block_mode_wrapper": "24aa7508476ef835b6538b7144aa0aa7e3176d4f2418f54434ca87197a5d93fb",
+          "_transform_chat_json_prompts": "9a4c964913cc2582eae5981a9502b104153f2e773fe399e52fb5c1e431a3fe78",
+          "_transform_completion_json_prompts": "a69f4c37bbf0d58e124d304adcd6843d1527693ef5a05f11e5104f94ee9ada51",
+          "get_num_tokens": "b44182c6108add0277956e3288db19a355a22934fdb627586a95437a882ce029",
+          "validate_credentials": "342e07413cd90c96ea16d0d979945cd1bf43f982b01ca24cb7d84e71f24f483b",
+          "remote_models": "89644c133d005b6d2de915c5ee57063ed117691f151ddbbe531ad3ad9305ff95",
+          "_generate": "653c00037514101348653a1c8b03f2598318d91aa1df2c9eab63ff0f00d1d463",
+          "_handle_generate_response": "15205b8fdc3e3d03bdb6f28d0e6f8128d15e86a8efb5465d2d896b6f5ac07e4b",
+          "_handle_generate_stream_response": "d00600972ac0ffa8b1c4d9f227e5736b05fafaa9dbe818e90b4d902ddbc5b85c",
+          "_chat_generate": "1581ec66b525f2764b2a50eaa83e21313b964f69830b4e31d54413bc55f0896b",
+          "_build_responses_api_params": "e859553eac40f09a98abcb0ff8cafa4a033f23ccb2e7baefc7092b8f6769d371",
+          "_convert_prompt_messages_to_responses_input": "da3f8ac8c5181a518e4a499b662e9a327ea63b7635996cb05639243e9f1b088e",
+          "_build_responses_api_tools": "de23f9f0a6e0174520438758fb8fda1ff8d12de91e2d67e4cb37b43c9dd04df9",
+          "_chat_generate_responses_api": "334500f0d0031f7289c8f4823a345a78fc700ac97de64f3e3fbf1d0de503d263",
+          "_chat_generate_responses_api_stream": "87b9467d177a7b05363a68706c67d2c8201c1198e7cb5c221a45e773f07a1f7d",
+          "_handle_chat_block_as_stream_response": "385908196c2f6fc18b7333d812667b6985e6652b547f56a9a9c656b621334062",
+          "_handle_chat_generate_response": "26d16b19a43a72807dbfced33ff9d8ea508da92281bda06451cc7f3cd3193bb0",
+          "_handle_chat_generate_stream_response": "7ddd71bfb345cb66cc8ed73637dced543000db18eeae29a1aad13fe13b9e1ebd",
+          "_extract_response_tool_calls": "507f310c1c81a7a6b8f2f82390b351bf50c50483759cec882d5877381745990a",
+          "_extract_response_function_call": "7f605450e6e21925e88194a81f6b1867589442cd3a039785b4264a396c7ed782",
+          "_clear_illegal_prompt_messages": "eae341f25d24d9edb8af3c9eb904c7ac42fb8319d00a942ddb8d06c522f20288",
+          "_convert_prompt_message_to_dict": "eb837e8dca0d46c77e96294da3e8812304760ee9bdbc91d87f109f7a0e5f7f10",
+          "_num_tokens_from_string": "35b39d7069e7a99a507883c571c1e7972722b0bf7046c39ffe2d2630927598b1",
+          "_num_tokens_from_messages": "6cf73bef3fdee4adbed86a5db2cb67207fc56b2e1b563192b33ed3b05867adaa",
+          "_num_tokens_for_tools": "9f07212ca70343504e9620fc37fbef1489ac96a1c2ede6932a9ea0dbaf5edd0f",
+          "get_customizable_model_schema": "ba1cd764ae9c3d2f3cb634a5e060783844e3e4208f6e28afec936a84a47efe32"
+        },
+        "narrow_nonwire_source_edits": {
+          "validate_credentials": "explicit raise cause only; private codec never calls validation",
+          "_chat_generate": "explicit malformed-json raise cause and remove unused except binding; same request/error classes"
+        },
+        "sdk_parameter_filter_ast_sha256": "6e296afdc843a3621e9115f47a4512cc3df480aad1011f2c57c41c5591dd4482",
+        "parameter_schema": "source_codec_schema, never native model YAML; only source required defaults",
+        "max_tokens_wire_key": "max_completion_tokens",
+        "source_responses_top_level_verbosity": "OpenAI2.38 pre-HTTP TypeError retained; source public nonstream maps to InvokeError, stream lazy exposes TypeError",
+        "source_usage": "preserve authoritative usage including zero; retain exact source missing-usage counter/error behavior; no synthetic SSE usage",
+        "source_stream_error_mapping": "exact source public SDK eager/lazy boundaries retained",
+        "transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1",
+          "auth": "managed org key only",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10.0,
+            "read": 120.0,
+            "write": 120.0,
+            "pool": 10.0
+          },
+          "override_parameters": "deny before vendor SDK",
+          "constructor_context": "request-local ContextVar; clients closed on success/error/cancel"
+        },
+        "managed_transport_sha256": "e5368fa107748e4e27f7e55805b80e6877dbc6f8b490e424a11730b64081cd89",
+        "source_request_counter_proof_sha256": "a65163dbc8cb3fcb70acdf12f0de6630e6db6fa8d30a42fdada337524947534a",
+        "source_response_tool_vision_error_proof_sha256": "193c28cdb0f696f599ec3dd4a3e1c67baa1f210083144b251ec4f735630dea2d",
+        "proof_scope": "offline synthetic HTTP source/target differential only; not live model, metering, ACL, or deployment proof"
+      },
+      "source_endpoint_requirement": "https://api.openai.com"
+    },
+    {
+      "profile_id": "openai-042-responses-runtime-v1:gpt-5.5",
+      "source_plugin_uid": "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+      "source_model": "gpt-5.5",
+      "target_model": "gpt-5.5",
+      "source_schema_digest": "sha256:ff2991e8c7fa82e2ce383a8f556d6f449a48e2c23604e1b30fe508729ac29ae6",
+      "source_runtime_schema_digest": "sha256:b9d1e507d1fddfcda398ff3d120e3f46b278545a3ac45a7123982fee960c1159",
+      "source_codec_schema_digest": "sha256:2665bee723d98e9c863d9bab49d80c4c6ee46bcb3b9ad76486a717c54d77e1da",
+      "source_schema": {
+        "model": "gpt-5.5",
+        "label": {
+          "zh_Hans": "gpt-5.5",
+          "en_US": "gpt-5.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "mode": "chat",
+          "context_size": 1050000
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "最大标记",
+              "en_US": "Max Tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 8192,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理努力程度",
+              "en_US": "Reasoning Effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束推理模型的推理努力程度。支持的值包括 none、low、medium、high 和 xhigh。",
+              "en_US": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh."
+            },
+            "required": false,
+            "default": "none",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "verbosity",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "详细程度",
+              "en_US": "Verbosity"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束模型响应的详细程度。较低的值将产生更简洁的响应，而较高的值将产生更详细的响应。支持的值包括 low、medium 和 high",
+              "en_US": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high"
+            },
+            "required": false,
+            "default": "medium",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "enable_stream",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "流式响应",
+              "en_US": "Streaming"
+            },
+            "type": "boolean",
+            "help": {
+              "zh_Hans": "GPT-5 系列模型流式输出需要 KYC 验证，若想跳过这个限制使用模型，请关闭流式响应。",
+              "en_US": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses."
+            },
+            "required": true,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "默认使用标准处理。选择 Flex 时请求会携带 service_tier=flex（[OpenAI Flex 处理](https://developers.openai.com/api/docs/guides/flex-processing)）：与 Batch 同档 token 价格，响应更慢，可能遇到 429（不计费），请提高客户端超时。",
+              "en_US": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts."
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "flex"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "5.00",
+          "output": "30.00",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "gpt-5.5",
+        "label": {
+          "zh_Hans": "gpt-5.5",
+          "pt_BR": "gpt-5.5",
+          "ja_JP": "gpt-5.5",
+          "en_US": "gpt-5.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "mode": "chat",
+          "context_size": 1050000
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "最大标记",
+              "pt_BR": "Max Tokens",
+              "ja_JP": "Max Tokens",
+              "en_US": "Max Tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "pt_BR": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+              "ja_JP": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 8192,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "pt_BR": "Response Format",
+              "ja_JP": "Response Format",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "pt_BR": "specifying the format that the model must output",
+              "ja_JP": "specifying the format that the model must output",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "pt_BR": "JSON Schema",
+              "ja_JP": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "pt_BR": "Set a response json schema will ensure LLM to adhere it.",
+              "ja_JP": "Set a response json schema will ensure LLM to adhere it.",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理努力程度",
+              "pt_BR": "Reasoning Effort",
+              "ja_JP": "Reasoning Effort",
+              "en_US": "Reasoning Effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束推理模型的推理努力程度。支持的值包括 none、low、medium、high 和 xhigh。",
+              "pt_BR": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh.",
+              "ja_JP": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh.",
+              "en_US": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh."
+            },
+            "required": false,
+            "default": "none",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "verbosity",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "详细程度",
+              "pt_BR": "Verbosity",
+              "ja_JP": "Verbosity",
+              "en_US": "Verbosity"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束模型响应的详细程度。较低的值将产生更简洁的响应，而较高的值将产生更详细的响应。支持的值包括 low、medium 和 high",
+              "pt_BR": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high",
+              "ja_JP": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high",
+              "en_US": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high"
+            },
+            "required": false,
+            "default": "medium",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "enable_stream",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "流式响应",
+              "pt_BR": "Streaming",
+              "ja_JP": "Streaming",
+              "en_US": "Streaming"
+            },
+            "type": "boolean",
+            "help": {
+              "zh_Hans": "GPT-5 系列模型流式输出需要 KYC 验证，若想跳过这个限制使用模型，请关闭流式响应。",
+              "pt_BR": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses.",
+              "ja_JP": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses.",
+              "en_US": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses."
+            },
+            "required": true,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "pt_BR": "Service tier",
+              "ja_JP": "Service tier",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "默认使用标准处理。选择 Flex 时请求会携带 service_tier=flex（[OpenAI Flex 处理](https://developers.openai.com/api/docs/guides/flex-processing)）：与 Batch 同档 token 价格，响应更慢，可能遇到 429（不计费），请提高客户端超时。",
+              "pt_BR": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts.",
+              "ja_JP": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts.",
+              "en_US": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts."
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "flex"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "5.00",
+          "output": "30.00",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_catalog_schema": {
+        "model": "gpt-5.5",
+        "label": {
+          "zh_Hans": "gpt-5.5",
+          "en_US": "gpt-5.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 1050000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "max_tokens",
+              "en_US": "max_tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 8192,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "json_schema",
+              "en_US": "json_schema"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理努力程度",
+              "en_US": "Reasoning Effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束推理模型的推理努力程度。支持的值包括 none、low、medium、high 和 xhigh。",
+              "en_US": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh."
+            },
+            "required": false,
+            "default": "none",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "verbosity",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "详细程度",
+              "en_US": "Verbosity"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束模型响应的详细程度。较低的值将产生更简洁的响应，而较高的值将产生更详细的响应。支持的值包括 low、medium 和 high",
+              "en_US": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high"
+            },
+            "required": false,
+            "default": "medium",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "enable_stream",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "流式响应",
+              "en_US": "Streaming"
+            },
+            "type": "boolean",
+            "help": {
+              "zh_Hans": "GPT-5 系列模型流式输出需要 KYC 验证，若想跳过这个限制使用模型，请关闭流式响应。",
+              "en_US": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses."
+            },
+            "required": true,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "默认使用标准处理。选择 Flex 时请求会携带 service_tier=flex（[OpenAI Flex 处理](https://developers.openai.com/api/docs/guides/flex-processing)）：与 Batch 同档 token 价格，响应更慢，可能遇到 429（不计费），请提高客户端超时。",
+              "en_US": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts."
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "flex"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "5",
+          "output": "30",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "protocol": "responses",
+      "source_endpoint_class": "unset",
+      "source_settings": {
+        "source_base_is_set": false,
+        "request_metadata_enabled": false
+      },
+      "source_protocol_selectors": [
+        "responses"
+      ],
+      "adapter_id": "openai_provider042_source_v1",
+      "adapter_revision": "1",
+      "source_archive_sha256": "c1da1055814117e269e74d177489cd9fb45cbd14774d95cc2ad1846f2ff999b3",
+      "source_sdk_version": "0.9.0",
+      "source_openai_version": "2.38.0",
+      "target_sdk_version": "0.10.2",
+      "target_openai_version": "3.37.0",
+      "source_inventory_evidence_sha256": "785c965ac7bcc0d8a58ebcde2ad6933f5127e85c9feccae6304baa5047a067d6",
+      "source_runtime_evidence": "Exact local source SDK schema projected through real Core parser; readiness still requires fresh exact-UID actual source RPC.",
+      "codec_rules": {
+        "implementation": "attributed_exact_source042_class_per_rpc_fixed_managed_client_v1",
+        "source_llm_sha256": "6ad5e953331cc6291d493dce11144e5e85bd7bcb148e47fac7edb272b15d5071",
+        "vendored_llm_sha256": "8f627dfa6da4b77181e329bd69337d53397071039b1c3abe024a51d4a4a4959a",
+        "source_method_ast_sha256": {
+          "_normalize_service_tier_params": "0b9efa078864d4c3b4f451aa0b93fe735816120ebfbf01f95b8f38a8561f204d",
+          "_invoke": "00e051b66e93545861174fc4fdce41db30558013222acbb4332535ea0bfe6f6f",
+          "_code_block_mode_wrapper": "24aa7508476ef835b6538b7144aa0aa7e3176d4f2418f54434ca87197a5d93fb",
+          "_transform_chat_json_prompts": "9a4c964913cc2582eae5981a9502b104153f2e773fe399e52fb5c1e431a3fe78",
+          "_transform_completion_json_prompts": "a69f4c37bbf0d58e124d304adcd6843d1527693ef5a05f11e5104f94ee9ada51",
+          "get_num_tokens": "b44182c6108add0277956e3288db19a355a22934fdb627586a95437a882ce029",
+          "validate_credentials": "342e07413cd90c96ea16d0d979945cd1bf43f982b01ca24cb7d84e71f24f483b",
+          "remote_models": "89644c133d005b6d2de915c5ee57063ed117691f151ddbbe531ad3ad9305ff95",
+          "_generate": "653c00037514101348653a1c8b03f2598318d91aa1df2c9eab63ff0f00d1d463",
+          "_handle_generate_response": "15205b8fdc3e3d03bdb6f28d0e6f8128d15e86a8efb5465d2d896b6f5ac07e4b",
+          "_handle_generate_stream_response": "d00600972ac0ffa8b1c4d9f227e5736b05fafaa9dbe818e90b4d902ddbc5b85c",
+          "_chat_generate": "1581ec66b525f2764b2a50eaa83e21313b964f69830b4e31d54413bc55f0896b",
+          "_build_responses_api_params": "e859553eac40f09a98abcb0ff8cafa4a033f23ccb2e7baefc7092b8f6769d371",
+          "_convert_prompt_messages_to_responses_input": "da3f8ac8c5181a518e4a499b662e9a327ea63b7635996cb05639243e9f1b088e",
+          "_build_responses_api_tools": "de23f9f0a6e0174520438758fb8fda1ff8d12de91e2d67e4cb37b43c9dd04df9",
+          "_chat_generate_responses_api": "334500f0d0031f7289c8f4823a345a78fc700ac97de64f3e3fbf1d0de503d263",
+          "_chat_generate_responses_api_stream": "87b9467d177a7b05363a68706c67d2c8201c1198e7cb5c221a45e773f07a1f7d",
+          "_handle_chat_block_as_stream_response": "385908196c2f6fc18b7333d812667b6985e6652b547f56a9a9c656b621334062",
+          "_handle_chat_generate_response": "26d16b19a43a72807dbfced33ff9d8ea508da92281bda06451cc7f3cd3193bb0",
+          "_handle_chat_generate_stream_response": "7ddd71bfb345cb66cc8ed73637dced543000db18eeae29a1aad13fe13b9e1ebd",
+          "_extract_response_tool_calls": "507f310c1c81a7a6b8f2f82390b351bf50c50483759cec882d5877381745990a",
+          "_extract_response_function_call": "7f605450e6e21925e88194a81f6b1867589442cd3a039785b4264a396c7ed782",
+          "_clear_illegal_prompt_messages": "eae341f25d24d9edb8af3c9eb904c7ac42fb8319d00a942ddb8d06c522f20288",
+          "_convert_prompt_message_to_dict": "eb837e8dca0d46c77e96294da3e8812304760ee9bdbc91d87f109f7a0e5f7f10",
+          "_num_tokens_from_string": "35b39d7069e7a99a507883c571c1e7972722b0bf7046c39ffe2d2630927598b1",
+          "_num_tokens_from_messages": "6cf73bef3fdee4adbed86a5db2cb67207fc56b2e1b563192b33ed3b05867adaa",
+          "_num_tokens_for_tools": "9f07212ca70343504e9620fc37fbef1489ac96a1c2ede6932a9ea0dbaf5edd0f",
+          "get_customizable_model_schema": "ba1cd764ae9c3d2f3cb634a5e060783844e3e4208f6e28afec936a84a47efe32"
+        },
+        "narrow_nonwire_source_edits": {
+          "validate_credentials": "explicit raise cause only; private codec never calls validation",
+          "_chat_generate": "explicit malformed-json raise cause and remove unused except binding; same request/error classes"
+        },
+        "sdk_parameter_filter_ast_sha256": "6e296afdc843a3621e9115f47a4512cc3df480aad1011f2c57c41c5591dd4482",
+        "parameter_schema": "source_codec_schema, never native model YAML; only source required defaults",
+        "max_tokens_wire_key": "max_output_tokens",
+        "source_responses_top_level_verbosity": "OpenAI2.38 pre-HTTP TypeError retained; source public nonstream maps to InvokeError, stream lazy exposes TypeError",
+        "source_usage": "preserve authoritative usage including zero; retain exact source missing-usage counter/error behavior; no synthetic SSE usage",
+        "source_stream_error_mapping": "exact source public SDK eager/lazy boundaries retained",
+        "transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1",
+          "auth": "managed org key only",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10.0,
+            "read": 120.0,
+            "write": 120.0,
+            "pool": 10.0
+          },
+          "override_parameters": "deny before vendor SDK",
+          "constructor_context": "request-local ContextVar; clients closed on success/error/cancel"
+        },
+        "managed_transport_sha256": "e5368fa107748e4e27f7e55805b80e6877dbc6f8b490e424a11730b64081cd89",
+        "source_request_counter_proof_sha256": "a65163dbc8cb3fcb70acdf12f0de6630e6db6fa8d30a42fdada337524947534a",
+        "source_response_tool_vision_error_proof_sha256": "193c28cdb0f696f599ec3dd4a3e1c67baa1f210083144b251ec4f735630dea2d",
+        "proof_scope": "offline synthetic HTTP source/target differential only; not live model, metering, ACL, or deployment proof"
+      }
+    },
+    {
+      "profile_id": "openai-042-responses-official-root-runtime-v1:gpt-5.5",
+      "source_plugin_uid": "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+      "source_model": "gpt-5.5",
+      "target_model": "gpt-5.5",
+      "source_schema_digest": "sha256:ff2991e8c7fa82e2ce383a8f556d6f449a48e2c23604e1b30fe508729ac29ae6",
+      "source_runtime_schema_digest": "sha256:b9d1e507d1fddfcda398ff3d120e3f46b278545a3ac45a7123982fee960c1159",
+      "source_codec_schema_digest": "sha256:2665bee723d98e9c863d9bab49d80c4c6ee46bcb3b9ad76486a717c54d77e1da",
+      "source_schema": {
+        "model": "gpt-5.5",
+        "label": {
+          "zh_Hans": "gpt-5.5",
+          "en_US": "gpt-5.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "mode": "chat",
+          "context_size": 1050000
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "最大标记",
+              "en_US": "Max Tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 8192,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理努力程度",
+              "en_US": "Reasoning Effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束推理模型的推理努力程度。支持的值包括 none、low、medium、high 和 xhigh。",
+              "en_US": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh."
+            },
+            "required": false,
+            "default": "none",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "verbosity",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "详细程度",
+              "en_US": "Verbosity"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束模型响应的详细程度。较低的值将产生更简洁的响应，而较高的值将产生更详细的响应。支持的值包括 low、medium 和 high",
+              "en_US": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high"
+            },
+            "required": false,
+            "default": "medium",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "enable_stream",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "流式响应",
+              "en_US": "Streaming"
+            },
+            "type": "boolean",
+            "help": {
+              "zh_Hans": "GPT-5 系列模型流式输出需要 KYC 验证，若想跳过这个限制使用模型，请关闭流式响应。",
+              "en_US": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses."
+            },
+            "required": true,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "默认使用标准处理。选择 Flex 时请求会携带 service_tier=flex（[OpenAI Flex 处理](https://developers.openai.com/api/docs/guides/flex-processing)）：与 Batch 同档 token 价格，响应更慢，可能遇到 429（不计费），请提高客户端超时。",
+              "en_US": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts."
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "flex"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "5.00",
+          "output": "30.00",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "gpt-5.5",
+        "label": {
+          "zh_Hans": "gpt-5.5",
+          "pt_BR": "gpt-5.5",
+          "ja_JP": "gpt-5.5",
+          "en_US": "gpt-5.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "mode": "chat",
+          "context_size": 1050000
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "最大标记",
+              "pt_BR": "Max Tokens",
+              "ja_JP": "Max Tokens",
+              "en_US": "Max Tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "pt_BR": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+              "ja_JP": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 8192,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "pt_BR": "Response Format",
+              "ja_JP": "Response Format",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "pt_BR": "specifying the format that the model must output",
+              "ja_JP": "specifying the format that the model must output",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "pt_BR": "JSON Schema",
+              "ja_JP": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "pt_BR": "Set a response json schema will ensure LLM to adhere it.",
+              "ja_JP": "Set a response json schema will ensure LLM to adhere it.",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理努力程度",
+              "pt_BR": "Reasoning Effort",
+              "ja_JP": "Reasoning Effort",
+              "en_US": "Reasoning Effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束推理模型的推理努力程度。支持的值包括 none、low、medium、high 和 xhigh。",
+              "pt_BR": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh.",
+              "ja_JP": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh.",
+              "en_US": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh."
+            },
+            "required": false,
+            "default": "none",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "verbosity",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "详细程度",
+              "pt_BR": "Verbosity",
+              "ja_JP": "Verbosity",
+              "en_US": "Verbosity"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束模型响应的详细程度。较低的值将产生更简洁的响应，而较高的值将产生更详细的响应。支持的值包括 low、medium 和 high",
+              "pt_BR": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high",
+              "ja_JP": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high",
+              "en_US": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high"
+            },
+            "required": false,
+            "default": "medium",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "enable_stream",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "流式响应",
+              "pt_BR": "Streaming",
+              "ja_JP": "Streaming",
+              "en_US": "Streaming"
+            },
+            "type": "boolean",
+            "help": {
+              "zh_Hans": "GPT-5 系列模型流式输出需要 KYC 验证，若想跳过这个限制使用模型，请关闭流式响应。",
+              "pt_BR": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses.",
+              "ja_JP": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses.",
+              "en_US": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses."
+            },
+            "required": true,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "pt_BR": "Service tier",
+              "ja_JP": "Service tier",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "默认使用标准处理。选择 Flex 时请求会携带 service_tier=flex（[OpenAI Flex 处理](https://developers.openai.com/api/docs/guides/flex-processing)）：与 Batch 同档 token 价格，响应更慢，可能遇到 429（不计费），请提高客户端超时。",
+              "pt_BR": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts.",
+              "ja_JP": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts.",
+              "en_US": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts."
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "flex"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "5.00",
+          "output": "30.00",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_catalog_schema": {
+        "model": "gpt-5.5",
+        "label": {
+          "zh_Hans": "gpt-5.5",
+          "en_US": "gpt-5.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 1050000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "max_tokens",
+              "en_US": "max_tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 8192,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "json_schema",
+              "en_US": "json_schema"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理努力程度",
+              "en_US": "Reasoning Effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束推理模型的推理努力程度。支持的值包括 none、low、medium、high 和 xhigh。",
+              "en_US": "Constrains effort on reasoning for reasoning models. Supported values include none, low, medium, high, and xhigh."
+            },
+            "required": false,
+            "default": "none",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "verbosity",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "详细程度",
+              "en_US": "Verbosity"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "约束模型响应的详细程度。较低的值将产生更简洁的响应，而较高的值将产生更详细的响应。支持的值包括 low、medium 和 high",
+              "en_US": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are low, medium, and high"
+            },
+            "required": false,
+            "default": "medium",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "enable_stream",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "流式响应",
+              "en_US": "Streaming"
+            },
+            "type": "boolean",
+            "help": {
+              "zh_Hans": "GPT-5 系列模型流式输出需要 KYC 验证，若想跳过这个限制使用模型，请关闭流式响应。",
+              "en_US": "GPT-5 series models require KYC validation for streaming output, if you want to use the models without this limitation, please turn off streaming responses."
+            },
+            "required": true,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "默认使用标准处理。选择 Flex 时请求会携带 service_tier=flex（[OpenAI Flex 处理](https://developers.openai.com/api/docs/guides/flex-processing)）：与 Batch 同档 token 价格，响应更慢，可能遇到 429（不计费），请提高客户端超时。",
+              "en_US": "Default is standard processing. Flex sends service_tier=flex ([Flex processing](https://developers.openai.com/api/docs/guides/flex-processing)) for Batch-tier token pricing, with slower responses and possible unbilled 429; increase client timeouts."
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "flex"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "5",
+          "output": "30",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "protocol": "responses",
+      "source_endpoint_class": "official_root",
+      "source_settings": {
+        "source_base_is_set": true,
+        "request_metadata_enabled": false
+      },
+      "source_protocol_selectors": [
+        "responses"
+      ],
+      "adapter_id": "openai_provider042_source_v1",
+      "adapter_revision": "1",
+      "source_archive_sha256": "c1da1055814117e269e74d177489cd9fb45cbd14774d95cc2ad1846f2ff999b3",
+      "source_sdk_version": "0.9.0",
+      "source_openai_version": "2.38.0",
+      "target_sdk_version": "0.10.2",
+      "target_openai_version": "3.37.0",
+      "source_inventory_evidence_sha256": "785c965ac7bcc0d8a58ebcde2ad6933f5127e85c9feccae6304baa5047a067d6",
+      "source_runtime_evidence": "Exact local source SDK schema projected through real Core parser; readiness still requires fresh exact-UID actual source RPC.",
+      "codec_rules": {
+        "implementation": "attributed_exact_source042_class_per_rpc_fixed_managed_client_v1",
+        "source_llm_sha256": "6ad5e953331cc6291d493dce11144e5e85bd7bcb148e47fac7edb272b15d5071",
+        "vendored_llm_sha256": "8f627dfa6da4b77181e329bd69337d53397071039b1c3abe024a51d4a4a4959a",
+        "source_method_ast_sha256": {
+          "_normalize_service_tier_params": "0b9efa078864d4c3b4f451aa0b93fe735816120ebfbf01f95b8f38a8561f204d",
+          "_invoke": "00e051b66e93545861174fc4fdce41db30558013222acbb4332535ea0bfe6f6f",
+          "_code_block_mode_wrapper": "24aa7508476ef835b6538b7144aa0aa7e3176d4f2418f54434ca87197a5d93fb",
+          "_transform_chat_json_prompts": "9a4c964913cc2582eae5981a9502b104153f2e773fe399e52fb5c1e431a3fe78",
+          "_transform_completion_json_prompts": "a69f4c37bbf0d58e124d304adcd6843d1527693ef5a05f11e5104f94ee9ada51",
+          "get_num_tokens": "b44182c6108add0277956e3288db19a355a22934fdb627586a95437a882ce029",
+          "validate_credentials": "342e07413cd90c96ea16d0d979945cd1bf43f982b01ca24cb7d84e71f24f483b",
+          "remote_models": "89644c133d005b6d2de915c5ee57063ed117691f151ddbbe531ad3ad9305ff95",
+          "_generate": "653c00037514101348653a1c8b03f2598318d91aa1df2c9eab63ff0f00d1d463",
+          "_handle_generate_response": "15205b8fdc3e3d03bdb6f28d0e6f8128d15e86a8efb5465d2d896b6f5ac07e4b",
+          "_handle_generate_stream_response": "d00600972ac0ffa8b1c4d9f227e5736b05fafaa9dbe818e90b4d902ddbc5b85c",
+          "_chat_generate": "1581ec66b525f2764b2a50eaa83e21313b964f69830b4e31d54413bc55f0896b",
+          "_build_responses_api_params": "e859553eac40f09a98abcb0ff8cafa4a033f23ccb2e7baefc7092b8f6769d371",
+          "_convert_prompt_messages_to_responses_input": "da3f8ac8c5181a518e4a499b662e9a327ea63b7635996cb05639243e9f1b088e",
+          "_build_responses_api_tools": "de23f9f0a6e0174520438758fb8fda1ff8d12de91e2d67e4cb37b43c9dd04df9",
+          "_chat_generate_responses_api": "334500f0d0031f7289c8f4823a345a78fc700ac97de64f3e3fbf1d0de503d263",
+          "_chat_generate_responses_api_stream": "87b9467d177a7b05363a68706c67d2c8201c1198e7cb5c221a45e773f07a1f7d",
+          "_handle_chat_block_as_stream_response": "385908196c2f6fc18b7333d812667b6985e6652b547f56a9a9c656b621334062",
+          "_handle_chat_generate_response": "26d16b19a43a72807dbfced33ff9d8ea508da92281bda06451cc7f3cd3193bb0",
+          "_handle_chat_generate_stream_response": "7ddd71bfb345cb66cc8ed73637dced543000db18eeae29a1aad13fe13b9e1ebd",
+          "_extract_response_tool_calls": "507f310c1c81a7a6b8f2f82390b351bf50c50483759cec882d5877381745990a",
+          "_extract_response_function_call": "7f605450e6e21925e88194a81f6b1867589442cd3a039785b4264a396c7ed782",
+          "_clear_illegal_prompt_messages": "eae341f25d24d9edb8af3c9eb904c7ac42fb8319d00a942ddb8d06c522f20288",
+          "_convert_prompt_message_to_dict": "eb837e8dca0d46c77e96294da3e8812304760ee9bdbc91d87f109f7a0e5f7f10",
+          "_num_tokens_from_string": "35b39d7069e7a99a507883c571c1e7972722b0bf7046c39ffe2d2630927598b1",
+          "_num_tokens_from_messages": "6cf73bef3fdee4adbed86a5db2cb67207fc56b2e1b563192b33ed3b05867adaa",
+          "_num_tokens_for_tools": "9f07212ca70343504e9620fc37fbef1489ac96a1c2ede6932a9ea0dbaf5edd0f",
+          "get_customizable_model_schema": "ba1cd764ae9c3d2f3cb634a5e060783844e3e4208f6e28afec936a84a47efe32"
+        },
+        "narrow_nonwire_source_edits": {
+          "validate_credentials": "explicit raise cause only; private codec never calls validation",
+          "_chat_generate": "explicit malformed-json raise cause and remove unused except binding; same request/error classes"
+        },
+        "sdk_parameter_filter_ast_sha256": "6e296afdc843a3621e9115f47a4512cc3df480aad1011f2c57c41c5591dd4482",
+        "parameter_schema": "source_codec_schema, never native model YAML; only source required defaults",
+        "max_tokens_wire_key": "max_output_tokens",
+        "source_responses_top_level_verbosity": "OpenAI2.38 pre-HTTP TypeError retained; source public nonstream maps to InvokeError, stream lazy exposes TypeError",
+        "source_usage": "preserve authoritative usage including zero; retain exact source missing-usage counter/error behavior; no synthetic SSE usage",
+        "source_stream_error_mapping": "exact source public SDK eager/lazy boundaries retained",
+        "transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1",
+          "auth": "managed org key only",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10.0,
+            "read": 120.0,
+            "write": 120.0,
+            "pool": 10.0
+          },
+          "override_parameters": "deny before vendor SDK",
+          "constructor_context": "request-local ContextVar; clients closed on success/error/cancel"
+        },
+        "managed_transport_sha256": "e5368fa107748e4e27f7e55805b80e6877dbc6f8b490e424a11730b64081cd89",
+        "source_request_counter_proof_sha256": "a65163dbc8cb3fcb70acdf12f0de6630e6db6fa8d30a42fdada337524947534a",
+        "source_response_tool_vision_error_proof_sha256": "193c28cdb0f696f599ec3dd4a3e1c67baa1f210083144b251ec4f735630dea2d",
+        "proof_scope": "offline synthetic HTTP source/target differential only; not live model, metering, ACL, or deployment proof"
+      },
+      "source_endpoint_requirement": "https://api.openai.com"
+    }
+  ]
+}

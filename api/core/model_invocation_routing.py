@@ -35,11 +35,13 @@ from services.entities.model_billing_mapping import MappingTarget as MappingTarg
 from services.entities.model_billing_mapping import ModelMapping as ModelMapping  # noqa: PLC0414
 from services.entities.model_billing_mapping import ParameterAdapter as ParameterAdapter  # noqa: PLC0414
 from services.model_billing_mapping_service import (
+    SelectedEmbeddingSourceVariant,
     SelectedSourceVariant,
     SourceParameterContract,
     TTSVoiceContract,
     additional_model_is_authorized,
     build_source_adapter_contract,
+    hosted_embedding_source_fact,
     hosted_migration_sources,
     hosted_source_variant_fact,
     managed_source_schemas,
@@ -449,9 +451,15 @@ def _validate_source_variant_admission(plan: FrozenModelInvocation, state: dict[
                 models=(),
                 credentials=hosting.credentials,
             ),
+            embedding_fact=hosted_embedding_source_fact(
+                provider=plan.logical_provider,
+                source_uid=contract.source_plugin_unique_identifier,
+                models=(),
+                credentials=hosting.credentials,
+            ),
         )
         if (
-            not isinstance(selected, SelectedSourceVariant)
+            not isinstance(selected, (SelectedSourceVariant, SelectedEmbeddingSourceVariant))
             or selected.variant.variant_id != pin.variant_id
             or canonical_hash(selected.variant.source_settings.model_dump(mode="json")) != pin.source_settings_digest
         ):
@@ -522,6 +530,7 @@ def routed_credentials(
                 (provider, model_type, model),
                 source_uid=source_uid,
                 fact=configuration.system_configuration._tokener_source_variant_fact,
+                embedding_fact=configuration.system_configuration._tokener_embedding_source_fact,
                 schema=matching_sources[0] if len(matching_sources) == 1 else None,
             )
     except (KeyError, TypeError, ValueError):
@@ -614,7 +623,7 @@ def routed_credentials(
                     mapping.variant.variant_id,
                     canonical_hash(mapping.variant.source_settings.model_dump(mode="json")),
                 )
-                if registry is not None and isinstance(mapping, SelectedSourceVariant)
+                if registry is not None and isinstance(mapping, (SelectedSourceVariant, SelectedEmbeddingSourceVariant))
                 else None
             ),
             mapping_revision_digest=registry.digest if registry is not None else None,

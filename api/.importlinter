@@ -1425,6 +1425,41 @@ forbidden_modules =
     tasks
     werkzeug
 
+[importlinter:contract:model-billing-openai-embedding-source-adapter-pure]
+name = Source OpenAI embedding adapter is pure and infrastructure independent
+type = forbidden
+source_modules =
+    services.model_billing_openai_embedding_adapter
+    services.entities.model_billing_embedding_mapping
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:model-billing-openai042-source-adapter-pure]
+name = Source OpenAI 0.4.2 dual-protocol adapter is pure and infrastructure independent
+type = forbidden
+source_modules =
+    services.model_billing_openai_provider042_adapter
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
 [importlinter:contract:model-billing-free-migration-controller-boundary]
 name = Migration control transport reaches persistence through application owners
 type = forbidden
