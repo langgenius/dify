@@ -23,7 +23,6 @@ import models.human_input_entities  # noqa: F401
 from constants import UUID_NIL
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
@@ -69,6 +68,7 @@ from services.workflow.execution.adapters.chatflow import app_generator as adv_a
 from services.workflow.execution.adapters.chatflow.app_generator import AdvancedChatAppGenerator
 from services.workflow.execution.adapters.chatflow.record_preparation import prepare_chat_records
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
+from services.workflow.execution.adapters.workflow import app_generator as wf_app_gen_module
 from services.workflow.execution.ports import WorkflowRuntime
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_upload_file

@@ -11,6 +11,7 @@ runs, and the allow/deny answers live in `test_auth_matrix.py`.
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterator
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -245,7 +246,19 @@ class TestOpenApiWorkflowEventsApi:
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter(["a", "b"])
         monkeypatch.setattr(module, "WorkflowEventStream", msg_gen_mock)
-        monkeypatch.setattr(module, "build_workflow_event_stream", lambda **_kwargs: iter(["a", "b"]))
+        snapshot_calls: list[dict[str, object]] = []
+
+        def snapshot_builder(**kwargs: object) -> Iterator[str]:
+            snapshot_calls.append(kwargs)
+            return iter(["a", "b"])
+
+        monkeypatch.setattr(module, "build_workflow_event_stream", snapshot_builder)
+        tool_providers = Mock()
+        monkeypatch.setattr(
+            module,
+            "application_services",
+            lambda: SimpleNamespace(tools=SimpleNamespace(tool_providers=tool_providers)),
+        )
 
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
@@ -257,6 +270,10 @@ class TestOpenApiWorkflowEventsApi:
 
         assert resp.mimetype == "text/event-stream"
         assert body == "event: a\n\nevent: b\n\n"
+        if include_state_snapshot:
+            assert snapshot_calls[0]["tool_providers"] is tool_providers
+        else:
+            assert snapshot_calls == []
 
     @pytest.mark.parametrize("continue_on_pause", [False, True], ids=["close", "keep_open"])
     def test_continue_on_pause_comes_off_the_declared_query_model(

@@ -46,9 +46,11 @@ from models.human_input import HumanInputForm, HumanInputFormRecipient
 from models.human_input_entities import ParagraphInputConfig, SelectInputConfig, StringListSource, UserActionConfig
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel
+from services.tools.provider_queries import ToolProviderIcons
 from services.workflow.execution.adapters import response_converter as workflow_response_converter
 from services.workflow.execution.adapters.events import WorkflowEventPublisher
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
+from services.workflow.execution.ports import ExecutionContexts
 
 
 class TestWorkflowResponseConverterCases:
@@ -441,7 +443,7 @@ class TestWorkflowResponseConverterHumanInputCases:
 
 
 def _workflow_response_converter_resumption_build_converter(
-    *, workflow_contexts, tool_providers
+    *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviderIcons
 ) -> WorkflowResponseConverter:
     """Construct a minimal WorkflowResponseConverter for testing."""
     system_variables = build_system_variables(
@@ -478,7 +480,9 @@ def _workflow_response_converter_resumption_build_converter(
 
 class TestWorkflowResponseConverterResumptionCases:
     @staticmethod
-    def test_workflow_start_stream_response_carries_resumption_reason(*, workflow_contexts, tool_providers) -> None:
+    def test_workflow_start_stream_response_carries_resumption_reason(
+        *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviderIcons
+    ) -> None:
         converter = _workflow_response_converter_resumption_build_converter(
             workflow_contexts=workflow_contexts, tool_providers=tool_providers
         )
@@ -491,7 +495,9 @@ class TestWorkflowResponseConverterResumptionCases:
         assert resp.data.reason is WorkflowStartReason.RESUMPTION
 
     @staticmethod
-    def test_workflow_start_stream_response_carries_initial_reason(*, workflow_contexts, tool_providers) -> None:
+    def test_workflow_start_stream_response_carries_initial_reason(
+        *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviderIcons
+    ) -> None:
         converter = _workflow_response_converter_resumption_build_converter(
             workflow_contexts=workflow_contexts, tool_providers=tool_providers
         )
@@ -505,8 +511,8 @@ class TestWorkflowResponseConverterResumptionCases:
 
     @staticmethod
     def test_node_start_preserves_the_allocated_index_when_events_arrive_out_of_order(
-        *, workflow_contexts, tool_providers
-    ):
+        *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviderIcons
+    ) -> None:
         converter = _workflow_response_converter_resumption_build_converter(
             workflow_contexts=workflow_contexts, tool_providers=tool_providers
         )
@@ -536,7 +542,6 @@ class TestWorkflowResponseConverterResumptionCases:
         monkeypatch, provider_type, *, workflow_contexts, tool_providers
     ):
         monkeypatch.setattr(workflow_response_converter.ToolManager, "get_tool_icon", lambda **_kwargs: "icon")
-        monkeypatch.setattr("core.tools.tool_manager.ToolManager.get_tool_icon", lambda **_kwargs: "icon")
         converter = _workflow_response_converter_resumption_build_converter(
             workflow_contexts=workflow_contexts, tool_providers=tool_providers
         )
@@ -562,13 +567,17 @@ class TestWorkflowResponseConverterResumptionCases:
         assert response is not None
         from services.workflow.node_execution_extras import node_execution_extras
 
-        assert response.data.extras == saved.extras
         assert response.data.extras == node_execution_extras(saved, tool_providers=tool_providers)
         assert response.data.extras.get("workflow_tool", False) == (provider_type == "workflow")
 
     @staticmethod
     @pytest.mark.parametrize("next_node_already_persisted", [False, True])
-    def test_resumed_node_metadata_and_sequence(next_node_already_persisted, *, workflow_contexts, tool_providers):
+    def test_resumed_node_metadata_and_sequence(
+        next_node_already_persisted: bool,
+        *,
+        workflow_contexts: ExecutionContexts,
+        tool_providers: ToolProviderIcons,
+    ) -> None:
         started_at = datetime(2026, 9, 7)
         converter = _workflow_response_converter_resumption_build_converter(
             workflow_contexts=workflow_contexts, tool_providers=tool_providers
@@ -577,7 +586,7 @@ class TestWorkflowResponseConverterResumptionCases:
             task_id="task-1", workflow_run_id="run-1", workflow_id="wf-1", reason=WorkflowStartReason.INITIAL
         )
 
-        def node_start(execution_id, title, node_type, index):
+        def node_start(execution_id: str, title: str, node_type: str, index: int) -> QueueNodeStartedEvent:
             return QueueNodeStartedEvent(
                 node_execution_id=execution_id,
                 node_id=execution_id,

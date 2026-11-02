@@ -24,7 +24,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_type
+from core.trigger.constants import is_trigger_node_type
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
@@ -50,7 +50,6 @@ from graphon.enums import (
     BuiltinNodeTypes,
     NodeType,
     WorkflowExecutionStatus,
-    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from graphon.file import File
@@ -1173,41 +1172,6 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
         # This approach streamlines the logic for the caller, making it easier to handle
         # cases where metadata is absent.
         return json.loads(self.execution_metadata) if self.execution_metadata else {}
-
-    @property
-    def extras(self) -> dict[str, Any]:
-        from core.tools.entities.tool_entities import ToolProviderType
-        from core.tools.tool_manager import ToolManager
-        from core.trigger.trigger_manager import TriggerManager
-
-        extras: dict[str, Any] = {}
-        execution_metadata = self.execution_metadata_dict
-        if execution_metadata:
-            if self.node_type == BuiltinNodeTypes.TOOL and "tool_info" in execution_metadata:
-                tool_info: dict[str, Any] = execution_metadata["tool_info"]
-                provider_type = ToolProviderType(tool_info["provider_type"])
-                if provider_type == ToolProviderType.WORKFLOW:
-                    extras["workflow_tool"] = True
-                extras["icon"] = ToolManager.get_tool_icon(
-                    tenant_id=self.tenant_id,
-                    provider_type=provider_type,
-                    provider_id=tool_info["provider_id"],
-                )
-            elif self.node_type == BuiltinNodeTypes.DATASOURCE and "datasource_info" in execution_metadata:
-                datasource_info = execution_metadata["datasource_info"]
-                extras["icon"] = datasource_info.get("icon")
-            elif (
-                self.node_type == TRIGGER_PLUGIN_NODE_TYPE
-                and WorkflowNodeExecutionMetadataKey.TRIGGER_INFO in execution_metadata
-            ):
-                trigger_info = execution_metadata[WorkflowNodeExecutionMetadataKey.TRIGGER_INFO] or {}
-                provider_id = trigger_info.get("provider_id")
-                if provider_id:
-                    extras["icon"] = TriggerManager.get_trigger_plugin_icon(
-                        tenant_id=self.tenant_id,
-                        provider_id=provider_id,
-                    )
-        return extras
 
     def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> "WorkflowNodeExecutionOffload | None":
         return next(iter([i for i in self.offload_data if i.type_ == type_]), None)

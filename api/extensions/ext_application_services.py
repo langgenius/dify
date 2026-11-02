@@ -20,7 +20,6 @@ from core.db.session_factory import get_session_maker
 from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
-from core.tools.tool_manager import ToolManager as LegacyToolManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
@@ -134,6 +133,7 @@ from services.api_based_extension_adapters import APIBasedExtensionPingProbe, Wo
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
+from services.app.generation.adapters.completion import CompletionAppGenerator
 from services.app.generation.runtime import AppGenerationRuntime
 from services.app.mcp_server_service import AppMCPServerService
 from services.app.workflow_comment_mention_gateway import CeleryWorkflowCommentMentionNotifier
@@ -647,6 +647,7 @@ def build_application_services(
         repository=messages,
     )
 
+    generation_runtime = build_workflow_execution_dependencies(database_client)
     return ApplicationServices(
         tools=tools,
         human_input_debug=build_human_input_debug_service(database_client=database_client),
@@ -656,7 +657,7 @@ def build_application_services(
         console_workflow_variables=build_console_workflow_variables(
             database_client=database_client, variables=workflow_variables
         ),
-        workflow_runtime=build_workflow_execution_dependencies(database_client),
+        workflow_runtime=generation_runtime,
         workflow_suggestions=build_workflow_suggestions(database_client),
         workflow_agent_bindings=WorkflowAgentBindingResolver(database_client),
         snippet_generation=build_snippet_generation_service(
@@ -829,7 +830,14 @@ def build_application_services(
         ),
         message_more_like_this=MessageMoreLikeThisService(
             repository=messages,
-            generator=MessageMoreLikeThisGenerator(session_factory=database_client),
+            generator=MessageMoreLikeThisGenerator(
+                session_factory=database_client,
+                completion_generator=CompletionAppGenerator(
+                    retrieval=generation_runtime.retrieval,
+                    records=generation_runtime.chat_records,
+                    annotations=generation_runtime.annotation_replies,
+                ),
+            ),
         ),
         message_suggested_questions=MessageSuggestedQuestionsService(
             queries=suggested_questions,
@@ -938,9 +946,6 @@ def init_app(app: Flask) -> None:
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
     ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
-    # Legacy workflow execution and saved trace extras still resolve providers here.
-    LegacyToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
-    LegacyToolManager.configure_credential_resolver(resolve_tool_credentials)
     ToolManager.configure_credential_resolver(resolve_tool_credentials)
     services = build_application_services(
         database_client=get_session_maker(),

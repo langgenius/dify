@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import base64
 import contextlib
-from collections.abc import Iterator
+from collections.abc import Callable
 from decimal import Decimal
 from typing import Any
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.entities.mcp_provider import IdentityMode
 from core.mcp.types import (
     AudioContent,
     BlobResourceContents,
@@ -63,7 +63,7 @@ _STRING_LIST = {"type": "array", "items": {"type": "string"}}
 # ----- M2/M3 user-identity forwarding ---------------------------------------
 
 
-def _build_forwarding_tool(*, mode: str = "idp_token") -> MCPTool:
+def _build_forwarding_tool(*, mode: IdentityMode = IdentityMode.IDP_TOKEN) -> MCPTool:
     """Helper that builds an MCPTool with the identity_mode set."""
     entity = ToolEntity(
         identity=ToolIdentity(
@@ -88,7 +88,7 @@ def _build_forwarding_tool(*, mode: str = "idp_token") -> MCPTool:
 
 class TestMcpToolCases:
     @staticmethod
-    def test_mcp_tool_provider_type_and_fork_runtime():
+    def test_mcp_tool_provider_type_and_fork_runtime() -> None:
         tool = _build_mcp_tool()
         assert tool.tool_provider_type() == ToolProviderType.MCP
 
@@ -98,7 +98,7 @@ class TestMcpToolCases:
         assert forked.server_identifier == "mcp_server"
 
     @staticmethod
-    def test_mcp_tool_text_and_json_processing_helpers():
+    def test_mcp_tool_text_and_json_processing_helpers() -> None:
         tool = _build_mcp_tool()
 
         json_messages = list(tool._process_text_content(TextContent(type="text", text='{"a": 1}')))
@@ -106,6 +106,7 @@ class TestMcpToolCases:
 
         plain_messages = list(tool._process_text_content(TextContent(type="text", text="not-json")))
         assert plain_messages[0].type == ToolInvokeMessage.MessageType.TEXT
+        assert isinstance(plain_messages[0].message, ToolInvokeMessage.TextMessage)
         assert plain_messages[0].message.text == "not-json"
 
         list_messages = list(tool._process_json_content([{"k": 1}, {"k": 2}]))
@@ -119,10 +120,11 @@ class TestMcpToolCases:
         assert mixed_list_messages[0].type == ToolInvokeMessage.MessageType.TEXT
 
         primitive_messages = list(tool._process_json_content(123))
+        assert isinstance(primitive_messages[0].message, ToolInvokeMessage.TextMessage)
         assert primitive_messages[0].message.text == "123"
 
     @staticmethod
-    def test_mcp_tool_usage_extraction_helpers():
+    def test_mcp_tool_usage_extraction_helpers() -> None:
         usage = MCPTool._extract_usage_dict({"usage": {"total_tokens": 9}})
         assert usage == {"total_tokens": 9}
 
@@ -145,7 +147,7 @@ class TestMcpToolCases:
         assert derived.total_tokens == 0
 
     @staticmethod
-    def test_mcp_tool_invoke_handles_content_types_and_structured_output(unbound_session: Session):
+    def test_mcp_tool_invoke_handles_content_types_and_structured_output(unbound_session: Session) -> None:
         tool = _build_mcp_tool()
         img_data = base64.b64encode(b"img").decode()
         blob_data = base64.b64encode(b"blob").decode()
@@ -181,7 +183,7 @@ class TestMcpToolCases:
         assert tool.latest_usage.total_tokens == 5
 
     @staticmethod
-    def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource(unbound_session: Session):
+    def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource(unbound_session: Session) -> None:
         tool = _build_mcp_tool()
         # Use model_construct to bypass pydantic validation and force unsupported resource path.
         bad_resource = EmbeddedResource.model_construct(type="resource", resource=object())
@@ -192,7 +194,7 @@ class TestMcpToolCases:
                 list(tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={}))
 
     @staticmethod
-    def test_mcp_tool_handle_none_parameter_filters_empty_values():
+    def test_mcp_tool_handle_none_parameter_filters_empty_values() -> None:
         tool = _build_mcp_tool()
         cleaned = tool._handle_none_parameter({"a": 1, "b": None, "c": "", "d": "  ", "e": "ok"})
         assert cleaned == {"a": 1, "e": "ok"}
@@ -212,10 +214,14 @@ class TestMcpToolCases:
     )
     @pytest.mark.parametrize("domain", [["light", "cover"], "light"])
     def test_mcp_tool_invoke_preserves_values_of_mixed_type_union_parameters(
-        sqlite_session: Session, domain_schema, domain
-    ):
+        sqlite_session: Session, domain_schema: dict[str, Any], domain: str | list[str]
+    ) -> None:
         tool = _build_mcp_tool()
-        schema = {"type": "object", "properties": {"domain": domain_schema, "name": _STRING}, "required": []}
+        schema: dict[str, Any] = {
+            "type": "object",
+            "properties": {"domain": domain_schema, "name": _STRING},
+            "required": [],
+        }
         tool.entity.parameters = ToolTransformService.convert_mcp_schema_to_parameter(schema)
         result = CallToolResult(content=[TextContent(type="text", text="ok")])
 
@@ -228,7 +234,7 @@ class TestMcpToolCases:
         assert sent["name"] == "1"
 
     @staticmethod
-    def test_inject_forwarded_identity_stamps_custom_header():
+    def test_inject_forwarded_identity_stamps_custom_header() -> None:
         """The minted SSO token must be placed in X-Dify-SSO-Token; the
         workspace-scoped Authorization header and any other custom headers must
         pass through untouched so provider credentials keep working."""
@@ -250,7 +256,7 @@ class TestMcpToolCases:
         assert headers["X-Other"] == "keep"
 
     @staticmethod
-    def test_inject_forwarded_identity_translates_token_error_to_invoke_error():
+    def test_inject_forwarded_identity_translates_token_error_to_invoke_error() -> None:
         """EnterpriseService failures must surface as ToolInvokeError so the
         workflow halts loudly instead of proceeding without identity."""
         from core.tools.mcp_tool.tool import FORWARDED_IDENTITY_HEADER
@@ -273,7 +279,7 @@ class TestMcpToolCases:
         assert "Authorization" not in headers
 
     @staticmethod
-    def test_inject_forwarded_identity_sends_end_user_type_for_webapp():
+    def test_inject_forwarded_identity_sends_end_user_type_for_webapp() -> None:
         """A WEB_APP run forwards user_type=end_user so enterprise routes to the
         published-webapp token store."""
         tool = _build_forwarding_tool()
@@ -291,7 +297,7 @@ class TestMcpToolCases:
         assert issue.call_args.kwargs["user_type"] == "end_user"
 
     @staticmethod
-    def test_inject_forwarded_identity_sends_account_type_for_debugger():
+    def test_inject_forwarded_identity_sends_account_type_for_debugger() -> None:
         """A DEBUGGER/console run forwards user_type=account (the existing behaviour)."""
         tool = _build_forwarding_tool()  # built with InvokeFrom.DEBUGGER
         headers: dict[str, str] = {}
@@ -307,7 +313,9 @@ class TestMcpToolCases:
         assert issue.call_args.kwargs["user_type"] == "account"
 
     @staticmethod
-    def test_invoke_remote_mcp_tool_fails_closed_when_user_id_missing(config_overrides):
+    def test_invoke_remote_mcp_tool_fails_closed_when_user_id_missing(
+        config_overrides: Callable[..., None],
+    ) -> None:
         """When forwarding is enabled AND the deployment is enterprise, missing
         user_id must raise — never silently invoke as the static identity."""
         tool = _build_forwarding_tool()
@@ -317,7 +325,9 @@ class TestMcpToolCases:
             tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
 
     @staticmethod
-    def test_invoke_skips_forwarding_outside_enterprise_edition(config_overrides):
+    def test_invoke_skips_forwarding_outside_enterprise_edition(
+        config_overrides: Callable[..., None],
+    ) -> None:
         """Non-enterprise deployments treat the DB selector as a no-op: a stale
         `identity_mode="idp_token"` row must NOT raise (fail-closed) AND must
         NOT call the enterprise inner API. The runtime falls through to the
@@ -364,13 +374,6 @@ def _make_mcp_tool(output_schema: dict[str, Any] | None = None) -> MCPTool:
 
 
 class TestMcpToolCasesTools:
-    @staticmethod
-    @pytest.fixture
-    def orm_session(sqlite_engine: Engine) -> Iterator[Session]:
-        """Use a real ORM session while MCP transport remains mocked."""
-        with Session(sqlite_engine) as session:
-            yield session
-
     class TestMCPToolInvoke:
         @pytest.mark.parametrize(
             ("content_factory", "mime_type"),
@@ -385,7 +388,12 @@ class TestMcpToolCasesTools:
                 ),
             ],
         )
-        def test_invoke_image_or_audio_yields_blob(self, content_factory, mime_type, orm_session: Session) -> None:
+        def test_invoke_image_or_audio_yields_blob(
+            self,
+            content_factory: Callable[[str, str], ImageContent | AudioContent],
+            mime_type: str,
+            unbound_session: Session,
+        ) -> None:
             tool = _make_mcp_tool()
             raw = b"\x00\x01test-bytes\x02"
             b64 = base64.b64encode(raw).decode()
@@ -393,7 +401,7 @@ class TestMcpToolCasesTools:
             result = CallToolResult(content=[content])
 
             with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-                messages = list(tool._invoke(session=orm_session, user_id="test_user", tool_parameters={}))
+                messages = list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
             assert len(messages) == 1
             msg = messages[0]
@@ -402,14 +410,14 @@ class TestMcpToolCasesTools:
             assert msg.message.blob == raw
             assert msg.meta == {"mime_type": mime_type}
 
-        def test_invoke_embedded_text_resource_yields_text(self, orm_session: Session) -> None:
+        def test_invoke_embedded_text_resource_yields_text(self, unbound_session: Session) -> None:
             tool = _make_mcp_tool()
             text_resource = TextResourceContents(uri="file://test.txt", mimeType="text/plain", text="hello world")
             content = EmbeddedResource(type="resource", resource=text_resource)
             result = CallToolResult(content=[content])
 
             with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-                messages = list(tool._invoke(session=orm_session, user_id="test_user", tool_parameters={}))
+                messages = list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
             assert len(messages) == 1
             msg = messages[0]
@@ -422,7 +430,7 @@ class TestMcpToolCasesTools:
             [("application/pdf", "application/pdf"), (None, "application/octet-stream")],
         )
         def test_invoke_embedded_blob_resource_yields_blob(
-            self, mime_type, expected_mime, orm_session: Session
+            self, mime_type: str | None, expected_mime: str, unbound_session: Session
         ) -> None:
             tool = _make_mcp_tool()
             raw = b"binary-data"
@@ -432,7 +440,7 @@ class TestMcpToolCasesTools:
             result = CallToolResult(content=[content])
 
             with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-                messages = list(tool._invoke(session=orm_session, user_id="test_user", tool_parameters={}))
+                messages = list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
             assert len(messages) == 1
             msg = messages[0]
@@ -441,27 +449,33 @@ class TestMcpToolCasesTools:
             assert msg.message.blob == raw
             assert msg.meta == {"mime_type": expected_mime}
 
-        def test_invoke_yields_variables_when_structured_content_and_schema(self, orm_session: Session) -> None:
+        def test_invoke_yields_variables_when_structured_content_and_schema(self, unbound_session: Session) -> None:
             tool = _make_mcp_tool(output_schema={"type": "object"})
             result = CallToolResult(content=[], structuredContent={"a": 1, "b": "x"})
 
             with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-                messages = list(tool._invoke(session=orm_session, user_id="test_user", tool_parameters={}))
+                messages = list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
             # Expect two variable messages corresponding to keys a and b
             assert len(messages) == 2
-            var_msgs = [m for m in messages if isinstance(m.message, ToolInvokeMessage.VariableMessage)]
-            assert {m.message.variable_name for m in var_msgs} == {"a", "b"}
+            variable_messages = [
+                message.message
+                for message in messages
+                if isinstance(message.message, ToolInvokeMessage.VariableMessage)
+            ]
+            assert {message.variable_name for message in variable_messages} == {"a", "b"}
             # Validate values
-            values = {m.message.variable_name: m.message.variable_value for m in var_msgs}
+            values = {message.variable_name: message.variable_value for message in variable_messages}
             assert values == {"a": 1, "b": "x"}
 
-        def test_invoke_yields_json_when_structured_content_has_no_output_schema(self, orm_session: Session) -> None:
+        def test_invoke_yields_json_when_structured_content_has_no_output_schema(
+            self, unbound_session: Session
+        ) -> None:
             tool = _make_mcp_tool()
             result = CallToolResult(content=[], structuredContent={"a": 1, "b": "x"})
 
             with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-                messages = list(tool._invoke(session=orm_session, user_id="test_user", tool_parameters={}))
+                messages = list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
             assert len(messages) == 1
             msg = messages[0]
@@ -609,7 +623,7 @@ class TestMcpToolCasesTools:
             assert usage.prompt_tokens == 100
             assert usage.completion_tokens == 50
 
-        def test_invoke_sets_latest_usage_from_meta(self, orm_session: Session) -> None:
+        def test_invoke_sets_latest_usage_from_meta(self, unbound_session: Session) -> None:
             """Test that _invoke sets _latest_usage from result meta."""
             tool = _make_mcp_tool()
             meta = {
@@ -624,7 +638,7 @@ class TestMcpToolCasesTools:
             result = CallToolResult(content=[TextContent(type="text", text="test")], _meta=meta)
 
             with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-                list(tool._invoke(session=orm_session, user_id="test_user", tool_parameters={}))
+                list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
             # Verify latest_usage was set correctly
             assert tool.latest_usage.prompt_tokens == 200
@@ -632,13 +646,13 @@ class TestMcpToolCasesTools:
             assert tool.latest_usage.total_tokens == 300
             assert tool.latest_usage.total_price == Decimal("0.003")
 
-        def test_invoke_with_no_meta_returns_empty_usage(self, orm_session: Session) -> None:
+        def test_invoke_with_no_meta_returns_empty_usage(self, unbound_session: Session) -> None:
             """Test that _invoke returns empty usage when no meta is present."""
             tool = _make_mcp_tool()
             result = CallToolResult(content=[TextContent(type="text", text="test")], _meta=None)
 
             with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-                list(tool._invoke(session=orm_session, user_id="test_user", tool_parameters={}))
+                list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
             # Verify latest_usage is empty
             assert tool.latest_usage.total_tokens == 0
@@ -679,7 +693,7 @@ class TestMcpToolCasesTools:
                 {"level1": {"level2": {"usage": {"total_tokens": 200}}}},
             ],
         )
-        def test_various_meta_formats(self, meta_data) -> None:
+        def test_various_meta_formats(self, meta_data: dict[str, Any]) -> None:
             """Test that various meta formats are correctly parsed."""
             result = CallToolResult(content=[], _meta=meta_data)
             usage = MCPTool._derive_usage_from_result(result)

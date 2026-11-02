@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -147,6 +148,11 @@ class TestWorkflowEventsApi:
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
         snapshot_calls: list[dict[str, object]] = []
+        tool_providers = MagicMock()
+        monkeypatch.setattr(
+            "controllers.web.workflow_events.application_services",
+            lambda: SimpleNamespace(tools=SimpleNamespace(tool_providers=tool_providers)),
+        )
 
         def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
             snapshot_calls.append(kwargs)
@@ -165,6 +171,7 @@ class TestWorkflowEventsApi:
                 "tenant_id": "tenant-1",
                 "app_id": "app-1",
                 "session_maker": ANY,
+                "tool_providers": tool_providers,
                 "close_on_pause": False,
             }
         ]
