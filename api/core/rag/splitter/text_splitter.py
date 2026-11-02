@@ -50,7 +50,9 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             keep_separator: Whether to keep the separator in the chunks
             add_start_index: If `True`, includes chunk's start index in metadata
         """
-        if chunk_overlap > chunk_size:
+        if chunk_size <= 0:
+            raise ValueError(f"Got a non-positive chunk size ({chunk_size}), should be positive.")
+        if chunk_overlap >= chunk_size:
             raise ValueError(
                 f"Got a larger chunk overlap ({chunk_overlap}) than chunk size ({chunk_size}), should be smaller."
             )
@@ -170,15 +172,25 @@ class Tokenizer:
 
 def split_text_on_tokens(*, text: str, tokenizer: Tokenizer) -> list[str]:
     """Split incoming text and return chunks using tokenizer."""
+    tokens_per_chunk = tokenizer.tokens_per_chunk
+    chunk_overlap = tokenizer.chunk_overlap
+    step = tokens_per_chunk - chunk_overlap
+    if tokens_per_chunk <= 0 or step <= 0:
+        # Without a strictly positive step the window never advances and the loop
+        # below would spin forever while memory grows without bound.
+        raise ValueError(
+            f"Got a chunk overlap ({chunk_overlap}) that is not smaller than the chunk size "
+            f"({tokens_per_chunk}), and a positive chunk size is required."
+        )
     splits: list[str] = []
     input_ids = tokenizer.encode(text)
     start_idx = 0
-    cur_idx = min(start_idx + tokenizer.tokens_per_chunk, len(input_ids))
+    cur_idx = min(start_idx + tokens_per_chunk, len(input_ids))
     chunk_ids = input_ids[start_idx:cur_idx]
     while start_idx < len(input_ids):
         splits.append(tokenizer.decode(chunk_ids))
-        start_idx += tokenizer.tokens_per_chunk - tokenizer.chunk_overlap
-        cur_idx = min(start_idx + tokenizer.tokens_per_chunk, len(input_ids))
+        start_idx += step
+        cur_idx = min(start_idx + tokens_per_chunk, len(input_ids))
         chunk_ids = input_ids[start_idx:cur_idx]
     return splits
 

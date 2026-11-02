@@ -401,6 +401,22 @@ class TestSplitTextOnTokens:
         assert len(result) == 1
         assert result[0] == text
 
+    @pytest.mark.parametrize(
+        ("chunk_overlap", "tokens_per_chunk"),
+        [(5, 5), (6, 5), (0, 0), (0, -1)],
+    )
+    def test_rejects_non_progressing_configuration(self, chunk_overlap, tokens_per_chunk):
+        """A window step <= 0 would loop forever, so it must be rejected up front."""
+        tokenizer = Tokenizer(
+            chunk_overlap=chunk_overlap,
+            tokens_per_chunk=tokens_per_chunk,
+            decode=lambda tokens: "".join(chr(token) for token in tokens),
+            encode=lambda text: [ord(char) for char in text],
+        )
+
+        with pytest.raises(ValueError, match="not smaller than the chunk size"):
+            split_text_on_tokens(text="ABCDEFGHIJ", tokenizer=tokenizer)
+
 
 # ============================================================================
 # Test RecursiveCharacterTextSplitter
@@ -437,9 +453,17 @@ class TestRecursiveCharacterTextSplitter:
         assert splitter._separators == custom_separators
 
     def test_chunk_overlap_validation(self):
-        """Test that chunk overlap cannot exceed chunk size."""
+        """Test that chunk overlap must be strictly smaller than chunk size."""
         with pytest.raises(ValueError, match="larger chunk overlap"):
             RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=150)
+        # Equality would make the sliding window advance by zero and never terminate.
+        with pytest.raises(ValueError, match="larger chunk overlap"):
+            RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=100)
+
+    def test_non_positive_chunk_size_validation(self):
+        """Test that a non-positive chunk size is rejected instead of looping forever."""
+        with pytest.raises(ValueError, match="non-positive chunk size"):
+            RecursiveCharacterTextSplitter(chunk_size=0, chunk_overlap=0)
 
     def test_split_by_paragraph(self, sample_text):
         """Test splitting text by paragraphs."""
