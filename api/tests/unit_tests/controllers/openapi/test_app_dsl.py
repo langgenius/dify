@@ -818,7 +818,7 @@ def test_package_import_reads_a_file_part_as_the_package(
 @pytest.mark.parametrize(
     ("fields", "preserve_agent_bindings"),
     [
-        pytest.param({}, False, id="default"),
+        pytest.param({}, True, id="default"),
         pytest.param({"preserve_agent_bindings": False}, False, id="false"),
         pytest.param({"preserve_agent_bindings": True}, True, id="true"),
     ],

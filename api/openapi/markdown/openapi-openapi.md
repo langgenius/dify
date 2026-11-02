@@ -2537,7 +2537,7 @@ Request body for POST /workspaces/<workspace_id>/apps/packages.
 | icon_type | string |  | No |
 | name | string | Override the app name from the DSL | No |
 | package | string<br>object | A .ifpkg file, or an unpacked package folder (one part per file) | Yes |
-| preserve_agent_bindings | boolean | true: keep the package's links to roster Agents and workspace skills, for a package exported for editing and uploaded back to the same workspace. false: import every packaged Agent and skill as a copy, for a full export; a package that links roster Agents is refused. Agent App packages always import their skills as copies; true is ignored for them. | No |
+| preserve_agent_bindings | boolean, <br>**Default:** true | true: keep the package's links to roster Agents and workspace skills, for a package exported for editing and uploaded back to the same workspace; a linked skill this workspace lacks is refused. false: import every packaged Agent and skill as a copy, for moving a full export to another workspace; a package that links roster Agents is refused. Agent App packages always import their skills as copies; true is ignored for them. | No |
 
 #### AppSettingsInfo
 
