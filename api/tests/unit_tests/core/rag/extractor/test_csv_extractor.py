@@ -27,6 +27,35 @@ class _ManagedStringIO(io.StringIO):
 
 
 class TestCSVExtractor:
+    @pytest.mark.parametrize("separator", [",", ";"])
+    @pytest.mark.parametrize("policy", ["skip", "warn", "error", None])
+    def test_extract_bad_line_policy(self, tmp_path: Path, separator: str, policy: str | None) -> None:
+        file_path = tmp_path / "rows.csv"
+        file_path.write_text(
+            "id,body\n00123,NA\nbad,extra,field\n00456,NULL\n".replace(",", separator), encoding="utf-8"
+        )
+        csv_args = {"sep": separator}
+        if policy is not None:
+            csv_args["on_bad_lines"] = policy
+        original_args = csv_args.copy()
+        extractor = CSVExtractor(str(file_path), encoding="utf-8", source_column="id", csv_args=csv_args)
+        original_options = extractor.csv_args.copy()
+
+        if policy == "error":
+            with pytest.raises(pd.errors.ParserError, match="Expected 2 fields"):
+                extractor.extract()
+        else:
+            if policy == "warn":
+                with pytest.warns(pd.errors.ParserWarning, match="Skipping line"):
+                    docs = extractor.extract()
+            else:
+                docs = extractor.extract()
+            assert [doc.page_content for doc in docs] == ["id: 00123;body: NA", "id: 00456;body: NULL"]
+            assert [doc.metadata for doc in docs] == [{"source": "00123", "row": 0}, {"source": "00456", "row": 1}]
+
+        assert csv_args == original_args
+        assert extractor.csv_args == original_options
+
     @pytest.mark.parametrize("value", ["00123", "1.00", "1e3", "NA", "NULL", "N/A", "", "hello"])
     def test_extract_preserves_cell_text(self, tmp_path: Path, value: str) -> None:
         file_path = tmp_path / "data.csv"

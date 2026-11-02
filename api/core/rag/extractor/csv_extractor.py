@@ -57,10 +57,16 @@ class CSVExtractor(BaseExtractor):
         return docs
 
     def _read_from_file(self, csvfile) -> list[Document]:
+        """Read an open text stream using caller options without mutating them.
+
+        Default to skipping malformed rows when no policy is supplied. Explicit
+        policies retain pandas' warning and error behavior.
+        """
         docs = []
         try:
             # load csv file into pandas dataframe
-            df = pd.read_csv(csvfile, on_bad_lines="skip", **self.csv_args)
+            csv_args: dict[str, Any] = {"on_bad_lines": "skip", **self.csv_args}
+            df = pd.read_csv(csvfile, **csv_args)
 
             # check source column exists
             if self.source_column and self.source_column not in df.columns:
