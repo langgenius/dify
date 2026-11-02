@@ -20,6 +20,7 @@ from core.entities.execution_extra_content import (
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from libs.datetime_utils import to_utc_timestamp
 from models.execution_extra_content import (
     ExecutionExtraContent as ExecutionExtraContentModel,
 )
@@ -142,7 +143,7 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
             display_in_ui=display_in_ui,
             form_token=form_token,
             resolved_default_values=form_definition.default_values,
-            expiration_time=int(form.expiration_time.timestamp()),
+            expiration_time=to_utc_timestamp(form.expiration_time),
         )
 
         if not submitted:

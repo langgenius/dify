@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from datetime import timedelta
+import time
+from datetime import UTC, datetime, timedelta
 from typing import cast
 
 import pytest
@@ -157,3 +158,46 @@ def test_map_human_input_content_offers_a_token_only_while_the_form_waits(
     assert content.submitted is False
     assert content.form_definition is not None
     assert content.form_definition.form_token == ("web-token" if has_token else None)
+
+
+def test_map_human_input_content_reads_a_naive_expiration_time_as_utc(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The stored column is naive UTC, so the host timezone must not shift it."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("tzset is only available on POSIX platforms")
+    recorded_at = datetime(2024, 1, 1)
+    form_definition = FormDefinition(
+        form_content="content",
+        inputs=[],
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
+        rendered_content="Rendered Approval",
+        expiration_time=recorded_at,
+        node_title="Approval",
+        display_in_ui=True,
+    )
+    form = HumanInputForm(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id="workflow-run-1",
+        node_id="node-1",
+        form_definition=form_definition.model_dump_json(),
+        rendered_content="Rendered Approval",
+        expiration_time=recorded_at,
+        status=HumanInputFormStatus.WAITING,
+    )
+    form.id = "form-1"
+    model = HumanInputContentModel.new(workflow_run_id="workflow-run-1", form_id=form.id, message_id="message-1")
+    model.id = "content-1"
+    model.form = form
+    repository = SQLAlchemyExecutionExtraContentRepository(cast(sessionmaker[Session], object()))
+
+    monkeypatch.setenv("TZ", "Asia/Shanghai")
+    time.tzset()
+    try:
+        content = repository._map_human_input_content(model, {})
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+
+    assert content is not None
+    assert content.form_definition is not None
+    assert content.form_definition.expiration_time == int(recorded_at.replace(tzinfo=UTC).timestamp())
