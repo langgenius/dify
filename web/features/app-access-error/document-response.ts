@@ -12,18 +12,21 @@ import { APP_UNAVAILABLE_IP_HEADER, APP_UNAVAILABLE_PATH } from './document-cons
 
 const PROXY_SECRET_HEADER = 'x-dify-webapp-proxy-secret'
 const VERIFIED_IP_HEADER = 'x-dify-webapp-client-ip'
+const UNPROVEN_CLIENT_IP = 'unproven-v1'
+const ADMISSION_HEADER = 'x-dify-webapp-admission'
+const NO_EFFECTIVE_IP_POLICY = 'no-effective-ip-policy-v1'
 const MAX_PREFLIGHT_BYTES = 8192
 
-function authenticatedProxyIp(request: NextRequest) {
+function authenticatedProxyClient(request: NextRequest) {
   const expected = env.WEBAPP_ACCESS_PREFLIGHT_PROXY_SECRET
   const supplied = request.headers.get(PROXY_SECRET_HEADER)
   const ip = request.headers.get(VERIFIED_IP_HEADER)
-  if (!expected || !supplied || !ip || !isIP(ip)) return undefined
+  if (!expected || !supplied || !ip || (ip !== UNPROVEN_CLIENT_IP && !isIP(ip))) return undefined
   const expectedBytes = Buffer.from(expected)
   const suppliedBytes = Buffer.from(supplied)
   return expectedBytes.length === suppliedBytes.length &&
     timingSafeEqual(expectedBytes, suppliedBytes)
-    ? ip
+    ? { ip, secret: expected }
     : undefined
 }
 
@@ -88,8 +91,9 @@ export async function getWebAppDocumentResponse(request: NextRequest, requestHea
   const address = parseWebAppAddress(pathname)
   if (!address || address.kind !== 'default' || !env.WEBAPP_ACCESS_PREFLIGHT_URL) return undefined
 
-  const clientIp = authenticatedProxyIp(request)
-  if (!clientIp) return unavailable()
+  const client = authenticatedProxyClient(request)
+  if (!client) return unavailable()
+  const unprovenClientIp = client.ip === UNPROVEN_CLIENT_IP
 
   try {
     const url = new URL(env.WEBAPP_ACCESS_PREFLIGHT_URL)
@@ -102,13 +106,29 @@ export async function getWebAppDocumentResponse(request: NextRequest, requestHea
     )
       return unavailable()
     url.searchParams.set('appCode', decodeURIComponent(address.code))
+    const headers: Record<string, string> = { Accept: 'application/json' }
+    if (unprovenClientIp) {
+      // An authenticated unknown is not a proxy address that can satisfy an IP
+      // policy. Gateway must explicitly confirm that no effective policy applies.
+      headers[VERIFIED_IP_HEADER] = UNPROVEN_CLIENT_IP
+      headers[PROXY_SECRET_HEADER] = client.secret
+    } else {
+      headers['X-Forwarded-For'] = client.ip
+    }
     const response = await fetch(url, {
       method: 'GET',
-      headers: { Accept: 'application/json', 'X-Forwarded-For': clientIp },
+      headers,
       cache: 'no-store',
       redirect: 'error',
       signal: AbortSignal.timeout(5000),
     })
+    // Older Gateways ignore the unknown-IP protocol. Their success or not-found
+    // response cannot prove that they avoided evaluating the Web pod's address.
+    if (
+      unprovenClientIp &&
+      (response.status !== 200 || response.headers.get(ADMISSION_HEADER) !== NO_EFFECTIVE_IP_POLICY)
+    )
+      return unavailable()
     if (response.status !== 200 && response.status !== 404) return unavailable()
     const payload = await readPreflightPayload(response)
     if (typeof payload !== 'object' || payload === null) return unavailable()
@@ -128,7 +148,7 @@ export async function getWebAppDocumentResponse(request: NextRequest, requestHea
       'message' in payload &&
       payload.message === 'App not found.'
     )
-      return notFoundDocument(request, requestHeaders, clientIp)
+      return notFoundDocument(request, requestHeaders, client.ip)
     return unavailable()
   } catch {
     // Do not log the URL, ingress proof, visitor IP, or upstream error body.
