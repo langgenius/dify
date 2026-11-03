@@ -122,7 +122,7 @@ def test_disabled_knowledge_fs_config_allows_partial_connection() -> None:
 
 def test_knowledge_fs_docker_config_is_not_shadowed_by_root_env() -> None:
     root_env_example = (_REPOSITORY_ROOT / "docker/.env.example").read_text(encoding="utf-8")
-    api_env_example = (_REPOSITORY_ROOT / "docker/envs/core-services/api.env.example").read_text(encoding="utf-8")
+    api_env_example = (_REPOSITORY_ROOT / "docker/envs/core-services/api.defaults").read_text(encoding="utf-8")
 
     for variable in _KNOWLEDGE_FS_DOCKER_VARIABLES:
         assert f"{variable}=" not in root_env_example

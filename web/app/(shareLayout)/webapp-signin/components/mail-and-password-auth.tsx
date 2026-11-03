@@ -2,9 +2,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -32,7 +35,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [showPassword, setShowPassword] = useState(false)
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [isLoading, setIsLoading] = useState(false)
   const redirectUrl = searchParams.get('redirect_url')
@@ -143,28 +145,14 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
             {t(($) => $.forget, { ns: 'login' })}
           </Link>
         </div>
-        <InputGroup className="mt-1">
-          <InputGroupInput
+        <PasswordField className="mt-1">
+          <PasswordFieldInput
             id="password"
-            type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
-            spellCheck={false}
             placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
           />
-          <InputGroupAddon align="inline-end">
-            <IconButton
-              type="button"
-              size="lg"
-              variant="ghost"
-              aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
-                ns: 'login',
-              })}
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              <span aria-hidden="true">{showPassword ? '👀' : '😝'}</span>
-            </IconButton>
-          </InputGroupAddon>
-        </InputGroup>
+          <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+        </PasswordField>
         <FieldError />
       </Field>
 

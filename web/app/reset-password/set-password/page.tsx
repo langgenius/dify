@@ -10,8 +10,11 @@ import {
   FieldValidity,
 } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
 import { useCountDown } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,8 +39,6 @@ const ChangePasswordForm = () => {
   const confirmPasswordRef = useRef<HTMLInputElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   useDocumentTitle(
     showSuccess
       ? t(($) => $.passwordChangedTip, { ns: 'login' })
@@ -128,34 +129,18 @@ const ChangePasswordForm = () => {
                 <FieldLabel>
                   {t(($) => $['account.newPassword'], { ns: 'accountSettings' })}
                 </FieldLabel>
-                <InputGroup>
-                  <InputGroupInput
-                    type={showPassword ? 'text' : 'password'}
+                <PasswordField>
+                  <PasswordFieldInput
                     required
                     autoComplete="new-password"
-                    spellCheck={false}
                     onValueChange={() => {
                       if (confirmPasswordRef.current?.value)
                         formActionsRef.current?.validate('confirmPassword')
                     }}
                     placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
                   />
-                  <InputGroupAddon align="inline-end">
-                    <IconButton
-                      aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
-                        ns: 'login',
-                      })}
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      <span
-                        className={
-                          showPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'
-                        }
-                        aria-hidden="true"
-                      />
-                    </IconButton>
-                  </InputGroupAddon>
-                </InputGroup>
+                  <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+                </PasswordField>
                 <FieldValidity>
                   {({ validity }) =>
                     validity.valid !== false ? (
@@ -192,32 +177,15 @@ const ChangePasswordForm = () => {
                 <FieldLabel>
                   {t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
                 </FieldLabel>
-                <InputGroup>
-                  <InputGroupInput
-                    type={showConfirmPassword ? 'text' : 'password'}
+                <PasswordField>
+                  <PasswordFieldInput
                     required
                     autoComplete="new-password"
-                    spellCheck={false}
                     ref={confirmPasswordRef}
                     placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
                   />
-                  <InputGroupAddon align="inline-end">
-                    <IconButton
-                      aria-label={t(
-                        ($) => $[showConfirmPassword ? 'hidePassword' : 'showPassword'],
-                        { ns: 'login' },
-                      )}
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      <span
-                        className={
-                          showConfirmPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'
-                        }
-                        aria-hidden="true"
-                      />
-                    </IconButton>
-                  </InputGroupAddon>
-                </InputGroup>
+                  <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+                </PasswordField>
                 <FieldError>
                   {t(($) => $['account.notEqual'], { ns: 'accountSettings' })}
                 </FieldError>

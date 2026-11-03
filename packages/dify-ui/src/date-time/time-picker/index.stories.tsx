@@ -74,6 +74,16 @@ export const Default: Story = {
   },
 }
 
+export const ReadOnly: Story = {
+  render: () => (
+    <TimePicker defaultValue="13:30" readOnly>
+      <TimePickerLabel>Start time</TimePickerLabel>
+      <TimePickerTrigger />
+      <TimePickerContent />
+    </TimePicker>
+  ),
+}
+
 export const RTL: Story = {
   parameters: {
     docs: {
