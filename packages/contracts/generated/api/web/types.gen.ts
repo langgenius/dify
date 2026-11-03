@@ -297,6 +297,40 @@ export type ConnectionRevisionChangedError = ErrorResponse & {
   status: 409
 }
 
+export type ConsumerAppResponse = {
+  app_code: string
+  description: string
+  icon: string | null
+  icon_background: string | null
+  icon_type: string | null
+  id: string
+  is_favorite: boolean
+  last_used_at: number | null
+  mode: string
+  name: string
+}
+
+export type ConsumerAppsResponse = {
+  data: Array<ConsumerAppResponse>
+  has_more: boolean
+  next_cursor: string | null
+}
+
+export type ConsumerConnectionResponse = {
+  account_label: string | null
+  connection_type: ConnectionCredentialType
+  key: string
+  name: string
+  provider: string
+  webapps_count: number
+}
+
+export type ConsumerConnectionsResponse = {
+  data: Array<ConsumerConnectionResponse>
+  has_more: boolean
+  next_cursor: string | null
+}
+
 export type ConversationInfiniteScrollPagination = {
   data: Array<SimpleConversation>
   has_more: boolean
@@ -2679,6 +2713,151 @@ export type PostLogoutResponses = {
 }
 
 export type PostLogoutResponse = PostLogoutResponses[keyof PostLogoutResponses]
+
+export type GetMeAppsData = {
+  body?: never
+  path?: never
+  query?: {
+    cursor?: string
+    limit?: number
+    name?: string
+    view?: 'favorites' | 'recent' | 'shared'
+  }
+  url: '/me/apps'
+}
+
+export type GetMeAppsErrors = {
+  default: ErrorResponse
+}
+
+export type GetMeAppsError = GetMeAppsErrors[keyof GetMeAppsErrors]
+
+export type GetMeAppsResponses = {
+  200: ConsumerAppsResponse
+}
+
+export type GetMeAppsResponse = GetMeAppsResponses[keyof GetMeAppsResponses]
+
+export type DeleteMeAppsByAppIdFavoriteData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/me/apps/{app_id}/favorite'
+}
+
+export type DeleteMeAppsByAppIdFavoriteErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteMeAppsByAppIdFavoriteError =
+  DeleteMeAppsByAppIdFavoriteErrors[keyof DeleteMeAppsByAppIdFavoriteErrors]
+
+export type DeleteMeAppsByAppIdFavoriteResponses = {
+  204: void
+}
+
+export type DeleteMeAppsByAppIdFavoriteResponse =
+  DeleteMeAppsByAppIdFavoriteResponses[keyof DeleteMeAppsByAppIdFavoriteResponses]
+
+export type PutMeAppsByAppIdFavoriteData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/me/apps/{app_id}/favorite'
+}
+
+export type PutMeAppsByAppIdFavoriteErrors = {
+  default: ErrorResponse
+}
+
+export type PutMeAppsByAppIdFavoriteError =
+  PutMeAppsByAppIdFavoriteErrors[keyof PutMeAppsByAppIdFavoriteErrors]
+
+export type PutMeAppsByAppIdFavoriteResponses = {
+  204: void
+}
+
+export type PutMeAppsByAppIdFavoriteResponse =
+  PutMeAppsByAppIdFavoriteResponses[keyof PutMeAppsByAppIdFavoriteResponses]
+
+export type GetMeConnectionsData = {
+  body?: never
+  path?: never
+  query?: {
+    cursor?: string
+    limit?: number
+    provider?: string
+  }
+  url: '/me/connections'
+}
+
+export type GetMeConnectionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetMeConnectionsError = GetMeConnectionsErrors[keyof GetMeConnectionsErrors]
+
+export type GetMeConnectionsResponses = {
+  200: ConsumerConnectionsResponse
+}
+
+export type GetMeConnectionsResponse = GetMeConnectionsResponses[keyof GetMeConnectionsResponses]
+
+export type DeleteMeConnectionsByConnectionKeyData = {
+  body?: never
+  path: {
+    connection_key: string
+  }
+  query?: never
+  url: '/me/connections/{connection_key}'
+}
+
+export type DeleteMeConnectionsByConnectionKeyErrors = {
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionConflictError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteMeConnectionsByConnectionKeyError =
+  DeleteMeConnectionsByConnectionKeyErrors[keyof DeleteMeConnectionsByConnectionKeyErrors]
+
+export type DeleteMeConnectionsByConnectionKeyResponses = {
+  204: void
+}
+
+export type DeleteMeConnectionsByConnectionKeyResponse =
+  DeleteMeConnectionsByConnectionKeyResponses[keyof DeleteMeConnectionsByConnectionKeyResponses]
+
+export type GetMeConnectionsByConnectionKeyAppsData = {
+  body?: never
+  path: {
+    connection_key: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/me/connections/{connection_key}/apps'
+}
+
+export type GetMeConnectionsByConnectionKeyAppsErrors = {
+  404: ConnectionNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetMeConnectionsByConnectionKeyAppsError =
+  GetMeConnectionsByConnectionKeyAppsErrors[keyof GetMeConnectionsByConnectionKeyAppsErrors]
+
+export type GetMeConnectionsByConnectionKeyAppsResponses = {
+  200: ConsumerAppsResponse
+}
+
+export type GetMeConnectionsByConnectionKeyAppsResponse =
+  GetMeConnectionsByConnectionKeyAppsResponses[keyof GetMeConnectionsByConnectionKeyAppsResponses]
 
 export type GetMessagesData = {
   body?: never

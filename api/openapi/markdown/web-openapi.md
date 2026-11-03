@@ -812,6 +812,108 @@ Logout user from web application
 | 200 | Logout successful | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /me/apps
+List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use is derived from retained published execution logs. No App Passport or workspace membership is required.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| name | query |  | No | string |
+| view | query |  | No | string, <br>**Available values:** "favorites", "recent", "shared", <br>**Default:** recent |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Accessible personal Apps | **application/json**: [ConsumerAppsResponse](#consumerappsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /me/apps/{app_id}/favorite
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | App unfavorited |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /me/apps/{app_id}/favorite
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | App favorited |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/connections
+List personal Connections grouped by Provider, account label and Connection type. Connections without an account label form individual groups. WebApp counts include only accessible Apps.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| provider | query |  | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account Connections | **application/json**: [ConsumerConnectionsResponse](#consumerconnectionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /me/connections/{connection_key}
+Disconnect all owned Connections matching a group key returned by /me/connections. Cookie-authenticated browser mutations require the configured WebApp Origin.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_key | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Connection group disconnected |  |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/connections/{connection_key}/apps
+List accessible WebApps associated with a Connection group returned by /me/connections.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string (uuid) |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| connection_key | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Associated WebApps | **application/json**: [ConsumerAppsResponse](#consumerappsresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /messages
 Retrieve paginated list of messages from a conversation in a chat application.
 
@@ -1745,6 +1847,48 @@ The connection requirements changed. Refresh and confirm again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ConnectionRevisionChangedError |  | The connection requirements changed. Refresh and confirm again. |  |
+
+#### ConsumerAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_code | string |  | Yes |
+| description | string |  | Yes |
+| icon | string |  | Yes |
+| icon_background | string |  | Yes |
+| icon_type | string |  | Yes |
+| id | string |  | Yes |
+| is_favorite | boolean |  | Yes |
+| last_used_at | integer | Creation time of the Account's latest retained published execution. | Yes |
+| mode | string |  | Yes |
+| name | string |  | Yes |
+
+#### ConsumerAppsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConsumerAppResponse](#consumerappresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
+
+#### ConsumerConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_label | string |  | Yes |
+| connection_type | [ConnectionCredentialType](#connectioncredentialtype) |  | Yes |
+| key | string (uuid) | Representative Connection ID for associated WebApp queries and disconnect. | Yes |
+| name | string | Name of the group member with the smallest Connection ID. | Yes |
+| provider | string |  | Yes |
+| webapps_count | integer | Number of distinct accessible WebApps associated with this group. | Yes |
+
+#### ConsumerConnectionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConsumerConnectionResponse](#consumerconnectionresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
 
 #### ConversationInfiniteScrollPagination
 
