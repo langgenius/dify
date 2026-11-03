@@ -99,6 +99,30 @@ class ComposeEnvironmentTests(unittest.TestCase):
         self.assertEqual(services["elasticsearch"]["environment"]["xpack.security.enabled"], "true")
         self.assertEqual(services["elasticsearch"]["environment"]["discovery.type"], "single-node")
 
+    def test_qdrant_nofile_limits_use_defaults_and_root_overrides(self):
+        services = self.render()
+        self.assertEqual(
+            services["qdrant"]["ulimits"]["nofile"],
+            {"soft": 524288, "hard": 524288},
+        )
+        for name in ("qdrant", "api"):
+            self.assertNotIn("QDRANT_NOFILE_SOFT", services[name]["environment"], name)
+            self.assertNotIn("QDRANT_NOFILE_HARD", services[name]["environment"], name)
+
+        self.override_root(
+            {
+                "QDRANT_NOFILE_SOFT": "65536",
+                "QDRANT_NOFILE_HARD": "131072",
+            }
+        )
+        services = self.render()
+        self.assertEqual(
+            services["qdrant"]["ulimits"]["nofile"],
+            {"soft": 65536, "hard": 131072},
+        )
+        self.assertNotIn("QDRANT_NOFILE_SOFT", services["qdrant"]["environment"])
+        self.assertNotIn("QDRANT_NOFILE_HARD", services["qdrant"]["environment"])
+
     def test_copying_defaults_without_changes_preserves_service_values(self):
         baseline = self.render()
         for source in (DOCKER_DIR / "envs").rglob("*.defaults"):
