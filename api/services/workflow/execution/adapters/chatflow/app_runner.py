@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
-from typing import Any, cast
+from typing import Any
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
@@ -53,9 +53,6 @@ from models.human_input_contracts import HumanInputFormRecord
 from models.model import App, Conversation, Message
 from services.human_input.ports import HumanInputFormReader
 from services.workflow.contracts import WorkflowSnapshot
-from services.workflow.execution.adapters.chatflow.app_config_manager import (
-    AdvancedChatAppConfig,
-)
 from services.workflow.execution.adapters.chatflow.conversation_variables import (
     ConversationVariablePersistenceLayer,
 )
@@ -136,7 +133,6 @@ class AdvancedChatAppRunner:
 
     def prepare(self) -> PreparedWorkflowRun | None:
         app_config = self.application_generate_entity.app_config
-        app_config = cast(AdvancedChatAppConfig, app_config)
 
         system_inputs = build_system_variables(
             query=self.application_generate_entity.query,

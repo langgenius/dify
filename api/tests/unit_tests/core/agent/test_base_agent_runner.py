@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import MagicMock, create_autospec
@@ -23,6 +24,7 @@ from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     InvokeFrom,
 )
+from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelInstance
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -205,7 +207,7 @@ def _tool_entity(name: str) -> ToolEntity:
     )
 
 
-def _dataset_tool(mocker: MockerFixture, name: str, _sessions) -> DatasetRetrieverTool:
+def _dataset_tool(_mocker: MockerFixture, name: str, _sessions) -> DatasetRetrieverTool:
     return DatasetRetrieverTool(
         entity=_tool_entity(name),
         runtime=ToolRuntime(tenant_id="tenant"),
@@ -216,7 +218,7 @@ def _dataset_tool(mocker: MockerFixture, name: str, _sessions) -> DatasetRetriev
         inputs={},
         invoke_from=InvokeFrom.DEBUGGER,
         return_resource=False,
-        hit_callback=mocker.Mock(),
+        hit_callback=create_autospec(DatasetIndexToolCallbackHandler, instance=True, spec_set=True),
         app_id="app1",
     )
 
@@ -777,7 +779,20 @@ def test_init_uses_real_session_for_count_and_dependencies(
         ]
     )
     sqlite_session.commit()
-    get_dataset_tools = mocker.Mock(return_value=["ds_tool"])
+
+    @dataclass
+    class _CallArgs:
+        kwargs: dict[str, object]
+
+    class _DatasetTools:
+        def __init__(self) -> None:
+            self.call_args = None
+
+        def __call__(self, *args, **kwargs) -> list[str]:
+            self.call_args = _CallArgs(kwargs)
+            return ["ds_tool"]
+
+    get_dataset_tools = _DatasetTools()
     model_config = make_model_config(provider="provider", model="m", mode="chat")
     model_config.model_schema.features = [module.ModelFeature.STREAM_TOOL_CALL, module.ModelFeature.VISION]
     model_instance = ModelInstance(
