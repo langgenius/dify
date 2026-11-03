@@ -10,7 +10,9 @@ from services.credentials.query import (
     ToolCredentialMetadata,
     ToolCredentialRecord,
     TriggerSubscriptionRecord,
+    WorkflowToolCredentialMetadata,
 )
+from services.workflow_ref_service import WorkflowRef
 
 
 @dataclass(frozen=True)
@@ -58,6 +60,21 @@ class DatasourceCredentialQuery(CredentialQuery):
 
     def list_models(self, *, workspace_id: str, provider: str, actor_id: str | None) -> Sequence[ModelCredentialRecord]:
         raise AssertionError(f"unexpected model credential lookup: {workspace_id=} {provider=} {actor_id=}")
+
+    def resolve_workflow_tool_credential_metadata(
+        self,
+        *,
+        workflow_ref: WorkflowRef,
+        node_id: str,
+        provider: str,
+        action: str,
+        credential_id: str,
+    ) -> WorkflowToolCredentialMetadata | None:
+        """Reject workflow Tool lookups; datasource tests must never request them."""
+        raise AssertionError(
+            "unexpected workflow tool credential lookup: "
+            f"{workflow_ref=} {node_id=} {provider=} {action=} {credential_id=}"
+        )
 
     def list_tools(
         self,

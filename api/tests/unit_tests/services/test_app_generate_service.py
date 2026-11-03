@@ -1,3 +1,17 @@
+"""
+Comprehensive unit tests for services.app_generate_service.AppGenerateService.
+
+Covers:
+  - _build_streaming_task_on_subscribe  (streams / pubsub / exception / idempotency)
+  - generate                           (COMPLETION / AGENT_CHAT / CHAT / ADVANCED_CHAT / WORKFLOW / invalid mode,
+                                         streaming & blocking, billing, quota-refund-on-error, rate_limit.exit)
+  - _get_max_active_requests            (all limit combos)
+  - generate_single_iteration           (ADVANCED_CHAT / WORKFLOW / invalid mode)
+  - generate_single_loop                (ADVANCED_CHAT / WORKFLOW / invalid mode)
+  - generate_more_like_this
+  - _get_workflow                       (debugger / non-debugger / specific id / invalid format / not found)
+"""
+
 import json
 import threading
 import uuid
@@ -32,20 +46,6 @@ from services.errors.app import (
     WorkflowNotFoundError,
 )
 from tests.helpers.unit.config_override import apply_config_overrides
-
-"""
-Comprehensive unit tests for services.app_generate_service.AppGenerateService.
-
-Covers:
-  - _build_streaming_task_on_subscribe  (streams / pubsub / exception / idempotency)
-  - generate                           (COMPLETION / AGENT_CHAT / CHAT / ADVANCED_CHAT / WORKFLOW / invalid mode,
-                                         streaming & blocking, billing, quota-refund-on-error, rate_limit.exit)
-  - _get_max_active_requests            (all limit combos)
-  - generate_single_iteration           (ADVANCED_CHAT / WORKFLOW / invalid mode)
-  - generate_single_loop                (ADVANCED_CHAT / WORKFLOW / invalid mode)
-  - generate_more_like_this
-  - _get_workflow                       (debugger / non-debugger / specific id / invalid format / not found)
-"""
 
 
 # ---------------------------------------------------------------------------
@@ -1059,7 +1059,7 @@ class TestAppGenerateServiceCases:
     # ---------------------------------------------------------------------------
     class TestGenerateSingleIteration(_RealSessionTest):
         def test_advanced_chat_mode(self, mocker: MockerFixture) -> None:
-            workflow = _make_workflow()
+            workflow = _make_workflow(node_types=("iteration",))
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             mocker.patch(
                 "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
@@ -1074,7 +1074,7 @@ class TestAppGenerateServiceCases:
             result = AppGenerateService.generate_single_iteration(
                 app_model=app,
                 user=_make_user(),
-                node_id="n1",
+                node_id="node-0",
                 args={"k": "v"},
                 session=session,
             )
@@ -1083,7 +1083,7 @@ class TestAppGenerateServiceCases:
             assert result == {"event": "iteration"}
 
         def test_workflow_mode(self, mocker: MockerFixture) -> None:
-            workflow = _make_workflow()
+            workflow = _make_workflow(node_types=("iteration",))
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             mocker.patch(
                 "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
@@ -1098,7 +1098,7 @@ class TestAppGenerateServiceCases:
             result = AppGenerateService.generate_single_iteration(
                 app_model=app,
                 user=_make_user(),
-                node_id="n1",
+                node_id="node-0",
                 args={"k": "v"},
                 session=session,
             )
@@ -1118,7 +1118,7 @@ class TestAppGenerateServiceCases:
     # ---------------------------------------------------------------------------
     class TestGenerateSingleLoop(_RealSessionTest):
         def test_advanced_chat_mode(self, mocker: MockerFixture) -> None:
-            workflow = _make_workflow()
+            workflow = _make_workflow(node_types=("loop",))
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             mocker.patch(
                 "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
@@ -1133,7 +1133,7 @@ class TestAppGenerateServiceCases:
             result = AppGenerateService.generate_single_loop(
                 app_model=app,
                 user=_make_user(),
-                node_id="n1",
+                node_id="node-0",
                 args=MagicMock(),
                 session=session,
             )
@@ -1142,7 +1142,7 @@ class TestAppGenerateServiceCases:
             assert result == {"event": "loop"}
 
         def test_workflow_mode(self, mocker: MockerFixture) -> None:
-            workflow = _make_workflow()
+            workflow = _make_workflow(node_types=("loop",))
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             mocker.patch(
                 "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
@@ -1157,7 +1157,7 @@ class TestAppGenerateServiceCases:
             result = AppGenerateService.generate_single_loop(
                 app_model=app,
                 user=_make_user(),
-                node_id="n1",
+                node_id="node-0",
                 args=MagicMock(),
                 session=session,
             )
@@ -1184,10 +1184,12 @@ class _FakePubSub:
     def __init__(self, store: dict[str, deque[bytes]]) -> None:
         self._store = store
         self._subs: set[str] = set()
+        self._acks: deque[dict[str, object]] = deque()
         self._closed = False
 
     def subscribe(self, topic: str) -> None:
         self._subs.add(topic)
+        self._acks.append({"type": "subscribe", "channel": topic, "data": len(self._subs)})
 
     def unsubscribe(self, topic: str) -> None:
         self._subs.discard(topic)
@@ -1197,10 +1199,14 @@ class _FakePubSub:
 
     def get_message(
         self, ignore_subscribe_messages: bool = True, timeout: int | float | None = 1
-    ) -> dict[str, bytes | str] | None:
+    ) -> dict[str, object] | None:
         # simulate a non-blocking poll; return first available
         if self._closed:
             return None
+        while self._acks:
+            acknowledgement = self._acks.popleft()
+            if not ignore_subscribe_messages:
+                return acknowledgement
         for t in list(self._subs):
             q = self._store.get(t)
             if q and len(q) > 0:

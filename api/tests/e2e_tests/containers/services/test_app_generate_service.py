@@ -69,7 +69,14 @@ class TestAppGenerateService:
             )
             published_workflow = Workflow(id=str(uuid.uuid4()), version="1", graph=graph)
             mock_workflow_service_instance.get_published_workflow.return_value = published_workflow
-            draft_workflow = Workflow(id=str(uuid.uuid4()), version="draft", graph=graph)
+            draft_graph = json.loads(graph)
+            draft_graph["nodes"].extend(
+                [
+                    {"id": "iteration", "data": {"type": "iteration", "title": "Iteration"}},
+                    {"id": "loop", "data": {"type": "loop", "title": "Loop"}},
+                ]
+            )
+            draft_workflow = Workflow(id=str(uuid.uuid4()), version="draft", graph=json.dumps(draft_graph))
             mock_workflow_service_instance.get_draft_workflow.return_value = draft_workflow
             mock_workflow_service_instance.get_published_workflow_by_id.return_value = published_workflow
 
@@ -734,7 +741,7 @@ class TestAppGenerateService:
             db_session_with_containers, mock_external_service_dependencies, mode="advanced-chat"
         )
 
-        node_id = fake.uuid4()
+        node_id = "iteration"
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
 
         # Execute the method under test
@@ -766,7 +773,7 @@ class TestAppGenerateService:
             db_session_with_containers, mock_external_service_dependencies, mode="workflow"
         )
 
-        node_id = fake.uuid4()
+        node_id = "iteration"
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
 
         # Execute the method under test
@@ -826,7 +833,7 @@ class TestAppGenerateService:
             db_session_with_containers, mock_external_service_dependencies, mode="advanced-chat"
         )
 
-        node_id = fake.uuid4()
+        node_id = "loop"
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
 
         # Execute the method under test
@@ -858,7 +865,7 @@ class TestAppGenerateService:
             db_session_with_containers, mock_external_service_dependencies, mode="workflow"
         )
 
-        node_id = fake.uuid4()
+        node_id = "loop"
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
 
         # Execute the method under test
