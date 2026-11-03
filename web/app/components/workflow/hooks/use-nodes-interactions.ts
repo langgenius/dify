@@ -2343,7 +2343,6 @@ export const useNodesInteractions = () => {
 
     undo()
     const { edges, nodes } = workflowHistoryStore.getState()
-    if (edges.length === 0 && nodes.length === 0) return
     const { setNodes, setEdges } = collaborativeWorkflow.getState()
 
     const shouldBroadcast = collaborationManager.isConnected()
@@ -2365,7 +2364,6 @@ export const useNodesInteractions = () => {
 
     redo()
     const { edges, nodes } = workflowHistoryStore.getState()
-    if (edges.length === 0 && nodes.length === 0) return
     const { setNodes, setEdges } = collaborativeWorkflow.getState()
 
     const shouldBroadcast = collaborationManager.isConnected()
