@@ -1,6 +1,7 @@
 import type { Ref } from 'react'
-import type { useCreationModels } from './use-creation-models'
+import type { CreationModelFieldState, useCreationModels } from './use-creation-models'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,20 +9,23 @@ import { ModelSelector } from '@/app/components/header/account-setting/model-pro
 
 type CreationModels = ReturnType<typeof useCreationModels>
 
-function CreationModelField({
+export function CreationModelField({
   field,
   label,
   requiredMessage,
   disabled,
   onChange,
   triggerRef,
+  inline = false,
 }: {
-  field: CreationModels['fields']['reasoning']
+  field: CreationModelFieldState
   label: string
   requiredMessage: string
   disabled: boolean
   onChange: () => void
   triggerRef?: Ref<HTMLButtonElement>
+  /** Puts the label beside the selector for compact forms such as dialogs. */
+  inline?: boolean
 }) {
   const { t } = useTranslation(['knowledgeCreate', 'common', 'modelProvider'])
   const labelId = useId()
@@ -48,7 +52,13 @@ function CreationModelField({
           : undefined
 
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
+    <div
+      className={
+        inline
+          ? 'grid min-w-0 grid-cols-[8.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1'
+          : 'flex min-w-0 flex-col gap-1.5'
+      }
+    >
       <div id={labelId} className="system-sm-medium text-text-secondary">
         {label}
         <span aria-hidden className="ms-0.5 text-text-destructive">
@@ -72,7 +82,10 @@ function CreationModelField({
         }}
       />
       {error && (
-        <p id={errorId} className="system-xs-regular text-text-destructive">
+        <p
+          id={errorId}
+          className={cn('system-xs-regular text-text-destructive', inline && 'col-start-2')}
+        >
           {error}
         </p>
       )}
@@ -80,7 +93,7 @@ function CreationModelField({
         <Button
           type="button"
           size="small"
-          className="self-start"
+          className={cn('self-start', inline && 'col-start-2 justify-self-start')}
           loading={field.refreshing}
           disabled={disabled}
           onClick={() => void field.retry()}
