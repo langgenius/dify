@@ -16,15 +16,12 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
 
-    # Preserve the browser-facing authority, including Docker's exposed port.
+    # Keep Host and X-Forwarded-Port consistent so ProxyFix preserves the external port.
     map $http_host $dify_request_host {
         default $http_host;
         ""      $host;
     }
 
-    # ProxyFix must not replace an external Host port with the internal listener port.
-    # With a portless Host, keep its authority and discard caller-supplied ports.
-    # Hostless HTTP/1.0 requests retain the existing listener-port fallback.
     map $http_host $dify_request_port {
         default "";
         ""      $server_port;
