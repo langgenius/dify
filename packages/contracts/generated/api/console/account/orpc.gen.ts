@@ -6,8 +6,13 @@ import {
   zAccountAlreadyInitedError,
   zAccountInFreezeError,
   zAccountNotFoundError,
+  zBillingOperationFailedError,
+  zBillingRequestInProgressError,
+  zBillingUnavailableError,
   zCurrentPasswordIncorrectError,
+  zEducationActivateFailedError,
   zEducationActivateLimitError,
+  zEducationVerifyFailedError,
   zEducationVerifyLimitError,
   zEmailAlreadyInUseError,
   zEmailChangeLimitError,
@@ -228,6 +233,10 @@ export const get3 = oc
   })
   .input(z.object({ query: zGetAccountEducationAutocompleteQuery }))
   .output(zGetAccountEducationAutocompleteResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  })
 
 export const autocomplete = {
   get: get3,
@@ -244,6 +253,10 @@ export const get4 = oc
   .output(zGetAccountEducationVerifyResponse)
   .errors({
     account_not_found: { status: 400, data: zAccountNotFoundError },
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    education_verify_failed: { status: 400, data: zEducationVerifyFailedError },
     education_verify_limit: { status: 429, data: zEducationVerifyLimitError },
   })
 
@@ -260,6 +273,11 @@ export const get5 = oc
     tags: ['console'],
   })
   .output(zGetAccountEducationResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  })
 
 export const post7 = oc
   .route({
@@ -273,6 +291,10 @@ export const post7 = oc
   .output(zPostAccountEducationResponse)
   .errors({
     account_not_found: { status: 400, data: zAccountNotFoundError },
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    education_activate_failed: { status: 400, data: zEducationActivateFailedError },
     education_activate_limit: { status: 429, data: zEducationActivateLimitError },
   })
 

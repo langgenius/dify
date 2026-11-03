@@ -761,10 +761,14 @@ it.each([false, true])(
     const submit = isInstalledApp ? submitInstalledForm : submitHumanInputForm
     const otherSubmit = isInstalledApp ? submitHumanInputForm : submitInstalledForm
     await waitFor(() =>
-      expect(submit).toHaveBeenCalledExactlyOnceWith('token-1', {
-        inputs: { review: 'Approved' },
-        action: 'approve',
-      }),
+      expect(submit).toHaveBeenCalledExactlyOnceWith(
+        'token-1',
+        {
+          inputs: { review: 'Approved' },
+          action: 'approve',
+        },
+        undefined,
+      ),
     )
     expect(otherSubmit).not.toHaveBeenCalled()
   },
@@ -808,10 +812,14 @@ it('retains a paused form and prevents resuming while required connections are u
   updateConnections(ready)
   await user.click(screen.getByRole('button', { name: 'Approve' }))
   await waitFor(() =>
-    expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith('token-1', {
-      inputs: { review: 'Keep this review' },
-      action: 'approve',
-    }),
+    expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+      'token-1',
+      {
+        inputs: { review: 'Keep this review' },
+        action: 'approve',
+      },
+      undefined,
+    ),
   )
 })
 
@@ -834,10 +842,14 @@ it('rechecks connections after waiting for a paused workflow subscription before
   expect(screen.getByRole('textbox', { name: 'review' })).toHaveValue('Keep this review')
   updateConnections(ready)
   await user.click(screen.getByRole('button', { name: 'Approve' }))
-  expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith('token-1', {
-    inputs: { review: 'Keep this review' },
-    action: 'approve',
-  })
+  expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+    'token-1',
+    {
+      inputs: { review: 'Keep this review' },
+      action: 'approve',
+    },
+    undefined,
+  )
 })
 
 it.each([false, true])(

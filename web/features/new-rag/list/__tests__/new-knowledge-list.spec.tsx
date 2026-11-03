@@ -175,7 +175,7 @@ function setup({
           upgrades,
         }}
       >
-        <NewKnowledgeList view="agent" onViewChange={vi.fn()} />
+        <NewKnowledgeList />
       </KnowledgeUpgradeContext>
     </UrlState>
   )
@@ -562,9 +562,9 @@ describe('NewKnowledgeList', () => {
     })
 
     it.each([
-      ['external-connect only', ['dataset.external.connect'], true],
-      ['read-only', [], false],
-    ])('hides creation entries from %s users', async (_, workspacePermissionKeys, canConnect) => {
+      ['external-connect only', ['dataset.external.connect']],
+      ['read-only', []],
+    ])('hides creation entries from %s users', async (_, workspacePermissionKeys) => {
       setup({ workspacePermissionKeys })
 
       expect(await screen.findByText('knowledgeSpace.readOnlyEmpty')).toBeInTheDocument()
@@ -574,9 +574,6 @@ describe('NewKnowledgeList', () => {
       expect(
         screen.queryByRole('link', { name: 'knowledgeSpace.connectSource' }),
       ).not.toBeInTheDocument()
-      expect(Boolean(screen.queryByRole('button', { name: 'dataset.externalAPIPanelTitle' }))).toBe(
-        canConnect,
-      )
     })
   })
 

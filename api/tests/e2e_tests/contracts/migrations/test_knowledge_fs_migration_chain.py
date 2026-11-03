@@ -6,6 +6,7 @@ from alembic.script import ScriptDirectory
 
 _VERSIONS = Path(__file__).resolve().parents[4] / "migrations/versions"
 _MAIN_HEAD = "d6b9e2f1a407"
+_MERGE_HEAD = "e4b7c1a9d603"
 # This fixed KnowledgeFS interval runs after main's historical head, without merge revisions.
 # Later migrations may extend the chain beyond this interval.
 _KNOWLEDGE_FS_CHAIN = [
@@ -32,7 +33,12 @@ def _scripts() -> ScriptDirectory:
 
 
 def test_migration_graph_has_a_single_head() -> None:
-    assert len(_scripts().get_heads()) == 1
+    scripts = _scripts()
+    assert scripts.get_heads() == [_MERGE_HEAD]
+    merged = scripts.get_revision(_MERGE_HEAD)
+    assert merged is not None
+    assert isinstance(merged.down_revision, tuple)
+    assert set(merged.down_revision) == {"53c10126d551", "c7f2a8d9e041"}
 
 
 def test_latest_head_includes_knowledge_fs_chain() -> None:

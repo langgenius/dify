@@ -174,7 +174,7 @@ def test_generate_specs_match_live_openapi_payloads(tmp_path: Path):
         assert json.loads(path.read_text(encoding="utf-8")) == live_payloads[path.name]
 
 
-@pytest.mark.timeout(75)  # A cold, coverage-instrumented export has a 60-second process limit.
+@pytest.mark.timeout(75)  # Allow one cold, coverage-instrumented export with its own 60-second limit.
 def test_generate_specs_after_controllers_were_imported_with_swagger_disabled(tmp_path: Path):
     api_dir = Path(__file__).resolve().parents[3]
     script = """

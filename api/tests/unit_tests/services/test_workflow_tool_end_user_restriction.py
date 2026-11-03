@@ -11,9 +11,11 @@ from enums import DeploymentEdition
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
+from services.billing_client import billing
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from services.workflow.tool_credentials import WorkflowToolEndUserAuthError, first_end_user_tool_node
 from services.workflow_service import WorkflowService
+from tests.helpers.billing_builders import subscription_info
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account
 
@@ -247,9 +249,9 @@ def test_publish_checks_tool_after_external_validation(
     def validate_before_lock(*_args: object, **_kwargs: object) -> None:
         assert not locks
 
-    def billing_before_lock(*_args: object, **_kwargs: object) -> dict[str, dict[str, str]]:
+    def billing_before_lock(*_args: object, **_kwargs: object) -> billing.GetSubscriptionInfoReply:
         assert not locks
-        return {"subscription": {"plan": "professional"}}
+        return subscription_info("professional")
 
     event.listen(sqlite_session, "do_orm_execute", record_lock)
     try:
@@ -257,7 +259,7 @@ def test_publish_checks_tool_after_external_validation(
             patch.object(service, "_validate_publish_tool_credentials", side_effect=validate_before_lock) as auth,
             patch.object(service, "_validate_workflow_credentials", side_effect=validate_before_lock) as policy,
             patch("services.workflow_service.SystemFeatureService.is_plugin_manager_enabled", return_value=True),
-            patch("services.workflow_service.BillingService.get_info", side_effect=billing_before_lock) as billing,
+            patch("services.workflow_service.BillingService.get_info", side_effect=billing_before_lock) as billing_call,
             patch("services.workflow_service.app_published_workflow_was_updated") as published,
         ):
             if existing_tool:
@@ -269,7 +271,7 @@ def test_publish_checks_tool_after_external_validation(
                 assert result.version != Workflow.VERSION_DRAFT
             auth.assert_called_once()
             policy.assert_called_once()
-            billing.assert_called_once()
+            billing_call.assert_called_once()
             assert len(locks) == 2
     finally:
         event.remove(sqlite_session, "do_orm_execute", record_lock)

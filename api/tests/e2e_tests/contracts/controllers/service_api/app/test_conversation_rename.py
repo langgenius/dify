@@ -34,13 +34,14 @@ from repositories.end_user_connection_repository import EndUserConnectionReposit
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.auth.resource_access_token_contracts import ResourceAccessTokenResource
-from services.conversation_name_generator import generate_conversation_name
+from services.conversation_name_generator import DefaultModelConversationNameGenerator
 from services.conversation_name_service import ConversationNameService
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
 from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.resource_access_token_service import ResourceAccessTokenService
 from services.workflow.tool_credentials import get_tool_connection_requirements
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 _CREATED_AT = datetime(2026, 1, 2, 3, 4, 5)
 _UPDATED_AT = datetime(2026, 1, 3, 3, 4, 5)
@@ -188,7 +189,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         ),
         conversation_names=ConversationNameService(
             conversations=ConversationRepository(session_factory=query_factory),
-            generate_name=generate_conversation_name,
+            generate_name=DefaultModelConversationNameGenerator(trace_scopes=untraced_scopes()),
         ),
         resource_access_tokens=build_resource_access_token_service(database_client=admission_factory),
     )

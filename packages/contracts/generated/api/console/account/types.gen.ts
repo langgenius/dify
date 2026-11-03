@@ -141,10 +141,25 @@ export type EmailCodeAccountDeletionRateLimitExceededError = ErrorResponse & {
 }
 
 export type EducationStatusResponse = {
-  allow_refresh?: boolean | null
-  expire_at?: number | null
-  is_student?: boolean | null
-  result?: boolean | null
+  allow_refresh: boolean
+  expire_at: number | null
+  is_student: boolean
+  result: boolean
+}
+
+export type BillingRequestInProgressError = ErrorResponse & {
+  code: 'billing_request_in_progress'
+  status: 429
+}
+
+export type BillingOperationFailedError = ErrorResponse & {
+  code: 'billing_operation_failed'
+  status: 502
+}
+
+export type BillingUnavailableError = ErrorResponse & {
+  code: 'billing_unavailable'
+  status: 503
 }
 
 export type EducationActivatePayload = {
@@ -157,19 +172,33 @@ export type EducationActivateResponse = {
   message: string
 }
 
+export type EducationActivateFailedError = ErrorResponse & {
+  code: 'education_activate_failed'
+  status: 400
+}
+
 export type EducationActivateLimitError = ErrorResponse & {
   code: 'education_activate_limit'
   status: 429
 }
 
 export type EducationAutocompleteResponse = {
-  curr_page?: number | null
-  data?: Array<string>
-  has_next?: boolean | null
+  curr_page: number
+  data: Array<string>
+  has_next: boolean
 }
 
-export type EducationVerifyResponse = {
-  token?: string | null
+export type EducationVerifyResponse =
+  | ({
+      status: 'eligible'
+    } & EducationVerifyEligibleResponse)
+  | ({
+      status: 'not_eligible'
+    } & EducationVerifyNotEligibleResponse)
+
+export type EducationVerifyFailedError = ErrorResponse & {
+  code: 'education_verify_failed'
+  status: 400
 }
 
 export type EducationVerifyLimitError = ErrorResponse & {
@@ -224,6 +253,15 @@ export type AccountProfilePatchPayload = {
   interface_theme?: 'dark' | 'light'
   name?: string
   timezone?: string
+}
+
+export type EducationVerifyEligibleResponse = {
+  status: 'eligible'
+  token: string
+}
+
+export type EducationVerifyNotEligibleResponse = {
+  status: 'not_eligible'
 }
 
 export type AccountIntegrateResponse = {
@@ -436,6 +474,9 @@ export type GetAccountEducationData = {
 }
 
 export type GetAccountEducationErrors = {
+  429: BillingRequestInProgressError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -456,8 +497,10 @@ export type PostAccountEducationData = {
 }
 
 export type PostAccountEducationErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  429: EducationActivateLimitError | ErrorResponse
+  400: AccountNotFoundError | EducationActivateFailedError | ErrorResponse
+  429: BillingRequestInProgressError | EducationActivateLimitError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -482,6 +525,8 @@ export type GetAccountEducationAutocompleteData = {
 }
 
 export type GetAccountEducationAutocompleteErrors = {
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -503,8 +548,10 @@ export type GetAccountEducationVerifyData = {
 }
 
 export type GetAccountEducationVerifyErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  429: EducationVerifyLimitError | ErrorResponse
+  400: AccountNotFoundError | EducationVerifyFailedError | ErrorResponse
+  429: BillingRequestInProgressError | EducationVerifyLimitError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

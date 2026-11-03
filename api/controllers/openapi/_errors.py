@@ -27,6 +27,7 @@ import contextlib
 import logging
 from enum import StrEnum
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel
 from werkzeug.exceptions import HTTPException
@@ -107,6 +108,13 @@ class OpenApiErrorCode(StrEnum):
     DRAFT_CHANGED = "draft_changed"
     APP_MODE_MISMATCH = "app_mode_mismatch"
     SERVICE_API_DISABLED = "service_api_disabled"
+    SKILLS_DISABLED = "skills_disabled"
+    SKILL_NOT_FOUND = "skill_not_found"
+    SKILL_VERSION_NOT_FOUND = "skill_version_not_found"
+    SKILL_NAME_CONFLICT = "skill_name_conflict"
+    SKILL_NAME_MISMATCH = "skill_name_mismatch"
+    SKILL_PACKAGE_INVALID = "skill_package_invalid"
+    SKILL_REQUEST_REJECTED = "skill_request_rejected"
 
 
 class ErrorDetail(BaseModel):
@@ -541,3 +549,68 @@ class ServiceApiDisabled(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.SERVICE_API_DISABLED
     description = "This app's Service API is turned off."
     hint = "A workspace admin can turn it on; hints holds the op."
+
+
+class SkillsDisabled(OpenApiError):  # noqa: N818
+    code = 503
+    error_code = OpenApiErrorCode.SKILLS_DISABLED
+    description = "Skills are turned off on this server."
+    hint = "Ask an admin to turn on Skills."
+
+
+class SkillNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.SKILL_NOT_FOUND
+    description = "No skill with this id exists in this workspace."
+    hint = "List them with get.skill."
+
+
+class SkillVersionNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.SKILL_VERSION_NOT_FOUND
+    description = "No version with this id exists for this skill."
+    hint = "List them with get.skill.version."
+
+
+class SkillNameConflict(OpenApiError):  # noqa: N818
+    code = 409
+    error_code = OpenApiErrorCode.SKILL_NAME_CONFLICT
+    description = "A skill with this name already exists in this workspace."
+
+
+class SkillNameMismatch(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.SKILL_NAME_MISMATCH
+    description = "The name in SKILL.md is not the name of the skill being overwritten."
+
+
+class SkillPackageInvalid(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.SKILL_PACKAGE_INVALID
+    description = "The skill folder is not a valid skill."
+
+
+class SkillPackageTooLarge(OpenApiError):  # noqa: N818
+    code = 413
+    error_code = OpenApiErrorCode.REQUEST_TOO_LARGE
+    description = "The skill folder is over a limit of this server."
+
+
+class SkillRequestRejected(OpenApiError):  # noqa: N818
+    error_code = OpenApiErrorCode.SKILL_REQUEST_REJECTED
+    description = "The skill request was refused."
+
+    def __init__(
+        self, message: str | None = None, *, status_code: int, details: list[ErrorDetail] | None = None
+    ) -> None:
+        super().__init__(message, details=details)
+        self.code = status_code
+
+
+def require_uuid(value: str, *, not_found: type[OpenApiError]) -> str:
+    """Parse a path id as a UUID or raise 404; an unparsed id would otherwise reach
+    a UUID-typed database column and fail as a 500."""
+    try:
+        return str(UUID(value))
+    except ValueError as e:
+        raise not_found() from e

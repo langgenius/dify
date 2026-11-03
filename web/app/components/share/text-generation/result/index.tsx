@@ -90,7 +90,7 @@ const Result: FC<IResultProps> = ({
     notify,
     onRunControlChange,
   })
-  const { handleSend } = useResultSender({
+  const { handleSend, prepareHumanInputSubmission } = useResultSender({
     runSnapshot,
     onTaskStart,
     appId,
@@ -134,6 +134,7 @@ const Result: FC<IResultProps> = ({
         workflowProcessData={runState.workflowProcessData}
         isError={isError}
         onRetry={() => handleSend()}
+        prepareHumanInputSubmission={prepareHumanInputSubmission}
         content={runState.completionRes}
         messageId={runState.messageId}
         isInWebApp

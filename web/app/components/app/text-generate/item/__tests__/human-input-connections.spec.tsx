@@ -77,9 +77,13 @@ it.each([AppSourceType.webApp, AppSourceType.installedApp])(
     await user.click(approve)
     const submit =
       appSourceType === AppSourceType.webApp ? submitHumanInputForm : submitInstalledForm
-    expect(submit).toHaveBeenCalledExactlyOnceWith('token-1', {
-      inputs: { review: 'Keep this review' },
-      action: 'approve',
-    })
+    expect(submit).toHaveBeenCalledExactlyOnceWith(
+      'token-1',
+      {
+        inputs: { review: 'Keep this review' },
+        action: 'approve',
+      },
+      undefined,
+    )
   },
 )

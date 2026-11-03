@@ -44,6 +44,7 @@ from services.message_suggested_questions_service import (
 )
 from services.web_identity_service import WebIdentityService
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 
 @dataclass
@@ -164,7 +165,7 @@ def harness(
     )
     services = _Services(
         message_suggested_questions=MessageSuggestedQuestionsService(
-            queries=queries, generator=SuggestedQuestionsGenerator()
+            queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
         ),
         web_identity=WebIdentityService(
             accounts=SQLAlchemyAccountRepository(session_factory=admission_factory),

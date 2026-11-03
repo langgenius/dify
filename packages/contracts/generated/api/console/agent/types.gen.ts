@@ -651,6 +651,7 @@ export type AppNotFoundError = ErrorResponse & {
 
 export type TraceAppConfigResponse = {
   app_id?: string | null
+  configured_secrets?: Array<string> | null
   created_at?: string | null
   error?: string | null
   has_not_configured?: boolean | null
@@ -1822,6 +1823,7 @@ export type HumanInputFormDefinition = {
   form_content: string
   form_id: string
   form_token?: string | null
+  form_version?: '1' | '2'
   inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
@@ -4299,7 +4301,7 @@ export type GetAgentByAgentIdTraceCapabilitiesData = {
 }
 
 export type GetAgentByAgentIdTraceCapabilitiesErrors = {
-  400: UnsupportedTracingProviderError | ErrorResponse
+  400: TracingProviderUnavailableError | UnsupportedTracingProviderError | ErrorResponse
   default: ErrorResponse
 }
 

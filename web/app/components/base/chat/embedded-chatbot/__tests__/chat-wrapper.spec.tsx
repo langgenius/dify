@@ -287,7 +287,11 @@ describe('Embedded chatbot orchestration', () => {
       await waitFor(() =>
         expect(
           installed ? submitInstalledHumanInput : submitHumanInputForm,
-        ).toHaveBeenCalledExactlyOnceWith('form-token', { inputs: {}, action: 'approve' }),
+        ).toHaveBeenCalledExactlyOnceWith(
+          'form-token',
+          { inputs: {}, action: 'approve' },
+          undefined,
+        ),
       )
       expect(installed ? submitHumanInputForm : submitInstalledHumanInput).not.toHaveBeenCalled()
     },
@@ -323,10 +327,14 @@ describe('Embedded chatbot orchestration', () => {
     updateConnections(ready)
     await user.click(screen.getByRole('button', { name: 'Approve' }))
     await waitFor(() =>
-      expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith('form-token', {
-        inputs: {},
-        action: 'approve',
-      }),
+      expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+        'form-token',
+        {
+          inputs: {},
+          action: 'approve',
+        },
+        undefined,
+      ),
     )
   })
 

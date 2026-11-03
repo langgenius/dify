@@ -17,6 +17,7 @@ import { useOptionalWebAppConnections } from '@/app/components/share/connections
 import { toast } from '@/app/notifications'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
+import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   fetchMoreLikeThis,
@@ -40,6 +41,7 @@ type IGenerationItemProps = {
   className?: string
   isError: boolean
   onRetry: () => void
+  prepareHumanInputSubmission?: () => Promise<boolean>
   content: any
   messageId?: string | null
   conversationId?: string
@@ -70,6 +72,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   className,
   isError,
   onRetry,
+  prepareHumanInputSubmission,
   content,
   messageId,
   isLoading,
@@ -196,11 +199,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
       if (!connectionsReady) return
-      if (appSourceType === AppSourceType.installedApp)
-        await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      const { form_version: formVersion, ...submission } = formData
+      if (appSourceType === AppSourceType.installedApp) {
+        await submitHumanInputFormService(formToken, submission, formVersion)
+      } else {
+        if (appSourceType === AppSourceType.webApp && prepareHumanInputSubmission)
+          await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+        await submitHumanInputForm(formToken, submission, formVersion)
+      }
     },
-    [appSourceType, connectionsReady],
+    [appSourceType, connectionsReady, prepareHumanInputSubmission],
   )
 
   return (

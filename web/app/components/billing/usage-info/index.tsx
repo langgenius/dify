@@ -1,24 +1,22 @@
 'use client'
 import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { FC, ReactNode } from 'react'
+import type { BillingQuota } from '../quota'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { NUM_INFINITE } from '../config'
 
 type Props = Readonly<{
   className?: string
   iconClassName: string
   name: string
   tooltip?: string
-  usage: number
-  total: number
+  quota: BillingQuota
   unit?: string
   unitPosition?: 'inline' | 'suffix'
   resetHint?: string
-  resetInDays?: number
   hideIcon?: boolean
   // Props for the 50MB threshold display logic
   storageMode?: boolean
@@ -33,12 +31,10 @@ const UsageInfo: FC<Props> = ({
   iconClassName,
   name,
   tooltip,
-  usage,
-  total,
+  quota,
   unit,
   unitPosition = 'suffix',
   resetHint,
-  resetInDays,
   hideIcon = false,
   storageMode = false,
   storageThreshold = 50,
@@ -49,23 +45,24 @@ const UsageInfo: FC<Props> = ({
   const labelId = React.useId()
 
   const { t } = useTranslation(['billing'])
+  const { usage, limit, resetInDays } = quota
 
   const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
   const isSandboxFull = !usageUnknown && storageMode && isSandboxPlan && usage >= storageThreshold
   const storageHelp = !usageUnknown && storageMode ? storageTooltip : undefined
 
   // Zero count quotas have no remaining capacity; storage keeps its separate limit convention.
-  const isZeroQuota = !storageMode && total === 0
-  const rawPercent = total > 0 ? (usage / total) * 100 : 0
+  const isZeroQuota = !storageMode && limit === 0
+  const rawPercent = limit !== 'unlimited' && limit > 0 ? (usage / limit) * 100 : 0
   const effectivePercent = isSandboxFull || isZeroQuota ? 100 : Math.min(rawPercent, 100)
   const tone: MeterTone =
     effectivePercent >= 100 ? 'error' : effectivePercent >= 80 ? 'warning' : 'neutral'
 
-  const isUnlimited = total === NUM_INFINITE
+  const isUnlimited = limit === 'unlimited'
   let totalDisplay: string | number = isUnlimited
     ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
-    : total
-  if (!isUnlimited && unit && unitPosition === 'inline') totalDisplay = `${total}${unit}`
+    : limit
+  if (!isUnlimited && unit && unitPosition === 'inline') totalDisplay = `${limit}${unit}`
   const showUnit = !!unit && !isUnlimited && unitPosition === 'suffix'
   const resetText =
     resetHint ??
