@@ -72,7 +72,8 @@ and configure [HTTPS](#configure-https-and-telemetry) and
 | `.env` | Deployment inputs and explicit overrides, including Compose settings | Yes |
 | `envs/**/*.defaults` | Tracked defaults for the matching services | Yes, automatically |
 | `envs/**/*.env` | Optional service or provider overrides | Yes, when the matching service references the file |
-| `envs/**/*.env.example` | Templates for optional application and provider settings | No; remove only `.example` when copying |
+| `envs/**/*.env.example` | Templates for optional application and provider settings | No; use the override path in the template's comments |
+| `envs/middleware.env.example` | Template for the separate source-code development stack | No; copy to `middleware.env` in `docker/` |
 
 Keep settings with usable defaults out of the root `.env.example`. To customize a
 service, copy its `.defaults` file to the override path named in its comments,
@@ -191,6 +192,22 @@ starts the WebSocket API. Set `DB_TYPE` and the SQL database's connection settin
 when changing that provider. See the [database](envs/databases/) and
 [vector store](envs/vectorstores/) files for provider-specific settings.
 
+For a new deployment using bundled MySQL and Weaviate, set the complete connection
+in root `.env`:
+
+```dotenv
+DB_TYPE=mysql
+DB_HOST=db_mysql
+DB_PORT=3306
+DB_USERNAME=root
+COMPOSE_PROFILES=weaviate,mysql,collaboration
+```
+
+Keep your selected vector-store profile if it differs from this example. The
+MySQL profile starts the database; it does not replace the PostgreSQL connection
+defaults. Set `DB_PASSWORD` to the same value used to initialize the MySQL server.
+Changing these settings on an existing PostgreSQL deployment does not migrate its data.
+
 ### Configure sandbox credentials
 
 Set `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` only in root `.env`, using the secret
@@ -206,11 +223,22 @@ You can also set both variables to the same value in root `.env`.
 
 ### Understand which value takes effect
 
-For settings loaded through these env files, precedence is:
+For services that load root `.env`, precedence is:
 
 1. Root `.env` overrides.
 2. Optional service `.env` overrides.
 3. Tracked `.defaults` values, followed by application defaults for unset settings.
+
+Other services, including databases, vector stores, and nginx, receive root values
+only through `${...}` expressions in their defaults or explicit Compose mappings.
+For those inputs, root `.env` takes precedence over the service file. Arbitrary
+native container variables do not inherit this precedence: for example, put
+Weaviate's `ASYNC_INDEXING` in `envs/vectorstores/weaviate.env`; adding it to root
+`.env` alone does not configure the Weaviate container.
+
+The `knowledge_fs_unstructured` parser loads its defaults followed by
+`envs/core-services/knowledge-fs-unstructured.env`, without loading root `.env`.
+Set its parsing options in that service file.
 
 Shell variables take precedence when Compose interpolates `${...}` expressions.
 An explicit Compose `environment` entry also takes precedence over service env

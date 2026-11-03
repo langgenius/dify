@@ -123,6 +123,100 @@ class ComposeEnvironmentTests(unittest.TestCase):
         self.assertNotIn("QDRANT_NOFILE_SOFT", services["qdrant"]["environment"])
         self.assertNotIn("QDRANT_NOFILE_HARD", services["qdrant"]["environment"])
 
+    def test_documented_mysql_root_configuration_reaches_database_clients(self):
+        values = {
+            "DB_TYPE": "mysql",
+            "DB_HOST": "db_mysql",
+            "DB_PORT": "3306",
+            "DB_USERNAME": "root",
+            "DB_PASSWORD": "mysql-root-override",
+        }
+        self.override_root({**values, "COMPOSE_PROFILES": "weaviate,mysql,collaboration"})
+        services = self.render()
+        for name in ("api", "api_websocket", "worker", "worker_knowledge_fs_upgrade", "worker_beat", "plugin_daemon"):
+            for key, expected in values.items():
+                self.assertEqual(services[name]["environment"][key], expected, f"{name}.{key}")
+        self.assertEqual(services["db_mysql"]["environment"]["MYSQL_ROOT_PASSWORD"], values["DB_PASSWORD"])
+        self.assertEqual(services["db_mysql"]["environment"]["MYSQL_DATABASE"], "dify")
+
+    def test_code_sandbox_credentials_must_be_configured_as_a_pair(self):
+        clients = ("api", "api_websocket", "worker", "worker_knowledge_fs_upgrade", "worker_beat")
+        for source, target, key in (
+            ("core-services/sandbox.defaults", "core-services/sandbox.env", "SANDBOX_API_KEY"),
+            ("security.env.example", "security.env", "CODE_EXECUTION_API_KEY"),
+        ):
+            with self.subTest(source=source):
+                self.copy_template(f"envs/{source}", f"envs/{target}", {key: "service-sandbox-key"})
+                services = self.render()
+                self.assertEqual(
+                    services["sandbox"]["environment"]["API_KEY"],
+                    "service-sandbox-key" if key == "SANDBOX_API_KEY" else "dify-sandbox",
+                )
+                for name in clients:
+                    self.assertEqual(
+                        services[name]["environment"].get("CODE_EXECUTION_API_KEY", "dify-sandbox"),
+                        "service-sandbox-key" if key == "CODE_EXECUTION_API_KEY" else "dify-sandbox",
+                        name,
+                    )
+                (self.project / "envs" / target).unlink()
+
+        self.override_root({"SANDBOX_API_KEY": "root-sandbox-key", "CODE_EXECUTION_API_KEY": "root-sandbox-key"})
+        services = self.render()
+        self.assertEqual(services["sandbox"]["environment"]["API_KEY"], "root-sandbox-key")
+        for name in clients:
+            self.assertEqual(services[name]["environment"]["CODE_EXECUTION_API_KEY"], "root-sandbox-key", name)
+
+    def test_root_overrides_only_reach_mapped_inputs_on_services_without_root_env_file(self):
+        root = self.project / ".env"
+        original = root.read_text()
+        for template, target, service, local_values, root_values, expected in (
+            (
+                "vectorstores/weaviate.defaults",
+                "vectorstores/weaviate.env",
+                "weaviate",
+                {"WEAVIATE_QUERY_DEFAULTS_LIMIT": "66"},
+                {"WEAVIATE_QUERY_DEFAULTS_LIMIT": "67", "ASYNC_INDEXING": "true"},
+                {"QUERY_DEFAULTS_LIMIT": "67", "ASYNC_INDEXING": "false"},
+            ),
+            (
+                "core-services/knowledge-fs-unstructured.env.example",
+                "core-services/knowledge-fs-unstructured.env",
+                "knowledge_fs_unstructured",
+                {"PDF_RENDER_DPI": "200"},
+                {"PDF_RENDER_DPI": "72"},
+                {"PDF_RENDER_DPI": "200"},
+            ),
+        ):
+            with self.subTest(service=service):
+                self.copy_template(f"envs/{template}", f"envs/{target}", local_values)
+                local = self.project / "envs" / target
+                if service == "weaviate":
+                    local.write_text(local.read_text() + "\nASYNC_INDEXING=false\n")
+                before = self.render()[service]["environment"]
+                self.assertEqual(
+                    before.get("QUERY_DEFAULTS_LIMIT", before.get("PDF_RENDER_DPI")),
+                    "66" if service == "weaviate" else "200",
+                )
+                self.override_root(root_values)
+                values = self.render()[service]["environment"]
+                for key, value in expected.items():
+                    self.assertEqual(values[key], value, f"{service}.{key}")
+                local.unlink()
+                root.write_text(original)
+
+    def test_middleware_template_is_loaded_from_docker_directory(self):
+        shutil.copyfile(DOCKER_DIR / "docker-compose.middleware.yaml", self.project / "docker-compose.middleware.yaml")
+        self.copy_template(
+            "envs/middleware.env.example",
+            "middleware.env",
+            {"DB_PASSWORD": "middleware-db-key", "EXPOSE_POSTGRES_PORT": "15432", "POSTGRES_MAX_CONNECTIONS": "121"},
+        )
+        services = self.render("--env-file", "middleware.env", "-f", "docker-compose.middleware.yaml", "-p", "dify")
+        postgres = services["db_postgres"]
+        self.assertEqual(postgres["environment"]["POSTGRES_PASSWORD"], "middleware-db-key")
+        self.assertEqual(postgres["ports"][0]["published"], "15432")
+        self.assertIn("max_connections=121", postgres["command"])
+
     def test_agent_sandbox_token_is_a_root_input_for_both_consumers(self):
         template = (DOCKER_DIR / "envs/core-services/dify-agent.defaults").read_text()
         self.assertNotRegex(template, r"(?m)^DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=")
@@ -160,6 +254,24 @@ class ComposeEnvironmentTests(unittest.TestCase):
                     services["local_sandbox"]["environment"]["SHELLCTL_AUTH_TOKEN"],
                     expected,
                 )
+
+    def test_legacy_agent_names_and_canonical_overrides(self):
+        self.override_root({"DIFY_AGENT_SHELLCTL_ENTRYPOINT": "http://legacy-sandbox:5004", "ENABLE_AGENT_V2": "false"})
+        services = self.render()
+        self.assertEqual(
+            services["agent_backend"]["environment"]["DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT"], "http://legacy-sandbox:5004"
+        )
+        self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_AGENT_V2"], "true")
+        self.override_root(
+            {"DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT": "http://current-sandbox:5004", "NEXT_PUBLIC_ENABLE_AGENT_V2": "false"}
+        )
+        services = self.render()
+        self.assertEqual(
+            services["agent_backend"]["environment"]["DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT"], "http://current-sandbox:5004"
+        )
+        self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_AGENT_V2"], "false")
+        self.override_root({"NEXT_PUBLIC_ENABLE_AGENT_V2": ""})
+        self.assertEqual(self.render()["web"]["environment"]["NEXT_PUBLIC_ENABLE_AGENT_V2"], "true")
 
     def test_bundled_vector_defaults_and_isolated_overrides(self):
         cases = {
