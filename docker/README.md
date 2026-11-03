@@ -426,6 +426,18 @@ seconds to ISO timestamps for time fields. Classic built-in fields are omitted b
 owns its system metadata. These corrections also apply when retrying existing unfinished
 checkpoints and require no additional migration.
 
+## Application URLs and exposed ports
+
+When `APP_WEB_URL` is empty, generated application URLs use the request's host and
+port. The bundled Nginx preserves the incoming `Host` header, including an exposed
+Docker port such as `localhost:8081`, and derives `X-Forwarded-Port` from that same
+header. A host without an explicit port keeps the scheme's default port. Requests
+without a `Host` header fall back to Nginx's configured server name and listener port.
+
+An upstream reverse proxy must preserve the browser-facing `Host` for this automatic
+behavior. Set `APP_WEB_URL` explicitly when the application uses a different public
+address.
+
 ## Client IP and trusted proxies
 
 Dify uses the request's resolved client IP for rate limits and audit records. The

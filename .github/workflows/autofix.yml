@@ -33,6 +33,7 @@ jobs:
             docker/docker-compose.e2b.yaml
             docker/envs/**
             docker/tests/**
+            docker/nginx/**
       - name: Check api inputs
         if: github.event_name != 'merge_group'
         id: api-changes
@@ -77,7 +78,9 @@ jobs:
 
       - name: Check Docker environment overrides
         if: github.event_name != 'merge_group' && steps.docker-compose-changes.outputs.any_changed == 'true'
-        run: python3 -m unittest discover -s docker/tests -p 'test_*.py'
+        run: |
+          python3 -m pip install 'werkzeug>=3.1.7,<4.0.0'
+          python3 -m unittest discover -s docker/tests -p 'test_*.py'
 
       - if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
         run: |
