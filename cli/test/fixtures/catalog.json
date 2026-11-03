@@ -2006,6 +2006,74 @@
       "path": "/openapi/v1/workspaces/{workspace_id}/apps/packages",
       "summary": "Import an app from a .ifpkg package or an unpacked package folder"
     },
+    "fill.console_app.package": {
+      "bind": {
+        "package": "file",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "package": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id", "package"]
+      },
+      "internal": false,
+      "kind": "file",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/packages:fill",
+      "summary": "Fill the editor's defaults into a .ifpkg package or an unpacked package folder"
+    },
+    "check.console_app.package": {
+      "bind": {
+        "package": "file",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "package": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id", "package"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/packages:check",
+      "summary": "Check a .ifpkg package or an unpacked package folder: every problem, and what each node needs"
+    },
+    "get.node_option": {
+      "bind": {
+        "app_mode": "query",
+        "keyword": "query",
+        "kind": "query",
+        "limit": "query",
+        "page": "query",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_mode": {},
+          "keyword": {},
+          "kind": {},
+          "limit": {},
+          "page": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id", "app_mode"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/node-options",
+      "summary": "Nodes a workflow or chatflow can add here, each with a seed to copy into the graph"
+    },
     "get.agent": {
       "bind": {
         "limit": "query",
