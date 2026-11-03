@@ -276,7 +276,7 @@ a3_expected = {
     },
     "tests.unit_tests.controllers.inner_api.agent.test_llm": {
         "test_post_streams_plugin_compatible_envelope": 1,
-        "test_post_preserves_prompt_messages_without_transport_validation": 1,
+        "test_post_preserves_raw_prompts_without_serializing_them": 2,
         "test_post_rejects_invalid_body_before_model_resolution": 1,
         "test_post_preserves_preflight_quota_failure": 1,
         "test_post_preserves_stream_quota_failure": 1,
@@ -285,6 +285,7 @@ a3_expected = {
         "test_post_returns_service_response": 1,
         "test_post_returns_400_for_invalid_body": 1,
         "test_post_preserves_service_error_status_code_and_description": 1,
+        "test_post_preserves_refresh_error_classification_through_real_credential_resolution": 8,
     },
     "tests.unit_tests.controllers.inner_api.agent.test_files": {
         "test_upload_request_returns_origin_free_uri": 1,
@@ -361,7 +362,7 @@ a4_expected.update(
             "test_hardcoded_refresh_retains_original_state_across_session_expiration": 1,
             "test_empty_reference_preserves_default_selection": 1,
             "test_refresh_update_compiles_for_supported_database_configuration": 4,
-            "test_refresh_requires_exactly_one_affected_row_before_cache_and_dispatch": 5,
+            "test_refresh_requires_proven_write_before_cache_and_dispatch": 5,
             "test_refresh_commit_uncertainty_refuses_cache_invalidation_and_dispatch": 1,
         },
         "tests.unit_tests.core.tools.test_tool_manager": {
@@ -396,7 +397,7 @@ a4_expected.update(
             "test_get_tool_runtime_builtin_missing_tool_raises": 1,
             "test_get_tool_runtime_builtin_plugin_credential_deleted_raises": 1,
             "test_get_tool_runtime_builtin_plugin_without_workspace_credential_raises": 1,
-            "test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials": 6,
+            "test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials": 9,
             "test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks": 1,
             "test_get_tool_runtime_builtin_without_credentials": 1,
             "test_get_tool_runtime_from_plugin_only_uses_form_parameters": 1,
@@ -473,7 +474,7 @@ a4_expected.update(
     {
         "tests.unit_tests.services.test_agent_tool_inner_service": {
             "test_actual_plugin_cast_frontend_and_converter_preserve_file_wire": 5,
-            "test_api_multiple_metadata_exposes_existing_agent_select_wire_gap": 2,
+            "test_api_select_list_repr_is_not_decoded_as_an_array": 2,
             "test_api_output_observation_and_file_messages_use_existing_owners": 7,
             "test_invoke_maps_runtime_lookup_errors_to_service_error_codes": 3,
             "test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper": 1,
@@ -482,7 +483,7 @@ a4_expected.update(
             "test_invoke_raises_app_tenant_mismatch_when_app_belongs_to_other_tenant": 1,
             "test_invoke_uses_agent_tool_runtime_and_returns_observation": 2,
             "test_non_plugin_runtime_keeps_existing_configured_precedence": 4,
-            "test_ordinary_plugin_service_multiple_select_uses_actual_full_declaration": 1,
+            "test_ordinary_plugin_service_multiple_select_uses_actual_full_declaration": 3,
             "test_ordinary_plugin_service_preserves_prepared_live_values_and_cached_runtime": 2,
         }
     }
@@ -510,6 +511,7 @@ for module, functions in {
         "test_ensure_snippet_start_node_in_worker_returns_standard_workflow_without_lookup": 1,
         "test_ensure_snippet_start_node_returns_original_for_non_snippet_workflow": 1,
         "test_ensure_snippet_start_node_returns_original_when_snippet_is_from_another_tenant": 1,
+        "test_execution_grants_default_files_to_worker_and_response": 4,
         "test_generate_forwards_pause_configuration_and_state": 1,
         "test_generate_includes_parent_trace_context_in_extras": 1,
         "test_generate_prepares_start_inputs": 2,
@@ -518,9 +520,9 @@ for module, functions in {
         "test_generate_worker_uses_end_user_session_for_external_invocation": 1,
         "test_handle_response_closed_file_raises_stopped": 1,
         "test_resume_delegates_to_generate": 1,
-        "test_resume_path_runs_worker_with_runtime_state": 1,
-        "test_resume_preserves_existing_trace_manager": 1,
-        "test_resume_restores_trace_manager_when_missing": 1,
+        "test_resume_preserves_existing_trace_scope": 1,
+        "test_resume_recreates_trace_scope_when_missing": 1,
+        "test_service_api_preserves_caller_identity_and_file_access": 6,
         "test_single_iteration_generate_includes_trace_session_id_in_extras": 1,
         "test_single_iteration_generate_validates_args": 1,
         "test_single_loop_generate_includes_trace_session_id_in_extras": 1,
@@ -546,7 +548,7 @@ for module, functions in {
         "test_resolve_user_from": 1,
     },
     "tests.unit_tests.core.app.entities.test_app_invoke_entities": {
-        "test_advanced_chat_generate_entity_roundtrip_excludes_trace_manager": 1,
+        "test_advanced_chat_generate_entity_roundtrip_excludes_trace_scope": 1,
         "test_dify_run_context_normalizes_unknown_created_by_values": 1,
         "test_get_credit_usage_app_type_maps_app_mode": 7,
         "test_get_credit_usage_created_by_defaults_to_unknown": 1,
@@ -554,7 +556,7 @@ for module, functions in {
         "test_openapi_distinct_from_service_api": 1,
         "test_openapi_variant_present": 1,
         "test_runs_as_account_only_for_console_contexts": 1,
-        "test_workflow_app_generate_entity_roundtrip_excludes_trace_manager": 1,
+        "test_workflow_app_generate_entity_roundtrip_excludes_trace_scope": 1,
         "test_workflow_resumption_context_roundtrip": 2,
     },
     "tests.unit_tests.core.repositories.test_sqlalchemy_workflow_node_execution_repository": {
@@ -737,7 +739,7 @@ for module, functions in {
     "tests.unit_tests.controllers.inner_api.agent.test_llm": {
         "test_native_stream_error_is_bounded_even_if_provider_raises_private_text": 2,
         "test_post_preserves_preflight_quota_failure": 1,
-        "test_post_preserves_prompt_messages_without_transport_validation": 1,
+        "test_post_preserves_raw_prompts_without_serializing_them": 2,
         "test_post_preserves_stream_quota_failure": 1,
         "test_post_rejects_invalid_body_before_model_resolution": 1,
         "test_post_streams_plugin_compatible_envelope": 1,
@@ -851,11 +853,10 @@ a4_expected.setdefault(
 a4_expected["tests.unit_tests.services.test_workflow_run_service"] = {
     "test_get_paginate_advanced_chat_workflow_runs_should_attach_message_fields_when_message_exists": 1,
     "test_get_paginate_workflow_runs_should_forward_filters_and_parse_limit": 1,
-    "test_get_pause_details_keeps_human_form_when_scheduling_also_waits": 2,
+    "test_get_pause_details_hides_private_scheduling_messages": 4,
     "test_get_pause_details_maps_human_input_and_token": 1,
-    "test_get_pause_details_preserves_scheduling_pause_without_exposing_private_message": 1,
-    "test_get_pause_details_rejects_unsupported_pause_reason": 1,
-    "test_get_pause_details_returns_empty_details_for_non_paused_run": 1,
+    "test_get_pause_details_rejects_a_checkpoint_with_a_missing_human_input_form": 1,
+    "test_get_pause_details_returns_empty_details_without_an_active_pause": 2,
     "test_get_pause_details_returns_none_when_run_is_not_found": 1,
     "test_get_workflow_run_node_executions_should_return_empty_list_when_run_not_found": 1,
     "test_get_workflow_run_node_executions_should_use_request_workspace": 1,
@@ -923,7 +924,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_bound_resource_plan_rec
     "test_failed_reconciliation_keeps_live_resource_card_and_accepts_a_new_selection": 1,
     "test_snapshot_drift_requires_explicit_rediscovery_and_new_snapshot_confirmation": 2,
     "test_missing_resource_id_correction_is_actionable_and_bounded": 2,
-    "test_missing_id_diagnostic_does_not_mask_other_binding_guards": 8
+    "test_missing_id_diagnostic_does_not_mask_other_binding_guards": 8,
 }
 a4_expected["tests.unit_tests.services.dify_builder.test_trace_diagnostics"] = {
     "test_provider_failure_is_scoped_safe_and_recoverable": 1,
@@ -951,7 +952,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_trace_diagnostics"] = {
     "test_current_native_diagnostic_merge_is_bounded_and_deduplicated": 1,
     "test_native_model_projection_keeps_allowlisted_stage_and_category": 10,
     "test_native_model_projection_rejects_malformed_classification": 4,
-    "test_resource_plan_missing_id_code_survives_projection_report_and_history": 1
+    "test_resource_plan_missing_id_code_survives_projection_report_and_history": 1,
 }
 a4_expected["tests.unit_tests.services.workflow_generation.test_runner"] = {
     "test_a_dotted_reference_to_a_scalar_start_variable_is_repaired_to_its_root": 1,
@@ -2670,7 +2671,7 @@ a4_expected.update(
             "test_native_legacy_role_visibility_is_retained": 2,
             "test_banned_account_cannot_discover_metadata": 1,
             "test_indexed_and_failed_document_metadata_remains_discovery_only": 2,
-            "test_tags_are_authorized_tenant_metadata_only": 1
+            "test_tags_are_authorized_tenant_metadata_only": 1,
         },
         "tests.unit_tests.services.dify_builder.test_knowledge_discovery": {
             "test_only_dataset_is_recommended_as_nonexecuting_preference": 1,
@@ -2702,7 +2703,7 @@ a4_expected.update(
             "test_full_captured_bare_resource_exclusion_reaches_plan_without_a_knowledge_waiver": 1,
             "test_captured_meeting_model_only_confirmation_preserves_goal_without_a_knowledge_waiver": 1,
             "test_nonbare_knowledge_item_keeps_handler_clarification_with_false_model_hint": 6,
-            "test_shared_source_predicate_keeps_handler_clarification_with_false_model_hint": 5
+            "test_shared_source_predicate_keeps_handler_clarification_with_false_model_hint": 5,
         },
         "tests.unit_tests.services.dify_builder.test_requirement_provenance": {
             "test_actual_fresh_analysis_ignores_only_unconfirmed_derived_source_summary": 1,
@@ -2750,7 +2751,7 @@ a4_expected.update(
             "test_english_compound_source_subject_requires_complete_exclusion_framing": 6,
             "test_complete_known_suffix_lists_remain_explicit_exclusions": 8,
             "test_new_resource_prefix_does_not_waive_ambiguous_postcomma_prose": 3,
-            "test_legacy_independent_postcomma_clause_preserves_explicit_exclusion": 2
+            "test_legacy_independent_postcomma_clause_preserves_explicit_exclusion": 2,
         },
         "tests.unit_tests.services.dify_builder.test_resources": {
             "test_list_tenant_resources_normalizes_all_three_kinds": 1,
@@ -2771,8 +2772,8 @@ a4_expected.update(
             "test_other_tenants_rows_and_installs_never_leak": 1,
             "test_an_unverifiable_credential_lookup_reports_not_ready_with_a_reason": 1,
             "test_a_plugin_daemon_outage_keeps_hardcoded_tools_in_the_inventory": 1,
-            "test_models_keep_semantics_and_knowledge_inventory_receives_actor": 1
-        }
+            "test_models_keep_semantics_and_knowledge_inventory_receives_actor": 1,
+        },
     }
 )
 for module, expected in {**a3_expected, **a4_expected}.items():

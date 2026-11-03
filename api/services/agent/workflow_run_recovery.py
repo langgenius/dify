@@ -9,7 +9,7 @@ record lives in the existing caller row and contains no executable config.
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from dify_agent.protocol import CreateRunRequest, CreateRunResponse
 from dify_agent.protocol.run_recovery import LookupRunRequest, create_run_fingerprint
@@ -40,6 +40,7 @@ class AgentCreateAcknowledgementUnknown(AgentBackendTransportError):  # noqa: N8
     error_code = "agent_create_ack_unknown"
 
 
+@runtime_checkable
 class AgentCreateRecoveryClient(Protocol):
     def create_run(self, request: CreateRunRequest) -> CreateRunResponse: ...
 

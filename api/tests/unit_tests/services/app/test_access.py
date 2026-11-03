@@ -60,17 +60,14 @@ class TestAppAccessFilterIsAppAccessible:
         assert flt.is_app_accessible("app-1", maintainer="someone", account_id="acc-1")
 
     def test_whitelisted_app_is_visible(self) -> None:
-        flt = AppAccessFilter(accessible_app_ids={"app-1"}, can_manage_own_apps=False)
+        flt = AppAccessFilter(accessible_app_ids={"app-1"})
         assert flt.is_app_accessible("app-1", maintainer=None, account_id="acc-1")
         assert not flt.is_app_accessible("app-2", maintainer=None, account_id="acc-1")
 
-    def test_own_app_visible_only_with_manage_permission(self) -> None:
-        own = AppAccessFilter(accessible_app_ids=set(), can_manage_own_apps=True)
+    def test_own_app_visible_without_manage_permission(self) -> None:
+        own = AppAccessFilter(accessible_app_ids=set())
         assert own.is_app_accessible("app-1", maintainer="acc-1", account_id="acc-1")
         assert not own.is_app_accessible("app-1", maintainer="acc-2", account_id="acc-1")
-
-        no_manage = AppAccessFilter(accessible_app_ids=set(), can_manage_own_apps=False)
-        assert not no_manage.is_app_accessible("app-1", maintainer="acc-1", account_id="acc-1")
 
 
 class TestAppAccessFilterApplyToParams:
@@ -78,29 +75,19 @@ class TestAppAccessFilterApplyToParams:
         params = AppListParams()
         AppAccessFilter.unrestricted().apply_to_params(params)
         assert params.accessible_app_ids is None
-        assert params.include_own_apps is False
         assert params.is_created_by_me is None
 
-    def test_whitelisted_ids_are_sorted_with_own_apps_flag(self) -> None:
+    def test_whitelisted_ids_are_sorted(self) -> None:
         params = AppListParams()
-        AppAccessFilter(accessible_app_ids={"b", "a"}, can_manage_own_apps=True).apply_to_params(params)
+        AppAccessFilter(accessible_app_ids={"b", "a"}).apply_to_params(params)
         assert params.accessible_app_ids == ["a", "b"]
-        assert params.include_own_apps is True
 
-    def test_empty_set_with_manage_falls_back_to_maintained_apps(self) -> None:
-        # Own-app fallback must use maintainer (include_own_apps), consistent
+    def test_empty_set_keeps_maintainer_filter_separate_from_creator(self) -> None:
+        # Own-app fallback must use maintainer, consistent
         # with is_app_accessible — not created_by (is_created_by_me).
         params = AppListParams()
-        AppAccessFilter(accessible_app_ids=set(), can_manage_own_apps=True).apply_to_params(params)
+        AppAccessFilter(accessible_app_ids=set()).apply_to_params(params)
         assert params.accessible_app_ids == []
-        assert params.include_own_apps is True
-        assert params.is_created_by_me is None
-
-    def test_empty_set_without_manage_sees_nothing(self) -> None:
-        params = AppListParams()
-        AppAccessFilter(accessible_app_ids=set(), can_manage_own_apps=False).apply_to_params(params)
-        assert params.accessible_app_ids == []
-        assert params.include_own_apps is False
         assert params.is_created_by_me is None
 
 
@@ -117,7 +104,6 @@ class TestResolveAppAccessFilter:
         flt = app_access_filter_from_permissions(permissions, ResourceWhitelistResources(unrestricted=True))
 
         assert flt.accessible_app_ids is None
-        assert flt.can_manage_own_apps is False
 
     def test_restricted_whitelist_overrides_default_preview(self) -> None:
         permissions = _permissions(
@@ -129,7 +115,6 @@ class TestResolveAppAccessFilter:
         )
 
         assert flt.accessible_app_ids == {"app-9"}
-        assert flt.can_manage_own_apps is False
 
     def test_override_apps_collected_without_default_preview(self) -> None:
         permissions = _permissions(
@@ -173,5 +158,20 @@ class TestResolveAppAccessFilter:
         )
 
         assert flt.accessible_app_ids == set()
-        assert flt.can_manage_own_apps is False
         assert captured == {"tenant_id": "tenant-1", "account_id": "acc-1"}
+
+
+@pytest.mark.parametrize("workspace_keys", [[], ["app.create_and_management"]])
+@pytest.mark.parametrize("whitelist_ids", [[], ["allowed"]])
+def test_restricted_whitelist_retains_maintainer_visibility(
+    workspace_keys: list[str], whitelist_ids: list[str]
+) -> None:
+    access = app_access_filter_from_permissions(
+        _permissions(workspace_keys=workspace_keys, app_default_keys=["app.preview"]),
+        ResourceWhitelistResources(unrestricted=False, resource_ids=whitelist_ids),
+    )
+    assert access.is_app_accessible("own", "account", "account")
+    assert not access.is_app_accessible("other", "someone", "account")
+    assert not access.is_app_accessible("unassigned", None, "account")
+    if whitelist_ids:
+        assert access.is_app_accessible("allowed", "someone", "account")

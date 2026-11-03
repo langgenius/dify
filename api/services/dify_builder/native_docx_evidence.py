@@ -195,7 +195,6 @@ def _package_evidence(blob: bytes, *, max_uncompressed_bytes: int) -> FileAccept
         ParseError,
         DefusedXmlException,
         RuntimeError,
-        NotImplementedError,
         EOFError,
         ValueError,
         zlib.error,

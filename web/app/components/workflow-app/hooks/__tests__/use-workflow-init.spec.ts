@@ -193,6 +193,7 @@ describe('useWorkflowInit', () => {
       }),
     )
     expect(store.getState().syncWorkflowDraftHash).toBe('new-workflow-hash')
+    expect(store.getState().syncWorkflowDraftIsEmpty).toBe(true)
   })
 
   it('should keep creating the first backend draft for advanced chat apps', async () => {
@@ -257,6 +258,7 @@ describe('useWorkflowInit', () => {
       conversationVariables: [],
       isWorkflowDataLoaded: true,
       syncWorkflowDraftHash: '',
+      syncWorkflowDraftIsEmpty: true,
     })
     expect(result.current.data?.graph.viewport).toBeUndefined()
   })
@@ -278,6 +280,7 @@ describe('useWorkflowInit', () => {
 
     expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(store.getState().syncWorkflowDraftHash).toBe('empty-draft-hash')
+    expect(store.getState().syncWorkflowDraftIsEmpty).toBe(true)
   })
 
   it('should preserve existing draft nodes when restoring the local start placeholder', async () => {
@@ -291,7 +294,7 @@ describe('useWorkflowInit', () => {
       },
     })
 
-    const { result } = renderHook(() => useWorkflowInit())
+    const { result, store } = renderHook(() => useWorkflowInit())
 
     await waitFor(() => {
       expect(result.current.data?.graph.nodes).toEqual([
@@ -301,6 +304,7 @@ describe('useWorkflowInit', () => {
     })
 
     expect(result.current.data?.graph.edges).toEqual([existingEdge])
+    expect(store.getState().syncWorkflowDraftIsEmpty).toBe(false)
     expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 

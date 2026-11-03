@@ -179,7 +179,7 @@ def session_for(sqlite_session: Session) -> SessionFor:
     return create_session
 
 
-def _stub_binding_resolver(*, declared_outputs: list[DeclaredOutputConfig]):
+def _stub_binding_resolver(*, declared_outputs: list[DeclaredOutputConfig]) -> MagicMock:
     """Build a fake ``WorkflowAgentBindingResolver`` whose ``.resolve`` returns
     a binding with ``node_job_config_dict.declared_outputs``."""
     binding = WorkflowAgentNodeBinding(
@@ -527,7 +527,7 @@ def test_file_output_preview_endpoint_returns_full_value_with_signed_url(session
     assert preview.value["preview_url"] == "https://signed.example/x.pdf"
 
 
-def test_resolve_preview_url_uses_standard_file_factory():
+def test_resolve_preview_url_uses_standard_file_factory() -> None:
     file_payload = {
         "transfer_method": "tool_file",
         "reference": build_file_reference(record_id="550e8400-e29b-41d4-a716-446655440000"),

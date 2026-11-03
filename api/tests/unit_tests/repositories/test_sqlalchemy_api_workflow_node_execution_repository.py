@@ -1,17 +1,21 @@
 import json
+from collections.abc import Mapping
 from datetime import datetime, timedelta
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import event, func, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
+from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.enums import CreatorUserRole
+from models.model import UploadFile
 from models.workflow import (
     ExecutionOffLoadType,
     WorkflowNodeExecutionModel,
@@ -24,6 +28,172 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 from tests.helpers.unit.config_override import apply_config_overrides
+
+
+@pytest.mark.parametrize("foreign_tenant", [False, True])
+@pytest.mark.parametrize("payload_type", list(ExecutionOffLoadType))
+@pytest.mark.parametrize("bulk", [False, True])
+def test_full_payloads_load_owned_files_after_closing_the_database_session(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    payload_type: ExecutionOffLoadType,
+    foreign_tenant: bool,
+    bulk: bool,
+) -> None:
+    file = UploadFile(
+        tenant_id="other-tenant" if foreign_tenant else "tenant",
+        storage_type=StorageType.LOCAL,
+        key="full-payload.json",
+        name="payload.json",
+        size=21,
+        extension="json",
+        mime_type="application/json",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account",
+        created_at=datetime(2026, 1, 1),
+        used=True,
+    )
+    file_id = file.id
+    with sqlite_session_factory.begin() as session:
+        session.add(file)
+    execution = WorkflowNodeExecutionModel(
+        id="execution",
+        tenant_id="tenant",
+        inputs='{"truncated":true}',
+        outputs='{"truncated":true}',
+        process_data='{"truncated":true}',
+    )
+    execution.offload_data = []
+    repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
+    load = {
+        ExecutionOffLoadType.INPUTS: repository.load_full_inputs,
+        ExecutionOffLoadType.OUTPUTS: repository.load_full_outputs,
+        ExecutionOffLoadType.PROCESS_DATA: repository.load_full_process_data,
+    }[payload_type]
+
+    def read_payload() -> Mapping[str, object] | None:
+        if bulk:
+            full = repository.load_full_payloads([execution])[execution.id]
+            return {
+                ExecutionOffLoadType.INPUTS: full.inputs,
+                ExecutionOffLoadType.OUTPUTS: full.outputs,
+                ExecutionOffLoadType.PROCESS_DATA: full.process_data,
+            }[payload_type]
+        return load(execution)
+
+    assert read_payload() == {"truncated": True}
+    execution.offload_data.append(
+        WorkflowNodeExecutionOffload(
+            tenant_id="tenant", app_id="app", node_execution_id="execution", type_=payload_type, file_id=file_id
+        )
+    )
+    readers: list[Session] = []
+
+    def track_reader(session: Session, *_args: object) -> None:
+        readers.append(session)
+
+    def load_storage(key: str) -> bytes:
+        assert key == "full-payload.json"
+        assert readers
+        assert all(not session.in_transaction() for session in readers)
+        return b'{"complete":"payload"}'
+
+    monkeypatch.setattr(storage, "load", load_storage)
+    event.listen(sqlite_session_factory, "after_begin", track_reader)
+    try:
+        if foreign_tenant:
+            with pytest.raises(AssertionError, match="execution's tenant"):
+                read_payload()
+        else:
+            assert read_payload() == {"complete": "payload"}
+    finally:
+        event.remove(sqlite_session_factory, "after_begin", track_reader)
+
+
+@pytest.mark.parametrize("execution_count", [2, 1001])
+def test_full_payloads_batch_metadata_and_load_shared_files_once(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, execution_count: int
+) -> None:
+    files = [
+        UploadFile(
+            tenant_id="tenant",
+            storage_type=StorageType.LOCAL,
+            key=f"payload-{index}.json",
+            name="payload.json",
+            size=21,
+            extension="json",
+            mime_type="application/json",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account",
+            created_at=datetime(2026, 1, 1),
+            used=True,
+        )
+        for index in range(execution_count + 1)
+    ]
+    with sqlite_session_factory.begin() as session:
+        session.add_all(files)
+    executions = [
+        WorkflowNodeExecutionModel(id=str(index), tenant_id="tenant", outputs=json.dumps({"index": index}))
+        for index in range(execution_count)
+    ]
+    for index, execution in enumerate(executions):
+        execution.offload_data = [
+            WorkflowNodeExecutionOffload(
+                tenant_id="tenant",
+                app_id="app",
+                node_execution_id=execution.id,
+                type_=type_,
+                file_id=file.id,
+            )
+            for type_, file in (
+                (ExecutionOffLoadType.INPUTS, files[index]),
+                (ExecutionOffLoadType.PROCESS_DATA, files[-1]),
+            )
+        ]
+    readers: list[Session] = []
+    reads: list[str] = []
+    query_count = 0
+
+    def track_reader(session: Session, *_args: object) -> None:
+        readers.append(session)
+
+    def count_query(state: ORMExecuteState) -> None:
+        nonlocal query_count
+        assert state.is_select
+        query_count += 1
+
+    def load_storage(key: str) -> bytes:
+        assert readers
+        assert all(not session.in_transaction() for session in readers)
+        reads.append(key)
+        return json.dumps({"file": key}).encode()
+
+    monkeypatch.setattr(storage, "load", load_storage)
+    event.listen(sqlite_session_factory, "after_begin", track_reader)
+    event.listen(sqlite_session_factory, "do_orm_execute", count_query)
+    try:
+        repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
+        assert repository.load_full_payloads([]) == {}
+        inline = WorkflowNodeExecutionModel(id="inline", tenant_id="tenant", inputs='{"inline":true}')
+        inline.offload_data = []
+        full_inline = repository.load_full_payloads([inline])[inline.id]
+        assert full_inline.inputs == {"inline": True}
+        assert full_inline.outputs is None
+        assert full_inline.process_data is None
+        assert query_count == 0
+
+        full = repository.load_full_payloads(executions)
+    finally:
+        event.remove(sqlite_session_factory, "after_begin", track_reader)
+        event.remove(sqlite_session_factory, "do_orm_execute", count_query)
+
+    assert query_count == (execution_count + 1000) // 1000
+    assert len(reads) == len(set(reads)) == execution_count + 1
+    for index, execution in enumerate(executions):
+        payloads = full[execution.id]
+        assert payloads.inputs == {"file": files[index].key}
+        assert payloads.process_data == {"file": files[-1].key}
+        assert payloads.outputs == {"index": index}
 
 
 @pytest.mark.parametrize("logstore", [False, True])

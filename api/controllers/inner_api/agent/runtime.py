@@ -6,6 +6,8 @@ Legacy Resource authentication cannot grant this admission.
 
 # Flask-RESTX declares a mutable Resource decorator list; each subclass owns
 # its own list. Tuple/ClassVar overrides conflict with that upstream contract.
+from flask_restx import Resource
+
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.agent import files, llm, native_testing, tools
 from controllers.inner_api.knowledge import retrieval
@@ -313,14 +315,15 @@ document_errors(AgentRuntimeNativeMaterializeApi, AgentRuntimeRefused)
         }
     },
 )
-class AgentRuntimeNativeClaimApi(native_testing.AgentNativeDispatchClaimApi):
+class AgentRuntimeNativeClaimApi(Resource):
     method_decorators = [agent_runtime_api_only("native-control")]
 
     @inner_api_ns.expect(inner_api_ns.models[native_testing.AgentPhysicalDispatchPayload.__name__])
     @inner_api_ns.response(
         200, "Physical shell dispatch claimed", inner_api_ns.models[native_testing.AgentDispatchClaimResponse.__name__]
     )
-    def post(self):
+    def post(self) -> dict[str, bool]:
+        """Claim a runtime-authorized shell dispatch; refuse other operation kinds."""
         from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
 
         from runtime_contracts.builder.execution import BuilderExecutionPolicyError

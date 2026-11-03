@@ -1,7 +1,7 @@
 """Restore Celery app ownership after tests initialize a real Flask-backed app."""
 
 from collections.abc import Iterator
-from typing import Protocol, cast
+from typing import Protocol, runtime_checkable
 
 import pytest
 from celery import Celery, _state
@@ -11,6 +11,7 @@ class _CeleryThreadState(Protocol):
     current_app: Celery | None
 
 
+@runtime_checkable
 class _CeleryGlobalState(Protocol):
     default_app: Celery | None
     _tls: _CeleryThreadState
@@ -23,7 +24,8 @@ class _CeleryGlobalState(Protocol):
 @pytest.fixture
 def preserve_celery_apps() -> Iterator[None]:
     # Celery owns these state exports; its bundled typing omits their private names.
-    state = cast(_CeleryGlobalState, _state)
+    assert isinstance(_state, _CeleryGlobalState)
+    state = _state
     previous_default = state.default_app
     previous_current = state._tls.current_app
     try:

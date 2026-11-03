@@ -177,7 +177,7 @@ def restore_claimed_host(*, host: NativeHostLaunch, lifecycle: NativeTestLifecyc
             or entity.user_id != context.actor_id
             or (entity.app_config.tenant_id, entity.app_config.app_id, entity.app_config.workflow_id)
             != (context.tenant_id, context.app_id, context.workflow_id)
-            or entity.trace_manager is not None
+            or entity.trace_scope is not None
             or entity.builder_execution is not None
             or not entity.stream
         ):

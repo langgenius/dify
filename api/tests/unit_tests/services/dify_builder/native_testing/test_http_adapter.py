@@ -10,7 +10,8 @@ import threading
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import NoReturn, cast, override
+from operator import methodcaller
+from typing import NoReturn, override
 
 import httpcore
 import httpx
@@ -223,7 +224,7 @@ def test_protocol_methods_use_actual_ssrf_owner_without_retry(harness: Harness, 
 @pytest.mark.parametrize("retry", [1, -1, True, None, "0"])
 def test_retry_option_refused_before_preparation_or_dispatch(harness: Harness, retry: object) -> None:
     with pytest.raises(NativePolicyStop):
-        harness.client.post("https://first.example", max_retries=cast(int, retry))
+        methodcaller("post", "https://first.example", max_retries=retry)(harness.client)
     assert harness.producer.requests == []
     assert harness.sent == []
 
@@ -275,7 +276,7 @@ def test_frozen_snapshot_and_binding_never_expose_or_mutate_secret_values(harnes
     request = harness.producer.requests[0][0]
     assert "private-canary" not in repr(request)
     assert "private-canary" not in repr(
-        harness.module.PreparedHttpBinding(request=request, intent=cast(EffectIntent, None))
+        methodcaller("__call__", request=request, intent=None)(harness.module.PreparedHttpBinding)
     )
     headers["X-Token"] = "changed"
     extracted = request.arguments()
@@ -287,11 +288,11 @@ def test_frozen_snapshot_and_binding_never_expose_or_mutate_secret_values(harnes
 
 @pytest.mark.parametrize("change", ["request", "kind", "invocation", "bare"])
 def test_attestation_substitution_and_invalid_intent_fail_before_claim(harness: Harness, change: str) -> None:
-    def tamper(binding: PreparedHttpBinding) -> PreparedHttpBinding:
+    def tamper(binding: PreparedHttpBinding) -> object:
         if change == "request":
             return replace(binding, request=replace(binding.request))
         if change == "bare":
-            return cast(PreparedHttpBinding, binding.intent)
+            return binding.intent
         intent = (
             binding.intent.model_copy(update={"kind": "tool"})
             if change == "kind"
@@ -301,7 +302,7 @@ def test_attestation_substitution_and_invalid_intent_fail_before_claim(harness: 
         )
         return replace(binding, intent=intent)
 
-    harness.producer.change = tamper
+    harness.monkeypatch.setattr(harness.producer, "change", tamper)
     with pytest.raises(NativePolicyStop):
         harness.request()
     assert harness.sent == []
@@ -584,13 +585,14 @@ def test_admitted_budgets_require_exact_finite_integers(harness: Harness, option
         else "native_http_response_budget_required"
     )
     with pytest.raises(ValueError, match=f"^{reason}$"):
-        harness.module.NativeHttpClient(
+        methodcaller(
+            "__call__",
             ref=REF,
             calls=harness.calls,
             intents=harness.producer,
-            max_redirect_hops=cast(int, budgets["max_redirect_hops"]),
-            max_response_bytes=cast(int, budgets["max_response_bytes"]),
-        )
+            max_redirect_hops=budgets["max_redirect_hops"],
+            max_response_bytes=budgets["max_response_bytes"],
+        )(harness.module.NativeHttpClient)
 
 
 @pytest.mark.parametrize(
@@ -608,7 +610,7 @@ def test_admitted_budgets_require_exact_finite_integers(harness: Harness, option
 )
 def test_unadmitted_or_nonfinite_material_refused_before_intent(harness: Harness, option: str, value: object) -> None:
     with pytest.raises(NativePolicyStop):
-        harness.request(**{option: cast(str, value)})
+        methodcaller("request", **{option: value})(harness)
     assert harness.sent == []
     assert harness.producer.requests == []
 
@@ -744,7 +746,7 @@ def test_ready_check_is_repeated_for_redirect_metadata_before_new_claim(
         monkeypatch.setattr(harness.state, "store_hook", lambda: logging.getLogger().handlers[0].filters.clear())
         return binding
 
-    harness.producer.prepare = prepare
+    monkeypatch.setattr(harness.producer, "prepare", prepare)
     with pytest.raises(NativePolicyStop) as caught:
         harness.request()
     assert caught.value.reason_code == "native_http_telemetry_unavailable"
@@ -833,7 +835,7 @@ def test_http_owner_suppresses_real_global_httpx_instrumentation_only_during_phy
             assert not is_instrumentation_enabled()
         return httpcore.Response(200, content=b"ok")
 
-    transport._pool.handle_request = handle_request
+    monkeypatch.setattr(transport._pool, "handle_request", handle_request)
 
     def before_authorization() -> None:
         assert is_instrumentation_enabled()
@@ -847,7 +849,7 @@ def test_http_owner_suppresses_real_global_httpx_instrumentation_only_during_phy
         assert is_instrumentation_enabled()
         return original_prepare(request=request, hop=hop, previous_response=previous_response)
 
-    harness.producer.prepare = prepare
+    monkeypatch.setattr(harness.producer, "prepare", prepare)
     try:
         with httpx.Client(transport=transport, trust_env=False) as client:
             monkeypatch.setattr(ssrf_proxy, "_get_ssrf_client", lambda _verify: client)

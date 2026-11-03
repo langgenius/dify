@@ -12,7 +12,7 @@ from collections.abc import Generator
 from contextlib import AbstractContextManager, contextmanager
 from contextvars import Context, ContextVar, Token
 from threading import local
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from flask import Flask, has_app_context
 
@@ -89,9 +89,11 @@ class NativeExecutionContext:
 
     def __init__(self, *, guard: NativeObservationGuard) -> None:
         captured = capture_flask_context() if has_app_context() else capture_current_context()
-        if type(guard) is not NativeObservationGuard or type(captured) not in (ExecutionContext, FlaskExecutionContext):
+        if type(guard) is not NativeObservationGuard or (
+            type(captured) is not ExecutionContext and type(captured) is not FlaskExecutionContext
+        ):
             raise NativeObservationError() from None
-        self._captured = cast(ExecutionContext | FlaskExecutionContext, captured)
+        self._captured = captured
         self._guard = guard
         self._local = _NativeContextManagers()
 

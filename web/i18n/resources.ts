@@ -109,6 +109,7 @@ export const namespaces = [
   'agentV2',
   'billing',
   'common',
+  'contacts',
   'custom',
   'dataset',
   'datasetCreation',

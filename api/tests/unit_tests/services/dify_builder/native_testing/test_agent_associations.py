@@ -12,12 +12,13 @@ import importlib.util
 from collections.abc import Callable, Generator
 from dataclasses import dataclass, replace
 from types import ModuleType
-from typing import NotRequired, cast, override
+from typing import NotRequired, override
 
 import pytest
 import pytest_mock
 from pydantic import ValidationError
 from sqlalchemy import Select, inspect
+from sqlalchemy.orm import Session
 from typing_extensions import TypedDict
 
 from core.dify_builder.models import Actor
@@ -42,10 +43,17 @@ from runtime_contracts.builder.native.runtime_contracts import (
     NodeJournalState,
     ResolvedNativeTestContext,
 )
+from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
 from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, ObjectReceipt
 from tests.unit_tests.services.dify_builder.native_testing.test_node_inputs import LoaderStandIn, SQLStandIn
+from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import (
+    checked_row,
+    selected_rows,
+    sql_session,
+    sql_session_factory,
+)
 
 EXECUTION = "81d492fd-05ce-46a8-8c82-a35d4b343d48"
 REF = NativeTestContextRef(request_id="request", invocation_id="inv", context_digest="a" * 64)
@@ -388,21 +396,19 @@ def state_case(monkeypatch: pytest.MonkeyPatch) -> AgentStateCase:
         def scalar[T](self, query: Select[tuple[T]]) -> T | None:
             entity = query.column_descriptions[0]["entity"]
             if entity is NativeTestInvocation:
-                return cast(T, self.agent_owner.invocation)
+                return selected_rows(query, [self.agent_owner.invocation])[0]
             if entity in (NativeContinuation, NativePayloadObject):
                 params = {key.rsplit("_", 1)[0]: value for key, value in query.compile().params.items()}
-                return cast(
-                    T | None,
-                    next(
-                        (
-                            row
-                            for row in self.owner.rows
-                            if isinstance(row, entity)
-                            and all(inspect(row).attrs[key].value == value for key, value in params.items())
-                        ),
-                        None,
+                row = next(
+                    (
+                        row
+                        for row in self.owner.rows
+                        if isinstance(row, entity)
+                        and all(inspect(row).attrs[key].value == value for key, value in params.items())
                     ),
+                    None,
                 )
+                return selected_rows(query, [row])[0] if row is not None else None
             if entity in self.agent_owner.resources:
                 row = self.agent_owner.resources[entity]
                 if row is None:
@@ -424,7 +430,7 @@ def state_case(monkeypatch: pytest.MonkeyPatch) -> AgentStateCase:
                         "binding_type",
                     ):
                         assert inspect(row).attrs[field].value == value
-                return cast(T, inspect(row).attrs.id.value if entity is App else row)
+                return selected_rows(query, [inspect(row).attrs.id.value if entity is App else row])[0]
             return super().scalar(query)
 
         @override
@@ -443,7 +449,7 @@ def state_case(monkeypatch: pytest.MonkeyPatch) -> AgentStateCase:
                 assert populate_existing
             if model in self.agent_owner.resources:
                 row = self.agent_owner.resources[model]
-                return cast(T, row) if row is not None and inspect(row).attrs.id.value == identity else None
+                return checked_row(model, row) if row is not None and inspect(row).attrs.id.value == identity else None
             return super().get(model, identity)
 
     class AgentLoader(AgentLoaderState):
@@ -656,8 +662,8 @@ def state_case(monkeypatch: pytest.MonkeyPatch) -> AgentStateCase:
         assert not loader.writing
         return bytes.fromhex(value).decode()
 
-    def authority(owner: AgentLoaderState, ref: NativeTestContextRef) -> PrivateReadOwner:
-        assert not owner.writing, "permission outside SQL writer"
+    def authority(owner: OwnedNativeTestLoader, ref: NativeTestContextRef) -> PrivateReadOwner:
+        assert not loader.writing, "permission outside SQL writer"
         owner.load(ref=ref)
         assert loader.state.app_id is not None
         assert loader.state.workflow_id is not None
@@ -689,7 +695,21 @@ def state_case(monkeypatch: pytest.MonkeyPatch) -> AgentStateCase:
         lambda *_args, **_kwargs: Workflow(graph=json.dumps(graph), version="published"),
     )
     monkeypatch.setattr(module, "native_workflow_revision", lambda _workflow: "revision")
-    store = module.NativeExecutionStateStore(cast(OwnedNativeTestLoader, loader))
+    owner_loader = OwnedNativeTestLoader(
+        sql_session_factory(monkeypatch, loader.session_factory, methods=SQLStandIn.sql_methods),
+        actor=loader.actor,
+        resolver=NativeHttpBindingResolver(),
+    )
+    monkeypatch.setattr(owner_loader, "load", loader.load)
+    monkeypatch.setattr(owner_loader, "_load", loader._load)
+
+    @contextmanager
+    def locked(*, ref: NativeTestContextRef) -> Generator[tuple[Session, OwnedNativeTest, NativeTestScope]]:
+        with loader.locked(ref=ref) as (boundary, owned, scope):
+            yield sql_session(monkeypatch, boundary.sql_methods()), owned, scope
+
+    monkeypatch.setattr(owner_loader, "locked", locked)
+    store = module.NativeExecutionStateStore(owner_loader)
     receipt = store.prepare_object(
         ref=loader.ref,
         tenant_id="tenant",
@@ -1279,7 +1299,7 @@ def test_actual_operation_cursor_finish_is_untouched_by_agent_associations(
     from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
 
     c = state_case
-    authorization = EffectAuthorizationService(cast(OwnedNativeTestLoader, c.loader))
+    authorization = EffectAuthorizationService(c.store.loader)
     before_call = mocker.spy(authorization, "before_call")
     journal = NodeOperationJournal(state=c.store, authorization=authorization)
     cursor = journal.open(ref=c.ref, occurrence_path=(EXECUTION,))

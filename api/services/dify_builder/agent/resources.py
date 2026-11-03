@@ -215,8 +215,10 @@ def _list_datasets(tenant_id: str, account_id: str | None = None) -> list[Resour
             if set(statuses).intersection({"waiting", "parsing", "cleaning", "splitting", "indexing", "paused"})
             else "unavailable"
         )
-        can_use = not dify_config.RBAC_ENABLED or row.maintainer == account_id or bool(
-            {"dataset.acl.use", "dataset.use", "dataset.full_access"}.intersection(permissions.get(row.id, []))
+        can_use = (
+            not dify_config.RBAC_ENABLED
+            or row.maintainer == account_id
+            or bool({"dataset.acl.use", "dataset.use", "dataset.full_access"}.intersection(permissions.get(row.id, [])))
         )
         tag_text = ", ".join(tags.get(row.id, [])[:20])[:360]
         meta = (

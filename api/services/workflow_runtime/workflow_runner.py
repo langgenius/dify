@@ -3,11 +3,10 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, override
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.execution_coordinator import app_task_command_channel_key
-from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
@@ -83,7 +82,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             runtime=native_runtime,
             host=native_host,
         )
-        if native_host is not None and (graph_engine_layers or application_generate_entity.trace_manager is not None):
+        if native_host is not None and (graph_engine_layers or application_generate_entity.trace_scope is not None):
             raise NativeContextUnavailable("native_observation_unqualified")
         self._native_host = native_host
         super().__init__(
@@ -106,7 +105,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
     def prepare(self) -> PreparedWorkflowRun | None:
         """Prepare graph execution and passive application observers."""
         app_config = self.application_generate_entity.app_config
-        app_config = cast(WorkflowAppConfig, app_config)
         entity = self.application_generate_entity
         native_prepared = None
         if entity.native_test_required or entity.native_test_ref is not None:
@@ -198,7 +196,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         # if only single iteration or single loop run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             invoke_from = InvokeFrom.DEBUGGER
-        user_from = self._resolve_user_from(invoke_from)
+        user_from = self.application_generate_entity.user_from
 
         resume_state = self._resume_graph_runtime_state
 

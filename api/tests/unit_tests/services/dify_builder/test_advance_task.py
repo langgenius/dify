@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import asdict
-from typing import NoReturn, TypedDict, cast, override
+from typing import NoReturn, TypedDict, override
 
 import pytest
 from sqlalchemy import create_engine
@@ -1151,13 +1151,13 @@ def test_observer_publish_failure_is_best_effort_and_terminal_state_is_still_pub
     monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
     monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
 
-    events: CapturedEvents = []
+    events: list[tuple[str, Mapping[str, object]]] = []
     released: list[tuple[str, str]] = []
 
     def publish(session_id: str, event: Mapping[str, object]) -> None:
         if event["kind"] in {"canvas", "node", "progress"}:
             raise RuntimeError("progress bus unavailable")
-        events.append((session_id, cast(CapturedEvent, event)))
+        events.append((session_id, event))
 
     monkeypatch.setattr(mod.progress_bus, "publish", publish)
     monkeypatch.setattr(mod.session_lock, "release", lambda sid, tok: released.append((sid, tok)))

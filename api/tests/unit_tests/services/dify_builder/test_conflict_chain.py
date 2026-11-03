@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import asdict
-from typing import TYPE_CHECKING, TypedDict, Unpack, cast
+from typing import TYPE_CHECKING, TypedDict, Unpack
 
 import pytest
 
@@ -30,6 +30,7 @@ from models.workflow import Workflow
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision, execution_revision
 from services.dify_builder.service import DifyBuilderService
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.core.dify_builder.fakes import StubAgent
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph
@@ -56,6 +57,7 @@ from tests.unit_tests.services.dify_builder.test_advance_task import (
 )
 from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
+from tests.unit_tests.services.dify_builder.typed_fixtures import dictionaries, dictionary
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session as DatabaseSession
@@ -425,8 +427,8 @@ def test_interrupted_conflict_is_classified_before_working_handler_can_resume(
     assert not port.published
     recovered = events[-1][1]
     assert recovered["kind"] == "command_finished"
-    assert cast(dict[str, object], recovered["recovery"])["recovery_class"] == drift
-    actions = cast(list[dict[str, object]], recovered["actions"])
+    assert dictionary(recovered["recovery"])["recovery_class"] == drift
+    actions = dictionaries(recovered["actions"])
     if drift == "structural_invalidating":
         assert [action["id"] for action in actions] == ["restart"]
         with pytest.raises(BadRequestError):
@@ -551,8 +553,7 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
     monkeypatch.setattr(worker.session_lock, "acquire", acquire)
     monkeypatch.setattr(worker.session_lock, "release", release)
     monkeypatch.setattr(native, "db", PortDatabase(factory.kw["bind"]))
-    monkeypatch.setattr(native.TraceQueueManager, "start_timer", lambda _self: None)
-    monkeypatch.setattr("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", lambda _app: None)
+    monkeypatch.setattr(native, "create_trace_scope", lambda **_kwargs: None)
     generator = native.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
     monkeypatch.setattr(generator, "_generate", lambda **kwargs: kwargs)
     monkeypatch.setattr(port, "run_draft", _capture_run(port.run_draft, runs))
@@ -616,6 +617,7 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
             app_model=kwargs["app_model"],
             workflow=current,
             user=kwargs["user"],
+            execution_identity=build_workflow_execution_identity(kwargs["user"]),
             args=kwargs["args"],
             invoke_from=kwargs["invoke_from"],
             builder_execution=kwargs["builder_execution"],

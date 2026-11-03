@@ -4,7 +4,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
 from sqlalchemy.orm import Session
 
@@ -16,7 +16,6 @@ from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
-from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums import DeploymentEdition, QuotaType
@@ -40,7 +39,9 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
-from services.tools.draft_tool_setup import admit_draft_tool_setup
+from services.tools.draft_tool_setup import admit_draft_tool_setup, draft_tool_execution_graph
+from services.workflow_execution_identity import build_workflow_execution_identity
+from services.workflow_ref_service import WorkflowRef
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_runtime.chatflow_generator import AdvancedChatAppGenerator
 from services.workflow_runtime.workflow_generator import BuilderExecutionAdmission, WorkflowAppGenerator
@@ -248,6 +249,7 @@ class AppGenerateService:
                 app_model=app_model,
                 workflow=workflow,
                 user=user,
+                execution_identity=build_workflow_execution_identity(user),
                 args={"inputs": context.inputs},
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
@@ -442,26 +444,31 @@ class AppGenerateService:
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
                 if builder_execution is None:
                     cls._admit_normal_draft_tools(
-                        app_model=app_model, workflow=workflow, user=user, invoke_from=invoke_from
+                        app_model=app_model,
+                        workflow=workflow,
+                        user=user,
+                        invoke_from=invoke_from,
+                        allow_workflow_delegation=builder_tool_credential_bindings is None
+                        and builder_expected_revision is None
+                        and not builder_mocked_node_ids,
                     )
 
                 if streaming and workflow_execution_mode == "celery":
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
-                    with rate_limit_context(rate_limit, request_id):
-                        payload = AppExecutionParams.new(
-                            app_model=app_model,
-                            workflow=workflow,
-                            user=user,
-                            args=args,
-                            invoke_from=invoke_from,
-                            streaming=True,
-                            call_depth=0,
-                            workflow_run_id=str(uuid.uuid4()),
-                        )
-                        payload_json = payload.model_dump_json()
+                    payload = AppExecutionParams.new(
+                        app_model=app_model,
+                        workflow=workflow,
+                        user=user,
+                        args=args,
+                        invoke_from=invoke_from,
+                        streaming=True,
+                        call_depth=0,
+                        workflow_run_id=str(uuid.uuid4()),
+                    )
+                    payload_json = payload.model_dump_json()
 
                     def on_subscribe():
-                        cast(Callable[..., Any], workflow_based_app_execution_task.delay)(payload_json)
+                        workflow_based_app_execution_task.delay(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(
@@ -518,28 +525,34 @@ class AppGenerateService:
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
                 if builder_execution is None:
                     cls._admit_normal_draft_tools(
-                        app_model=app_model, workflow=workflow, user=user, invoke_from=invoke_from
+                        app_model=app_model,
+                        workflow=workflow,
+                        user=user,
+                        invoke_from=invoke_from,
+                        allow_workflow_delegation=builder_tool_credential_bindings is None
+                        and builder_agent_execution is None
+                        and builder_expected_revision is None
+                        and not builder_mocked_node_ids,
                     )
                 if builder_execution is not None:
                     restricted_admission_snapshot(workflow, app_model)
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
                 if streaming and workflow_execution_mode == "celery":
-                    with rate_limit_context(rate_limit, request_id):
-                        payload = AppExecutionParams.new(
-                            app_model=app_model,
-                            workflow=workflow,
-                            user=user,
-                            args=args,
-                            invoke_from=invoke_from,
-                            streaming=True,
-                            call_depth=0,
-                            root_node_id=root_node_id,
-                            workflow_run_id=str(uuid.uuid4()),
-                        )
-                        payload_json = payload.model_dump_json()
+                    payload = AppExecutionParams.new(
+                        app_model=app_model,
+                        workflow=workflow,
+                        user=user,
+                        args=args,
+                        invoke_from=invoke_from,
+                        streaming=True,
+                        call_depth=0,
+                        root_node_id=root_node_id,
+                        workflow_run_id=str(uuid.uuid4()),
+                    )
+                    payload_json = payload.model_dump_json()
 
                     def on_subscribe():
-                        cast(Callable[..., Any], workflow_based_app_execution_task.delay)(payload_json)
+                        workflow_based_app_execution_task.delay(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(
@@ -568,6 +581,7 @@ class AppGenerateService:
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
+                            execution_identity=build_workflow_execution_identity(user),
                             args=args,
                             invoke_from=invoke_from,
                             streaming=streaming,
@@ -598,13 +612,25 @@ class AppGenerateService:
         workflow: Workflow,
         user: Account | EndUser,
         invoke_from: InvokeFrom,
+        node_id: str | None = None,
+        allow_workflow_delegation: bool = True,
     ) -> None:
         """Ordinary draft metadata gate; published delegation and Builder grants stay separate."""
         if invoke_from != InvokeFrom.DEBUGGER or workflow.version != Workflow.VERSION_DRAFT:
             return
         if not isinstance(user, Account):
             raise ValueError("Draft execution requires the acting workspace member.")
-        admit_draft_tool_setup(tenant_id=app_model.tenant_id, graph=workflow.graph_dict, actor_id=user.id)
+        graph = workflow.graph_dict
+        if node_id is not None:
+            graph = draft_tool_execution_graph(graph, node_id)
+        admit_draft_tool_setup(
+            tenant_id=app_model.tenant_id,
+            graph=graph,
+            actor_id=user.id,
+            workflow_ref=WorkflowRef(app_model.tenant_id, app_model.id, workflow.id)
+            if allow_workflow_delegation
+            else None,
+        )
 
     @staticmethod
     def _ensure_workflow_service_mode_available(*, workflow: Workflow, invoke_from: InvokeFrom) -> None:
@@ -653,6 +679,7 @@ class AppGenerateService:
                     workflow=workflow,
                     user=user,
                     invoke_from=InvokeFrom.DEBUGGER,
+                    node_id=node_id,
                 )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
@@ -672,6 +699,7 @@ class AppGenerateService:
                     workflow=workflow,
                     user=user,
                     invoke_from=InvokeFrom.DEBUGGER,
+                    node_id=node_id,
                 )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
@@ -679,6 +707,7 @@ class AppGenerateService:
                         workflow=workflow,
                         node_id=node_id,
                         user=user,
+                        execution_identity=build_workflow_execution_identity(user),
                         args=args,
                         streaming=streaming,
                         session=session,
@@ -710,6 +739,7 @@ class AppGenerateService:
                     workflow=workflow,
                     user=user,
                     invoke_from=InvokeFrom.DEBUGGER,
+                    node_id=node_id,
                 )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
@@ -729,6 +759,7 @@ class AppGenerateService:
                     workflow=workflow,
                     user=user,
                     invoke_from=InvokeFrom.DEBUGGER,
+                    node_id=node_id,
                 )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
@@ -736,6 +767,7 @@ class AppGenerateService:
                         workflow=workflow,
                         node_id=node_id,
                         user=user,
+                        execution_identity=build_workflow_execution_identity(user),
                         args=args,
                         streaming=streaming,
                         session=session,

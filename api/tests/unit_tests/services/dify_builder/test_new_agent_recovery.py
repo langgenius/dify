@@ -7,7 +7,7 @@ These are regression checks, not native runtime/remote cleanup acceptance.
 
 import json
 from collections.abc import Iterator
-from typing import Never, cast
+from typing import Never
 from uuid import uuid4
 
 import httpx
@@ -159,7 +159,9 @@ def test_agent_acknowledged_attempt_recovers_parent_without_second_child(
 
         def generate(**kwargs: object) -> Iterator[dict[str, str | dict[str, str]]]:
             parent_dispatches.append(kwargs)
-            result = cast(StreamCompletedEvent, list(child._run())[-1]).node_run_result
+            completed = list(child._run())[-1]
+            assert isinstance(completed, StreamCompletedEvent)
+            result = completed.node_run_result
             assert result.status.value == ("failed" if status == "failed" else "succeeded")
             with harness.factory.begin() as session:
                 session.add(
@@ -242,7 +244,9 @@ def test_graph_abort_waits_for_child_terminal_or_preserves_cleanup_uncertainty(c
     with httpx.Client(transport=httpx.MockTransport(transport)) as http:
         node = _node(agent_backend_client=_client(http), session_store=store)
         node.runtime_state.graph_execution.aborted = True
-        result = cast(StreamCompletedEvent, list(node._run())[-1]).node_run_result
+        completed = list(node._run())[-1]
+        assert isinstance(completed, StreamCompletedEvent)
+        result = completed.node_run_result
 
     assert len(transport.created) == 1
     assert transport.cancel_requests == [

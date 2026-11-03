@@ -22,7 +22,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.workflow.active_workflow_tasks import active_workflow_task
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppPausedBlockingResponse,
@@ -35,11 +35,11 @@ from core.helper.trace_id_helper import (
     extract_parent_trace_context_from_args,
     extract_trace_session_id_from_args,
 )
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.trigger.constants import is_trigger_node_type
 from extensions.ext_database import db
+from extensions.tracing import create_trace_scope
 from factories import file_factory
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.engine.layer import Layer
@@ -52,6 +52,7 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from runtime_contracts.builder.execution import (
     BuilderExecutionContext,
     BuilderExecutionPolicyError,
@@ -62,6 +63,7 @@ from runtime_contracts.builder.execution import (
 )
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
+from services.app.file_input_defaults import grant_file_default_access
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
@@ -169,6 +171,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -201,6 +204,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -233,6 +237,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -264,6 +269,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -408,13 +414,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow=workflow,
             )
 
-            trace_manager = None
-            if builder_execution is None and native_context is None:
-                trace_manager = TraceQueueManager(
-                    app_id=app_model.id,
-                    user_id=user.id if isinstance(user, Account) else user.session_id,
-                )
-
             inputs: Mapping[str, Any] = native_inputs.inputs if native_inputs is not None else args["inputs"]
 
             extras = {
@@ -422,6 +421,16 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 **extract_parent_trace_context_from_args(args),
                 **extract_trace_session_id_from_args(args),
             }
+            trace_scope = None
+            if native_context is None:
+                trace_scope = create_trace_scope(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    app_tracing=app_model.tracing,
+                    user_id=user.id if isinstance(user, Account) else user.session_id,
+                    extras=extras,
+                    external_tracing_disabled=builder_execution is not None,
+                )
             workflow_run_id = str(workflow_run_id or uuid.uuid4())
             root_node_id = root_node_id or get_default_root_node_id(workflow.graph_dict)
             root_node_config = workflow.get_node_config_by_id(root_node_id)
@@ -446,7 +455,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 file_upload_config=file_extra_config,
                 inputs=inputs,
                 files=list(native_inputs.files if native_inputs is not None else system_files),
-                user_id=user.id,
+                user_id=execution_identity.user_id,
+                user_from=execution_identity.user_from,
                 stream=streaming,
                 invoke_from=invoke_from,
                 allow_human_input=allow_human_input,
@@ -458,7 +468,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 builder_mocked_node_ids=builder_mocked_node_ids,
                 builder_expected_revision=builder_expected_revision,
                 builder_tool_credential_bindings=builder_tool_credential_bindings,
-                trace_manager=trace_manager,
+                trace_scope=trace_scope,
                 workflow_execution_id=workflow_run_id,
                 extras=extras,
             )
@@ -469,11 +479,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     if builder_execution_admit is not None:
                         builder_execution_admit.on_refusal(error, preworker=True)
                     raise error
-                application_generate_entity.trace_manager = TraceQueueManager(
-                    app_id=app_model.id,
-                    user_id=user.id,
-                    external_tracing_disabled=True,
-                )
 
             contexts.plugin_tool_providers.set({})
             contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -543,8 +548,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         """
         Resume a paused workflow execution using the persisted runtime state.
 
-        ``trace_manager`` is transient and excluded from generate-entity serialization,
-        so resumed executions rebuild it here before persistence layers receive the entity.
+        ``trace_scope`` is transient and excluded from generate-entity serialization,
+        so resumed executions create it again before persistence layers receive the entity.
         """
         if application_generate_entity.builder_agent_execution is not None and (
             application_generate_entity.builder_execution is not None
@@ -576,12 +581,15 @@ class WorkflowAppGenerator(BaseAppGenerator):
             )
         if application_generate_entity.builder_execution is not None:
             raise BuilderExecutionPolicyError("unsupported_execution_transport")
-        if native_host is None and application_generate_entity.trace_manager is None:
+        if native_host is None and application_generate_entity.trace_scope is None:
             application_generate_entity = application_generate_entity.model_copy(
                 update={
-                    "trace_manager": TraceQueueManager(
+                    "trace_scope": create_trace_scope(
+                        tenant_id=app_model.tenant_id,
                         app_id=app_model.id,
+                        app_tracing=app_model.tracing,
                         user_id=user.id if isinstance(user, Account) else user.session_id,
+                        extras=application_generate_entity.extras,
                     )
                 }
             )
@@ -646,7 +654,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             runtime=native_runtime,
             host=native_host,
         )
-        if native_host is not None and (graph_engine_layers or application_generate_entity.trace_manager is not None):
+        if native_host is not None and (graph_engine_layers or application_generate_entity.trace_scope is not None):
             raise NativeContextUnavailable("native_observation_unqualified")
         if native_host is not None:
             if not streaming or pause_state_config is not None:
@@ -668,6 +676,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             invoke_from=invoke_from,
         ):
+            if native_host is None:
+                grant_file_default_access(application_generate_entity.app_config.variables)
             # init queue manager
             queue_manager = WorkflowAppQueueManager(
                 task_id=application_generate_entity.task_id,
@@ -780,6 +790,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         args: Mapping[str, Any],
         streaming: bool = True,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
@@ -808,7 +819,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_config=app_config,
             inputs={},
             files=[],
-            user_id=user.id,
+            user_id=execution_identity.user_id,
+            user_from=execution_identity.user_from,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={
@@ -874,6 +886,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         args: LoopNodeRunPayload,
         streaming: bool = True,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
@@ -902,7 +915,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_config=app_config,
             inputs={},
             files=[],
-            user_id=user.id,
+            user_id=execution_identity.user_id,
+            user_from=execution_identity.user_from,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={
@@ -1095,20 +1109,16 @@ class WorkflowAppGenerator(BaseAppGenerator):
                                 workflow_run_id=application_generate_entity.workflow_execution_id,
                             )
 
-                        # Determine system_user_id based on invocation source
-                        is_external_api_call = application_generate_entity.invoke_from in {
-                            InvokeFrom.WEB_APP,
-                            InvokeFrom.SERVICE_API,
-                        }
-
-                        if is_external_api_call:
-                            # For external API calls, use end user's session ID
+                        user_from = application_generate_entity.user_from
+                        if user_from == UserFrom.END_USER:
                             end_user = session.scalar(
-                                select(EndUser).where(EndUser.id == application_generate_entity.user_id)
+                                select(EndUser).where(
+                                    EndUser.tenant_id == application_generate_entity.app_config.tenant_id,
+                                    EndUser.id == application_generate_entity.user_id,
+                                )
                             )
                             system_user_id = end_user.session_id if end_user else ""
                         else:
-                            # For internal calls, use the original user ID
                             system_user_id = application_generate_entity.user_id
 
                     if application_generate_entity.builder_expected_revision is not None:

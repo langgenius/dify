@@ -26,6 +26,7 @@ from dify_agent.protocol.schemas import (
     CreateRunRequest,
     RunComposition,
     RunFailedEvent,
+    RunFailedEventData,
     RunLayerSpec,
     RunSucceededEvent,
     RunFailureType,
@@ -245,6 +246,32 @@ async def test_run_started_store_failure_finalizes_run_as_failed(monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_sealed_stream_stops_runner_without_second_terminal_event(monkeypatch):
+    async def stream(messages, info):
+        pytest.fail("the model must not run when the stream is already sealed")
+        yield "unreachable"
+
+    async with httpx.AsyncClient() as client:
+        model = FunctionModel(stream_function=stream)
+        monkeypatch.setattr(llm_layer.Capability, "build_model", lambda self, deps: model)
+        sink = InMemoryRunEventSink()
+        sealed = await sink.finalize_run(
+            RunFailedEvent(run_id="test", data=RunFailedEventData(error="cancelled elsewhere"))
+        )
+        assert sealed.applied
+        runner = AgentRunRunner(
+            sink=sink,
+            request=request(),
+            run_id="test",
+            services=Services(client, client),
+            run_timeout_seconds=10,
+        )
+        await runner.run()
+        assert sink.statuses["test"] == "failed"
+        assert [type(event) for event in sink.events["test"]] == [RunFailedEvent]
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize("invalid_first", [False, True])
 async def test_native_structured_output_uses_output_module(monkeypatch, invalid_first):
     attempts = []
@@ -366,7 +393,9 @@ async def test_cancellation_during_remote_observation_deletes_job_and_releases_l
         assert snap.layers["shell"] == {"initialized": True, "job_ids": [], "job_offsets": {}}
         saved = history.State.model_validate(snap.layers["history"])
         responses = [m for m in saved.messages if isinstance(m, ModelResponse)]
-        assert responses[-1].state == "interrupted"
+        assert responses[-1].state == "complete"
+        assert isinstance(saved.messages[-1], ModelRequest)
+        assert saved.messages[-1].state == "interrupted"
         assert not client.is_closed
 
 

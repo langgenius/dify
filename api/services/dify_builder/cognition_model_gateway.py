@@ -5,7 +5,6 @@ from typing import Any, Protocol
 
 from core.dify_builder.models import Actor
 from core.entities.model_entities import ModelWithProviderEntity
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -45,7 +44,7 @@ class NativeCognitionModels:
                 str(model.model_properties.get(ModelPropertyKey.MODE, "chat")),
                 {},
             )
-        except (ValueError, ProviderTokenNotInitError, ModelCurrentlyNotSupportError):
+        except ValueError:
             return None
 
     @staticmethod
@@ -186,7 +185,7 @@ class NativeCognitionModels:
             if error.reason == "model_unavailable":
                 return False
             raise
-        except (ValueError, ProviderTokenNotInitError, ModelCurrentlyNotSupportError):
+        except ValueError:
             return False
 
 

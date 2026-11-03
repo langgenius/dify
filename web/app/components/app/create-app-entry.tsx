@@ -39,7 +39,9 @@ type CreateAppCreationFlowProps = {
 export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppCreationFlowProps) {
   const { t } = useTranslation(['app', 'billing', 'common'])
   const { push } = useRouter()
-  const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
+  const { data: features, isError: isFeaturesError } = useQuery(
+    consoleQuery.features.get.queryOptions(),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -59,13 +61,14 @@ export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppC
   const appQuota = features?.apps
   const isCloud = systemFeatures.deployment_edition === 'CLOUD'
   const isAppsFull = isCloud && !!appQuota && appQuota.limit > 0 && appQuota.size >= appQuota.limit
-  const unavailable = !canCreateApp || !features || (isCloud && !appQuota)
-  const isStarterOpen = !!(starter?.open && features?.dify_builder_enabled && canCreateApp)
+  const unavailable = !canCreateApp
+  const isBuilderEnabled = !isFeaturesError && features?.dify_builder_enabled === true
+  const isStarterOpen = !!(starter?.open && isBuilderEnabled && canCreateApp)
 
   const create = async (mode: CreateAppPayload['mode'], prompt?: string) => {
     if (unavailable || isAppsFull || creatingRef.current) return
     const goal = prompt?.trim()
-    if (prompt !== undefined && (!goal || !features.dify_builder_enabled)) return
+    if (prompt !== undefined && (!goal || !isBuilderEnabled)) return
     creatingRef.current = true
     setIsCreating(true)
     setError('')
@@ -109,7 +112,7 @@ export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppC
       setShowQuota(true)
       return
     }
-    if (features.dify_builder_enabled && (mode === 'workflow' || mode === 'advanced-chat')) {
+    if (isBuilderEnabled && (mode === 'workflow' || mode === 'advanced-chat')) {
       setStarter({ mode, open: true })
       return
     }

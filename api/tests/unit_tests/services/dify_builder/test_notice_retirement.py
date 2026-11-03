@@ -2,7 +2,6 @@
 
 from dataclasses import asdict
 from datetime import datetime
-from typing import cast
 
 import pytest
 
@@ -14,7 +13,6 @@ from core.dify_builder.state import PcState
 from services.dify_builder.application.handlers_build import handle_publish as publish_build
 from services.dify_builder.application.handlers_edit import handle_publish as publish_edit
 from services.dify_builder.application.handlers_fix import handle_publish as publish_fix
-from services.dify_builder.application.ports import DifyBuilderAgent, DifyPort, Repository
 from services.dify_builder.application.runner import Env, Handler, Runner
 from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent, seed_verified_run
@@ -57,7 +55,7 @@ def test_recovery_reason_is_in_the_decision_and_old_history_keeps_its_watermark(
     ]
     repo.create_session(session, DifyBuilderContext(recovery_class=recovery_class, reply_language="ja"), history)
     lock = FakeSessionLock()
-    service = DifyBuilderService(cast(Repository, repo), lock, lambda *_args: None)
+    service = DifyBuilderService(repo, lock, lambda *_args: None)
 
     view = service.get_session_view(session.id, actor)
     serialized = DifyBuilderSessionViewResponse.model_validate(asdict(view)).model_dump(mode="json")
@@ -111,9 +109,9 @@ def test_publication_refusal_commits_a_complete_reply_without_publishing_or_stre
         delivered.append(event.item)
 
     env = Env(
-        dify=cast(DifyPort, dify),
-        agent=cast(DifyBuilderAgent, StubAgent()),
-        repo=cast(Repository, repo),
+        dify=dify,
+        agent=StubAgent(),
+        repo=repo,
         now=lambda: datetime.min,
         emit_message=streamed.append,
         emit_item=receive,

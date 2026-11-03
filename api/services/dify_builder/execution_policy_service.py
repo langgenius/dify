@@ -77,7 +77,7 @@ def _raw_object(raw: Any, reason: str, *, absent_allowed: bool = False) -> dict[
             raise ValueError("not an object")
         canonical_digest(value)
         return value
-    except (ValueError, TypeError, UnicodeError, RecursionError):
+    except (ValueError, TypeError, RecursionError):
         raise BuilderExecutionPolicyError(reason) from None
 
 
@@ -1059,7 +1059,7 @@ class BuilderExecutionPolicyService:
         owner: ExecutionOwnerSnapshot,
     ) -> bool:
         """Require the exact Start/Tool/End SQL chain and Tool TEXT receipt."""
-        from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+        from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 
         try:
             snapshot = restricted_admission_snapshot(owner.workflow, owner.app)
@@ -1170,7 +1170,6 @@ class BuilderExecutionPolicyService:
             TypeError,
             KeyError,
             StopIteration,
-            UnicodeError,
         ):
             return False
 
@@ -1262,7 +1261,7 @@ class BuilderExecutionPolicyService:
         consent: DifyBuilderRealCallConsent,
     ) -> bool:
         """Exact admitted graph, inputs, ordered Start/Tool/End rows and the claimed Tool row."""
-        from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+        from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 
         try:
             graph = _raw_object(native.graph, "invalid_native_graph")
@@ -1429,7 +1428,7 @@ class BuilderExecutionPolicyService:
         observations: list[BuilderExecutionObservation],
     ) -> bool:
         """Check graph/index chain coverage and retries; optional predecessors must agree."""
-        from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
+        from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 
         try:
             graph = _raw_object(native.graph, "invalid_native_graph")

@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
 import { getTagManagePermissionKey } from '../utils'
@@ -90,7 +91,7 @@ export const TagSelector = ({
 
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const { isPending: isCreatingTag, mutate: createTag } = useMutation(
-    consoleQuery.tags.post.mutationOptions(),
+    consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
   )
   const { data: tagList = [] } = useQuery(
     consoleQuery.tags.get.queryOptions({
@@ -195,9 +196,10 @@ export const TagSelector = ({
             },
           )
         },
-        onError: () => {
+        onError: (error) => {
           toast.error(
-            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+            getErrorMessage(error) ??
+              t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
             {
               id: toastId,
             },
@@ -248,8 +250,8 @@ export const TagSelector = ({
             toast.success(t(($) => $['tag.created'], { ns: 'common' }))
             setInputValue('')
           },
-          onError: () => {
-            toast.error(t(($) => $['tag.failed'], { ns: 'common' }))
+          onError: (error) => {
+            toast.error(getErrorMessage(error) ?? t(($) => $['tag.failed'], { ns: 'common' }))
           },
         },
       )

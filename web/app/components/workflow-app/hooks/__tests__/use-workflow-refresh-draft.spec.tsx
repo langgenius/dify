@@ -144,6 +144,7 @@ function setup(mode: AppMode = 'advanced-chat') {
         nodes: localNodes,
         isWorkflowDataLoaded: true,
         syncWorkflowDraftHash: 'local-hash',
+        syncWorkflowDraftIsEmpty: false,
       },
     },
   )
@@ -184,6 +185,7 @@ describe('useWorkflowRefreshDraft', () => {
     'refreshes draft metadata and respects notUpdateCanvas=%s',
     async (notUpdateCanvas) => {
       const { flow, refresh, store } = setup()
+      store.setState({ syncWorkflowDraftIsEmpty: true })
       await expectGraph(flow, ['local-start', 'local-code'], ['local-edge'], localViewport)
 
       await act(async () => {
@@ -199,6 +201,7 @@ describe('useWorkflowRefreshDraft', () => {
       )
       expect(store.getState()).toMatchObject({
         syncWorkflowDraftHash: notUpdateCanvas ? 'local-hash' : 'server-hash',
+        syncWorkflowDraftIsEmpty: !!notUpdateCanvas,
         isSyncingWorkflowDraft: false,
         isWorkflowDataLoaded: true,
       })
@@ -226,6 +229,7 @@ describe('useWorkflowRefreshDraft', () => {
     await expectGraph(flow, ['local-start', 'local-code'], ['local-edge'], localViewport)
     expect(store.getState()).toMatchObject({
       syncWorkflowDraftHash: 'local-hash',
+      syncWorkflowDraftIsEmpty: false,
       environmentVariables: [],
       conversationVariables: [],
     })
@@ -360,7 +364,7 @@ describe('useWorkflowRefreshDraft', () => {
     'restores the appropriate empty canvas for %s',
     async (mode) => {
       fetchDraft.mockResolvedValue({ ...draftResponse, graph: { nodes: [], edges: [] } })
-      const { flow, refresh } = setup(mode)
+      const { flow, refresh, store } = setup(mode)
 
       await act(async () => {
         await refresh.current!.handleRefreshWorkflowDraft()
@@ -383,6 +387,7 @@ describe('useWorkflowRefreshDraft', () => {
         expect(flow.current!.getEdges()).toEqual([])
         expect(flow.current!.getViewport()).toEqual({ x: 0, y: 0, zoom: 1 })
       })
+      expect(store.getState().syncWorkflowDraftIsEmpty).toBe(true)
     },
   )
 
@@ -408,6 +413,7 @@ describe('useWorkflowRefreshDraft', () => {
       isWorkflowDataLoaded: true,
       isSyncingWorkflowDraft: false,
       syncWorkflowDraftHash: 'local-hash',
+      syncWorkflowDraftIsEmpty: false,
     })
     await expectGraph(flow, ['local-start', 'local-code'], ['local-edge'], localViewport)
   })

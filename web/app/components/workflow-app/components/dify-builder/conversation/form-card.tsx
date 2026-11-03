@@ -188,7 +188,7 @@ export const FormCard = memo(
         ref={formRef}
         id={formId}
         aria-label={category}
-        className="flex flex-col gap-3"
+        className="flex min-w-0 flex-col gap-3 wrap-anywhere"
         noValidate
         onSubmit={(event) => {
           event.preventDefault()
@@ -217,11 +217,12 @@ export const FormCard = memo(
             return (
               <Field
                 key={field.key}
+                className="grid-cols-1"
                 name={field.key}
                 disabled={frozen}
                 invalid={Boolean(validationError)}
               >
-                <FieldLabel className="flex items-center gap-2">
+                <FieldLabel className="flex max-w-full items-center gap-2">
                   <Checkbox
                     name={field.key}
                     checked={values[field.key] === true}
@@ -231,7 +232,7 @@ export const FormCard = memo(
                     aria-describedby={validationError ? fieldErrorId : undefined}
                     onCheckedChange={(checked) => updateValues(field.key, checked)}
                   />
-                  <span>{labelContent}</span>
+                  <span className="min-w-0">{labelContent}</span>
                 </FieldLabel>
                 {validationError && (
                   <FieldError id={fieldErrorId} role="alert" match>
@@ -257,7 +258,7 @@ export const FormCard = memo(
                 className="m-0 min-w-0 border-0 p-0"
                 disabled={frozen}
               >
-                <legend className="mb-1 system-xs-medium text-text-secondary">
+                <legend className="mb-1 max-w-full system-xs-medium text-text-secondary">
                   {renderText(field.label)}
                   {field.required && <span aria-hidden> *</span>}
                 </legend>
@@ -299,6 +300,7 @@ export const FormCard = memo(
             return (
               <Field
                 key={field.key}
+                className="grid-cols-1"
                 name={field.key}
                 disabled={frozen}
                 invalid={Boolean(validationError)}
@@ -312,21 +314,29 @@ export const FormCard = memo(
                 >
                   <SelectLabel>{labelContent}</SelectLabel>
                   <SelectTrigger
+                    className="min-w-0"
                     aria-invalid={validationError ? true : undefined}
                     aria-describedby={validationError ? fieldErrorId : undefined}
                   >
-                    <SelectValue placeholder={renderText(field.placeholder) || ''} />
+                    <SelectValue
+                      className="block truncate"
+                      placeholder={renderText(field.placeholder) || ''}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {!(field.options ?? []).includes('') && (
-                      <SelectItem value="">
-                        <SelectItemText>{emptyOptionLabel}</SelectItemText>
+                      <SelectItem className="h-auto min-h-8 py-1.5" value="">
+                        <SelectItemText className="wrap-anywhere whitespace-normal">
+                          {emptyOptionLabel}
+                        </SelectItemText>
                         <SelectItemIndicator />
                       </SelectItem>
                     )}
                     {(field.options ?? []).map((option) => (
-                      <SelectItem key={option} value={option}>
-                        <SelectItemText>{option || emptyOptionLabel}</SelectItemText>
+                      <SelectItem key={option} className="h-auto min-h-8 py-1.5" value={option}>
+                        <SelectItemText className="wrap-anywhere whitespace-normal">
+                          {option || emptyOptionLabel}
+                        </SelectItemText>
                         <SelectItemIndicator />
                       </SelectItem>
                     ))}
@@ -347,6 +357,7 @@ export const FormCard = memo(
           return (
             <Field
               key={field.key}
+              className="grid-cols-1"
               name={field.key}
               disabled={frozen}
               invalid={Boolean(validationError)}

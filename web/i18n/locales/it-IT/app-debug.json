@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Genera più testi contemporaneamente, poi modifica e continua a generare",
   "feature.moreLikeThis.tip": "L'utilizzo di questa funzione comporterà un costo aggiuntivo di token",
   "feature.moreLikeThis.title": "Altri simili",
+  "feature.showThoughts.description": "Mostra il ragionamento del modello nelle conversazioni.",
+  "feature.showThoughts.title": "Mostra ragionamento",
   "feature.speechToText.description": "Una volta abilitato, puoi usare l'input vocale.",
   "feature.speechToText.title": "Da voce a testo",
   "feature.suggestedQuestionsAfterAnswer.description": "Impostare suggerimenti per le prossime domande può offrire agli utenti una chat migliore.",

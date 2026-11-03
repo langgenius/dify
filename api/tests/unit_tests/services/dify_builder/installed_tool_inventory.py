@@ -18,7 +18,7 @@ import json
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from types import ModuleType
-from typing import NoReturn, cast
+from typing import NoReturn
 from urllib.parse import urlsplit
 
 import httpx
@@ -32,6 +32,7 @@ from models.credential_permission import CredentialPermission
 from models.credential_permission import CredentialType as CredentialPermissionType
 from models.enums import PermissionEnum
 from models.tools import BuiltinToolProvider
+from tests.unit_tests.services.dify_builder.typed_fixtures import list_value
 
 TENANT_ID = "aaaaaaaa-0000-4000-8000-000000000001"
 OTHER_TENANT_ID = "aaaaaaaa-0000-4000-8000-000000000002"
@@ -265,7 +266,7 @@ class FakeToolDaemon:
                 return respond(400, {"code": -400, "message": "bad category"})
             return respond(200, {"code": 0, "message": "", "data": {"plugin_ids": self._installed_ids(tenant_id)}})
         if route == INSTALLATION_BATCH:
-            plugin_ids = [str(plugin_id) for plugin_id in cast(list[object], (body or {}).get("plugin_ids") or [])]
+            plugin_ids = [str(plugin_id) for plugin_id in list_value((body or {}).get("plugin_ids") or [])]
             if len(plugin_ids) > 256:
                 return respond(400, {"code": -400, "message": "plugin_ids exceeds max=256"})
             rows = [installation_payload(tenant_id, p) for p in providers if p["plugin_id"] in plugin_ids]

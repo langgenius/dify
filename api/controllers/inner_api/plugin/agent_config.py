@@ -10,12 +10,12 @@ directly from the Dify API data plane.
 
 from __future__ import annotations
 
-from typing import Literal, cast
+from typing import Literal
 
 from flask import g, request
+from flask.globals import request_ctx
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
-from werkzeug.local import LocalProxy
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import setup_required
@@ -125,11 +125,7 @@ def _authorize_runtime_config_read(
     agent_id: str, query: _ConfigTargetQuery, source: dict[str, str] | None = None
 ) -> None:
     """Spend no second permit; revalidate the claimed parent operation before reads."""
-    context = (
-        g.get("agent_runtime_context")
-        if g.get("agent_runtime_request") is cast(LocalProxy, request)._get_current_object()
-        else None
-    )
+    context = g.get("agent_runtime_context") if g.get("agent_runtime_request") is request_ctx.request else None
     if context is None:
         return
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError

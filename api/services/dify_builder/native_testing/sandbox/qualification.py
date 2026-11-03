@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass
 from importlib.metadata import version
 from inspect import getsource
 from types import MappingProxyType
-from typing import Annotated, NoReturn, Protocol, cast, runtime_checkable
+from typing import Annotated, NoReturn, Protocol, runtime_checkable
 from urllib.parse import urlsplit
 from uuid import NAMESPACE_URL, uuid5
 
@@ -270,7 +270,9 @@ def supported(raw):
         refuse()
 
 
-def describe_code_resource(*, qualification, node_id, raw, workflow_revision, app_id, workflow_id):
+def describe_code_resource(
+    *, qualification, node_id, raw, workflow_revision, app_id, workflow_id
+) -> dict[str, JsonValue]:
     if type(qualification) is not NativeCodeQualification:
         refuse()
     node, cls = supported(raw)
@@ -287,7 +289,7 @@ def describe_code_resource(*, qualification, node_id, raw, workflow_revision, ap
         "graphon_version": version("graphon"),
         "implementation_revision": qualification.profile().implementation_revision,
         "qualification": qualification.descriptor(),
-        "code_limits": asdict(code_limits()),
+        "code_limits": dict[str, JsonValue](asdict(code_limits())),
         "template_limit": template_limit(),
         "transformer_digest": canonical_digest(
             {
@@ -322,7 +324,7 @@ def _node(graph, node_id):
     return nodes[0]
 
 
-def _entries(*, qualification, graph, revision, app_id, workflow_id):
+def _entries(*, qualification, graph, revision, app_id, workflow_id) -> tuple[dict[str, JsonValue], ...]:
     # Other effect families are unavailable in this profile. Actual scalar
     # schemas/classes continue to be qualified by the existing native host.
     if any(n.get("data", {}).get("type") in {"http-request", "agent"} for n in graph.get("nodes", [])):
@@ -368,15 +370,12 @@ class NativeCodeResourceSnapshot:
             )
             if json.loads(workflow.graph) != graph or workflow._environment_variables not in (None, "", "[]", "{}"):
                 refuse()
-            return cast(
-                tuple[dict[str, JsonValue], ...],
-                _entries(
-                    qualification=self.qualification,
-                    graph=graph,
-                    revision=native_workflow_revision(workflow),
-                    app_id=app_id,
-                    workflow_id=workflow_id,
-                ),
+            return _entries(
+                qualification=self.qualification,
+                graph=graph,
+                revision=native_workflow_revision(workflow),
+                app_id=app_id,
+                workflow_id=workflow_id,
             )
 
 

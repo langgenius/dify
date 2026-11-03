@@ -10,16 +10,14 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import time
-import types
 import uuid
 from collections.abc import Generator, Iterator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import cast, override
+from typing import override
 from unittest.mock import MagicMock, Mock, patch, sentinel
 from uuid import uuid4
 
@@ -1047,14 +1045,7 @@ def _build_tool_node_data() -> ToolNodeData:
 class TestToolNodeRuntimeCases:
     @staticmethod
     @pytest.fixture
-    def runtime(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> DifyToolNodeRuntime:
-        module_name = "core.ops.ops_trace_manager"
-        if module_name not in sys.modules:
-            ops_stub = types.ModuleType(module_name)
-            ops_stub.TraceQueueManager = object  # pragma: no cover - stub attribute
-            ops_stub.TraceTask = object  # pragma: no cover - stub attribute
-            monkeypatch.setitem(sys.modules, module_name, ops_stub)
-
+    def runtime(sqlite_engine: Engine) -> DifyToolNodeRuntime:
         init_params = build_test_graph_init_params(
             workflow_id="workflow-id",
             graph_config={"nodes": [], "edges": []},
@@ -3008,13 +2999,14 @@ def test_failing_or_mismatched_factory_never_falls_through_to_ordinary_resolutio
     get_runtime.assert_not_called()
 
 
-def test_factory_returning_no_guard_refuses(mocker) -> None:
+def test_factory_returning_no_guard_refuses(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
     get_runtime = mocker.patch.object(node_runtime.ToolManager, "get_workflow_tool_runtime")
 
-    def factory(_node_id: str, _node_execution_id: str) -> ConfirmedToolGuard:
-        return cast(ConfirmedToolGuard, None)
+    def factory(_node_id: str, _node_execution_id: str) -> None:
+        return None
 
-    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=factory)
+    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=_GuardFactory([]))
+    monkeypatch.setattr(runtime, "_confirmed_guard_factory", factory)
     with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="confirmed_guard_unavailable"):
         runtime.get_runtime(
             node_id="tool-node", node_data=_builtin_node_data(), variable_pool=None, node_execution_id="actual-exec-7"

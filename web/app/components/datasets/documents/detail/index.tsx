@@ -102,7 +102,9 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const resetImportStatus = () => setImportStatus(undefined)
 
   const { mutateAsync: checkSegmentBatchImportProgress } = useMutation(
-    consoleQuery.datasets.batchImportStatus.byJobId.get.mutationOptions(),
+    consoleQuery.datasets.batchImportStatus.byJobId.get.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const checkProcess = async (jobID: string) => {
     await checkSegmentBatchImportProgress(
@@ -127,7 +129,9 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   }
 
   const { mutateAsync: segmentBatchImport } = useMutation(
-    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post.mutationOptions(
+      { context: { silent: true } },
+    ),
   )
   const runBatch = async (csv: FileItem) => {
     await segmentBatchImport(
@@ -278,6 +282,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       archived: documentDetail?.archived || false,
       id: documentId,
       data_source_type: documentDetail?.data_source_type || '',
+      data_source_info: documentDetail?.data_source_info,
       doc_form: documentDetail?.doc_form || '',
     }),
     [
@@ -286,6 +291,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       documentDetail?.archived,
       documentId,
       documentDetail?.data_source_type,
+      documentDetail?.data_source_info,
       documentDetail?.doc_form,
     ],
   )

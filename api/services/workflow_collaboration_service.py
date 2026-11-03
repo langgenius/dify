@@ -173,16 +173,22 @@ class WorkflowCollaborationService:
             resource_id=app_id,
         )
 
-    def disconnect_session(self, sid: str) -> None:
+    def disconnect_session(self, sid: str) -> str | None:
+        """Remove a known session and return its workflow ID for final draft cleanup.
+
+        Unknown sessions return None. The caller can clear a last-session draft
+        without reading the session mapping again after it has been deleted.
+        """
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
-            return
+            return None
 
         workflow_id = mapping["workflow_id"]
         self._repository.delete_session(workflow_id, sid)
 
         self.handle_leader_disconnect(workflow_id, sid)
         self.broadcast_online_users(workflow_id)
+        return workflow_id
 
     def relay_collaboration_event(self, sid: str, data: Mapping[str, object]) -> tuple[dict[str, object], int]:
         """Route collaboration control events, directing save and graph-resync requests to the active leader."""

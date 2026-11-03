@@ -20,6 +20,12 @@ capability that acquires a resource releases it in `wrap_run` using `finally`,
 including failures and cancellation. The API owns durable Binding/Workspace
 retirement and saves snapshots in the owning session.
 
+`DIFY_AGENT_INNER_API_URL` may include a reverse-proxy mount path, such as
+`https://api.example.com/dify`. Ordinary and confirmed API clients retain that
+prefix. The strict runtime transport sends its bearer only to the configured
+origin, exact mount prefix and allowed runtime routes; redirects and encoded
+route aliases remain rejected.
+
 Registered production names are `agent_soul_prompt`, `workflow_node_job_prompt`,
 `workflow_user_prompt`, `agent_app_user_prompt`, `execution_context`, `runtime`,
 `shell`, `config`, `history`, `llm`, `tools`, `core_tools`, `knowledge`, `output`,

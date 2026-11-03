@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable, Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Protocol, cast
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
@@ -50,7 +50,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
     emoji_icon_adapter,
 )
-from core.tools.errors import ToolProviderNotFoundError
+from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.mcp_tool.provider import MCPToolProviderController
 from core.tools.mcp_tool.tool import MCPTool
 from core.tools.plugin_tool.provider import PluginToolProviderController
@@ -104,15 +104,28 @@ class WorkflowToolRuntimeSpec(Protocol):
 
 
 class WorkflowToolRuntimeKwargs(TypedDict, total=False):
-    """Internal optional native draft bindings; ordinary callers omit them."""
+    """Internal draft scope and authorization mode supplied by the native factory."""
 
     draft_tool_workflow_id: str
+    allow_draft_credential_delegation: bool
     builder_expected_credential_fingerprint: str
     builder_credential_refreshed: Callable[[str], None] | None
 
 
 class _DraftToolRuntimeKwargs(WorkflowToolRuntimeKwargs, total=False):
     draft_tool_app_id: str
+    draft_tool_node_id: str
+
+
+class ToolCredentialResolver(Protocol):
+    def __call__(
+        self,
+        *,
+        controller: BuiltinToolProviderController,
+        provider_id: str,
+        workspace_id: str,
+        credential_id: str | None,
+    ) -> tuple[Mapping[str, object], CredentialType]: ...
 
 
 class ToolManager:
@@ -121,6 +134,12 @@ class ToolManager:
     _external_hardcoded_provider_classes: list[type[BuiltinToolProviderController]] = []
     _builtin_providers_loaded = False
     _builtin_tools_labels: dict[str, I18nObject | None] = {}
+    _credential_resolver: ClassVar[ToolCredentialResolver | None] = None
+
+    @classmethod
+    def configure_credential_resolver(cls, resolver: ToolCredentialResolver) -> None:
+        """Register stateless composition; it must not capture an app, database or provider."""
+        cls._credential_resolver = resolver
 
     @classmethod
     def get_hardcoded_provider(cls, provider: str) -> BuiltinToolProviderController:
@@ -220,6 +239,8 @@ class ToolManager:
         *,
         confirmed_guard: ConfirmedToolGuard | None = None,
         draft_tool_workflow_id: str | None = None,
+        draft_tool_node_id: str | None = None,
+        allow_draft_credential_delegation: bool = False,
         builder_expected_credential_fingerprint: str | None = None,
         builder_credential_refreshed: Callable[[str], None] | None = None,
         draft_tool_app_id: str | None = None,
@@ -245,6 +266,10 @@ class ToolManager:
             ordinary debugger drafts recheck setup at Tool resolution. Published
             children keep delegation even if debugger invocation is inherited.
         :param draft_tool_app_id: actual native app owner for that workflow scope
+        :param draft_tool_node_id: actual node whose persisted credential binding is checked
+        :param allow_draft_credential_delegation: only ordinary native workflows may
+            reuse an explicit credential bound to this saved node; direct and Builder
+            callers retain actor-visible selection by default
         :param json_provider_validator: trusted JSON service callback checking the
             actual native controller and tool before any credential branch
 
@@ -254,6 +279,8 @@ class ToolManager:
             confirmed_guard is not None
             or draft_tool_workflow_id is not None
             or draft_tool_app_id is not None
+            or draft_tool_node_id is not None
+            or allow_draft_credential_delegation
             or credential_id is not None
             or provider_type != ToolProviderType.BUILT_IN
         ):
@@ -284,6 +311,8 @@ class ToolManager:
                 provider=provider_id,
                 action=tool_name,
                 credential_id=credential_id,
+                node_id=draft_tool_node_id,
+                allow_workflow_delegation=allow_draft_credential_delegation,
                 expected_credential_fingerprint=builder_expected_credential_fingerprint,
                 on_credential_refreshed=builder_credential_refreshed,
             )
@@ -310,10 +339,10 @@ class ToolManager:
                             tool_invoke_from=tool_invoke_from,
                         )
                     )
-                from services.tools.ordinary_tool_credentials import resolve_ordinary_tool_credentials
+                if draft_selection is not None:
+                    from services.tools.ordinary_tool_credentials import resolve_ordinary_tool_credentials
 
-                return builtin_tool.fork_tool_runtime(
-                    runtime=resolve_ordinary_tool_credentials(
+                    runtime = resolve_ordinary_tool_credentials(
                         provider_controller=provider_controller,
                         provider_id=provider_id,
                         tenant_id=tenant_id,
@@ -323,7 +352,17 @@ class ToolManager:
                         credential_id=credential_id,
                         draft_selection=draft_selection,
                     )
-                )
+                else:
+                    runtime = cls._get_ordinary_tool_runtime(
+                        provider_controller=provider_controller,
+                        provider_id=provider_id,
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        invoke_from=invoke_from,
+                        tool_invoke_from=tool_invoke_from,
+                        credential_id=credential_id,
+                    )
+                return builtin_tool.fork_tool_runtime(runtime=runtime)
 
             case ToolProviderType.API:
                 api_provider, credentials = cls.get_api_provider_controller(tenant_id, provider_id)
@@ -369,12 +408,10 @@ class ToolManager:
             case ToolProviderType.APP:
                 raise NotImplementedError("app provider not implemented")
             case ToolProviderType.PLUGIN:
-                from services.tools.ordinary_tool_credentials import resolve_ordinary_tool_credentials
-
                 plugin_controller = cls.get_plugin_provider(provider_id, tenant_id)
                 plugin_tool = plugin_controller.get_tool(tool_name)
                 return plugin_tool.fork_tool_runtime(
-                    runtime=resolve_ordinary_tool_credentials(
+                    runtime=cls._get_ordinary_tool_runtime(
                         provider_controller=plugin_controller,
                         provider_id=provider_id,
                         tenant_id=tenant_id,
@@ -382,7 +419,6 @@ class ToolManager:
                         invoke_from=invoke_from,
                         tool_invoke_from=tool_invoke_from,
                         credential_id=credential_id,
-                        draft_selection=None,
                     )
                 )
             case ToolProviderType.MCP:
@@ -397,6 +433,55 @@ class ToolManager:
                 raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
             case _:
                 raise ToolProviderNotFoundError(f"provider type {provider_type} not found")
+
+    @classmethod
+    def _get_ordinary_tool_runtime(
+        cls,
+        *,
+        provider_controller: BuiltinToolProviderController,
+        provider_id: str,
+        tenant_id: str,
+        user_id: str | None,
+        invoke_from: InvokeFrom,
+        tool_invoke_from: ToolInvokeFrom,
+        credential_id: str | None,
+    ) -> ToolRuntime:
+        """Resolve admitted ordinary calls with the configured credential service.
+
+        No-auth tools skip credential reads. Explicit plugin references must be
+        valid stored IDs; they cannot fall back to another workspace credential.
+        Draft and confirmed calls retain their separate admission and refresh owners.
+        """
+        if not provider_controller.need_credentials:
+            return ToolRuntime(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                credentials={},
+                invoke_from=invoke_from,
+                tool_invoke_from=tool_invoke_from,
+            )
+        selected_id = None
+        if isinstance(provider_controller, PluginToolProviderController) and credential_id:
+            if not is_valid_uuid(credential_id):
+                raise ToolProviderCredentialValidationError("Select a valid stored Tool credential reference.")
+            selected_id = credential_id
+        if cls._credential_resolver is None:
+            raise RuntimeError("Tool credential resolver is not configured")
+        credentials, credential_type = cls._credential_resolver(
+            controller=provider_controller,
+            provider_id=provider_id,
+            workspace_id=tenant_id,
+            credential_id=selected_id,
+        )
+        return ToolRuntime(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            credentials=dict(credentials),
+            credential_type=credential_type,
+            runtime_parameters={},
+            invoke_from=invoke_from,
+            tool_invoke_from=tool_invoke_from,
+        )
 
     @classmethod
     def _get_confirmed_tool_runtime(
@@ -632,6 +717,7 @@ class ToolManager:
         *,
         confirmed_guard: ConfirmedToolGuard | None = None,
         draft_tool_workflow_id: str | None = None,
+        allow_draft_credential_delegation: bool = False,
         builder_expected_credential_fingerprint: str | None = None,
         builder_credential_refreshed: Callable[[str], None] | None = None,
         execution_driver: "WorkflowRunDriver | None" = None,
@@ -646,6 +732,8 @@ class ToolManager:
         guard checks the complete final envelope. ``draft_tool_workflow_id``
         comes only from the ordinary native node factory; it never changes the
         confirmed early branch or grants authority from graph/client markers.
+        Delegation is opt-in for ordinary native workflows and remains restricted
+        to the explicit credential on this exact persisted node.
         """
         if confirmed_guard is not None:
             return cls.get_tool_runtime(
@@ -667,6 +755,8 @@ class ToolManager:
         if draft_tool_workflow_id is not None:
             draft_options["draft_tool_workflow_id"] = draft_tool_workflow_id
             draft_options["draft_tool_app_id"] = app_id
+            draft_options["draft_tool_node_id"] = node_id
+            draft_options["allow_draft_credential_delegation"] = allow_draft_credential_delegation
 
         if workflow_tool_definition is None:
             tool_runtime = cls.get_tool_runtime(

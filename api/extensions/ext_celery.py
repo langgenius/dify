@@ -159,6 +159,11 @@ def init_app(app: DifyApp) -> Celery:
         timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
         task_ignore_result=True,
         task_annotations=dify_config.CELERY_TASK_ANNOTATIONS,
+        task_routes={
+            "tasks.trace_delivery_task.*": {"queue": dify_config.OPS_TRACE_QUEUE},
+            "tasks.application_trace_task.*": {"queue": dify_config.OPS_TRACE_QUEUE},
+            "schedule.collect_agent_sandbox_usage.collect_agent_sandbox_usage": {"queue": dify_config.OPS_TRACE_QUEUE},
+        },
     )
 
     if dify_config.CELERY_BACKEND == "redis":
@@ -202,12 +207,17 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
         "tasks.dify_builder_advance_task",  # Dify Builder session advance
+        "tasks.im_message_inbox_tasks",  # durable IM callback processing
+        "tasks.human_input_im_card_tasks",  # post-submission IM card updates
+        "tasks.im_contact_sync_tasks",  # durable IM Contact directory synchronization
         "tasks.knowledge_fs_initial_source_preview_tasks",  # datasource previews use the standard dataset queue
         "tasks.knowledge_fs_agent_investigation_tasks",
         "tasks.knowledge_fs_failed_retrieval_tasks",  # best-effort Workflow quality capture uses dataset workers
         "tasks.knowledge_fs_upgrade_tasks",  # legacy Dataset upgrades use a dedicated queue and worker
         "tasks.knowledge_fs_background_tasks",  # local-engine tasks on dedicated prefork queues
         "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
+        "tasks.trace_delivery_task",  # trace delivery and provider export retries
+        "tasks.ops_trace_task",  # retired endpoint; old workers must drain pre-upgrade tasks
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -253,6 +263,11 @@ def init_app(app: DifyApp) -> Celery:
             "task": "tasks.knowledge_fs_upgrade_tasks.cleanup_deferred_knowledge_fs_upgrade_files",
             "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
         }
+    if dify_config.ENABLE_TRACE_PAYLOAD_SWEEP_TASK:
+        beat_schedule["sweep_trace_payloads"] = {
+            "task": "tasks.trace_delivery_task.sweep_trace_payloads",
+            "schedule": crontab(minute="30", hour="3"),
+        }
     if dify_config.OPS_AGENT_TRACE_ENABLED:
         imports.append("tasks.application_trace_task")
     if dify_config.OPS_AGENT_TRACE_ENABLED and dify_config.ENABLE_APPLICATION_TRACE_RECONCILE_TASK:
@@ -279,7 +294,7 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["workflow_draft_coordination_sweeper"] = {
             "task": "tasks.workflow_draft_coordination_task.sweep_workflow_draft_coordination",
             "schedule": timedelta(seconds=dify_config.WORKFLOW_DRAFT_COORDINATION_INTERVAL),
-            "options": {"queue": "workflow"},
+            "options": {"queue": "schedule_executor"},
         }
     if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
         imports.append("tasks.delete_conversation_task")

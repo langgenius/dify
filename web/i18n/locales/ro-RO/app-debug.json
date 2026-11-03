@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Generați mai multe texte o dată, apoi editați și continuați să generați",
   "feature.moreLikeThis.tip": "Utilizarea acestei funcții va genera un consum suplimentar de jetoane",
   "feature.moreLikeThis.title": "Mai multe ca aceasta",
+  "feature.showThoughts.description": "Afișează raționamentul modelului în conversații.",
+  "feature.showThoughts.title": "Afișează raționamentul",
   "feature.speechToText.description": "După activare, puteți utiliza intrarea vocală.",
   "feature.speechToText.title": "Voce la text",
   "feature.suggestedQuestionsAfterAnswer.description": "Setarea sugestiilor pentru întrebările următoare poate oferi utilizatorilor o conversație mai bună.",

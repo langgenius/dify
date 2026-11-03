@@ -65,7 +65,7 @@ def preflight_native_observation(*, host: NativeHostLaunch, entity: WorkflowAppG
         features = workflow.features_dict
         if (
             entity.files
-            or entity.trace_manager is not None
+            or entity.trace_scope is not None
             or entity.single_iteration_run
             or entity.single_loop_run
             or entity.builder_execution is not None

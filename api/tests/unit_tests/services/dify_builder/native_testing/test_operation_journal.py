@@ -6,7 +6,8 @@ import importlib
 import importlib.util
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Unpack, cast, override
+from operator import methodcaller
+from typing import NoReturn, Unpack, override
 
 import pytest
 from typing_extensions import TypedDict
@@ -86,6 +87,16 @@ class State:
             raise BuilderExecutionPolicyError("native_result_owner_mismatch")
         return deepcopy(self.values[result_ref])
 
+    def commit_checkpoint(
+        self, *, ref: NativeTestContextRef, generation: int, payload: NativeCheckpointPayload
+    ) -> NoReturn:
+        del ref, generation, payload
+        raise AssertionError("journal read fixture must not commit checkpoints")
+
+    def store_result(self, *, ref: NativeTestContextRef, key: OperationKey, result: JsonValue) -> NoReturn:
+        del ref, key, result
+        raise AssertionError("journal read fixture must not write results")
+
 
 class Authorization:
     def __init__(self, decision: EffectDecision | None = None) -> None:
@@ -132,10 +143,13 @@ class ImpostorRunContext:
 
 
 def make_journal(
-    state: State | None = None, authorization: Authorization | None = None
+    state: State | None = None,
+    authorization: Authorization | None = None,
+    *,
+    state_owner: NativeStatePort | None = None,
 ) -> tuple[NodeOperationJournal, State, Authorization]:
     state, authorization = state or State(), authorization or Authorization()
-    return journal_class()(state=cast(NativeStatePort, state), authorization=authorization), state, authorization
+    return journal_class()(state=state_owner or state, authorization=authorization), state, authorization
 
 
 class IntentChanges(TypedDict, total=False, closed=True):
@@ -592,14 +606,17 @@ def claimed_case(metadata_case: ClaimedCheckpointCase, monkeypatch: pytest.Monke
         cancellation_ref="request",
         execution_mode="native",
     )
-    c.service.store = cast(NativeExecutionStateStore, state)
-    source, _, authorization = make_journal(state)
+    store = c.service.store
+    monkeypatch.setattr(store, "load_context", lambda **kwargs: state.load_context(**kwargs))
+    monkeypatch.setattr(store, "read_checkpoint", lambda **kwargs: state.read_checkpoint(**kwargs))
+    monkeypatch.setattr(store, "load_result", lambda **kwargs: state.load_result(**kwargs))
+    source, _, authorization = make_journal(state, state_owner=store)
     cursor = source.open(ref=c.ref, occurrence_path=PATH)
     cursor.bind_input(input_result_ref="inputs", inputs=INPUT)
     original = intent(cursor.next_key())
     cursor.before_call(intent=original)
     state.payload = payload(source.snapshot(ref=c.ref))
-    target, _, _ = make_journal(state, authorization)
+    target, _, _ = make_journal(state, authorization, state_owner=store)
     return ClaimedJournalCase(
         owner=c,
         state=state,
@@ -663,7 +680,7 @@ def test_claimed_restore_requires_actual_lifecycle_and_same_state(claimed_case: 
     if owner == "namespace":
         lifecycle = ImpostorCheckpointLifecycle(store=c.state)
     elif owner == "second_state":
-        lifecycle = NativeTestLifecycleService(c.owner.loader, state_store=cast(NativeExecutionStateStore, State()))
+        lifecycle = NativeTestLifecycleService(c.owner.loader, state_store=NativeExecutionStateStore(c.owner.loader))
     else:
 
         class FakeLifecycle(NativeTestLifecycleService):
@@ -671,15 +688,16 @@ def test_claimed_restore_requires_actual_lifecycle_and_same_state(claimed_case: 
             def claimed_resume_checkpoint(self, **_: object) -> CheckpointRef:
                 return CP
 
-        lifecycle = FakeLifecycle(c.owner.loader, state_store=cast(NativeExecutionStateStore, c.state))
+        lifecycle = FakeLifecycle(c.owner.loader, state_store=c.lifecycle.store)
     with pytest.raises(BuilderExecutionPolicyError):
-        c.target.restore_claimed(
+        methodcaller(
+            "restore_claimed",
             ref=c.owner.ref,
             generation=2,
             dispatch_id="dispatch",
-            lifecycle=cast(NativeTestLifecycleService, lifecycle),
+            lifecycle=lifecycle,
             expected_payload=c.expected,
-        )
+        )(c.target)
     _assert_retained(c, cursor, saved)
 
 
@@ -701,7 +719,7 @@ def test_claimed_restore_requires_actual_lifecycle_and_same_state(claimed_case: 
     ],
 )
 def test_claimed_restore_revalidates_runtime_arguments_and_actual_context(
-    claimed_case: ClaimedJournalCase, fault: str
+    claimed_case: ClaimedJournalCase, fault: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     c = claimed_case
     cursor, saved = _retained_cursor(c)
@@ -730,17 +748,16 @@ def test_claimed_restore_revalidates_runtime_arguments_and_actual_context(
     elif fault == "context_mode":
         c.state.context = c.state.context.model_copy(update={"execution_mode": "mock"})
     else:
-        c.state.context = cast(
-            ResolvedNativeTestContext, ImpostorRunContext(ref=ref, generation=2, native_run_id="run")
-        )
+        monkeypatch.setattr(c.state, "context", ImpostorRunContext(ref=ref, generation=2, native_run_id="run"))
     with pytest.raises(BuilderExecutionPolicyError):
-        c.target.restore_claimed(
+        methodcaller(
+            "restore_claimed",
             ref=ref,
-            generation=cast(int, generation),
+            generation=generation,
             dispatch_id="dispatch",
             lifecycle=c.lifecycle,
-            expected_payload=cast(NativeCheckpointPayload, expected),
-        )
+            expected_payload=expected,
+        )(c.target)
     _assert_retained(c, cursor, saved)
 
 

@@ -32,7 +32,9 @@ export const RunContextCard = ({
     >
       <div className="flex flex-col gap-1">
         {!!payload.message && (
-          <div className="system-xs-regular text-text-secondary">{payload.message}</div>
+          <div className="system-xs-regular wrap-anywhere whitespace-pre-wrap text-text-secondary">
+            {payload.message}
+          </div>
         )}
         <div className="truncate font-mono text-[11px] text-text-tertiary">{payload.run_id}</div>
       </div>
@@ -61,7 +63,7 @@ export const UserMessage = memo(({ text }: { text: string }) => {
   return (
     <article className="flex justify-end">
       <h3 className="sr-only">{t(($) => $.you, { ns: 'common' })}</h3>
-      <div className="max-w-79 rounded-2xl bg-background-default-dimmed px-4 py-3 text-[13px] leading-4 whitespace-pre-wrap text-text-primary">
+      <div className="max-w-79 min-w-0 rounded-2xl bg-background-default-dimmed px-4 py-3 text-[13px] leading-4 wrap-anywhere whitespace-pre-wrap text-text-primary">
         {text}
       </div>
     </article>

@@ -1,7 +1,7 @@
 """Conservative selector facts from the executed native graph and persisted node rows."""
 
 from core.dify_builder.models import Graph, NodeOutput, OutputFinding
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
+from domain.workflow.agent_node import is_dify_agent_node_data
 from services.dify_builder.native_agent_output_contract import declares_native_agent_output
 
 _ORDINARY_PRODUCERS = {"start", "code", "llm", "tool"}

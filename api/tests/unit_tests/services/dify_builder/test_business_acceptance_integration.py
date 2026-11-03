@@ -143,12 +143,16 @@ def test_contract_metadata_stays_out_of_start_inputs_and_invalid_only_cannot_pub
     assert cards[0].payload["business_acceptance_state"] == "passed"
     assert cards[0].payload["business_acceptance_case_id"] == "invalid"
     from services.dify_builder.service import DifyBuilderService
+    from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
 
-    service = object.__new__(DifyBuilderService)
-    service._repo = setup.repo
-    service._get_verification_identity_fn = lambda _app_id, _actor: (
-        setup.dify.hash,
-        setup.dify.graph_revision(setup.dify.graph),
+    service = DifyBuilderService(
+        repo=setup.repo,
+        session_lock=FakeSessionLock(),
+        enqueue_fn=lambda *_args: pytest.fail("publication inspection must not enqueue work"),
+        get_verification_identity_fn=lambda _app_id, _actor: (
+            setup.dify.hash,
+            setup.dify.graph_revision(setup.dify.graph),
+        ),
     )
     assert not service._publication_for_session(s, fc, actor).allowed
 

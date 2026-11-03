@@ -8,7 +8,7 @@ JSON number 60 (``Condition.value: str | Sequence[str] | bool | None``)."""
 import copy
 import json
 from pathlib import Path
-from typing import NoReturn, cast, get_args
+from typing import NoReturn, get_args
 
 import pytest
 
@@ -177,12 +177,13 @@ class TestNormalizeConditions:
         assert nodes[2]["data"]["filter_by"]["conditions"][0]["value"] == "7"
         assert nodes[3]["data"]["conditions"][0]["value"] == "2"
 
-    def test_other_node_types_and_malformed_shapes_are_left_alone(self) -> None:
+    @pytest.mark.parametrize("malformed_node", ["not-a-node"])
+    def test_other_node_types_and_malformed_shapes_are_left_alone(self, malformed_node: Graph) -> None:
         nodes: list[Graph] = [
             {"id": "llm", "data": {"type": "llm", "value": 3}},
             {"id": "odd", "data": {"type": "if-else", "cases": "not-a-list"}},
             {"id": "odd2", "data": {"type": "if-else", "cases": [{"conditions": ["junk", None]}]}},
-            cast(Graph, "not-a-node"),
+            malformed_node,
         ]
         before = copy.deepcopy(nodes)
 

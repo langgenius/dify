@@ -118,15 +118,19 @@ _FORBIDDEN_HEADERS = frozenset(
 _PREFIX = "/inner/api/agent/runtime/"
 
 
-def _allowed_route(request: httpx.Request) -> bool:
-    if request.url.fragment or b"%" in request.url.raw_path.split(b"?", 1)[0]:
+def _allowed_route(request: httpx.Request, *, prefix: bytes) -> bool:
+    """Match the deployment's exact mount before admitting a canonical API route."""
+    raw_path = request.url.raw_path.split(b"?", 1)[0]
+    if request.url.fragment or not raw_path.startswith(prefix):
         return False
-    path = request.url.path
-    if request.method == "POST" and path.startswith(_PREFIX) and path[len(_PREFIX) :] in _POST_ROUTES:
+    suffix = raw_path[len(prefix) :]
+    if b"%" in suffix:
+        return False
+    path = suffix.decode("ascii")
+    if request.method == "POST" and path in _POST_ROUTES:
         return not request.url.query
     match = re.fullmatch(
-        _PREFIX
-        + r"config/[A-Za-z0-9_-]{1,128}/(manifest|download-request|skills/[A-Za-z0-9_-]{1,128}/inspect|push|env|note)",
+        r"config/[A-Za-z0-9_-]{1,128}/(manifest|download-request|skills/[A-Za-z0-9_-]{1,128}/inspect|push|env|note)",
         path,
     )
     if match is None:
@@ -167,11 +171,11 @@ class _RunBoundAPITransport(httpx.AsyncBaseTransport):
             or self._origin.scheme not in {"http", "https"}
             or not self._origin.host
             or self._origin.userinfo
-            or self._origin.path not in {"", "/"}
             or self._origin.query
             or self._origin.fragment
         ):
             raise AgentRuntimeTransportError("agent_runtime_configuration_invalid")
+        self._route_prefix = self._origin.raw_path.rstrip(b"/") + _PREFIX.encode("ascii")
         self._token = api_token
         self._transport = transport
 
@@ -184,7 +188,7 @@ class _RunBoundAPITransport(httpx.AsyncBaseTransport):
         if (
             (url.scheme, url.host, url.port) != (self._origin.scheme, self._origin.host, self._origin.port)
             or url.userinfo
-            or not _allowed_route(request)
+            or not _allowed_route(request, prefix=self._route_prefix)
             or any(name.lower() in _FORBIDDEN_HEADERS for name, _ in request.headers.raw)
             or request.headers.get("host") != self._origin.netloc.decode("ascii")
         ):
@@ -245,7 +249,7 @@ class _RunBoundAPITransport(httpx.AsyncBaseTransport):
             raise
         finally:
             # Only the already allowlisted route shape is public diagnostic data.
-            route = url.path[len(_PREFIX) :]
+            route = url.raw_path.split(b"?", 1)[0][len(self._route_prefix) :].decode("ascii")
             if route not in _POST_ROUTES:
                 route = "config/skills/inspect" if "/skills/" in route else "config/" + route.rsplit("/", 1)[-1]
             with suppress(Exception):  # A diagnostic sink cannot affect a send.
@@ -274,6 +278,8 @@ class AgentRuntimeHTTPClient(httpx.AsyncClient):
     No auth/default-header hooks or environment proxy authority are installed.
     Redirects are also rejected by the final owner, including explicit per-call
     follow_redirects=True and a later mutation of client.follow_redirects.
+    The trusted API base URL may include a mount path; only exact paths below
+    that mount and the runtime route allowlist can receive the service bearer.
     """
 
     def __init__(

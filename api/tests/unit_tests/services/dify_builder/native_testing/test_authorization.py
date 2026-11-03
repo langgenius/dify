@@ -1,8 +1,8 @@
 """Pure policy checks; atomic storage is exercised only against PostgreSQL in CI."""
 
-from collections.abc import MutableMapping
 from datetime import UTC, datetime, timedelta
-from typing import TypedDict, cast
+from types import MappingProxyType
+from typing import TypedDict
 
 import pytest
 from sqlalchemy.orm import Session
@@ -180,8 +180,8 @@ def test_reservation_profile_is_immutable_after_creation() -> None:
     )
     limits["cpu_ms"] = 999
     assert reservation.limits["cpu_ms"] == 10
-    with pytest.raises(TypeError):
-        cast(MutableMapping[str, int], reservation.profile)["cpu_ms"] = 999
+    assert isinstance(reservation.profile, MappingProxyType)
+    assert reservation.profile["cpu_ms"] == 10
 
 
 @pytest.mark.parametrize(

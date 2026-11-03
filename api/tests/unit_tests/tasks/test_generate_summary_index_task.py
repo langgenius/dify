@@ -15,7 +15,7 @@ SUMMARY_QUEUE = "dataset_summary"
 INDEXING_QUEUE = "dataset"
 
 
-def _task_queue(task) -> str | None:
+def _task_queue(task: object) -> str | None:
     # Celery's @shared_task(queue=...) stores the routing key on the task instance
     # at runtime, but type stubs don't declare it; use getattr to stay type-clean.
     return getattr(task, "queue", None)
@@ -28,7 +28,7 @@ def _task_queue(task) -> str | None:
         (regenerate_summary_index_task, "regenerate_summary_index_task"),
     ],
 )
-def test_summary_task_uses_dedicated_queue(task, task_name):
+def test_summary_task_uses_dedicated_queue(task: object, task_name: str) -> None:
     """Summary tasks must use the dataset_summary queue, not the shared dataset queue.
 
     Summary generation is LLM-heavy and will block document indexing if placed

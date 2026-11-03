@@ -4,8 +4,6 @@ The action bar used to change shape per gate -- four buttons at review, one at
 plan approval. These project the same choice into the fixed interaction dock.
 """
 
-from typing import cast
-
 import pytest
 
 from core.dify_builder.contract import CONFIRM_ACTION_ID, ActionKind, Decision
@@ -184,6 +182,6 @@ class TestResolvingWhatTheClientPosted:
             )
 
     @pytest.mark.parametrize("payload", [{}, None, {"option_id": ""}, {"option_id": None}, "not-a-dict"])
-    def test_confirm_naming_no_option_resolves_to_nothing(self, payload: Graph | None | str) -> None:
+    def test_confirm_naming_no_option_resolves_to_nothing(self, payload: Graph | None) -> None:
         # "" is not legal in any state, so the existing per-state check rejects it.
-        assert resolve_submitted_action(CONFIRM_ACTION_ID, cast(Graph | None, payload)) == ""
+        assert resolve_submitted_action(CONFIRM_ACTION_ID, payload) == ""

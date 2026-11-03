@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
-from typing import Never, NotRequired, Protocol, Unpack, cast
+from typing import Never, NotRequired, Unpack
 
 import pytest
 from dify_agent.client import Client
@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from typing_extensions import TypedDict
 
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
-from graphon.runtime import InitParams, RuntimeState
+from graphon.runtime import InitParams
 from models import agent as agent_models
 from models.dify_builder_native_tests import NativePayloadObject, NativeTestScope
 from runtime_contracts.builder.execution import (
@@ -35,7 +35,7 @@ from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTes
 from services.dify_builder.native_testing import state_store as state
 from services.dify_builder.native_testing.agent_operations import AgentOperationService
 from services.dify_builder.native_testing.agent_workspace import AgentTestWorkspaceService
-from services.dify_builder.native_testing.control import BoundaryOwnerState, NativeControlSink
+from services.dify_builder.native_testing.control import _NativeControlBoundary
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
 from services.dify_builder.native_testing.repository import OwnedNativeTest
 from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation
@@ -56,20 +56,6 @@ class PrepareObjectArgs(TypedDict, closed=True):
     logical_key: str
     payload: JsonValue
     max_bytes: NotRequired[int | None]
-
-
-class MarkedAgentConstructor(Protocol):
-    def __call__(
-        self,
-        *,
-        node_id: str,
-        data: DifyAgentNodeData,
-        init_params: InitParams,
-        runtime_state: RuntimeState,
-        native_control_owner: BoundaryOwnerState,
-        native_control_sink: NativeControlSink,
-        **kwargs: object,
-    ) -> DifyAgentNode: ...
 
 
 @pytest.fixture
@@ -251,7 +237,6 @@ def node_association(
     context: ResolvedNativeTestContext,
     data: DifyAgentNodeData,
 ) -> NativeNodePreparation:
-    from graphon.runtime import InitParams
     from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
     from services.dify_builder.native_testing.control import marked_native_node_class
     from services.dify_builder.native_testing.host_execution import NativeHostLaunch
@@ -259,7 +244,6 @@ def node_association(
     from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
     from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
     from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation, NativeRuntimeBridge
-    from services.workflow_runtime.agent_node import DifyAgentNode
     from tests.unit_tests.services.dify_builder.test_effect_mock import _factory
 
     store = operations_service.state_store
@@ -295,9 +279,8 @@ def node_association(
     association = NativeNodePreparation(
         bridge=bridge, ref=context.ref, node_id="node", node_class=node_class, runtime_state=factory.runtime_state
     )
-    # The factory documents the additional constructor arguments of its generated subclass.
-    constructor = cast(MarkedAgentConstructor, node_class)
-    node = constructor(
+    assert issubclass(node_class, _NativeControlBoundary)
+    node = node_class(
         node_id="node",
         data=data,
         init_params=InitParams(
@@ -311,6 +294,7 @@ def node_association(
         native_control_sink=host.control_sink,
         **factory._build_agent_node_init_kwargs(node_class=DifyAgentNode),
     )
+    assert isinstance(node, DifyAgentNode)
     association.attach(node)
     node.bind_execution_id(PARENT.execution_id)
     return association
@@ -1143,11 +1127,11 @@ def test_current_published_binding_must_match_graph_outputs_and_routes(
         agent_id="agent",
         current_snapshot_id="pin",
         node_job_config=job,
-        binding_type=cast(WorkflowAgentBindingType, "foreign")
-        if mutation == "binding-kind"
-        else WorkflowAgentBindingType.ROSTER_AGENT,
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
     )
 
+    if mutation == "binding-kind":
+        monkeypatch.setattr(binding, "binding_type", "foreign")
     loader = operations_service.loader
     session = loader.session_factory()
     monkeypatch.setattr(session, "get", lambda model, _identity: snapshot if model is AgentConfigSnapshot else agent)

@@ -1622,7 +1622,9 @@ class TestPlanDeclaredNodeOutputs:
             assert prompt.replace(section, "") == plain[node_id]
 
     def test_a_garbage_declaration_is_indistinguishable_from_no_declaration(self):
-        garbage_result, garbage = self._generate(self._planner(node_outputs=cast(Any, "slides_json")))
+        garbage_plan = json.loads(self._planner())
+        garbage_plan["node_outputs"] = "slides_json"
+        garbage_result, garbage = self._generate(json.dumps(garbage_plan))
         plain_result, plain = self._generate(self._planner())
 
         assert garbage_result["error"] == plain_result["error"] == ""
@@ -5881,12 +5883,19 @@ class TestKnownCodeToolOutputContract:
         return {"id": "node2", "data": data}
 
     @staticmethod
-    def _graph(producer, variables=("valid", "items")):
+    def _graph(producer, variables=("valid", "items")) -> GraphDict:
         return {
             "nodes": [
-                {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "id": "node1",
+                    "data": {"type": "start", "title": "Start", "variables": []},
+                },
                 producer,
                 {
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
                     "id": "node3",
                     "data": {
                         "type": "if-else",
@@ -5908,6 +5917,8 @@ class TestKnownCodeToolOutputContract:
                     },
                 },
                 {
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
                     "id": "node4",
                     "data": {
                         "type": "end",
@@ -5919,17 +5930,17 @@ class TestKnownCodeToolOutputContract:
                 },
             ],
             "edges": [
-                {"source": "node1", "target": "node2"},
-                {"source": "node2", "target": "node3"},
-                {"source": "node3", "sourceHandle": "valid", "target": "node4"},
-                {"source": "node3", "sourceHandle": "invalid", "target": "node4"},
+                {"type": "custom", "id": "edge0", "source": "node1", "target": "node2"},
+                {"type": "custom", "id": "edge1", "source": "node2", "target": "node3"},
+                {"type": "custom", "id": "edge2", "source": "node3", "sourceHandle": "valid", "target": "node4"},
+                {"type": "custom", "id": "edge3", "source": "node3", "sourceHandle": "invalid", "target": "node4"},
             ],
             "viewport": {"x": 0, "y": 0, "zoom": 0.7},
         }
 
     @staticmethod
-    def _postprocess_and_validate(graph):
-        graph = WorkflowGenerator._postprocess_graph(graph=cast(GraphDict, graph), mode="workflow")
+    def _postprocess_and_validate(graph: GraphDict):
+        graph = WorkflowGenerator._postprocess_graph(graph=graph, mode="workflow")
         return graph, WorkflowGenerator._validate_structure(graph=graph, mode="workflow")
 
     @pytest.mark.parametrize(
@@ -6282,7 +6293,7 @@ class TestLlmNodeDeclaresTheEngineOutputs:
         cls, selector: list[str], *, schema_properties: dict | None, enabled: bool | None
     ) -> GraphDict:
         graph = cls._graph_referencing("text", schema_properties=schema_properties)
-        nodes = cast(list[dict[str, Any]], graph["nodes"])
+        nodes = graph["nodes"]
         llm_data = nodes[1]["data"]
         if enabled is None:
             llm_data.pop("structured_output_enabled", None)
@@ -6295,35 +6306,32 @@ class TestLlmNodeDeclaresTheEngineOutputs:
     def _graph_referencing(var: str, *, schema_properties: dict | None) -> GraphDict:
         llm = _llm_node("node2", structured_output_enabled=True, schema_properties=schema_properties)
         llm.update({"type": "custom", "position": {"x": 0, "y": 0}})
-        return cast(
-            GraphDict,
-            {
-                "nodes": [
-                    {
-                        "id": "node1",
-                        "type": "custom",
-                        "position": {"x": 0, "y": 0},
-                        "data": {"type": "start", "title": "Start", "variables": []},
+        return {
+            "nodes": [
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start", "variables": []},
+                },
+                {"id": llm["id"], "type": "custom", "position": {"x": 0, "y": 0}, "data": llm["data"]},
+                {
+                    "id": "node3",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "outputs": [{"variable": "out", "value_selector": ["node2", var]}],
                     },
-                    llm,
-                    {
-                        "id": "node3",
-                        "type": "custom",
-                        "position": {"x": 0, "y": 0},
-                        "data": {
-                            "type": "end",
-                            "title": "End",
-                            "outputs": [{"variable": "out", "value_selector": ["node2", var]}],
-                        },
-                    },
-                ],
-                "edges": [
-                    {"source": "node1", "target": "node2"},
-                    {"source": "node2", "target": "node3"},
-                ],
-                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
-            },
-        )
+                },
+            ],
+            "edges": [
+                {"type": "custom", "id": "edge0", "source": "node1", "target": "node2"},
+                {"type": "custom", "id": "edge1", "source": "node2", "target": "node3"},
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        }
 
     def test_a_three_segment_structured_output_selector_is_a_reference(self):
         """The builder head now teaches ``["node2","structured_output","f"]``,
@@ -6400,11 +6408,13 @@ class TestLlmNodeDeclaresTheEngineOutputs:
         graph = self._graph_referencing_selector(
             ["node2", "structured_output", "answer"], schema_properties=self._SCHEMA, enabled=None
         )
-        nodes = cast(list[dict[str, Any]], graph["nodes"])
+        nodes = [dict(node) for node in graph["nodes"]]
 
         WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
 
-        assert nodes[2]["data"]["outputs"][0]["value_selector"] == ["node2", "text"]
+        end_data = nodes[2]["data"]
+        assert isinstance(end_data, dict)
+        assert end_data["outputs"][0]["value_selector"] == ["node2", "text"]
         assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
 
     def test_a_dotted_reference_to_the_start_node_is_never_injected_as_an_input(self):
@@ -6932,13 +6942,13 @@ class TestPostprocessGraphNormalizers:
 
     _FIXTURES = __import__("pathlib").Path(__file__).resolve().parents[2] / "core/workflow/fixtures"
 
-    def _esq1_303(self) -> dict:
+    def _esq1_303(self) -> GraphDict:
         return json.loads((self._FIXTURES / "esq1_303_draft_graph.json").read_text(encoding="utf-8"))
 
     def test_postprocess_heals_the_esq1_303_draft(self):
         graph = self._esq1_303()
 
-        out = WorkflowGenerator._postprocess_graph(graph=cast(GraphDict, graph), mode="workflow")
+        out = WorkflowGenerator._postprocess_graph(graph=graph, mode="workflow")
 
         node2 = next(n for n in out["nodes"] if n["id"] == "node2")
         condition = node2["data"]["cases"][0]["conditions"][0]
@@ -6953,7 +6963,8 @@ class TestPostprocessGraphNormalizers:
         }
 
     def test_postprocess_fills_the_esq1_302_body_item_types_but_does_not_collapse_items(self):
-        graph = {
+        graph: GraphDict = {
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             "nodes": [
                 {
                     "id": "node1",
@@ -6983,10 +6994,10 @@ class TestPostprocessGraphNormalizers:
                     },
                 },
             ],
-            "edges": [{"source": "node1", "target": "node4"}],
+            "edges": [{"type": "custom", "id": "edge0", "source": "node1", "target": "node4"}],
         }
 
-        out = WorkflowGenerator._postprocess_graph(graph=cast(GraphDict, graph), mode="workflow")
+        out = WorkflowGenerator._postprocess_graph(graph=graph, mode="workflow")
 
         items = next(n for n in out["nodes"] if n["id"] == "node4")["data"]["body"]["data"]
         assert [i["type"] for i in items] == ["text", "text"]
@@ -7018,7 +7029,7 @@ class TestValidateStructureBranchHandlesAndHttpBodies:
 
     @staticmethod
     def _graph(nodes, edges) -> GraphDict:
-        return cast(GraphDict, {"nodes": nodes, "edges": edges, "viewport": {"x": 0, "y": 0, "zoom": 0.7}})
+        return {"nodes": nodes, "edges": edges, "viewport": {"x": 0, "y": 0, "zoom": 0.7}}
 
     _START = {
         "id": "node1",
@@ -7227,47 +7238,51 @@ class TestNativeHttpStatusComparisonValidation:
                 "url": "https://example.com",
                 "body": {"type": "none", "data": []},
             }
-        return cast(
-            GraphDict,
-            {
-                "nodes": [
-                    {"id": "start", "data": {"type": "start", "variables": []}},
-                    {"id": "http", "data": deepcopy(producer_data)},
-                    {
-                        "id": "check-status",
-                        "data": {
-                            "type": "if-else",
-                            "title": "Check status",
-                            "cases": [
-                                {
-                                    "case_id": "true",
-                                    "logical_operator": "and",
-                                    "conditions": [
-                                        {
-                                            "id": "status-condition",
-                                            "variable_selector": selector
-                                            if selector is not None
-                                            else ["http", "status_code"],
-                                            "varType": var_type,
-                                            "comparison_operator": comparison_operator,
-                                            "value": value,
-                                        }
-                                    ],
-                                }
-                            ],
-                        },
+        return {
+            "nodes": [
+                {
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "id": "start",
+                    "data": {"type": "start", "variables": []},
+                },
+                {"type": "custom", "position": {"x": 0, "y": 0}, "id": "http", "data": deepcopy(producer_data)},
+                {
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "id": "check-status",
+                    "data": {
+                        "type": "if-else",
+                        "title": "Check status",
+                        "cases": [
+                            {
+                                "case_id": "true",
+                                "logical_operator": "and",
+                                "conditions": [
+                                    {
+                                        "id": "status-condition",
+                                        "variable_selector": selector
+                                        if selector is not None
+                                        else ["http", "status_code"],
+                                        "varType": var_type,
+                                        "comparison_operator": comparison_operator,
+                                        "value": value,
+                                    }
+                                ],
+                            }
+                        ],
                     },
-                    {"id": "end", "data": {"type": "end", "outputs": []}},
-                ],
-                "edges": [
-                    {"source": "start", "target": "http"},
-                    {"source": "http", "target": "check-status"},
-                    {"source": "check-status", "target": "end", "sourceHandle": "true"},
-                    {"source": "check-status", "target": "end", "sourceHandle": "false"},
-                ],
-                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
-            },
-        )
+                },
+                {"type": "custom", "position": {"x": 0, "y": 0}, "id": "end", "data": {"type": "end", "outputs": []}},
+            ],
+            "edges": [
+                {"type": "custom", "id": "edge0", "source": "start", "target": "http"},
+                {"type": "custom", "id": "edge1", "source": "http", "target": "check-status"},
+                {"type": "custom", "id": "edge2", "source": "check-status", "target": "end", "sourceHandle": "true"},
+                {"type": "custom", "id": "edge3", "source": "check-status", "target": "end", "sourceHandle": "false"},
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        }
 
     @pytest.mark.parametrize("comparison_operator", ["is", "is not"])
     @pytest.mark.parametrize("var_type", ["number", "string"])
@@ -7452,41 +7467,38 @@ class TestAJsonSchemaArrayIsNotAValueSelector:
             }
         )
         llm["data"]["prompt_template"] = [{"role": "user", "text": "Write slide {{#node1.topic#}}"}]
-        graph = cast(
-            GraphDict,
-            {
-                "nodes": [
-                    {
-                        "id": "node1",
-                        "type": "custom",
-                        "position": {"x": 0, "y": 0},
-                        "data": {
-                            "type": "start",
-                            "title": "Start",
-                            "variables": [{"variable": "topic", "label": "Topic", "type": "paragraph"}],
-                        },
+        graph: GraphDict = {
+            "nodes": [
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "start",
+                        "title": "Start",
+                        "variables": [{"variable": "topic", "label": "Topic", "type": "paragraph"}],
                     },
-                    llm,
-                    {
-                        "id": "node9",
-                        "type": "custom",
-                        "position": {"x": 0, "y": 0},
-                        "data": {
-                            "type": "end",
-                            "title": "End",
-                            "outputs": [
-                                {"variable": "r", "value_selector": ["node3", "structured_output", "bullet_content"]}
-                            ],
-                        },
+                },
+                {"id": llm["id"], "type": "custom", "position": {"x": 0, "y": 0}, "data": llm["data"]},
+                {
+                    "id": "node9",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "outputs": [
+                            {"variable": "r", "value_selector": ["node3", "structured_output", "bullet_content"]}
+                        ],
                     },
-                ],
-                "edges": [
-                    {"id": "e1", "source": "node1", "target": "node3"},
-                    {"id": "e2", "source": "node3", "target": "node9"},
-                ],
-                "viewport": {"x": 0, "y": 0, "zoom": 1},
-            },
-        )
+                },
+            ],
+            "edges": [
+                {"type": "custom", "id": "e1", "source": "node1", "target": "node3"},
+                {"type": "custom", "id": "e2", "source": "node3", "target": "node9"},
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 1},
+        }
 
         errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow")
 
@@ -8332,20 +8344,33 @@ def test_generator_carries_failure_and_http_contract_to_real_code_builder(requir
 def test_inserted_retrieval_template_uses_existing_localized_titles(
     reply_language: str | None, expected_title: str
 ) -> None:
-    graph = cast(
-        GraphDict,
-        {
-            "nodes": [
-                {"id": "first", "data": {"type": "knowledge-retrieval", "title": "检索产品"}},
-                {"id": "second", "data": {"type": "knowledge-retrieval", "title": "检索政策"}},
-                {
-                    "id": "llm",
-                    "data": {"type": "llm", "context": {"enabled": True, "variable_selector": ["first", "result"]}},
-                },
-            ],
-            "edges": [{"source": "first", "target": "llm"}, {"source": "second", "target": "llm"}],
-        },
-    )
+    graph: GraphDict = {
+        "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        "nodes": [
+            {
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "id": "first",
+                "data": {"type": "knowledge-retrieval", "title": "检索产品"},
+            },
+            {
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "id": "second",
+                "data": {"type": "knowledge-retrieval", "title": "检索政策"},
+            },
+            {
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "id": "llm",
+                "data": {"type": "llm", "context": {"enabled": True, "variable_selector": ["first", "result"]}},
+            },
+        ],
+        "edges": [
+            {"type": "custom", "id": "edge0", "source": "first", "target": "llm"},
+            {"type": "custom", "id": "edge1", "source": "second", "target": "llm"},
+        ],
+    }
     result = WorkflowGenerator._postprocess_graph(graph=graph, mode="workflow", reply_language=reply_language)
     template = next(node for node in result["nodes"] if node["data"]["type"] == "template-transform")
     assert template["data"]["title"] == expected_title

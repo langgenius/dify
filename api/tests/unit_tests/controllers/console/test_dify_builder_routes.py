@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from inspect import unwrap
 from pathlib import Path
 from types import FunctionType
-from typing import Annotated, NamedTuple, NoReturn, Self, TypedDict, cast, get_args, override
+from typing import Annotated, NamedTuple, NoReturn, Self, get_args, override
 from unittest.mock import Mock, call
 
 import pytest
@@ -67,7 +67,6 @@ from models.base import Base, TypeBase
 from models.model import App, AppMode, DifySetup
 from services.dify_builder import wiring
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
-from services.dify_builder.application.ports import Repository
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService, SessionView
@@ -1229,21 +1228,39 @@ def _decorator_chain(method: Callable[..., object]) -> list[str]:
     names: list[str] = []
 
     def record(wrapper: object) -> bool:
-        names.append(cast(FunctionType, wrapper).__code__.co_qualname.split(".")[0])
+        assert isinstance(wrapper, FunctionType)
+        names.append(wrapper.__code__.co_qualname.split(".")[0])
         return False
 
     unwrap(method, stop=record)
     return names
 
 
-class _ApiDoc(TypedDict, total=False):
-    expect: list[SchemaModel]
-    params: dict[str, object]
-    responses: dict[str, tuple[str, SchemaModel, dict[str, object]]]
+def _apidoc(method: Callable[..., object]) -> dict[str, object]:
+    documentation = vars(method)["__apidoc__"]
+    assert isinstance(documentation, dict)
+    return documentation
 
 
-def _apidoc(method: Callable[..., object]) -> _ApiDoc:
-    return cast(_ApiDoc, vars(method)["__apidoc__"])
+def _schema_names(value: object) -> list[str]:
+    assert isinstance(value, list)
+    names: list[str] = []
+    for model in value:
+        assert isinstance(model, SchemaModel)
+        names.append(model.name)
+    return names
+
+
+def _response_model_names(value: object) -> dict[str, str]:
+    assert isinstance(value, dict)
+    names: dict[str, str] = {}
+    for code, response in value.items():
+        assert isinstance(code, str)
+        assert isinstance(response, tuple)
+        model = response[1]
+        assert isinstance(model, SchemaModel)
+        names[code] = model.name
+    return names
 
 
 def test_execute_cannot_change_parameters_or_forge_credentials() -> None:
@@ -1736,7 +1753,7 @@ def _coordinator(
         authorized.append(f"{actor.account_id}:{app_id}:{access}")
 
     service = DifyBuilderService(
-        cast(Repository, repo),
+        repo,
         lease,
         enqueue,
         authorize_app_fn=authorize,
@@ -1944,7 +1961,7 @@ def test_consent_route_docs_declare_bodies_only_for_posts() -> None:
         mod.DifyBuilderRealCallConsentExecuteApi.post: "DifyBuilderExecuteRealCallPayload",
     }
     for method, name in expected_bodies.items():
-        assert [model.name for model in _apidoc(method)["expect"]] == [name]
+        assert _schema_names(_apidoc(method)["expect"]) == [name]
     status_doc = _apidoc(mod.DifyBuilderRealCallConsentApi.get)
     assert "expect" not in status_doc
     assert "params" not in status_doc
@@ -1955,12 +1972,12 @@ def test_consent_route_docs_declare_bodies_only_for_posts() -> None:
         mod.DifyBuilderRealCallConsentExecuteApi.post: "202",
     }
     for method, code in success.items():
-        responses = _apidoc(method)["responses"]
-        assert responses[code][1].name == "DifyBuilderRealCallConsentResponse"
+        responses = _response_model_names(_apidoc(method)["responses"])
+        assert responses[code] == "DifyBuilderRealCallConsentResponse"
         # Every 403 that can reach these routes, not only the domain refusal.
-        assert responses["403"][1].name == "DifyBuilderRealCallForbiddenResponse"
-        assert responses["404"][1].name == "DifyBuilderErrorResponse"
-        assert responses["409"][1].name == "DifyBuilderRealCallRefusalResponse"
+        assert responses["403"] == "DifyBuilderRealCallForbiddenResponse"
+        assert responses["404"] == "DifyBuilderErrorResponse"
+        assert responses["409"] == "DifyBuilderRealCallRefusalResponse"
 
 
 @pytest.mark.parametrize(
@@ -1991,7 +2008,8 @@ def test_consent_routes_propagate_current_tenant_and_user_through_decorators(
     with Flask(__name__).test_request_context(method="GET" if body is None else "POST", json=body):
         result = view(object(), session_id=_SESSION_ID, **path_kwargs)
 
-    assert cast(tuple[dict[str, object], int], result)[1] == status
+    assert isinstance(result, tuple)
+    assert result[1] == status
     called = installed_mock(consent_method).call_args
     assert called.kwargs["actor"] == Actor(account_id="acc-9", tenant_id="ten-9")
     assert called.kwargs["session_id"] == _SESSION_ID
@@ -2374,7 +2392,7 @@ def request_sql_world(
         enqueued.append((session_id, action, actor, token))
 
     service = DifyBuilderService(
-        cast(Repository, repo),
+        repo,
         _ObservedLease(),
         enqueue,
         authorize_app_fn=wiring._authorize_app,
@@ -2642,8 +2660,8 @@ def test_task_control_routes_delegate_fixed_operation_and_return_session_json(
         "dify_builder_required",
     ]
     docs = _apidoc(resource.post)
-    assert [model.name for model in docs["expect"]] == ["DifyBuilderTaskControlPayload"]
-    assert docs["responses"]["200"][1].name == "DifyBuilderSessionViewResponse"
+    assert _schema_names(docs["expect"]) == ["DifyBuilderTaskControlPayload"]
+    assert _response_model_names(docs["responses"])["200"] == "DifyBuilderSessionViewResponse"
     assert "x-typed-event-stream" not in docs
 
 

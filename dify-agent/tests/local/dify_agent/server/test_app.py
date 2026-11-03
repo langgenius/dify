@@ -554,6 +554,22 @@ def test_confirmed_owner_is_composed_without_withdrawing_ordinary_keys(monkeypat
         assert scheduler.services.plugin_daemon_api_key == "ordinary-plugin"
 
 
+def test_real_lifespan_accepts_prefixed_inner_api_alongside_ordinary_credentials() -> None:
+    settings = ServerSettings(
+        _env_file=None,
+        redis_url="redis://example.invalid/0",
+        inner_api_url="https://api.example.com/dify",
+        api_token="backend-token",
+        inner_api_key="ordinary-inner",
+        plugin_daemon_api_key="ordinary-plugin",
+    )
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/runs/capabilities", headers={"Authorization": "Bearer backend-token"})
+        assert response.status_code == 200
+        assert "create-idempotency-v1" in response.json()["features"]
+        assert client.get("/runs/capabilities").status_code == 401
+
+
 def test_confirmed_stub_uses_strict_owner_alongside_legacy_ordinary_services(monkeypatch):
     from dify_agent.adapters.native_testing.transport import _RunBoundAPITransport, bind_runtime_identity
     from dify_agent.protocol.native_testing import AgentRuntimeIdentity

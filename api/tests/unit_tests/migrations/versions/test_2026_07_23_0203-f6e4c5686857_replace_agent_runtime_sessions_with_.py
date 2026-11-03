@@ -3,8 +3,9 @@ from __future__ import annotations
 import importlib.util
 from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Protocol, runtime_checkable
 
+import pytest
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
@@ -15,10 +16,13 @@ _MIGRATION_PATH = (
 )
 
 
+@runtime_checkable
 class _MigrationModule(Protocol):
-    op: Operations
-    upgrade: Callable[[], None]
-    downgrade: Callable[[], None]
+    @property
+    def upgrade(self) -> Callable[[], None]: ...
+
+    @property
+    def downgrade(self) -> Callable[[], None]: ...
 
 
 def _load_migration_module() -> _MigrationModule:
@@ -27,7 +31,8 @@ def _load_migration_module() -> _MigrationModule:
         raise RuntimeError("failed to load Agent Workspace migration")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return cast(_MigrationModule, module)
+    assert isinstance(module, _MigrationModule)
+    return module
 
 
 def _create_pre_upgrade_schema(engine: sa.Engine) -> None:
@@ -95,12 +100,9 @@ def _create_pre_upgrade_schema(engine: sa.Engine) -> None:
 def _run_upgrade(module: _MigrationModule, engine: sa.Engine) -> None:
     with engine.begin() as connection:
         operations = Operations(MigrationContext.configure(connection))
-        original_op = module.op
-        module.op = operations
-        try:
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(module, "op", operations)
             module.upgrade()
-        finally:
-            module.op = original_op
 
 
 def test_upgrade_replaces_runtime_sessions_with_workspace_schema() -> None:
@@ -150,10 +152,12 @@ def test_mysql_workspace_downgrade_restores_portable_runtime_session_types() -> 
 
     module = _load_migration_module()
     output = StringIO()
-    module.op = Operations(
+    operations = Operations(
         MigrationContext.configure(dialect_name="mysql", opts={"as_sql": True, "output_buffer": output})
     )
-    module.downgrade()
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(module, "op", operations)
+        module.downgrade()
     sql = output.getvalue()
     assert "id CHAR(36) NOT NULL" in sql
     assert "session_snapshot LONGTEXT NOT NULL" in sql

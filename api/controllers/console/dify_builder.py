@@ -32,14 +32,14 @@ import dataclasses
 import functools
 import logging
 from collections.abc import Callable, Iterator
-from typing import Literal, TypedDict, cast
+from typing import Literal, TypedDict
 
-from flask import Flask, Response, current_app, request
+from flask import Response, request
+from flask.globals import app_ctx
 from flask_restx import Resource
 from pydantic import ValidationError
 from sqlalchemy.orm import scoped_session
 from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound, ServiceUnavailable
-from werkzeug.local import LocalProxy
 
 from controllers.common.schema import (
     query_params_from_model,
@@ -500,7 +500,7 @@ def _stream(
             raise
         return mapped
 
-    app = cast(LocalProxy[Flask], current_app)._get_current_object()
+    app = app_ctx.app
     if native_version not in (None, "builder-native-test-v1"):
         subscription.close()
         raise BadRequest("Invalid native test stream version.")

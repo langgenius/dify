@@ -319,7 +319,7 @@ export const Workflow: FC<WorkflowProps> = memo(
 
         if (payload.viewport) reactflow.setViewport(payload.viewport)
 
-        if (payload.hash) setSyncWorkflowDraftHash(payload.hash)
+        if (payload.hash) setSyncWorkflowDraftHash(payload.hash, payload)
 
         onWorkflowDataUpdate?.(payload)
         payload.onApplied?.()

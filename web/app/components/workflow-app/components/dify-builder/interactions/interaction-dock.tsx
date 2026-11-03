@@ -47,7 +47,7 @@ const InteractionDockShell = ({
     <section
       aria-labelledby={titleId}
       lang={locale}
-      className="mx-4 flex max-h-[min(60vh,26rem)] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
+      className="mx-4 flex max-h-[min(60vh,26rem)] min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur wrap-anywhere shadow-lg backdrop-blur-[10px]"
     >
       <header className="shrink-0 px-4 pt-4 pb-3">
         <h2 id={titleId} className="system-sm-semibold text-text-primary">
@@ -55,7 +55,9 @@ const InteractionDockShell = ({
         </h2>
         {description && <p className="mt-1 system-xs-regular text-text-tertiary">{description}</p>}
       </header>
-      {children ? <div className="min-h-0 overflow-y-auto px-4 pb-3">{children}</div> : null}
+      {children ? (
+        <div className="min-h-0 min-w-0 overflow-y-auto px-4 pb-3">{children}</div>
+      ) : null}
       {footer ? <div className="flex shrink-0 justify-end px-4 py-4">{footer}</div> : null}
     </section>
   )
@@ -124,6 +126,7 @@ const ChoiceInteraction = ({
           form={formId}
           size="small"
           variant="primary"
+          className="h-auto min-h-6 max-w-full py-1 whitespace-normal"
           loading={pending}
           disabled={pending ? false : busy || !canSubmit}
         >
@@ -160,12 +163,12 @@ const ChoiceInteraction = ({
               value={option.id}
               nativeButton
               render={<button type="button" />}
-              className="flex min-h-9 w-full cursor-pointer items-center rounded-[10px] border border-transparent bg-background-section px-3 py-2.5 text-start system-sm-medium text-text-secondary outline-hidden transition-colors hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-state-accent-solid/30 data-checked:bg-util-colors-blue-brand-blue-brand-50 data-checked:text-text-primary data-checked:hover:border-state-accent-solid/30 data-checked:hover:bg-util-colors-blue-brand-blue-brand-50 data-disabled:cursor-not-allowed data-disabled:opacity-50"
+              className="group/choice flex min-h-9 w-full cursor-pointer items-center rounded-[10px] border border-transparent bg-background-section px-3 py-2.5 text-start system-sm-medium text-text-secondary outline-hidden transition-colors hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-state-accent-solid/30 data-checked:bg-util-colors-blue-brand-blue-brand-50 data-checked:text-text-primary data-checked:hover:border-state-accent-solid/30 data-checked:hover:bg-util-colors-blue-brand-blue-brand-50 data-disabled:cursor-not-allowed data-disabled:opacity-50"
             >
               <span className="min-w-0">
                 <span className="block">{renderText(option.label)}</span>
                 {option.description && (
-                  <span className="mt-0.5 block system-xs-regular text-text-tertiary">
+                  <span className="mt-0.5 block system-xs-regular text-text-tertiary group-data-checked/choice:text-text-secondary">
                     {renderText(option.description)}
                   </span>
                 )}
@@ -292,9 +295,10 @@ const ResourceInteraction = ({
   const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const formId = useId()
   const actionId = activeInteraction.action_id
-  const [payload, setPayload] = useState<Record<string, unknown>>(() =>
-    getDefaultActionPayload(actionId, activeInteraction),
-  )
+  const payloadRef = useRef<Record<string, unknown> | null>(null)
+  if (payloadRef.current === null) {
+    payloadRef.current = getDefaultActionPayload(actionId, activeInteraction)
+  }
   const [pending, setPending] = useState(false)
   const card = activeInteraction.card
   const { renderText } = useBuilderText()
@@ -303,7 +307,7 @@ const ResourceInteraction = ({
     if (busy || pending) return
     setPending(true)
     try {
-      await submitInteraction(actionId, payload)
+      await submitInteraction(actionId, payloadRef.current!)
     } finally {
       setPending(false)
     }
@@ -340,7 +344,7 @@ const ResourceInteraction = ({
           item={card}
           busy={busy || pending}
           onActionPayloadChange={(changedActionId, nextPayload) => {
-            if (changedActionId === actionId) setPayload(nextPayload)
+            if (changedActionId === actionId) payloadRef.current = nextPayload
           }}
         />
       </form>

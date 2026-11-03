@@ -13,6 +13,7 @@ export type WorkflowDraftSliceShape = {
   workflowDraftSyncPhase: 'idle' | 'preparing' | 'builder'
   setWorkflowDraftSyncPhase: (phase: WorkflowDraftSliceShape['workflowDraftSyncPhase']) => void
   enqueueWorkflowDraftOperation: <T>(operation: () => Promise<T>) => Promise<T>
+  runWorkflowDraftOperationImmediately: <T>(operation: () => Promise<T>) => Promise<T>
   lastSavedWorkflowDraft: { appId: string; generation: number; hash: string } | null
   setLastSavedWorkflowDraft: (saved: WorkflowDraftSliceShape['lastSavedWorkflowDraft']) => void
   backupDraft?: {
@@ -25,7 +26,8 @@ export type WorkflowDraftSliceShape = {
   setBackupDraft: (backupDraft?: WorkflowDraftSliceShape['backupDraft']) => void
   debouncedSyncWorkflowDraft: DebouncedFunc
   syncWorkflowDraftHash: string
-  setSyncWorkflowDraftHash: (hash: string) => void
+  syncWorkflowDraftIsEmpty: boolean | undefined
+  setSyncWorkflowDraftHash: (hash: string, graph?: { nodes: unknown[]; edges: unknown[] }) => void
   workflowDraftGeneration: number
   workflowDraftLocalRevision: number
   workflowDraftSavedRevision: number
@@ -45,8 +47,9 @@ export type WorkflowDraftSliceShape = {
 }
 
 export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (set, get) => {
-  // One queue per mounted editor, shared by saves and authoritative reloads.
+  // Unload saves start immediately; queued operations still wait for them.
   let draftQueue: Promise<unknown> = Promise.resolve()
+  const immediateOperations = new Set<Promise<unknown>>()
   // Create the debounced function and store it with access to cancel/flush methods
   const debouncedFn = debounce((syncWorkflowDraft) => {
     syncWorkflowDraft()
@@ -56,9 +59,19 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
     workflowDraftSyncPhase: 'idle',
     setWorkflowDraftSyncPhase: (workflowDraftSyncPhase) => set({ workflowDraftSyncPhase }),
     enqueueWorkflowDraftOperation: (operation) => {
-      const next = draftQueue.catch(() => undefined).then(operation)
+      const next = draftQueue
+        .catch(() => undefined)
+        .then(async () => {
+          while (immediateOperations.size > 0) await Promise.allSettled([...immediateOperations])
+          return operation()
+        })
       draftQueue = next
       return next
+    },
+    runWorkflowDraftOperationImmediately: (operation) => {
+      const next = operation()
+      immediateOperations.add(next)
+      return next.finally(() => immediateOperations.delete(next))
     },
     lastSavedWorkflowDraft: null,
     setLastSavedWorkflowDraft: (lastSavedWorkflowDraft) => set({ lastSavedWorkflowDraft }),
@@ -66,7 +79,14 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
     setBackupDraft: (backupDraft) => set(() => ({ backupDraft })),
     debouncedSyncWorkflowDraft: debouncedFn,
     syncWorkflowDraftHash: '',
-    setSyncWorkflowDraftHash: (syncWorkflowDraftHash) => set(() => ({ syncWorkflowDraftHash })),
+    syncWorkflowDraftIsEmpty: undefined,
+    setSyncWorkflowDraftHash: (syncWorkflowDraftHash, graph) =>
+      set(() => ({
+        syncWorkflowDraftHash,
+        syncWorkflowDraftIsEmpty: graph
+          ? graph.nodes.length === 0 && graph.edges.length === 0
+          : undefined,
+      })),
     workflowDraftGeneration: 0,
     workflowDraftLocalRevision: 0,
     workflowDraftSavedRevision: 0,

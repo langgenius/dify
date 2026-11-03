@@ -13,11 +13,14 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
-from typing import NoReturn, cast
+from operator import methodcaller
+from typing import NoReturn
 
 import pytest
 from sqlalchemy import Select, inspect
+from sqlalchemy.orm import Session
 
+from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import (
     NativeInvocationState,
@@ -27,11 +30,18 @@ from models.dify_builder_native_tests import (
 )
 from models.workflow import Workflow
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
-from runtime_contracts.builder.native.contracts import JsonValue, NativeTestContextRef, OperationKey, operation_digest
+from runtime_contracts.builder.native.contracts import NativeTestContextRef, OperationKey, operation_digest
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing import state_store as module
+from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
 from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
+from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import (
+    SqlMethods,
+    checked_row,
+    sql_session,
+    sql_session_factory,
+)
 
 NATIVE_ID = "81d492fd-05ce-46a8-8c82-a35d4b343d48"
 CANARY = "private-input-canary-982314"
@@ -41,23 +51,24 @@ class SQLStandIn:
     def __init__(self, owner: LoaderStandIn) -> None:
         self.owner = owner
 
+    def sql_methods(self) -> SqlMethods:
+        return {"get": self.get, "scalar": self.scalar, "scalars": self.scalars, "add": self.add, "flush": self.flush}
+
     def scalar[T](self, query: Select[tuple[T]]) -> T | None:
-        entity = query.column_descriptions[0]["entity"]
+        entity: type[T] = query.column_descriptions[0]["entity"]
         if entity is NativeInvocationState:
-            return cast(T, self.owner.state)
+            return checked_row(entity, self.owner.state)
         if entity is NativePayloadObject:
             filters = {key.rsplit("_", 1)[0]: value for key, value in query.compile().params.items()}
-            return cast(
-                T | None,
-                next(
-                    (
-                        row
-                        for row in self.owner.rows
-                        if all(inspect(row).attrs[key].value == value for key, value in filters.items())
-                    ),
-                    None,
+            result = next(
+                (
+                    row
+                    for row in self.owner.rows
+                    if all(inspect(row).attrs[key].value == value for key, value in filters.items())
                 ),
+                None,
             )
+            return checked_row(entity, result) if result is not None else None
         raise AssertionError("unexpected SQL entity")
 
     def scalars(self, query: Select[tuple[object, ...]]) -> list[NativeInvocationState] | list[str]:
@@ -72,7 +83,7 @@ class SQLStandIn:
         del populate_existing
         assert model is DifyBuilderExecutionRequest
         assert identity == self.owner.ref.request_id
-        return cast(T, self.owner.request)
+        return checked_row(model, self.owner.request)
 
     def add(self, row: NativePayloadObject) -> None:
         self.owner.rows.append(row)
@@ -160,9 +171,9 @@ class LoaderStandIn:
         return self.owned
 
     def _load(
-        self, session: SQLStandIn, *, ref: NativeTestContextRef, lock: bool = False
+        self, session: Session, *, ref: NativeTestContextRef, lock: bool = False
     ) -> tuple[OwnedNativeTest, NativeTestScope]:
-        assert isinstance(session, SQLStandIn)
+        assert isinstance(session, Session)
         assert not lock
         return self.load(ref=ref), self.scope
 
@@ -263,7 +274,7 @@ def case(monkeypatch: pytest.MonkeyPatch) -> NodeInputsCase:
         assert not loader.writing
         return bytes.fromhex(raw).decode()
 
-    def private_read(owner: LoaderStandIn, ref: NativeTestContextRef) -> PrivateReadOwner:
+    def private_read(owner: OwnedNativeTestLoader, ref: NativeTestContextRef) -> PrivateReadOwner:
         owner.load(ref=ref)
         assert loader.state.app_id is not None
         assert loader.state.workflow_id is not None
@@ -291,7 +302,21 @@ def case(monkeypatch: pytest.MonkeyPatch) -> NodeInputsCase:
     monkeypatch.setattr(module, "validate_private_read", private_read)
     monkeypatch.setattr(module, "validate_invocation_workflow", lambda *_args, **_kwargs: workflow)
     monkeypatch.setattr(module, "native_workflow_revision", lambda _workflow: "revision")
-    store = module.NativeExecutionStateStore(cast(OwnedNativeTestLoader, loader))
+    owner_loader = OwnedNativeTestLoader(
+        sql_session_factory(monkeypatch, loader.session_factory, methods=SQLStandIn.sql_methods),
+        actor=Actor(tenant_id="tenant", account_id="actor"),
+        resolver=NativeHttpBindingResolver(),
+    )
+    monkeypatch.setattr(owner_loader, "load", loader.load)
+    monkeypatch.setattr(owner_loader, "_load", loader._load)
+
+    @contextmanager
+    def locked(*, ref: NativeTestContextRef) -> Generator[tuple[Session, OwnedNativeTest, NativeTestScope]]:
+        with loader.locked(ref=ref) as (boundary, owned, scope):
+            yield sql_session(monkeypatch, boundary.sql_methods()), owned, scope
+
+    monkeypatch.setattr(owner_loader, "locked", locked)
+    store = module.NativeExecutionStateStore(owner_loader)
     receipt = store.prepare_object(
         ref=loader.ref,
         tenant_id="tenant",
@@ -319,7 +344,11 @@ def persist(case: NodeInputsCase, inputs: object) -> str:
     """Pass malformed JSON unchanged to exercise the runtime validation boundary."""
     method = case.store.store_node_inputs
     assert callable(method), "independent node input persistence is unavailable"
-    return method(ref=case.ref, generation=0, native_execution_id=NATIVE_ID, inputs=cast(JsonValue, inputs))
+    result = methodcaller(
+        "store_node_inputs", ref=case.ref, generation=0, native_execution_id=NATIVE_ID, inputs=inputs
+    )(case.store)
+    assert isinstance(result, str)
+    return result
 
 
 @pytest.mark.parametrize("value", [True, "true", [1, None], "[1,null]", None, 1.5, {"file": {"ref": "file-id"}}])
@@ -367,9 +396,9 @@ def test_generation_must_be_exact_current_integer_before_storage(
     case: NodeInputsCase, generation: None | bool | float | int | str
 ) -> None:
     with pytest.raises(BuilderExecutionPolicyError, match="native_generation_conflict"):
-        case.store.store_node_inputs(
-            ref=case.ref, generation=cast(int, generation), native_execution_id=NATIVE_ID, inputs=None
-        )
+        methodcaller(
+            "store_node_inputs", ref=case.ref, generation=generation, native_execution_id=NATIVE_ID, inputs=None
+        )(case.store)
     assert "save" not in case.events
 
 
@@ -438,7 +467,9 @@ def test_invalid_identity_fails_before_private_storage(case: NodeInputsCase, ide
     method = case.store.store_node_inputs
     assert callable(method), "independent node input persistence is unavailable"
     with pytest.raises(BuilderExecutionPolicyError):
-        method(ref=case.ref, generation=0, native_execution_id=cast(str, identity), inputs={"secret": CANARY})
+        methodcaller(
+            "store_node_inputs", ref=case.ref, generation=0, native_execution_id=identity, inputs={"secret": CANARY}
+        )(case.store)
     assert case.events == []
 
 

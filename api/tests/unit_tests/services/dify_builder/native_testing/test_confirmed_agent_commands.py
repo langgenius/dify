@@ -2,7 +2,6 @@
 
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
-from typing import cast
 from uuid import uuid4
 
 import httpx
@@ -39,7 +38,7 @@ from services.dify_builder.native_testing.confirmed_agent_continuation import (
 )
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 from services.dify_builder.native_testing.repository import OwnedNativeTest
-from tests.unit_tests.core.app.entities.test_app_invoke_entities import _create_workflow_generate_entity
+from tests.unit_tests.core.app.entities.test_app_invoke_entities import _create_workflow_generate_entity, _trace_scope
 from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT
 
@@ -61,7 +60,7 @@ def envelope() -> dict[str, object]:
 
 
 def entity(*, marked: bool = True) -> WorkflowAppGenerateEntity:
-    result = _create_workflow_generate_entity()
+    result = _create_workflow_generate_entity(trace_scope=_trace_scope())
     result.builder_agent_execution = BuilderAgentExecutionContext(ref=REF, native_run_id=RUN) if marked else None
     return result
 
@@ -214,18 +213,20 @@ def test_actual_resume_task_refuses_malformed_marked_envelope_before_unscoped_st
 @pytest.mark.parametrize("change", ["missing", "run", "ref", "boolean_generation", "extra"])
 def test_marked_resume_requires_exact_dispatch_envelope_before_any_claim(change: str) -> None:
     payload = envelope()
+    dispatch = payload["builder_agent_dispatch"]
+    assert isinstance(dispatch, dict)
     if change == "missing":
         payload.pop("builder_agent_dispatch")
     elif change == "run":
         payload["workflow_run_id"] = str(uuid4())
     elif change == "ref":
-        cast(dict[str, object], cast(dict[str, object], payload["builder_agent_dispatch"])["ref"])["request_id"] = (
-            "foreign"
-        )
+        ref = dispatch["ref"]
+        assert isinstance(ref, dict)
+        ref["request_id"] = "foreign"
     elif change == "boolean_generation":
-        cast(dict[str, object], payload["builder_agent_dispatch"])["generation"] = True
+        dispatch["generation"] = True
     else:
-        cast(dict[str, object], payload["builder_agent_dispatch"])["approval"] = True
+        dispatch["approval"] = True
     with pytest.raises(BuilderExecutionPolicyError):
         commands_module.guard_confirmed_agent_resume(payload=payload, generate_entity=entity())
 
@@ -257,10 +258,10 @@ def test_resume_publishes_only_after_committed_lifecycle_resume(mocker: pytest_m
     api = _api()
     mocker.patch.object(api.lifecycle, "resume", side_effect=lambda **_: events.append("committed") or receipt)
     commands = commands_module.ConfirmedAgentCommands(api=api, continuation=None, backend=None, publish=None)
-    commands._request = lambda **_: None
-    commands._root_ref = lambda **_: REF
-    commands._publish_one = lambda **_: events.append("published") or True
-    commands.get = lambda **_: "receipt"
+    mocker.patch.object(commands, "_request", return_value=None)
+    mocker.patch.object(commands, "_root_ref", return_value=REF)
+    mocker.patch.object(commands, "_publish_one", side_effect=lambda **_: events.append("published") or True)
+    mocker.patch.object(commands, "get", return_value="receipt")
     assert (
         commands.resume(
             actor=ACTOR, session_id="session", request_id="request", expected_generation=0, idempotency_key="once"
@@ -518,7 +519,9 @@ def test_completed_child_recovery_requeues_original_claim_only_after_terminal_pr
     protected = _protected()
     mocker.patch.object(commands, "load_wait", return_value=protected)
     mocker.patch.object(commands, "_terminal_recovery_proof", return_value=_pause())
-    commands._publish_one = lambda **values: events.append(("publish", values)) or True
+    mocker.patch.object(
+        commands, "_publish_one", side_effect=lambda **values: events.append(("publish", values)) or True
+    )
     assert commands._recover_terminal_continuation(ref=REF, parent_node=protected.association.parent_node)
     assert events == [
         "lifecycle-fence-recover",
@@ -705,16 +708,16 @@ def test_lost_create_ack_status_recovery_uses_saved_sql_identity_and_no_second_p
     )
     mocker.patch.object(api.store, "load_agent_association", return_value=protected)
     monkeypatch.setattr(agent_confirmed_workspace, "load_confirmed_agent_parent", lambda **_: parent)
-    events: list[object] = []
+    events: list[tuple[str, object]] = []
     continuation = _continuation(api, backend)
     mocker.patch.object(continuation, "read_parent_pause", return_value=_pause(runtime))
     mocker.patch.object(
         continuation, "persist_parent_wait", side_effect=lambda **values: events.append(("parent-commit", values))
     )
     commands = commands_module.ConfirmedAgentCommands(api=api, continuation=continuation, backend=backend, publish=None)
-    commands.prepare_wait = lambda **values: events.append(("selected-checkpoint", values))
+    monkeypatch.setattr(commands, "prepare_wait", lambda **values: events.append(("selected-checkpoint", values)))
     assert commands._recover_pending_ack(ref=REF)
-    assert [cast(tuple[str, object], event)[0] for event in events] == ["selected-checkpoint", "parent-commit"]
+    assert [event[0] for event in events] == ["selected-checkpoint", "parent-commit"]
     assert calls == ["/runs", "/runs/lookup", "/runs/lookup", "/runs/original-child/events"]
     assert lookups[0] == lookups[1]
     assert recovery.process_data(scope=scope)["agent_create_attempts"][0]["child_run_id"] == "original-child"
@@ -813,8 +816,8 @@ def test_public_pause_read_refreshes_callback_and_preserves_only_live_owned_resu
     continuation = _continuation(api)
     mocker.patch.object(continuation, "read_parent_pause", side_effect=lambda **kwargs: pause_checks.append(kwargs))
     commands = commands_module.ConfirmedAgentCommands(api=api, continuation=continuation, backend=None, publish=None)
-    commands._request = lambda **_kwargs: None
-    commands._root_ref = lambda **_kwargs: REF
+    mocker.patch.object(commands, "_request", return_value=None)
+    mocker.patch.object(commands, "_root_ref", return_value=REF)
 
     def recover(**_kwargs: object) -> bool:
         if after in {"waiting", "quarantined"}:
@@ -826,7 +829,7 @@ def test_public_pause_read_refreshes_callback_and_preserves_only_live_owned_resu
             raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
         return False
 
-    commands._recover_pending_ack = recover
+    mocker.patch.object(commands, "_recover_pending_ack", side_effect=recover)
     result = commands.get(actor=ACTOR, session_id="session", request_id=REF.request_id)
     if after == "waiting":
         assert result == fresh
@@ -1050,7 +1053,7 @@ def test_native_reconcile_and_outbox_sql_stay_with_selected_profile_request(
     assert (
         api.lifecycle.publish_pending(publish=lambda **message: published.append(message), request_id=selected_id) == 1
     )
-    assert [cast(dict[str, object], message["ref"])["request_id"] for message in published] == [selected_id]
+    assert [NativeTestContextRef.model_validate(message["ref"]).request_id for message in published] == [selected_id]
     with sqlite_session_factory() as sql:
         for index, identity in enumerate(dispatch_ids):
             row = sql.get(NativeDispatch, identity)

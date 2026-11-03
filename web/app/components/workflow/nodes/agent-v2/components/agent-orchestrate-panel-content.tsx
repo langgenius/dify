@@ -11,6 +11,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { AgentPreviewChatController } from '@/features/agent-v2/agent-detail/configure/components/preview/chat-conversation'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
@@ -62,6 +63,7 @@ import { useAgentBuildDraftRefresh } from '@/features/agent-v2/build-draft-refre
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 import { InlineAgentLoading } from './inline-agent-loading'
 
@@ -441,7 +443,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     consoleQuery.agent.byAgentId.buildDraft.put.mutationOptions(),
   )
   const { mutateAsync: discardBuildDraft, isPending: isDiscardingBuildDraft } = useMutation(
-    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions(),
+    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({ context: { silent: true } }),
   )
   const getInlineAgentSoulDraft = useCallback(
     () =>
@@ -489,25 +491,25 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     cancelBuildDraftRefresh()
     setIsApplyingInlineBuildDraft(true)
     try {
-      if (!buildDraft.agentSoulConfig) return
+      const latestBuildDraft = await buildDraft.refetch()
+      const agentSoulConfig = latestBuildDraft.data?.agent_soul
+      if (latestBuildDraft.isError || !agentSoulConfig) return
 
-      const savedComposerState = await saveAgentSoulConfig(buildDraft.agentSoulConfig)
+      const savedComposerState = await saveAgentSoulConfig(agentSoulConfig)
       await discardBuildDraft({
         params: {
           agent_id: agentId,
         },
-      }).catch(() => undefined)
+      })
       await resetBuildSession().catch(() => undefined)
       setBuildDraftSoulSourceOverride('draft')
       queryClient.removeQueries({
         queryKey: buildDraftQueryOptions.queryKey,
       })
-      rebaseComposerDraftFromSoulConfig(
-        savedComposerState?.agent_soul ?? buildDraft.agentSoulConfig,
-      )
+      rebaseComposerDraftFromSoulConfig(savedComposerState?.agent_soul ?? agentSoulConfig)
       toast.success(t(($) => $['api.actionSuccess']))
-    } catch {
-      toast.error(t(($) => $['api.actionFailed']))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $['api.actionFailed']))
     } finally {
       setIsApplyingInlineBuildDraft(false)
     }
@@ -528,8 +530,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       rebaseComposerDraftFromSoulConfig(agentSoulConfig)
       toast.success(t(($) => $['api.actionSuccess']))
       return true
-    } catch {
-      toast.error(t(($) => $['api.actionFailed']))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $['api.actionFailed']))
       return false
     }
   }, [
@@ -732,13 +734,9 @@ function WorkflowInlineAgentConfigureMoreAction({
     <Menu modal={false}>
       <MenuTrigger
         render={
-          <button
-            type="button"
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-            aria-label={t(($) => $['operation.more'])}
-          >
+          <IconButton aria-label={t(($) => $['operation.more'])}>
             <span aria-hidden className="i-ri-more-fill size-4" />
-          </button>
+          </IconButton>
         }
       />
       <MenuContent align="end" className="w-max min-w-44">

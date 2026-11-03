@@ -4,7 +4,6 @@ import json
 from collections.abc import Iterator
 from copy import deepcopy
 from pathlib import Path
-from typing import cast
 
 import pytest
 
@@ -15,13 +14,19 @@ from core.workflow.generator.types import GraphDict
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool.exc import ToolParameterError
-from graphon.nodes.tool.tool_node import ToolNode
 from graphon.nodes.tool_runtime_entities import ToolRuntimeParameter
 from graphon.runtime import VariablePool
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from graphon.variables.segments import NoneSegment, StringSegment
 from services.workflow_generation.runner import WorkflowGenerator
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import forbid_secret_and_business_calls
+from tests.unit_tests.services.dify_builder.typed_fixtures import (
+    dictionaries,
+    dictionary,
+    graph_node,
+    graph_payload,
+    native_parameter_node,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -37,49 +42,43 @@ _ACTION = "qa_news_search"
 
 def _entry() -> ToolCatalogueEntry:
     fixture = Path(__file__).parents[1] / "tools" / "fixtures" / "qa_news_search_openapi.json"
-    schema = cast(dict[str, object], json.loads(fixture.read_text()))
+    schema = dictionary(json.loads(fixture.read_text()))
     bundle = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(schema)[0]
     assert bundle.parameters is not None
-    return cast(
-        ToolCatalogueEntry,
-        {
-            "provider_name": _PROVIDER,
-            "provider_type": "api",
-            "plugin_id": "",
-            "tool_name": _ACTION,
-            "tool_label": "QA News Search",
-            "description": "Controlled public metadata",
-            "needs_credentials": False,
-            "parameters": [parameter.model_dump(mode="json") for parameter in bundle.parameters],
-            "output_schema": {},
-        },
-    )
+    return {
+        "provider_name": _PROVIDER,
+        "provider_type": "api",
+        "plugin_id": "",
+        "tool_name": _ACTION,
+        "tool_label": "QA News Search",
+        "description": "Controlled public metadata",
+        "needs_credentials": False,
+        "parameters": [parameter.model_dump(mode="json") for parameter in bundle.parameters],
+        "output_schema": {},
+    }
 
 
 def _graph(
     binding: object, *, source_type: str = "text-input", source_id: str = "node1", field: str = "keyword"
 ) -> GraphDict:
-    return cast(
-        GraphDict,
-        {
-            "nodes": [
-                {"id": source_id, "data": {"type": "start", "variables": [{"variable": field, "type": source_type}]}},
+    return graph_payload(
+        [
+            graph_node(source_id, {"type": "start", "variables": [{"variable": field, "type": source_type}]}),
+            graph_node(
+                "node2",
                 {
-                    "id": "node2",
-                    "data": {
-                        "type": "tool",
-                        "provider_id": _PROVIDER,
-                        "tool_name": _ACTION,
-                        "tool_parameters": {
-                            "query": binding,
-                            "timespan": {"type": "constant", "value": "24h"},
-                            "maxrecords": {"type": "constant", "value": 5},
-                        },
+                    "type": "tool",
+                    "provider_id": _PROVIDER,
+                    "tool_name": _ACTION,
+                    "tool_parameters": {
+                        "query": binding,
+                        "timespan": {"type": "constant", "value": "24h"},
+                        "maxrecords": {"type": "constant", "value": 5},
                     },
                 },
-            ],
-            "edges": [],
-        },
+            ),
+        ],
+        [],
     )
 
 
@@ -91,7 +90,7 @@ def _hydrate(graph: GraphDict, entry: ToolCatalogueEntry) -> dict[str, object]:
         ],
         tool_catalogue_entries=[entry],
     )
-    return cast(dict[str, object], graph["nodes"][1]["data"])
+    return dictionary(graph["nodes"][1]["data"])
 
 
 @pytest.mark.parametrize("source_type", ["text-input", "paragraph"])
@@ -119,7 +118,7 @@ def test_representable_start_strings_keep_exact_selector(source_type: str, sourc
     graph = _graph(
         {"type": "variable", "value": [source_id, field]}, source_type=source_type, source_id=source_id, field=field
     )
-    parameters = cast(dict[str, object], _hydrate(graph, _entry())["tool_parameters"])
+    parameters = dictionary(_hydrate(graph, _entry())["tool_parameters"])
     assert parameters["query"] == {"type": "mixed", "value": "{{#" + source_id + "." + field + "#}}"}
 
 
@@ -144,7 +143,7 @@ def test_representable_start_strings_keep_exact_selector(source_type: str, sourc
 )
 def test_existing_and_unproven_bindings_are_preserved(binding: object) -> None:
     graph = _graph(deepcopy(binding))
-    parameters = cast(dict[str, object], _hydrate(graph, _entry())["tool_parameters"])
+    parameters = dictionary(_hydrate(graph, _entry())["tool_parameters"])
     assert parameters["query"] == binding
 
 
@@ -153,9 +152,7 @@ def test_existing_and_unproven_bindings_are_preserved(binding: object) -> None:
 )
 def test_nonstring_start_types_are_preserved(source_type: str) -> None:
     binding = {"type": "variable", "value": ["node1", "keyword"]}
-    parameters = cast(
-        dict[str, object], _hydrate(_graph(binding, source_type=source_type), _entry())["tool_parameters"]
-    )
+    parameters = dictionary(_hydrate(_graph(binding, source_type=source_type), _entry())["tool_parameters"])
     assert parameters["query"] == binding
 
 
@@ -174,7 +171,7 @@ def test_nonstring_start_types_are_preserved(source_type: str) -> None:
 def test_unrepresentable_selector_grammar_is_preserved(source_id: str, field: str) -> None:
     binding = {"type": "variable", "value": [source_id, field]}
     graph = _graph(binding, source_id=source_id, field=field)
-    parameters = cast(dict[str, object], _hydrate(graph, _entry())["tool_parameters"])
+    parameters = dictionary(_hydrate(graph, _entry())["tool_parameters"])
     assert parameters["query"] == binding
 
 
@@ -191,7 +188,7 @@ def test_other_provider_identities_are_preserved(provider_type: str, provider_id
     entry = _entry()
     entry["provider_type"], entry["provider_name"] = provider_type, provider_id
     binding = {"type": "variable", "value": ["node1", "keyword"]}
-    parameters = cast(dict[str, object], _hydrate(_graph(binding), entry)["tool_parameters"])
+    parameters = dictionary(_hydrate(_graph(binding), entry)["tool_parameters"])
     assert parameters["query"] == binding
 
 
@@ -213,7 +210,7 @@ def test_only_exact_public_string_llm_declarations_convert(parameter_type: str, 
     parameters = entry["parameters"]
     parameters[0]["type"], parameters[0]["form"] = parameter_type, form
     binding = {"type": "variable", "value": ["node1", "keyword"]}
-    hydrated = cast(dict[str, object], _hydrate(_graph(binding), entry)["tool_parameters"])
+    hydrated = dictionary(_hydrate(_graph(binding), entry)["tool_parameters"])
     assert hydrated["query"] == binding
 
 
@@ -224,40 +221,39 @@ def test_only_exact_public_string_llm_declarations_convert(parameter_type: str, 
 def test_unproven_or_ambiguous_source_declarations_are_preserved(mutation: str) -> None:
     binding = {"type": "variable", "value": ["node1", "keyword"]}
     graph, entry = _graph(binding), _entry()
-    start = cast(dict[str, object], graph["nodes"][0]["data"])
+    start = dictionary(graph["nodes"][0]["data"])
     if mutation == "not_start":
         start["type"] = "code"
     elif mutation == "missing_type":
-        cast(list[dict[str, object]], start["variables"])[0].pop("type")
+        dictionaries(start["variables"])[0].pop("type")
     elif mutation == "missing_variables":
         start.pop("variables")
     elif mutation == "duplicate_field":
-        cast(list[dict[str, object]], start["variables"]).append({"type": "number", "variable": "keyword"})
+        dictionaries(start["variables"]).append({"type": "number", "variable": "keyword"})
     elif mutation == "duplicate_node":
         graph["nodes"].append(deepcopy(graph["nodes"][0]))
     else:
         entry["parameters"].append(deepcopy(entry["parameters"][0]))
-    parameters = cast(dict[str, object], _hydrate(graph, entry)["tool_parameters"])
+    parameters = dictionary(_hydrate(graph, entry)["tool_parameters"])
     assert parameters["query"] == binding
 
 
 def _render_parameters(data: dict[str, object], pool: VariablePool) -> dict[str, object]:
-    # This real native method is pure: self is unused. No constructor, installed
-    # runtime lookup, invocation, transport, graph execution or Code executor runs.
-    node = ToolNode.__new__(ToolNode)
+    node_data = ToolNodeData.model_validate({"title": "Controlled Tool", "tool_configurations": {}, **data})
+    node = native_parameter_node(node_data)
     return node._generate_parameters(
         tool_parameters=[
             ToolRuntimeParameter(name=name, required=True) for name in ("query", "timespan", "maxrecords")
         ],
         variable_pool=pool,
-        node_data=ToolNodeData.model_validate({"title": "Controlled Tool", "tool_configurations": {}, **data}),
+        node_data=node_data,
     )
 
 
 @pytest.mark.parametrize("keyword", ["alpha", "beta"])
 def test_native_present_string_rendering_is_equivalent(keyword: str) -> None:
     graph = _graph({"type": "variable", "value": ["node1", "keyword"]})
-    original = deepcopy(cast(dict[str, object], graph["nodes"][1]["data"]))
+    original = deepcopy(dictionary(graph["nodes"][1]["data"]))
     data = _hydrate(graph, _entry())
     before = {**data, "tool_parameters": original["tool_parameters"]}
     pool = VariablePool()
@@ -276,7 +272,7 @@ def test_native_present_string_rendering_is_equivalent(keyword: str) -> None:
 
 def test_missing_selector_is_a_separate_native_diagnostic_not_string_equivalence() -> None:
     graph = _graph({"type": "variable", "value": ["node1", "keyword"]})
-    original = deepcopy(cast(dict[str, object], graph["nodes"][1]["data"])["tool_parameters"])
+    original = deepcopy(dictionary(graph["nodes"][1]["data"])["tool_parameters"])
     data = _hydrate(graph, _entry())
     pool = VariablePool()
     with pytest.raises(ToolParameterError, match="does not exist"):
@@ -295,7 +291,7 @@ def test_complete_start_input_preparation_registers_optional_absence_as_none() -
     add_node_inputs_to_pool(pool, node_id="node1", inputs=inputs)
     assert isinstance(pool.get(["node1", "keyword"]), NoneSegment)
     graph = _graph({"type": "variable", "value": ["node1", "keyword"]})
-    original = deepcopy(cast(dict[str, object], graph["nodes"][1]["data"])["tool_parameters"])
+    original = deepcopy(dictionary(graph["nodes"][1]["data"])["tool_parameters"])
     data = _hydrate(graph, _entry())
     assert _render_parameters({**data, "tool_parameters": original}, pool)["query"] is None
     assert _render_parameters(data, pool)["query"] == ""
@@ -327,7 +323,7 @@ def test_missing_installed_catalogue_entry_does_not_normalize() -> None:
 def test_malformed_start_type_is_preserved(source_type: object) -> None:
     binding = {"type": "variable", "value": ["node1", "keyword"]}
     graph = _graph(binding)
-    start = cast(dict[str, object], graph["nodes"][0]["data"])
-    cast(list[dict[str, object]], start["variables"])[0]["type"] = source_type
-    parameters = cast(dict[str, object], _hydrate(graph, _entry())["tool_parameters"])
+    start = dictionary(graph["nodes"][0]["data"])
+    dictionaries(start["variables"])[0]["type"] = source_type
+    parameters = dictionary(_hydrate(graph, _entry())["tool_parameters"])
     assert parameters["query"] == binding

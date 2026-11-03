@@ -28,6 +28,7 @@ from tests.unit_tests.services.dify_builder.test_dify_port import (
     _workflow,
 )
 from tests.unit_tests.services.dify_builder.test_native_http_output_contract import http_graph
+from tests.unit_tests.services.dify_builder.typed_fixtures import dictionary
 
 
 @pytest.fixture
@@ -85,7 +86,7 @@ def _apply(mock_session: Session, graph_dict: Graph, intents: list[MutationInten
 
 
 def test_apply_repair_refuses_numeric_http_status_string_operator_before_sync(mock_session: Session) -> None:
-    graph = http_graph("=", "200")
+    graph = dictionary(http_graph("=", "200"))
     original = deepcopy(graph)
     intent = MutationIntent(
         op="set_node_config",

@@ -1,16 +1,16 @@
 """Ordinary plugin runtime contracts; synthetic values and no provider I/O."""
 
 from collections.abc import Callable, Generator
-from contextlib import _GeneratorContextManager
+from contextlib import _GeneratorContextManager, contextmanager
 from dataclasses import dataclass
 from types import ModuleType
-from typing import Never, Self
+from typing import Never, override
 from unittest.mock import Mock
 
 import pytest
 import pytest_mock
 import sqlalchemy.orm
-from sqlalchemy import Engine, Update
+from sqlalchemy import CursorResult, Engine, Update
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.real_call_consent import ConfirmedToolBinding, ConfirmedToolGuard
@@ -57,11 +57,6 @@ class _CredentialOwner:
     builtin_lookup: Mock
 
 
-@dataclass
-class _RefreshUpdateResult:
-    rowcount: int | None
-
-
 @pytest.fixture
 def owner(
     mocker: pytest_mock.MockerFixture,
@@ -69,12 +64,15 @@ def owner(
     sqlite_session: sqlalchemy.orm.Session,
     sqlite_engine: sqlalchemy.Engine,
 ) -> _CredentialOwner:
+    import extensions.application_services.tools as tool_composition
     from core.tools import tool_manager as module
+    from services.credentials import tool_runtime_adapters as credential_module
+    from tests.helpers.unit.credential_refresh import ThreadCredentialRefreshLock
 
-    try:
-        from services.tools import ordinary_tool_credentials as credential_module
-    except ImportError:
-        credential_module = module
+    monkeypatch.setattr(ToolManager, "_credential_resolver", tool_composition.resolve_tool_credentials)
+    monkeypatch.setattr(tool_composition, "get_session_maker", lambda: sessionmaker(sqlite_engine))
+    refresh_lock = ThreadCredentialRefreshLock()
+    monkeypatch.setattr(tool_composition, "RedisCredentialRefreshLock", lambda **_kwargs: refresh_lock)
     entity = ToolEntity.model_validate(
         {
             "identity": {"author": "test", "name": "search", "label": {"en_US": "Search"}, "provider": PROVIDER},
@@ -136,14 +134,14 @@ def owner(
     event.listen(sqlite_engine, "before_cursor_execute", record_credential_read)
     database = _CredentialDatabase(session=session, engine=sqlite_engine)
     monkeypatch.setattr(module, "db", database)
-    monkeypatch.setattr(credential_module, "db", database)
     cache = NoOpProviderCredentialCache()
     mocker.patch.object(cache, "delete")
     encrypter = ProviderConfigEncrypter(tenant_id="tenant-1", config=[], provider_config_cache=cache)
     mocker.patch.object(encrypter, "decrypt", return_value={"api_key": CANARY})
     mocker.patch.object(encrypter, "encrypt", return_value={"api_key": "rotated-ciphertext"})
     monkeypatch.setattr(credential_module, "create_provider_encrypter", lambda **_kwargs: (encrypter, cache))
-    policy = mocker.patch("core.helper.credential_utils.runtime_check_credential_policy_compliance")
+    monkeypatch.setattr(credential_module.ProviderToolCredentialRuntime, "_cache", lambda _self, _record: cache)
+    policy = mocker.patch.object(credential_module, "runtime_check_credential_policy_compliance")
     dispatch = mocker.patch.object(PluginToolManager, "invoke", return_value=iter(()))
     return _CredentialOwner(
         controller=controller,
@@ -323,13 +321,10 @@ def test_refresh_persists_actual_selected_row(
     provider_type: ToolProviderType,
     credential_id: str | None,
 ) -> None:
-    from models.tools import BuiltinToolProvider
-
-    monkeypatch.setattr(owner.module, "db", persisted_credentials)
-    # Replace the synthetic read context with real in-memory SQL sessions.
     from sqlalchemy.orm import Session
 
-    monkeypatch.setattr(owner.module, "Session", Session)
+    from models.tools import BuiltinToolProvider
+
     monkeypatch.setattr(
         "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
         lambda *_args, **_kwargs: None,
@@ -364,8 +359,6 @@ def test_refresh_conflict_refuses_runtime_without_cache_invalidation(
 
     from models.tools import BuiltinToolProvider
 
-    monkeypatch.setattr(owner.module, "db", persisted_credentials)
-    monkeypatch.setattr(owner.module, "Session", Session)
     monkeypatch.setattr(
         "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
         lambda *_args, **_kwargs: None,
@@ -454,8 +447,6 @@ def test_hardcoded_refresh_retains_original_state_across_session_expiration(
     with Session(persisted_credentials.engine) as session, session.begin():
         session.execute(update(BuiltinToolProvider).values(provider="time"))
     persisted_credentials.session.expire_all()
-    monkeypatch.setattr(owner.module, "db", persisted_credentials)
-    monkeypatch.setattr(owner.module, "Session", Session)
     controller = owner.controller
     owner.builtin_lookup.return_value = controller
     monkeypatch.setattr(
@@ -472,7 +463,7 @@ def test_hardcoded_refresh_retains_original_state_across_session_expiration(
         return PluginOAuthCredentialsResponse(credentials={"api_key": "rotated"}, expires_at=9999999999)
 
     refresh = mocker.patch.object(OAuthHandler, "refresh_credentials", side_effect=rotate)
-    with pytest.raises(ToolProviderCredentialValidationError, match="changed during refresh"):
+    with pytest.raises(ToolProviderCredentialValidationError, match="changed while it was being refreshed"):
         ToolManager.get_tool_runtime(
             provider_type=ToolProviderType.BUILT_IN,
             provider_id="time",
@@ -493,19 +484,23 @@ def test_empty_reference_preserves_default_selection(owner: _CredentialOwner) ->
 
 
 class _RefreshWriteSession:
-    """Transaction boundary double; the production writer builds the actual SQL."""
+    """Transaction boundary double with real results and injected driver row counts."""
 
-    def __init__(self, rowcount: int | None, events: list[str], *, commit_fails: bool = False) -> None:
+    def __init__(
+        self,
+        engine: Engine,
+        rowcount: int | None,
+        events: list[str],
+        *,
+        monkeypatch: pytest.MonkeyPatch,
+        commit_fails: bool = False,
+    ) -> None:
+        self.engine = engine
+        self.monkeypatch = monkeypatch
         self.rowcount = rowcount
         self.events = events
         self.commit_fails = commit_fails
         self.statement: Update | None = None
-
-    def __enter__(self) -> Self:
-        return self
-
-    def __exit__(self, *_args: object) -> bool:
-        return False
 
     def begin(self) -> _GeneratorContextManager[None]:
         from contextlib import contextmanager
@@ -525,41 +520,72 @@ class _RefreshWriteSession:
 
         return transaction()
 
-    def scalar(self, statement: Update) -> str:
-        # Characterize the pre-fix RETURNING path without a real database call.
+    def execute(self, statement: Update) -> CursorResult[object]:
+        """Capture repository SQL and return a real result reporting the chosen driver row count."""
         self.statement = statement
         self.events.append("update")
-        return CREDENTIAL
+        with self.engine.connect() as connection:
+            result = connection.exec_driver_sql("SELECT 1")
+            result.close()
+        self.monkeypatch.setattr(result, "rowcount", self.rowcount)
+        return result
 
-    def execute(self, statement: Update) -> _RefreshUpdateResult:
-        self.statement = statement
-        self.events.append("update")
-        return _RefreshUpdateResult(rowcount=self.rowcount)
+
+class _ObservedReadSession(Session):
+    def __init__(self, engine: Engine, events: list[str]) -> None:
+        super().__init__(bind=engine)
+        self._events = events
+
+    @override
+    def close(self) -> None:
+        super().close()
+        self._events.append("read-closed")
+
+
+class _RefreshSessionFactory(sessionmaker[Session]):
+    def __init__(self, engine: Engine, writer: _RefreshWriteSession) -> None:
+        super().__init__(bind=engine)
+        self._engine = engine
+        self._writer = writer
+
+    def __call__(self, **_kwargs: object) -> Session:
+        return _ObservedReadSession(self._engine, self._writer.events)
+
+    @override
+    @contextmanager
+    def begin(self) -> Generator[Session]:
+        with Session(self._engine) as session, self._writer.begin():
+            self._writer.monkeypatch.setattr(session, "execute", self._writer.execute)
+            yield session
 
 
 @pytest.mark.parametrize("backend", ["postgresql", "mysql", "oceanbase", "seekdb"])
 def test_refresh_update_compiles_for_supported_database_configuration(
-    owner: _CredentialOwner, monkeypatch: pytest.MonkeyPatch, backend: str
+    owner: _CredentialOwner, backend: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from sqlalchemy.dialects import registry
 
     from configs.middleware import DatabaseConfig
+    from repositories.credentials.query_repository import CredentialQueryRepository
 
     config = DatabaseConfig.model_validate({"DB_TYPE": backend})
     dialect = registry.load(config.SQLALCHEMY_DATABASE_URI_SCHEME.replace("+", "."))()
-    writer = _RefreshWriteSession(1, [])
-    monkeypatch.setattr(owner.module, "Session", lambda *_args: writer)
-    owner.module._persist_ordinary_refresh(
-        tenant_id="tenant-1",
-        selected=owner.row,
-        refreshed_encrypted_credentials='{"api_key":"rotated-ciphertext"}',
-        refreshed_expires_at=9999999999,
+    engine = owner.session.get_bind()
+    assert isinstance(engine, Engine)
+    writer = _RefreshWriteSession(engine, 1, [], monkeypatch=monkeypatch)
+    repository = CredentialQueryRepository(session_factory=_RefreshSessionFactory(engine, writer))
+    record = repository.get_tool_credential(workspace_id="tenant-1", providers=(PROVIDER,), credential_id=CREDENTIAL)
+    assert record is not None
+    assert repository.update_tool_credential_if_unchanged(
+        record=record,
+        encrypted_credentials='{"api_key":"rotated-ciphertext"}',
+        expires_at=9999999999,
     )
     assert writer.statement is not None
     compiled = writer.statement.compile(dialect=dialect)
     if not dialect.update_returning:
         assert " RETURNING " not in str(compiled).upper(), "supported backend rejects UPDATE RETURNING"
-    assert compiled.params == {
+    assert {key: value for key, value in compiled.params.items() if key != "updated_at"} == {
         "encrypted_credentials": '{"api_key":"rotated-ciphertext"}',
         "expires_at": 9999999999,
         "tenant_id_1": "tenant-1",
@@ -570,28 +596,22 @@ def test_refresh_update_compiles_for_supported_database_configuration(
         "encrypted_credentials_1": '{"api_key":"ciphertext"}',
         "expires_at_1": -1,
     }
-    assert writer.events == ["begin", "update", "commit"]
+    assert writer.events == ["read-closed", "begin", "update", "commit"]
 
 
 @pytest.mark.parametrize("rowcount", [1, 0, -1, None, 2])
-def test_refresh_requires_exactly_one_affected_row_before_cache_and_dispatch(
+def test_refresh_requires_proven_write_before_cache_and_dispatch(
     owner: _CredentialOwner, mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch, rowcount: int | None
 ) -> None:
-    from contextlib import contextmanager
+    import extensions.application_services.tools as tool_composition
 
     owner.row.expires_at = 1
     owner.session.commit()
     events: list[str] = []
-    writer = _RefreshWriteSession(rowcount, events)
-
-    @contextmanager
-    def read_session() -> Generator[Session]:
-        yield owner.session
-        owner.session.close()
-        events.append("read-closed")
-
-    sessions = iter([read_session(), writer])
-    monkeypatch.setattr(owner.module, "Session", lambda *_args: next(sessions))
+    engine = owner.session.get_bind()
+    assert isinstance(engine, Engine)
+    writer = _RefreshWriteSession(engine, rowcount, events, monkeypatch=monkeypatch)
+    monkeypatch.setattr(tool_composition, "get_session_maker", lambda: _RefreshSessionFactory(engine, writer))
     monkeypatch.setattr(
         "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
         lambda *_args, **_kwargs: None,
@@ -604,19 +624,19 @@ def test_refresh_requires_exactly_one_affected_row_before_cache_and_dispatch(
             or PluginOAuthCredentialsResponse(credentials={"api_key": "rotated"}, expires_at=9999999999)
         ),
     )
-    _installed_spy_13 = installed_mock(owner.cache.delete)
-    _installed_spy_13.side_effect = lambda: events.append("cache-delete")
+    installed_mock(owner.cache.delete).side_effect = lambda: events.append("cache-delete")
     owner.dispatch.side_effect = lambda **_kwargs: events.append("dispatch") or iter(())
+    expected = ["read-closed", "read-closed", "refresh", "begin", "update"]
     if rowcount == 1:
         tool = runtime()
         list(tool.invoke(session=owner.session, user_id="user-1", tool_parameters={}))
-        assert events == ["read-closed", "refresh", "begin", "update", "commit", "cache-delete", "dispatch"]
+        assert events == [*expected, "commit", "cache-delete", "dispatch"]
     else:
-        with pytest.raises(ToolProviderCredentialValidationError, match="changed during refresh"):
+        reason = "changed while it was being refreshed" if rowcount == 0 else "could not be persisted"
+        with pytest.raises(ToolProviderCredentialValidationError, match=reason):
             runtime()
-        assert events == ["read-closed", "refresh", "begin", "update", "rollback"]
-        _installed_spy_15 = installed_mock(owner.cache.delete)
-        _installed_spy_15.assert_not_called()
+        assert events == [*expected, *(["commit", "read-closed"] if rowcount == 0 else ["rollback"])]
+        installed_mock(owner.cache.delete).assert_not_called()
         owner.dispatch.assert_not_called()
     refresh.assert_called_once()
 
@@ -624,21 +644,15 @@ def test_refresh_requires_exactly_one_affected_row_before_cache_and_dispatch(
 def test_refresh_commit_uncertainty_refuses_cache_invalidation_and_dispatch(
     owner: _CredentialOwner, mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from contextlib import contextmanager
+    import extensions.application_services.tools as tool_composition
 
     owner.row.expires_at = 1
     owner.session.commit()
     events: list[str] = []
-    writer = _RefreshWriteSession(1, events, commit_fails=True)
-
-    @contextmanager
-    def read_session() -> Generator[Session]:
-        yield owner.session
-        owner.session.close()
-        events.append("read-closed")
-
-    sessions = iter([read_session(), writer])
-    monkeypatch.setattr(owner.module, "Session", lambda *_args: next(sessions))
+    engine = owner.session.get_bind()
+    assert isinstance(engine, Engine)
+    writer = _RefreshWriteSession(engine, 1, events, monkeypatch=monkeypatch, commit_fails=True)
+    monkeypatch.setattr(tool_composition, "get_session_maker", lambda: _RefreshSessionFactory(engine, writer))
     monkeypatch.setattr(
         "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
         lambda *_args, **_kwargs: None,
@@ -653,8 +667,7 @@ def test_refresh_commit_uncertainty_refuses_cache_invalidation_and_dispatch(
     )
     with pytest.raises(ToolProviderCredentialValidationError, match="could not be persisted"):
         runtime()
-    assert events == ["read-closed", "refresh", "begin", "update", "rollback"]
+    assert events == ["read-closed", "read-closed", "refresh", "begin", "update", "rollback"]
     refresh.assert_called_once()
-    _installed_spy_14 = installed_mock(owner.cache.delete)
-    _installed_spy_14.assert_not_called()
+    installed_mock(owner.cache.delete).assert_not_called()
     owner.dispatch.assert_not_called()

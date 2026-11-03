@@ -5,12 +5,12 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import json
-from collections.abc import Callable, Sequence
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from datetime import UTC, datetime
 from importlib.metadata import version
-from types import SimpleNamespace
-from typing import NoReturn, cast, override
+from operator import methodcaller
+from typing import NoReturn, TypeIs, override
 
 import pytest
 from typing_extensions import TypedDict
@@ -76,7 +76,8 @@ def owner() -> type[NativeHttpObservationPolicy]:
 def project_event[T: EngineEvent](policy: NativeHttpObservationPolicy, event: T) -> T:
     projected = policy.event(event)
     assert type(projected) is type(event)
-    return cast(T, projected)
+    assert isinstance(projected, type(event))
+    return projected
 
 
 def context() -> ResolvedNativeTestContext:
@@ -165,9 +166,33 @@ class FixtureGraph(TypedDict, extra_items=object):
     edges: list[dict[str, str]]
 
 
+def _is_fixture_graph(value: Mapping[str, object]) -> TypeIs[FixtureGraph]:
+    nodes, edges = value.get("nodes"), value.get("edges")
+    return (
+        isinstance(value, dict)
+        and all(isinstance(key, str) for key in value)
+        and isinstance(nodes, list)
+        and isinstance(edges, list)
+        and all(
+            isinstance(node, dict)
+            and isinstance(node.get("id"), str)
+            and isinstance(node.get("data"), dict)
+            and all(isinstance(key, str) for key in node)
+            and all(isinstance(key, str) for key in node["data"])
+            for node in nodes
+        )
+        and all(
+            isinstance(edge, dict) and all(isinstance(key, str) and isinstance(item, str) for key, item in edge.items())
+            for edge in edges
+        )
+    )
+
+
 def graph_data(ctx: ResolvedNativeTestContext) -> FixtureGraph:
-    """Mutable JSON fixture boundary; production revalidates before projection."""
-    return cast(FixtureGraph, ctx.graph)
+    """Validate the mutable fixture while preserving all graph object identities."""
+    graph = ctx.graph
+    assert _is_fixture_graph(graph)
+    return graph
 
 
 def result() -> NodeRunResult:
@@ -260,7 +285,8 @@ def test_real_result_echo_and_retry_history_are_redacted_with_independent_observ
         attempt["created_at"],
         attempt["finished_at"],
     ) == (1, 0.25, 1, 2)
-    cast(dict[str, object], left.node_run_result.inputs)["redacted"] = False
+    assert isinstance(left.node_run_result.inputs, dict)
+    left.node_run_result.inputs["redacted"] = False
     attempt["inputs"]["redacted"] = False
     assert right.node_run_result.inputs["redacted"] is True
     assert right.node_run_result.process_data["__dify_retry_history"][0]["inputs"]["redacted"] is True
@@ -525,10 +551,14 @@ def test_errors_never_render_exceptions_and_only_keep_finite_known_kinds(policy:
 def test_invalid_contexts_and_descriptor_drift_refuse_without_content(mutation: str) -> None:
     ctx = context()
     if mutation == "manifest":
-        cast(dict[str, object], ctx.resource_manifest[0]["policy"])["cost_units"] = 99
+        manifest_policy = ctx.resource_manifest[0]["policy"]
+        assert isinstance(manifest_policy, dict)
+        manifest_policy["cost_units"] = 99
     elif mutation == "node":
         raw_data = graph_data(ctx)["nodes"][1]["data"]
-        raw_data["url"] = cast(str, raw_data["url"]) + "/changed"
+        url = raw_data["url"]
+        assert isinstance(url, str)
+        raw_data["url"] = url + "/changed"
     elif mutation == "revision":
         ctx = ctx.model_copy(update={"graph_revision": "c" * 64})
     elif mutation == "owner":
@@ -556,14 +586,16 @@ def test_actual_server_profile_is_required_and_drift_refuses() -> None:
     with pytest.raises(BuilderExecutionPolicyError):
         owner().qualify(context=context(), profile=profile)
     with pytest.raises(TypeError):
-        cast(Callable[..., NativeHttpObservationPolicy], owner().qualify)(context=context())
+        methodcaller("qualify", context=context())(owner())
 
 
 def test_policy_snapshots_context_against_later_mutation() -> None:
     ctx = context()
     pinned = owner().qualify(context=ctx, profile=build_native_http_profile())
     raw_data = graph_data(ctx)["nodes"][1]["data"]
-    raw_data["url"] = cast(str, raw_data["url"]) + "/changed"
+    url = raw_data["url"]
+    assert isinstance(url, str)
+    raw_data["url"] = url + "/changed"
     with pytest.raises(BuilderExecutionPolicyError):
         pinned.graph(ctx.graph)
 
@@ -608,7 +640,7 @@ def test_only_explicit_native_execution_limits_layer_is_structurally_qualified(
         Hostile(),
     ):
         with pytest.raises(BuilderExecutionPolicyError) as caught:
-            policy.require_layers(cast(Sequence[Layer], [layer]))
+            methodcaller("require_layers", [layer])(policy)
         assert SENTINEL not in str(caught.value)
 
 
@@ -832,7 +864,7 @@ def fix1_metadata() -> dict[str, object]:
 
 
 def fix1_retry_event(metadata: dict[str, object]) -> NodeRunRetryEvent:
-    from core.app.workflow.retry_history import WorkflowNodeRetryAttempt
+    from domain.workflow.retry_history import WorkflowNodeRetryAttempt
 
     attempt = WorkflowNodeRetryAttempt(
         retry_index=1,
@@ -1112,7 +1144,9 @@ def test_empty_http_manifest_keeps_schema_owner_and_privacy_refusals(fault: str)
 
 
 @pytest.mark.parametrize("kind", ["code", "template-transform"])
-def test_code_profile_redacts_source_template_values_and_retry_history(kind: str) -> None:
+def test_code_profile_redacts_source_template_values_and_retry_history(
+    kind: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.native_testing.sandbox.qualification import (
         describe_code_resource,
     )
@@ -1123,14 +1157,14 @@ def test_code_profile_redacts_source_template_values_and_retry_history(kind: str
 
     q, _ = qualification()
     ctx = context()
-    graph = deepcopy(ctx.graph)
+    graph = deepcopy(graph_data(ctx))
     raw = (
         raw_code(code=SENTINEL)
         if kind == "code"
         else {"type": kind, "title": SENTINEL, "variables": list[object](), "template": SENTINEL}
     )
-    nodes = cast(list[dict[str, object]], graph["nodes"])
-    nodes[1]["data"] = raw
+    nodes = graph["nodes"]
+    nodes[1]["data"] = dict(raw)
     descriptor = describe_code_resource(
         qualification=q,
         node_id="http",
@@ -1155,6 +1189,6 @@ def test_code_profile_redacts_source_template_values_and_retry_history(kind: str
     )
     assert SENTINEL not in policy.event(event).model_dump_json()
     assert SENTINEL in event.model_dump_json()
-    cast(SimpleNamespace, q.owner).validate = lambda **_kw: True
+    monkeypatch.setattr(q.owner, "validate", lambda **_kw: True)
     with pytest.raises(BuilderExecutionPolicyError):
         owner().qualify(context=ctx, profile=q.profile(), code_qualification=q)

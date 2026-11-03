@@ -1,7 +1,7 @@
 """Add native effect approvals, immutable dispatch ledger and continuations.
 
 Revision ID: c67e12a904bf
-Revises: a61e9b2c7d40
+Revises: d82f9a6c31e0, f1d3c5b7a902
 """
 
 import sqlalchemy as sa
@@ -11,7 +11,7 @@ from migrations.native_testing import function_schema_prefix, is_mysql, mysql_im
 from models.types import AdjustedJSON, StringUUID
 
 revision = "c67e12a904bf"
-down_revision = "a61e9b2c7d40"
+down_revision = ("d82f9a6c31e0", "f1d3c5b7a902")
 branch_labels = None
 depends_on = None
 

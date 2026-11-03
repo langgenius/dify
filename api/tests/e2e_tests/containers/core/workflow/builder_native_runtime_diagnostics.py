@@ -19,7 +19,7 @@ from collections import Counter
 from collections.abc import Callable, Generator, Iterator
 from functools import wraps
 from threading import Lock
-from typing import Protocol, cast
+from typing import Protocol, runtime_checkable
 
 import pytest
 
@@ -38,6 +38,7 @@ from services.dify_builder.native_testing.runtime import NativeHostResumeBinding
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import RuntimeDeliveryCase
 
 
+@runtime_checkable
 class _ObservedNativeNode(Protocol):
     _native_control_owner: BoundaryOwnerState
 
@@ -100,7 +101,8 @@ def native_runtime_resume_diagnostics(
         return
     # Ordering is explicit: wrap the fixture's synthetic transport only after
     # runtime_case has installed it. Never replace or bypass that transport.
-    case = cast(RuntimeDeliveryCase, request.getfixturevalue("runtime_case"))
+    case = request.getfixturevalue("runtime_case")
+    assert isinstance(case, RuntimeDeliveryCase)
 
     import httpx
 
@@ -204,6 +206,10 @@ def native_runtime_resume_diagnostics(
         node = original_create(factory, node_config)
         try:
             bridge = factory._native_runtime
+            control_owner = None
+            if bridge is not None:
+                assert isinstance(node, _ObservedNativeNode)
+                control_owner = node._native_control_owner
             note(
                 "factory_node",
                 node_digest=_digest(node.id),
@@ -212,10 +218,7 @@ def native_runtime_resume_diagnostics(
                 required=factory._dify_context.native_test_required,
                 has_ref=factory._dify_context.native_test_ref is not None,
                 native_runtime=type(node.runtime_state) is NativeGraphRuntimeState,
-                boundary_owner=(
-                    bridge is not None
-                    and cast(_ObservedNativeNode, node)._native_control_owner is bridge._boundary_owner
-                ),
+                boundary_owner=bridge is not None and control_owner is bridge._boundary_owner,
                 deferred_http=isinstance(node, HttpRequestNode) and type(node._http_client) is DeferredNativeHttpClient,
             )
         except Exception:

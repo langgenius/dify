@@ -13,7 +13,7 @@ def test_graphs_stay_opaque_to_lua_and_round_trip_without_changing_values(
     previous: dict[str, object] | None, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockerFixture
 ) -> None:
     redis = repo_module.redis_client
-    mocker.patch.object(redis, "eval", return_value=1)
+    eval_script = mocker.patch.object(redis, "eval", return_value=1)
     mocker.patch.object(redis, "get")
     monkeypatch.setattr(repo_module, "serialize_redis_name", lambda key: f"prefix:{key}")
     repository = WorkflowDraftSyncRepository()
@@ -27,9 +27,9 @@ def test_graphs_stay_opaque_to_lua_and_round_trip_without_changing_values(
 
     assert repository.announce("app", change)
 
-    _script, key_count, key, payload, _ttl = redis.eval.call_args.args
+    _script, key_count, key, payload, _ttl = eval_script.call_args.args
     assert key_count == 1
-    assert key == "prefix:workflow_server_draft:app"
+    assert key == "prefix:workflow_server_draft:{app}"
     encoded = json.loads(payload)
     assert isinstance(encoded["graph"], str)
     assert encoded["previous_graph"] is None or isinstance(encoded["previous_graph"], str)

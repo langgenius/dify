@@ -57,6 +57,28 @@ describe('SyncPolicyField', () => {
     i18nLanguage.current = 'en-US'
   })
 
+  it('shows sync timing for default and preset intervals but not manual sync', async () => {
+    const user = userEvent.setup()
+    render(<SyncPolicyFieldHarness />)
+
+    const trigger = screen.getByRole('combobox', { name: 'Sync policy' })
+    expect(trigger).toHaveTextContent('Every 24 hours')
+    expect(
+      screen.getByText('First sync runs right after creation, then every 24 hours.'),
+    ).toBeVisible()
+
+    await user.click(trigger)
+    await user.click(screen.getByRole('option', { name: 'Every 3 days' }))
+    expect(
+      screen.getByText('First sync runs right after creation, then every 3 days.'),
+    ).toBeVisible()
+
+    await user.click(trigger)
+    await user.click(screen.getByRole('option', { name: 'Manual sync' }))
+    expect(trigger).toHaveTextContent('Manual sync')
+    expect(screen.queryByText(/^First sync runs right after creation/)).not.toBeInTheDocument()
+  })
+
   it('separates numbers from units in Simplified Chinese interval labels', async () => {
     i18nLanguage.current = 'zh-Hans'
     const user = userEvent.setup()

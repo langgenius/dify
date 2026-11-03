@@ -5,7 +5,7 @@ from collections.abc import Callable, Generator, Mapping
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Never, cast
+from typing import Never
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -830,7 +830,7 @@ def test_metadata_and_native_dispatch_have_no_active_own_transaction(
             super().__init__(bind=bind, autoflush=autoflush, expire_on_commit=expire_on_commit)
             sessions.append(self)
 
-    maker = sessionmaker(sqlite_engine, class_=TrackedSession)
+    maker = sessionmaker[Session](sqlite_engine, class_=TrackedSession)
     transaction_states = []
 
     def metadata_reader(_tenant: object) -> InstalledJsonParse:
@@ -843,9 +843,7 @@ def test_metadata_and_native_dispatch_have_no_active_own_transaction(
             yield _message("ok")
 
     monkeypatch.setattr(plugin_tool_module, "PluginToolManager", Manager)
-    runtime, recorder = _runtime(
-        monkeypatch, sqlite_engine, metadata_reader=metadata_reader, maker=cast(sessionmaker[Session], maker)
-    )
+    runtime, recorder = _runtime(monkeypatch, sqlite_engine, metadata_reader=metadata_reader, maker=maker)
     handle = runtime.get_runtime(
         node_id="node2",
         node_data=_node_data(ascii_value=False, wrapped=False),

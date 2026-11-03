@@ -1984,6 +1984,7 @@ export type HumanInputRequiredResponseData = {
   form_content: string
   form_id: string
   form_token?: string | null
+  form_version?: '1' | '2'
   inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string

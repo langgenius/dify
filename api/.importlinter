@@ -7,6 +7,7 @@ root_packages =
     context
     configs
     controllers
+    domain
     extensions
     factories
     fields
@@ -18,6 +19,26 @@ root_packages =
     services
     runtime_contracts
 include_external_packages = True
+
+[importlinter:contract:domain-boundary]
+name = Domain code depends on no application, persistence, framework, configuration, queue, transport, or legacy kernel code
+type = forbidden
+source_modules =
+    domain
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    enterprise
+    extensions
+    flask
+    models
+    repositories
+    services
+    sqlalchemy
+    tasks
+    werkzeug
 
 [importlinter:contract:backend-layers]
 name = Backend modules follow the transport, application, execution-kernel, and shared-library layers
@@ -32,6 +53,8 @@ layers =
 # error makes this list shrink whenever a legacy dependency is removed.
 unmatched_ignore_imports_alerting = error
 ignore_imports =
+    # Legacy generators delegate configured file defaults to the application owner during core migration.
+    core.app.apps.base_app_generator -> services.app.file_input_defaults
     core.app.app_config.easy_ui_based_app.dataset.manager -> services.knowledge.dataset_service
     core.app.apps.agent_app.app_generator -> services.agent.composer_service
     core.app.apps.agent_app.app_generator -> services.agent.workspace_service
@@ -284,6 +307,35 @@ forbidden_modules =
     models
     extensions
     flask
+allow_indirect_imports = True
+
+[importlinter:contract:tool-credential-application-boundary]
+name = Runtime credential refresh policies are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.credentials.tool_runtime
+    services.credentials.refresh
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:tool-credential-adapter-boundary]
+name = Tool runtime credential persistence is reached only through composition
+type = forbidden
+source_modules =
+    core.tools.tool_manager
+forbidden_modules =
+    repositories
+    services.credentials.tool_runtime_adapters
+    services.credentials.redis_refresh_lock
 allow_indirect_imports = True
 
 [importlinter:contract:credential-query-implementation-boundary]
@@ -1019,12 +1071,13 @@ forbidden_modules =
     werkzeug
 
 [importlinter:contract:conversation-name-boundary]
-name = Conversation naming, commands and queries are framework and persistence neutral
+name = Conversation application services are framework and persistence neutral
 type = forbidden
 source_modules =
     services.conversation_name_service
     services.conversation_command_service
     services.conversation_query_service
+    services.conversation_variable_command_service
 forbidden_modules =
     controllers
     extensions
@@ -1034,6 +1087,19 @@ forbidden_modules =
     services.conversation_service
     sqlalchemy
     werkzeug
+
+[importlinter:contract:console-conversation-controller-boundary]
+name = Console conversation controllers reach persistence through the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.conversation
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    services.conversation_service
+    sqlalchemy
+allow_indirect_imports = True
 
 [importlinter:contract:billing-application-boundary]
 name = Billing application services and ports are framework and infrastructure neutral
@@ -1336,4 +1402,82 @@ source_modules =
 forbidden_modules =
     models
     repositories
+allow_indirect_imports = True
+
+[importlinter:contract:tracing-application-boundary]
+name = Trace pipeline and Agent trace collection services and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.tracing.canonical
+    services.tracing.collection
+    services.tracing.collection_ports
+    services.tracing.delivery
+    services.tracing.errors
+    services.tracing.hierarchy
+    services.tracing.provider_configs
+    services.tracing.providers
+    services.tracing.records
+    services.tracing.recovery
+    services.tracing.scopes
+    services.tracing.service
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    enterprise
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+    services.tracing.adapters
+    services.tracing.egress
+    services.tracing.registry
+    services.tracing.request_log_protection
+    services.tracing.runtime_bridge
+
+[importlinter:contract:tracing-controller-boundary]
+name = Tracing handlers reach persistence and tracing adapters only through the composition root
+type = forbidden
+source_modules =
+    controllers.console.agent.tracing
+    controllers.console.agent.tracing_runs
+    controllers.console.app.ops_trace
+    controllers.inner_api.agent.tracing
+forbidden_modules =
+    extensions.ext_database
+    models.application_trace
+    models.model
+    repositories
+    sqlalchemy
+    services.tracing.adapters
+    services.tracing.registry
+    services.tracing.runtime_bridge
+    services.tracing.service
+    domain
+# The composition root (extensions.ext_application_services) wires repositories and
+# adapters, so only direct imports are checked here.
+allow_indirect_imports = True
+
+[importlinter:contract:tracing-repository-boundary]
+name = Tracing persistence adapters only depend on the tracing contracts they implement
+type = forbidden
+source_modules =
+    repositories.app.tracing_config_repository
+    repositories.application_trace_repository
+    repositories.trace_record_repository
+    repositories.tracing_store_errors
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    tasks
+    werkzeug
+    services.tracing.adapters
+    services.tracing.registry
+    services.tracing.runtime_bridge
+    services.tracing.service
 allow_indirect_imports = True

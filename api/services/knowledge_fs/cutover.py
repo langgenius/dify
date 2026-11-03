@@ -16,7 +16,7 @@ from typing import Literal, NamedTuple, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 import sqlalchemy as sa
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -1301,7 +1301,7 @@ class KnowledgeFSWorkspaceCutoverService:
                 if isinstance(raw_ack, KnowledgeFSDifyIntegrationFreezeAck)
                 else KnowledgeFSDifyIntegrationFreezeAck.model_validate(raw_ack, from_attributes=True)
             )
-        except (TypeError, ValueError, ValidationError) as exc:
+        except (TypeError, ValueError) as exc:
             raise KnowledgeFSCutoverGateBlockedError("KnowledgeFS remote freeze acknowledgement was malformed") from exc
         _assert_exact_freeze_ack(freeze_request, ack)
         acknowledged_at = _naive_utc(self._clock())
@@ -1411,7 +1411,7 @@ class KnowledgeFSWorkspaceCutoverService:
                 if isinstance(raw_ack, KnowledgeFSDifyIntegrationActivationAck)
                 else KnowledgeFSDifyIntegrationActivationAck.model_validate(raw_ack, from_attributes=True)
             )
-        except (TypeError, ValueError, ValidationError) as exc:
+        except (TypeError, ValueError) as exc:
             raise KnowledgeFSCutoverGateBlockedError(
                 "KnowledgeFS remote activation acknowledgement was malformed"
             ) from exc

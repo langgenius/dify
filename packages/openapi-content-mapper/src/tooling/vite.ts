@@ -22,27 +22,26 @@ export function openapi(
   let groupErrors = false
   const dependencies = new Map<string, string[]>()
   const watchedDirectories = new Set<string>()
-  // Vite recursively watches its root. Outside it, getWatched can describe
-  // only a file's parent, so remember our full directory registrations.
-  const watchDirectory = (directory: string) => {
+  function watchDirectory(directory: string) {
     if (
       !server ||
-      watchedDirectories.has(directory) ||
-      ((directory === root || directory.startsWith(`${root}${sep}`)) &&
-        server.watcher.getWatched()[directory])
+      [...watchedDirectories].some(
+        (watched) => directory === watched || directory.startsWith(`${watched}${sep}`),
+      )
     )
       return
-    // Re-adding a watched directory starts another ignoreInitial scan,
-    // which can consume new inputs before their real add event.
-    server.watcher.add(directory)
     watchedDirectories.add(directory)
+    server.watcher.add(directory)
   }
   return {
     name: 'openapi-content-mapper',
     enforce: 'pre',
     configureServer(value) {
       server = value
+      // Vite already watches its root recursively. Re-adding directories starts
+      // another initial scan, which can swallow new files with ignoreInitial.
       watchedDirectories.clear()
+      watchedDirectories.add(resolve(value.config.root))
     },
     configResolved(config) {
       root = config.root
@@ -109,9 +108,9 @@ export function openapi(
         const stat = statSync(dependency, { throwIfNoEntry: false })
         // Vite treats addWatchFile as an implicit import. Missing optional
         // inputs and directories belong to the watcher, not its module graph.
-        if (server && (!stat || stat.isDirectory())) {
+        if (server && (!stat || stat.isDirectory()))
           watchDirectory(stat?.isDirectory() ? dependency : dirname(dependency))
-        } else this.addWatchFile(dependency)
+        else this.addWatchFile(dependency)
       }
       watchDirectory(dirname(fileName))
       return {

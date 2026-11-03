@@ -334,21 +334,37 @@ def test_ordinary_plugin_service_preserves_prepared_live_values_and_cached_runti
     assert tool.runtime.runtime_parameters is cached_parameters
 
 
+@pytest.mark.parametrize(
+    ("selection", "expected"),
+    [
+        (["a"], ["a"]),
+        ("a", ["a"]),
+        (" a , b ", ["a", "b"]),
+    ],
+)
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_ordinary_plugin_service_multiple_select_uses_actual_full_declaration(
+    selection: JsonValue,
+    expected: list[str],
     sqlite_session: sqlalchemy.orm.Session,
 ) -> None:
+    """Declared options normalize to lists; invalid options never reach provider dispatch."""
     _persist_app(sqlite_session)
-    parameter = _parameter("selection", "select", multiple=True, options=[{"value": "a", "label": {"en_US": "A"}}])
+    parameter = _parameter(
+        "selection",
+        "select",
+        multiple=True,
+        options=[{"value": "a", "label": {"en_US": "A"}}, {"value": "b", "label": {"en_US": "B"}}],
+    )
     tool = _ordinary_plugin([parameter], {})
     request = _request()
-    request.tool.tool_parameters = {"selection": ["a"]}
+    request.tool.tool_parameters = {"selection": selection}
     with (
         patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=tool),
         patch("core.tools.plugin_tool.tool.PluginToolManager.invoke", return_value=_messages()) as dispatch,
     ):
         AgentToolInnerService().invoke(request, session=sqlite_session)
-        assert dispatch.call_args.kwargs["tool_parameters"]["selection"] == ["a"]
+        assert dispatch.call_args.kwargs["tool_parameters"]["selection"] == expected
         request.tool.tool_parameters = {"selection": ["invalid"]}
         with pytest.raises(AgentToolInnerServiceError, match="not in options"):
             AgentToolInnerService().invoke(request, session=sqlite_session)
@@ -357,14 +373,15 @@ def test_ordinary_plugin_service_multiple_select_uses_actual_full_declaration(
 
 @pytest.mark.parametrize("multiple", [False, True])
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_api_multiple_metadata_exposes_existing_agent_select_wire_gap(
+def test_api_select_list_repr_is_not_decoded_as_an_array(
     multiple: bool, sqlite_session: sqlalchemy.orm.Session
 ) -> None:
+    """Scalar text stays intact; multiple select rejects undeclared text before dispatch."""
     parameter = _parameter("selection", "select", multiple=multiple, options=[{"value": "a", "label": {"en_US": "A"}}])
     tool = _ordinary_plugin([parameter], {})
     with patch("core.tools.plugin_tool.tool.PluginToolManager.invoke", return_value=_messages()) as dispatch:
         if multiple:
-            with pytest.raises(ValueError, match="must be a list"):
+            with pytest.raises(ValueError, match="not in options"):
                 list(tool.invoke(sqlite_session, "user-1", {"selection": "['a']"}))
             dispatch.assert_not_called()
             assert parameter.init_frontend_parameter(["a"]) == ["a"]

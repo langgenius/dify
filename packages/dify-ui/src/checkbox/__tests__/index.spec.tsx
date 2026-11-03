@@ -1,3 +1,4 @@
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Checkbox, CheckboxSkeleton } from '../index'
 
@@ -66,6 +67,24 @@ describe('Checkbox', () => {
     await expect.element(checkbox).toBeDisabled()
     await expect.element(checkbox).toHaveAttribute('data-disabled', '')
   })
+
+  it.each([false, true])(
+    'should keep a read-only checkbox unchanged on hover and click (checked: %s)',
+    async (checked) => {
+      const screen = await render(
+        <Checkbox readOnly defaultChecked={checked} aria-label="Accept terms" />,
+      )
+      const checkbox = screen.getByRole('checkbox', { name: 'Accept terms' })
+      const style = getComputedStyle(checkbox.element())
+      const resting = [style.backgroundColor, style.borderColor]
+
+      await userEvent.hover(checkbox)
+      expect([style.backgroundColor, style.borderColor]).toEqual(resting)
+      expect(style.cursor).toBe('default')
+      await checkbox.click()
+      await expect.element(checkbox).toHaveAttribute('aria-checked', String(checked))
+    },
+  )
 
   it('should submit checked and unchecked form values through the hidden input', async () => {
     const screen = await render(

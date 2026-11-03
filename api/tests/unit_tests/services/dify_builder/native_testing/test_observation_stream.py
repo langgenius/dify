@@ -2,16 +2,16 @@
 
 from collections.abc import Callable
 from importlib import import_module, util
+from operator import methodcaller
 from types import ModuleType
-from typing import NoReturn, Protocol, cast
+from typing import NoReturn
 
 import pytest
 from redis import Redis
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
@@ -20,7 +20,6 @@ from core.app.entities.queue_entities import (
     QueueLoopNextEvent,
     QueueLoopStartEvent,
     QueueWorkflowSucceededEvent,
-    WorkflowQueueMessage,
 )
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
@@ -28,15 +27,12 @@ from core.app.entities.task_entities import (
     LoopNodeCompletedStreamResponse,
     WorkflowPauseStreamResponse,
 )
-from core.base.tts.app_generator_tts_publisher import AppGeneratorTTSPublisher
 from core.workflow.system_variables import build_system_variables
 from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
 from models.model import AppMode
-from models.workflow import Workflow
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from services.dify_builder.native_testing.host_execution import NativeHostLaunch
 from services.dify_builder.native_testing.http_binding import build_native_http_profile
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
@@ -46,7 +42,7 @@ from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import NOW, SENTINEL, context
 
 
-class _QueueWithRuntimeState(Protocol):
+class _QueueWithRuntimeState(WorkflowAppQueueManager):
     runtime_state: RuntimeState
 
 
@@ -69,6 +65,7 @@ def entity() -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
         task_id="task",
         user_id="actor",
+        user_from=UserFrom.ACCOUNT,
         stream=True,
         app_config=WorkflowUIBasedAppConfig(
             app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
@@ -81,7 +78,7 @@ def entity() -> WorkflowAppGenerateEntity:
         call_depth=0,
         native_test_required=True,
         native_test_ref=None,
-        trace_manager=None,
+        trace_scope=None,
     )
 
 
@@ -137,14 +134,15 @@ def test_marked_converter_requires_guard_before_input_conversion(monkeypatch: py
 
 def test_marked_pipeline_requires_guard_before_any_initialization() -> None:
     with pytest.raises(NativeObservationError, match="native_observation_failed"):
-        WorkflowAppGenerateTaskPipeline(
+        methodcaller(
+            "__call__",
             application_generate_entity=entity(),
-            workflow=cast(Workflow, None),
-            queue_manager=cast(AppQueueManager, None),
-            user=cast(Account, None),
+            workflow=None,
+            queue_manager=None,
+            user=None,
             stream=True,
-            draft_var_saver_factory=cast(DraftVariableSaverFactory, None),
-        )
+            draft_var_saver_factory=None,
+        )(WorkflowAppGenerateTaskPipeline)
 
 
 def test_queue_projects_before_base_model_dump_and_direct_publish(
@@ -317,7 +315,7 @@ def test_wrong_node_type_and_unqualified_hitl_fail_before_projection(guard: Nati
 
 def make_pipeline(
     guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch, **updates: object
-) -> tuple[WorkflowAppGenerateTaskPipeline, WorkflowAppQueueManager, RejectDraftSaverFactory]:
+) -> tuple[WorkflowAppGenerateTaskPipeline, _QueueWithRuntimeState, RejectDraftSaverFactory]:
     from tests.unit_tests.services.workflow_runtime.test_workflow_pipeline import _make_pipeline
 
     ordinary = _make_pipeline()
@@ -325,7 +323,7 @@ def make_pipeline(
         update={"native_test_required": True, "invoke_from": InvokeFrom.DEBUGGER, **updates}
     )
     bind_queue_cache(monkeypatch)
-    queue = WorkflowAppQueueManager("task", "actor", InvokeFrom.DEBUGGER, "workflow", native_observation=guard)
+    queue = _QueueWithRuntimeState("task", "actor", InvokeFrom.DEBUGGER, "workflow", native_observation=guard)
     saver = RejectDraftSaverFactory()
     pipeline = WorkflowAppGenerateTaskPipeline(
         application_generate_entity=e,
@@ -362,8 +360,8 @@ def test_pipeline_projects_internal_events_and_noops_draft_saver(
     assert p._workflow_response_converter._native_observation is guard
     assert q.native_observation is guard
     live = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
-    cast(_QueueWithRuntimeState, q).runtime_state = live
-    assert cast(_QueueWithRuntimeState, q).runtime_state is live
+    q.runtime_state = live
+    assert q.runtime_state is live
 
 
 def test_pipeline_refuses_tts_trace_and_files_before_actions(
@@ -402,7 +400,7 @@ def test_pause_live_fallback_is_safe_without_hitl_resolution(
         trip_calls.append((args, kwargs))
         raise AssertionError("HITL resolution")
 
-    monkeypatch.setattr("services.workflow_runtime.response_converter.resolve_human_input_pause_reason_inputs", trip)
+    monkeypatch.setattr("services.workflow_runtime.response_converter.enrich_human_input_pause_reasons", trip)
     r = c.workflow_pause_to_stream_response(
         event=QueueWorkflowPausedEvent(reasons=[SchedulingPause(message=SENTINEL)], paused_nodes=["http"]),
         task_id="task",
@@ -459,11 +457,12 @@ def test_direct_native_text_handler_rejects_tts_before_publish(
     tts = RejectedTTSPublisher()
     with pytest.raises(NativeObservationError):
         list(
-            p._handle_text_chunk_event(
+            methodcaller(
+                "_handle_text_chunk_event",
                 QueueTextChunkEvent(text=SENTINEL),
-                tts_publisher=cast(AppGeneratorTTSPublisher, tts),
-                queue_message=cast(WorkflowQueueMessage, object()),
-            )
+                tts_publisher=tts,
+                queue_message=object(),
+            )(p)
         )
     assert tts.published == []
 
@@ -618,7 +617,7 @@ def test_live_output_read_failure_is_latched_without_raw_exception(guard: Native
     assert guard.failed
 
 
-@pytest.mark.parametrize("field", ["files", "trace_manager"])
+@pytest.mark.parametrize("field", ["files", "trace_scope"])
 def test_native_pipeline_refuses_unqualified_setup_before_base(
     guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch, field: str
 ) -> None:
@@ -700,12 +699,13 @@ def test_queue_unknown_value_refuses_before_base_serializer(
 @pytest.mark.parametrize("bad", [None, object()])
 def test_marked_converter_wrong_guard_refuses_before_inputs(bad: object) -> None:
     with pytest.raises(NativeObservationError):
-        WorkflowResponseConverter(
+        methodcaller(
+            "__call__",
             application_generate_entity=entity(),
             user=account(),
             system_variables=[],
-            native_observation=cast(NativeObservationGuard, bad),
-        )
+            native_observation=bad,
+        )(WorkflowResponseConverter)
 
 
 def test_native_no_hitl_or_history_resume(guard: NativeObservationGuard) -> None:
@@ -742,21 +742,23 @@ def test_resumption_requires_actual_host_not_a_caller_port(
 
         def construct() -> WorkflowAppQueueManager | WorkflowResponseConverter:
             if route == "converter":
-                return WorkflowResponseConverter(
+                return methodcaller(
+                    "__call__",
                     application_generate_entity=entity(),
                     user=account(),
                     system_variables=[],
                     native_observation=guard,
-                    native_host=cast(NativeHostLaunch, supplied_host),
-                )
-            return WorkflowAppQueueManager(
+                    native_host=supplied_host,
+                )(WorkflowResponseConverter)
+            return methodcaller(
+                "__call__",
                 "task",
                 "actor",
                 InvokeFrom.DEBUGGER,
                 "workflow",
                 native_observation=guard,
-                native_host=cast(NativeHostLaunch, supplied_host),
-            )
+                native_host=supplied_host,
+            )(WorkflowAppQueueManager)
 
         with pytest.raises(BuilderExecutionPolicyError, match="native_resume_owner_mismatch"):
             construct()
@@ -766,9 +768,7 @@ def test_resumption_requires_actual_host_not_a_caller_port(
     def project() -> object:
         nonlocal queue
         if route == "projector":
-            return domain().project_native_queue_event(
-                guard=guard, event=event, native_host=cast(NativeHostLaunch, supplied_host)
-            )
+            return domain().project_native_queue_event(guard=guard, event=event, native_host=supplied_host)
         if route == "converter":
             return converter(guard).workflow_start_to_stream_response(
                 task_id="task", workflow_run_id="run", workflow_id="workflow", reason=WorkflowStartReason.RESUMPTION
@@ -847,3 +847,12 @@ def test_native_pause_response_reuses_cumulative_settled_duration_after_queue_de
     assert SENTINEL not in response.model_dump_json()
     assert event.outputs == {SENTINEL: SENTINEL}
     assert not guard.failed
+
+
+def test_native_pause_refuses_unqualified_human_input_v2_forms(guard: NativeObservationGuard) -> None:
+    from core.app.entities.queue_entities import QueueWorkflowPausedEvent
+
+    event = QueueWorkflowPausedEvent().model_copy(update={"human_input_v2_forms": {"http": Unrenderable()}})
+    with pytest.raises(NativeObservationError):
+        domain().project_native_queue_event(guard=guard, event=event)
+    assert guard.failed

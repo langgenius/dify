@@ -1,7 +1,6 @@
 """Real SQLite-backed operation owners for focused Builder boundary tests."""
 
 from collections.abc import Generator
-from typing import cast
 
 import pytest
 from sqlalchemy import Table, create_engine
@@ -38,7 +37,9 @@ def operations_service() -> Generator[AgentOperationService]:
         NativeTestInvocation,
         NativeTestScope,
     ):
-        cast(Table, model.__table__).create(engine)
+        table = model.__table__
+        assert isinstance(table, Table)
+        table.create(engine)
     sessions = sessionmaker(engine, expire_on_commit=False)
     loader = OwnedNativeTestLoader(
         sessions, actor=Actor(account_id="actor", tenant_id="tenant"), resolver=AgentOperationBindingResolver()

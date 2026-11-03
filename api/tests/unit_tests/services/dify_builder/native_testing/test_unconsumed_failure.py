@@ -3,10 +3,11 @@
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Protocol, runtime_checkable
 
 import pytest
 import pytest_mock
+from celery import Celery
 from dify_agent.protocol.schemas import RunEventsResponse
 from sqlalchemy import Table, select
 from sqlalchemy.orm import Session as SqlSession
@@ -780,35 +781,49 @@ def test_periodic_worker_excludes_unproven_unknown_candidates(
 
 # Celery's installed typing omits these real Beat/signal/AMQP APIs. These
 # protocols describe the boundary; the test still executes the actual objects.
+@runtime_checkable
 class _BeatScheduler(Protocol):
     def apply_async(self, entry: object, *, advance: bool) -> object: ...
 
 
+@runtime_checkable
 class _PublishSignal(Protocol):
     def connect(self, receiver: Callable[..., None], *, weak: bool) -> None: ...
 
     def disconnect(self, receiver: Callable[..., None]) -> bool: ...
 
 
+@runtime_checkable
 class _ConsumerQueues(Protocol):
     consume_from: Mapping[str, object]
 
     def select(self, include: list[str]) -> None: ...
 
 
+@runtime_checkable
 class _RoutingAMQP(Protocol):
     queues: _ConsumerQueues
 
 
+@runtime_checkable
 class _MemoryChannel(Protocol):
     def queue_purge(self, queue: str) -> int: ...
+
+
+@runtime_checkable
+class _EntryFactory(Protocol):
+    def __call__(self, *, name: str, task: str, app: Celery) -> object: ...
+
+
+@runtime_checkable
+class _SchedulerFactory(Protocol):
+    def __call__(self, *, app: Celery, lazy: bool) -> object: ...
 
 
 def test_periodic_worker_beat_routes_registered_task_to_builder_consumer_queue(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Beat must publish to the existing worker queue, not an unconsumed default."""
-    from celery import Celery
     from celery.beat import ScheduleEntry, Scheduler
     from celery.signals import before_task_publish
     from kombu.transport.memory import Channel as MemoryTransportChannel
@@ -831,13 +846,22 @@ def test_periodic_worker_beat_routes_registered_task_to_builder_consumer_queue(
         assert app.tasks[task_name].app is app
         with app.connection_for_write() as connection:
             assert isinstance(connection.channel(), MemoryTransportChannel)
-        queues = cast(_RoutingAMQP, app.amqp).queues
+        amqp = app.amqp
+        assert isinstance(amqp, _RoutingAMQP)
+        queues = amqp.queues
+        assert isinstance(queues, _ConsumerQueues)
         queues.select(["dify_builder"])
-        entry = cast(Callable[..., object], ScheduleEntry)(name="dify_builder_reconcile", task=task_name, app=app)
-        signal = cast(_PublishSignal, before_task_publish)
+        entry_factory: object = ScheduleEntry
+        assert isinstance(entry_factory, _EntryFactory)
+        entry = entry_factory(name="dify_builder_reconcile", task=task_name, app=app)
+        signal = before_task_publish
+        assert isinstance(signal, _PublishSignal)
         signal.connect(capture_route, weak=False)
         try:
-            scheduler = cast(Callable[..., _BeatScheduler], Scheduler)(app=app, lazy=True)
+            scheduler_factory: object = Scheduler
+            assert isinstance(scheduler_factory, _SchedulerFactory)
+            scheduler = scheduler_factory(app=app, lazy=True)
+            assert isinstance(scheduler, _BeatScheduler)
             scheduler.apply_async(entry, advance=False)
             assert published == ["dify_builder"]
             assert published[0] in queues.consume_from
@@ -845,4 +869,6 @@ def test_periodic_worker_beat_routes_registered_task_to_builder_consumer_queue(
             signal.disconnect(capture_route)
             with app.connection_for_write() as connection:
                 for queue_name in ("celery", "dify_builder"):
-                    cast(_MemoryChannel, connection.channel()).queue_purge(queue_name)
+                    channel = connection.channel()
+                    assert isinstance(channel, _MemoryChannel)
+                    channel.queue_purge(queue_name)

@@ -7,7 +7,7 @@ protected context storage, and materialized binding/workspace rows are real.
 from __future__ import annotations
 
 from collections.abc import Callable, Generator
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from dify_agent.protocol.execution_binding import CreateExecutionBindingRequest, DestroyExecutionBindingRequest
 from flask import Flask
@@ -309,7 +309,10 @@ def test_postgres_concurrent_prepare_reserves_one_identity(workspace_case: Agent
     from flask import current_app
 
     c = workspace_case
-    app = cast("LocalProxy[Flask]", current_app)._get_current_object()
+    proxy: object = current_app
+    assert isinstance(proxy, LocalProxy)
+    app = proxy._get_current_object()
+    assert isinstance(app, Flask)
 
     def run_prepare() -> AgentTestWorkspaceRef:
         with app.app_context():

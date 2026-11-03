@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, cast
+from operator import methodcaller
+from types import MappingProxyType
+from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
 import pytest
@@ -15,15 +17,13 @@ from graphon.engine import Engine
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.http import HttpResponse
 from graphon.nodes.base.node import Node
-from graphon.runtime import InitParams, RuntimeState
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from runtime_contracts.builder.native.contracts import NativeTestContextRef, OperationKey
 from services.dify_builder.native_testing.api_service import NativeTestApiService
-from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.control import (
     BoundaryOwnerState,
     NativeControlAccepted,
     NativeControlRecord,
-    NativeControlSink,
 )
 from services.dify_builder.native_testing.runtime import DifyNativeRuntime
 from services.dify_builder.native_testing.runtime_bridge import (
@@ -108,7 +108,7 @@ def test_marked_factory_requires_bridge_before_eager_model_setup(mocker: pytest_
             init_params=InitParams(
                 run_context={"_dify": context}, workflow_id="workflow", graph_config={}, call_depth=0
             ),
-            runtime_state=cast(RuntimeState, object()),
+            runtime_state=RuntimeState(workflow_id="unbound", variable_pool=VariablePool(), start_at=0),
         )
     eager.assert_not_called()
 
@@ -133,10 +133,10 @@ def test_factory_preserves_bridge_on_runtime_clone_and_checks_owners(mocker: pyt
     )
     factory = node_factory.DifyNodeFactory(
         init_params=init,
-        runtime_state=cast(RuntimeState, object()),
+        runtime_state=RuntimeState(workflow_id="unbound", variable_pool=VariablePool(), start_at=0),
         native_runtime=bridge,
     )
-    clone = factory.with_runtime_state(cast(RuntimeState, object()))
+    clone = factory.with_runtime_state(RuntimeState(workflow_id="unbound", variable_pool=VariablePool(), start_at=0))
     assert clone._native_runtime is bridge
     provider.assert_not_called()
     eager.assert_not_called()
@@ -144,7 +144,7 @@ def test_factory_preserves_bridge_on_runtime_clone_and_checks_owners(mocker: pyt
     with pytest.raises(NativeContextUnavailable, match="native_context_mismatch"):
         node_factory.DifyNodeFactory(
             init_params=init,
-            runtime_state=cast(RuntimeState, object()),
+            runtime_state=RuntimeState(workflow_id="unbound", variable_pool=VariablePool(), start_at=0),
             native_runtime=bridge,
         )
 
@@ -161,7 +161,7 @@ def test_unmarked_factory_cannot_accept_native_bridge(mocker: pytest_mock.Mocker
     with pytest.raises(NativeContextUnavailable, match="native_context_missing"):
         node_factory.DifyNodeFactory(
             init_params=InitParams(run_context={"_dify": run}, workflow_id="w", graph_config={}, call_depth=0),
-            runtime_state=cast(RuntimeState, object()),
+            runtime_state=RuntimeState(workflow_id="unbound", variable_pool=VariablePool(), start_at=0),
             native_runtime=bridge,
         )
     eager.assert_not_called()
@@ -306,7 +306,7 @@ def test_association_rejects_foreign_or_changed_identity_without_context_read(
     if mutation == "node_id":
         foreign.id = "private-canary"
     if mutation == "runtime":
-        foreign.runtime_state = cast(RuntimeState, object())
+        foreign.runtime_state = RuntimeState(workflow_id="unbound", variable_pool=VariablePool(), start_at=0)
     if mutation in {"class", "node_id", "runtime"}:
         with pytest.raises(NativeContextUnavailable, match="native_node_mismatch") as caught:
             prepared.attach(foreign)
@@ -347,13 +347,14 @@ def test_preparation_requires_exact_owner_ref_and_explicit_control_dependencies(
         )
     provider.assert_not_called()
     with pytest.raises(NativeContextUnavailable, match="native_control_unavailable"):
-        NativeRuntimeBridge(
+        methodcaller(
+            "__call__",
             state=bridge.state,
             collaborators=provider,
             node_arguments=lambda **_: {},
-            boundary_owner=cast(BoundaryOwnerState, None),
-            control_sink=cast(NativeControlSink, None),
-        )
+            boundary_owner=None,
+            control_sink=None,
+        )(NativeRuntimeBridge)
 
 
 def test_effect_revalidates_full_private_context_each_time(mocker: pytest_mock.MockerFixture) -> None:
@@ -756,8 +757,8 @@ def test_preparation_public_expected_identity_cannot_be_replaced(mocker: pytest_
 
 def test_constructor_argument_mapping_cannot_replace_control_dependencies(mocker: pytest_mock.MockerFixture) -> None:
     _, _, prepared, _, _ = preparation_fixture(mocker)
-    with pytest.raises(TypeError):
-        cast(dict[str, object], prepared.arguments)["native_control_owner"] = "private-canary"
+    assert isinstance(prepared.arguments, MappingProxyType)
+    assert isinstance(prepared.arguments["native_control_owner"], BoundaryOwnerState)
 
 
 @pytest.mark.parametrize("mutation", ["id", "runtime", "ref", "execution_id"])
@@ -773,7 +774,7 @@ def test_effect_rechecks_attached_identity_after_private_context_read(
         if mutation == "id":
             node.id = "private-canary"
         elif mutation == "runtime":
-            node.runtime_state = cast(RuntimeState, object())
+            node.runtime_state = RuntimeState(workflow_id="unbound", variable_pool=VariablePool(), start_at=0)
         elif mutation == "ref":
             bridge._boundary_owner.ref = context.ref.model_copy(update={"invocation_id": "private-canary"})
         else:
@@ -814,7 +815,7 @@ def test_bound_node_getter_rejects_attached_identity_drift_without_context_read(
     if mutation == "node_id":
         node.id = "private-canary"
     elif mutation == "runtime":
-        node.runtime_state = cast(RuntimeState, object())
+        node.runtime_state = RuntimeState(workflow_id="unbound", variable_pool=VariablePool(), start_at=0)
     elif mutation == "class":
         property_name = "__class__"
         foreign_class = type("ForeignMarkedNode", (type(node),), {"__slots__": ()})
@@ -872,7 +873,9 @@ def _delivery_runtime(mocker: pytest_mock.MockerFixture, case: LaunchCase) -> Di
         )
     runtime.host = case.host
     runtime._journal = case.journal
-    runtime.authorization = cast(EffectAuthorizationService, case.authorization)
+    mocker.patch.object(runtime.authorization, "before_call", side_effect=case.authorization.before_call)
+    mocker.patch.object(runtime.authorization, "claim_dispatch", side_effect=case.authorization.claim_dispatch)
+    mocker.patch.object(runtime.authorization, "record_outcome", side_effect=case.authorization.record_outcome)
     runtime.code_owner = NativeCodeHostOwner(host=case.host, loader=api.loader)
     load.reset_mock()
     return runtime

@@ -132,7 +132,7 @@ def decode_payload(
         if any(envelope.get(k) != v for k, v in expected.items()) or canonical_digest(envelope) != digest:
             raise ValueError("ownership or integrity")
         return envelope["payload"]
-    except (ValueError, TypeError, UnicodeError):
+    except (ValueError, TypeError):
         raise BuilderExecutionPolicyError("native_payload_invalid") from None
 
 
