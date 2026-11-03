@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
@@ -95,6 +96,41 @@ def test_list_data_source_auth_passes_context_and_serializes_application_result(
             }
         ]
     }
+
+
+def test_list_data_source_auth_reads_naive_timestamps_as_utc(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bindings are stored as naive UTC datetimes, so the host timezone must not shift them."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("tzset is only available on POSIX platforms")
+    api = ApiKeyAuthDataSource()
+    method = unwrap(api.get)
+    request_context = _request_context()
+    service = create_autospec(DataSourceApiKeyAuthService, instance=True, spec_set=True)
+    service.list_bindings.return_value = (
+        DataSourceApiKeyAuthBindingRecord(
+            id="binding-1",
+            category="api_key",
+            provider="custom",
+            disabled=False,
+            created_at=datetime(2026, 1, 1),
+            updated_at=datetime(2026, 1, 2),
+        ),
+    )
+
+    monkeypatch.setenv("TZ", "Asia/Tokyo")
+    time.tzset()
+    try:
+        with patch(
+            "controllers.console.auth.data_source_bearer_auth.application_services",
+            return_value=_application_services(service),
+        ):
+            result = method(api, request_context)
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+
+    assert result["sources"][0]["created_at"] == int(datetime(2026, 1, 1, tzinfo=UTC).timestamp())
+    assert result["sources"][0]["updated_at"] == int(datetime(2026, 1, 2, tzinfo=UTC).timestamp())
 
 
 def test_create_data_source_auth_binding_passes_context_and_command() -> None:

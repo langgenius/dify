@@ -18,6 +18,7 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, model_validate
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.datetime_utils import to_utc_timestamp
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
@@ -91,8 +92,8 @@ class ApiKeyAuthDataSource(Resource):
                         "category": binding.category,
                         "provider": binding.provider,
                         "disabled": binding.disabled,
-                        "created_at": int(binding.created_at.timestamp()),
-                        "updated_at": int(binding.updated_at.timestamp()),
+                        "created_at": to_utc_timestamp(binding.created_at),
+                        "updated_at": to_utc_timestamp(binding.updated_at),
                     }
                     for binding in bindings
                 ]
