@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from typing import override
-from unittest.mock import ANY, Mock
+from unittest.mock import ANY, MagicMock, Mock
 
 import pytest
 from flask import Flask
@@ -447,10 +447,15 @@ class TestHitlServiceApi:
         sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         monkeypatch.setattr(ags_module.session_factory, "get_session_maker", lambda: sqlite_session_maker)
 
-        generator_instance = Mock()
+        generator_instance = MagicMock()
         generator_instance.generate.return_value = {"result": "advanced-blocking"}
         generator_instance.convert_to_event_stream.side_effect = lambda payload: payload
-        generator_factory = Mock(return_value=generator_instance)
+        generator_kwargs: list[dict[str, object]] = []
+
+        def generator_factory(**kwargs: object) -> MagicMock:
+            generator_kwargs.append(kwargs)
+            return generator_instance
+
         monkeypatch.setattr(ags_module, "AdvancedChatAppGenerator", generator_factory)
 
         app_model = _hitl_service_api_app(app_id="app-id", tenant_id="tenant-id", mode=AppMode.ADVANCED_CHAT)
@@ -467,7 +472,8 @@ class TestHitlServiceApi:
             )
 
         assert result == {"result": "advanced-blocking"}
-        generator_factory.assert_called_once_with(execution_driver=ANY)
+        assert len(generator_kwargs) == 1
+        assert "execution_driver" in generator_kwargs[0]
         call_kwargs = generator_instance.generate.call_args.kwargs
         assert call_kwargs["streaming"] is False
         assert call_kwargs["pause_state_config"] is not None

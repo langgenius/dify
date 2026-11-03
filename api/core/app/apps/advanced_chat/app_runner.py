@@ -392,7 +392,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             # Convert to Variable objects for use in the workflow
             conversation_variables = [var.to_variable() for var in existing_variables]
 
-            return cast(list[Variable], conversation_variables)
+            return conversation_variables
 
     def _load_existing_conversation_variables(self, session: Session) -> list[ConversationVariable]:
         """

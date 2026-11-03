@@ -526,7 +526,7 @@ class TestWorkflowAppGeneratorCases:
             MagicMock(side_effect=lambda response, invoke_from: response),
         )
 
-        runner_instance = MagicMock()
+        runner_instance = create_autospec(WorkflowAppRunner, instance=True, spec_set=True)
         runner_instance.prepare.return_value = None
 
         def runner_ctor(**kwargs):
@@ -900,7 +900,12 @@ class TestAppGeneratorExtraCases:
             workflow_runtime: WorkflowRuntime,
         ):
             loader = create_autospec(VariableLoader, instance=True)
-            loader_factory = Mock(return_value=loader)
+            loader_calls: list[tuple[object, object]] = []
+
+            def loader_factory(wf: object, uid: object) -> VariableLoader:
+                loader_calls.append((wf, uid))
+                return loader
+
             generator = WorkflowAppGenerator(
                 draft_variable_loader=loader_factory,
                 runtime=workflow_runtime,
@@ -936,7 +941,7 @@ class TestAppGeneratorExtraCases:
 
             assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
             assert generator._runtime is workflow_runtime
-            loader_factory.assert_called_once_with(workflow, user.id)
+            assert loader_calls == [(workflow, user.id)]
             assert captured["variable_loader"] is loader
 
         def test_single_loop_generate_includes_trace_session_id_in_extras(
@@ -947,7 +952,11 @@ class TestAppGeneratorExtraCases:
             workflow_runtime: WorkflowRuntime,
         ):
             loader = create_autospec(VariableLoader, instance=True)
-            loader_factory = Mock(return_value=loader)
+            loader_calls: list[tuple[object, object]] = []
+
+            def loader_factory(wf: object, uid: object) -> VariableLoader:
+                loader_calls.append((wf, uid))
+                return loader
             generator = WorkflowAppGenerator(
                 draft_variable_loader=loader_factory,
                 runtime=workflow_runtime,
@@ -995,7 +1004,7 @@ class TestAppGeneratorExtraCases:
                     streaming=False,
                 )
 
-            loader_factory.assert_called_once_with(workflow, user.id)
+            assert loader_calls == [(workflow, user.id)]
             assert captured["variable_loader"] is loader
 
     class TestWorkflowAppGeneratorHandleResponse:
@@ -1299,7 +1308,12 @@ class TestAppGeneratorExtraCases:
             monkeypatch.setattr(
                 "services.workflow.execution.adapters.workflow.app_generator.WorkflowAppRunner", _Runner
             )
-            restore_workflow_run_graph = Mock(side_effect=lambda workflow, _run_id: workflow)
+            restore_calls: list[tuple[object, object]] = []
+
+            def restore_workflow_run_graph(wf: object, run_id: object) -> object:
+                restore_calls.append((wf, run_id))
+                return wf
+
             monkeypatch.setattr(generator._runtime.contexts, "restore_graph", restore_workflow_run_graph)
 
             app_config = WorkflowUIBasedAppConfig(
@@ -1341,5 +1355,4 @@ class TestAppGeneratorExtraCases:
             assert runner_kwargs["system_user_id"] == "session-id"
             assert runner_kwargs["runtime"] is workflow_runtime
             assert "execution_driver" not in runner_kwargs
-            restore_workflow_run_graph.assert_called_once()
-            restore_workflow_run_graph.assert_called_once_with(runner_kwargs["workflow"], "run-id")
+            assert restore_calls == [(runner_kwargs["workflow"], "run-id")]
