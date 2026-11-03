@@ -47,6 +47,7 @@ def strategy(mock_declaration: MagicMock) -> PluginAgentStrategy:
     return PluginAgentStrategy(
         tenant_id="tenant_123",
         declaration=mock_declaration,
+        plugin_unique_identifier="org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         meta_version="v1",
     )
 
@@ -61,6 +62,7 @@ class TestPluginAgentStrategyInitialization:
         strategy = PluginAgentStrategy(
             tenant_id="tenant_test",
             declaration=mock_declaration,
+            plugin_unique_identifier="org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             meta_version="meta_v",
         )
 
@@ -72,6 +74,7 @@ class TestPluginAgentStrategyInitialization:
         strategy = PluginAgentStrategy(
             tenant_id="tenant_test",
             declaration=mock_declaration,
+            plugin_unique_identifier="org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             meta_version=None,
         )
 
@@ -277,7 +280,7 @@ class TestInvoke:
             side_effect=ValueError("conversion failed"),
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="conversion failed"):
             list(strategy._invoke(params={}, user_id="user_1"))
 
     def test_invoke_manager_raises_exception(self, strategy: PluginAgentStrategy, mocker: MockerFixture) -> None:

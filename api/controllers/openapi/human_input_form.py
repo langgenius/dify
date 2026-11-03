@@ -194,8 +194,8 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
                 submission_user_id=submission_user_id,
                 submission_end_user_id=submission_end_user_id,
             )
-        except FormNotFoundError:
-            raise HumanInputFormNotFound()
+        except FormNotFoundError as caught_error:
+            raise HumanInputFormNotFound() from caught_error
 
         if form.workflow_run_id is None:
             return FormSubmitResponse()
@@ -207,7 +207,7 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             op=op_of(OpenApiWorkflowEventsApi.get),
             input={
                 "app_id": ctx.app.id,
-                "task_id": form.workflow_run_id,
+                "run_id": form.workflow_run_id,
                 "include_state_snapshot": True,
                 "continue_on_pause": False,
             },

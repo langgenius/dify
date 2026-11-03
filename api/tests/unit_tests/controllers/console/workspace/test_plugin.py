@@ -82,9 +82,9 @@ from models.account import (
     TenantPluginDebugPermission,
     TenantPluginInstallPermission,
 )
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.controllers.error_body import raised_error
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.controllers.error_body import raised_error
+from tests.helpers.unit.model_factories import make_account
 
 
 def _plugin_category_list_item(category: str = "tool") -> dict[str, Any]:
@@ -656,7 +656,7 @@ class TestPluginUploadFromPkgApi:
             config_overrides_context(PLUGIN_MAX_PACKAGE_SIZE=0),
             patch("controllers.console.workspace.plugin.PluginService.upload_pkg") as upload_pkg_mock,
         ):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(ValueError, match="File size exceeds the maximum allowed size") as exc_info:
                 method(api, "t1")
             assert "File size exceeds the maximum allowed size" in str(exc_info.value)
 
@@ -900,6 +900,22 @@ class TestPluginUploadFromGithubApi:
             result = raised_error(lambda: method(api, ParserGithubUpload.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
+    def test_download_error_reports_status(self, app: Flask):
+        api = PluginUploadFromGithubApi()
+        method = unwrap(api.post)
+
+        payload = {"repo": "r", "version": "v", "package": "p"}
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.upload_pkg_from_github",
+                side_effect=PluginDaemonClientSideError("Failed to download file: HTTP 403"),
+            ),
+        ):
+            result = raised_error(lambda: method(api, ParserGithubUpload.model_validate(payload), "t1"))
+            assert result == ({"code": "plugin_error", "message": "Failed to download file: HTTP 403"}, 400)
+
 
 class TestPluginUploadFromBundleApi:
     def test_success(self, app: Flask):
@@ -943,7 +959,7 @@ class TestPluginUploadFromBundleApi:
             config_overrides_context(PLUGIN_MAX_BUNDLE_SIZE=0),
             patch("controllers.console.workspace.plugin.PluginService.upload_bundle") as upload_bundle_mock,
         ):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(ValueError, match="File size exceeds the maximum allowed size") as exc_info:
                 method(api, "t1")
             assert "File size exceeds the maximum allowed size" in str(exc_info.value)
 

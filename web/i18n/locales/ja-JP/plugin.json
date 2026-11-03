@@ -301,9 +301,7 @@
   "task.runningPlugins": "インストール中のプラグイン",
   "task.successPlugins": "インストール済みのプラグイン",
   "templatePublishingGuide": "テンプレート公開ガイド",
-  "upgrade.close": "閉じる",
   "upgrade.description": "次のプラグインをインストールしようとしています",
-  "upgrade.successfulTitle": "インストールに成功しました",
   "upgrade.title": "プラグインをインストール",
   "upgrade.upgrade": "インストール",
   "upgrade.upgrading": "インストール中..."

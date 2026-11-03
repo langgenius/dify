@@ -125,6 +125,7 @@ const PrePopulate: FC<Props> = ({
       <Textarea
         aria-label={t(($) => $[`${i18nPrefix}.staticContent`], { ns: 'workflowHumanInput' })}
         value={value || ''}
+        // oxlint-disable-next-line shadcn/no-restyle -- The enclosing pre-population surface paints the focus ring around the textarea and type switch.
         className="h-10.75 min-h-10.75 rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:ring-0"
         onValueChange={(value) => onValueChange?.(value)}
         onFocus={() => {

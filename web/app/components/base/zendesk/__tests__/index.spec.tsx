@@ -101,27 +101,20 @@ describe('Zendesk', () => {
     expect(result).toBeNull()
   })
 
-  it('should mount the runtime without a nonce in non-production', async () => {
-    mockIsProd = false
-    const result = await renderZendesk()
-    render(result)
-
-    expect(mocks.scriptProps).toHaveBeenCalledWith({ nonce: '', widgetKey: 'test-key' })
-  })
-
-  it('should render scripts with nonce in production environment', async () => {
-    mockIsProd = true
-    mockNonce = 'prod-nonce'
-    const result = await renderZendesk()
-    render(result)
-
-    expect(mocks.scriptProps).toHaveBeenCalledWith({ nonce: 'prod-nonce', widgetKey: 'test-key' })
-  })
-
-  it('should render scripts with empty nonce in production when header is missing', async () => {
-    mockIsProd = true
-    mockNonce = null
-    const result = await renderZendesk()
-    render(result)
-  })
+  it.each([
+    { production: false, header: 'test-nonce', expectedNonce: '' },
+    { production: true, header: 'prod-nonce', expectedNonce: 'prod-nonce' },
+    { production: true, header: null, expectedNonce: '' },
+  ])(
+    'passes the CSP nonce to the widget runtime: %j',
+    async ({ production, header, expectedNonce }) => {
+      mockIsProd = production
+      mockNonce = header
+      render(await renderZendesk())
+      expect(mocks.scriptProps).toHaveBeenCalledWith({
+        nonce: expectedNonce,
+        widgetKey: 'test-key',
+      })
+    },
+  )
 })

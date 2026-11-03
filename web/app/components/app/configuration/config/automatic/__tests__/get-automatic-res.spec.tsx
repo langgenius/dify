@@ -1,21 +1,23 @@
-import type { ReactElement } from 'react'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import GetAutomaticRes from '../get-automatic-res'
 
 const mockGenerateBasicAppFirstTimeRule = vi.fn()
 const mockGenerateRule = vi.fn()
 const mockToastError = vi.fn()
-
-let mockDefaultModel: {
-  model: string
-  provider: {
-    provider: string
-  }
-} | null = null
 
 let mockInstructionTemplate: { data: string } | undefined
 vi.mock('@/app/components/app/configuration/toast', () => ({
@@ -24,71 +26,69 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
   },
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    defaultModel: mockDefaultModel,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  default: () => ({ availableVars: [], availableNodes: [] }),
-}))
-vi.mock('@/app/components/workflow/hooks/use-workflow-variables', () => ({
-  useWorkflowVariableType: () => () => 'string',
-}))
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({ getState: () => ({ nodesWithInspectVars: [] }) }),
-}))
-
-const render = (ui: ReactElement) => {
-  const queryClient = createConsoleQueryClient()
+const render = createNuqsTestRenderer((ui) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAppDslVersion(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: ['gpt-4.1-mini', 'gpt-4o-mini'].map((model) =>
+        createCatalogModelFixture({
+          model,
+          label: { en_US: model },
+          model_properties: { mode: 'chat' },
+        }),
+      ),
+    }),
+  ])
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: 'llm' } },
+    }),
+    { data: createDefaultModelFixture({ model: 'gpt-4.1-mini' }) },
+  )
+  queryClient.setQueryDefaults(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
+    {
+      initialData: {
+        data: [
+          {
+            name: 'temperature',
+            label: { en_US: 'Temperature' },
+            type: 'float',
+            default: 0.7,
+            min: 0,
+            max: 2,
+          },
+        ],
+      },
+    },
+  )
   queryClient.setQueryData(
     consoleQuery.instructionGenerate.template.post.queryOptions({
       input: { body: { type: 'prompt' } },
     }).queryKey,
     mockInstructionTemplate ?? { data: '' },
   )
-  return renderWithConsoleQuery(<EventEmitterContextProvider>{ui}</EventEmitterContextProvider>, {
-    queryClient,
-  })
-}
+  return renderWorkflowFlowComponent(
+    <EventEmitterContextProvider>{ui}</EventEmitterContextProvider>,
+    {
+      queryClient,
+    },
+  )
+})
 const instruction = () => screen.getByRole('textbox', { name: /instruction/ })
 
 vi.mock('@/service/debug', () => ({
   generateBasicAppFirstTimeRule: (...args: unknown[]) => mockGenerateBasicAppFirstTimeRule(...args),
   generateRule: (...args: unknown[]) => mockGenerateRule(...args),
 }))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: ({
-      setModel,
-      onCompletionParamsChange,
-    }: {
-      setModel: (value: {
-        modelId: string
-        provider: string
-        mode?: string
-        features?: string[]
-      }) => void
-      onCompletionParamsChange: (value: Record<string, unknown>) => void
-    }) => (
-      <div>
-        <button
-          onClick={() =>
-            setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' as const })
-          }
-        >
-          change-model
-        </button>
-        <button onClick={() => onCompletionParamsChange({ temperature: 0.3 })}>
-          change-params
-        </button>
-      </div>
-    ),
-  }),
-)
 
 describe('GetAutomaticRes', () => {
   const mockOnClose = vi.fn()
@@ -98,12 +98,6 @@ describe('GetAutomaticRes', () => {
     vi.resetAllMocks()
     localStorage.clear()
     sessionStorage.clear()
-    mockDefaultModel = {
-      model: 'gpt-4.1-mini',
-      provider: {
-        provider: 'openai',
-      },
-    }
     mockInstructionTemplate = undefined
   })
 
@@ -125,15 +119,24 @@ describe('GetAutomaticRes', () => {
     await user.click(screen.getByText(/(?:^|\.)generate\.template\.pythonDebugger\.name(?=$|:)/))
 
     await waitFor(() => {
-      expect(instruction()).toHaveValue(
+      expect(instruction()).toHaveTextContent(
         'appGeneration.generate.template.pythonDebugger.instruction',
       )
     })
 
-    await user.click(screen.getByText('change-model'))
+    await user.click(screen.getByRole('button', { name: /^gpt-4.1-mini/ }))
+    await user.click(
+      within(
+        await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+      ).getByRole('button', { name: /^gpt-4o-mini/ }),
+    )
     expect(localStorage.getItem('auto-gen-model')).toContain('"name":"gpt-4o-mini"')
 
-    await user.click(screen.getByText('change-params'))
+    await user.click(screen.getByRole('button', { name: /modelProvider.modelSettings/ }))
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    await user.clear(screen.getByRole('spinbutton', { name: 'Temperature' }))
+    await user.type(screen.getByRole('spinbutton', { name: 'Temperature' }), '0.3')
+    await user.tab()
     expect(localStorage.getItem('auto-gen-model')).toContain('"temperature":0.3')
   })
 
@@ -152,12 +155,12 @@ describe('GetAutomaticRes', () => {
     )
 
     await waitFor(() => {
-      expect(instruction()).toHaveValue('template instruction')
+      expect(instruction()).toHaveTextContent('template instruction')
     })
-    await user.clear(instruction())
+    await replacePromptEditorText(instruction(), '')
     await user.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
 
-    expect(instruction()).toHaveValue('')
+    expect(instruction().textContent).toBe('')
     expect(mockToastError).toHaveBeenCalledWith(
       expect.stringMatching(/(?:^|\.)errorMsg\.fieldRequired(?=$|:)/),
     )
@@ -205,7 +208,8 @@ describe('GetAutomaticRes', () => {
       />,
     )
 
-    await user.type(instruction(), 'basic instruction')
+    await user.click(instruction())
+    await user.paste('basic instruction')
     await user.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
 
     await waitFor(() => {
@@ -269,9 +273,11 @@ describe('GetAutomaticRes', () => {
       />,
     )
 
-    await user.type(instruction(), 'workflow instruction')
+    await user.click(instruction())
+    await user.paste('workflow instruction')
     await user.click(screen.getByRole('button', { name: /generate.idealOutput/ }))
-    await user.type(screen.getByRole('textbox', { name: /generate.idealOutput/ }), 'ideal output')
+    await user.click(screen.getByRole('textbox', { name: /generate.idealOutput/ }))
+    await user.paste('ideal output')
     await user.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
 
     await waitFor(() => {
@@ -294,20 +300,3 @@ describe('GetAutomaticRes', () => {
     expect(screen.getByText(/generate.newNoDataLine1/)).toBeInTheDocument()
   })
 })
-
-// PromptEditor owns rich text behavior; this feature owns instruction persistence and generation.
-vi.mock('@/app/components/base/prompt-editor', () => ({
-  default: ({
-    value,
-    onChange,
-    'aria-label': label,
-    'aria-labelledby': labelledBy,
-  }: import('@/app/components/base/prompt-editor').PromptEditorProps) => (
-    <textarea
-      aria-label={label}
-      aria-labelledby={labelledBy}
-      value={value}
-      onChange={(event) => onChange?.(event.target.value)}
-    />
-  ),
-}))

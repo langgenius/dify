@@ -50,7 +50,7 @@ export const useWorkflowRefreshDraft = () => {
           // Ensure we have a valid workflow structure with viewport
           if (!notUpdateCanvas)
             handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
-          setSyncWorkflowDraftHash(response.hash)
+          setSyncWorkflowDraftHash(response.hash, response.graph)
           setEnvSecrets(
             (response.environment_variables || [])
               .filter((env) => env.value_type === 'secret')
@@ -79,7 +79,7 @@ export const useWorkflowRefreshDraft = () => {
           if (refreshSequence === refreshSequenceRef.current) setIsSyncingWorkflowDraft(false)
         })
     },
-    [getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
+    [appId, getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
   )
 
   return {

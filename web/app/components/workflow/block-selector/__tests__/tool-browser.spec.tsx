@@ -1,34 +1,19 @@
 import type { ReactElement } from 'react'
-import type { Plugin } from '@/app/components/plugins/types'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { Theme } from '@/types/app'
+import { createDeferred } from '@/test/deferred'
 import ToolBrowser from '../tool-browser'
 import { createPlugin, createTool, createToolProvider } from './factories'
 
-vi.mock('@/context/i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/context/i18n')>()),
-  useGetLanguage: vi.fn(),
+const { search } = vi.hoisted(() => ({
+  search: vi.fn<typeof import('@/service/marketplace').marketplaceClient.searchAdvanced>(),
 }))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/app/components/plugins/marketplace/query', () => ({
-  useMarketplacePlugins: vi.fn(),
-}))
-
-vi.mock('@/utils/var', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/utils/var')>()),
-  getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  return { ...actual, marketplaceClient: { ...actual.marketplaceClient, searchAdvanced: search } }
+})
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -50,26 +35,12 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
-const mockUseGetLanguage = vi.mocked(useGetLanguage)
-const mockUseTheme = vi.mocked(useTheme)
-
 const render = (ui: ReactElement, enableMarketplace = false) => {
   const view = renderWithConsoleQuery(ui, {
     systemFeatures: { enable_marketplace: enableMarketplace },
   })
   return view
 }
-
-const createMarketplacePluginsMock = (
-  overrides: Partial<ReturnType<typeof useMarketplacePlugins>> = {},
-) =>
-  ({ data: undefined, isFetching: false, ...overrides }) as ReturnType<typeof useMarketplacePlugins>
-
-const createMarketplaceData = (plugins: Plugin[]) => ({
-  pages: [{ plugins, total: plugins.length, page: 1, page_size: 40 }],
-  pageParams: [1],
-})
 
 const marketplaceTool = createPlugin({
   plugin_id: 'marketplace-tool',
@@ -78,10 +49,10 @@ const marketplaceTool = createPlugin({
 
 describe('ToolBrowser', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
-    mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock())
+    search.mockReset().mockResolvedValue({ data: { plugins: [], total: 0 } })
+  })
+  afterEach(async () => {
+    await act(async () => cleanup())
   })
 
   it('shows the selected category empty state and keeps the marketplace footer available', async () => {
@@ -223,12 +194,6 @@ describe('ToolBrowser', () => {
   })
 
   it('shows the empty state and request action when local and marketplace tools do not match', async () => {
-    mockUseMarketplacePlugins.mockImplementation((params) =>
-      createMarketplacePluginsMock({
-        data: params ? createMarketplaceData([]) : undefined,
-      }),
-    )
-
     render(
       <ToolBrowser
         searchText="missing"
@@ -252,9 +217,8 @@ describe('ToolBrowser', () => {
   })
 
   it('keeps matching local tools visible while marketplace results are loading', async () => {
-    mockUseMarketplacePlugins.mockImplementation((params) =>
-      createMarketplacePluginsMock({ isFetching: params !== undefined }),
-    )
+    const response = createDeferred<Awaited<ReturnType<typeof search>>>()
+    search.mockReturnValueOnce(response.promise)
 
     render(
       <ToolBrowser
@@ -274,39 +238,19 @@ describe('ToolBrowser', () => {
       true,
     )
 
-    await waitFor(() => {
-      expect(mockUseMarketplacePlugins).toHaveBeenLastCalledWith({
-        query: 'local',
-        tags: [],
-        category: PluginCategoryEnum.tool,
-      })
-    })
+    await waitFor(() =>
+      expect(search).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({ query: 'local', tags: [], category: 'tool' }),
+        }),
+        expect.anything(),
+      ),
+    )
     expect(screen.getByText('Local Toolkit')).toBeInTheDocument()
     expect(screen.queryByText('workflow.tabs.noPluginsFound')).not.toBeInTheDocument()
-  })
-
-  it('renders a marketplace result instead of the empty state', async () => {
-    mockUseMarketplacePlugins.mockImplementation((params) =>
-      createMarketplacePluginsMock({
-        data: params ? createMarketplaceData([marketplaceTool]) : undefined,
-      }),
-    )
-
-    render(
-      <ToolBrowser
-        searchText="marketplace"
-        tags={[]}
-        onSelect={vi.fn()}
-        buildInTools={[]}
-        customTools={[]}
-        workflowTools={[]}
-        mcpTools={[]}
-      />,
-      true,
-    )
-
+    await act(async () => response.resolve({ data: { plugins: [marketplaceTool], total: 1 } }))
     expect(await screen.findByText('Marketplace Tool')).toBeInTheDocument()
-    expect(screen.queryByText('workflow.tabs.noPluginsFound')).not.toBeInTheDocument()
+    expect(screen.getByText('Local Toolkit')).toBeInTheDocument()
   })
 
   it('excludes an installed marketplace plugin even when its provider does not match the search', async () => {
@@ -314,11 +258,7 @@ describe('ToolBrowser', () => {
       plugin_id: 'installed-search',
       label: { en_US: 'Search Plugin', zh_Hans: 'Search Plugin' },
     })
-    mockUseMarketplacePlugins.mockImplementation((params) =>
-      createMarketplacePluginsMock({
-        data: params ? createMarketplaceData([installedPlugin]) : undefined,
-      }),
-    )
+    search.mockResolvedValue({ data: { plugins: [installedPlugin], total: 1 } })
 
     render(
       <ToolBrowser
@@ -343,94 +283,6 @@ describe('ToolBrowser', () => {
     expect(screen.queryByText('Web Toolkit')).not.toBeInTheDocument()
   })
 
-  it('excludes installed plugins across marketplace pages when filtering only by tag', async () => {
-    const installedPlugins = ['first', 'second'].map((page) =>
-      createPlugin({
-        plugin_id: `installed-${page}`,
-        label: { en_US: `Installed ${page}`, zh_Hans: `Installed ${page}` },
-      }),
-    )
-    const availablePlugin = createPlugin({
-      plugin_id: 'available-plugin',
-      label: { en_US: 'Available Plugin', zh_Hans: 'Available Plugin' },
-    })
-    mockUseMarketplacePlugins.mockImplementation((params) =>
-      createMarketplacePluginsMock({
-        data: params
-          ? {
-              pages: [
-                {
-                  plugins: [...installedPlugins.slice(0, 1), availablePlugin],
-                  total: 3,
-                  page: 1,
-                  page_size: 2,
-                },
-                { plugins: installedPlugins.slice(1), total: 3, page: 2, page_size: 2 },
-              ],
-              pageParams: [1, 2],
-            }
-          : undefined,
-      }),
-    )
-
-    render(
-      <ToolBrowser
-        searchText=""
-        tags={['search']}
-        onSelect={vi.fn()}
-        buildInTools={installedPlugins.map((plugin) =>
-          createToolProvider({ id: `${plugin.plugin_id}/provider`, plugin_id: plugin.plugin_id }),
-        )}
-        customTools={[]}
-        workflowTools={[]}
-        mcpTools={[]}
-      />,
-      true,
-    )
-
-    expect(await screen.findByText('Available Plugin')).toBeInTheDocument()
-    expect(screen.queryByText('Installed first')).not.toBeInTheDocument()
-    expect(screen.queryByText('Installed second')).not.toBeInTheDocument()
-  })
-
-  it('removes a newly installed marketplace result when the provider list refreshes', async () => {
-    const newlyInstalledPlugin = createPlugin({
-      plugin_id: 'new-plugin',
-      label: { en_US: 'New Plugin', zh_Hans: 'New Plugin' },
-    })
-    const availablePlugin = createPlugin({
-      plugin_id: 'available-plugin',
-      label: { en_US: 'Available Plugin', zh_Hans: 'Available Plugin' },
-    })
-    const data = createMarketplaceData([newlyInstalledPlugin, availablePlugin])
-    mockUseMarketplacePlugins.mockImplementation((params) =>
-      createMarketplacePluginsMock({ data: params ? data : undefined }),
-    )
-    const props = {
-      searchText: 'plugin',
-      tags: [],
-      onSelect: vi.fn(),
-      buildInTools: [],
-      customTools: [],
-      workflowTools: [],
-      mcpTools: [],
-    }
-    const { rerender } = render(<ToolBrowser {...props} />, true)
-
-    expect(await screen.findByText('New Plugin')).toBeInTheDocument()
-    expect(screen.getByText('Available Plugin')).toBeInTheDocument()
-
-    rerender(
-      <ToolBrowser
-        {...props}
-        buildInTools={[createToolProvider({ plugin_id: newlyInstalledPlugin.plugin_id })]}
-      />,
-    )
-
-    expect(screen.queryByText('New Plugin')).not.toBeInTheDocument()
-    expect(screen.getByText('Available Plugin')).toBeInTheDocument()
-  })
-
   it('debounces marketplace requests across search and tag changes', async () => {
     const baseProps = {
       onSelect: vi.fn(),
@@ -442,35 +294,19 @@ describe('ToolBrowser', () => {
     const { rerender } = render(<ToolBrowser {...baseProps} searchText="" tags={[]} />, true)
 
     rerender(<ToolBrowser {...baseProps} searchText="w" tags={[]} />)
-    rerender(<ToolBrowser {...baseProps} searchText="web" tags={['api']} />)
-    rerender(<ToolBrowser {...baseProps} searchText="webhook" tags={['automation']} />)
+    rerender(<ToolBrowser {...baseProps} searchText="web" tags={['search']} />)
+    rerender(<ToolBrowser {...baseProps} searchText="webhook" tags={['weather']} />)
 
-    expect(
-      mockUseMarketplacePlugins.mock.calls
-        .map(([params]) => params)
-        .filter((params) => params?.query || params?.tags?.length),
-    ).toEqual([])
+    expect(search).not.toHaveBeenCalled()
     expect(screen.queryByText('workflow.tabs.noPluginsFound')).not.toBeInTheDocument()
-
-    await waitFor(() => {
-      expect(mockUseMarketplacePlugins).toHaveBeenLastCalledWith({
-        query: 'webhook',
-        tags: ['automation'],
-        category: PluginCategoryEnum.tool,
-      })
-    })
-
-    expect(
-      mockUseMarketplacePlugins.mock.calls
-        .map(([params]) => params)
-        .filter((params) => params?.query || params?.tags?.length),
-    ).toEqual([
-      {
-        query: 'webhook',
-        tags: ['automation'],
-        category: PluginCategoryEnum.tool,
-      },
-    ])
+    await waitFor(() =>
+      expect(search).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          body: expect.objectContaining({ query: 'webhook', tags: ['weather'], category: 'tool' }),
+        }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      ),
+    )
   })
 
   it('returns the next tag value when loading more RAG tools', async () => {

@@ -22,14 +22,15 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -47,6 +48,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
+import { getErrorMessage } from '@/utils/error-message'
 
 type SwitchAppModalProps = Pick<DialogProps, 'open' | 'onOpenChange'> & {
   sourceApp: Pick<
@@ -61,15 +63,22 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
   const { t } = useTranslation(['app'])
   const { push, replace } = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const conversion = useMutation(consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions())
-  const deletion = useMutation(consoleQuery.apps.byAppId.delete.mutationOptions())
+  const conversion = useMutation(
+    consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions({ context: { silent: true } }),
+  )
+  const deletion = useMutation(
+    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
+  )
   const isPending = conversion.isPending || deletion.isPending
   const submit = (body: ConvertToWorkflowPayload, removeOriginal: boolean) => {
     if (isPending) return
     conversion.mutate(
       { params: { app_id: sourceApp.id }, body },
       {
-        onError: () => toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' })),
+        onError: (error) =>
+          toast.error(
+            getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+          ),
         onSuccess: ({ new_app_id, permission_keys }) => {
           const finish = (removed: boolean) => {
             actionsRef.current?.close()
@@ -88,8 +97,8 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
               { params: { app_id: sourceApp.id } },
               {
                 onSuccess: () => finish(true),
-                onError: () => {
-                  toast.error(t(($) => $.appDeleteFailed, { ns: 'app' }))
+                onError: (error) => {
+                  toast.error(getErrorMessage(error) ?? t(($) => $.appDeleteFailed, { ns: 'app' }))
                   finish(false)
                 },
               },
@@ -207,45 +216,47 @@ function SwitchAppSession({
             </span>
             <span>{t(($) => $.switchTipEnd, { ns: 'app' })}</span>
           </DialogDescription>
-          <DialogCloseButton
+          <DialogHeaderCloseButton
             disabled={isPending}
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           />
         </DialogHeader>
         <DialogBody>
-          <IconPicker value={appIcon} onValueChange={setAppIcon}>
+          <Fieldset className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1">
+            <FieldsetLegend className="col-span-2 mb-0 block py-2 text-sm leading-5 font-medium text-text-primary">
+              {t(($) => $.switchLabel, { ns: 'app' })}
+            </FieldsetLegend>
+            <IconPicker value={appIcon} onValueChange={setAppIcon}>
+              <IconPickerTrigger
+                disabled={isPending}
+                aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                className="shrink-0 cursor-pointer rounded-[10px]"
+              >
+                <IconPickerIcon size="large" />
+              </IconPickerTrigger>
+              <IconPickerContent />
+            </IconPicker>
             <Field
               name="name"
+              className="contents"
               validate={(value) =>
                 typeof value === 'string' && !value.trim()
                   ? t(($) => $['appCustomize.nameRequired'], { ns: 'explore' })
                   : null
               }
             >
-              <FieldLabel className="block py-2 text-sm leading-5 font-medium text-text-primary">
-                {t(($) => $.switchLabel, { ns: 'app' })}
-              </FieldLabel>
-              <div className="flex items-center justify-between space-x-2">
-                <IconPickerTrigger
-                  disabled={isPending}
-                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-                  className="shrink-0 cursor-pointer rounded-[10px]"
-                >
-                  <IconPickerIcon size="large" />
-                </IconPickerTrigger>
-                <Input
-                  ref={nameInputRef}
-                  required
-                  readOnly={isPending}
-                  defaultValue={`${sourceApp.name}(copy)`}
-                  placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
-                  className="h-10 grow"
-                />
-              </div>
-              <FieldError />
+              <Input
+                aria-label={t(($) => $['newApp.name'], { ns: 'app' })}
+                ref={nameInputRef}
+                required
+                readOnly={isPending}
+                defaultValue={`${sourceApp.name}(copy)`}
+                placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' })}
+                className="h-10 grow"
+              />
+              <FieldError className="col-span-2" />
             </Field>
-            <IconPickerContent />
-          </IconPicker>
+          </Fieldset>
           {isAppsFull && <AppsFull className="mt-4" loc="app-switch" />}
         </DialogBody>
         <DialogFooter>

@@ -6,9 +6,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -40,6 +40,7 @@ export function UpdateSettingDialog({ category }: Props) {
       category,
       onSuccess: () => {
         toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+        actionsRef.current?.close()
       },
     })
   const savedAutoUpgrade = autoUpgradeSetting?.auto_upgrade
@@ -62,11 +63,15 @@ export function UpdateSettingDialog({ category }: Props) {
     : ''
   const handleSave = (autoUpgrade: AutoUpdateConfig) => {
     saveAutoUpgrade(autoUpgrade)
-    actionsRef.current?.close()
   }
 
   return (
-    <Dialog actionsRef={actionsRef}>
+    <Dialog
+      actionsRef={actionsRef}
+      onOpenChange={(open, details) => {
+        if (!open && isSavePending && details.reason !== 'imperative-action') details.cancel()
+      }}
+    >
       <DialogTrigger
         render={
           <Button variant="secondary" className="h-8 system-sm-medium">
@@ -85,7 +90,10 @@ export function UpdateSettingDialog({ category }: Props) {
           <DialogTitle>
             {t(($) => $['autoUpdate.autoUpdateSettings'], { ns: 'plugin' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            disabled={isSavePending}
+          />
         </DialogHeader>
         {isSettingsLoading && (
           <DialogBody>

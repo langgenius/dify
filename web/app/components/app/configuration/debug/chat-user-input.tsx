@@ -150,7 +150,7 @@ const ChatUserInput = ({ inputs }: Props) => {
                   <Input
                     aria-labelledby={`${baseId}-${key}-label`}
                     type="number"
-                    value={inputs[key] ? `${inputs[key]}` : ''}
+                    value={inputs[key] || inputs[key] === 0 ? `${inputs[key]}` : ''}
                     onValueChange={(value) => handleInputValueChange(key, value)}
                     placeholder={name}
                     maxLength={max_length}

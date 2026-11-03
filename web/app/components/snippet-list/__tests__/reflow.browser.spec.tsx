@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createStore, Provider } from 'jotai'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import SnippetList from '..'
 
@@ -11,6 +12,7 @@ const mockQueryState = vi.hoisted(() => ({
   creatorIDs: [] as string[],
   keywords: '',
   tagIDs: [] as string[],
+  publishStatus: 'all' as const,
 }))
 
 vi.mock('@/service/use-snippets', async (importOriginal) => ({
@@ -25,6 +27,8 @@ vi.mock('../hooks/use-snippets-query-state', () => ({
     setCreatorIDs: vi.fn(),
     setKeywords: vi.fn(),
     setTagIDs: vi.fn(),
+    setPublishStatus: vi.fn(),
+    flush: vi.fn().mockResolvedValue(new URLSearchParams()),
   }),
 }))
 
@@ -46,7 +50,7 @@ vi.mock('@/context/permission-state', async () => {
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
     queryFn: async () => ({ profile: { id: 'creator-1' } }),
-    queryKey: ['account-profile'],
+    queryKey: consoleQueryKey('account.profile.get'),
   }),
 }))
 
@@ -106,7 +110,7 @@ const renderSnippetList = async () => {
       queries: { retry: false },
     },
   })
-  queryClient.setQueryData(['account-profile'], { profile: { id: 'creator-1' } })
+  queryClient.setQueryData(consoleQueryKey('account.profile.get'), { profile: { id: 'creator-1' } })
 
   const store = createStore()
   seedRegisteredConsoleStateFixture(store)

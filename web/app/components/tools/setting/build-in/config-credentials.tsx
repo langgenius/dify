@@ -98,7 +98,7 @@ const ConfigCredential: FC<Props> = ({
           <DrawerPopup className="data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-105 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border">
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
               <div className="shrink-0 border-b border-divider-subtle py-4">
-                <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                <div className="flex h-6 items-center justify-between ps-6 pe-5">
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {t(($) => $['auth.setupModalTitle'], { ns: 'tools' })}
                   </DrawerTitle>
@@ -113,7 +113,7 @@ const ConfigCredential: FC<Props> = ({
                     }
                   />
                 </div>
-                <DrawerDescription className="pr-10 pl-6 system-xs-regular text-text-tertiary">
+                <DrawerDescription className="ps-6 pe-10 system-xs-regular text-text-tertiary">
                   {t(($) => $['auth.setupModalTitleDescription'], { ns: 'tools' })}
                 </DrawerDescription>
               </div>
@@ -144,7 +144,7 @@ const ConfigCredential: FC<Props> = ({
                             {t(($) => $.howToGet, { ns: 'tools' })}
                             <span
                               aria-hidden
-                              className="ml-1 i-custom-vender-line-general-link-external-02 size-3"
+                              className="ms-1 i-custom-vender-line-general-link-external-02 size-3 rtl:-scale-x-100"
                             />
                           </a>
                         ) : null

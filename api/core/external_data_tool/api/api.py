@@ -84,7 +84,7 @@ class ApiExternalDataTool(ExternalDataTool):
             # request api
             requestor = APIBasedExtensionRequestor(api_endpoint=api_based_extension.api_endpoint, api_key=api_key)
         except Exception as e:
-            raise ValueError(f"[External data tool] API query failed, variable: {self.variable}, error: {e}")
+            raise ValueError(f"[External data tool] API query failed, variable: {self.variable}, error: {e}") from e
 
         response_json = requestor.request(
             point=APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY,

@@ -89,11 +89,14 @@ function setup({ canManage = true, builtin = false } = {}) {
   return { ...render(<AccessRulesPage />, { wrapper }), queryClient }
 }
 
-async function openSection(resourceType: (typeof resourceTypes)[number]) {
+async function openSection(
+  user: ReturnType<typeof userEvent.setup>,
+  resourceType: (typeof resourceTypes)[number],
+) {
   const trigger = screen.getByRole('button', {
     name: new RegExp(`^permission.accessRule.${resourceType}Title`),
   })
-  if (trigger.getAttribute('aria-expanded') !== 'true') await userEvent.click(trigger)
+  if (trigger.getAttribute('aria-expanded') !== 'true') await user.click(trigger)
   return trigger.closest('section')!
 }
 
@@ -106,22 +109,21 @@ describe('AccessRulesPage', () => {
   it.each(resourceTypes)(
     'creates a %s permission set through the generated endpoint',
     async (type) => {
+      const user = userEvent.setup()
       setup()
-      const section = await openSection(type)
-      await userEvent.click(
+      const section = await openSection(user, type)
+      await user.click(
         within(section).getByRole('button', { name: 'permission.accessRule.newPermissionSet' }),
       )
       const dialog = screen.getByRole('dialog')
-      await userEvent.type(
+      await user.type(
         within(dialog).getByRole('textbox', { name: /permissionSet.nameLabel/ }),
         'Custom policy',
       )
-      await userEvent.click(
+      await user.click(
         within(dialog).getByRole('checkbox', { name: new RegExp(`${type}.acl.edit`) }),
       )
-      await userEvent.click(
-        within(dialog).getByRole('button', { name: 'common.operation.confirm' }),
-      )
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
       const mutation = sent.find((req) => req.method === 'POST')!
       expect(new URL(mutation.url).pathname).toMatch(/\/rbac\/access-policies$/)
@@ -137,17 +139,18 @@ describe('AccessRulesPage', () => {
   it.each(resourceTypes)(
     'updates a %s permission set with the generated request body',
     async (type) => {
+      const user = userEvent.setup()
       setup()
-      const section = await openSection(type)
-      await userEvent.click(
+      const section = await openSection(user, type)
+      await user.click(
         within(section).getByRole('button', { name: 'common.operation.moreActions' }),
       )
-      await userEvent.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
-      await userEvent.type(
+      await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+      await user.type(
         screen.getByRole('textbox', { name: 'permission.permissionSet.descriptionLabel' }),
         ' updated',
       )
-      await userEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
       const mutation = sent.find((req) => req.method === 'PUT')!
       expect(new URL(mutation.url).pathname).toMatch(new RegExp(`/access-policies/${type}-rule$`))
@@ -160,18 +163,17 @@ describe('AccessRulesPage', () => {
   )
 
   it('keeps built-in Agent policies read-only and offers duplication', async () => {
+    const user = userEvent.setup()
     setup({ builtin: true })
-    const section = await openSection('agent')
-    await userEvent.click(
-      within(section).getByRole('button', { name: 'common.operation.moreActions' }),
-    )
+    const section = await openSection(user, 'agent')
+    await user.click(within(section).getByRole('button', { name: 'common.operation.moreActions' }))
     expect(
       screen.queryByRole('menuitem', { name: 'common.operation.delete' }),
     ).not.toBeInTheDocument()
     expect(
       screen.getByRole('menuitem', { name: 'permission.common.duplicateAction' }),
     ).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('menuitem', { name: 'common.operation.view' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.view' }))
     expect(screen.getByRole('textbox', { name: /permissionSet.nameLabel/ })).toBeDisabled()
     expect(
       screen.queryByRole('button', { name: 'common.operation.confirm' }),
@@ -179,9 +181,10 @@ describe('AccessRulesPage', () => {
   })
 
   it('closes a mutation dialog when role management is revoked', async () => {
+    const user = userEvent.setup()
     const { queryClient } = setup()
-    const section = await openSection('agent')
-    await userEvent.click(
+    const section = await openSection(user, 'agent')
+    await user.click(
       within(section).getByRole('button', { name: 'permission.accessRule.newPermissionSet' }),
     )
     act(() => {

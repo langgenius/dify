@@ -3,11 +3,12 @@ import type {
   ModelLoadBalancingConfig,
   ModelProvider,
 } from '../../declarations'
-import type { ModalState, ModelModalType } from '@/context/modal-context'
+import type { consoleClient } from '@/service/console'
+import { zModelCredentialResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { ModalContext, useModalContext } from '@/context/modal-context'
+import { ModalContextProvider } from '@/context/modal-context-provider'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
@@ -17,28 +18,36 @@ import {
   ModelTypeEnum,
   PreferredProviderTypeEnum,
 } from '../../declarations'
-import ModelModal from '../../model-modal'
 import ModelLoadBalancingConfigs from '../model-load-balancing-configs'
 
-const { mockPost } = vi.hoisted(() => ({ mockPost: vi.fn() }))
-
-// Requests go through the console client, whose browser transport uses `request`.
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
-    if (request.method !== 'POST') return Response.json({ credentials: {} })
-    mockPost(new URL(request.url).pathname.replace(/^\/console\/api/, ''), {
-      body: await request.json(),
-    })
-    return Response.json({ result: 'success' })
-  },
+const api = vi.hoisted(() => ({
+  provider:
+    vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.credentials.post>(),
+  model:
+    vi.fn<
+      typeof consoleClient.workspaces.current.modelProviders.byProvider.models.credentials.post
+    >(),
 }))
-
-vi.mock('../../hooks', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../hooks')>()),
-  useLanguage: () => 'en_US',
-  useRefreshModel: () => ({ handleRefreshModel: vi.fn() }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.modelProviders.byProvider.credentials.post': api.provider,
+      'workspaces.current.modelProviders.byProvider.models.credentials.post': api.model,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.models.credentials.get': async () =>
+        zModelCredentialResponse.parse({
+          credentials: {},
+          available_credentials: [],
+          load_balancing: { enabled: false, configs: [] },
+        }),
+    }),
+  }
+})
 
 const i18n = (value: string) => ({ en_US: value, zh_Hans: value })
 const credentialSchema: CredentialFormSchema = {
@@ -76,8 +85,6 @@ const provider: ModelProvider = {
 }
 const model = { model: 'test-model', model_type: ModelTypeEnum.textGeneration }
 
-// Keep the credential menu, auth hooks, modal and form real so both forwarding
-// boundaries participate in the save request. Only mount the relevant global modal.
 function CredentialFlow({
   configurationMethod,
   hasExistingCredential,
@@ -85,17 +92,13 @@ function CredentialFlow({
   configurationMethod: ConfigurationMethodEnum
   hasExistingCredential: boolean
 }) {
-  const modalContext = useModalContext()
-  const [modal, setModal] = useState<ModalState<ModelModalType> | null>(null)
   const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig | undefined>({
     enabled: true,
     configs: [],
   })
-  const payload = modal?.payload
 
   return (
-    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector exposes a Provider, not a renderable React context.
-    <ModalContext.Provider value={{ ...modalContext, setShowModelModal: setModal }}>
+    <ModalContextProvider>
       <ModelLoadBalancingConfigs
         provider={provider}
         model={model}
@@ -114,30 +117,14 @@ function CredentialFlow({
             : [],
         }}
       />
-      {payload && (
-        <ModelModal
-          provider={payload.currentProvider}
-          configurateMethod={payload.currentConfigurationMethod}
-          currentCustomConfigurationModelFixedFields={
-            payload.currentCustomConfigurationModelFixedFields
-          }
-          model={payload.model}
-          credential={payload.credential}
-          isModelCredential={payload.isModelCredential}
-          mode={payload.mode}
-          onCancel={() => setModal(null)}
-          onSave={() => setModal(null)}
-          onRemove={() => setModal(null)}
-        />
-      )}
-    </ModalContext.Provider>
+    </ModalContextProvider>
   )
 }
 
 describe('Saving credentials from load balancing', () => {
   beforeEach(() => {
-    mockPost.mockReset()
-    mockPost.mockResolvedValue({ result: 'success' })
+    api.provider.mockReset().mockResolvedValue({ result: 'success' })
+    api.model.mockReset().mockResolvedValue({ result: 'success' })
   })
 
   it.each([
@@ -173,25 +160,28 @@ describe('Saving credentials from load balancing', () => {
             : 'modelProvider.modelProvider.auth.addModelCredential'
         await user.click(await screen.findByText(action))
       }
-      const dialog = await screen.findByRole('dialog')
+      const dialog = await screen.findByRole('dialog', {
+        name: 'modelProvider.modelProvider.auth.addModelCredential',
+      })
       await user.type(within(dialog).getByPlaceholderText('Enter API key'), 'test-api-key')
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
-      const endpoint =
-        configurationMethod === ConfigurationMethodEnum.predefinedModel
-          ? '/workspaces/current/model-providers/test-provider/credentials'
-          : '/workspaces/current/model-providers/test-provider/models/credentials'
-      await waitFor(() => {
-        expect(mockPost).toHaveBeenCalledTimes(1)
-        expect(mockPost).toHaveBeenCalledWith(endpoint, {
+      const create =
+        configurationMethod === ConfigurationMethodEnum.predefinedModel ? api.provider : api.model
+      const other =
+        configurationMethod === ConfigurationMethodEnum.predefinedModel ? api.model : api.provider
+      await waitFor(() =>
+        expect(create).toHaveBeenCalledExactlyOnceWith({
+          params: { provider: provider.provider },
           body: expect.objectContaining({
             credentials: expect.objectContaining({ api_key: 'test-api-key' }),
             model: model.model,
             model_type: model.model_type,
           }),
-        })
-      })
-      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+        }),
+      )
+      expect(other).not.toHaveBeenCalled()
+      await waitFor(() => expect(dialog).not.toBeInTheDocument())
     },
   )
 })

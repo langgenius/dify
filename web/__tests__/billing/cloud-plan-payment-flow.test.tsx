@@ -1,11 +1,12 @@
 import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ALL_PLANS } from '@/app/components/billing/config'
 import { CloudPlanItem } from '@/app/components/billing/pricing/plans/cloud-plan-item'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createDeferred } from '@/test/deferred'
@@ -48,7 +49,7 @@ const renderPlan = ({
   const { wrapper } = createConsoleQueryWrapper()
   return render(
     <>
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
       <CloudPlanItem
         plan={plan}
         billingInterval={billingInterval}
@@ -88,18 +89,39 @@ describe('Cloud plan payment flow', () => {
   ] as const)(
     'displays $plan pricing and redirects to its $interval checkout',
     async ({ plan, interval, label }) => {
+      const user = userEvent.setup()
       renderPlan({ plan, billingInterval: interval })
       const price = ALL_PLANS[plan].price
       expect(screen.getByText(`$${price * (interval === 'year' ? 10 : 1)}`)).toBeInTheDocument()
       if (interval === 'year') expect(screen.getByText(`$${price * 12}`)).toBeInTheDocument()
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
+      await user.click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
       await waitFor(() => expect(window.location.href).toBe('https://pay.example.com/checkout'))
-      expect(mockGetSubscription).toHaveBeenCalledExactlyOnceWith({ query: { plan, interval } })
+      expect(mockGetSubscription).toHaveBeenCalledExactlyOnceWith(
+        { query: { plan, interval } },
+        { context: { silent: true } },
+      )
       expect(mockGetInvoices).not.toHaveBeenCalled()
     },
   )
+
+  it('explains a failed checkout and keeps the user on the plan', async () => {
+    const user = userEvent.setup()
+    const startUrl = window.location.href
+    mockGetSubscription.mockRejectedValueOnce(
+      new ORPCError('billing_request_in_progress', {
+        defined: true,
+        status: 429,
+        message: 'Backend text',
+      }),
+    )
+    renderPlan()
+    const button = screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })
+    await user.click(button)
+    expect(await screen.findByText('billing.errors.requestInProgress')).toBeInTheDocument()
+    expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
+    expect(window.location.href).toBe(startUrl)
+    expect(button).toBeEnabled()
+  })
 
   it.each([
     { currentPlan: 'sandbox', plan: 'sandbox', label: 'currentPlan' },
@@ -109,10 +131,11 @@ describe('Cloud plan payment flow', () => {
   ] as const)(
     'prevents purchasing $plan from $currentPlan',
     async ({ currentPlan, plan, label }) => {
+      const user = userEvent.setup()
       renderPlan({ currentPlan, plan })
       const button = screen.getByRole('button', { name: `billing.plansCommon.${label}` })
       expect(button).toBeDisabled()
-      await userEvent.setup().click(button)
+      await user.click(button)
       expect(mockGetSubscription).not.toHaveBeenCalled()
       expect(mockGetInvoices).not.toHaveBeenCalled()
       expect(window.open).not.toHaveBeenCalled()
@@ -120,12 +143,11 @@ describe('Cloud plan payment flow', () => {
   )
 
   it('opens the billing portal for the current paid subscription after resolving its URL', async () => {
+    const user = userEvent.setup()
     const request = createDeferred<{ url: string }>()
     mockGetInvoices.mockReturnValue(request.promise)
     renderPlan({ currentPlan: 'professional', plan: 'professional' })
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
     expect(window.open).toHaveBeenCalledWith('about:blank', '_blank', undefined)
     expect(popup.opener).toBeNull()
     expect(popup.location.href).toBe('')
@@ -136,12 +158,14 @@ describe('Cloud plan payment flow', () => {
   })
 
   it('closes the pending portal and reports its URL request failure', async () => {
-    mockGetInvoices.mockRejectedValueOnce(new Error('Billing unavailable'))
+    const user = userEvent.setup()
+    mockGetInvoices.mockRejectedValueOnce(
+      new ORPCError('billing_unavailable', { defined: true, status: 503, message: 'Backend text' }),
+    )
     renderPlan({ currentPlan: 'professional', plan: 'professional' })
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
-    expect(await screen.findByText('Billing unavailable')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
+    expect(await screen.findByText('billing.errors.unavailable')).toBeInTheDocument()
+    expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
     expect(popup.close).toHaveBeenCalledOnce()
     expect(popup.location.href).toBe('')
   })
@@ -165,11 +189,10 @@ describe('Cloud plan payment flow', () => {
   ] as const)(
     'blocks the $label action without billing permission',
     async ({ currentPlan, label }) => {
+      const user = userEvent.setup()
       canManageBilling = false
       renderPlan({ currentPlan })
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
+      await user.click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
       expect(await screen.findByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
       expect(mockGetSubscription).not.toHaveBeenCalled()
       expect(mockGetInvoices).not.toHaveBeenCalled()

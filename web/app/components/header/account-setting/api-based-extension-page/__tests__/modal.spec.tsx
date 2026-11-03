@@ -132,6 +132,7 @@ describe('ApiBasedExtensionModal', () => {
 
   describe('Form Submissions', () => {
     it('should call create mutation on save for new extension', async () => {
+      const user = userEvent.setup()
       // Arrange
       const newExtension = mockExtension({
         id: 'new-id',
@@ -143,25 +144,19 @@ describe('ApiBasedExtensionModal', () => {
       renderModal()
 
       // Act
-      await userEvent
-        .setup()
-        .type(
-          screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'),
-          'New Ext',
-        )
-      await userEvent
-        .setup()
-        .type(
-          screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'),
-          'https://api.test',
-        )
-      await userEvent
-        .setup()
-        .type(
-          screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'),
-          'secret-key',
-        )
-      await userEvent.setup().click(screen.getByText('common.operation.save'))
+      await user.type(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'),
+        'New Ext',
+      )
+      await user.type(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'),
+        'https://api.test',
+      )
+      await user.type(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'),
+        'secret-key',
+      )
+      await user.click(screen.getByText('common.operation.save'))
 
       // Assert
       await waitFor(() => {
@@ -202,6 +197,7 @@ describe('ApiBasedExtensionModal', () => {
     )
 
     it('should call update mutation on save for existing extension', async () => {
+      const user = userEvent.setup()
       // Arrange
       const data = mockExtension({ api_key: 'long-secret-key' })
       mockUpdateApiBasedExtension.mockResolvedValue({ ...data, name: 'Updated' })
@@ -212,9 +208,9 @@ describe('ApiBasedExtensionModal', () => {
         name: 'common.apiBasedExtension.modal.name.title',
       })
       expect(name).toHaveValue('Existing')
-      await userEvent.setup().clear(name)
-      await userEvent.setup().type(name, 'Updated')
-      await userEvent.setup().click(screen.getByText('common.operation.save'))
+      await user.clear(name)
+      await user.type(name, 'Updated')
+      await user.click(screen.getByText('common.operation.save'))
 
       // Assert
       await waitFor(() => {
@@ -233,6 +229,7 @@ describe('ApiBasedExtensionModal', () => {
     })
 
     it('should call update mutation with new api_key when key is changed', async () => {
+      const user = userEvent.setup()
       // Arrange
       const data = mockExtension({ api_key: 'old-key' })
       mockUpdateApiBasedExtension.mockResolvedValue({ ...data, api_key: 'new-longer-key' })
@@ -242,9 +239,9 @@ describe('ApiBasedExtensionModal', () => {
       const key = screen.getByRole('textbox', {
         name: 'common.apiBasedExtension.modal.apiKey.title',
       })
-      await userEvent.setup().clear(key)
-      await userEvent.setup().type(key, 'new-longer-key')
-      await userEvent.setup().click(screen.getByText('common.operation.save'))
+      await user.clear(key)
+      await user.type(key, 'new-longer-key')
+      await user.click(screen.getByText('common.operation.save'))
 
       // Assert
       await waitFor(() => {
@@ -264,26 +261,24 @@ describe('ApiBasedExtensionModal', () => {
 
   describe('Validation', () => {
     it('should show error if api key is too short', async () => {
+      const user = userEvent.setup()
       // Arrange
       renderModal()
 
       // Act
-      await userEvent
-        .setup()
-        .type(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'), 'Ext')
-      await userEvent
-        .setup()
-        .type(
-          screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'),
-          'url',
-        )
-      await userEvent
-        .setup()
-        .type(
-          screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'),
-          '123',
-        )
-      await userEvent.setup().click(screen.getByText('common.operation.save'))
+      await user.type(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'),
+        'Ext',
+      )
+      await user.type(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'),
+        'url',
+      )
+      await user.type(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'),
+        '123',
+      )
+      await user.click(screen.getByText('common.operation.save'))
 
       // Assert
       await waitFor(() => {
@@ -301,11 +296,12 @@ describe('ApiBasedExtensionModal', () => {
 
   describe('Interactions', () => {
     it('should request closing when clicking cancel button', async () => {
+      const user = userEvent.setup()
       // Arrange
       renderModal()
 
       // Act
-      await userEvent.setup().click(screen.getByText('common.operation.cancel'))
+      await user.click(screen.getByText('common.operation.cancel'))
 
       // Assert
       expectCloseRequested()
@@ -327,11 +323,12 @@ describe('ApiBasedExtensionModal', () => {
     })
 
     it('should request closing when pressing Escape', async () => {
+      const user = userEvent.setup()
       // Arrange
       renderModal()
 
       // Act
-      await userEvent.setup().keyboard('{Escape}')
+      await user.keyboard('{Escape}')
 
       // Assert
       await waitFor(() => {
@@ -340,13 +337,14 @@ describe('ApiBasedExtensionModal', () => {
     })
 
     it('should keep open when clicking outside the dialog', async () => {
+      const user = userEvent.setup()
       // Arrange
       renderModal()
 
       // Act
       const backdrop = document.querySelector('.bg-background-overlay')
       expect(backdrop).toBeInTheDocument()
-      await userEvent.setup().click(backdrop!)
+      await user.click(backdrop!)
 
       // Assert
       expect(mockOnOpenChange).not.toHaveBeenCalled()

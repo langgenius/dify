@@ -1,54 +1,47 @@
-import { act, renderHook } from '@testing-library/react'
+import type { NoteNodeType } from '../types'
+import { act, waitFor } from '@testing-library/react'
 import { $createParagraphNode, $createTextNode, $getRoot, createEditor } from 'lexical'
-import { NOTE_SHOW_AUTHOR_STORAGE_KEY } from '../constants'
+import { useNodes } from 'reactflow'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '../../__tests__/workflow-test-env'
+import { CUSTOM_NOTE_NODE } from '../constants'
 import { useNote } from '../hooks'
+import { NoteTheme } from '../types'
 
-const mockHandleNodeDataUpdateWithSyncDraft = vi.hoisted(() => vi.fn())
-const mockSaveStateToHistory = vi.hoisted(() => vi.fn())
-
-vi.mock('../../hooks/use-node-data-update', () => ({
-  useNodeDataUpdate: () => ({
-    handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-  }),
-}))
-
-vi.mock('../../hooks/use-workflow-history', () => ({
-  useWorkflowHistory: () => ({
-    saveStateToHistory: mockSaveStateToHistory,
-  }),
-  WorkflowHistoryEvent: {
-    NoteChange: 'note-change',
-  },
-}))
-
-describe('useNote', () => {
-  beforeEach(() => {
-    localStorage.removeItem(NOTE_SHOW_AUTHOR_STORAGE_KEY)
+const renderNote = () =>
+  renderWorkflowCanvasHook(() => ({ note: useNote('note-1'), nodes: useNodes<NoteNodeType>() }), {
+    nodes: [
+      createNode({
+        id: 'note-1',
+        type: CUSTOM_NOTE_NODE,
+        data: { text: '', theme: NoteTheme.blue, author: 'Alice', showAuthor: true },
+      }),
+    ],
+    historyStore: { nodes: [], edges: [] },
   })
 
-  it('updates theme and author visibility while saving note history entries', () => {
-    const { result } = renderHook(() => useNote('note-1'))
+const noteData = (result: ReturnType<typeof renderNote>['result']) =>
+  result.current.nodes.find((node) => node.id === 'note-1')!.data
+
+describe('useNote', () => {
+  it('changes the note theme and records it in workflow history', async () => {
+    const { result, store } = renderNote()
 
     act(() => {
-      result.current.handleThemeChange('blue')
-      result.current.handleShowAuthorChange(true)
+      result.current.note.handleThemeChange(NoteTheme.violet)
     })
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(1, {
-      id: 'note-1',
-      data: { theme: 'blue' },
-    })
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(2, {
-      id: 'note-1',
-      data: { showAuthor: true },
-    })
-    expect(mockSaveStateToHistory).toHaveBeenNthCalledWith(1, 'note-change', { nodeId: 'note-1' })
-    expect(mockSaveStateToHistory).toHaveBeenNthCalledWith(2, 'note-change', { nodeId: 'note-1' })
-    expect(localStorage.getItem(NOTE_SHOW_AUTHOR_STORAGE_KEY)).toBe('true')
+    expect(noteData(result)).toMatchObject({ theme: NoteTheme.violet })
+    await waitFor(() =>
+      expect(store.getState().workflowHistory).toMatchObject({
+        workflowHistoryEvent: 'NoteChange',
+        workflowHistoryEventMeta: { nodeId: 'note-1' },
+      }),
+    )
   })
 
   it('serializes non-empty editor state and clears empty editor state', () => {
-    const { result } = renderHook(() => useNote('note-2'))
+    const { result } = renderNote()
     const editor = createEditor({
       onError: (error) => {
         throw error
@@ -61,20 +54,18 @@ describe('useNote', () => {
       },
       { discrete: true },
     )
-    const nonEmptyEditorState = editor.getEditorState()
 
     act(() => {
-      result.current.handleEditorChange(nonEmptyEditorState)
-      result.current.handleEditorChange(emptyEditorState)
+      result.current.note.handleEditorChange(editor.getEditorState())
     })
 
-    const saved = mockHandleNodeDataUpdateWithSyncDraft.mock.calls[0]![0]
-    expect(saved.id).toBe('note-2')
-    const restored = editor.parseEditorState(saved.data.text)
+    const restored = editor.parseEditorState(noteData(result).text)
     expect(restored.read(() => $getRoot().getTextContent())).toBe('Remember this decision')
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(2, {
-      id: 'note-2',
-      data: { text: '' },
+
+    act(() => {
+      result.current.note.handleEditorChange(emptyEditorState)
     })
+
+    expect(noteData(result)).toMatchObject({ text: '' })
   })
 })

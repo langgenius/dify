@@ -1,5 +1,5 @@
 import type { OpeningStatement } from '@/app/components/base/features/types'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -11,17 +11,12 @@ const defaultData: OpeningStatement = {
   opening_statement: 'Hello, how can I help?',
   suggested_questions: ['Question 1', 'Question 2'],
 }
-const getPromptEditor = () => {
-  const editor = document.querySelector<HTMLElement>('[data-lexical-editor="true"]')
-  expect(editor).toBeInTheDocument()
-  return editor!
-}
-const save = async () =>
-  userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.save' }))
-const dismissVariableCheck = async () =>
-  userEvent
-    .setup()
-    .click(screen.getAllByRole('button', { name: 'common.operation.cancel' }).at(-1)!)
+const getPromptEditor = () =>
+  within(screen.getByTestId('opener-input-section')).getByRole('textbox')
+const save = (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+const dismissVariableCheck = (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(screen.getAllByRole('button', { name: 'common.operation.cancel' }).at(-1)!)
 
 describe('OpeningSettingModal', () => {
   it.each(['cancel', 'close', 'Escape'] as const)(
@@ -50,7 +45,7 @@ describe('OpeningSettingModal', () => {
       screen.getAllByPlaceholderText('appDebug.openingStatement.openingQuestionPlaceholder')[0]!,
       'Updated question',
     )
-    await user.click(screen.getByTestId('delete-question-Question 2').parentElement!)
+    await user.click(screen.getByTestId('delete-question-Question 2'))
     expect(screen.queryByDisplayValue('Question 2')).not.toBeInTheDocument()
     await user.click(screen.getByText('appDebug.variableConfig.addOption'))
     const newQuestion = screen.getAllByPlaceholderText(
@@ -58,7 +53,7 @@ describe('OpeningSettingModal', () => {
     )[1]!
     expect(newQuestion).toHaveFocus()
     await user.type(newQuestion, 'New question')
-    await save()
+    await save(user)
     expect(onSave).toHaveBeenCalledExactlyOnceWith({
       ...defaultData,
       opening_statement: 'Welcome!',
@@ -67,6 +62,7 @@ describe('OpeningSettingModal', () => {
   })
 
   it.each(['', '   '])('prevents saving an empty opener (%j)', async (opening_statement) => {
+    const user = userEvent.setup()
     const onSave = vi.fn()
     render(
       <OpeningSettingModal
@@ -76,13 +72,14 @@ describe('OpeningSettingModal', () => {
       />,
     )
     expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
-    await save()
+    await save(user)
     expect(onSave).not.toHaveBeenCalled()
   })
 
   it.each([[], undefined])(
     'saves an empty question list when initialized with %j',
     async (suggested_questions) => {
+      const user = userEvent.setup()
       const onSave = vi.fn()
       render(
         <OpeningSettingModal
@@ -91,7 +88,7 @@ describe('OpeningSettingModal', () => {
           onCancel={vi.fn()}
         />,
       )
-      await save()
+      await save(user)
       expect(onSave).toHaveBeenCalledExactlyOnceWith({ ...defaultData, suggested_questions: [] })
     },
   )
@@ -130,7 +127,7 @@ describe('OpeningSettingModal', () => {
         onAutoAddPromptVariable={onAutoAddPromptVariable}
       />,
     )
-    await save()
+    await save(user)
     expect(screen.getByText('appDebug.autoAddVar')).toBeInTheDocument()
     expect(onSave).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
@@ -142,6 +139,7 @@ describe('OpeningSettingModal', () => {
   })
 
   it('allows saving without adding an unknown variable', async () => {
+    const user = userEvent.setup()
     const onSave = vi.fn()
     const onAutoAddPromptVariable = vi.fn()
     const data = { ...defaultData, opening_statement: 'Hello {{unknown}}' }
@@ -156,10 +154,10 @@ describe('OpeningSettingModal', () => {
         ]}
       />,
     )
-    await save()
+    await save(user)
     expect(screen.getByText('appDebug.autoAddVar')).toBeInTheDocument()
     expect(onSave).not.toHaveBeenCalled()
-    await dismissVariableCheck()
+    await dismissVariableCheck(user)
     expect(onSave).toHaveBeenCalledExactlyOnceWith(data)
     expect(onAutoAddPromptVariable).not.toHaveBeenCalled()
   })
@@ -167,6 +165,7 @@ describe('OpeningSettingModal', () => {
   it.each(['prompt', 'workflow'] as const)(
     'saves known %s variables without confirmation',
     async (kind) => {
+      const user = userEvent.setup()
       const onSave = vi.fn()
       const data = { ...defaultData, opening_statement: 'Hello {{name}}' }
       render(
@@ -184,13 +183,14 @@ describe('OpeningSettingModal', () => {
           }
         />,
       )
-      await save()
+      await save(user)
       expect(screen.queryByText('appDebug.autoAddVar')).not.toBeInTheDocument()
       expect(onSave).toHaveBeenCalledExactlyOnceWith(data)
     },
   )
 
   it('updates the editor and saved opener when its data changes', async () => {
+    const user = userEvent.setup()
     const onSave = vi.fn()
     const view = render(
       <OpeningSettingModal data={defaultData} onSave={onSave} onCancel={vi.fn()} />,
@@ -203,7 +203,7 @@ describe('OpeningSettingModal', () => {
       />,
     )
     await waitFor(() => expect(getPromptEditor()).toHaveTextContent('New greeting!'))
-    await save()
+    await save(user)
     expect(onSave).toHaveBeenCalledExactlyOnceWith({
       ...defaultData,
       opening_statement: 'New greeting!',
@@ -211,6 +211,7 @@ describe('OpeningSettingModal', () => {
   })
 
   it('does not save if the opener becomes empty while variable confirmation is open', async () => {
+    const user = userEvent.setup()
     const onSave = vi.fn()
     const view = render(
       <OpeningSettingModal
@@ -219,7 +220,7 @@ describe('OpeningSettingModal', () => {
         onCancel={vi.fn()}
       />,
     )
-    await save()
+    await save(user)
     expect(screen.getByText('appDebug.autoAddVar')).toBeInTheDocument()
     view.rerender(
       <OpeningSettingModal
@@ -228,7 +229,7 @@ describe('OpeningSettingModal', () => {
         onCancel={vi.fn()}
       />,
     )
-    await dismissVariableCheck()
+    await dismissVariableCheck(user)
     expect(onSave).not.toHaveBeenCalled()
   })
 
@@ -253,7 +254,7 @@ describe('OpeningSettingModal', () => {
       screen.getAllByPlaceholderText('appDebug.openingStatement.openingQuestionPlaceholder')[0]!,
       'Edited after sorting',
     )
-    await save()
+    await save(user)
     expect(onSave).toHaveBeenCalledExactlyOnceWith({
       ...defaultData,
       suggested_questions: ['Edited after sorting', 'Question 1'],

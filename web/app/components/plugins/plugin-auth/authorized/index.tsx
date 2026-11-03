@@ -28,7 +28,7 @@ import {
 import { CredentialTypeEnum } from '../types'
 import Item from './item'
 
-type AuthorizedProps = Pick<PopoverContentProps, 'placement' | 'sideOffset'> & {
+type AuthorizedProps = Pick<PopoverContentProps, 'side' | 'align' | 'sideOffset'> & {
   pluginPayload: PluginPayload
   credentials: Credential[]
   canOAuth?: boolean
@@ -54,8 +54,9 @@ const Authorized = ({
   renderTrigger,
   isOpen,
   onOpenChange,
-  sideOffset = 8,
-  placement = 'bottom-start',
+  sideOffset,
+  side,
+  align = 'start',
   triggerPopupSameWidth = true,
   popupClassName,
   disableSetDefault,
@@ -222,7 +223,9 @@ const Authorized = ({
           }
         />
         <PopoverContent
-          placement={placement}
+          aria-label={t(($) => $['auth.authorizations'], { ns: 'plugin' })}
+          side={side}
+          align={align}
           sideOffset={sideOffset}
           className={cn(
             'border-0 bg-transparent p-0 shadow-none backdrop-blur-none',

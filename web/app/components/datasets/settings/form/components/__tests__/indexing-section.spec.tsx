@@ -10,33 +10,25 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ChunkingMode } from '@/models/datasets'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import IndexingSection from '../indexing-section'
 
-// Child interactions are covered in their owner suites. This suite owns section availability.
-vi.mock('@/app/components/datasets/settings/chunk-structure', () => ({
-  default: () => <div data-testid="chunk-structure" />,
-}))
-vi.mock('@/app/components/datasets/settings/index-method', () => ({
-  default: ({ disabled }: { disabled?: boolean }) => (
-    <div data-testid="index-method" data-disabled={String(disabled)} />
-  ),
-}))
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: () => <div data-testid="model-selector" />,
-}))
-vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
-  default: () => <div data-testid="summary-index-setting" />,
-}))
-vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
-  default: () => <div data-testid="retrieval-method-config" />,
-}))
-vi.mock('@/app/components/datasets/common/economical-retrieval-method-config', () => ({
-  default: () => <div data-testid="economical-retrieval-method-config" />,
-}))
+const render = createNuqsTestRenderer(
+  (ui, options: Parameters<typeof renderWithConsoleQuery>[1] = {}) => {
+    const queryClient = createConsoleQueryClient()
+    seedModelProviderQueries(queryClient)
+    queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryKey(), {
+      retrieval_method: ['semantic_search', 'full_text_search', 'hybrid_search'],
+    })
+    return renderWithConsoleQuery(ui, { ...options, queryClient })
+  },
+)
 
 describe('IndexingSection', () => {
   const mockRetrievalConfig: RetrievalConfig = {
@@ -117,10 +109,18 @@ describe('IndexingSection', () => {
     'offers appropriate indexing and embedding controls for %s / %s',
     (docForm, indexMethod, showIndex, showEmbedding) => {
       renderComponent({ currentDataset: { ...mockDataset, doc_form: docForm }, indexMethod })
-      expect(!!screen.queryByTestId('index-method')).toBe(showIndex)
-      expect(!!screen.queryByTestId('model-selector')).toBe(showEmbedding)
-      expect(!!screen.queryByTestId('retrieval-method-config')).toBe(showEmbedding)
-      expect(!!screen.queryByTestId('economical-retrieval-method-config')).toBe(!showEmbedding)
+      expect(!!screen.queryByRole('radiogroup', { name: 'datasetSettings.form.indexMethod' })).toBe(
+        showIndex,
+      )
+      expect(!!screen.queryByRole('button', { name: /datasetSettings.form.embeddingModel/ })).toBe(
+        showEmbedding,
+      )
+      expect(
+        !!screen.queryByRole('radio', { name: 'dataset.retrieval.semantic_search.title' }),
+      ).toBe(showEmbedding)
+      expect(
+        !!screen.queryByRole('radio', { name: 'dataset.retrieval.keyword_search.title' }),
+      ).toBe(!showEmbedding)
     },
   )
 
@@ -135,14 +135,20 @@ describe('IndexingSection', () => {
     'disables indexing changes when settings cannot be edited',
     (props) => {
       renderComponent(props)
-      expect(screen.getByTestId('index-method')).toHaveAttribute('data-disabled', 'true')
+      expect(
+        screen.getByRole('radio', { name: /datasetCreation.stepTwo.qualified/ }),
+      ).toBeDisabled()
     },
   )
 
   it('withholds internal retrieval configuration for external datasets', () => {
     renderComponent({ currentDataset: { ...mockDataset, provider: 'external' } })
-    expect(screen.queryByTestId('retrieval-method-config')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('economical-retrieval-method-config')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('radio', { name: 'dataset.retrieval.semantic_search.title' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('radio', { name: 'dataset.retrieval.keyword_search.title' }),
+    ).not.toBeInTheDocument()
   })
 
   it.each([
@@ -161,7 +167,9 @@ describe('IndexingSection', () => {
         />,
         { systemFeatures: { deployment_edition: 'COMMUNITY' } },
       )
-      expect(!!screen.queryByTestId('summary-index-setting')).toBe(visible)
+      expect(!!screen.queryByRole('switch', { name: 'datasetSettings.form.summaryAutoGen' })).toBe(
+        visible,
+      )
     },
   )
 })

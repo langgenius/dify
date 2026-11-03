@@ -90,6 +90,7 @@ it('edits only the selected boolean array entry and retains the previous edit', 
   expect(screen.getByRole('status')).toHaveTextContent('[false,true]')
 })
 it('keeps truncated JSON read-only and displays parsing and validation errors', async () => {
+  const user = userEvent.setup()
   const onChange = vi.fn()
   render(
     <>
@@ -104,7 +105,7 @@ it('keeps truncated JSON read-only and displays parsing and validation errors', 
       <ErrorMessages parseError={new Error('Broken JSON')} validationError="Too deep" />
     </>,
   )
-  await userEvent.setup().type(screen.getByRole('textbox', { name: 'JSON' }), 'x')
+  await user.type(screen.getByRole('textbox', { name: 'JSON' }), 'x')
   expect(screen.getByRole('textbox', { name: 'JSON' })).toHaveValue('{"foo":1}')
   expect(onChange).not.toHaveBeenCalled()
   expect(screen.getByText('Broken JSON')).toBeVisible()

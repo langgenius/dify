@@ -49,4 +49,4 @@ class TimestampToLocaltimeTool(BuiltinTool):
             local_time = datetime.fromtimestamp(timestamp, local_tz)
             return local_time
         except Exception as e:
-            raise ToolInvokeError(str(e))
+            raise ToolInvokeError(str(e)) from e

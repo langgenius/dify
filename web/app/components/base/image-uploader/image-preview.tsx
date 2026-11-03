@@ -165,8 +165,9 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
         const containerRect = imgRef.current?.parentElement?.getBoundingClientRect()
 
         if (imgRect && containerRect) {
-          const maxX = (imgRect.width * scale - containerRect.width) / 2
-          const maxY = (imgRect.height * scale - containerRect.height) / 2
+          // The image rectangle already includes its scale; position uses viewport pixels.
+          const maxX = Math.max(0, (imgRect.width - containerRect.width) / 2)
+          const maxY = Math.max(0, (imgRect.height - containerRect.height) / 2)
 
           setPosition({
             x: Math.max(-maxX, Math.min(maxX, deltaX)),
@@ -229,11 +230,12 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
         >
           <img
             ref={imgRef}
+            draggable={false}
             alt={title}
             src={isBase64(url) ? `data:image/png;base64,${url}` : url}
             className="max-h-full max-w-full"
             style={{
-              transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)`,
+              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
               transition: isDragging ? 'none' : 'transform 0.2s ease-in-out',
             }}
             data-testid="image-preview-image"

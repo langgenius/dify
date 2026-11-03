@@ -4,13 +4,14 @@ import { Suspense, useState } from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { CommentIcon } from './comment-icon'
 import { CommentInput } from './comment-input'
 import 'reactflow/dist/style.css'
 
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
-    queryKey: ['profile'],
+    queryKey: consoleQueryKey('account.profile.get'),
     queryFn: async () => ({ profile: { id: 'author', name: 'Alice', avatar_url: null } }),
   }),
 }))

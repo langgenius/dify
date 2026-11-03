@@ -45,7 +45,7 @@ from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPaus
 from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
@@ -154,6 +154,37 @@ class APIWorkflowRunRepository(Protocol):
 
         Returns:
             WorkflowRun object if found, None otherwise
+        """
+        ...
+
+    def get_workflow_run_by_id_for_update(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> WorkflowRun | None:
+        """Read and lock a run in the complete tenant/app scope.
+
+        The caller owns the Session and transaction. The lock remains held
+        until that transaction ends, allowing related writes to share it.
+        Return None when the run does not exist in the requested scope.
+        """
+        ...
+
+    def stop_workflow_run(
+        self,
+        session: Session,
+        *,
+        run: WorkflowRun,
+        error: str,
+        finished_at: datetime,
+    ) -> None:
+        """Persist STOPPED and invalidate the run's active pause together.
+
+        The caller owns the transaction, has locked the owner-scoped run in
+        this Session, and has decided that execution must stop.
         """
         ...
 
@@ -568,6 +599,22 @@ class APIWorkflowRunRepository(Protocol):
         # while creating pause.
         ...
 
+    def bind_workflow_task(self, *, tenant_id: str, app_id: str, workflow_run_id: str, task_id: str) -> None:
+        """Bind the public task before its workflow-started event is exposed."""
+        ...
+
+    def stop_paused_workflow_task(
+        self, *, tenant_id: str, app_id: str, task_id: str, owner: tuple[CreatorUserRole, str] | None
+    ) -> WorkflowRun | None:
+        """Admit a task by its durable owner, record stop intent, and finish a paused run."""
+        ...
+
+    def backfill_workflow_pause_task_id(
+        self, *, tenant_id: str, app_id: str, workflow_run_id: str, pause_id: str, task_id: str
+    ) -> bool:
+        """Index an unchanged legacy pause; return whether its task ID was written."""
+        ...
+
     def get_workflow_pause(self, workflow_run_id: str) -> WorkflowPauseEntity | None:
         """Retrieve the current pause for a workflow execution.
 
@@ -575,10 +622,35 @@ class APIWorkflowRunRepository(Protocol):
         """
         ...
 
+    def has_active_workflow_pause(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> bool:
+        """Check for an unresumed pause in the complete tenant/app scope.
+
+        Use the caller's Session without managing its transaction. Callers
+        coordinating writes must lock the run first in the same transaction.
+        """
+        ...
+
+    def get_legacy_pause_reasons(self, session: Session, pause_id: str) -> Sequence[DifyPauseReason]:
+        """Load V1 presentation for an already-authorized pause using the caller's Session.
+
+        Only call when the checkpoint contains V1 references. This method does
+        not create a Session or manage its transaction.
+        """
+        ...
+
     def resume_workflow_pause(
         self,
         workflow_run_id: str,
         pause_entity: WorkflowPauseEntity,
+        *,
+        before_resume: Callable[[], None] | None = None,
     ) -> WorkflowPauseEntity:
         """
         Resume a paused workflow.

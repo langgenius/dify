@@ -116,21 +116,27 @@ export function AgentMonitoringChart({
         <table
           id={tableId}
           aria-labelledby={titleId}
-          className="w-full border-collapse text-left system-sm-regular"
+          className="w-full border-collapse text-start system-sm-regular"
         >
           <thead>
             <tr>
-              <th scope="col">{t(($) => $['agentDetail.monitoring.table.date'])}</th>
-              <th scope="col">{t(($) => $['agentDetail.monitoring.table.value'])}</th>
+              <th scope="col" className="text-start">
+                {t(($) => $['agentDetail.monitoring.table.date'])}
+              </th>
+              <th scope="col" className="text-start">
+                {t(($) => $['agentDetail.monitoring.table.value'])}
+              </th>
               {chartType === 'tokenUsage' && (
-                <th scope="col">{t(($) => $['agentDetail.monitoring.table.estimatedCost'])}</th>
+                <th scope="col" className="text-start">
+                  {t(($) => $['agentDetail.monitoring.table.estimatedCost'])}
+                </th>
               )}
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.date}>
-                <th scope="row">
+                <th scope="row" className="text-start">
                   <time dateTime={row.date}>
                     {formatToLocalTime(dayjs(row.date), locale, 'MMM D, YYYY')}
                   </time>

@@ -1,0 +1,42 @@
+{
+  "provider": "lark",
+  "authenticated_event": {
+    "provider": "lark",
+    "provider_tenant_id": "tenant_lark_sanitized",
+    "event_id": "evt_lark_webhook",
+    "event_type": "card.action.trigger",
+    "occurred_at": "2026-10-15T00:00:00",
+    "received_at": "2026-10-15T00:00:01",
+    "ingress_kind": "webhook",
+    "payload": "{\"schema\":\"2.0\",\"header\":{\"event_id\":\"evt_lark_webhook\",\"token\":\"sanitized-lark-verification-token\",\"create_time\":\"1792022400000000\",\"event_type\":\"card.action.trigger\",\"tenant_key\":\"tenant_lark_sanitized\",\"app_id\":\"cli_sanitized_lark_app\"},\"event\":{\"operator\":{\"tenant_key\":\"tenant_lark_sanitized\",\"user_id\":\"lark_user\",\"open_id\":\"open_lark_user\",\"union_id\":\"union_lark_user\"},\"token\":\"sanitized\",\"action\":{\"value\":{\"__dify.human_input.action\":{\"action_id\":\"approve\",\"correlation_token\":\"lark-live-webhook-correlation\",\"version\":1}},\"tag\":\"button\",\"timezone\":\"sanitized\",\"form_value\":{\"comment\":\"Ready to ship\",\"decision\":\"hold\"},\"name\":\"approve\"},\"host\":\"sanitized\",\"context\":{\"open_message_id\":\"om_lark_webhook_card\",\"open_chat_id\":\"oc_lark_chat\"}}}"
+  },
+  "http": {
+    "request": {
+      "method": "POST",
+      "received_at": "2026-10-15T00:00:01",
+      "body": "{\"encrypt\":\"AAECAwQFBgcICQoLDA0OD5wnmENS9+lqxshW8gxtx5niZMw4MhA1cX75hD2E3MRv6Q/sv/J/P7A1uv9j3nHAzYC5ysS6FOorDf04qf0jLfzWkkE5O93ttI8OzyGyScmK/qAlLL1Jek9iI0cFtxDKSd42VWKa16QOq8NwVz/wHO4gcf3k/ZNpWuVTVq/O5xMGF2FEbVn3eaOawamQH1bDkmoGk5+n7za9S4MStDQLkZb1b73HcJVBKhLRLfDPB4bB4dhDX+1lC3aZkj23VMCLdAB1HATpmikhN+7YU11Uh7HZtWXs1AcQVwHgTDC0aJGb3twIGE0nwvMltqPKArNvPryyrcnNx+bsO5ZPp6wYn4Y8oG8onFNyUn06bPXN+rA3FGA7GXfPP3m4zK7QnI/bLbnruthQJ8T5hOkswKxglUrP4AMykaCSiM5bnvc/nHfduIVzSZxPP+m4EMZNWPyVROCRcdw/vRro+WlQmuuy6+o1x7dAYSW4gSYM3GqD7YoeSLF4ohwvxRanlvUpefAOxjzk864djbjllFZgfPKHG6M+lXyp0usyn4mLFyW5plnCmVgzk/RDSQ4BDUhhVcrxN3AJPOse9NZtQCM2wahL6Uh3OJwqqNK8xG8obbxuG+nSg/RxkuCQuSiezF+yCRSpm8z9b7rNO7h8k/cxv48FYhq4n6syF0SfSK0Tll01iD1HPhcvmHWzIRvZe5GCGLBj7i1pI7IRT82rWZeBSfL6kwi1lTqNWynE9fNOUK5coF03ptCGX+aoV9IxBUVG0sHENWfpju8B7JKROPrgcmtWjgUD3N+fu2tiYJaFDcOSm3sHvsM4qrNMcgX4PsyUTq0RZPFeDWAgqR3UL8NZp2HOYtoVd31xyvoPsDAXAUmwDKs4Ki0ijtfQ/0vq7qoB7TxRQig7WkJKPoI87UJCewZ31f24X9raXBzF5ZHuha+TXlWo1zaekWhHXURSt+iKHvu73r6wB8BlJntTTMLKv2fYesJmhoxFQkoK1FACI1Wnm0wk\"}",
+      "headers": [
+        [
+          "Content-Type",
+          "application/json"
+        ],
+        [
+          "X-Lark-Request-Timestamp",
+          "1792022400"
+        ],
+        [
+          "X-Lark-Request-Nonce",
+          "lark-webhook-test-nonce"
+        ],
+        [
+          "X-Lark-Signature",
+          "c5fca1ad9eebe665ced9803e9401af6dc5fbf88318bd9a05e9ecff7787662dcc"
+        ]
+      ]
+    },
+    "response": {
+      "status": 200,
+      "body": "{\"code\":0}"
+    }
+  }
+}

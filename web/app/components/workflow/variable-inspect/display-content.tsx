@@ -111,6 +111,7 @@ export function DisplayContent(props: DisplayContentProps) {
               })}
               readOnly={readonly}
               disabled={readonly}
+              // oxlint-disable-next-line shadcn/no-restyle -- The enclosing editor surface paints the focus ring around the content and view controls.
               className="h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:ring-0"
               value={mdString}
               onValueChange={(value) => handleTextChange?.(value)}

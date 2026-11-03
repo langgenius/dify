@@ -545,7 +545,6 @@ class ConversationVariableCollectionApi(Resource):
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
     @model_validate(ConversationVariableUpdatePayload)
     def post(self, req_data: ConversationVariableUpdatePayload, current_user: Account, app_model: App):
-
         workflow_service = WorkflowService()
 
         conversation_variables_list = [
@@ -647,7 +646,6 @@ class EnvironmentVariableCollectionApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @model_validate(EnvironmentVariableUpdatePayload)
     def post(self, req_data: EnvironmentVariableUpdatePayload, current_user: Account, app_model: App):
-
         workflow_service = WorkflowService()
 
         environment_variables_list = [

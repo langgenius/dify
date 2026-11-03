@@ -8,11 +8,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
@@ -178,7 +178,7 @@ export function CliToolDialog({
           <DialogDescription>
             {t(($) => $['agentDetail.configure.tools.cliDialog.description'])}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <Form<CliToolFormValues> className="contents" onFormSubmit={handleSubmit}>
           <DialogBody className="flex flex-col gap-4">

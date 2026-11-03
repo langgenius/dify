@@ -3,11 +3,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { memo } from 'react'
@@ -45,7 +45,7 @@ const OAuthVisibilityDialog = ({
           <DialogDescription>
             {t(($) => $['auth.oauthCredentialPermissionDescription'], { ns: 'plugin' })}
           </DialogDescription>
-          <DialogCloseButton
+          <DialogHeaderCloseButton
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             disabled={loading}
           />

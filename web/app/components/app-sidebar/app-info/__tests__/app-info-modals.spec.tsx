@@ -7,8 +7,6 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import { mockEmojiData } from '@/test/emoji-picker'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import AppInfoModals from '../app-info-modals'
-import { AppMetadataDialog } from '../app-metadata-dialog'
-import { DeleteAppDialog } from '../delete-app-dialog'
 import { ExportAppDialog } from '../export-app-dialog'
 
 const service = vi.hoisted(() => ({
@@ -49,13 +47,27 @@ function MetadataEntry({ operation = 'edit' }: { operation?: 'edit' | 'duplicate
   return (
     <>
       <button onClick={() => setOpen(true)}>Reopen</button>
-      <AppMetadataDialog appDetail={app} operation={operation} open={open} onOpenChange={setOpen} />
+      <AppInfoModals
+        appDetail={app}
+        activeModal={open ? operation : null}
+        onOpenChange={setOpen}
+        exportOpen={false}
+        onExportOpenChange={() => {}}
+      />
     </>
   )
 }
 function DeleteEntry() {
   const [open, setOpen] = useState(true)
-  return <DeleteAppDialog appDetail={app} open={open} onOpenChange={setOpen} />
+  return (
+    <AppInfoModals
+      appDetail={app}
+      activeModal={open ? 'delete' : null}
+      onOpenChange={setOpen}
+      exportOpen={false}
+      onExportOpenChange={() => {}}
+    />
+  )
 }
 function ExportEntry() {
   const [open, setOpen] = useState(true)
@@ -75,6 +87,16 @@ beforeEach(() => {
   service.exportWorkflow.mockReset()
 })
 
+it.each(['edit', 'duplicate'] as const)(
+  'separates the %s app name and icon within their named group',
+  async (operation) => {
+    render(<MetadataEntry operation={operation} />)
+    const group = await screen.findByRole('group', { name: 'app.newApp.captionName' })
+    expect(within(group).getByRole('textbox', { name: 'app.newApp.name' })).toBeRequired()
+    expect(within(group).getByRole('button', { name: 'app.iconPicker.title' })).toBeEnabled()
+  },
+)
+
 it('keeps the edit draft on failure, guards pending dismissal and closes only after a successful save', async () => {
   const user = userEvent.setup()
   let reject: (error: Error) => void = () => {}
@@ -85,10 +107,10 @@ it('keeps the edit draft on failure, guards pending dismissal and closes only af
       }),
   )
   render(<MetadataEntry />)
-  const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+  const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.type(name, 'Retried name')
-  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await user.click(screen.getByRole('button', { name: /common.operation.save/ }))
   await waitFor(() => expect(service.request).toHaveBeenCalledTimes(1))
   expect(name).toHaveAttribute('readonly')
   await user.keyboard('{Escape}')
@@ -97,14 +119,14 @@ it('keeps the edit draft on failure, guards pending dismissal and closes only af
   await waitFor(() => expect(name).not.toHaveAttribute('readonly'))
   expect(name).toHaveValue('Retried name')
   service.request.mockResolvedValueOnce(Response.json({ ...app, name: 'Retried name' }))
-  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await user.click(screen.getByRole('button', { name: /common.operation.save/ }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 })
 
 it('keeps the edit draft after an outside press and still allows explicit cancellation', async () => {
   const user = userEvent.setup()
   render(<MetadataEntry />)
-  const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+  const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.type(name, 'Unsaved draft')
   await user.click(document.body)
@@ -118,22 +140,20 @@ it('keeps the edit draft after an outside press and still allows explicit cancel
 it('discards a cancelled draft and initializes the next edit session from saved data', async () => {
   const user = userEvent.setup()
   render(<MetadataEntry />)
-  const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+  const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.type(name, 'Discarded')
   await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   await user.click(screen.getByRole('button', { name: 'Reopen' }))
-  expect(await screen.findByRole('textbox', { name: 'app.newApp.captionName' })).toHaveValue(
-    app.name,
-  )
+  expect(await screen.findByRole('textbox', { name: 'app.newApp.name' })).toHaveValue(app.name)
 })
 
 it('keeps the duplicate name after a failed copy', async () => {
   const user = userEvent.setup()
   service.request.mockRejectedValueOnce(new Error('Unavailable'))
   render(<MetadataEntry operation="duplicate" />)
-  const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+  const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.type(name, 'Copy draft{Enter}')
   await waitFor(() => expect(service.request).toHaveBeenCalledTimes(1))
@@ -220,9 +240,7 @@ it.each(['edit', 'duplicate', 'switch', 'delete', 'importDSL'] as const)(
         ? within(dialog).getByRole('button', { name: 'app.dslUploader.browse' })
         : within(dialog).getByRole(
             'textbox',
-            operation === 'delete'
-              ? {}
-              : { name: operation === 'switch' ? 'app.switchLabel' : 'app.newApp.captionName' },
+            operation === 'delete' ? {} : { name: 'app.newApp.name' },
           )
     await waitFor(() => expect(target).toHaveFocus())
   },
@@ -251,7 +269,7 @@ it('validates the edit form and submits current values after choosing an icon', 
   const user = userEvent.setup()
   service.request.mockResolvedValueOnce(Response.json(app))
   render(<MetadataEntry />)
-  const name = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+  const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.keyboard('{Enter}')
   expect(service.request).not.toHaveBeenCalled()
@@ -300,7 +318,7 @@ it.each(['duplicate', 'delete'] as const)(
       await user.click(screen.getByRole('button', { name: 'common.operation.fill' }))
     await user.click(
       screen.getByRole('button', {
-        name: operation === 'delete' ? 'common.operation.confirm' : 'app.duplicate',
+        name: operation === 'delete' ? 'common.operation.confirm' : /app.duplicate/,
       }),
     )
     await waitFor(() =>
@@ -318,3 +336,52 @@ it.each(['duplicate', 'delete'] as const)(
     }
   },
 )
+
+it.each([0, 12, null])(
+  'submits the number field as a numeric value and omits an empty value: %s',
+  async (limit) => {
+    const user = userEvent.setup()
+    service.request.mockResolvedValueOnce(Response.json(app))
+    render(<MetadataEntry />)
+    const input = await screen.findByRole('textbox', { name: 'app.maxActiveRequests' })
+    await user.clear(input)
+    if (limit !== null) await user.type(input, String(limit))
+    await user.click(screen.getByRole('button', { name: /common.operation.save/ }))
+    await waitFor(() => expect(service.request).toHaveBeenCalledOnce())
+    const request = service.request.mock.calls[0]?.[2]?.request
+    expect(request).toBeInstanceOf(Request)
+    const payload = await request.json()
+    if (limit === null) expect(payload).not.toHaveProperty('max_active_requests')
+    else expect(payload.max_active_requests).toBe(limit)
+  },
+)
+
+it('keeps the shared edit cache policy when closing after a successful save', async () => {
+  const user = userEvent.setup()
+  const queryClient = createConsoleQueryClient()
+  const detailKey = consoleQuery.apps.byAppId.get.queryKey({
+    input: { params: { app_id: app.id } },
+  })
+  queryClient.setQueryData(detailKey, app)
+  const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+  const updated = { ...app, name: 'Saved name' }
+  service.request.mockResolvedValueOnce(Response.json(updated))
+  renderWithConsoleQuery(<MetadataEntry />, {
+    queryClient,
+    systemFeatures: { deployment_edition: 'COMMUNITY', rbac_enabled: false },
+  })
+  await user.click(await screen.findByRole('button', { name: /common.operation.save/ }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(queryClient.getQueryData(detailKey)).toEqual(updated)
+  for (const queryKey of [
+    consoleQuery.apps.get.key(),
+    consoleQuery.apps.starred.get.key(),
+    consoleQuery.apps.recent.get.key(),
+  ]) {
+    expect(
+      invalidate.mock.calls.filter(
+        ([options]) => JSON.stringify(options?.queryKey) === JSON.stringify(queryKey),
+      ),
+    ).toHaveLength(1)
+  }
+})

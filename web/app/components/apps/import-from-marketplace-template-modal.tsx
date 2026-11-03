@@ -4,17 +4,17 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { toast } from '@/app/notifications'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplaceTemplateIconUrl } from '@/features/marketplace/api'
 import {
   fetchMarketplaceTemplateDSL,
   useMarketplaceTemplateDetail,
@@ -82,7 +82,7 @@ const ImportFromMarketplaceTemplateModal = ({
       <DialogContent className="w-130">
         <DialogHeader>
           <DialogTitle>{t(($) => $['marketplace.template.modalTitle'], { ns: 'app' })}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
 
         <DialogBody aria-busy={isLoading}>
@@ -111,7 +111,7 @@ const ImportFromMarketplaceTemplateModal = ({
                     icon_type: template.icon_file_key ? 'image' : 'emoji',
                     icon: template.icon || 'page_facing_up',
                     icon_url: template.icon_file_key
-                      ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
+                      ? getMarketplaceTemplateIconUrl(template.id)
                       : undefined,
                     icon_background: template.icon_file_key ? undefined : template.icon_background,
                   }}

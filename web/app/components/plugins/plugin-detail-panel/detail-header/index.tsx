@@ -1,27 +1,37 @@
 'use client'
 
+import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
 import type { PluginDetail } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
-import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/constants'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
-import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { selectToolCollections } from '@/app/components/tools/utils/query-select'
 import { API_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
 import useTheme from '@/hooks/use-theme'
+import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
-import { getMarketplaceUrl } from '@/utils/var'
+import { isEarlierThanVersion } from '@/utils/semver'
 import Verified from '../../base/badges/verified'
 import DeprecationNotice from '../../base/deprecation-notice'
 import Icon from '../../card/base/card-icon'
@@ -33,7 +43,7 @@ import {
   convertUTCDaySecondsToLocalSeconds,
   timeOfDayToDayjs,
 } from '../../reference-setting-modal/auto-update-setting/utils'
-import { PluginCategoryEnum, PluginSource } from '../../types'
+import { PluginCategoryEnum } from '../../types'
 import { HeaderModals, PluginSourceBadge } from './components'
 import { useDetailHeaderState, usePluginOperations } from './hooks'
 
@@ -59,24 +69,6 @@ const getIconSrc = (
     : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${iconFileName}`
 }
 
-const getDetailUrl = (
-  source: PluginSource,
-  meta: PluginDetail['meta'],
-  author: string,
-  name: string,
-  locale: string,
-  theme: string,
-): string => {
-  if (source === PluginSource.github) {
-    const repo = meta?.repo
-    if (!repo) return ''
-    return `https://github.com/${repo}`
-  }
-  if (source === PluginSource.marketplace)
-    return getMarketplaceUrl(`/plugins/${author}/${name}`, { language: locale, theme })
-  return ''
-}
-
 const DetailHeader = ({
   canDeletePlugin = true,
   canUpdatePlugin = true,
@@ -85,7 +77,10 @@ const DetailHeader = ({
   onHide,
   onUpdate,
 }: Props) => {
-  const { t } = useTranslation(['common', 'plugin'])
+  const { t } = useTranslation(['common', 'plugin', 'appLog'])
+  const versionMenuLabelId = useId()
+  const { formatDate } = useTimestamp()
+  const dateFormat = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]!
   const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
@@ -94,6 +89,7 @@ const DetailHeader = ({
   const { theme } = useTheme()
   const locale = useGetLanguage()
   const currentLocale = useLocale()
+  const marketplace = useMarketplace()
   const detailCategory = detail.declaration?.category ?? PluginCategoryEnum.tool
   const { referenceSetting } = useReferenceSetting(detailCategory)
 
@@ -101,8 +97,6 @@ const DetailHeader = ({
     source,
     tenant_id,
     version,
-    latest_version,
-    latest_unique_identifier,
     meta,
     plugin_id,
     status,
@@ -118,19 +112,27 @@ const DetailHeader = ({
     versionPicker,
     hasNewVersion,
     isAutoUpgradeEnabled,
+    autoUpgradeSettings,
     isFromGitHub,
     isFromMarketplace,
   } = useDetailHeaderState(detail)
 
-  const { handleUpdate, handleUpdatedFromMarketplace, handleDelete } = usePluginOperations({
-    detail,
-    modalStates,
-    versionPicker,
-    isFromMarketplace,
-    canDeletePlugin,
-    canUpdatePlugin,
-    onUpdate,
-  })
+  const { handleUpdate, handleUpdatedFromMarketplace, handleDelete, deleting } =
+    usePluginOperations({
+      detail,
+      modalStates,
+      canDeletePlugin,
+      canUpdatePlugin,
+      onUpdate,
+    })
+
+  const canChangeVersion = canUpdatePlugin && isFromMarketplace && !!marketplace && !isReadmeView
+  const versionsQuery = useMarketplacePluginVersions(
+    plugin_id,
+    versionPicker.isShow && canChangeVersion,
+  )
+  const loadingVersions =
+    versionPicker.isShow && (versionsQuery.isPending || autoUpgradeSettings.isPending)
 
   const isTool = category === PluginCategoryEnum.tool
   const providerBriefInfo = tool?.identity
@@ -147,7 +149,6 @@ const DetailHeader = ({
   }, [collectionList, providerKey])
 
   const iconSrc = getIconSrc(icon, icon_dark, theme, tenant_id)
-  const detailUrl = getDetailUrl(source, meta, author, name, currentLocale, theme)
   const canViewReadme =
     !!detail.plugin_unique_identifier && !BUILTIN_TOOLS_ARRAY.includes(detail.id)
   const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
@@ -158,20 +159,23 @@ const DetailHeader = ({
     })
   }, [detail, openReadmePanel])
 
-  const handleVersionSelect = (state: {
-    version: string
-    unique_identifier: string
-    isDowngrade?: boolean
-  }) => {
-    versionPicker.setTargetVersion(state)
-    handleUpdate(state.isDowngrade)
+  const handleVersionSelect = (item: PluginVersionsResponse['data']['versions'][number]) => {
+    const isDowngrade = isEarlierThanVersion(item.version, detail.version)
+    versionPicker.setTargetVersion({
+      ...item,
+      plugin: detail,
+      warnAboutAutoUpdate: isDowngrade && isAutoUpgradeEnabled,
+    })
+    handleUpdate()
   }
 
   const handleTriggerLatestUpdate = () => {
     if (isFromMarketplace) {
+      if (!detail.latest_version || !detail.latest_unique_identifier) return
       versionPicker.setTargetVersion({
-        version: latest_version,
-        unique_identifier: latest_unique_identifier,
+        plugin: detail,
+        version: detail.latest_version,
+        unique_identifier: detail.latest_unique_identifier,
       })
     }
     handleUpdate()
@@ -208,39 +212,70 @@ const DetailHeader = ({
             )}
 
             {/* Version Picker */}
-            {!!version && (
-              <PluginVersionPicker
-                disabled={!canUpdatePlugin || !isFromMarketplace || isReadmeView}
-                isShow={versionPicker.isShow}
-                onShowChange={versionPicker.setIsShow}
-                pluginID={plugin_id}
-                currentVersion={version}
-                onSelect={handleVersionSelect}
-                trigger={(open) => (
-                  <Badge
-                    className={cn(
-                      'mx-1',
-                      open && 'bg-state-base-hover',
-                      (open || (canUpdatePlugin && isFromMarketplace)) &&
-                        'hover:bg-state-base-hover',
-                    )}
-                    uppercase={false}
-                    text={
-                      <>
-                        <div>{isFromGitHub ? (meta?.version ?? version ?? '') : version}</div>
-                        {canUpdatePlugin && isFromMarketplace && !isReadmeView && (
-                          <span
-                            aria-hidden
-                            className="ml-1 i-ri-arrow-left-right-line size-3 text-text-tertiary"
-                          />
+            <Menu
+              open={!!version && versionPicker.isShow && canChangeVersion && !loadingVersions}
+              onOpenChange={versionPicker.setIsShow}
+            >
+              {!!version && (
+                <MenuTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="small"
+                      disabled={!canChangeVersion}
+                      loading={loadingVersions}
+                      className="relative mx-1 h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.25 system-xs-medium text-text-tertiary"
+                    >
+                      {hasNewVersion && (
+                        <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
+                      )}
+                      <span>{isFromGitHub ? (meta?.version ?? version) : version}</span>
+                      {canChangeVersion && !loadingVersions && (
+                        <span aria-hidden className="i-ri-arrow-left-right-line size-3" />
+                      )}
+                    </Button>
+                  }
+                />
+              )}
+              <MenuContent
+                className="max-h-[min(16rem,var(--available-height))]"
+                align="start"
+                aria-labelledby={versionMenuLabelId}
+              >
+                <MenuGroup>
+                  <MenuGroupLabel id={versionMenuLabelId}>
+                    {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
+                  </MenuGroupLabel>
+                  {versionsQuery.data && autoUpgradeSettings.data ? (
+                    versionsQuery.data.data.versions.map((item) => (
+                      <MenuItem
+                        key={item.unique_identifier}
+                        disabled={version === item.version}
+                        onClick={() => handleVersionSelect(item)}
+                      >
+                        <span>{item.version}</span>
+                        {version === item.version && (
+                          <Badge className="shrink-0" variant="dimm" text="CURRENT" />
                         )}
-                      </>
-                    }
-                    hasRedCornerMark={hasNewVersion}
-                  />
-                )}
-              />
-            )}
+                        <span className="ms-auto text-text-tertiary">
+                          {formatDate(item.created_at, dateFormat)}
+                        </span>
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem
+                      closeOnClick={false}
+                      onClick={() => {
+                        if (versionsQuery.isError) void versionsQuery.refetch()
+                        if (autoUpgradeSettings.isError) void autoUpgradeSettings.refetch()
+                      }}
+                    >
+                      {t(($) => $['operation.retry'], { ns: 'common' })}
+                    </MenuItem>
+                  )}
+                </MenuGroup>
+              </MenuContent>
+            </Menu>
 
             {/* Auto Update Badge */}
             {isAutoUpgradeEnabled && !isReadmeView && (
@@ -310,13 +345,14 @@ const DetailHeader = ({
         {/* Action Buttons */}
         {!isReadmeView && (
           <div className="flex gap-1">
-            <OperationDropdown
+            <OperationMenu
               source={source}
               onInfo={modalStates.showPluginInfo}
               onCheckVersion={handleUpdate}
               onRemove={modalStates.showDeleteConfirm}
               onViewReadme={canViewReadme ? handleViewReadme : undefined}
-              detailUrl={detailUrl}
+              marketplacePlugin={{ org: author, name }}
+              repo={meta?.repo}
               showCheckVersion={canUpdatePlugin}
               showRemove={canDeletePlugin}
             />
@@ -335,11 +371,13 @@ const DetailHeader = ({
         <DeprecationNotice
           status={status}
           deprecatedReason={deprecated_reason}
-          alternativePluginId={alternative_plugin_id}
-          alternativePluginURL={getMarketplaceUrl(`/plugins/${alternative_plugin_id}`, {
-            language: currentLocale,
-            theme,
-          })}
+          alternativePluginId={marketplace ? alternative_plugin_id : ''}
+          alternativePluginURL={
+            marketplace?.page(`/plugins/${alternative_plugin_id}`, {
+              language: currentLocale,
+              theme,
+            }) ?? ''
+          }
           className="mt-3"
         />
       )}
@@ -370,10 +408,9 @@ const DetailHeader = ({
         detail={detail}
         modalStates={modalStates}
         targetVersion={versionPicker.targetVersion}
-        isDowngrade={versionPicker.isDowngrade}
-        isAutoUpgradeEnabled={isAutoUpgradeEnabled}
         onUpdatedFromMarketplace={handleUpdatedFromMarketplace}
         onDelete={handleDelete}
+        deleting={deleting}
       />
     </div>
   )

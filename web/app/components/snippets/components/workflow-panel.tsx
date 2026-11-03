@@ -35,8 +35,6 @@ const SnippetWorkflowPanel = ({ snippetId, fields }: SnippetWorkflowPanelProps) 
   const versionHistoryPanelProps = useMemo(() => {
     return {
       getVersionListUrl: `/snippets/${snippetId}/workflows`,
-      deleteVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
-      updateVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
       latestVersionId: '',
     }
   }, [snippetId])

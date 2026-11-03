@@ -14,9 +14,8 @@ import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { usePathname } from '@/next/navigation'
 import { MainNav } from '.'
-import { ResponsiveMainNav } from './responsive-main-nav'
 import { shouldHideMainNavigation, shouldUseDetailSidebar } from './routes'
-import { MAIN_CONTENT_ID, SkipNav } from './skip-nav'
+import { MAIN_CONTENT_ID, SkipLink } from './skip-link'
 
 type MainNavLayoutProps = {
   children: ReactNode
@@ -36,10 +35,6 @@ const MainNavLayout = ({
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const appId = getAppIdFromPathname(pathname)
-  const useResponsiveNavigation =
-    pathname === '/agents' ||
-    pathname === '/datasets/create' ||
-    pathname.startsWith('/integrations/')
   const hideMainNavigation = shouldHideMainNavigation(pathname)
   const useDetailSidebar = shouldUseDetailSidebar(pathname, {
     agentV2Enabled: isAgentV2Enabled(),
@@ -47,18 +42,11 @@ const MainNavLayout = ({
   })
 
   return (
-    <div
-      className={cn(
-        'flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body',
-        useResponsiveNavigation && 'flex-col md:flex-row',
-      )}
-    >
-      <SkipNav>{t(($) => $['navigation.skipToMain'])}</SkipNav>
+    <div className="flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body">
+      <SkipLink>{t(($) => $['navigation.skipToMain'])}</SkipLink>
       {appId && <AppDetailPrefetch appId={appId} />}
       {hideMainNavigation ? null : useDetailSidebar ? (
         detailSidebar
-      ) : useResponsiveNavigation ? (
-        <ResponsiveMainNav initialPlatform={initialPlatform} />
       ) : (
         <MainNav initialPlatform={initialPlatform} />
       )}

@@ -1,76 +1,24 @@
-# Performance Rules
+# Performance Review
 
-Review performance only where there is realistic impact. Do not request `memo`, `useMemo`, `useCallback`, virtualization, or caching as style preferences.
+Use [Runtime] for ownership, Effects, request concurrency, optional surfaces, and subscription rules. Use [Data and queries] for cache, SSR, authentication, and tenant boundaries. These references own the rules; this pack adds evidence questions.
 
-## Async Waterfalls
+## Establish The Cost
 
-Flag:
+Report a reachable cost with a causal path, such as request ordering, bundle output, repeated expensive computation, or browser rendering evidence. A missing optimization alone is not a finding.
 
-- Awaiting remote feature flags or fetches before checking cheap synchronous conditions.
-- Sequential awaits for independent operations.
-- API routes or server components starting requests late when they could start early.
-- Nested per-item fetches running serially when each item can fetch in parallel.
-- Suspense boundaries that force the whole page to wait when a lower boundary could stream or isolate loading.
+- For waterfalls, establish that the requests are independent and on the user-visible critical path. Preserve execution conditions and failure ownership when proposing concurrency or streaming.
+- For eager imports, identify the module's cost and when the feature needs it. Check actual bundler behavior before treating a barrel import or dynamic path as a bundle regression.
+- For server work, identify duplicated requests or serialized data and the request-local owner that can safely deduplicate them.
+- For subscriptions and rendering, trace the changing value to the affected consumer before proposing narrower state, selectors, or memoization.
+- For lists, layout, and motion, establish the supported data size or interaction and the rendering cost. Do not request virtualization, caching, or an animation rewrite solely because a particular API or CSS property appears.
 
-Prefer `Promise.all` for independent work and branch-local awaits for conditionally needed data.
+## Distinguish Value And Reference Identity
 
-## Bundle Size
+- TanStack Query keys are hashed by value by default. Recreating an equivalent key or generated input/options object does not itself create a new query or justify `useMemo`; inspect the key's values and query policy. See [Query keys].
+- Query `select` functions can recompute when their reference changes. Require a stable selector only when that recomputation has a demonstrated cost. The top-level query result is intentionally not referentially stable; read the fields the consumer needs. See [Query render optimizations].
+- For React dependencies, memoized children, and library APIs, identify the specific consumer whose behavior or cost depends on reference identity. First check that an Effect belongs there; do not use memoization to hide an ownership or dependency problem.
 
-Flag:
-
-- Barrel imports from heavy libraries or `@langgenius/dify-ui`.
-- Dynamic paths that prevent static trace analysis.
-- Heavy components loaded eagerly when hidden behind a dialog, tab, command, or feature activation.
-- Analytics, logging, editor, visualization, or third-party SDK code loaded before it is needed.
-- Feature-local optional modules imported at top level only for rare flows.
-
-Use direct imports and `next/dynamic` where the user-visible path benefits.
-
-## Server Rendering
-
-Flag:
-
-- Request-specific mutable state stored at module scope in SSR/RSC paths.
-- Large duplicate data serialized across RSC/client boundaries.
-- Static I/O repeated per request when it could be hoisted safely.
-- Cross-request cache without a bounded invalidation strategy.
-- Server actions lacking API-route-equivalent auth checks.
-
-Use request-scoped deduplication such as `React.cache()` when repeated server reads in one request are the problem.
-
-## Re-rendering
-
-Flag:
-
-- Effects or subscriptions reading broad state when a derived boolean or narrower selector is enough.
-- Components defined inside components.
-- Derived rendering state stored in state/effects.
-- Non-primitive default props recreated for memoized children.
-- Expensive work recalculated on every render where it affects real interaction cost.
-- High-frequency transient values stored in state when refs or CSS variables would avoid render loops.
-
-Do not flag simple primitive expressions wrapped or not wrapped in `useMemo`; prefer no memo for simple work.
-
-Require stable object/array/function identity only when:
-
-- The child is memoized and identity affects renders.
-- The value is an effect/query dependency.
-- A library API requires stable references.
-- Profiling or local behavior shows avoidable re-rendering.
-
-## DOM, Lists, And Rendering
-
-Flag:
-
-- Layout reads in render (`getBoundingClientRect`, `offset*`, `scrollTop`).
-- Interleaved DOM reads/writes that can cause layout thrashing.
-- Large lists rendering without virtualization, pagination, or `content-visibility`.
-- SVG/animation code animating expensive properties when transform/opacity would work.
-- `transition-all`.
-- Long-running non-critical browser work performed immediately instead of idle/deferred scheduling.
-
-## React Flow
-
-Use [Dify invariants] for React Flow node/edge consumption and provider availability in RAG Pipe template rendering. Callback-only reads or mutations can use `useStoreApi`.
-
-[Dify invariants]: dify-invariants.md
+[Data and queries]: data-query-contracts.md
+[Query keys]: https://tanstack.com/query/latest/docs/framework/react/guides/query-keys
+[Query render optimizations]: https://tanstack.com/query/latest/docs/framework/react/guides/render-optimizations
+[Runtime]: ../../how-to-write-component/references/runtime.md

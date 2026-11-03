@@ -301,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "คู่มือการเผยแพร่เทมเพลต",
-  "upgrade.close": "ปิด",
   "upgrade.description": "เกี่ยวกับการติดตั้งปลั๊กอินต่อไปนี้",
-  "upgrade.successfulTitle": "ติดตั้งสําเร็จ",
   "upgrade.title": "ติดตั้งปลั๊กอิน",
   "upgrade.upgrade": "ติดตั้ง",
   "upgrade.upgrading": "ติด ตั้ง   "

@@ -1,51 +1,17 @@
+from types import ModuleType
 from typing import override
 
 from flask import Blueprint
 from flask_restx import Namespace
 
-from controllers.openapi._catalog import attach_catalog
-from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
-from controllers.openapi._upload import describe_multipart_bodies
-from libs.device_flow_security import attach_anti_framing
-from libs.external_api import ErrorSpec, ExternalApi
-
-bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
-attach_anti_framing(bp)
-attach_catalog(bp)
-
-
-class _OpenApi(ExternalApi):
-    """The surface's document also names the multipart form its file-bearing bodies accept."""
-
-    error_response_model = ErrorBody
-
-    @override
-    def finish_document(self, document: dict[str, object]) -> dict[str, object]:
-        return super().finish_document(describe_multipart_bodies(document))
-
-    @override
-    def error_code_for(self, spec: ErrorSpec) -> str:
-        return OpenApiErrorFormatter.code_for(spec["status"], spec["error_code"])
-
-    @override
-    def implicit_error_codes(self, status: int) -> set[str]:
-        return {OpenApiErrorFormatter.code_for(status, None)}
-
-
-api = _OpenApi(
-    bp,
-    version="1.0",
-    title="OpenAPI",
-    description="User-scoped programmatic API (bearer auth)",
-    error_body_formatter=OpenApiErrorFormatter(),
-)
-
-openapi_ns = Namespace("openapi", description="User-scoped operations", path="/")
+from controllers.common.access_response import register_auth_error_response
 
 # Register response/query models BEFORE importing controller modules so that
 # @openapi_ns.response / @openapi_ns.expect decorators can resolve model names.
-from controllers.common.fields import EventStreamResponse, SimpleResultResponse
+from controllers.common.fields import BinaryFileResponse, EventStreamResponse, SimpleResultResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.openapi._catalog import attach_catalog
+from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
 from controllers.openapi._models import (
     AccountPayload,
     AccountResponse,
@@ -159,6 +125,18 @@ from controllers.openapi._models import (
     SessionListQuery,
     SessionListResponse,
     SessionRow,
+    SkillDescribeResponse,
+    SkillExportQuery,
+    SkillImportPayload,
+    SkillImportResponse,
+    SkillListQuery,
+    SkillListResponse,
+    SkillPublishPayload,
+    SkillPublishResponse,
+    SkillRow,
+    SkillVersionListQuery,
+    SkillVersionListResponse,
+    SkillVersionRow,
     TaskStopResponse,
     ToolCredentialCreatePayload,
     ToolCredentialUpdatePayload,
@@ -184,13 +162,50 @@ from controllers.openapi._models import (
     WorkspacePayload,
     WorkspaceSummaryResponse,
 )
+from controllers.openapi._upload import describe_multipart_bodies
 from fields.file_fields import FileResponse
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
 )
+from libs.device_flow_security import attach_anti_framing
+from libs.external_api import ErrorSpec, ExternalApi
 from services.entities.dsl_entities import CheckDependenciesResult, Import
+
+bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
+attach_anti_framing(bp)
+register_auth_error_response(bp)
+attach_catalog(bp)
+
+
+class _OpenApi(ExternalApi):
+    """The surface's document also names the multipart form its file-bearing bodies accept."""
+
+    error_response_model = ErrorBody
+
+    @override
+    def finish_document(self, document: dict[str, object]) -> dict[str, object]:
+        return super().finish_document(describe_multipart_bodies(document))
+
+    @override
+    def error_code_for(self, spec: ErrorSpec) -> str:
+        return OpenApiErrorFormatter.code_for(spec["status"], spec["error_code"])
+
+    @override
+    def implicit_error_codes(self, status: int) -> set[str]:
+        return {OpenApiErrorFormatter.code_for(status, None)}
+
+
+api = _OpenApi(
+    bp,
+    version="1.0",
+    title="OpenAPI",
+    description="User-scoped programmatic API (bearer auth)",
+    error_body_formatter=OpenApiErrorFormatter(),
+)
+
+openapi_ns = Namespace("openapi", description="User-scoped operations", path="/")
 
 register_schema_models(
     openapi_ns,
@@ -242,12 +257,18 @@ register_schema_models(
     PublishPayload,
     RunListQuery,
     SessionListQuery,
+    SkillExportQuery,
+    SkillImportPayload,
+    SkillListQuery,
+    SkillPublishPayload,
+    SkillVersionListQuery,
     VersionListQuery,
     WorkflowRunPayload,
     WorkspaceListQuery,
 )
 register_response_schema_models(
     openapi_ns,
+    BinaryFileResponse,
     ErrorBody,
     EventStreamResponse,
     SimpleResultResponse,
@@ -340,6 +361,13 @@ register_response_schema_models(
     KnowledgeRetrievalFragment,
     LlmModelBlock,
     MultipleRetrievalFragment,
+    SkillRow,
+    SkillImportResponse,
+    SkillListResponse,
+    SkillVersionRow,
+    SkillDescribeResponse,
+    SkillVersionListResponse,
+    SkillPublishResponse,
     ToolProviderDetailResponse,
     ToolProviderRow,
 )
@@ -347,7 +375,66 @@ register_response_schema_models(
 # string on the wire so old clients keep parsing future codes.
 register_enum_models(openapi_ns, OpenApiErrorCode)
 
-from . import (
+
+def _register_controllers() -> tuple[ModuleType, ...]:
+    """Load route modules after their namespaces and schema models exist."""
+
+    from . import (
+        account,
+        app_create,
+        app_dsl,
+        app_info,
+        app_release,
+        app_run,
+        app_webapp,
+        app_workflow,
+        apps,
+        apps_permitted_external,
+        files,
+        human_input_form,
+        index,
+        knowledge_bases,
+        knowledge_fs,
+        model_providers,
+        node_types,
+        oauth_device,
+        oauth_device_sso,
+        plugins,
+        skills,
+        tool_providers,
+        workflow_events,
+        workspaces,
+    )
+
+    return (
+        account,
+        app_create,
+        app_dsl,
+        app_info,
+        app_release,
+        app_run,
+        app_webapp,
+        app_workflow,
+        apps,
+        apps_permitted_external,
+        files,
+        human_input_form,
+        index,
+        knowledge_bases,
+        knowledge_fs,
+        model_providers,
+        node_types,
+        oauth_device,
+        oauth_device_sso,
+        plugins,
+        skills,
+        tool_providers,
+        workflow_events,
+        workspaces,
+    )
+
+
+(
     account,
     app_create,
     app_dsl,
@@ -362,15 +449,17 @@ from . import (
     human_input_form,
     index,
     knowledge_bases,
+    knowledge_fs,
     model_providers,
     node_types,
     oauth_device,
     oauth_device_sso,
     plugins,
+    skills,
     tool_providers,
     workflow_events,
     workspaces,
-)
+) = _register_controllers()
 
 # Request models are imported from _models.py and registered above.
 
@@ -389,11 +478,13 @@ __all__ = [
     "human_input_form",
     "index",
     "knowledge_bases",
+    "knowledge_fs",
     "model_providers",
     "node_types",
     "oauth_device",
     "oauth_device_sso",
     "plugins",
+    "skills",
     "tool_providers",
     "workflow_events",
     "workspaces",

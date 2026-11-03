@@ -185,7 +185,7 @@ class TriggerSubscriptionBuilderService:
                 try:
                     provider_controller.validate_credentials(user_id, credentials_to_validate)
                 except ToolProviderCredentialValidationError as e:
-                    raise ValueError(f"Invalid credentials: {e}")
+                    raise ValueError(f"Invalid credentials: {e}") from e
                 return {"verified": True}
 
             return {"verified": True}

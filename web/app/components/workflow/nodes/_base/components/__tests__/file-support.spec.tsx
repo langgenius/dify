@@ -34,6 +34,7 @@ const createPayload = (overrides: Partial<UploadFileSetting> = {}): UploadFileSe
 describe('File upload support components', () => {
   describe('FileTypeItem', () => {
     it('should render built-in file types and toggle the selected type on click', async () => {
+      const user = userEvent.setup()
       const onToggle = vi.fn()
 
       render(
@@ -43,9 +44,9 @@ describe('File upload support components', () => {
       expect(screen.getByText('appDebug.variableConfig.file.image.name')).toBeInTheDocument()
       expect(screen.getByText('JPG, JPEG, PNG, GIF, WEBP, SVG')).toBeInTheDocument()
 
-      await userEvent
-        .setup()
-        .click(screen.getByRole('checkbox', { name: 'appDebug.variableConfig.file.image.name' }))
+      await user.click(
+        screen.getByRole('checkbox', { name: 'appDebug.variableConfig.file.image.name' }),
+      )
       expect(onToggle).toHaveBeenCalledWith(SupportUploadFileTypes.image)
     })
 

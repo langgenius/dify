@@ -39,13 +39,20 @@ const renderAutocomplete = ({
   children,
   open = false,
   defaultValue = 'workflow',
+  readOnly = false,
 }: {
   children?: React.ReactNode
   open?: boolean
   defaultValue?: string
+  readOnly?: boolean
 } = {}) =>
   renderWithSafeViewport(
-    <Autocomplete open={open} defaultValue={defaultValue} items={['workflow', 'dataset']}>
+    <Autocomplete
+      open={open}
+      readOnly={readOnly}
+      defaultValue={defaultValue}
+      items={['workflow', 'dataset']}
+    >
       {children ?? (
         <React.Fragment>
           <AutocompleteInputGroup data-testid="input-group">
@@ -130,6 +137,13 @@ describe('Autocomplete wrappers', () => {
   })
 
   describe('Controls', () => {
+    it('should keep the popup trigger and hide clear when read-only', async () => {
+      const screen = await renderAutocomplete({ readOnly: true })
+
+      await expect.element(screen.getByTestId('trigger')).toBeVisible()
+      await expect.element(screen.getByTestId('clear')).not.toBeVisible()
+    })
+
     it('should provide fallback aria labels and decorative icons when labels are omitted', async () => {
       const screen = await renderAutocomplete()
 
@@ -264,7 +278,8 @@ describe('Autocomplete wrappers', () => {
           </AutocompleteInputGroup>
           <AutocompletePortal>
             <AutocompletePositioner
-              placement="top-end"
+              side="top"
+              align="end"
               sideOffset={12}
               alignOffset={6}
               role="group"

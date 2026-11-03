@@ -24,7 +24,7 @@ def test_get_pipeline_template_factory(mode: str, expected_cls: type) -> None:
 
 
 def test_get_pipeline_template_factory_invalid_mode() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="invalid fetch recommended apps mode: invalid"):
         PipelineTemplateRetrievalFactory.get_pipeline_template_factory("invalid")
 
 

@@ -64,7 +64,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         },
       }
     }
-  }, [store, workflowStore])
+  }, [store, workflowStore, pipelineId])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return

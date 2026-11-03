@@ -1,18 +1,19 @@
 import type { ComponentProps } from 'react'
 import type { FileEntity } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { TransferMethod } from '@/types/app'
 import { FileContextProvider } from '../../store'
 import FileFromLinkOrLocal from '../index'
 
-const uploadRemoteFileInfo = vi.hoisted(() => vi.fn())
-vi.mock('@/service/common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/common')>()),
-  uploadRemoteFileInfo,
-}))
+const request = vi.hoisted(() => vi.fn<typeof import('@/service/base').request>())
+// oxlint-disable-next-line typescript/no-deprecated -- Control the existing XHR upload transport while exercising the real uploader lifecycle.
+const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
+vi.mock('@/service/base', () => ({ request, upload }))
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/apps' }))
 
 const config: FileUpload = {
@@ -37,20 +38,24 @@ const setup = async (
         {...props}
       />
     </FileContextProvider>,
+    { wrapper: createConsoleQueryWrapper().wrapper },
   )
   await user.click(screen.getByRole('button', { name: 'Open uploads' }))
   return { user, onChange }
 }
 
 beforeEach(() => {
-  uploadRemoteFileInfo.mockReset()
-  uploadRemoteFileInfo.mockResolvedValue({
-    id: 'uploaded-file',
-    name: 'report.pdf',
-    mime_type: 'application/pdf',
-    size: 10,
-    url: 'https://example.com/report.pdf',
-  })
+  upload.mockReset()
+  request.mockReset()
+  request.mockImplementation(async () =>
+    Response.json({
+      id: 'uploaded-file',
+      name: 'report.pdf',
+      mime_type: 'application/pdf',
+      size: 10,
+      url: 'https://example.com/report.pdf',
+    }),
+  )
 })
 
 it.each([
@@ -71,12 +76,15 @@ it('rejects an invalid link, clears the error on editing, and persists a valid u
   await user.type(input, 'invalid-url')
   await user.click(submit)
   expect(screen.getByText(/pasteFileLinkInvalid/)).toBeInTheDocument()
-  expect(uploadRemoteFileInfo).not.toHaveBeenCalled()
+  expect(request).not.toHaveBeenCalled()
   await user.clear(input)
   await user.type(input, 'https://example.com/report.pdf')
   expect(screen.queryByText(/pasteFileLinkInvalid/)).not.toBeInTheDocument()
   await user.click(submit)
-  expect(uploadRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf', false)
+  await waitFor(() => expect(request).toHaveBeenCalled())
+  expect(await request.mock.calls[0]?.[2]?.request?.json()).toEqual({
+    url: 'https://example.com/report.pdf',
+  })
   await waitFor(() =>
     expect(onChange).toHaveBeenLastCalledWith([
       expect.objectContaining({
@@ -98,4 +106,22 @@ it('dismisses the upload popover through its trigger', async () => {
     expect(screen.queryByPlaceholderText(/pasteFileLinkInputPlaceholder/)).not.toBeInTheDocument(),
   )
   expect(screen.getByRole('button', { name: 'Open uploads' })).toBeInTheDocument()
+})
+
+it('finishes a local upload after its popover closes while the input session remains active', async () => {
+  const pending = createDeferred<Awaited<ReturnType<typeof upload>>>()
+  upload.mockReturnValue(pending.promise)
+  const { user, onChange } = await setup({ showFromLink: false })
+  const button = screen.getByRole('button', { name: /uploadFromComputer/ })
+  const input = button.querySelector<HTMLInputElement>('input[type="file"]')!
+  await user.upload(input, new File(['report'], 'report.txt', { type: 'text/plain' }))
+  await waitFor(() => expect(upload).toHaveBeenCalledOnce())
+  await user.click(screen.getByRole('button', { name: 'Close uploads' }))
+  expect(screen.queryByRole('button', { name: /uploadFromComputer/ })).not.toBeInTheDocument()
+
+  await act(async () => pending.resolve({ id: 'uploaded-report' }))
+
+  expect(onChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ uploadedId: 'uploaded-report', progress: 100 }),
+  ])
 })

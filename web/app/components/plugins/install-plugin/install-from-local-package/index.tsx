@@ -3,9 +3,9 @@ import type { Dependency, PluginCategoryEnum, PluginDeclaration } from '../../ty
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
   DialogContent,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
@@ -98,7 +98,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       >
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         {step === InstallStep.uploading && (
           <Uploading

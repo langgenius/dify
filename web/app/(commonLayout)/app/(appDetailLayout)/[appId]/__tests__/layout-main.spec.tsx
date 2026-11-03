@@ -629,4 +629,28 @@ describe('AppDetailLayout', () => {
 
     expect(mockRedirect).not.toHaveBeenCalled()
   })
+
+  it.each([
+    ['agent-1', '/agents/agent-1/access'],
+    [null, '/agents'],
+  ])(
+    'redirects legacy Agent access-point URLs to the Agent owner (%s)',
+    async (boundAgentId, target) => {
+      mockPathname = '/app/app-1/access-point'
+      mockAppResponse.mockResolvedValue(
+        createAppDetail({
+          mode: 'agent',
+          bound_agent_id: boundAgentId,
+          permission_keys: [AppACLPermission.AccessPointView],
+        }),
+      )
+      render(
+        <AppDetailLayout appId="app-1">
+          <div>App page content</div>
+        </AppDetailLayout>,
+      )
+      await waitFor(() => expect(mockRedirect).toHaveBeenCalledWith(target))
+      expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    },
+  )
 })

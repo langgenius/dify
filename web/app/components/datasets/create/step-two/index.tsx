@@ -160,10 +160,10 @@ const StepTwo: FC<StepTwoProps> = ({
     currentDocForm,
     docLanguage,
     files,
-    previewFileName: preview.previewFile?.name,
-    previewNotionPage: preview.previewNotionPage,
+    previewItemId: preview.getPreviewPickerValue()?.id,
+    notionPages,
     notionCredentialId,
-    previewWebsitePage: preview.previewWebsitePage,
+    websitePages,
     crawlOptions,
     websiteCrawlProvider,
     websiteCrawlJobId,
@@ -250,14 +250,18 @@ const StepTwo: FC<StepTwoProps> = ({
       segmentation.summaryIndexSetting,
     )
     if (!params) return
-    await creation.executeCreation(params, indexing.indexType, indexing.retrievalConfig)
+    try {
+      await creation.executeCreation(params, indexing.indexType, indexing.retrievalConfig)
+    } catch {
+      // The service reports request failures; keep this step and its draft available for retry.
+    }
   }, [canCreateDocument, creation, segmentation, indexing, currentDocForm, docLanguage])
 
   const handlePickerChange = useCallback(
     (selected: { id: string; name: string }) => {
       estimateHook.reset()
       preview.handlePreviewChange(selected)
-      estimateHook.fetchEstimate()
+      estimateHook.fetchEstimate(selected.id)
     },
     [estimateHook, preview],
   )

@@ -31,7 +31,6 @@ import type {
   PluginTask,
   ReferenceSetting,
   VersionInfo,
-  VersionListResponse,
 } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
 import {
@@ -852,17 +851,6 @@ export const usePluginDeclarationFromMarketPlace = (pluginUniqueIdentifier: stri
         query: { plugin_unique_identifier: pluginUniqueIdentifier },
       }),
     enabled: !!pluginUniqueIdentifier,
-  })
-}
-
-export const useVersionListOfPlugin = (pluginID: string, enabled = true) => {
-  return useQuery<{ data: VersionListResponse }>({
-    enabled: enabled && !!pluginID,
-    queryKey: [NAME_SPACE, 'versions', pluginID],
-    queryFn: () =>
-      getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, {
-        params: { page: 1, page_size: 100 },
-      }),
   })
 }
 

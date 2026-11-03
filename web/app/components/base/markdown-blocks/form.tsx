@@ -227,7 +227,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
       if (child.tagName !== SUPPORTED_TAGS.INPUT && child.tagName !== SUPPORTED_TAGS.TEXTAREA)
         continue
       const name = child.properties.name
-      if (!isSafeName(name)) continue
+      if (!isSafeName(name) || child.properties.disabled) continue
       let value: FormValue = formValues[name]
       if (value instanceof Date) value = value.toISOString()
       if (value === undefined) continue
@@ -238,7 +238,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
   }, [elementChildren, formValues])
 
   const onSubmit = useCallback(
-    async (e: React.FormEvent<HTMLFormElement>) => {
+    async (e: React.SubmitEvent<HTMLFormElement>) => {
       e.preventDefault()
       e.stopPropagation()
       if (isSubmitting) return
@@ -384,6 +384,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
               <div className="mt-2 flex h-6 items-center space-x-2" key={key}>
                 <Checkbox
                   id={controlId}
+                  disabled={Boolean(child.properties.disabled)}
                   checked={!!formValues[name]}
                   aria-label={checkboxAriaLabel}
                   onCheckedChange={(checked) => updateValue(name, checked)}
@@ -411,6 +412,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             return (
               <Select
                 key={key}
+                disabled={Boolean(child.properties.disabled)}
                 value={(formValues[name] as string | undefined) ?? null}
                 onValueChange={(val) => {
                   if (val != null) updateValue(name, val)
@@ -436,6 +438,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
               <input
                 key={key}
                 type="hidden"
+                disabled={Boolean(child.properties.disabled)}
                 name={name}
                 value={str(formValues[name] ?? child.properties.value)}
               />
@@ -447,6 +450,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             return (
               <NumberField
                 key={key}
+                disabled={Boolean(child.properties.disabled)}
                 name={name}
                 step="any"
                 value={value == null || value === '' ? null : Number(value)}
@@ -466,6 +470,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           return (
             <Input
               key={key}
+              disabled={Boolean(child.properties.disabled)}
               id={controlId}
               aria-label={hasExternalLabel ? undefined : name}
               type={type}
@@ -488,6 +493,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           )
           return (
             <Textarea
+              disabled={Boolean(child.properties.disabled)}
               id={controlId}
               aria-label={hasExternalLabel ? undefined : name}
               key={key}

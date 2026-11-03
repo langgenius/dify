@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -29,7 +28,6 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   const { t } = useTranslation(['workflow'] as const)
   const { eventEmitter } = useEventEmitterContextContext()
   const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
-  const workflowStore = useWorkflowStore()
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { mutateAsync: importDSL } = useMutation(
     consoleQuery.rag.pipelines.imports.post.mutationOptions(),
@@ -151,7 +149,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   }, [
     currentFile,
     fileContent,
-    workflowStore,
+    pipelineId,
     importDSL,
     completeImport,
     showVersionMismatch,

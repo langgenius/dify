@@ -1,184 +1,74 @@
-import type { ReactNode } from 'react'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import type { Tool } from '@/app/components/tools/types'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createMcpProviderFixture } from '@/test/fixtures/mcp'
 import MCPCard from '../provider-card'
 
-const mockConsoleState = vi.hoisted(() => ({
-  workspacePermissionKeys: ['mcp.manage'] as string[],
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
-  }))
-})
-
-// Mock the format time hook
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({
-    formatTimeFromNow: (_timestamp: number) => '2 hours ago',
-  }),
-}))
-
-// Mock the plugins service
-vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => ({
-    data: { pages: [] },
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-    isLoading: false,
-    isSuccess: true,
-  }),
-}))
-
-// Mock common service
-vi.mock('@/service/common', () => ({
-  uploadRemoteFileInfo: vi.fn().mockResolvedValue({ url: 'https://example.com/icon.png' }),
-}))
-
-describe('MCPCard', () => {
-  const createWrapper = () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
-    return ({ children }: { children: ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
-  }
-
-  const createMockData = (overrides = {}): ToolWithProvider =>
-    ({
-      id: 'mcp-1',
-      name: 'Test MCP Server',
-      server_identifier: 'test-server',
-      icon: { content: '🔧', background: '#FF0000' },
-      tools: [
-        { name: 'tool1', description: 'Tool 1' },
-        { name: 'tool2', description: 'Tool 2' },
-      ],
-      is_team_authorization: true,
-      updated_at: Date.now() / 1000,
-      ...overrides,
-    }) as unknown as ToolWithProvider
-
-  const defaultProps = {
-    data: createMockData(),
-    handleSelect: vi.fn(),
-    onEdit: vi.fn(),
-    onDelete: vi.fn(),
-  }
-
-  beforeEach(() => {
-    mockConsoleState.workspacePermissionKeys = ['mcp.manage']
+const tool: Tool = {
+  name: 'search',
+  author: 'Dify',
+  label: { en_US: 'Search', zh_Hans: 'Search' },
+  description: { en_US: 'Search documents', zh_Hans: 'Search documents' },
+  parameters: [],
+  labels: [],
+  output_schema: {},
+}
+const setup = (props: Partial<ComponentProps<typeof MCPCard>> = {}, canManage = true) => {
+  const handleSelect = vi.fn()
+  const onEdit = vi.fn()
+  const onDelete = vi.fn()
+  const { wrapper } = createConsoleQueryWrapper({
+    workspacePermissionKeys: canManage ? ['mcp.manage'] : [],
   })
+  render(
+    <MCPCard
+      data={createMcpProviderFixture({ tools: [tool] })}
+      handleSelect={handleSelect}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      {...props}
+    />,
+    { wrapper },
+  )
+  return { handleSelect, onEdit, onDelete, user: userEvent.setup() }
+}
 
-  describe('No Tools State', () => {
-    it('should show no tools message when tools array is empty', () => {
-      const dataWithNoTools = createMockData({ tools: [] })
-      render(<MCPCard {...defaultProps} data={dataWithNoTools} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.noTools')).toBeInTheDocument()
-    })
-
-    it('should show not configured badge when not authorized', () => {
-      const dataNotAuthorized = createMockData({ is_team_authorization: false })
-      render(<MCPCard {...defaultProps} data={dataNotAuthorized} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.noConfigured')).toBeInTheDocument()
-    })
-
-    it('should show not configured badge when no tools', () => {
-      const dataWithNoTools = createMockData({ tools: [], is_team_authorization: true })
-      render(<MCPCard {...defaultProps} data={dataWithNoTools} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.noConfigured')).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call handleSelect when card is clicked', async () => {
-      const user = userEvent.setup()
-      const handleSelect = vi.fn()
-      render(<MCPCard {...defaultProps} handleSelect={handleSelect} />, {
-        wrapper: createWrapper(),
-      })
-
-      await user.click(screen.getByRole('button', { name: /Test MCP Server/ }))
-
-      expect(handleSelect).toHaveBeenCalledWith('mcp-1')
-    })
-  })
-
-  describe('Status Indicator', () => {
-    it('should include configured status in the card button name', () => {
-      const data = createMockData({ is_team_authorization: true, tools: [{ name: 'tool1' }] })
-      render(<MCPCard {...defaultProps} data={data} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('button', { name: /tools\.mcp\.configured/ })).toBeInTheDocument()
-      expect(screen.queryByText('tools.mcp.noConfigured')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Operation Dropdown', () => {
-    it('should not render operation dropdown when user lacks mcp.manage', () => {
-      mockConsoleState.workspacePermissionKeys = []
-
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
+describe('MCP provider card', () => {
+  it.each([
+    { authorized: true, tools: [tool], configured: true },
+    { authorized: false, tools: [tool], configured: false },
+    { authorized: true, tools: [], configured: false },
+  ])(
+    'requires both authorization and tools for configured status ($authorized, $configured)',
+    ({ authorized, tools, configured }) => {
+      setup({ data: createMcpProviderFixture({ is_team_authorization: authorized, tools }) })
       expect(
-        screen.queryByRole('button', { name: 'common.operation.more' }),
-      ).not.toBeInTheDocument()
-    })
+        screen.getByRole('button', {
+          name: configured ? /tools\.mcp\.configured/ : /tools\.mcp\.noConfigured/,
+        }),
+      ).toBeInTheDocument()
+      if (!tools.length) expect(screen.getByText('tools.mcp.noTools')).toBeInTheDocument()
+    },
+  )
 
-    it('should not select the card when clicking the dropdown icon', async () => {
-      const user = userEvent.setup()
-      const handleSelect = vi.fn()
-      render(<MCPCard {...defaultProps} handleSelect={handleSelect} />, {
-        wrapper: createWrapper(),
-      })
-
-      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-
-      expect(handleSelect).not.toHaveBeenCalled()
-    })
-
-    it('should request edit without selecting the card', async () => {
-      const user = userEvent.setup()
-      const handleSelect = vi.fn()
-      const onEdit = vi.fn()
-      render(<MCPCard {...defaultProps} handleSelect={handleSelect} onEdit={onEdit} />, {
-        wrapper: createWrapper(),
-      })
-
-      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-      await user.click(screen.getByRole('menuitem', { name: 'tools.mcp.operation.edit' }))
-
-      expect(onEdit).toHaveBeenCalledWith('mcp-1')
-      expect(handleSelect).not.toHaveBeenCalled()
-    })
+  it('selects the provider when its card is clicked', async () => {
+    const { user, handleSelect } = setup()
+    await user.click(screen.getByRole('button', { name: /Existing Server/ }))
+    expect(handleSelect).toHaveBeenCalledWith('mcp-1')
   })
 
-  describe('Delete Action', () => {
-    it('should request delete without selecting the card', async () => {
-      const user = userEvent.setup()
-      const handleSelect = vi.fn()
-      const onDelete = vi.fn()
-      render(<MCPCard {...defaultProps} handleSelect={handleSelect} onDelete={onDelete} />, {
-        wrapper: createWrapper(),
-      })
+  it('hides management actions without mcp.manage permission', () => {
+    setup({}, false)
+    expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+  })
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-      await user.click(screen.getByRole('menuitem', { name: 'tools.mcp.operation.remove' }))
-
-      expect(onDelete).toHaveBeenCalledWith('mcp-1')
-      expect(handleSelect).not.toHaveBeenCalled()
-    })
+  it.each(['edit', 'remove'] as const)('requests %s without selecting the card', async (action) => {
+    const { user, handleSelect, onEdit, onDelete } = setup()
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByRole('menuitem', { name: `tools.mcp.operation.${action}` }))
+    expect(action === 'edit' ? onEdit : onDelete).toHaveBeenCalledWith('mcp-1')
+    expect(handleSelect).not.toHaveBeenCalled()
   })
 })

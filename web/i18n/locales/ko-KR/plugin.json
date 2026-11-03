@@ -301,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "템플릿 게시 가이드",
-  "upgrade.close": "닫기",
   "upgrade.description": "다음 플러그인을 설치하려고 합니다.",
-  "upgrade.successfulTitle": "설치 성공",
   "upgrade.title": "플러그인 설치",
   "upgrade.upgrade": "업그레이드",
   "upgrade.upgrading": "설치..."

@@ -125,6 +125,7 @@ describe('WaterCrawl', () => {
 
   describe('State Management', () => {
     it('should transition from init to running state when run is clicked', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       const mockCreateTask = createWatercrawlTask as Mock
       let resolvePromise: () => void
       mockCreateTask.mockImplementation(
@@ -138,10 +139,10 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const urlInput = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(urlInput, 'https://example.com')
+      await user.type(urlInput, 'https://example.com')
 
       const runButton = screen.getByRole('button', { name: /run/i })
-      await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(runButton)
+      await user.click(runButton)
 
       // Assert - crawling indicator should appear
       await waitFor(() => {
@@ -153,6 +154,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should fold options when step changes from init', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
@@ -172,8 +174,8 @@ describe('WaterCrawl', () => {
       expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
 
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://example.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - options should be folded after crawl starts
       await waitFor(() => {
@@ -191,11 +193,12 @@ describe('WaterCrawl', () => {
   // User Interactions and Event Handlers Tests
   describe('User Interactions', () => {
     it('should open account settings when configuration button is clicked', async () => {
+      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<WaterCrawl {...props} />)
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureWatercrawl')
-      await userEvent.click(configButton)
+      await user.click(configButton)
 
       await waitFor(() =>
         expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
@@ -204,6 +207,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should handle checkbox changes in options', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       const onCrawlOptionsChange = vi.fn()
       const props = createDefaultProps({
         onCrawlOptionsChange,
@@ -213,12 +217,13 @@ describe('WaterCrawl', () => {
       render(<WaterCrawl {...props} />)
 
       const checkbox = screen.getByRole('checkbox', { name: /crawlSubPage/ })
-      await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(checkbox)
+      await user.click(checkbox)
 
       expect(onCrawlOptionsChange).toHaveBeenCalled()
     })
 
     it('should toggle options visibility when clicking options header', async () => {
+      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<WaterCrawl {...props} />)
@@ -227,14 +232,14 @@ describe('WaterCrawl', () => {
       expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
 
       const optionsHeader = screen.getByText('datasetCreation.stepOne.website.options')
-      await userEvent.click(optionsHeader)
+      await user.click(optionsHeader)
 
       // Assert - options should be hidden
       expect(
         screen.queryByText('datasetCreation.stepOne.website.crawlSubPage'),
       ).not.toBeInTheDocument()
 
-      await userEvent.click(optionsHeader)
+      await user.click(optionsHeader)
 
       // Options should be visible again
       expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
@@ -244,6 +249,7 @@ describe('WaterCrawl', () => {
   // API Calls Tests
   describe('API Calls', () => {
     it('should call createWatercrawlTask with correct parameters', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
@@ -268,8 +274,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://api-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://api-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(mockCreateTask).toHaveBeenCalledWith({
@@ -280,6 +286,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should delete max_depth from options when it is empty string', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
@@ -296,8 +303,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - max_depth should be deleted from the request
       await waitFor(() => {
@@ -307,6 +314,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should handle error status from polling', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
@@ -320,8 +328,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://fail-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://fail-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(
@@ -333,6 +341,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should handle API error during status check', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
@@ -345,8 +354,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://error-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://error-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(
@@ -389,6 +398,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should handle response without status field as error', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
@@ -402,8 +412,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://no-status-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://no-status-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(
@@ -416,10 +426,11 @@ describe('WaterCrawl', () => {
   // Edge Cases and Error Handling Tests
   describe('Edge Cases and Error Handling', () => {
     it('should show error for empty URL', async () => {
+      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<WaterCrawl {...props} />)
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - Toast should be shown (mocked via Toast component)
       await waitFor(() => {
@@ -428,12 +439,13 @@ describe('WaterCrawl', () => {
     })
 
     it('should show error for invalid URL format', async () => {
+      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'invalid-url')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'invalid-url')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(createWatercrawlTask).not.toHaveBeenCalled()
@@ -441,12 +453,13 @@ describe('WaterCrawl', () => {
     })
 
     it('should show error for URL without protocol', async () => {
+      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'example.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(createWatercrawlTask).not.toHaveBeenCalled()
@@ -454,6 +467,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should accept URL with http:// protocol', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
@@ -469,8 +483,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'http://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'http://example.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(mockCreateTask).toHaveBeenCalled()
@@ -478,14 +492,15 @@ describe('WaterCrawl', () => {
     })
 
     it('should show error when limit is empty', async () => {
+      const user = userEvent.setup()
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: '' }),
       })
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://example.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(createWatercrawlTask).not.toHaveBeenCalled()
@@ -493,6 +508,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should handle API throwing an exception', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       mockCreateTask.mockRejectedValueOnce(new Error('Network error'))
       // Suppress console output during test to avoid noisy logs
@@ -502,8 +518,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://exception-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://exception-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(
@@ -515,6 +531,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should show unknown error when error message is empty', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
@@ -528,8 +545,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://empty-error-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://empty-error-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(
@@ -539,6 +556,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should handle empty data array from API', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
@@ -555,8 +573,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://empty-data-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://empty-data-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(onCheckedCrawlResultChange).toHaveBeenCalledWith([])
@@ -564,6 +582,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should handle null data from running status', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
@@ -587,8 +606,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://null-data-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://null-data-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(onCheckedCrawlResultChange).toHaveBeenCalledWith([])
@@ -596,6 +615,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should handle undefined data from completed job polling', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
@@ -612,8 +632,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://undefined-data-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://undefined-data-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(onCheckedCrawlResultChange).toHaveBeenCalledWith([])
@@ -621,6 +641,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should handle crawlResult with zero current value', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
@@ -638,8 +659,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://zero-current-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://zero-current-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - should show 0/10 in crawling indicator
       await waitFor(() => {
@@ -648,6 +669,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should handle crawlResult with zero total and empty limit', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
@@ -665,8 +687,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://zero-total-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://zero-total-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - should show 0/0
       await waitFor(() => {
@@ -675,6 +697,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should handle crawlResult with current=0 and total=0 during running', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
@@ -699,8 +722,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://both-zero-test.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://both-zero-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped/)).toHaveTextContent('0/5')
@@ -711,6 +734,7 @@ describe('WaterCrawl', () => {
   // Display and UI State Tests
   describe('Display and UI States', () => {
     it('should display time consumed after crawl completion', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
@@ -727,8 +751,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://time.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://time.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
         expect(screen.getByText(/scrapTimeInfo/i))!.toBeInTheDocument()
@@ -738,6 +762,7 @@ describe('WaterCrawl', () => {
 
   describe('Integration', () => {
     it('should complete full crawl workflow with job polling', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
@@ -777,8 +802,8 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://full-workflow.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.type(input, 'https://full-workflow.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Assert - job id should be set
       await waitFor(() => {
@@ -807,6 +832,7 @@ describe('WaterCrawl', () => {
     })
 
     it('should handle complete workflow from input to preview', async () => {
+      const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
       const onPreview = vi.fn()
@@ -838,10 +864,10 @@ describe('WaterCrawl', () => {
 
       // Step 1: Enter URL
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
-      await userEvent.type(input, 'https://preview.com')
+      await user.type(input, 'https://preview.com')
 
       // Step 2: Run crawl
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
+      await user.click(screen.getByRole('button', { name: /run/i }))
 
       // Step 3: Wait for completion
       await waitFor(() => {
@@ -850,7 +876,7 @@ describe('WaterCrawl', () => {
 
       // Step 4: Click preview
       const previewButton = screen.getByText('datasetCreation.stepOne.website.preview')
-      await userEvent.click(previewButton)
+      await user.click(previewButton)
 
       expect(onJobIdChange).toHaveBeenCalledWith('preview-workflow-job')
       expect(onCheckedCrawlResultChange).toHaveBeenCalled()

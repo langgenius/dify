@@ -15,6 +15,12 @@ describe('markdown-with-directive-schema', () => {
     ).toBe(true)
   })
 
+  it('accepts an icon URL with surrounding whitespace', () => {
+    expect(
+      validateDirectiveProps('withiconcarditem', { icon: '  https://example.com/icon.png  ' }),
+    ).toBe(true)
+  })
+
   it.each([
     ['unknown-directive', { className: 'custom-list' }],
     ['withiconcarditem', { icon: 'ftp://example.com/icon.png' }],

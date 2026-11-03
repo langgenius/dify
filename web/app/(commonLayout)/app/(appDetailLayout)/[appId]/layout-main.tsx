@@ -49,6 +49,9 @@ const getAppDetailRedirectPath = (
   pathname: string,
   permissionOptions: ResourceMaintainerPermissionOptions,
 ) => {
+  if (appDetail.mode === 'agent' && pathname.endsWith('/access-point'))
+    return appDetail.bound_agent_id ? `/agents/${appDetail.bound_agent_id}/access` : '/agents'
+
   const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, permissionOptions)
   const isWorkflowApp = appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat'
   const isLayoutPath = pathname.endsWith('configuration') || pathname.endsWith('workflow')

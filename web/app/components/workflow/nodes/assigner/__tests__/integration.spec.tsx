@@ -185,10 +185,11 @@ describe('Assigner panel integration', () => {
   })
 
   it('changes a boolean using the real option controls', async () => {
+    const user = userEvent.setup()
     const { getData } = renderPanel([
       operation({ variable_selector: ['conversation', 'ready'], value: false }),
     ])
-    await userEvent.setup().click(screen.getByRole('button', { name: 'True' }))
+    await user.click(screen.getByRole('button', { name: 'True' }))
     expect(getData().items[0]?.value).toBe(true)
   })
 

@@ -5,11 +5,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
@@ -161,7 +161,7 @@ const ApiKeyModal = ({
           <DialogDescription>
             {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           {pluginPayload.detail && (

@@ -5,10 +5,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
@@ -43,7 +43,7 @@ const BatchModalContent: FC<BatchModalContentProps> = ({ docForm, onCancel, onCo
         <DialogTitle>
           {t(($) => $['list.batchModal.title'], { ns: 'datasetDocuments' })}
         </DialogTitle>
-        <DialogCloseButton
+        <DialogHeaderCloseButton
           aria-label={t(($) => $['list.batchModal.cancel'], { ns: 'datasetDocuments' })}
         />
       </DialogHeader>

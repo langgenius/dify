@@ -14,7 +14,7 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterRule,
     ParameterType,
 )
-from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
 def test_fetch_model_reuses_single_model_assembly():

@@ -94,6 +94,7 @@ describe('FileInAttachmentItem', () => {
   })
 
   it('retries without opening the attachment preview', async () => {
+    const user = userEvent.setup()
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     const onReUpload = vi.fn()
     render(
@@ -104,7 +105,7 @@ describe('FileInAttachmentItem', () => {
         previewMode={PreviewMode.NewPage}
       />,
     )
-    await userEvent.setup().click(action('retry'))
+    await user.click(action('retry'))
     expect(onReUpload).toHaveBeenCalledExactlyOnceWith('file-1')
     expect(open).not.toHaveBeenCalled()
   })

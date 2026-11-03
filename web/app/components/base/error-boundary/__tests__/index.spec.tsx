@@ -166,6 +166,7 @@ describe('ErrorBoundary', () => {
     })
 
     it('should reset and render children when Try Again is clicked', async () => {
+      const user = userEvent.setup()
       const onReset = vi.fn()
 
       const RecoveryHarness = () => {
@@ -183,13 +184,14 @@ describe('ErrorBoundary', () => {
       }
 
       render(<RecoveryHarness />)
-      await userEvent.setup().click(await screen.findByRole('button', { name: 'Try Again' }))
+      await user.click(await screen.findByRole('button', { name: 'Try Again' }))
 
       await screen.findByText('Child content rendered')
       expect(onReset).toHaveBeenCalledTimes(1)
     })
 
     it('should reset after resetKeys change when boundary is in error state', async () => {
+      const user = userEvent.setup()
       const ResetKeysHarness = () => {
         const [shouldThrow, setShouldThrow] = React.useState(true)
         const [boundaryKey, setBoundaryKey] = React.useState(0)
@@ -214,7 +216,7 @@ describe('ErrorBoundary', () => {
       render(<ResetKeysHarness />)
       await screen.findByText('Something went wrong')
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Recover with keys' }))
+      await user.click(screen.getByRole('button', { name: 'Recover with keys' }))
 
       await waitFor(() => {
         expect(screen.getByText('Child content rendered')).toBeInTheDocument()
@@ -222,6 +224,7 @@ describe('ErrorBoundary', () => {
     })
 
     it('should not reset when resetKeys reference changes but values are identical', async () => {
+      const user = userEvent.setup()
       const onReset = vi.fn()
 
       const StableKeysHarness = () => {
@@ -239,7 +242,7 @@ describe('ErrorBoundary', () => {
       render(<StableKeysHarness />)
       await screen.findByText('Something went wrong')
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Update keys same values' }))
+      await user.click(screen.getByRole('button', { name: 'Update keys same values' }))
 
       await waitFor(() => {
         expect(screen.getByText('Something went wrong')).toBeInTheDocument()
@@ -248,6 +251,7 @@ describe('ErrorBoundary', () => {
     })
 
     it('should reset after children change when resetOnPropsChange is true', async () => {
+      const user = userEvent.setup()
       const ResetOnPropsHarness = () => {
         const [shouldThrow, setShouldThrow] = React.useState(true)
         const [childLabel, setChildLabel] = React.useState('first child')
@@ -272,7 +276,7 @@ describe('ErrorBoundary', () => {
       render(<ResetOnPropsHarness />)
       await screen.findByText('Something went wrong')
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Replace children' }))
+      await user.click(screen.getByRole('button', { name: 'Replace children' }))
 
       await waitFor(() => {
         expect(screen.getByText('second child')).toBeInTheDocument()
@@ -280,6 +284,7 @@ describe('ErrorBoundary', () => {
     })
 
     it('should call window.location.reload when Reload Page is clicked', async () => {
+      const user = userEvent.setup()
       const reloadSpy = vi.fn()
       vi.stubGlobal('location', { ...window.location, reload: reloadSpy })
 
@@ -289,7 +294,7 @@ describe('ErrorBoundary', () => {
         </ErrorBoundary>,
       )
 
-      await userEvent.setup().click(await screen.findByRole('button', { name: 'Reload Page' }))
+      await user.click(await screen.findByRole('button', { name: 'Reload Page' }))
 
       expect(reloadSpy).toHaveBeenCalledTimes(1)
     })

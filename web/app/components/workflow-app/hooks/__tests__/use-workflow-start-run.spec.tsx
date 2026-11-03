@@ -1,54 +1,23 @@
 import type { ReactNode } from 'react'
+import type { Features } from '@/app/components/base/features/types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { Shape } from '@/app/components/workflow/store'
+import type { Node } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
+import { FeaturesContext } from '@/app/components/base/features/context'
+import { createFeaturesStore } from '@/app/components/base/features/store'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
   baseRunningData,
-  createTestWorkflowStore,
+  renderWorkflowCanvasHook,
 } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { WorkflowContext } from '@/app/components/workflow/context'
-import { renderEditorHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useWorkflowStartRunByCanEdit } from '../use-workflow-start-run'
 
-const mockGetNodes = vi.fn()
-const mockGetFeaturesState = vi.fn()
-const mockHandleCancelDebugAndPreviewPanel = vi.fn()
+// Draft persistence and the run stream are owned by their own hooks and suites.
 const mockHandleRun = vi.fn()
 const mockDoSyncWorkflowDraft = vi.fn()
-
-let workflowStoreState: Partial<Shape>
-let workflowStore: ReturnType<typeof createTestWorkflowStore>
-const renderHook: typeof renderEditorHook = (callback, options = {}) => {
-  workflowStore = createTestWorkflowStore(workflowStoreState)
-  return renderEditorHook(callback, {
-    ...options,
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <WorkflowContext value={workflowStore}>{children}</WorkflowContext>
-    ),
-  })
-}
-
-vi.mock('reactflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('reactflow')>()),
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-    }),
-  }),
-}))
-
-vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeaturesStore: () => ({
-    getState: mockGetFeaturesState,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
-  useWorkflowInteractions: () => ({
-    handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
-  }),
-}))
 
 vi.mock('../use-nodes-sync-draft', () => ({
   useNodesSyncDraftByCanEdit: () => ({
@@ -62,6 +31,28 @@ vi.mock('../use-workflow-run', () => ({
   }),
 }))
 
+let workflowStoreState: Partial<Shape>
+let canvasNodes: Node[]
+let features: Partial<Features>
+let workflowStore: ReturnType<typeof renderWorkflowCanvasHook>['store']
+
+const toNodes = (nodes: { id: string; data: Record<string, unknown> }[]) =>
+  nodes.map(({ id, data }) => createNode({ id, data }))
+
+const renderHook = <R,>(callback: () => R, { resource }: { resource: EditorResource }) => {
+  const featuresStore = createFeaturesStore({ features })
+  const rendered = renderWorkflowCanvasHook(callback, {
+    resource,
+    initialStoreState: workflowStoreState,
+    nodes: canvasNodes,
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <FeaturesContext value={featuresStore}>{children}</FeaturesContext>
+    ),
+  })
+  workflowStore = rendered.store
+  return rendered
+}
+
 const createWorkflowStoreState = (overrides: Partial<Shape> = {}): Partial<Shape> => ({
   showDebugAndPreviewPanel: false,
   showEnvPanel: true,
@@ -74,18 +65,8 @@ describe('useWorkflowStartRunByCanEdit', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     workflowStoreState = createWorkflowStoreState()
-    mockGetNodes.mockReturnValue([
-      { id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [] } },
-    ])
-    mockGetFeaturesState.mockReturnValue({
-      features: {
-        file: {
-          image: {
-            enabled: false,
-          },
-        },
-      },
-    })
+    canvasNodes = toNodes([{ id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [] } }])
+    features = { file: { image: { enabled: false } } }
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
   })
 
@@ -107,9 +88,7 @@ describe('useWorkflowStartRunByCanEdit', () => {
   })
 
   it('should not sync or run when only the start placeholder exists', async () => {
-    mockGetNodes.mockReturnValue([
-      { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } },
-    ])
+    canvasNodes = toNodes([{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }])
 
     const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
@@ -126,7 +105,7 @@ describe('useWorkflowStartRunByCanEdit', () => {
   })
 
   it('should open the input panel instead of running immediately when start inputs are required', async () => {
-    mockGetNodes.mockReturnValue([
+    canvasNodes = toNodes([
       { id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [{ name: 'query' }] } },
     ])
 
@@ -145,15 +124,7 @@ describe('useWorkflowStartRunByCanEdit', () => {
   })
 
   it('should open the input panel when image upload is enabled even without start variables', async () => {
-    mockGetFeaturesState.mockReturnValue({
-      features: {
-        file: {
-          image: {
-            enabled: true,
-          },
-        },
-      },
-    })
+    features = { file: { image: { enabled: true } } }
 
     const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
@@ -182,7 +153,7 @@ describe('useWorkflowStartRunByCanEdit', () => {
       await result.current.handleWorkflowStartRunInWorkflow()
     })
 
-    expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalled()
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toBe(false)
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
   })
@@ -206,7 +177,7 @@ describe('useWorkflowStartRunByCanEdit', () => {
   })
 
   it('should configure schedule trigger runs and execute the workflow with schedule options', async () => {
-    mockGetNodes.mockReturnValue([{ id: 'schedule-1', data: { type: BlockEnum.TriggerSchedule } }])
+    canvasNodes = toNodes([{ id: 'schedule-1', data: { type: BlockEnum.TriggerSchedule } }])
 
     const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
@@ -235,7 +206,7 @@ describe('useWorkflowStartRunByCanEdit', () => {
     workflowStoreState = createWorkflowStoreState({
       showDebugAndPreviewPanel: true,
     })
-    mockGetNodes.mockReturnValue([{ id: 'schedule-1', data: { type: BlockEnum.TriggerSchedule } }])
+    canvasNodes = toNodes([{ id: 'schedule-1', data: { type: BlockEnum.TriggerSchedule } }])
 
     const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
@@ -245,7 +216,7 @@ describe('useWorkflowStartRunByCanEdit', () => {
       await result.current.handleWorkflowTriggerScheduleRunInWorkflow('schedule-1')
     })
 
-    expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalled()
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toBe(false)
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
   })
@@ -297,7 +268,7 @@ describe('useWorkflowStartRunByCanEdit', () => {
     },
   ])('does not run when the $title trigger node cannot be found', async ({ invoke }) => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    mockGetNodes.mockReturnValue([{ id: 'other-node', data: { type: BlockEnum.Start } }])
+    canvasNodes = toNodes([{ id: 'other-node', data: { type: BlockEnum.Start } }])
 
     const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
@@ -335,7 +306,7 @@ describe('useWorkflowStartRunByCanEdit', () => {
   ])(
     'should configure $title trigger runs with node-specific options',
     async ({ nodeId, nodeType, invoke, expectedParams, expectedOptions }) => {
-      mockGetNodes.mockReturnValue([{ id: nodeId, data: { type: nodeType } }])
+      canvasNodes = toNodes([{ id: nodeId, data: { type: nodeType } }])
 
       const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
         resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },

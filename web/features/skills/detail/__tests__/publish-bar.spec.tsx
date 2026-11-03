@@ -76,6 +76,7 @@ describe('SkillPublishBar', () => {
   })
 
   it('publishes an update to an already published skill', async () => {
+    const user = userEvent.setup()
     render(
       <SkillPublishBar
         metaLabel="Saved 2 min ago"
@@ -88,9 +89,9 @@ describe('SkillPublishBar', () => {
     expect(screen.getByRole('status')).toHaveAccessibleName(
       'skill.skillManagement.detail.unpublishedChanges. Saved 2 min ago',
     )
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }))
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
+    )
     expect(onPublish).toHaveBeenCalledOnce()
   })
 

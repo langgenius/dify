@@ -1,58 +1,24 @@
-import type { MockedFunction, MockInstance } from 'vite-plus/test'
+import type { MockInstance } from 'vite-plus/test'
 import type { DatasetConfigs } from '@/models/debug'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
-import {
-  useCurrentProviderAndModel,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ConfigContext from '@/context/debug-configuration'
 import { RerankingModeEnum } from '@/models/datasets'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDebugConfigurationFixture } from '@/test/fixtures/debug-configuration'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_TYPE } from '@/types/app'
 import ParamsConfig from '../index'
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
-  useCurrentProviderAndModel: vi.fn(),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
-  type Props = {
-    value?: { provider: string; model: string }
-    onValueChange?: (model: { provider: string; model: string }) => void
-  }
-
-  const MockModelSelector = ({ value, onValueChange }: Props) => (
-    <button
-      type="button"
-      onClick={() => onValueChange?.(value ?? { provider: 'mock-provider', model: 'mock-model' })}
-    >
-      Mock ModelSelector
-    </button>
-  )
-
-  return {
-    ModelSelector: MockModelSelector,
-  }
+const render = createNuqsTestRenderer((ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  return renderWithConsoleQuery(ui, { queryClient })
 })
 
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: () => <div data-testid="model-parameter-modal" />,
-  }),
-)
-
-const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel =
-  useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<
-    typeof useModelListAndDefaultModelAndCurrentProviderAndModel
-  >
-const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<
-  typeof useCurrentProviderAndModel
->
 let toastErrorSpy: MockInstance
 
 const createDatasetConfigs = (overrides: Partial<DatasetConfigs> = {}): DatasetConfigs => {
@@ -101,7 +67,11 @@ const renderParamsConfig = ({
     return <ConfigContext.Provider value={contextValue}>{children}</ConfigContext.Provider>
   }
 
-  return render(<ParamsConfig disabled={disabled} selectedDatasets={[]} />, { wrapper: Wrapper })
+  return render(
+    <Wrapper>
+      <ParamsConfig disabled={disabled} selectedDatasets={[]} />
+    </Wrapper>,
+  )
 }
 
 describe('dataset-config/params-config', () => {
@@ -109,42 +79,25 @@ describe('dataset-config/params-config', () => {
     vi.clearAllMocks()
     vi.useRealTimers()
     toastErrorSpy = vi.spyOn(toast, 'error').mockImplementation(() => '')
-    mockedUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
-      modelList: [],
-      defaultModel: undefined,
-      currentProvider: undefined,
-      currentModel: undefined,
-    })
-    mockedUseCurrentProviderAndModel.mockReturnValue({
-      currentProvider: undefined,
-      currentModel: undefined,
-    })
   })
 
   afterEach(() => {
     toastErrorSpy.mockRestore()
   })
 
-  // Rendering tests (REQUIRED)
   describe('Rendering', () => {
     it('should disable settings trigger when disabled is true', () => {
-      // Arrange
       renderParamsConfig({ disabled: true })
 
-      // Assert
-      // Assert
       expect(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))!.toBeDisabled()
     })
   })
 
-  // User Interactions
   describe('User Interactions', () => {
     it('should open modal and persist changes when save is clicked', async () => {
-      // Arrange
       renderParamsConfig()
       const user = userEvent.setup()
 
-      // Act
       await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
       const dialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const dialogScope = within(dialog)
@@ -168,17 +121,13 @@ describe('dataset-config/params-config', () => {
       const reopenedScope = within(reopenedDialog)
       const [reopenedTopKInput] = reopenedScope.getAllByRole('textbox')
 
-      // Assert
-      // Assert
       expect(reopenedTopKInput)!.toHaveValue('5')
     })
 
     it('should discard changes when cancel is clicked', async () => {
-      // Arrange
       renderParamsConfig()
       const user = userEvent.setup()
 
-      // Act
       await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
       const dialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const dialogScope = within(dialog)
@@ -205,13 +154,10 @@ describe('dataset-config/params-config', () => {
       const reopenedScope = within(reopenedDialog)
       const [reopenedTopKInput] = reopenedScope.getAllByRole('textbox')
 
-      // Assert
-      // Assert
       expect(reopenedTopKInput)!.toHaveValue('4')
     })
 
     it('should prevent saving when rerank model is required but invalid', async () => {
-      // Arrange
       renderParamsConfig({
         datasetConfigs: createDatasetConfigs({
           reranking_enable: true,
@@ -221,12 +167,10 @@ describe('dataset-config/params-config', () => {
       })
       const user = userEvent.setup()
 
-      // Act
       const dialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const dialogScope = within(dialog)
       await user.click(dialogScope.getByRole('button', { name: 'common.operation.save' }))
 
-      // Assert
       expect(toastErrorSpy).toHaveBeenCalledWith('appDebug.datasetConfig.rerankModelRequired')
       expect(screen.getByRole('dialog'))!.toBeInTheDocument()
     })

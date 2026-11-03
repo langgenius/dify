@@ -23,7 +23,7 @@ Coverage is a diagnostic signal, not a quality target. This guide defines no req
 
 The unit coverage report includes authored JavaScript and TypeScript throughout `web/`, including runtime entry points, scripts, plugins, and files that no test imports. It excludes test infrastructure, stories, declarations, generated sources, tool configuration, build output, and vendored static code. TypeScript modules containing only erased types have no executable statements and are not meaningful zero-coverage findings. Local coverage runs also produce an HTML report at `coverage/index.html`.
 
-Run the full `unit` project before using coverage to identify untested modules. A focused run measures only the selected tests. Zero unit coverage does not imply that Browser Mode or E2E never exercises the file; those suites do not contribute to this report. Anonymous VM scripts and subprocesses can also execute code without attributing coverage to its source file. Check existing tests and separate product modules from development tooling when prioritizing the findings.
+Run the full `unit` project before using coverage to identify untested modules. A focused run measures only the selected tests. CI collects Browser Mode coverage separately and combines it with unit coverage under the same Codecov `web` flag. Zero unit coverage does not imply that Browser Mode or E2E never exercises the file; E2E does not contribute to the coverage report. Anonymous VM scripts and subprocesses can also execute code without attributing coverage to its source file. Check existing tests and separate product modules from development tooling when prioritizing the findings.
 
 ## Choose the Right Boundary
 

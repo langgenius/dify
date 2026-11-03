@@ -4,11 +4,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
@@ -81,7 +81,7 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
           <DialogDescription>
             {t(($) => $[`role.modal.${mode}.description`], { ns: 'permission' })}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody className="flex flex-col gap-5">
           <div className="flex shrink-0 flex-col gap-1">

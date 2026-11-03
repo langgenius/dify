@@ -1,6 +1,7 @@
 import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import type { IOtherOptions } from '@/service/base'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
@@ -15,8 +16,8 @@ import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { ssePost } from '@/service/base'
+import { consoleQuery } from '@/service/console'
 import { useInvalidateAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
-import { stopWorkflowRun } from '@/service/workflow'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
@@ -256,18 +257,23 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       handleWorkflowAgentLog,
       handleWorkflowTextChunk,
       handleWorkflowTextReplace,
+      pipelineId,
     ],
+  )
+
+  const { mutate: stopRun } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.workflowRuns.tasks.byTaskId.stop.post.mutationOptions(),
   )
 
   const handleStopRun = useCallback(
     (taskId: string) => {
-      stopWorkflowRun(`/rag/pipelines/${pipelineId}/workflow-runs/tasks/${taskId}/stop`)
+      stopRun({ params: { pipeline_id: pipelineId, task_id: taskId } })
 
       if (abortControllerRef.current) abortControllerRef.current.abort()
 
       abortControllerRef.current = null
     },
-    [workflowStore],
+    [pipelineId, stopRun],
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(

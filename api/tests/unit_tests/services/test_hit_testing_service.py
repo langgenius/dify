@@ -1,12 +1,15 @@
 """Unit tests for the database-independent hit-testing helpers."""
 
+from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from services.hit_testing_service import HitTestingService
@@ -39,11 +42,11 @@ class TestHitTestingServiceArguments:
             HitTestingService.hit_testing_args_check({"attachment_ids": "not a list"})
 
 
+@dataclass
 class _FakeSegment:
     """Minimal stand-in for a retrieval segment carrying a document id."""
 
-    def __init__(self, document_id: str) -> None:
-        self.document_id = document_id
+    document_id: str
 
 
 class _FakeRetrievalRecord:
@@ -98,3 +101,50 @@ class TestHitTestingServiceRetrieveTransaction:
         assert query_log is not None
         assert query_log.dataset_id == dataset.id
         assert query_log.created_by == account.id
+
+
+class TestHitTestingServiceRetrievalMethod:
+    @pytest.mark.parametrize(
+        ("indexing_technique", "retrieval_model", "expected_method"),
+        [
+            (IndexTechniqueType.ECONOMY, None, RetrievalMethod.KEYWORD_SEARCH),
+            (
+                IndexTechniqueType.ECONOMY,
+                {
+                    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
+                    "reranking_enable": False,
+                    "score_threshold_enabled": False,
+                    "top_k": 4,
+                },
+                RetrievalMethod.KEYWORD_SEARCH,
+            ),
+            (IndexTechniqueType.HIGH_QUALITY, None, RetrievalMethod.SEMANTIC_SEARCH),
+        ],
+        ids=["economy-default", "economy-requested-semantic", "high-quality-default"],
+    )
+    def test_retrieve_should_use_keyword_search_only_for_economy_datasets(
+        self,
+        sqlite_session: Session,
+        indexing_technique: IndexTechniqueType,
+        retrieval_model: dict[str, object] | None,
+        expected_method: RetrievalMethod,
+    ) -> None:
+        dataset = Dataset(
+            id="dataset-123",
+            tenant_id="tenant-123",
+            provider="vendor",
+            retrieval_model=None,
+            indexing_technique=indexing_technique,
+        )
+        account = Account(name="Test User", email="test@example.com")
+        account.id = "user-789"
+        query = "test query"
+
+        with (
+            patch("services.hit_testing_service.RetrievalService.retrieve", autospec=True) as mock_retrieve,
+        ):
+            no_documents: list[Document] = []
+            mock_retrieve.return_value = no_documents
+            HitTestingService.retrieve(dataset, query, account, retrieval_model, {}, session=sqlite_session)
+
+        assert mock_retrieve.call_args.kwargs["retrieval_method"] == expected_method

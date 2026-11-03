@@ -53,4 +53,4 @@ class TimezoneConversionTool(BuiltinTool):
             converted_datetime = datetime_with_tz.astimezone(output_timezone)
             return converted_datetime.strftime(time_format)
         except Exception as e:
-            raise ToolInvokeError(str(e))
+            raise ToolInvokeError(str(e)) from e

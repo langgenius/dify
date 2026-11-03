@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
 from uuid import UUID, uuid4
@@ -37,9 +38,9 @@ class ApplicationServicesStub:
         self.app_scoped_end_users = AppScopedEndUserServicesStub(end_user_queries)
 
 
+@dataclass(eq=False, repr=False)
 class AppScopedEndUserServicesStub:
-    def __init__(self, queries: EndUserQueryServiceStub) -> None:
-        self.queries = queries
+    queries: EndUserQueryServiceStub
 
 
 class TestEndUserApi:

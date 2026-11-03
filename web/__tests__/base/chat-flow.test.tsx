@@ -1,7 +1,7 @@
 import type { RefObject } from 'react'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ChatWithHistory from '@/app/components/base/chat/chat-with-history'
 import { useChatWithHistoryContext } from '@/app/components/base/chat/chat-with-history/context'
@@ -122,30 +122,9 @@ describe('Base Chat Flow', () => {
 
   // Chat-with-history shell integration across layout, responsive shell, and theme setup.
   describe('Chat With History Shell', () => {
-    it('updates the document title and expands the collapsed desktop sidebar on hover', () => {
-      const { rerender, container } = render(<ChatWithHistory />)
-
-      const titles = screen.getAllByText('Test Chat')
-      expect(titles.length).toBeGreaterThan(0)
+    it('uses the site title for the document', () => {
+      render(<ChatWithHistory />)
       expect(document.title).toBe('Test Chat - Dify')
-
-      vi.mocked(useChatWithHistory).mockReturnValue({
-        ...defaultHookReturn,
-        sidebarCollapseState: true,
-      })
-
-      rerender(<ChatWithHistory />)
-      const hoverArea = container.querySelector('.absolute.top-0.z-20')
-
-      expect(hoverArea).toBeInTheDocument()
-
-      if (hoverArea) {
-        fireEvent.mouseEnter(hoverArea)
-        expect(hoverArea).toHaveClass('left-0')
-
-        fireEvent.mouseLeave(hoverArea)
-        expect(hoverArea).toHaveClass('-left-62')
-      }
     })
 
     it('renders a new theme when site configuration changes', () => {

@@ -140,10 +140,11 @@ it('persists enabled state in both file settings and the legacy image flag', asy
 })
 
 it('blocks enabling upload when disabled', async () => {
+  const user = userEvent.setup()
   const onChange = vi.fn()
   renderWithProvider({ disabled: true, onChange })
   const toggle = screen.getByRole('switch')
   expect(toggle).toHaveAttribute('aria-disabled', 'true')
-  await userEvent.setup().click(toggle)
+  await user.click(toggle)
   expect(onChange).not.toHaveBeenCalled()
 })

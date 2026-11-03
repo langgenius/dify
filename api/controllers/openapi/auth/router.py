@@ -53,11 +53,11 @@ class AuthRouter:
 
         try:
             auth = authenticate_resource_token(token) if is_resource_token else get_authenticator().authenticate(token)
-        except InvalidBearerError:
+        except InvalidBearerError as caught_error:
             # One answer for every rejection reason - unknown prefix, no live row,
             # expired - so a caller cannot probe which one it hit. Same reasoning as
             # the 404-not-403 elsewhere on this surface.
-            raise Unauthorized("invalid bearer")
+            raise Unauthorized("invalid bearer") from caught_error
         subject = subject_from_auth(auth)
         pipeline = pipeline_for_subject(subject)
 

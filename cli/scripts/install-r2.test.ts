@@ -146,3 +146,77 @@ describe('install-r2 version/commit pin', () => {
     expect(r.stdout).toBe('deadbeef\tdifyctl-v0.1.0-edge.ce4af868-linux-x64')
   })
 })
+
+describe('install-r2.sh install location', () => {
+  const where = (env: Record<string, string>) =>
+    lib('bin_dir_for', { DIFYCTL_PREFIX: '', DIFYCTL_INSTALL_DIR: '', HOME: '/home/u', ...env })
+      .stdout
+
+  it('defaults to ~/.local/bin', () => {
+    expect(where({})).toBe('/home/u/.local/bin')
+  })
+
+  it('accepts DIFYCTL_PREFIX like the GitHub installer', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify' })).toBe('/opt/dify/bin')
+  })
+
+  it('keeps DIFYCTL_INSTALL_DIR as the bin folder itself, over DIFYCTL_PREFIX', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify', DIFYCTL_INSTALL_DIR: '/usr/local/bin' })).toBe(
+      '/usr/local/bin',
+    )
+  })
+})
+
+it.skipIf(process.platform === 'win32')(
+  'install-r2.sh points Windows users at install-r2.ps1',
+  () => {
+    const r = lib('uname() { printf MINGW64_NT; }; detect_target')
+    expect(r.code).not.toBe(0)
+    expect(r.stderr).toMatch(/use install-r2\.ps1 on Windows/)
+  },
+)
+
+describe.skipIf(process.platform === 'win32')('install-r2.sh install_binary', () => {
+  it('installs a 0600 temp file as mode 0755 next to and then over the target', () => {
+    const r = lib(
+      [
+        'd="$(mktemp -d)"',
+        'src="$(mktemp)"; chmod 0600 "$src"; printf new > "$src"',
+        'printf old > "$d/difyctl"',
+        'install_binary "$src" "$d/difyctl"',
+        'ls -l "$d/difyctl" | cut -c1-10; cat "$d/difyctl"; echo; ls -A "$d"',
+        'rm -rf "$d" "$src"',
+      ].join('\n'),
+    )
+    expect(r.code).toBe(0)
+    expect(r.stdout.split('\n')).toEqual(['-rwxr-xr-x', 'new', 'difyctl'])
+  })
+})
+
+// A v2 binary answers `install skills --help`; a v1 one exits 1 with "unknown command".
+describe.skipIf(process.platform === 'win32')('install-r2.sh print_skill_hint', () => {
+  const fakeBins = [
+    'd="$(mktemp -d)"',
+    'printf \'#!/bin/sh\\n[ "$*" = "install skills --help" ]\\n\' > "$d/v2"',
+    'printf \'#!/bin/sh\\necho "unknown command: $*" >&2\\nexit 1\\n\' > "$d/v1"',
+    'chmod 0755 "$d/v2" "$d/v1"',
+  ]
+
+  it('prints the hint for a binary that has install skills', () => {
+    const r = lib([...fakeBins, 'print_skill_hint "$d/v2"', 'rm -rf "$d"'].join('\n'))
+    expect(r.code).toBe(0)
+    expect(r.stdout).toMatch(/difyctl install skills <skills root>/)
+  })
+
+  it('prints nothing for a binary without install skills', () => {
+    const r = lib([...fakeBins, 'print_skill_hint "$d/v1"', 'rm -rf "$d"'].join('\n'))
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe('')
+  })
+
+  it('prints nothing when the binary cannot run', () => {
+    const r = lib('print_skill_hint /nonexistent/difyctl')
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe('')
+  })
+})

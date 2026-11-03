@@ -2,9 +2,13 @@
 name = "dify-trace-langsmith"
 version = "0.0.1"
 dependencies = [
+    "dify-trace-sdk",
     "langsmith==0.8.18",
 ]
 description = "Dify ops tracing provider (LangSmith)."
+
+[project.entry-points."dify.trace_providers"]
+langsmith = "dify_trace_langsmith.provider:LangSmithProvider"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -173,7 +173,8 @@ describe('SwitchAppModal', () => {
     it('should validate blank names and submit the current field value with Enter', async () => {
       const user = userEvent.setup()
       renderComponent()
-      const nameInput = screen.getByDisplayValue('Demo App(copy)')
+      const nameInput = screen.getByRole('textbox', { name: 'app.newApp.name' })
+      expect(screen.getByRole('group', { name: 'app.switchLabel' })).toContainElement(nameInput)
       await user.clear(nameInput)
       await user.type(nameInput, '   {Enter}')
       expect(await screen.findByText('explore.appCustomize.nameRequired')).toBeVisible()
@@ -361,7 +362,7 @@ describe('SwitchAppModal', () => {
       expect(mockConvertToWorkflow).toHaveBeenCalledTimes(1)
       await act(async () => rejectDeletion(new Error('Failed to delete original')))
       await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/app/converted-app/workflow'))
-      expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'app.appDeleteFailed' })
+      expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'Failed to delete original' })
       expect(mockConvertToWorkflow).toHaveBeenCalledTimes(1)
     })
 
@@ -376,7 +377,7 @@ describe('SwitchAppModal', () => {
       await waitFor(() => {
         expect(notify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'app.newApp.appCreateFailed',
+          message: 'fail',
         })
       })
       expect(onOpenChange).not.toHaveBeenCalled()

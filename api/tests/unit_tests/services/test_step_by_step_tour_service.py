@@ -12,7 +12,7 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from services.entities.account_entities import AccountSnapshot
 from services.entities.onboarding_entities import StepByStepTourPatch, StepByStepTourResult, StepByStepTourState
 from services.step_by_step_tour_service import StepByStepTourService
-from tests.unit_tests.model_factories import make_account, make_account_snapshot
+from tests.helpers.unit.model_factories import make_account, make_account_snapshot
 
 
 def _context(*, workspace_id: str = "workspace-1") -> RequestContext:

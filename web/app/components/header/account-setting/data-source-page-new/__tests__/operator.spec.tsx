@@ -48,12 +48,13 @@ describe('Operator Component', () => {
 
   describe('Conditional Action Rendering', () => {
     it('should render correct actions for API_KEY type', async () => {
+      const user = userEvent.setup()
       const credential = createMockCredential(CredentialTypeEnum.API_KEY)
 
       render(
         <Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />,
       )
-      await userEvent.setup().click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button'))
 
       expect(await screen.findByText('plugin.auth.setDefault')).toBeInTheDocument()
       expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
@@ -65,12 +66,13 @@ describe('Operator Component', () => {
     })
 
     it('should render correct actions for OAUTH2 type', async () => {
+      const user = userEvent.setup()
       const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
 
       render(
         <Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />,
       )
-      await userEvent.setup().click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button'))
 
       expect(await screen.findByText('plugin.auth.setDefault')).toBeInTheDocument()
       expect(screen.getByText('common.operation.rename')).toBeInTheDocument()
@@ -82,6 +84,7 @@ describe('Operator Component', () => {
 
   describe('Action Callbacks', () => {
     it('should call onRename when "rename" action is selected', async () => {
+      const user = userEvent.setup()
       const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
       render(
         <Operator
@@ -92,8 +95,8 @@ describe('Operator Component', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByRole('button'))
-      await userEvent.setup().click(await screen.findByText('common.operation.rename'))
+      await user.click(screen.getByRole('button'))
+      await user.click(await screen.findByText('common.operation.rename'))
 
       await waitFor(() => {
         expect(mockOnRename).toHaveBeenCalledTimes(1)
@@ -102,6 +105,7 @@ describe('Operator Component', () => {
     })
 
     it('should call onAction for "setDefault" action', async () => {
+      const user = userEvent.setup()
       const credential = createMockCredential(CredentialTypeEnum.API_KEY)
       render(
         <Operator
@@ -112,8 +116,8 @@ describe('Operator Component', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByRole('button'))
-      await userEvent.setup().click(await screen.findByText('plugin.auth.setDefault'))
+      await user.click(screen.getByRole('button'))
+      await user.click(await screen.findByText('plugin.auth.setDefault'))
 
       await waitFor(() => {
         expect(mockOnAction).toHaveBeenCalledWith('setDefault', credential)
@@ -121,6 +125,7 @@ describe('Operator Component', () => {
     })
 
     it('should call onAction for "edit" action', async () => {
+      const user = userEvent.setup()
       const credential = createMockCredential(CredentialTypeEnum.API_KEY)
       render(
         <Operator
@@ -131,8 +136,8 @@ describe('Operator Component', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByRole('button'))
-      await userEvent.setup().click(await screen.findByText('common.operation.edit'))
+      await user.click(screen.getByRole('button'))
+      await user.click(await screen.findByText('common.operation.edit'))
 
       await waitFor(() => {
         expect(mockOnAction).toHaveBeenCalledWith('edit', credential)
@@ -140,6 +145,7 @@ describe('Operator Component', () => {
     })
 
     it('should call onAction for "change" action', async () => {
+      const user = userEvent.setup()
       const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
       render(
         <Operator
@@ -150,10 +156,8 @@ describe('Operator Component', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByRole('button'))
-      await userEvent
-        .setup()
-        .click(await screen.findByText('common.dataSource.notion.changeAuthorizedPages'))
+      await user.click(screen.getByRole('button'))
+      await user.click(await screen.findByText('common.dataSource.notion.changeAuthorizedPages'))
 
       await waitFor(() => {
         expect(mockOnAction).toHaveBeenCalledWith('change', credential)
@@ -161,6 +165,7 @@ describe('Operator Component', () => {
     })
 
     it('should call onAction for "delete" action', async () => {
+      const user = userEvent.setup()
       const credential = createMockCredential(CredentialTypeEnum.API_KEY)
       render(
         <Operator
@@ -171,8 +176,8 @@ describe('Operator Component', () => {
         />,
       )
 
-      await userEvent.setup().click(screen.getByRole('button'))
-      await userEvent.setup().click(await screen.findByText('common.operation.remove'))
+      await user.click(screen.getByRole('button'))
+      await user.click(await screen.findByText('common.operation.remove'))
 
       await waitFor(() => {
         expect(mockOnAction).toHaveBeenCalledWith('delete', credential)
@@ -180,15 +185,16 @@ describe('Operator Component', () => {
     })
 
     it('should not call actions by default when credential permissions are omitted', async () => {
+      const user = userEvent.setup()
       const credential = createMockCredential(CredentialTypeEnum.API_KEY)
       render(
         <Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />,
       )
 
-      await userEvent.setup().click(screen.getByRole('button'))
-      await userEvent.setup().click(await screen.findByText('plugin.auth.setDefault'))
-      await userEvent.setup().click(screen.getByText('common.operation.edit'))
-      await userEvent.setup().click(screen.getByText('common.operation.remove'))
+      await user.click(screen.getByRole('button'))
+      await user.click(await screen.findByText('plugin.auth.setDefault'))
+      await user.click(screen.getByText('common.operation.edit'))
+      await user.click(screen.getByText('common.operation.remove'))
 
       await waitFor(() => {
         expect(mockOnAction).not.toHaveBeenCalled()

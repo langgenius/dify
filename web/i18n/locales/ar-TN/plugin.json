@@ -301,9 +301,7 @@
   "task.runningPlugins": "تثبيت الإضافات",
   "task.successPlugins": "تم تثبيت الإضافات بنجاح",
   "templatePublishingGuide": "دليل نشر القوالب",
-  "upgrade.close": "إغلاق",
   "upgrade.description": "على وشك تثبيت الإضافة التالية",
-  "upgrade.successfulTitle": "تم التثبيت بنجاح",
   "upgrade.title": "تثبيت الإضافة",
   "upgrade.upgrade": "تثبيت",
   "upgrade.upgrading": "جارٍ التثبيت..."

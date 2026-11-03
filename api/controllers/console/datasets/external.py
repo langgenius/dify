@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any, Never
 from uuid import UUID
@@ -36,6 +37,7 @@ from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDupl
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.external.application import ExternalHitTestingError, ExternalTemplateNotFoundError
 
+logger = logging.getLogger(__name__)
 _DATASET_EDIT_ROLES = frozenset(
     {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.DATASET_OPERATOR}
 )
@@ -50,7 +52,8 @@ def _raise_external_error(error: Exception) -> Never:
     if isinstance(error, DatasetNameDuplicateFailure):
         raise DatasetNameDuplicateError() from error
     if isinstance(error, ExternalHitTestingError):
-        raise InternalServerError(str(error)) from error
+        logger.exception("External hit testing failed")
+        raise InternalServerError() from error
     raise error
 
 

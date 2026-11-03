@@ -33,13 +33,13 @@ it('preserves localized today and selection semantics in the styled day button',
       </DatePicker>,
     )
     await screen.getByRole('button', { name: /^Date / }).click()
-    const today = screen.getByRole('button', { name: '今天，2026年9月28日 星期一，已选择' })
+    const today = screen.getByRole('button', { name: '28: 今天，2026年9月28日 星期一，已选择' })
     await expect.element(today).toHaveAttribute('aria-current', 'date')
     await expect.element(today).toHaveTextContent('28')
     await expect.element(today).toHaveFocus()
     await userEvent.keyboard('{ArrowRight}')
     await expect
-      .element(screen.getByRole('button', { name: '2026年9月29日 星期二' }))
+      .element(screen.getByRole('button', { name: '29: 2026年9月29日 星期二' }))
       .not.toHaveAttribute('aria-current')
   } finally {
     vi.useRealTimers()

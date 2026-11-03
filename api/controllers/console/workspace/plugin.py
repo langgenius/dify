@@ -54,6 +54,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.external_api import error_responses
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from libs.login import login_required
 from models.account import (
@@ -624,8 +625,8 @@ class PluginCategoryListApi(Resource):
 
         try:
             plugin_category = PluginCategory(category)
-        except ValueError:
-            raise InvalidArgumentError("invalid plugin category")
+        except ValueError as caught_error:
+            raise InvalidArgumentError("invalid plugin category") from caught_error
 
         try:
             plugins = PluginService.list_by_category(
@@ -688,7 +689,6 @@ class PluginListLatestVersionsApi(Resource):
     @account_initialization_required
     @model_validate(ParserLatest)
     def post(self, req_data: ParserLatest):
-
         try:
             versions = PluginService.list_latest_versions(req_data.plugin_ids)
         except PluginDaemonClientSideError as e:
@@ -708,7 +708,6 @@ class PluginListInstallationsFromIdsApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserLatest)
     def post(self, req_data: ParserLatest, tenant_id: str):
-
         try:
             plugins = PluginService.list_installations_from_ids(tenant_id, req_data.plugin_ids)
         except PluginDaemonClientSideError as e:
@@ -721,11 +720,14 @@ class PluginListInstallationsFromIdsApi(Resource):
 class PluginIconApi(Resource):
     @error_responses(PluginOperationError)
     @console_ns.doc(params=query_params_from_model(ParserIcon))
+    @console_ns.doc(
+        produces=["*/*"],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["*/*"]},
+    )
     @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     @model_validate(ParserIcon)
     def get(self, req_data: ParserIcon):
-
         try:
             icon_bytes, mimetype = PluginService.get_asset(req_data.tenant_id, req_data.filename)
         except PluginDaemonClientSideError as e:
@@ -739,6 +741,10 @@ class PluginIconApi(Resource):
 class PluginAssetApi(Resource):
     @error_responses(PluginOperationError)
     @console_ns.doc(params=query_params_from_model(ParserAsset))
+    @console_ns.doc(
+        produces=["application/octet-stream"],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["application/octet-stream"]},
+    )
     @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     @login_required
@@ -746,7 +752,6 @@ class PluginAssetApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserAsset)
     def get(self, req_data: ParserAsset, tenant_id: str):
-
         try:
             binary = PluginService.extract_asset(tenant_id, req_data.plugin_unique_identifier, req_data.file_name)
             return send_file(io.BytesIO(binary), mimetype="application/octet-stream")
@@ -789,7 +794,6 @@ class PluginUploadFromGithubApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserGithubUpload)
     def post(self, req_data: ParserGithubUpload, tenant_id: str):
-
         try:
             response = PluginService.upload_pkg_from_github(
                 tenant_id, req_data.repo, req_data.version, req_data.package
@@ -815,7 +819,7 @@ class PluginUploadFromBundleApi(Resource):
         try:
             response = PluginService.upload_bundle(tenant_id, content)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            raise ValueError(e) from e
 
         return jsonable_encoder(response)
 
@@ -833,7 +837,6 @@ class PluginInstallFromPkgApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserPluginIdentifiers)
     def post(self, req_data: ParserPluginIdentifiers, tenant_id: str):
-
         try:
             response = PluginService.install_from_local_pkg(tenant_id, req_data.plugin_unique_identifiers)
         except PluginDaemonClientSideError as e:
@@ -855,7 +858,6 @@ class PluginInstallFromGithubApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserGithubInstall)
     def post(self, req_data: ParserGithubInstall, tenant_id: str):
-
         try:
             response = PluginService.install_from_github(
                 tenant_id,
@@ -883,7 +885,6 @@ class PluginInstallFromMarketplaceApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserPluginIdentifiers)
     def post(self, req_data: ParserPluginIdentifiers, tenant_id: str):
-
         try:
             response = PluginService.install_from_marketplace_pkg(tenant_id, req_data.plugin_unique_identifiers)
         except PluginDaemonClientSideError as e:
@@ -905,7 +906,6 @@ class PluginFetchMarketplacePkgApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserPluginIdentifierQuery)
     def get(self, req_data: ParserPluginIdentifierQuery, tenant_id: str):
-
         try:
             return jsonable_encoder(
                 {
@@ -932,7 +932,6 @@ class PluginFetchManifestApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserPluginIdentifierQuery)
     def get(self, req_data: ParserPluginIdentifierQuery, tenant_id: str):
-
         try:
             return jsonable_encoder(
                 {
@@ -957,7 +956,6 @@ class PluginFetchInstallTasksApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserTasks)
     def get(self, req_data: ParserTasks, tenant_id: str):
-
         try:
             return jsonable_encoder(
                 {"tasks": PluginService.fetch_install_tasks(tenant_id, req_data.page, req_data.page_size)}
@@ -1043,7 +1041,6 @@ class PluginUpgradeFromMarketplaceApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserMarketplaceUpgrade)
     def post(self, req_data: ParserMarketplaceUpgrade, tenant_id: str):
-
         try:
             return jsonable_encoder(
                 PluginService.upgrade_plugin_with_marketplace(
@@ -1067,7 +1064,6 @@ class PluginUpgradeFromGithubApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserGithubUpgrade)
     def post(self, req_data: ParserGithubUpgrade, tenant_id: str):
-
         try:
             return jsonable_encoder(
                 PluginService.upgrade_plugin_with_github(
@@ -1096,7 +1092,6 @@ class PluginUninstallApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserUninstall)
     def post(self, req_data: ParserUninstall, tenant_id: str):
-
         try:
             return {
                 "success": PluginService.uninstall(
@@ -1171,7 +1166,6 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserDynamicOptions)
     def get(self, req_data: ParserDynamicOptions, tenant_id: str, current_user: Account):
-
         try:
             options = PluginParameterService.get_dynamic_select_options(
                 tenant_id=tenant_id,

@@ -4,10 +4,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
@@ -66,9 +66,12 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
   const checkProcess = async (jobID: string) => {
     try {
-      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get({
-        params: { app_id: appId, job_id: jobID },
-      })
+      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get(
+        {
+          params: { app_id: appId, job_id: jobID },
+        },
+        { context: { silent: true } },
+      )
       setImportStatus(res.job_status)
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
@@ -90,7 +93,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
     const formData = new FormData()
     formData.append('file', csv)
     try {
-      const res = await annotationBatchImport(appId, formData)
+      const res = await annotationBatchImport(appId, formData, { silent: true })
       setImportStatus(res.job_status)
       checkProcess(res.job_id)
     } catch (e: any) {
@@ -116,7 +119,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
       <DialogContent className="w-130">
         <DialogHeader>
           <DialogTitle>{t(($) => $['batchModal.title'], { ns: 'appAnnotation' })}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           <CSVUploader file={currentCSV} updateFile={handleFile} />

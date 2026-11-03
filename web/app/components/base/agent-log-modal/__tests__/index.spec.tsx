@@ -113,34 +113,38 @@ describe('AgentLogModal', () => {
   })
 
   it('should call onCancel when close button is clicked', async () => {
+    const user = userEvent.setup()
     fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
 
     render(<AgentLogModal appId="app-id" {...mockProps} />)
 
     const closeBtn = screen.getByRole('button', { name: 'common.operation.close' })
-    await userEvent.setup().click(closeBtn)
+    await user.click(closeBtn)
 
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1)
   })
 
   it('should call onCancel when clicking outside the panel', async () => {
+    const user = userEvent.setup()
     fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
     render(<AgentLogModal appId="app-id" {...mockProps} />)
-    await userEvent.setup().click(document.body)
+    await user.click(document.body)
     expect(mockProps.onCancel).toHaveBeenCalledOnce()
   })
 
   it('does not close when clicking inside the panel', async () => {
+    const user = userEvent.setup()
     fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
     render(<AgentLogModal appId="app-id" {...mockProps} />)
-    await userEvent.setup().click(screen.getByText('appLog.runDetail.workflowTitle'))
+    await user.click(screen.getByText('appLog.runDetail.workflowTitle'))
     expect(mockProps.onCancel).not.toHaveBeenCalled()
   })
 
   it('keeps the floating dialog open when clicking its content', async () => {
+    const user = userEvent.setup()
     fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
     render(<AgentLogModal appId="app-id" {...mockProps} floating />)
-    await userEvent.setup().click(screen.getByRole('dialog'))
+    await user.click(screen.getByRole('dialog'))
     expect(mockProps.onCancel).not.toHaveBeenCalled()
   })
 
@@ -166,10 +170,13 @@ describe('AgentLogModal', () => {
     const { rerender } = render(<AgentLogModal appId="old-app" {...mockProps} />)
     rerender(<AgentLogModal appId="new-app" {...mockProps} />)
     await screen.findByText('New executor')
-    expect(fetchAgentLogDetail).toHaveBeenLastCalledWith({
-      params: { app_id: 'new-app' },
-      query: { conversation_id: mockLog.conversationId, message_id: mockLog.id },
-    })
+    expect(fetchAgentLogDetail).toHaveBeenLastCalledWith(
+      {
+        params: { app_id: 'new-app' },
+        query: { conversation_id: mockLog.conversationId, message_id: mockLog.id },
+      },
+      { context: { silent: true } },
+    )
     await act(async () => {
       resolveOldResponse({ ...response, meta: { ...response.meta, executor: 'Old executor' } })
       await pending
@@ -178,9 +185,10 @@ describe('AgentLogModal', () => {
     expect(screen.queryByText('Old executor')).not.toBeInTheDocument()
   })
   it('preserves the selected tab when another message replaces the open record', async () => {
+    const user = userEvent.setup()
     const { rerender } = render(<AgentLogModal appId="app-id" {...mockProps} />)
     await screen.findByText('User')
-    await userEvent.setup().click(screen.getByRole('button', { name: 'runLog.tracing' }))
+    await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
     rerender(
       <AgentLogModal
         appId="app-id"
@@ -194,10 +202,13 @@ describe('AgentLogModal', () => {
     )
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
-    expect(fetchAgentLogDetail).toHaveBeenLastCalledWith({
-      params: { app_id: 'app-id' },
-      query: { conversation_id: mockLog.conversationId, message_id: 'next-message' },
-    })
+    expect(fetchAgentLogDetail).toHaveBeenLastCalledWith(
+      {
+        params: { app_id: 'app-id' },
+        query: { conversation_id: mockLog.conversationId, message_id: 'next-message' },
+      },
+      { context: { silent: true } },
+    )
   })
 
   it('ignores a failed request after its record has been replaced', async () => {

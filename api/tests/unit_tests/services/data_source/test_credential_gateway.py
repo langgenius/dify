@@ -1,7 +1,10 @@
+import time
 from collections.abc import Mapping
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
-from typing import cast
+from threading import Barrier, local
+from typing import Never, cast, override
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -20,6 +23,7 @@ from core.plugin.impl.oauth import OAuthHandler
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig
 from models.provider_ids import DatasourceProviderID
 from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.data_source.credential_adapters import (
     OAuthDatasourceCredentialRefresher,
     PluginDatasourceCredentialCodec,
@@ -35,6 +39,9 @@ from services.data_source.credential_gateway import (
     TrustedStoredDatasourceCredentialGateway,
 )
 from services.data_source.entities.credential import DatasourceCredentialRecord
+from services.data_source.provider_service import DatasourceProviderService
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
+from tests.helpers.unit.credential_refresh import ThreadCredentialRefreshLock
 
 
 def _record(
@@ -76,7 +83,7 @@ class ScriptedCredentialStore:
     ) -> DatasourceCredentialRecord | None:
         self.events.append("read")
         self.get_calls.append((workspace_id, actor_id, credential_id, provider, plugin_id))
-        return self.records.pop(0)
+        return self.records.pop(0) if len(self.records) > 1 else self.records[0]
 
     def update_if_unchanged(
         self,
@@ -182,12 +189,15 @@ class RecordingOAuthHandler:
         redirect_uri: str,
         system_credentials: Mapping[str, object],
         credentials: Mapping[str, object],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthCredentialsResponse:
         self.calls.append(
             {
                 "tenant_id": tenant_id,
                 "user_id": user_id,
                 "plugin_id": plugin_id,
+                "plugin_unique_identifier": plugin_unique_identifier,
                 "provider": provider,
                 "redirect_uri": redirect_uri,
                 "system_credentials": system_credentials,
@@ -211,9 +221,9 @@ class RecordingCredentialEncrypter:
 
 
 class StaticOAuthClientResolver:
-    def resolve(self, *, workspace_id: str, provider_id: DatasourceProviderID) -> dict[str, object]:
-        del workspace_id, provider_id
-        return {}
+    def resolve(self, *, workspace_id: str, provider_id: DatasourceProviderID) -> PluginOAuthClientConfig:
+        del workspace_id
+        return PluginOAuthClientConfig(f"{provider_id.plugin_id}:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {})
 
 
 def _oauth_refresher(
@@ -247,7 +257,7 @@ def _provider(*, with_oauth_schema: bool = True) -> PluginDatasourceProviderEnti
     )
     return PluginDatasourceProviderEntity(
         provider="notion_datasource",
-        plugin_unique_identifier="langgenius/notion_datasource:1.0.0",
+        plugin_unique_identifier="langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         plugin_id="langgenius/notion_datasource",
         declaration=DatasourceProviderEntityWithPlugin(
             identity=DatasourceProviderIdentity(
@@ -276,6 +286,7 @@ def _gateway(
             credentials=store,
             codec=ReversibleCredentialCodec(),
             refresher=refresh,
+            refresh_lock=ThreadCredentialRefreshLock(),
             now=lambda: 100,
         ),
         refresh,
@@ -305,6 +316,7 @@ def test_trusted_stored_source_resolver_uses_distinct_owner_chain_port() -> None
         credentials=catalog,
         codec=ReversibleCredentialCodec(),
         refresher=RecordingCredentialRefresher(),
+        refresh_lock=ThreadCredentialRefreshLock(),
         now=lambda: 100,
     )
 
@@ -335,6 +347,7 @@ def test_trusted_stored_source_resolver_fails_closed_for_missing_credential() ->
         credentials=StoredCredentialCatalog(None),
         codec=ReversibleCredentialCodec(),
         refresher=RecordingCredentialRefresher(),
+        refresh_lock=ThreadCredentialRefreshLock(),
         now=lambda: 100,
     )
 
@@ -357,6 +370,7 @@ def test_trusted_stored_source_refreshes_with_persisted_credential_owner() -> No
         credentials=catalog,
         codec=ReversibleCredentialCodec(),
         refresher=refresher,
+        refresh_lock=ThreadCredentialRefreshLock(),
         now=lambda: 100,
     )
 
@@ -392,7 +406,7 @@ def test_refresh_runs_between_read_and_conditional_update() -> None:
     assert _resolve(gateway) == {"integration_secret": "refreshed"}
     assert refresher.calls == [("workspace-1", "actor-1", record, {"integration_secret": "plain:encrypted"})]
     assert store.updates == [(record, {"integration_secret": "cipher:refreshed"}, 500)]
-    assert events == ["read", "refresh", "update"]
+    assert events == ["read", "read", "refresh", "update"]
 
 
 def test_concurrent_refresh_uses_newer_non_expiring_snapshot() -> None:
@@ -420,6 +434,175 @@ def test_concurrent_refresh_fails_closed_if_latest_snapshot_is_still_expired() -
 
     with pytest.raises(DatasourceCredentialConcurrentUpdateError):
         _resolve(gateway)
+
+
+def test_actor_stored_and_provider_callers_share_one_refresh() -> None:
+    class ReaderState(local):
+        first = True
+
+    class SharedCatalog:
+        record = _record(expires_at=1)
+        barrier = Barrier(3)
+        reader = ReaderState()
+        writes = 0
+
+        def _read(
+            self, workspace_id: str, credential_id: str | None, provider: str, plugin_id: str
+        ) -> DatasourceCredentialRecord:
+            record = self.record
+            assert (workspace_id, credential_id, provider, plugin_id) == (
+                record.workspace_id,
+                record.id,
+                record.provider,
+                record.plugin_id,
+            )
+            if self.reader.first:
+                self.reader.first = False
+                self.barrier.wait(timeout=2)
+            return record
+
+        def get_visible(
+            self, *, workspace_id: str, actor_id: str, credential_id: str, provider: str, plugin_id: str
+        ) -> DatasourceCredentialRecord:
+            assert actor_id == "actor-1"
+            return self._read(workspace_id, credential_id, provider, plugin_id)
+
+        def get_for_stored_document(
+            self,
+            *,
+            workspace_id: str,
+            dataset_id: str,
+            document_id: str,
+            credential_id: str | None,
+            provider: str,
+            plugin_id: str,
+        ) -> DatasourceCredentialRecord:
+            assert (dataset_id, document_id) == ("dataset-1", "document-1")
+            return self._read(workspace_id, credential_id, provider, plugin_id)
+
+        def get_provider_credential(
+            self, *, workspace_id: str, credential_id: str | None, provider: str, plugin_id: str
+        ) -> DatasourceCredentialRecord:
+            return self._read(workspace_id, credential_id, provider, plugin_id)
+
+        def list_provider_credentials(
+            self, *, workspace_id: str, provider: str, plugin_id: str
+        ) -> list[DatasourceCredentialRecord]:
+            return [self._read(workspace_id, self.record.id, provider, plugin_id)]
+
+        def get_oauth_client_config(self, *, workspace_id: str, provider: str, plugin_id: str) -> Never:
+            raise AssertionError(f"Unexpected OAuth lookup for {workspace_id}:{plugin_id}/{provider}")
+
+        def update_if_unchanged(
+            self, *, record: DatasourceCredentialRecord, encrypted_credentials: Mapping[str, object], expires_at: int
+        ) -> bool:
+            assert self.record == record
+            self.writes += 1
+            self.record = replace(record, encrypted_credentials=encrypted_credentials, expires_at=expires_at)
+            return True
+
+    class RotatingRefresher:
+        calls = 0
+
+        def refresh(
+            self,
+            *,
+            workspace_id: str,
+            actor_id: str,
+            record: DatasourceCredentialRecord,
+            credentials: Mapping[str, object],
+        ) -> RefreshedDatasourceCredential:
+            assert (workspace_id, record.id) == ("workspace-1", "credential-1")
+            assert actor_id in {"actor-1", "credential-owner-1"}
+            assert credentials == {"integration_secret": "plain:encrypted"}
+            self.calls += 1
+            lock.wait_for_callers(3)
+            return RefreshedDatasourceCredential({"integration_secret": "refreshed"}, int(time.time()) + 3600)
+
+    catalog, codec, refresher, lock = (
+        SharedCatalog(),
+        ReversibleCredentialCodec(),
+        RotatingRefresher(),
+        ThreadCredentialRefreshLock(),
+    )
+    actor = ActorAwareDatasourceCredentialGateway(
+        credentials=catalog, codec=codec, refresher=refresher, refresh_lock=lock
+    )
+    stored = TrustedStoredDatasourceCredentialGateway(
+        credentials=catalog, codec=codec, refresher=refresher, refresh_lock=lock
+    )
+    provider = DatasourceProviderService(
+        credentials=catalog,
+        codec=codec,
+        refresher=refresher,
+        refresh_lock=lock,
+        provider_manager=PluginDatasourceManager(),
+    )
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = [
+            pool.submit(_resolve, actor),
+            pool.submit(
+                stored.resolve_for_document,
+                workspace_id="workspace-1",
+                dataset_id="dataset-1",
+                document_id="document-1",
+                credential_id="credential-1",
+                provider="notion_datasource",
+                plugin_id="langgenius/notion_datasource",
+            ),
+            pool.submit(
+                provider.get_datasource_credentials,
+                "workspace-1",
+                "notion_datasource",
+                "langgenius/notion_datasource",
+                "credential-1",
+            ),
+        ]
+        results = [future.result(timeout=3) for future in futures]
+    assert all(result["integration_secret"] in {"refreshed", "plain:cipher:refreshed"} for result in results)
+    assert refresher.calls == catalog.writes == 1
+    assert lock.keys == [("datasource", "workspace-1", "credential-1")] * 3
+
+
+@pytest.mark.parametrize("failure", ["unavailable", "lost-before", "lost-after"])
+def test_refresh_lease_failure_never_writes_or_returns_expired_data(failure: str) -> None:
+    lock = ThreadCredentialRefreshLock()
+    lock.unavailable = failure == "unavailable"
+    lock.lost = failure == "lost-before"
+
+    class LosingRefresher(RecordingCredentialRefresher):
+        @override
+        def refresh(
+            self,
+            *,
+            workspace_id: str,
+            actor_id: str,
+            record: DatasourceCredentialRecord,
+            credentials: Mapping[str, object],
+        ) -> RefreshedDatasourceCredential:
+            result = super().refresh(
+                workspace_id=workspace_id, actor_id=actor_id, record=record, credentials=credentials
+            )
+            lock.lost = True
+            return result
+
+    store, refresher = ScriptedCredentialStore([_record(expires_at=1)]), LosingRefresher()
+    gateway = ActorAwareDatasourceCredentialGateway(
+        credentials=store, codec=ReversibleCredentialCodec(), refresher=refresher, refresh_lock=lock, now=lambda: 100
+    )
+    with pytest.raises(CredentialRefreshUnavailableError):
+        _resolve(gateway)
+    assert store.updates == []
+    assert len(refresher.calls) == (1 if failure == "lost-after" else 0)
+
+
+def test_visibility_is_rechecked_after_waiting_for_the_refresh_lock() -> None:
+    store = ScriptedCredentialStore([_record(expires_at=1), None])
+    gateway, refresher = _gateway(store)
+    with pytest.raises(DatasourceCredentialNotFoundError):
+        _resolve(gateway)
+    assert refresher.calls == []
+    assert store.updates == []
 
 
 @pytest.mark.parametrize(
@@ -524,6 +707,7 @@ def test_oauth_refresher_prefers_enabled_tenant_client_and_returns_refreshed_sna
     assert handler.calls[0]["system_credentials"] == {"client_secret": "tenant-secret"}
     assert handler.calls[0]["credentials"] == {"integration_secret": "old-secret"}
     assert handler.calls[0]["user_id"] == "actor-1"
+    assert handler.calls[0]["plugin_unique_identifier"] == manager.provider.plugin_unique_identifier
 
 
 def test_oauth_refresher_rejects_tenant_client_when_provider_has_no_oauth_schema(
@@ -611,8 +795,11 @@ def test_oauth_refresher_uses_system_client_only_for_verified_plugin(
             credentials={"integration_secret": "old"},
         )
         assert handler.calls[0]["system_credentials"] == {"client_secret": "system-secret"}
+        assert handler.calls[0]["plugin_unique_identifier"] == manager.provider.plugin_unique_identifier
 
-    assert verification_calls == [("workspace-1", "langgenius/notion_datasource:1.0.0")]
+    assert verification_calls == [
+        ("workspace-1", "langgenius/notion_datasource:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    ]
 
 
 def test_oauth_refresher_translates_plugin_refresh_failure() -> None:

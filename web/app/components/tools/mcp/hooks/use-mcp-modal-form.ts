@@ -2,11 +2,12 @@
 import type { HeaderItem } from '../headers-input'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
-import { uploadRemoteFileInfo } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 
 const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' } satisfies IconPickerValue
 const extractFileId = (url: string) => {
@@ -82,6 +83,9 @@ type MCPModalFormActions = {
  * directly, and the key change triggers a remount of the consumer component.
  */
 export const useMCPModalForm = (data?: ToolWithProvider) => {
+  const { mutateAsync: uploadRemoteFile } = useMutation(
+    consoleQuery.remoteFiles.upload.post.mutationOptions({ context: { silent: true } }),
+  )
   const isCreate = !data
   const originalServerUrl = data?.server_url
   const originalServerID = data?.server_identifier
@@ -128,8 +132,8 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
         if (!domain) return
 
         const remoteIcon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
-        const res = await uploadRemoteFileInfo(remoteIcon, undefined, true)
-        if (isStale()) return
+        const res = await uploadRemoteFile({ body: { url: remoteIcon } })
+        if (isStale() || !res.url) return
 
         setAppIcon({ type: 'image', url: res.url, fileId: res.id })
       } catch (e) {
@@ -145,7 +149,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
         if (!isStale()) setIsFetchingIcon(false)
       }
     },
-    [data],
+    [data, uploadRemoteFile],
   )
   const resetIcon = useCallback(() => {
     setAppIcon(getIcon(data))

@@ -5,10 +5,10 @@ import { buttonVariants } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import dayjs from 'dayjs'
@@ -40,7 +40,7 @@ export default function AccountAboutDialog({
           <DialogTitle className="sr-only">
             {t(($) => $['userProfile.about'], { ns: 'common' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody className="flex flex-col items-center gap-4">
           <DifyLogo alt="Dify" size="large" className="mx-auto" />

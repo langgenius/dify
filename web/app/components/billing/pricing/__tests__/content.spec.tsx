@@ -26,10 +26,6 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
 }))
 
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'en-US',
-}))
 vi.mock('../plans/self-hosted-plan-item/list', () => ({ SelfHostedPlanFeatures: () => null }))
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -148,6 +144,7 @@ it('preserves a billing interval selected before education eligibility arrives',
       is_student: true,
       allow_refresh: true,
       expire_at: null,
+      result: true,
     }),
   )
   expect(screen.getByRole('switch')).not.toBeChecked()
@@ -159,6 +156,7 @@ it('shows yearly pricing immediately for a cached eligible education account', (
   queryClient.setQueryData(consoleQuery.account.education.get.queryOptions().queryKey, {
     is_student: true,
     allow_refresh: false,
+    result: true,
     expire_at: null,
   })
   show()

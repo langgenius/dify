@@ -21,7 +21,7 @@ it('uploads a selected image through the real hook and permits selecting the sam
       {() => <span>Upload image</span>}
     </Uploader>,
   )
-  const input = screen.getByTestId('local-file-input') as HTMLInputElement
+  const input = screen.getByLabelText('Upload image') as HTMLInputElement
   const file = new File(['image'], 'demo.png', { type: 'image/png' })
 
   await user.upload(input, file)
@@ -57,7 +57,7 @@ it('blocks file selection when disabled', async () => {
       {() => <span>Upload image</span>}
     </Uploader>,
   )
-  const input = screen.getByTestId('local-file-input') as HTMLInputElement
+  const input = screen.getByLabelText('Upload image') as HTMLInputElement
   expect(input).toBeDisabled()
   await user.upload(input, new File(['image'], 'demo.png', { type: 'image/png' }))
   expect(upload).not.toHaveBeenCalled()

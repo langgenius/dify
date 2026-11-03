@@ -5,10 +5,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -84,7 +84,9 @@ const PublishAsKnowledgePipelineModal = ({
         >
           <DialogHeader>
             <DialogTitle>{t(($) => $['common.publishAs'], { ns: 'pipeline' })}</DialogTitle>
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
           </DialogHeader>
           <DialogBody>
             <div className="mb-5 flex">
@@ -96,10 +98,9 @@ const PublishAsKnowledgePipelineModal = ({
                   autoComplete="off"
                   value={pipelineName}
                   onChange={(e) => setPipelineName(e.target.value)}
-                  placeholder={
-                    t(($) => $['common.publishAsPipeline.namePlaceholder'], { ns: 'pipeline' }) ||
-                    ''
-                  }
+                  placeholder={t(($) => $['common.publishAsPipeline.namePlaceholder'], {
+                    ns: 'pipeline',
+                  })}
                 />
               </Field>
               <IconPicker
@@ -134,11 +135,9 @@ const PublishAsKnowledgePipelineModal = ({
               <Textarea
                 autoComplete="off"
                 className="resize-none"
-                placeholder={
-                  t(($) => $['common.publishAsPipeline.descriptionPlaceholder'], {
-                    ns: 'pipeline',
-                  }) || ''
-                }
+                placeholder={t(($) => $['common.publishAsPipeline.descriptionPlaceholder'], {
+                  ns: 'pipeline',
+                })}
                 value={description}
                 onValueChange={(value) => setDescription(value)}
               />

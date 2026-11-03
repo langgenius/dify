@@ -414,6 +414,7 @@ describe('PromptEditorContent', () => {
     })
 
     it('should render optional blocks and open shortcut popups with the real editor runtime', async () => {
+      const user = userEvent.setup()
       const captures: Captures = { editor: null, eventEmitter: null }
       const onEditorChange = vi.fn()
       const insertCommand = createCommand<string[]>('prompt-editor-shortcut-insert')
@@ -483,7 +484,7 @@ describe('PromptEditorContent', () => {
       fireEvent.keyDown(editable, { key: '/', ctrlKey: true })
 
       const insertButton = await screen.findByRole('button', { name: 'Insert shortcut' })
-      await userEvent.setup().click(insertButton)
+      await user.click(insertButton)
 
       expect(insertSpy).toHaveBeenCalledWith(['from-shortcut'])
       await waitFor(() => expect(editable).toHaveTextContent('from-shortcut'))

@@ -329,7 +329,7 @@ class DeploymentWorkspacePlanGateway(WorkspacePlanGateway):
         for workspace_id in ids:
             tenant_plan = bulk_plans.get(workspace_id)
             if tenant_plan:
-                resolved[workspace_id] = tenant_plan["plan"] or CloudPlan.SANDBOX
+                resolved[workspace_id] = tenant_plan.plan or CloudPlan.SANDBOX
                 continue
 
             features = FeatureService.get_features(workspace_id, exclude_vector_space=True)
@@ -354,9 +354,7 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return EffectiveCreditPool()
         billing = BillingService.get_info(workspace_id, exclude_vector_space=True)
-        return self._credit_pool(
-            workspace_id, CloudPlan(billing["subscription"]["plan"]), billing.get("next_credit_reset_date")
-        )
+        return self._credit_pool(workspace_id, CloudPlan(billing.subscription.plan), billing.next_credit_reset_date)
 
     @staticmethod
     def _credit_pool(workspace_id: str, plan: CloudPlan, reset_date: int | None) -> EffectiveCreditPool:

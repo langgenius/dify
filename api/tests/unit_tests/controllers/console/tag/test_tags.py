@@ -31,8 +31,8 @@ from services.tag_application_service import (
     TagSummary,
     UpdateTagInput,
 )
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_account
 
 
 def unwrap(func):

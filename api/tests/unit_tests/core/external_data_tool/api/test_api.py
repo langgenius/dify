@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,13 +14,11 @@ pytestmark = [
 ]
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     """Expose the real SQLite session used by extension queries."""
 
     session: Session
-
-    def __init__(self, session: Session) -> None:
-        self.session = session
 
 
 @pytest.fixture(autouse=True)

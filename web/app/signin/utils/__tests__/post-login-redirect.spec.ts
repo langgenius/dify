@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { ReadonlyURLSearchParams } from '@/next/navigation'
 import { resolvePostLoginRedirect, setPostLoginRedirect } from '../post-login-redirect'
 
 describe('post-login redirect utilities', () => {
@@ -6,8 +7,6 @@ describe('post-login redirect utilities', () => {
   let previousRedirect: string | null
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useRealTimers()
     previousRedirect = sessionStorage.getItem(storageKey)
     sessionStorage.removeItem(storageKey)
   })
@@ -25,11 +24,7 @@ describe('post-login redirect utilities', () => {
       ),
     })
 
-    expect(
-      resolvePostLoginRedirect(
-        searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0],
-      ),
-    ).toEqual({
+    expect(resolvePostLoginRedirect(new ReadonlyURLSearchParams(searchParams))).toEqual({
       kind: 'internal',
       href: '/account/oauth/authorize?client_id=app&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback',
     })
@@ -40,22 +35,20 @@ describe('post-login redirect utilities', () => {
       redirect_url: 'https://docs.eu.dify.ai/getting-started',
     })
 
-    expect(
-      resolvePostLoginRedirect(
-        searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0],
-      ),
-    ).toEqual({ kind: 'absolute', href: 'https://docs.eu.dify.ai/getting-started' })
+    expect(resolvePostLoginRedirect(new ReadonlyURLSearchParams(searchParams))).toEqual({
+      kind: 'absolute',
+      href: 'https://docs.eu.dify.ai/getting-started',
+    })
   })
 
   it('should allow an absolute target on the current self-hosted origin', () => {
     const redirectUrl = `${window.location.origin}/apps`
     const searchParams = new URLSearchParams({ redirect_url: redirectUrl })
 
-    expect(
-      resolvePostLoginRedirect(
-        searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0],
-      ),
-    ).toEqual({ kind: 'absolute', href: redirectUrl })
+    expect(resolvePostLoginRedirect(new ReadonlyURLSearchParams(searchParams))).toEqual({
+      kind: 'absolute',
+      href: redirectUrl,
+    })
   })
 
   it('should reject a Marketplace origin that is not a trusted Dify login target', () => {
@@ -63,22 +56,20 @@ describe('post-login redirect utilities', () => {
       redirect_url: 'http://localhost:3001/plugin/langgenius/openai?tab=reviews#rating',
     })
 
-    expect(
-      resolvePostLoginRedirect(
-        searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0],
-      ),
-    ).toEqual({ kind: 'internal', href: '/' })
+    expect(resolvePostLoginRedirect(new ReadonlyURLSearchParams(searchParams))).toEqual({
+      kind: 'internal',
+      href: '/',
+    })
   })
 
   it('should use the default target instead of a stored device target when the query target is invalid', () => {
     setPostLoginRedirect('/device?user_code=ABCD')
     const searchParams = new URLSearchParams({ redirect_url: 'https://google.com' })
 
-    expect(
-      resolvePostLoginRedirect(
-        searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0],
-      ),
-    ).toEqual({ kind: 'internal', href: '/' })
+    expect(resolvePostLoginRedirect(new ReadonlyURLSearchParams(searchParams))).toEqual({
+      kind: 'internal',
+      href: '/',
+    })
     expect(resolvePostLoginRedirect()).toEqual({
       kind: 'internal',
       href: '/device?user_code=ABCD',
@@ -89,11 +80,10 @@ describe('post-login redirect utilities', () => {
     setPostLoginRedirect('/device?user_code=ABCD')
     const searchParams = new URLSearchParams('redirect_url=')
 
-    expect(
-      resolvePostLoginRedirect(
-        searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0],
-      ),
-    ).toEqual({ kind: 'internal', href: '/' })
+    expect(resolvePostLoginRedirect(new ReadonlyURLSearchParams(searchParams))).toEqual({
+      kind: 'internal',
+      href: '/',
+    })
     expect(resolvePostLoginRedirect()).toEqual({
       kind: 'internal',
       href: '/device?user_code=ABCD',

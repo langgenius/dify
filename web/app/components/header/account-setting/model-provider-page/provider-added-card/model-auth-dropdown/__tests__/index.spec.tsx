@@ -1,13 +1,14 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ModelProvider } from '../../../declarations'
 import type { CredentialPanelState } from '../../use-credential-panel-state'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
-import { createProviderResponseFixture } from '@/test/console/model-provider'
+import {
+  createProviderResponseFixture,
+  createProviderSummaryFixture,
+} from '@/test/console/model-provider'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
 import ModelAuthDropdown from '../index'
 
 const render = (ui: React.ReactElement) => renderWithConsoleQuery(ui)
@@ -22,18 +23,6 @@ vi.mock('../../../model-auth/hooks', () => ({
     handleOpenModal: vi.fn(),
   }),
 }))
-
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
-  ({
-    ...createProviderResponseFixture({ provider: 'test' }),
-    custom_configuration: {
-      status: CustomConfigurationStatusEnum.active,
-      available_credentials: [],
-    },
-    system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
-    preferred_provider_type: PreferredProviderTypeEnum.system,
-    ...overrides,
-  }) as unknown as ModelProvider
 
 const createState = (overrides: Partial<CredentialPanelState> = {}): CredentialPanelState => ({
   variant: 'credits-active',
@@ -89,7 +78,11 @@ describe('ModelAuthDropdown', () => {
 
       await user.click(screen.getByRole('button', { name: /addApiKey/i }))
 
-      expect(await screen.findByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /addApiKey/i })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       // The console client loads its contract segment before the first request starts.
       await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
       await act(async () => {
@@ -114,86 +107,45 @@ describe('ModelAuthDropdown', () => {
       expect(fetchMock).toHaveBeenCalledTimes(2)
     })
 
-    it('should open popover on button click and show dropdown content', async () => {
+    it('shares the provider detail response across cards without opening a loading popup', async () => {
       const user = userEvent.setup()
+      const request = createDeferred<Response>()
+      const fetchMock = vi.mocked(globalThis.fetch).mockReturnValueOnce(request.promise)
       render(
-        <ModelAuthDropdown
-          provider={createProvider({
-            custom_configuration: {
-              status: CustomConfigurationStatusEnum.active,
-              available_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
-              current_credential_id: 'c1',
-              current_credential_name: 'Key 1',
-            },
-          })}
-          state={createState({ hasCredentials: true, variant: 'api-active' })}
-          isChangingPriority={false}
-          onChangePriority={onChangePriority}
-        />,
+        <>
+          {['openai', 'tongyi'].map((provider) => (
+            <ModelAuthDropdown
+              key={provider}
+              provider={createProviderSummaryFixture({ provider })}
+              state={createState()}
+              isChangingPriority={false}
+              onChangePriority={onChangePriority}
+            />
+          ))}
+        </>,
       )
-
-      await user.click(screen.getByRole('button', { name: /config/i }))
-
-      await waitFor(() => {
-        expect(screen.getByText('Key 1')).toBeInTheDocument()
-      })
-      expect(screen.getByRole('dialog', { name: /config/i })).toBeInTheDocument()
-    })
-
-    it('should load provider detail on first click and reuse it on reopen', async () => {
-      const user = userEvent.setup()
-      const fullProvider = createProviderResponseFixture({
-        provider: 'test',
-        custom_configuration: {
-          available_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
-          current_credential_id: 'c1',
-          current_credential_name: 'Key 1',
-        },
-      })
-      const providerSummary = {
-        provider: 'test',
-        is_configured: true,
-        custom_configuration: {
-          available_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
-          current_credential_id: 'c1',
-          current_credential_name: 'Key 1',
-          current_credential_usable: true,
-        },
-      } as unknown as ModelProviderSummaryResponse
-      render(
-        <ModelAuthDropdown
-          provider={providerSummary}
-          state={createState({ hasCredentials: true, variant: 'api-active' })}
-          isChangingPriority={false}
-          onChangePriority={onChangePriority}
-        />,
+      const triggers = screen.getAllByRole('button', { name: /addApiKey/i })
+      await user.click(triggers[0]!)
+      expect(triggers[0]).toHaveFocus()
+      expect(triggers[0]).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+      await act(async () =>
+        request.resolve(
+          Response.json({
+            data: ['openai', 'tongyi'].map((provider) =>
+              createProviderResponseFixture({ provider }),
+            ),
+          }),
+        ),
       )
-      const fetchMock = vi.mocked(globalThis.fetch)
-      fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({ data: [fullProvider] }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
-      const trigger = screen.getByRole('button', { name: /config/i })
-
-      await user.click(trigger)
-
-      await waitFor(() => {
-        expect(screen.getByText('Key 1')).toBeInTheDocument()
-      })
-      expect(fetchMock).toHaveBeenCalledTimes(1)
-
-      await user.click(trigger)
-      await waitFor(() => {
-        expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
-      })
-      await user.click(trigger)
-
-      await waitFor(() => {
-        expect(screen.getByText('Key 1')).toBeInTheDocument()
-      })
-      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(triggers[0]).toHaveFocus()
+      await user.click(triggers[1]!)
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      expect(fetchMock).toHaveBeenCalledOnce()
     })
 
     it('should render updated provider detail from the query cache', async () => {

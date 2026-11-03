@@ -4,10 +4,10 @@ import type { BlockDefaultValue } from '@/app/components/workflow/block-selector
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
@@ -38,7 +38,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
           <DialogDescription>
             {t(($) => $['onboarding.description'], { ns: 'workflow' })}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
 
         <DialogBody>

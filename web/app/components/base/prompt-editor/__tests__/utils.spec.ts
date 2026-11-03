@@ -1,6 +1,14 @@
-import type { ParagraphNode, SerializedTextNode, TextNode as TextNodeType } from 'lexical'
+import type { SerializedTextNode } from 'lexical'
 import type { MenuTextMatch } from '../types'
-import { $createParagraphNode, $getRoot, $setSelection, createEditor, TextNode } from 'lexical'
+import {
+  $createParagraphNode,
+  $getRoot,
+  $isParagraphNode,
+  $isTextNode,
+  $setSelection,
+  createEditor,
+  TextNode,
+} from 'lexical'
 import { $createCustomTextNode, CustomTextNode } from '../plugins/custom-text/node'
 import { $createQueryBlockNode, QueryBlockNode } from '../plugins/query-block/node'
 import {
@@ -52,10 +60,21 @@ const matchQuery = (text: string) => {
   return start < 0 ? null : { start, end: start + '{{#query#}}'.length }
 }
 
+function $getParagraph() {
+  const paragraph = $getRoot().getFirstChildOrThrow()
+  if (!$isParagraphNode(paragraph)) throw new Error('Expected a paragraph node')
+  return paragraph
+}
+
+function $getFirstTextNode() {
+  const node = $getParagraph().getFirstChildOrThrow()
+  if (!$isTextNode(node)) throw new Error('Expected a text node')
+  return node
+}
+
 function readChildren(editor: ReturnType<typeof createTestEditor>) {
   return editor.getEditorState().read(() =>
-    $getRoot()
-      .getFirstChildOrThrow<ParagraphNode>()
+    $getParagraph()
       .getChildren()
       .map((node) => ({
         type: node.getType(),
@@ -92,8 +111,8 @@ describe('prompt editor text transforms', () => {
       { type: 'custom-text', text: '!' },
     ])
     editor.getEditorState().read(() => {
-      const nodes = $getRoot().getFirstChildOrThrow<ParagraphNode>().getChildren<TextNodeType>()
-      expect(nodes.every((node) => node.hasFormat('bold'))).toBe(true)
+      const nodes = $getParagraph().getChildren()
+      expect(nodes.every((node) => $isTextNode(node) && node.hasFormat('bold'))).toBe(true)
     })
   })
 
@@ -115,22 +134,14 @@ describe('prompt editor text transforms', () => {
     )
     editor.update(
       () => {
-        $getRoot()
-          .getFirstChildOrThrow<ParagraphNode>()
-          .getFirstChildOrThrow<TextNodeType>()
-          .setTextContent('alice')
+        $getFirstTextNode().setTextContent('alice')
       },
       { discrete: true },
     )
 
     expect(readChildren(editor)).toEqual([{ type: 'custom-text', text: 'alice' }])
     editor.getEditorState().read(() => {
-      expect(
-        $getRoot()
-          .getFirstChildOrThrow<ParagraphNode>()
-          .getFirstChildOrThrow<TextNodeType>()
-          .hasFormat('italic'),
-      ).toBe(true)
+      expect($getFirstTextNode().hasFormat('italic')).toBe(true)
     })
   })
 

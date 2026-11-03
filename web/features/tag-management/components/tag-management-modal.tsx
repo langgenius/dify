@@ -3,9 +3,9 @@ import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { getTagManagePermissionKey } from '../utils'
 import { TagItemEditor } from './tag-item-editor'
@@ -44,7 +45,9 @@ export const TagManagementModal = ({
       enabled: show && canManageTags,
     }),
   )
-  const createTagMutation = useMutation(consoleQuery.tags.post.mutationOptions())
+  const createTagMutation = useMutation(
+    consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
+  )
   const [name, setName] = useState<string>('')
 
   const createNewTag = () => {
@@ -64,8 +67,8 @@ export const TagManagementModal = ({
           toast.success(t(($) => $['tag.created'], { ns: 'common' }))
           setName('')
         },
-        onError: () => {
-          toast.error(t(($) => $['tag.failed'], { ns: 'common' }))
+        onError: (error) => {
+          toast.error(getErrorMessage(error) ?? t(($) => $['tag.failed'], { ns: 'common' }))
         },
       },
     )
@@ -82,13 +85,13 @@ export const TagManagementModal = ({
       <DialogContent className="w-150">
         <DialogHeader>
           <DialogTitle>{t(($) => $['tag.manageTags'], { ns: 'common' })}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody className="flex flex-wrap gap-2">
           <input
-            aria-label={t(($) => $['tag.addNew'], { ns: 'common' }) || ''}
+            aria-label={t(($) => $['tag.addNew'], { ns: 'common' })}
             className="w-25 shrink-0 appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm/5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid"
-            placeholder={t(($) => $['tag.addNew'], { ns: 'common' }) || ''}
+            placeholder={t(($) => $['tag.addNew'], { ns: 'common' })}
             value={name}
             readOnly={createTagMutation.isPending}
             onChange={(e) => setName(e.target.value)}
