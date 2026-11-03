@@ -179,10 +179,11 @@ def test_agent_table_uses_db_unique_constraint_for_active_roster_names():
     assert indexes["agent_tenant_scope_idx"] == ("tenant_id", "scope")
 
 
-def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow_only_duplicates():
-    engine = sa.create_engine("sqlite:///:memory:")
+def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow_only_duplicates(
+    sqlite_engine: sa.Engine,
+):
+    engine = sqlite_engine
     agent_table = cast(sa.Table, Agent.__table__)
-    agent_table.create(engine)
     insert_agent = agent_table.insert()
 
     with engine.begin() as conn:

@@ -18,6 +18,7 @@ from runtime_contracts.builder.execution import (
 from services.dify_builder.application.execution_policy import scalar_inputs_digest
 from services.dify_builder.dify_port import _BuilderExecutionLaunch
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
+from services.workflow_execution_identity import build_workflow_execution_identity
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414 - export the shared pytest fixture
 
@@ -28,7 +29,6 @@ def effects(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
     from core.helper import encrypter
     from core.helper.code_executor.code_executor import CodeExecutor
     from core.model_manager import ModelManager
-    from core.ops.ops_trace_manager import OpsTraceManager
     from core.plugin.impl.oauth import OAuthHandler
     from core.tools.tool_manager import ToolManager
     from factories import file_factory
@@ -37,12 +37,11 @@ def effects(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
     for owner, name in (
         (file_factory, "build_from_mappings"),
         (file_factory, "build_from_mapping"),
-        (generator.TraceQueueManager, "start_timer"),
-        (OpsTraceManager, "get_ops_trace_instance"),
+        (generator, "create_trace_scope"),
         (ToolManager, "get_workflow_tool_runtime"),
         (OAuthHandler, "refresh_credentials"),
         (encrypter, "decrypt_token"),
-        (OpsTraceManager, "get_decrypted_tracing_config"),
+        (encrypter, "batch_decrypt_token"),
         (ModelManager, "get_model_instance"),
         (CodeExecutor, "execute_code"),
     ):
@@ -214,6 +213,7 @@ def test_native_generator_revalidates_its_normalized_effective_inputs(
         app_model=app,
         workflow=workflow,
         user=account,
+        execution_identity=build_workflow_execution_identity(account),
         args={"inputs": effective},
         invoke_from=InvokeFrom.DEBUGGER,
         streaming=False,
@@ -230,6 +230,7 @@ def test_native_generator_revalidates_its_normalized_effective_inputs(
             app_model=app,
             workflow=workflow,
             user=account,
+            execution_identity=build_workflow_execution_identity(account),
             args={"inputs": {**effective, "discarded": {}}},
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=False,
@@ -242,6 +243,7 @@ def test_native_generator_revalidates_its_normalized_effective_inputs(
             app_model=app,
             workflow=workflow,
             user=account,
+            execution_identity=build_workflow_execution_identity(account),
             args={"inputs": {"n": 42}},
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=False,
@@ -367,6 +369,7 @@ def test_direct_restricted_generator_admits_raw_before_config_and_normalization(
             app_model=app,
             workflow=workflow,
             user=account,
+            execution_identity=build_workflow_execution_identity(account),
             args={"inputs": {"n": 41}},
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=False,

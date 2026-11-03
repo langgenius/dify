@@ -20,7 +20,12 @@ from sqlalchemy.orm import ORMExecuteState, Session, SessionTransaction, session
 
 import services.app_generate_service as generate_module
 import services.workflow_service as workflow_module
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.dify_builder.models import Graph
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.__base.tool import Tool
@@ -921,7 +926,12 @@ def test_published_child_inherited_debugger_keeps_native_tool_delegation(
     metadata_reads = len(native_draft.tools.daemon.requests)
     monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
     import core.tools.tool_manager as tool_manager_module
+    import extensions.application_services.tools as tool_composition
+    import services.credentials.tool_runtime_adapters as credential_adapters
 
+    monkeypatch.setattr(ToolManager, "_credential_resolver", tool_composition.resolve_tool_credentials)
+    monkeypatch.setattr(tool_composition, "get_session_maker", lambda: sessionmaker(native_draft.tools.engine))
+    monkeypatch.setattr(credential_adapters, "create_provider_encrypter", tool_manager_module.create_provider_encrypter)
     monkeypatch.setattr(
         tool_manager_module, "db", DraftDatabase(engine=native_draft.tools.engine, session=sqlite_session)
     )
@@ -1164,7 +1174,10 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
     }
     assert len(boundary.refresh_calls) == 1
     assert boundary.crypto_calls == ["decrypt", "decrypt", "encrypt"]
-    assert len(boundary.cache_deletions) == 1
+    cache_key = (
+        f"tool_credentials:tenant_id:{TENANT_ID}:provider:{AUTH_PROVIDER}:credential_id:{boundary.credential_id}"
+    )
+    assert boundary.cache_deletions == [cache_key, f"{cache_key}:snapshot"]
     assert boundary.forbidden == []
     # A fresh independent read observes actual committed storage, not either
     # runtime state or the fixture session's potentially stale identity map.
@@ -1186,7 +1199,7 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
     }
     assert len(boundary.refresh_calls) == 1
     assert boundary.crypto_calls == ["decrypt", "decrypt", "encrypt", "decrypt"]
-    assert len(boundary.cache_deletions) == 1
+    assert boundary.cache_deletions == [cache_key, f"{cache_key}:snapshot"]
     assert boundary.forbidden == []
 
 
@@ -1462,7 +1475,9 @@ def paused_native_draft(
             "invoke_from": InvokeFrom.DEBUGGER,
         }
         if state.mode == AppMode.WORKFLOW:
-            state.entity = WorkflowAppGenerateEntity(**invocation, workflow_execution_id=run_id)
+            state.entity = WorkflowAppGenerateEntity(
+                **invocation, workflow_execution_id=run_id, user_from=UserFrom.ACCOUNT
+            )
         else:
             conversation = Conversation(
                 id=conversation_id,

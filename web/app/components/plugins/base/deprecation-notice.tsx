@@ -1,6 +1,5 @@
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiAlertFill } from '@remixicon/react'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { camelCase } from 'es-toolkit/string'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -14,9 +13,6 @@ type DeprecationNoticeProps = {
   alternativePluginId: string
   alternativePluginURL: string
   className?: string
-  innerWrapperClassName?: string
-  iconWrapperClassName?: string
-  textClassName?: string
 }
 
 const i18nPrefix = 'detailPanel.deprecation'
@@ -38,9 +34,6 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   alternativePluginId,
   alternativePluginURL,
   className,
-  innerWrapperClassName,
-  iconWrapperClassName,
-  textClassName,
 }) => {
   const { t } = useTranslation(['plugin'])
 
@@ -57,59 +50,46 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   if (status !== 'deleted') return null
 
   return (
-    <div className={cn('w-full', className)}>
-      <div
-        className={cn(
-          'relative flex items-start gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
-          innerWrapperClassName,
+    <Alert type="warning" className={className}>
+      <AlertTitle>
+        {hasValidDeprecatedReason && alternativePluginId && (
+          <Trans
+            t={t}
+            i18nKey={($) => $[`${i18nPrefix}.fullMessage`]}
+            ns="plugin"
+            components={{
+              CustomLink: (
+                <Link
+                  href={alternativePluginURL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                />
+              ),
+            }}
+            values={{
+              deprecatedReason: deprecatedReasonKey
+                ? t(($) => $[`${i18nPrefix}.reason.${deprecatedReasonKey}`], { ns: 'plugin' })
+                : '',
+              alternativePluginId,
+            }}
+          />
         )}
-      >
-        <div className="absolute top-0 left-0 -z-10 size-full bg-toast-warning-bg opacity-40" />
-        <div
-          className={cn('flex size-6 shrink-0 items-center justify-center', iconWrapperClassName)}
-        >
-          <RiAlertFill className="size-4 text-text-warning-secondary" />
-        </div>
-        <div className={cn('grow py-1 system-xs-regular text-text-primary', textClassName)}>
-          {hasValidDeprecatedReason && alternativePluginId && (
-            <Trans
-              t={t}
-              i18nKey={($) => $[`${i18nPrefix}.fullMessage`]}
-              ns="plugin"
-              components={{
-                CustomLink: (
-                  <Link
-                    href={alternativePluginURL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline"
-                  />
-                ),
-              }}
-              values={{
-                deprecatedReason: deprecatedReasonKey
-                  ? t(($) => $[`${i18nPrefix}.reason.${deprecatedReasonKey}`], { ns: 'plugin' })
-                  : '',
-                alternativePluginId,
-              }}
-            />
-          )}
-          {hasValidDeprecatedReason && !alternativePluginId && (
-            <span>
-              {t(($) => $[`${i18nPrefix}.onlyReason`], {
-                ns: 'plugin',
-                deprecatedReason: deprecatedReasonKey
-                  ? t(($) => $[`${i18nPrefix}.reason.${deprecatedReasonKey}`], { ns: 'plugin' })
-                  : '',
-              })}
-            </span>
-          )}
-          {!hasValidDeprecatedReason && (
-            <span>{t(($) => $[`${i18nPrefix}.noReason`], { ns: 'plugin' })}</span>
-          )}
-        </div>
-      </div>
-    </div>
+        {hasValidDeprecatedReason && !alternativePluginId && (
+          <span>
+            {t(($) => $[`${i18nPrefix}.onlyReason`], {
+              ns: 'plugin',
+              deprecatedReason: deprecatedReasonKey
+                ? t(($) => $[`${i18nPrefix}.reason.${deprecatedReasonKey}`], { ns: 'plugin' })
+                : '',
+            })}
+          </span>
+        )}
+        {!hasValidDeprecatedReason && (
+          <span>{t(($) => $[`${i18nPrefix}.noReason`], { ns: 'plugin' })}</span>
+        )}
+      </AlertTitle>
+    </Alert>
   )
 }
 

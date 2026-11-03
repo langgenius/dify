@@ -1647,7 +1647,7 @@ def install_native_generation(owner: Owner, monkeypatch: pytest.MonkeyPatch) -> 
 
     import services.dify_builder.dify_port as port_module
     from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
     from models.account import Account
     from models.model import App
     from services.dify_builder.dify_port import ConfirmedLaunchRecorder
@@ -1680,6 +1680,7 @@ def install_native_generation(owner: Owner, monkeypatch: pytest.MonkeyPatch) -> 
             invoke_from=InvokeFrom.DEBUGGER,
             app_config=WorkflowAppConfigManager.get_app_config(app_model, workflow),
             user_id=owner.actor.account_id,
+            user_from=UserFrom.ACCOUNT,
             inputs=dict(args["inputs"]),
             call_depth=0,
             workflow_execution_id=run_id,
@@ -1754,7 +1755,7 @@ def test_port_launches_reserved_command_natively_and_projects_sanitized_builder_
 
     import services.dify_builder.dify_port as port_module
     from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
     from models.account import Account
     from models.model import App
     from services.dify_builder.dify_port import ConfirmedLaunchRecorder
@@ -1798,6 +1799,7 @@ def test_port_launches_reserved_command_natively_and_projects_sanitized_builder_
             invoke_from=InvokeFrom.DEBUGGER,
             app_config=WorkflowAppConfigManager.get_app_config(app_model, workflow),
             user_id=owner.actor.account_id,
+            user_from=UserFrom.ACCOUNT,
             inputs=dict(args["inputs"]),
             call_depth=0,
             workflow_execution_id=run_id,
@@ -1961,7 +1963,7 @@ def _drive_generator_draft_saving(
     import core.app.apps.base_app_generator as base_generator_module
     from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
     from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
-    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
     from graphon.enums import BuiltinNodeTypes
     from models.account import Account
     from models.model import App, AppMode
@@ -2041,6 +2043,7 @@ def _drive_generator_draft_saving(
         inputs={"note": "hello"},
         files=[],
         user_id=owner.actor.account_id,
+        user_from=UserFrom.ACCOUNT,
         stream=True,
         invoke_from=InvokeFrom.DEBUGGER,
         extras={},

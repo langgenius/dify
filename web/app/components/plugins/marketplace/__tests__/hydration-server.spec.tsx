@@ -7,12 +7,18 @@ vi.mock('@/config', () => ({
   API_PREFIX: '/api',
   APP_VERSION: '1.0.0',
   IS_MARKETPLACE: false,
-  MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1',
 }))
-
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: (path: string) => `https://marketplace.dify.ai${path}`,
-}))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1',
+      NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: 'https://marketplace.dify.ai',
+    },
+  }
+})
 
 const mockCollections = vi.fn()
 const mockCollectionPlugins = vi.fn()

@@ -642,7 +642,9 @@ class TestWorkflowAppRunnerCoreCases:
                 def apply_async(self, *, kwargs, queue):
                     emails.append({"kwargs": kwargs, "queue": queue})
 
-            monkeypatch.setattr("services.workflow_runtime.base_runner.dispatch_human_input_email_task", _Dispatch())
+            monkeypatch.setattr(
+                "services.workflow_runtime.base_runner.dispatch_human_input_form_delivery_task", _Dispatch()
+            )
             enriched_reason = HumanInputRequired(
                 form_id="form", form_content="content", node_id="node-1", node_title="Node"
             )
@@ -1104,7 +1106,7 @@ class TestWorkflowAppRunnerNotificationsCases:
             node_id="node-1",
             node_title="Review",
         )
-        monkeypatch.setattr("services.workflow_runtime.base_runner.dispatch_human_input_email_task", email_task)
+        monkeypatch.setattr("services.workflow_runtime.base_runner.dispatch_human_input_form_delivery_task", email_task)
 
         runner.handle_event(workflow_entry, event, pause_reasons=[enriched_reason])
 
@@ -1152,6 +1154,7 @@ class TestWorkflowAppRunnerSingleNodeCases:
         queue_manager: WorkflowAppQueueManager,
     ) -> None:
         app_generate_entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.END_USER,
             app_config=WorkflowUIBasedAppConfig(
                 app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
             ),
@@ -1306,6 +1309,7 @@ class TestWorkflowAppRunnerSingleNodeCases:
     @staticmethod
     def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: WorkflowAppQueueManager) -> None:
         app_generate_entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.END_USER,
             app_config=WorkflowUIBasedAppConfig(
                 app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
             ),
@@ -1464,6 +1468,7 @@ def _make_paused_workflow(
 def _resume_events(runner: WorkflowBasedAppRunner, entry: WorkflowEntry) -> Generator[EngineEvent]:
     """Resume through orchestration with actual repositories and the real Engine."""
     entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id="task",
         app_config=WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -1793,7 +1798,7 @@ def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch)
         node_id="node-1",
         node_title="Review",
     )
-    monkeypatch.setattr("services.workflow_runtime.base_runner.dispatch_human_input_email_task", email_task)
+    monkeypatch.setattr("services.workflow_runtime.base_runner.dispatch_human_input_form_delivery_task", email_task)
 
     runner.handle_event(workflow_entry, event, pause_reasons=[enriched_reason])
 
@@ -1818,6 +1823,7 @@ def test_run_uses_single_node_execution_branch(
     queue_manager: WorkflowAppQueueManager,
 ) -> None:
     app_generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         app_config=WorkflowUIBasedAppConfig(
             app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
         ),
@@ -1891,6 +1897,7 @@ def test_run_uses_single_node_execution_branch(
 
 def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: WorkflowAppQueueManager) -> None:
     app_generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         app_config=WorkflowUIBasedAppConfig(
             app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
         ),

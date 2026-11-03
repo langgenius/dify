@@ -10,8 +10,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
+from domain.workflow.agent_node import is_dify_agent_node_data
 from models.agent_config_entities import (
     DeclaredOutputChildConfig,
     DeclaredOutputConfig,

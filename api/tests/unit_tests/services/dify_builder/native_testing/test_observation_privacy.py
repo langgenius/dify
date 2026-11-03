@@ -832,7 +832,7 @@ def fix1_metadata() -> dict[str, object]:
 
 
 def fix1_retry_event(metadata: dict[str, object]) -> NodeRunRetryEvent:
-    from core.app.workflow.retry_history import WorkflowNodeRetryAttempt
+    from domain.workflow.retry_history import WorkflowNodeRetryAttempt
 
     attempt = WorkflowNodeRetryAttempt(
         retry_index=1,

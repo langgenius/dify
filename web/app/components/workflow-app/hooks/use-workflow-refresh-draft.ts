@@ -145,7 +145,7 @@ export const useWorkflowRefreshDraft = () => {
                 })
                 if (!applied) return 'failed'
                 // The hash is a baseline for this graph, never for a metadata-only refresh.
-                setSyncWorkflowDraftHash(response.hash)
+                setSyncWorkflowDraftHash(response.hash, response.graph)
               }
               setEnvSecrets(
                 (response.environment_variables || [])

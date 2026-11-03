@@ -5,12 +5,15 @@ import type {
   WorkflowAppLogPartialResponse,
   WorkflowRunForLogResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import WorkflowAppLogList from '../list'
+import { createLogRun } from './run-fixture'
 
 const mockRouterPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
@@ -33,14 +36,27 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('@/app/components/workflow/run', () => ({
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
-    <div data-testid="workflow-run">
-      <span data-testid="run-detail-url">{runDetailUrl}</span>
-      <span data-testid="tracing-list-url">{tracingListUrl}</span>
-    </div>
-  ),
+const { fetchRunDetail, fetchTracingList } = vi.hoisted(() => ({
+  fetchRunDetail: vi.fn(),
+  fetchTracingList: vi.fn(),
 }))
+vi.mock('@/service/log', () => ({ fetchRunDetail, fetchTracingList }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': () => ({ status: 'not_collected' }),
+    }),
+  }
+})
+beforeEach(() => {
+  fetchRunDetail.mockImplementation(async (url: string) => createLogRun(url.split('/').at(-1)!))
+  fetchTracingList.mockImplementation(async ({ url }: { url: string }) => ({
+    data: [createNodeTracing({ title: `Execution for ${url.split('/').at(-2)}` })],
+  }))
+})
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => <div data-testid="block-icon">BlockIcon</div>,
@@ -98,10 +114,6 @@ const createMockLogsResponse = (
 
 describe('WorkflowAppLogList', () => {
   const defaultOnRefresh = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
 
   describe('Rendering', () => {
     it('should render loading state when logs are undefined', () => {
@@ -275,7 +287,12 @@ describe('WorkflowAppLogList', () => {
         } else {
           await user.click(screen.getAllByRole('row')[2]!)
         }
-        await screen.findByRole('dialog')
+        const dialog = await screen.findByRole('dialog')
+        await user.click(within(dialog).getByRole('tab', { name: 'runLog.tracing' }))
+        expect(await within(dialog).findByText('Execution for run-1')).toBeInTheDocument()
+        expect(fetchRunDetail).toHaveBeenCalledWith('/apps/test-app-id/workflow-runs/run-1', {
+          silent: true,
+        })
         rerender(
           <WorkflowAppLogList
             logs={createMockLogsResponse(logs.data.map((log) => ({ ...log, read_at: 300 })))}

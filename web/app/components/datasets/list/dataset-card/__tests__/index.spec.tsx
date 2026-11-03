@@ -124,9 +124,12 @@ it.each([
     await user.click(await screen.findByRole('option', { name: 'Research' }))
     await user.click(trigger)
     await waitFor(() =>
-      expect(api.bindTags).toHaveBeenCalledExactlyOnceWith({
-        body: { tag_ids: ['tag-1'], target_id: 'dataset-1', type: 'knowledge' },
-      }),
+      expect(api.bindTags).toHaveBeenCalledExactlyOnceWith(
+        {
+          body: { tag_ids: ['tag-1'], target_id: 'dataset-1', type: 'knowledge' },
+        },
+        { context: { silent: true } },
+      ),
     )
     await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
     expect(api.push).not.toHaveBeenCalled()

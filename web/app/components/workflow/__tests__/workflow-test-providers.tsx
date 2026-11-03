@@ -11,7 +11,7 @@ import { createQueryClientWrapper } from '@/test/console/query-client'
 import {
   seedAppDetail,
   seedAppDslVersion,
-  seedKnowledgeFsFeatures,
+  seedFeatures,
   seedSystemFeatures,
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -97,8 +97,9 @@ export function createWorkflowWrapper(
       },
     })
   if (!externalQueryClient) seedSystemFeatures(queryClient)
-  // The node catalog reads KnowledgeFS availability; keep it unavailable unless a suite seeds it.
-  if (!externalQueryClient) seedKnowledgeFsFeatures(queryClient)
+  // The node catalog suspends on workspace features; keep KnowledgeFS unavailable unless a suite seeds it.
+  if (queryClient.getQueryData(consoleQuery.features.get.queryKey()) === undefined)
+    seedFeatures(queryClient)
   if (!externalQueryClient) seedAppDslVersion(queryClient)
   if (!externalQueryClient) seedAccountProfileQuery(queryClient)
   if (resource.kind === 'app') {

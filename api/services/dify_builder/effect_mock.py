@@ -14,7 +14,7 @@ import copy
 from functools import cache
 from typing import TYPE_CHECKING, Any, cast
 
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
+from domain.workflow.agent_node import is_dify_agent_node_data
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, NodeExecutionType, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult

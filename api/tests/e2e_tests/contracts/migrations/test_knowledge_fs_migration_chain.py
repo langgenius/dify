@@ -32,7 +32,10 @@ def _scripts() -> ScriptDirectory:
 
 def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
     scripts = _scripts()
-    assert scripts.get_heads() == ["6c84f1d90235"]
+    assert scripts.get_heads() == ["7d95a2e61346"]
+    current = scripts.get_revision("7d95a2e61346")
+    assert current is not None
+    assert set(current.down_revision) == {"6c84f1d90235", "53c10126d551"}
     fix_intents = scripts.get_revision("6c84f1d90235")
     assert fix_intents is not None
     assert fix_intents.down_revision == "5b73e0c8f124"

@@ -20,7 +20,6 @@ from sqlalchemy import select
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from core.plugin.entities.plugin import PluginInstallation
 from core.plugin.entities.plugin_daemon import PluginToolProviderEntity
 from core.tools import tool_manager as manager_module
@@ -28,6 +27,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.plugin_tool import tool as plugin_tool_module
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
+from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from runtime_contracts.builder.execution import (

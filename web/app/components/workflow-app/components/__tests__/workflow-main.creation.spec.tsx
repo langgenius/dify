@@ -52,10 +52,15 @@ vi.mock('reactflow', () => {
   const store = {
     getState: () => ({ getNodes: mocks.getNodes, edges: [], transform: [0, 0, 1] }),
   }
-  return { useReactFlow: () => flow, useStoreApi: () => store }
+  return {
+    useReactFlow: () => flow,
+    useStoreApi: () => store,
+    useStore: <T,>(selector: (state: { d3Selection: null; d3Zoom: null }) => T) =>
+      selector({ d3Selection: null, d3Zoom: null }),
+  }
 })
 vi.mock('@/app/components/workflow', () => ({
-  WorkflowWithInnerContext: ({ children }: { children: ReactNode }) => children,
+  Workflow: ({ children }: { children: ReactNode }) => children,
 }))
 vi.mock('../workflow-children', () => ({
   default: function BuilderStatus() {

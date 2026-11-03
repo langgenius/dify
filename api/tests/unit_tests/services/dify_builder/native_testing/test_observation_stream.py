@@ -11,7 +11,7 @@ from redis import Redis
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
@@ -69,6 +69,7 @@ def entity() -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
         task_id="task",
         user_id="actor",
+        user_from=UserFrom.ACCOUNT,
         stream=True,
         app_config=WorkflowUIBasedAppConfig(
             app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
@@ -81,7 +82,7 @@ def entity() -> WorkflowAppGenerateEntity:
         call_depth=0,
         native_test_required=True,
         native_test_ref=None,
-        trace_manager=None,
+        trace_scope=None,
     )
 
 
@@ -402,7 +403,7 @@ def test_pause_live_fallback_is_safe_without_hitl_resolution(
         trip_calls.append((args, kwargs))
         raise AssertionError("HITL resolution")
 
-    monkeypatch.setattr("services.workflow_runtime.response_converter.resolve_human_input_pause_reason_inputs", trip)
+    monkeypatch.setattr("services.workflow_runtime.response_converter.enrich_human_input_pause_reasons", trip)
     r = c.workflow_pause_to_stream_response(
         event=QueueWorkflowPausedEvent(reasons=[SchedulingPause(message=SENTINEL)], paused_nodes=["http"]),
         task_id="task",
@@ -618,7 +619,7 @@ def test_live_output_read_failure_is_latched_without_raw_exception(guard: Native
     assert guard.failed
 
 
-@pytest.mark.parametrize("field", ["files", "trace_manager"])
+@pytest.mark.parametrize("field", ["files", "trace_scope"])
 def test_native_pipeline_refuses_unqualified_setup_before_base(
     guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch, field: str
 ) -> None:
@@ -847,3 +848,12 @@ def test_native_pause_response_reuses_cumulative_settled_duration_after_queue_de
     assert SENTINEL not in response.model_dump_json()
     assert event.outputs == {SENTINEL: SENTINEL}
     assert not guard.failed
+
+
+def test_native_pause_refuses_unqualified_human_input_v2_forms(guard: NativeObservationGuard) -> None:
+    from core.app.entities.queue_entities import QueueWorkflowPausedEvent
+
+    event = QueueWorkflowPausedEvent().model_copy(update={"human_input_v2_forms": {"http": Unrenderable()}})
+    with pytest.raises(NativeObservationError):
+        domain().project_native_queue_event(guard=guard, event=event)
+    assert guard.failed

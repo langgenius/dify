@@ -9,17 +9,25 @@ after native capability cleanup on success, failure and cancellation.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, ClassVar, Final, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    TypeAdapter,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 from pydantic_ai.messages import AgentStreamEvent
 
+from dify_agent.protocol.native_testing import AgentApprovalWait, AgentNativeTestRef, AgentParentNodeRef, Counter
 from dify_agent.protocol.snapshot import SessionSnapshot
-from dify_agent.protocol.native_testing import AgentParentNodeRef, AgentNativeTestRef, AgentApprovalWait, Counter
-
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
 DIFY_AGENT_HISTORY_LAYER_ID: Final[str] = "history"
@@ -48,7 +56,7 @@ class RunFailureType(StrEnum):
 
 def utc_now() -> datetime:
     """Return the timezone-aware timestamp format used by public schemas."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class RunLayerSpec(BaseModel):
@@ -266,7 +274,10 @@ class PydanticAIStreamRunEvent(BaseRunEvent):
     """Pydantic AI stream event with optional Dify Agent semantic annotations."""
 
     type: Literal["pydantic_ai_event"] = "pydantic_ai_event"
-    data: AgentStreamEvent
+    # Keep runtime validation against Pydantic AI's event union while exposing
+    # its evolving payload as a generic object in OpenAPI. New event variants
+    # can otherwise produce schemas that FastAPI's OpenAPI model cannot validate.
+    data: Annotated[AgentStreamEvent, WithJsonSchema({"type": "object", "additionalProperties": True})]
     agent_message_delta: str | None = None
 
 
@@ -315,18 +326,18 @@ class RunEventsResponse(BaseModel):
 
 
 __all__ = [
-    "BaseRunEvent",
+    "DIFY_AGENT_HISTORY_LAYER_ID",
+    "DIFY_AGENT_MODEL_LAYER_ID",
+    "DIFY_AGENT_OUTPUT_LAYER_ID",
+    "RUN_EVENT_ADAPTER",
     "AgentRunUsage",
+    "BaseRunEvent",
     "CancelRunRequest",
     "CancelRunResponse",
     "CreateRunRequest",
     "CreateRunResponse",
-    "DIFY_AGENT_HISTORY_LAYER_ID",
-    "DIFY_AGENT_MODEL_LAYER_ID",
-    "DIFY_AGENT_OUTPUT_LAYER_ID",
     "EmptyRunEventData",
     "PydanticAIStreamRunEvent",
-    "RUN_EVENT_ADAPTER",
     "RunCancelledEvent",
     "RunCancelledEventData",
     "RunComposition",
@@ -336,16 +347,16 @@ __all__ = [
     "RunFailedEvent",
     "RunFailedEventData",
     "RunFailureType",
-    "RunStartedEvent",
-    "RunWaitingEvent",
-    "RunWaitingEventData",
+    "RunLayerSpec",
     "RunResumedEvent",
     "RunResumedEventData",
+    "RunStartedEvent",
     "RunStatus",
     "RunStatusResponse",
     "RunSucceededEvent",
     "RunSucceededEventData",
-    "RunLayerSpec",
+    "RunWaitingEvent",
+    "RunWaitingEventData",
     "SessionSnapshot",
     "utc_now",
 ]

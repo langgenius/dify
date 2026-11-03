@@ -21,9 +21,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
-from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from core.dify_builder.input_schema import schema_hash, start_schema
 from core.dify_builder.models import Actor, DifyBuilderContext, Graph, Inputs, Run
+from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from enums import WorkflowKind
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole

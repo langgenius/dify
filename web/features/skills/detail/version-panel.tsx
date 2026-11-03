@@ -36,6 +36,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { RestoreVersionDialogContent } from './restore-version-dialog-content'
 import { getSkillVersionTitle, invalidateSkillDetail } from './shared'
 
@@ -198,7 +199,9 @@ function VersionRow({
   const [versionName, setVersionName] = useState(version.version_name)
   const [publishNote, setPublishNote] = useState(version.publish_note)
   const renameMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const restoreMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({
@@ -243,8 +246,10 @@ function VersionRow({
           setRenameOpen(false)
           invalidateVersions()
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.detail.renameVersionFailed']))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ?? t(($) => $['skillManagement.detail.renameVersionFailed']),
+          )
         },
       },
     )

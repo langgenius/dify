@@ -1,0 +1,157 @@
+{
+  "transport_evidence": {
+    "callback_path": "/im-callback/feishu",
+    "kind": "encrypted_webhook",
+    "payload_boundary": "signed_http_envelope_to_authenticated_event",
+    "source": "sanitized_real_callback"
+  },
+  "captured_at": "2026-08-12T10:00:01+00:00",
+  "http": {
+    "request": {
+      "method": "POST",
+      "headers": [
+        {
+          "name": "Host",
+          "value": "dev-w.example.invalid"
+        },
+        {
+          "name": "User-Agent",
+          "value": "Feishu-Webhook/test"
+        },
+        {
+          "name": "Content-Length",
+          "value": "1062"
+        },
+        {
+          "name": "Accept",
+          "value": "*/*"
+        },
+        {
+          "name": "Accept-Encoding",
+          "value": "gzip"
+        },
+        {
+          "name": "Cdn-Loop",
+          "value": "sanitized"
+        },
+        {
+          "name": "Cf-Connecting-Ip",
+          "value": "192.0.2.1"
+        },
+        {
+          "name": "Cf-Ipcountry",
+          "value": "ZZ"
+        },
+        {
+          "name": "Cf-Ray",
+          "value": "ray_test_only"
+        },
+        {
+          "name": "Cf-Visitor",
+          "value": "{\"scheme\":\"https\"}"
+        },
+        {
+          "name": "Cf-Warp-Tag-Id",
+          "value": "warp_test_only"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Via",
+          "value": "sanitized-proxy"
+        },
+        {
+          "name": "X-Forwarded-For",
+          "value": "192.0.2.1"
+        },
+        {
+          "name": "X-Forwarded-Host",
+          "value": "dev-w.example.invalid"
+        },
+        {
+          "name": "X-Forwarded-Proto",
+          "value": "https"
+        },
+        {
+          "name": "X-Lark-Request-Nonce",
+          "value": "nonce_test_only"
+        },
+        {
+          "name": "X-Lark-Request-Timestamp",
+          "value": "1786473269"
+        },
+        {
+          "name": "X-Lark-Signature",
+          "value": "e849f6eeb42d0fc415c95fc09070928b222a0ad8534b4efa142b9b29e4c5ffbb"
+        },
+        {
+          "name": "X-Tt-Logid",
+          "value": "log_test_only"
+        }
+      ],
+      "body": "{\"encrypt\":\"AAECAwQFBgcICQoLDA0OD3q+5O5iO1M4nZ5xMWi/ucZ/MdtAhXm3NZqATzdYs1MoxI4ZXhYmH3UdEvSQzCfg7LNBKh6OZr/uia2nySsHH7fnl8BM3jQIH7IJ0XHFr4wTL6rAyZiGYvGhKZCUbfRhPn6hXqj0a7Y7FKpG5wh6qWntETA0i8964KmPfluzNd6jgX6ZRrCgetLRNwjBzZjQ427iAax6JIsXaMyh3n3S7PFU+mwHTYtvmTZmBH5esWbFIvOZPTV0BrxbdlHT3A1YWjlxEmmaBUJr6JEXsDDHc6tYjLukAy7wcB7VV8eN2u46BXfyc5c1O6a2aM6iMcokA3EC9gY4PnqzGetIKp/Zr4HwCdMPrRiHxYGaCjdnsuqeuu+/p97iscPbfdpjrvy8ig1u9U/0qgyMww4ERsbCxKiQ32MKhYMKRrpCI2HcF8xZl8QI4l7BcfqFGvxnmbaKRe0DRTbIBubu1ba1qJ56MhI+lCL6lxObmYl4Myzq9pZHumtskszH365qSM64CXVe+if+WFPM+C6M7gyP0DiPuAnQNbNPZdBzWaqxfubgtmpKpXws9SP5b8Sg3Syl4ocmYq+pXO3tFiT9oWnpVm/2MlSy0T6qOjTy7RJEgwMI7KAqeJzyaxrZgcqIcLYu5AXVuhEtdYcYdU+LTkBUKNOP4pJqsNxgpVqMrleHpDod7cvhTuGrTOc/n0Jtty+K7SlIQpbmNyrHfZmkvAn4kpNVUk7nsqnMfvaKEl+zPehtH0KiApjgfhhr8cw2B2B3mKw2ld6nxNxdphwEeG1x0eZTvybV45hciQ29fd5UjCEHzEaazAfhyS/TIPlCA8RRTTcZPYzB9NrtMqxrdiN7cwQuwnSg1cIdI4BwEl7kFcZju3MYLHkLD6N0Agf8egsbrZXMLpaID7GK/cZDu8kMIwgs+X9NsxIKT470cPI0phccfk/3FonALzOzRFNkrHMzmECGZl2dYQTQsKUsEPwm5y0Jc0hVvD5RytdLH6CXZXjlCU8fh2HCHlBGMrEvbxC8qfJK/w==\"}",
+      "received_at": "2026-08-12T10:00:00"
+    },
+    "response": {
+      "status": 200,
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": "{\"code\":0}"
+    }
+  },
+  "authenticated_event": {
+    "provider": "feishu",
+    "provider_tenant_id": "tenant_test_only",
+    "event_id": "evt_test_only_webhook",
+    "event_type": "card.action.trigger",
+    "occurred_at": "2026-08-11T18:34:29.367799",
+    "received_at": "2026-08-12T10:00:00",
+    "payload": {
+      "schema": "2.0",
+      "header": {
+        "app_id": "cli_test_only",
+        "create_time": "1786473269367799",
+        "event_id": "evt_test_only_webhook",
+        "event_type": "card.action.trigger",
+        "tenant_key": "tenant_test_only",
+        "token": "verification_test_only"
+      },
+      "event": {
+        "action": {
+          "form_value": {
+            "comment": "Sanitized callback input",
+            "decision": "ship"
+          },
+          "name": "approve",
+          "tag": "button",
+          "timezone": "Asia/Shanghai",
+          "value": {
+            "__dify.human_input.action": {
+              "version": 1,
+              "action_id": "approve",
+              "correlation_token": "feishu-lark-card-evidence-token"
+            }
+          }
+        },
+        "context": {
+          "open_chat_id": "chat_test_only",
+          "open_message_id": "message_test_only"
+        },
+        "host": "im_message",
+        "operator": {
+          "open_id": "open_test_only",
+          "tenant_key": "tenant_test_only",
+          "union_id": "union_test_only",
+          "user_id": "user_test_only"
+        },
+        "token": "callback_test_only"
+      }
+    }
+  }
+}

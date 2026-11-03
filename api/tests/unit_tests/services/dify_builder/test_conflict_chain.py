@@ -30,6 +30,7 @@ from models.workflow import Workflow
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision, execution_revision
 from services.dify_builder.service import DifyBuilderService
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.core.dify_builder.fakes import StubAgent
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph
@@ -551,8 +552,7 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
     monkeypatch.setattr(worker.session_lock, "acquire", acquire)
     monkeypatch.setattr(worker.session_lock, "release", release)
     monkeypatch.setattr(native, "db", PortDatabase(factory.kw["bind"]))
-    monkeypatch.setattr(native.TraceQueueManager, "start_timer", lambda _self: None)
-    monkeypatch.setattr("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", lambda _app: None)
+    monkeypatch.setattr(native, "create_trace_scope", lambda **_kwargs: None)
     generator = native.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
     monkeypatch.setattr(generator, "_generate", lambda **kwargs: kwargs)
     monkeypatch.setattr(port, "run_draft", _capture_run(port.run_draft, runs))
@@ -616,6 +616,7 @@ def test_canvas_presentation_survives_the_service_worker_port_and_native_admissi
             app_model=kwargs["app_model"],
             workflow=current,
             user=kwargs["user"],
+            execution_identity=build_workflow_execution_identity(kwargs["user"]),
             args=kwargs["args"],
             invoke_from=kwargs["invoke_from"],
             builder_execution=kwargs["builder_execution"],

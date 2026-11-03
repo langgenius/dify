@@ -13,16 +13,16 @@ import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import CardWrapper from '../card-wrapper'
 
 // Keep the real dialog/iframe while preventing navigation to a remote document.
-vi.mock('../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../utils')>()
+vi.mock('@/features/marketplace/links', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/marketplace/links')>()
+  const toBlank = (url: string) =>
+    `about:blank${new URL(url, 'https://marketplace.example.test').search}`
   return {
     ...actual,
-    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) => {
-      const url = new URL(
-        actual.getPluginLinkInMarketplace(...args),
-        'https://marketplace.example.test',
-      )
-      return `about:blank${url.search}`
+    marketplaceLinks: {
+      ...actual.marketplaceLinks,
+      plugin: (...args: Parameters<typeof actual.marketplaceLinks.plugin>) =>
+        toBlank(actual.marketplaceLinks.plugin(...args)),
     },
   }
 })
@@ -53,7 +53,7 @@ const plugin = createMarketplacePluginFixture()
 describe('CardWrapper', () => {
   afterEach(() => {
     delete window.__marketplaceTracking__
-    document.body.removeAttribute('data-is-marketplace')
+    document.documentElement.removeAttribute('data-is-marketplace')
   })
 
   const renderCardWrapper = (
@@ -116,7 +116,7 @@ describe('CardWrapper', () => {
     const user = userEvent.setup()
     const track = vi.fn()
     const rememberReferrer = vi.fn()
-    document.body.setAttribute('data-is-marketplace', '')
+    document.documentElement.setAttribute('data-is-marketplace', '')
     window.__marketplaceTracking__ = {
       track,
       rememberReferrer,

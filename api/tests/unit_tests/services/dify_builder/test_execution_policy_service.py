@@ -1162,7 +1162,7 @@ def test_null_predecessor_prefix_requires_failed_or_stopped_run(owned: Owned, st
 def test_null_predecessor_http_retry_requires_all_attempt_proof(
     owned: Owned, receipt_count: int, retry_index: int, total_steps: int, outcome: str
 ) -> None:
-    from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+    from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 
     factory, _, _, workflow, _, _ = owned
     workflow.graph = json.dumps(graph(http=True))

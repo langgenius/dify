@@ -15,6 +15,7 @@ from services.agent.prompt_mentions import (
     NODE_JOB_PROMPT_ALLOWED_KINDS,
     SOUL_PROMPT_ALLOWED_KINDS,
     MentionKind,
+    PromptMention,
     build_node_job_mention_resolver,
     build_soul_mention_resolver,
     expand_prompt_mentions,
@@ -29,7 +30,7 @@ from services.agent.prompt_mentions import (
 # ── parse ─────────────────────────────────────────────────────────────────────
 
 
-def test_parse_extracts_kind_id_and_optional_label():
+def test_parse_extracts_kind_id_and_optional_label() -> None:
     prompt = "Use [§skill:tender-analyzer%2FSKILL.md:tender-analyzer§] then ask [§human:c-1§]."
     mentions = parse_prompt_mentions(prompt)
 
@@ -40,25 +41,25 @@ def test_parse_extracts_kind_id_and_optional_label():
     assert prompt[mentions[0].start : mentions[0].end] == mentions[0].raw
 
 
-def test_parse_supports_ids_with_slash_and_dot():
+def test_parse_supports_ids_with_slash_and_dot() -> None:
     mentions = parse_prompt_mentions("[§tool:langgenius/tavily/tavily_search:tavily§] [§node_output:node-1.tenders§]")
     assert mentions[0].ref_id == "langgenius/tavily/tavily_search"
     assert mentions[1].ref_id == "node-1.tenders"
 
 
-def test_parse_supports_legacy_bare_output_tokens():
+def test_parse_supports_legacy_bare_output_tokens() -> None:
     mentions = parse_prompt_mentions("Use §output:summary:summary§")
     assert [(mention.kind, mention.ref_id, mention.label) for mention in mentions] == [
         (MentionKind.OUTPUT, "summary", "summary")
     ]
 
 
-def test_parse_ignores_legacy_template_forms_and_unknown_kinds():
+def test_parse_ignores_legacy_template_forms_and_unknown_kinds() -> None:
     prompt = "{{var}} {{#context#}} {{#sys.query#}} [§bogus_kind:x§]"
     assert parse_prompt_mentions(prompt) == []
 
 
-def test_parse_skips_oversized_id_or_label():
+def test_parse_skips_oversized_id_or_label() -> None:
     long_id = "x" * (MAX_MENTION_REF_ID_LENGTH + 1)
     assert parse_prompt_mentions(f"[§skill:{long_id}§]") == []
 
@@ -66,10 +67,10 @@ def test_parse_skips_oversized_id_or_label():
 # ── expand + scrub ────────────────────────────────────────────────────────────
 
 
-def test_expand_uses_resolver_and_degrades_unresolved_to_label_then_id():
+def test_expand_uses_resolver_and_degrades_unresolved_to_label_then_id() -> None:
     prompt = "A [§skill:s1:Skill One§] B [§human:h1:EMAIL · DAVE§] C [§knowledge:k1§]"
 
-    def resolver(mention):
+    def resolver(mention: PromptMention) -> str | None:
         return "resolved-skill" if mention.kind == MentionKind.SKILL else None
 
     expanded = expand_prompt_mentions(prompt, resolver)
@@ -77,29 +78,29 @@ def test_expand_uses_resolver_and_degrades_unresolved_to_label_then_id():
     assert "[§" not in expanded
 
 
-def test_expand_scrubs_unknown_kind_tokens_but_keeps_legacy_forms():
+def test_expand_scrubs_unknown_kind_tokens_but_keeps_legacy_forms() -> None:
     prompt = "x [§wat:id-1:Label§] y {{#context#}} z {{#node.var#}}"
-    expanded = expand_prompt_mentions(prompt, lambda m: None)
+    expanded = expand_prompt_mentions(prompt, lambda _mention: None)
     # unknown mention-shaped token degraded to its label; legacy forms untouched
     assert expanded == "x Label y {{#context#}} z {{#node.var#}}"
 
 
-def test_scrub_degrades_colon_tokens_without_label_to_id_part():
+def test_scrub_degrades_colon_tokens_without_label_to_id_part() -> None:
     assert scrub_mention_markers("see [§weird_kind:some-id§]") == "see some-id"
 
 
-def test_expand_empty_prompt_is_noop():
-    assert expand_prompt_mentions("", lambda m: "x") == ""
+def test_expand_empty_prompt_is_noop() -> None:
+    assert expand_prompt_mentions("", lambda _mention: "x") == ""
 
 
-def test_extract_workflow_variable_selectors_supports_frontend_agent_task_format():
+def test_extract_workflow_variable_selectors_supports_frontend_agent_task_format() -> None:
     selectors = extract_workflow_variable_selectors(
         "Read {{#node-1.output#}}, compare {{#start.question#}}, leave {{#context#}} alone."
     )
     assert selectors == [("node-1", "output"), ("start", "question")]
 
 
-def test_extract_workflow_node_output_selectors_supports_current_frontend_markers_only():
+def test_extract_workflow_node_output_selectors_supports_current_frontend_markers_only() -> None:
     selectors = extract_workflow_node_output_selectors(
         "Read {{#node-1.output#}}, {{#sys.query#}}, [§node_output:legacy-node.report:PREV/report§], "
         "and {{#node-1.output#}} again."
@@ -107,7 +108,7 @@ def test_extract_workflow_node_output_selectors_supports_current_frontend_marker
     assert selectors == [("node-1", "output")]
 
 
-def test_workflow_previous_node_output_refs_from_selectors_materializes_refs():
+def test_workflow_previous_node_output_refs_from_selectors_materializes_refs() -> None:
     refs = workflow_previous_node_output_refs_from_selectors([("node-1", "output"), ("node-2", "report", "url")])
 
     assert refs == [
@@ -155,7 +156,7 @@ def soul() -> AgentSoulConfig:
     )
 
 
-def test_soul_resolver_resolves_each_kind(soul: AgentSoulConfig):
+def test_soul_resolver_resolves_each_kind(soul: AgentSoulConfig) -> None:
     resolver = build_soul_mention_resolver(soul)
     prompt = (
         "Use [§tool:tavily/tavily_search:tavily§], run [§cli_tool:ct-1:ffmpeg§], "
@@ -167,12 +168,12 @@ def test_soul_resolver_resolves_each_kind(soul: AgentSoulConfig):
     assert expanded == ("Use tavily_search, run ffmpeg, ground in 产品手册, ask EMAIL · David Hayes.")
 
 
-def test_soul_resolver_unknown_ids_degrade(soul: AgentSoulConfig):
+def test_soul_resolver_unknown_ids_degrade(soul: AgentSoulConfig) -> None:
     expanded = expand_prompt_mentions("[§knowledge:missing:旧产品手册§]", build_soul_mention_resolver(soul))
     assert expanded == "旧产品手册"
 
 
-def test_soul_resolver_cli_tool_resolves_by_id_and_keeps_name_alias(soul: AgentSoulConfig):
+def test_soul_resolver_cli_tool_resolves_by_id_and_keeps_name_alias(soul: AgentSoulConfig) -> None:
     resolver = build_soul_mention_resolver(soul)
     # id is the contract; the name alias keeps tokens minted before ids existed working
     assert expand_prompt_mentions("[§cli_tool:ct-1§]", resolver) == "ffmpeg"
@@ -193,7 +194,7 @@ def soul_with_provider_entry(soul: AgentSoulConfig) -> AgentSoulConfig:
     return soul
 
 
-def test_soul_resolver_provider_all_tools_mention(soul_with_provider_entry: AgentSoulConfig):
+def test_soul_resolver_provider_all_tools_mention(soul_with_provider_entry: AgentSoulConfig) -> None:
     resolver = build_soul_mention_resolver(soul_with_provider_entry)
     # [§tool:<provider>/*§] = all tools of that provider
     assert expand_prompt_mentions("Use [§tool:duckduckgo/*:DuckDuckGo 全部§].", resolver) == (
@@ -206,7 +207,7 @@ def test_soul_resolver_provider_all_tools_mention(soul_with_provider_entry: Agen
     assert expand_prompt_mentions("[§tool:duckduckgo/*:DuckDuckGo 全部§]", bare) == "DuckDuckGo 全部"
 
 
-def test_soul_resolver_single_tool_resolves_via_provider_level_entry(soul_with_provider_entry: AgentSoulConfig):
+def test_soul_resolver_single_tool_resolves_via_provider_level_entry(soul_with_provider_entry: AgentSoulConfig) -> None:
     # one tool offered through the provider-level ("all") entry still resolves
     resolver = build_soul_mention_resolver(soul_with_provider_entry)
     assert expand_prompt_mentions("[§tool:duckduckgo/ddg_search§]", resolver) == "ddg_search"
@@ -228,7 +229,7 @@ def node_job() -> WorkflowNodeJobConfig:
     )
 
 
-def test_node_job_resolver_resolves_each_kind(node_job: WorkflowNodeJobConfig):
+def test_node_job_resolver_resolves_each_kind(node_job: WorkflowNodeJobConfig) -> None:
     resolver = build_node_job_mention_resolver(node_job)
     prompt = "Read [§node_output:start-1.tenders§] and produce [§output:qna_report§]; if unsure contact [§human:c-1§]."
 
@@ -244,7 +245,7 @@ def test_node_job_resolver_resolves_each_kind(node_job: WorkflowNodeJobConfig):
     )
 
 
-def test_node_job_resolver_accepts_legacy_reversed_output_token(node_job: WorkflowNodeJobConfig):
+def test_node_job_resolver_accepts_legacy_reversed_output_token(node_job: WorkflowNodeJobConfig) -> None:
     resolver = build_node_job_mention_resolver(node_job)
 
     expanded = expand_prompt_mentions("[§qna_report:qna_report:output§]", resolver)
@@ -252,7 +253,7 @@ def test_node_job_resolver_accepts_legacy_reversed_output_token(node_job: Workfl
     assert "final_output.qna_report" in expanded
 
 
-def test_node_job_resolver_exposes_system_text_output():
+def test_node_job_resolver_exposes_system_text_output() -> None:
     node_job = WorkflowNodeJobConfig()
 
     expanded = expand_prompt_mentions("[§output:text§]", build_node_job_mention_resolver(node_job))
@@ -260,7 +261,7 @@ def test_node_job_resolver_exposes_system_text_output():
     assert expanded == "text (string)"
 
 
-def test_node_job_resolver_matches_ref_by_node_id_and_output_fields():
+def test_node_job_resolver_matches_ref_by_node_id_and_output_fields() -> None:
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "n-2", "output": "text"}]}
     )
@@ -269,7 +270,7 @@ def test_node_job_resolver_matches_ref_by_node_id_and_output_fields():
     assert expanded == "LLM/text"
 
 
-def test_normalize_previous_node_output_selector_returns_canonical_selector():
+def test_normalize_previous_node_output_selector_returns_canonical_selector() -> None:
     assert normalize_previous_node_output_selector(
         WorkflowPreviousNodeOutputRef(selector=["node-1", "report", "url"])
     ) == ("node-1", "report", "url")
@@ -283,7 +284,7 @@ def test_normalize_previous_node_output_selector_returns_canonical_selector():
 # ── allowlists ────────────────────────────────────────────────────────────────
 
 
-def test_per_surface_allowlists_match_design():
+def test_per_surface_allowlists_match_design() -> None:
     assert {
         MentionKind.SKILL,
         MentionKind.FILE,

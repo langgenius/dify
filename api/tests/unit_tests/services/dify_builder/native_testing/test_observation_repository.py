@@ -893,7 +893,7 @@ def test_native_history_adoption_restores_active_duration_after_entity_json_roun
 ) -> None:
     """Timing callback/repository unit test; C03/claim authority is not qualified here."""
     from core.app.app_config.entities import WorkflowUIBasedAppConfig
-    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
     from core.workflow.system_variables import build_system_variables
     from graphon.engine.command import InMemoryChannel
     from graphon.engine_events import GraphRunStartedEvent, GraphRunSucceededEvent
@@ -919,6 +919,7 @@ def test_native_history_adoption_restores_active_duration_after_entity_json_roun
         inputs={SENTINEL: SENTINEL},
         files=[],
         user_id=c.context.actor_id,
+        user_from=UserFrom.ACCOUNT,
         stream=True,
         invoke_from=InvokeFrom.DEBUGGER,
         native_test_required=True,
@@ -943,6 +944,7 @@ def test_native_history_adoption_restores_active_duration_after_entity_json_roun
             ),
             workflow_execution_repository=c.runs,
             workflow_node_execution_repository=c.nodes,
+            trace_scope=None,
             native_observation=c.guard,
         )
         layer.initialize(ReadOnlyRuntimeStateWrapper(runtime), InMemoryChannel())

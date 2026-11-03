@@ -28,6 +28,7 @@ from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.model import Account, App, AppMode
 from models.workflow import Workflow
+from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from runtime_contracts.builder.execution import JsonToolExecutionContext
 from services.dify_builder.application.execution_policy import BuilderExecutionContext, BuilderExecutionPolicyError
@@ -135,7 +136,6 @@ def _install_paused_marker(
     repository = DifyAPISQLAlchemyWorkflowRunRepository(factory)
     pause = _PrivateWorkflowPauseEntity(
         pause_model=WorkflowPause(workflow_id="workflow", workflow_run_id="run", state_object_key="state"),
-        reason_models=[],
     )
     mocker.patch.object(pause, "get_state", return_value=b"state")
     mocker.patch.object(repository, "get_workflow_pause", return_value=pause)
@@ -319,6 +319,7 @@ def test_json_workflow_generator_refuses_before_file_or_graph_effect(
             app_model=App(id=marker.app_id, tenant_id=marker.tenant_id, mode=AppMode.WORKFLOW),
             workflow=Workflow(id=marker.workflow_id),
             user=account,
+            execution_identity=WorkflowExecutionIdentity(user_id=account.id, user_from=UserFrom.ACCOUNT),
             args={"inputs": {}, "files": [{"id": "file"}]} if transport == "files" else {"inputs": {}},
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=True,
@@ -553,6 +554,7 @@ def test_worker_readmission_rejects_reload_races_inside_queue_lifecycle(
         inputs={"n": 41},
         files=[],
         user_id=actor.account_id,
+        user_from=UserFrom.ACCOUNT,
         stream=True,
         invoke_from=InvokeFrom.DEBUGGER,
         workflow_execution_id="allocated-run",
@@ -587,9 +589,7 @@ def test_worker_readmission_rejects_reload_races_inside_queue_lifecycle(
         "_ensure_snippet_start_node_in_worker",
         side_effect=AssertionError("snippet must not mutate"),
     )
-    trace = mocker.patch.object(
-        module.TraceQueueManager, "__init__", side_effect=AssertionError("trace must not construct")
-    )
+    trace = mocker.patch.object(module, "create_trace_scope", side_effect=AssertionError("trace must not construct"))
     from core.helper import encrypter
 
     secret = mocker.patch.object(encrypter, "decrypt_token", side_effect=AssertionError("secret resolution forbidden"))
@@ -701,6 +701,7 @@ def test_worker_claims_once_and_shares_recorder_with_runner_and_completion(
         inputs={"n": 41},
         files=[],
         user_id=actor.account_id,
+        user_from=UserFrom.ACCOUNT,
         stream=True,
         invoke_from=InvokeFrom.DEBUGGER,
         workflow_execution_id="allocated-run",

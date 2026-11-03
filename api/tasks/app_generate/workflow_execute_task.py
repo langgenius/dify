@@ -42,6 +42,7 @@ from services.app_task_service import AppTaskService
 from services.dify_builder.application.execution_policy import BuilderExecutionContextValue, BuilderExecutionPolicyError
 from services.dify_builder.native_testing.native_execution import dispatch_native_worker
 from services.tools.draft_tool_setup import admit_draft_tool_setup, admit_resumed_draft_tool_setup
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_runtime.chatflow_generator import AdvancedChatAppGenerator
 from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
@@ -249,6 +250,7 @@ class _AppRunner:
                 app_model=app,
                 workflow=workflow,
                 user=user,
+                execution_identity=build_workflow_execution_identity(user),
                 args=exec_params.args,
                 invoke_from=exec_params.invoke_from,
                 streaming=exec_params.streaming,

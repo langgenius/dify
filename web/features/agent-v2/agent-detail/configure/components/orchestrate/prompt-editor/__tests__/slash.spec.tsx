@@ -41,7 +41,7 @@ describe('AgentPromptSlashMenu', () => {
     expect(onInsertToken).not.toHaveBeenCalled()
     onAddSkill.mock.calls
       .at(-1)![0]!
-      .onAdded?.({ id: 'library-skill', name: 'Library Skill', fileId: 'library-file' })
+      .onAdded?.([{ id: 'library-skill', name: 'Library Skill', fileId: 'library-file' }])
     expect(onInsertToken).toHaveBeenLastCalledWith('[§skill:library-skill:Library Skill§]')
 
     await user.click(
@@ -52,7 +52,7 @@ describe('AgentPromptSlashMenu', () => {
     expect(onAddSkill).toHaveBeenLastCalledWith(expect.objectContaining({ skillSource: 'upload' }))
     onAddSkill.mock.calls
       .at(-1)![0]!
-      .onAdded?.({ id: 'uploaded-skill', name: 'Uploaded Skill', fileId: 'uploaded-file' })
+      .onAdded?.([{ id: 'uploaded-skill', name: 'Uploaded Skill', fileId: 'uploaded-file' }])
     expect(onInsertToken).toHaveBeenLastCalledWith('[§skill:uploaded-skill:Uploaded Skill§]')
   })
 })
@@ -75,7 +75,7 @@ it.each([
   async ({ view, label, item, token }) => {
     const user = userEvent.setup()
     const onInsertToken = vi.fn()
-    const onAdd: AgentOrchestrateAddAction = (options) => options?.onAdded?.(item)
+    const onAdd: AgentOrchestrateAddAction = (options) => options?.onAdded?.([item])
     render(
       <AgentPromptSlashMenu
         view={view}

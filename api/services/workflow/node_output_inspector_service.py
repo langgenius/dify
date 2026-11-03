@@ -55,7 +55,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.file_access import DatabaseFileAccessController
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
+from domain.workflow.agent_node import is_dify_agent_node_data
 from factories.file_factory.builders import build_from_mapping
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import helpers as file_helpers

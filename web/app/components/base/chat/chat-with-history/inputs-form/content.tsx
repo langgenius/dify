@@ -28,6 +28,7 @@ const InputsFormContent = ({ showTip }: Props) => {
   const baseId = useId()
   const {
     appParams,
+    clearChatList,
     inputsForms,
     currentConversationId,
     currentConversationInputs,
@@ -37,6 +38,19 @@ const InputsFormContent = ({ showTip }: Props) => {
     handleNewConversationInputsChange,
   } = useChatWithHistoryContext()
   const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputs
+  const fileInputsFormValue = currentConversationId
+    ? inputsFormValue
+    : {
+        ...Object.fromEntries(
+          inputsForms
+            .filter(
+              (form) =>
+                form.type === InputVarType.singleFile || form.type === InputVarType.multiFiles,
+            )
+            .map((form) => [form.variable, form.default]),
+        ),
+        ...inputsFormValue,
+      }
 
   const handleFormChange = useCallback(
     (variable: string, value: any) => {
@@ -132,10 +146,15 @@ const InputsFormContent = ({ showTip }: Props) => {
               </SelectContent>
             </Select>
           )}
-          {form.type === InputVarType.singleFile && (
+          {!clearChatList && form.type === InputVarType.singleFile && (
             <FileUploaderInAttachmentWrapper
-              value={inputsFormValue?.[form.variable] ? [inputsFormValue?.[form.variable]] : []}
-              onChange={(files) => handleFormChange(form.variable, files[0])}
+              key={currentConversationId}
+              value={
+                fileInputsFormValue?.[form.variable] ? [fileInputsFormValue[form.variable]] : []
+              }
+              onChange={(files) =>
+                handleFormChange(form.variable, files[0] ?? (form.required ? undefined : ''))
+              }
               fileConfig={{
                 allowed_file_types: form.allowed_file_types,
                 allowed_file_extensions: form.allowed_file_extensions,
@@ -145,9 +164,10 @@ const InputsFormContent = ({ showTip }: Props) => {
               }}
             />
           )}
-          {form.type === InputVarType.multiFiles && (
+          {!clearChatList && form.type === InputVarType.multiFiles && (
             <FileUploaderInAttachmentWrapper
-              value={inputsFormValue?.[form.variable] || []}
+              key={currentConversationId}
+              value={fileInputsFormValue?.[form.variable] || []}
               onChange={(files) => handleFormChange(form.variable, files)}
               fileConfig={{
                 allowed_file_types: form.allowed_file_types,

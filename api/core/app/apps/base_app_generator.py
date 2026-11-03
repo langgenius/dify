@@ -13,7 +13,11 @@ from core.app.apps.draft_variable_saver import (
     NoopDraftVariableSaver,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.app.file_access import (
+    DatabaseFileAccessController,
+    FileAccessScope,
+    bind_file_access_scope,
+)
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.enums import NodeType
@@ -21,6 +25,7 @@ from graphon.file import File, FileUploadConfig
 from graphon.variables.input_entities import VariableEntityType
 from libs.orjson import orjson_dumps
 from models import Account, EndUser, Workflow, WorkflowRun
+from services.app.file_input_defaults import apply_file_input_defaults
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
@@ -134,7 +139,7 @@ class BaseAppGenerator:
         tenant_id: str,
         strict_type_validation: bool = False,
     ) -> Mapping[str, Any]:
-        user_inputs = user_inputs or {}
+        user_inputs = apply_file_input_defaults(user_inputs, variables)
         # Filter input variables from form configuration, handle required fields, default values, and option values
         user_inputs = {
             var.variable: self._validate_inputs(value=user_inputs.get(var.variable), variable_entity=var)

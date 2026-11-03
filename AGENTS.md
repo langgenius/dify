@@ -16,8 +16,10 @@ Dify is an open-source platform for building LLM applications, agentic workflows
 - Reuse the existing test interaction for risk disclosure and applicable confirmations. Use Mock selectively according to the test choice and actual risk; never fabricate credentials, permissions or real resource availability. The user has not removed existing Workspace permissions or the PRD's explicit side-effect and destructive-operation rules.
 - Reuse existing execution, authorization, Run and recovery facilities. Keep fixes for stale confirmations, duplicate effects after recovery, and autosave revision conflicts narrow. Do not introduce a new generic risk engine, isolation service or cross-repository prerequisite for these fixes. Frontend requirements are recorded, not implemented, unless the user changes that scope.
 
+Before starting backend development, read the [architecture](docs/BACKEND_ARCHITECTURE.md), [repositories](docs/BACKEND_REPOSITORIES.md), [SQLAlchemy](docs/BACKEND_SQLALCHEMY.md), and [database schema](docs/BACKEND_DATABASE_SCHEMA.md) guides.
+
 ## Repository Gotchas
 
 - Run backend commands through `uv run --project api <command>`.
 - Backend integration tests run locally. They provision ephemeral PostgreSQL and Redis through testcontainers, so they need a working Docker daemon; run them before relying on CI.
-- Keep `docker/.env.example` limited to variables required for a default Docker Compose deployment to start. Put optional and provider-specific settings in the matching `docker/envs/*.env.example` file; `docker/.env` overrides those service-specific env files.
+- Keep `docker/.env.example` limited to settings that require manual user configuration. Omit settings whose built-in defaults work unchanged. Put optional and provider-specific settings in the matching `docker/envs/*.env.example` file; `docker/.env` overrides those service-specific env files.

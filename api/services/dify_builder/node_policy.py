@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.dify_builder.models import Graph, MutationIntent
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
+from domain.workflow.agent_node import is_dify_agent_node_data
 from graphon.enums import BuiltinNodeTypes
 from services.dify_builder import graph_ops
 from services.dify_builder.native_testing.agent_binding import has_native_roster_binding

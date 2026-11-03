@@ -60,7 +60,8 @@ Without a Label, name Trigger and Content explicitly using standard ARIA attribu
 
 External text can name both parts through `aria-labelledby`; click forwarding remains with its
 owner. Explicit names override the automatic Label association. When a Trigger references label
-text, its committed Value is appended to the name. An explicit `aria-label` supplies the whole name.
+text, its visible Value (including the empty placeholder) is appended to the name. An explicit
+`aria-label` supplies the whole name and must include the visible Value text.
 Trigger's `aria-describedby` is combined with required and validation feedback. Do not rely on
 placeholder or selected text alone to identify the field.
 
@@ -141,7 +142,7 @@ With `name`, the committed value participates in native FormData; an empty field
 `form` can associate an external form. Required/invalid fields block native validated submission
 and focus the first invalid trigger. Reset restores `defaultValue` and closes the popup; a
 controlled owner must accept the reset callback. Disabled fields are omitted from submission;
-read-only fields remain focusable and submit their value without allowing edits. With a surrounding `Field`, pickers also register with Base UI Form:
+read-only fields remain focusable, open for browsing and submit their value without allowing edits. With a surrounding `Field`, pickers also register with Base UI Form:
 
 - `Field.name` takes precedence over the picker's `name`; otherwise the picker supplies the name.
 - `Field.validate` receives the committed domain value (`string | null` or `Date | null`).

@@ -286,6 +286,13 @@ export const zAppSettingsInfo = z.object({
 })
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
  * ChatAppInfo
  */
 export const zChatAppInfo = z.object({
@@ -1467,6 +1474,13 @@ export const zOpenApiErrorCode = z.enum([
   'secret_mask_not_secret',
   'secret_mask_unknown_id',
   'service_api_disabled',
+  'skill_name_conflict',
+  'skill_name_mismatch',
+  'skill_not_found',
+  'skill_package_invalid',
+  'skill_request_rejected',
+  'skill_version_not_found',
+  'skills_disabled',
   'too_many_files',
   'too_many_requests',
   'trigger_workflow_service_mode_unavailable',
@@ -1840,6 +1854,148 @@ export const zSimpleEndUser = z.object({
  */
 export const zSimpleResultResponse = z.object({
   result: z.string(),
+})
+
+/**
+ * SkillExportQuery
+ */
+export const zSkillExportQuery = z.object({
+  version_id: z.uuid().nullish(),
+})
+
+/**
+ * SkillImportPayload
+ */
+export const zSkillImportPayload = z.object({
+  draft_hash: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullish(),
+  files: z.record(
+    z.string(),
+    z.union([
+      z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+      z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+    ]),
+  ),
+  skill_id: z.uuid().nullish(),
+})
+
+/**
+ * SkillImportResponse
+ */
+export const zSkillImportResponse = z.object({
+  draft_hash: z.string(),
+  file_count: z.int(),
+  hints: z.array(zHint).optional(),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * SkillListQuery
+ */
+export const zSkillListQuery = z.object({
+  keyword: z.string().max(200).nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+  tag: z.array(z.string()).nullish(),
+})
+
+/**
+ * SkillPublishPayload
+ */
+export const zSkillPublishPayload = z.object({
+  publish_note: z.string().max(1024).optional().default(''),
+  version_name: z.string().max(128).nullish(),
+})
+
+/**
+ * SkillPublishResponse
+ */
+export const zSkillPublishResponse = z.object({
+  created_at: z.int(),
+  created_by: z.string().nullable(),
+  hints: z.array(zHint).optional(),
+  id: z.string(),
+  publish_note: z.string(),
+  version_name: z.string().nullable(),
+  version_number: z.int(),
+})
+
+/**
+ * SkillRow
+ */
+export const zSkillRow = z.object({
+  description: z.string(),
+  display_name: z.string(),
+  icon: z.string().nullable(),
+  id: z.string(),
+  latest_published_version_id: z.string().nullable(),
+  name: z.string(),
+  tags: z.array(z.string()),
+  updated_at: z.int(),
+})
+
+/**
+ * SkillListResponse
+ */
+export const zSkillListResponse = z.object({
+  data: z.array(zSkillRow),
+  has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * SkillVersionListQuery
+ */
+export const zSkillVersionListQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * SkillVersionRow
+ */
+export const zSkillVersionRow = z.object({
+  created_at: z.int(),
+  created_by: z.string().nullable(),
+  id: z.string(),
+  publish_note: z.string(),
+  version_name: z.string().nullable(),
+  version_number: z.int(),
+})
+
+/**
+ * SkillDescribeResponse
+ */
+export const zSkillDescribeResponse = z.object({
+  description: z.string(),
+  display_name: z.string(),
+  draft_hash: z.string(),
+  hints: z.array(zHint).optional(),
+  icon: z.string().nullable(),
+  id: z.string(),
+  latest_published_version_id: z.string().nullable(),
+  latest_version: zSkillVersionRow.nullable(),
+  name: z.string(),
+  tags: z.array(z.string()),
+  updated_at: z.int(),
+})
+
+/**
+ * SkillVersionListResponse
+ */
+export const zSkillVersionListResponse = z.object({
+  data: z.array(zSkillVersionRow),
+  has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -3668,6 +3824,84 @@ export const zPostWorkspacesByWorkspaceIdPluginsInstallPath = z.object({
  * Install started
  */
 export const zPostWorkspacesByWorkspaceIdPluginsInstallResponse = zPluginTaskStartResponse
+
+export const zGetWorkspacesByWorkspaceIdSkillsPath = z.object({
+  workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdSkillsQuery = z.object({
+  keyword: z.string().max(200).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+  tag: z.array(z.string()).optional(),
+})
+
+/**
+ * Skills
+ */
+export const zGetWorkspacesByWorkspaceIdSkillsResponse = zSkillListResponse
+
+export const zPostWorkspacesByWorkspaceIdSkillsImportsBody = zSkillImportPayload
+
+export const zPostWorkspacesByWorkspaceIdSkillsImportsPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Overwritten
+ */
+export const zPostWorkspacesByWorkspaceIdSkillsImportsResponse = zSkillImportResponse
+
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdPath = z.object({
+  skill_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Skill
+ */
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdResponse = zSkillDescribeResponse
+
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchivePath = z.object({
+  skill_id: z.string(),
+  workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchiveQuery = z.object({
+  version_id: z.uuid().optional(),
+})
+
+/**
+ * Zip archive
+ */
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchiveResponse = zBinaryFileResponse
+
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsPath = z.object({
+  skill_id: z.string(),
+  workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+})
+
+/**
+ * Versions
+ */
+export const zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsResponse = zSkillVersionListResponse
+
+export const zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishBody = zSkillPublishPayload
+
+export const zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishPath = z.object({
+  skill_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Published
+ */
+export const zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishResponse = zSkillPublishResponse
 
 export const zGetWorkspacesByWorkspaceIdToolProvidersByProviderPath = z.object({
   provider: z.string(),

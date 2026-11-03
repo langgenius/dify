@@ -242,13 +242,13 @@ def _ctx(mode: AppMode, session: Session | None = None) -> _SealableContext:
 
 
 def test_run_reads_everything_off_the_context_before_streaming(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
     generate_mock = _generate_stub(monkeypatch, ["event: a\n\n", "event: b\n\n"])
-    commits: list[str] = []
-    event.listen(sqlite_session, "after_commit", lambda _session: commits.append("commit"))
-    transaction = sqlite_session.begin()
-    ctx = _ctx(AppMode.ADVANCED_CHAT, sqlite_session)
+    commits: list[Session] = []
+    event.listen(unbound_session, "after_commit", commits.append)
+    transaction = unbound_session.begin()
+    ctx = _ctx(AppMode.ADVANCED_CHAT, unbound_session)
     api = AdvancedChatRunApi()
     body = AdvancedChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/advanced-chat:run", method="POST"):
@@ -259,7 +259,7 @@ def test_run_reads_everything_off_the_context_before_streaming(
     assert body == "event: a\n\nevent: b\n\n"
     assert generate_mock.call_args.kwargs["streaming"] is True
     assert commits == []
-    assert sqlite_session.get_transaction() is transaction
+    assert unbound_session.get_transaction() is transaction
 
 
 def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: pytest.MonkeyPatch):

@@ -33,11 +33,9 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { useInfiniteQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { consoleQuery } from '@/service/console'
 
 type Scope = 'all' | 'specific'
@@ -165,7 +163,11 @@ function DatasetScopeContent({
 }: Omit<DatasetScopeDialogProps, 'open' | 'finalFocus' | 'onOpenChange'>) {
   const { t } = useTranslation(['appApi', 'common'])
   const scopeId = useId()
-  const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
+  const { data: knowledgeFsEnabled } = useSuspenseQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_knowledge_fs,
+    }),
+  )
   const [scope, setScope] = useState<Scope>('all')
   const [selected, setSelected] = useState<SelectedKb[]>([])
   const [keyword, setKeyword] = useState('')

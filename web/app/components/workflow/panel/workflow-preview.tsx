@@ -10,6 +10,7 @@ import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-pan
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { toast } from '@/app/notifications'
+import { ENABLE_HITL_IM } from '@/config'
 import { submitHumanInputForm } from '@/service/workflow'
 import { editorAppIdAtom } from '../editor-resource/state'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
@@ -106,9 +107,15 @@ const WorkflowPreview = ({ onFixRun, fixWithBuilderDisabled }: WorkflowPreviewPr
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
-      await submitHumanInputForm(formToken, formData)
+      const form = humanInputFormDataList?.find((item) => item.form_token === formToken)
+      await submitHumanInputForm(
+        formToken,
+        formData,
+        form?.form_version,
+        ENABLE_HITL_IM ? { silent: true } : undefined,
+      )
     },
-    [],
+    [humanInputFormDataList],
   )
 
   const handleOpenTracingTab = useCallback(() => {
@@ -271,6 +278,7 @@ const WorkflowPreview = ({ onFixRun, fixWithBuilderDisabled }: WorkflowPreviewPr
               outputs_truncated={workflowRunningData?.result?.outputs_truncated}
               outputs_full_content={workflowRunningData?.result?.outputs_full_content}
               status={workflowRunningData?.result?.status || ''}
+              workflowRunId={workflowRunningData?.result?.id}
               error={workflowRunningData?.result?.error}
               elapsed_time={workflowRunningData?.result?.elapsed_time}
               total_tokens={workflowRunningData?.result?.total_tokens}
@@ -278,7 +286,6 @@ const WorkflowPreview = ({ onFixRun, fixWithBuilderDisabled }: WorkflowPreviewPr
               created_by={(workflowRunningData?.result?.created_by as any)?.name}
               steps={workflowRunningData?.result?.total_steps}
               exceptionCounts={workflowRunningData?.result?.exceptions_count}
-              workflowRunId={workflowRunningData?.result.id}
               externalTrace={
                 appId && workflowRunningData?.result?.id
                   ? { appId, kind: 'workflow', workflowRunId: workflowRunningData.result.id }

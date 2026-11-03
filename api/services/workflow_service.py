@@ -33,7 +33,6 @@ from core.workflow.llm_environment_variable import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -50,6 +49,7 @@ from core.workflow.system_variables import (
     system_variable_selector,
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from domain.workflow.agent_node import is_dify_agent_node_data
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums import CloudPlan, DeploymentEdition
 from events.app_event import app_published_workflow_was_updated
@@ -79,7 +79,7 @@ from graphon.variable_loader import load_into_variable_pool
 from graphon.variables import VariableBase
 from graphon.variables.input_entities import VariableEntityType
 from graphon.variables.variables import Variable
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.human_input import HumanInputFormRecipient, RecipientType
@@ -848,7 +848,7 @@ class WorkflowService:
         # billing check
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             limit_info = BillingService.get_info(app_model.tenant_id)
-            if limit_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+            if limit_info.subscription.plan == CloudPlan.SANDBOX:
                 # Check trigger node count limit for SANDBOX plan
                 trigger_node_count = sum(
                     1
@@ -2200,7 +2200,7 @@ def _setup_variable_pool(
         system_variable_values: dict[str, Any] = {
             "user_id": user_id,
             "app_id": workflow.app_id,
-            "timestamp": int(naive_utc_now().timestamp()),
+            "timestamp": to_utc_timestamp(naive_utc_now()),
             "workflow_id": workflow.id,
             "files": files or [],
             "workflow_execution_id": str(uuid.uuid4()),

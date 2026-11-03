@@ -17,12 +17,12 @@ from types import ModuleType
 from typing import NoReturn, Self, cast, override
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
 from sqlalchemy import Select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.factory import OrderConfig
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
@@ -258,7 +258,7 @@ def make_layer(
         user_id="actor",
         stream=False,
         invoke_from=None,
-        trace_manager=None,
+        trace_scope=None,
         workflow_execution_id="run",
         extras={},
         call_depth=0,
@@ -272,7 +272,7 @@ def make_layer(
         workflow_info=info,
         workflow_execution_repository=runs,
         workflow_node_execution_repository=nodes,
-        trace_manager=cast(TraceQueueManager | None, trace),
+        trace_scope=cast(TraceScope | None, trace),
         native_observation=guard,
     )
     layer.initialize(ReadOnlyRuntimeStateWrapper(runtime), command_channel=InMemoryChannel())
@@ -548,7 +548,7 @@ def test_native_resumption_refuses_before_old_row_load_or_cache_and_run_save() -
 class RejectRawTrace:
     """Trace queue boundary that must never receive marked persistence events."""
 
-    def add_trace_task(self, _task) -> NoReturn:
+    def emit(self, _task) -> NoReturn:
         pytest.fail("raw trace enqueue")
 
 
@@ -765,7 +765,7 @@ def test_late_trace_owner_cannot_enqueue_after_marked_construction() -> None:
     guard = adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: None)
     layer, _, _, _, entity, _ = make_layer(guard=guard)
     layer.on_event(GraphRunStartedEvent())
-    entity.trace_manager = cast(TraceQueueManager, RejectRawTrace())
+    entity.trace_scope = cast(TraceScope, RejectRawTrace())
     with pytest.raises(adapters().NativeObservationError):
         layer.on_event(GraphRunSucceededEvent())
     assert guard.failed is True

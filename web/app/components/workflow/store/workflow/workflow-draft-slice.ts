@@ -25,7 +25,8 @@ export type WorkflowDraftSliceShape = {
   setBackupDraft: (backupDraft?: WorkflowDraftSliceShape['backupDraft']) => void
   debouncedSyncWorkflowDraft: DebouncedFunc
   syncWorkflowDraftHash: string
-  setSyncWorkflowDraftHash: (hash: string) => void
+  syncWorkflowDraftIsEmpty: boolean | undefined
+  setSyncWorkflowDraftHash: (hash: string, graph?: { nodes: unknown[]; edges: unknown[] }) => void
   workflowDraftGeneration: number
   workflowDraftLocalRevision: number
   workflowDraftSavedRevision: number
@@ -66,7 +67,14 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
     setBackupDraft: (backupDraft) => set(() => ({ backupDraft })),
     debouncedSyncWorkflowDraft: debouncedFn,
     syncWorkflowDraftHash: '',
-    setSyncWorkflowDraftHash: (syncWorkflowDraftHash) => set(() => ({ syncWorkflowDraftHash })),
+    syncWorkflowDraftIsEmpty: undefined,
+    setSyncWorkflowDraftHash: (syncWorkflowDraftHash, graph) =>
+      set(() => ({
+        syncWorkflowDraftHash,
+        syncWorkflowDraftIsEmpty: graph
+          ? graph.nodes.length === 0 && graph.edges.length === 0
+          : undefined,
+      })),
     workflowDraftGeneration: 0,
     workflowDraftLocalRevision: 0,
     workflowDraftSavedRevision: 0,

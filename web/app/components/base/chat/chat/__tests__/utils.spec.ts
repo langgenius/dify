@@ -89,6 +89,12 @@ describe('chat/chat/utils.ts', () => {
       expect(result).toEqual({ test: null })
     })
 
+    it('preserves an explicitly cleared single file in the serialized request body', () => {
+      const inputs = getProcessedInputs({ file: '' }, [inputForm('file', InputVarType.singleFile)])
+
+      expect(JSON.stringify({ inputs })).toBe('{"inputs":{"file":""}}')
+    })
+
     it('processes singleFile using transfer_method logic', () => {
       const inputs = {
         file1: {

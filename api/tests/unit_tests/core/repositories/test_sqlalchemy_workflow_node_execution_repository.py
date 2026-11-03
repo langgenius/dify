@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Callable, Generator, Iterator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -876,7 +876,7 @@ def _fail_inserts(
     *,
     failure_count: int,
     duplicate: bool,
-) -> Iterator[ConflictEvents]:
+) -> Generator[ConflictEvents]:
     insert_attempts: list[str] = []
     rollbacks: list[bool] = []
 

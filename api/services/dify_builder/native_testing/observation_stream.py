@@ -262,6 +262,10 @@ def project_native_queue_event[E: q.AppQueueEvent](
                 if any(type(reason) is not SchedulingPause or type(reason.message) is not str for reason in value):
                     guard.fail()
                 fields[name] = [SchedulingPause(message=_REDACTED) for _ in value]
+            elif name == "human_input_v2_forms" and cls is q.QueueWorkflowPausedEvent:
+                if type(value) is not dict or value:
+                    guard.fail()
+                fields[name] = {}
             elif name == "paused_nodes":
                 if type(value) not in (list, tuple) or len(value) > 100_000:
                     guard.fail()

@@ -369,7 +369,7 @@ def generation_objects(
 
     from core.app.app_config.entities import WorkflowUIBasedAppConfig
     from core.app.apps import base_app_queue_manager
-    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
     from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
     from core.repositories.sqlalchemy_workflow_node_execution_repository import (
         SQLAlchemyWorkflowNodeExecutionRepository,
@@ -395,6 +395,7 @@ def generation_objects(
         inputs=INPUT,
         files=[],
         user_id=context.actor_id,
+        user_from=UserFrom.ACCOUNT,
         stream=True,
         invoke_from=InvokeFrom.DEBUGGER,
         workflow_execution_id=context.native_run_id,

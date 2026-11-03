@@ -27,6 +27,7 @@ import { useCanImportAgents } from '@/features/agent-v2/permissions'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
@@ -141,6 +142,7 @@ const Apps = ({ onClose, templateMode }: AppsProps) => {
     try {
       const detail = await queryClient.query({
         ...consoleQuery.explore.apps.byAppId.get.queryOptions({
+          context: { silent: true },
           input: { params: { app_id: currApp.app_id } },
         }),
         staleTime: 0,
@@ -177,8 +179,8 @@ const Apps = ({ onClose, templateMode }: AppsProps) => {
           },
         },
       )
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
   const submission = useMutation({ mutationFn: onCreate })

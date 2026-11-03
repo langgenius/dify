@@ -84,8 +84,11 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSNamespacePreviewPageResponse,
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
+    KnowledgeFSOverviewStatsResponse,
     KnowledgeFSPublicFailureResponse,
+    KnowledgeFSQueryAdmissionResponse,
     KnowledgeFSQueryCreatePayload,
+    KnowledgeFSQueryStreamCapabilityResponse,
     KnowledgeFSSmallFileUploadResponse,
     KnowledgeFSSourceImportConfigurationPayload,
     KnowledgeFSSourceResponse,
@@ -96,6 +99,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSpaceCreateResponse,
     KnowledgeFSStagedUploadResponse,
     KnowledgeFSStreamCapabilityPayload,
+    KnowledgeFSStreamCapabilityResponse,
 )
 from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
@@ -177,7 +181,7 @@ class TestKnowledgeFsCreationCases:
 
         with app.test_request_context("/knowledge-fs/spaces", method="POST", json={"name": "Test", "slug": "test"}):
             if allowed:
-                result, status = resources.KnowledgeFSSpacesApi().post()
+                result, status = narrowed(resources.KnowledgeFSSpacesApi().post(), tuple)
                 assert status == HTTPStatus.ACCEPTED
                 assert result["control_space_id"] == "space"
             else:
@@ -1040,7 +1044,7 @@ class TestKnowledgeFsProductControllersCases:
             {"$ref": "#/components/schemas/KnowledgeFSOnlineDriveWorkflowImportPayload"},
         ]
 
-        api_doc = console_resources.KnowledgeFSSpaceSourceWorkflowImportApi.post.__apidoc__
+        api_doc = vars(console_resources.KnowledgeFSSpaceSourceWorkflowImportApi.post)["__apidoc__"]
         assert api_doc["params"]["Idempotency-Key"]["required"] is True
         assert api_doc["params"]["Idempotency-Key"]["minLength"] == 8
         assert api_doc["params"]["Idempotency-Key"]["maxLength"] == 255
@@ -1428,8 +1432,8 @@ class TestKnowledgeFsProductControllersCases:
 
     @staticmethod
     def test_space_update_and_delete_publish_their_actual_http_status_contracts() -> None:
-        patch_responses = console_resources.KnowledgeFSSpaceApi.patch.__apidoc__["responses"]
-        delete_responses = console_resources.KnowledgeFSSpaceApi.delete.__apidoc__["responses"]
+        patch_responses = vars(console_resources.KnowledgeFSSpaceApi.patch)["__apidoc__"]["responses"]
+        delete_responses = vars(console_resources.KnowledgeFSSpaceApi.delete)["__apidoc__"]["responses"]
 
         assert set(patch_responses) == {"200"}
         assert set(delete_responses) == {"204"}
@@ -1737,7 +1741,7 @@ class TestKnowledgeFsProductControllersCases:
             }
         ]
         assert "token" not in response["url"].lower()
-        assert console_resources.KnowledgeFSSpaceQueryStreamCapabilityApi.post.__apidoc__["deprecated"] is True
+        assert vars(console_resources.KnowledgeFSSpaceQueryStreamCapabilityApi.post)["__apidoc__"]["deprecated"] is True
 
     @staticmethod
     def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -3509,6 +3513,7 @@ class TestKnowledgeFsResourceDelegationCases:
                 control_space_id="control-space-1",
             )
         ]
+        result = narrowed(result, KnowledgeFSOverviewStatsResponse)
         assert result.documents == 13
         assert result.linked_apps == 7
         assert result.queries.value == 120
@@ -3699,6 +3704,9 @@ class TestKnowledgeFsResourceDelegationCases:
                 "space-1",
             )
 
+        query = narrowed(query, KnowledgeFSQueryAdmissionResponse)
+        task = narrowed(task, KnowledgeFSStreamCapabilityResponse)
+        legacy_query = narrowed(legacy_query, KnowledgeFSQueryStreamCapabilityResponse)
         assert query.request.knowledge_space_id == "knowledge-space-1"
         assert query.url == "https://dify.example/console/api/knowledge-fs/query-stream"
         assert (
@@ -3736,6 +3744,7 @@ class TestKnowledgeFsResourceDelegationCases:
             )
 
         assert broker.issue_service.calls == [invocation(profile=profile, operation_id="createQuery")]
+        response = narrowed(response, KnowledgeFSQueryAdmissionResponse)
         assert response.request.knowledge_space_id == "knowledge-space-1"
         assert response.request.query == "question"
         assert response.url == "https://api.dify.example/v1/knowledge-fs/query-stream"
@@ -3912,7 +3921,32 @@ class TestKnowledgeFsResourceDelegationCases:
             "message": safe_message,
             "status": status,
             "failure": expected_failure,
+            "details": expected_failure,
         }
+
+    @staticmethod
+    def test_console_settings_conflict_exposes_documented_failure_details() -> None:
+        from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
+
+        failure = KnowledgeFSPublicFailureResponse.model_validate(
+            {
+                "category": "conflict",
+                "code": "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS",
+                "message": "Private worker diagnostic",
+                "retryPolicy": "manual",
+            }
+        )
+        guarded = console_resources._knowledge_fs_errors(
+            raising(KnowledgeFSProductRequestRejectedError(status_code=409, failure=failure))
+        )
+
+        with pytest.raises(KnowledgeFSConflictHTTPError) as raised:
+            guarded()
+
+        assert raised.value.data is not None
+        assert raised.value.data["details"] == failure.model_dump(by_alias=True, exclude_none=True)
+        assert raised.value.data["failure"] == raised.value.data["details"]
+        assert "Private worker diagnostic" not in str(raised.value.data)
 
     @staticmethod
     def test_console_request_rejection_preserves_safe_failure_metadata() -> None:
@@ -3939,6 +3973,7 @@ class TestKnowledgeFsResourceDelegationCases:
             "code": "knowledge_fs_request_rejected",
             "message": "The Agent Knowledge Base operation requires a configuration change before it can continue.",
             "status": 422,
+            "details": failure.model_dump(by_alias=True, exclude_none=True),
             "failure": {
                 "action": "configure_model",
                 "category": "configuration",

@@ -32,6 +32,7 @@ from services.dify_builder.native_testing.native_execution import (
 from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
 from services.dify_builder.native_testing.runtime_bridge import NativePreparedInputs, NativeRuntimeBridge
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from services.workflow_execution_identity import build_workflow_execution_identity
 from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned, owned
@@ -312,11 +313,13 @@ def test_generator_refuses_missing_native_scope_before_file_or_config_work(mocke
     effect = mocker.patch.object(
         app_generator.file_factory, "build_from_mappings", side_effect=AssertionError("eager file I/O")
     )
+    account = _account()
     with pytest.raises(NativeContextUnavailable, match="native_context_missing"):
         generator.generate(
             app_model=App(id="app", tenant_id="tenant", mode=AppMode.WORKFLOW),
             workflow=Workflow(),
-            user=_account(),
+            user=account,
+            execution_identity=build_workflow_execution_identity(account),
             args={},
             invoke_from=app_generator.InvokeFrom.DEBUGGER,
             streaming=True,
@@ -394,11 +397,11 @@ def test_ordinary_resume_cannot_rebuild_trace_for_native_marked_entity(mocker: p
     from services.workflow_runtime import workflow_generator as app_generator
 
     trace = mocker.patch(
-        "core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance",
+        "services.workflow_runtime.workflow_generator.create_trace_scope",
         side_effect=AssertionError("eager trace credentials"),
     )
     entity = app_generator.WorkflowAppGenerateEntity.model_construct(
-        native_test_required=True, native_test_ref=None, builder_execution=None, trace_manager=None
+        native_test_required=True, native_test_ref=None, builder_execution=None, trace_scope=None
     )
     from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
     from core.repositories.sqlalchemy_workflow_node_execution_repository import (
@@ -567,6 +570,7 @@ def _worker_refusal_case(
         app_model=app,
         workflow=workflow,
         user=account,
+        execution_identity=build_workflow_execution_identity(account),
         args={"inputs": context.inputs},
         invoke_from=app_generator.InvokeFrom.DEBUGGER,
         streaming=True,

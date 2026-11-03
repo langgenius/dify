@@ -11,7 +11,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isSearchResultEmpty } from '@/app/components/base/search-input/search-state'
@@ -36,7 +36,7 @@ import {
   selectToolCollections,
   selectToolsWithProvider,
 } from '@/app/components/tools/utils/query-select'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { consoleQuery } from '@/service/console'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
@@ -59,10 +59,7 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const { canDeletePlugin, canSetPluginPreferences, canUpdatePlugin } = usePluginSettingsAccess()
   const canManageTools = useCanManageTools()
   const canManageMCP = useCanManageMCP()
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
   const { activeTab, handleCategoryChange, isRouteCategory } = useToolProviderCategory(category)
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
   const toolListFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
@@ -237,8 +234,9 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
               {isCollectionSearchEmpty && activeTab === 'builtin' && (
                 <div className={cn('h-56 shrink-0', toolListFrameClassName)} />
               )}
-              {enable_marketplace && activeTab === 'builtin' && (
+              {marketplace && activeTab === 'builtin' && (
                 <BuiltinMarketplacePanel
+                  marketplace={marketplace}
                   containerRef={containerRef}
                   contentInset={contentInset}
                   keywords={keywords}

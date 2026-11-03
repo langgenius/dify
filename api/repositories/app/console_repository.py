@@ -15,7 +15,7 @@ from typing import Any, cast, override
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
-from sqlalchemy import ColumnElement, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -128,6 +128,16 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                 return None
             binding = app.agent_app_binding_with_session(session=session, include_archived=True)
             return AppAgentBinding(binding.id, binding.scope == AgentScope.WORKFLOW_ONLY) if binding else None
+
+    def get_agent_creator_id(self, workspace_id: str, agent_id: str) -> str | None:
+        with self._session_factory() as session:
+            return session.scalar(
+                select(Agent.created_by).where(
+                    Agent.id == agent_id,
+                    Agent.tenant_id == workspace_id,
+                    Agent.status == AgentStatus.ACTIVE,
+                )
+            )
 
     def get_maintainer_id(self, workspace_id: str, resource_id: str, *, normal_only: bool = False) -> str | None:
         statement = select(App.maintainer).where(App.id == resource_id, App.tenant_id == workspace_id)
@@ -403,10 +413,9 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
         elif params.accessible_app_ids is not None:
-            accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
-            if params.include_own_apps:
-                accessible_filter = sa.or_(App.maintainer == user_id, accessible_filter)
-            filters.append(accessible_filter)
+            filters.append(sa.or_(App.maintainer == user_id, App.id.in_(params.accessible_app_ids)))
+        if params.resource_app_ids is not None:
+            filters.append(App.id.in_(params.resource_app_ids))
         if params.creator_ids:
             filters.append(App.created_by.in_(params.creator_ids))
         if params.name:
