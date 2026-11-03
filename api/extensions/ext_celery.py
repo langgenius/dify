@@ -294,7 +294,7 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["workflow_draft_coordination_sweeper"] = {
             "task": "tasks.workflow_draft_coordination_task.sweep_workflow_draft_coordination",
             "schedule": timedelta(seconds=dify_config.WORKFLOW_DRAFT_COORDINATION_INTERVAL),
-            "options": {"queue": "workflow"},
+            "options": {"queue": "schedule_executor"},
         }
     if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
         imports.append("tasks.delete_conversation_task")

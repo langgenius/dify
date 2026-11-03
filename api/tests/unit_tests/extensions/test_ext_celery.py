@@ -25,7 +25,12 @@ from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATIO
 from services.knowledge_fs.lifecycle_readiness import KnowledgeFSLifecycleWorkerReadiness
 from tasks.application_trace_task import export_application_trace
 from tasks.trace_delivery_task import deliver_trace_event, retry_trace_export
+from tasks.workflow_draft_coordination_task import (
+    process_workflow_draft_coordination,
+    sweep_workflow_draft_coordination,
+)
 from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
+from tests.helpers.unit.worker_entrypoint import worker_configuration
 from tests.unit_tests.celery_fixtures import preserve_celery_apps
 
 
@@ -106,6 +111,53 @@ def test_redelivery_stays_on_original_queue_during_switchback(tracing_celery: Ce
                     restored.get(block=False)
     finally:
         task.pop_request()
+
+
+@pytest.mark.parametrize(
+    "edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE, DeploymentEdition.CLOUD]
+)
+def test_draft_recovery_dispatch_reaches_default_workers_without_builder(edition: DeploymentEdition) -> None:
+    selected = worker_configuration({"DEPLOYMENT_EDITION": edition.value})
+    assert selected.returncode == 0, selected.stderr
+    subscribed_queues = selected.stdout.splitlines()[-1].split(",")
+    with (
+        setup_default_app(TestApp()),
+        config_overrides_context(
+            CELERY_BROKER_URL="memory://",
+            CELERY_BACKEND="disabled",
+            DEPLOYMENT_EDITION=edition,
+            DIFY_BUILDER_ENABLED=False,
+            ENABLE_DIFY_BUILDER_RECONCILER=False,
+            ENABLE_WORKFLOW_DRAFT_COORDINATION_TASK=True,
+            DISABLE_TELEMETRY=True,
+        ),
+    ):
+        app = init_app(DifyApp(__name__))
+        try:
+            process_name = process_workflow_draft_coordination.name
+            sweep_name = sweep_workflow_draft_coordination.name
+            schedule = app.conf.beat_schedule["workflow_draft_coordination_sweeper"]
+            assert schedule["task"] == sweep_name
+            app.tasks[process_name].apply_async(args=("accepted-draft",))
+            app.tasks[sweep_name].apply_async()
+            app.tasks[sweep_name].apply_async(**schedule["options"])
+            deliveries = {
+                "workflow_storage": [(process_name, ["accepted-draft"])],
+                "schedule_executor": [(sweep_name, []), (sweep_name, [])],
+            }
+            with app.connection_for_read() as connection:
+                for queue, expected in deliveries.items():
+                    assert queue in subscribed_queues
+                    with connection.SimpleQueue(queue) as inbox:
+                        for task_name, args in expected:
+                            message = inbox.get(block=False)
+                            assert message.headers["task"] == task_name
+                            assert message.payload[0] == args
+                            message.ack()
+                        with pytest.raises(Empty):
+                            inbox.get(block=False)
+        finally:
+            app.close()
 
 
 class TestCelerySslCases:
@@ -372,7 +424,7 @@ class TestCelerySslCases:
             draft_sweeper = celery_app.conf["beat_schedule"]["workflow_draft_coordination_sweeper"]
             assert draft_sweeper["task"] == "tasks.workflow_draft_coordination_task.sweep_workflow_draft_coordination"
             assert draft_sweeper["schedule"].total_seconds() == 60
-            assert draft_sweeper["options"] == {"queue": "workflow"}
+            assert draft_sweeper["options"] == {"queue": "schedule_executor"}
 
 
 class TestCommunityTelemetryCeleryCases:

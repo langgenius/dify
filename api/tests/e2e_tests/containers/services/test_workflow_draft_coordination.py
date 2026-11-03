@@ -4,7 +4,7 @@ import inspect
 from collections.abc import Iterable
 from copy import deepcopy
 from datetime import timedelta
-from typing import Protocol, cast
+from typing import Protocol, runtime_checkable
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -33,6 +33,7 @@ from tasks.workflow_draft_coordination_task import (
 from tests.workflow_empty_draft_test_utils import POPULATED_GRAPH, DraftOwner, seed_owner
 
 
+@runtime_checkable
 class RoutedTask(Protocol):
     queue: str
 
@@ -74,10 +75,11 @@ def test_webhook_limit_rejects_before_commit(db_session_with_containers: Session
 
 
 def test_retirement_failure_does_not_reject_committed_save(db_session_with_containers: Session) -> None:
+    """Given a saved draft, keep its committed graph after a retirement failure."""
     session = db_session_with_containers
     owner = seed_owner(session, graph=POPULATED_GRAPH)
     assert owner.draft is not None
-    graph = deepcopy(cast(Graph, POPULATED_GRAPH))
+    graph: Graph = deepcopy(POPULATED_GRAPH)
     graph["nodes"][0]["data"]["title"] = "accepted"
     # Fault double only at the downstream retirement boundary, after real SQL commit.
     with patch(
@@ -92,13 +94,14 @@ def test_retirement_failure_does_not_reject_committed_save(db_session_with_conta
 def test_console_receipt_survives_later_commit(
     flask_app_with_containers: Flask, db_session_with_containers: Session
 ) -> None:
+    """Given concurrent saves, return the caller's receipt while retaining the later graph."""
     session = db_session_with_containers
     owner = seed_owner(session, graph=POPULATED_GRAPH)
     assert owner.draft is not None
     factory = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
-    first_graph = deepcopy(cast(Graph, POPULATED_GRAPH))
+    first_graph: Graph = deepcopy(POPULATED_GRAPH)
     first_graph["nodes"][0]["data"]["title"] = "first"
-    later_graph = deepcopy(cast(Graph, POPULATED_GRAPH))
+    later_graph: Graph = deepcopy(POPULATED_GRAPH)
     later_graph["nodes"][0]["data"]["title"] = "later"
     receipt = Workflow(graph=__import__("json").dumps(first_graph)).unique_hash
     draft_id = owner.draft.id
@@ -292,12 +295,13 @@ def test_record_insert_failure_rolls_back_graph(db_session_with_containers: Sess
     operation = stage_record(session, owner)
 
     def invalid_row(write_session: Session, **kwargs: object) -> None:
+        """Given a workflow and string operation ID, force a real SQL constraint failure."""
         # A staging fault double supplies an invalid count; PostgreSQL rejects
         # the actual INSERT after the real graph flush in the same transaction.
         workflow = require(kwargs["workflow"], Workflow)
         write_session.add(
             Coordination(
-                id=cast(str, kwargs["coordination_id"]),
+                id=require(kwargs["coordination_id"], str),
                 tenant_id=workflow.tenant_id,
                 app_id=workflow.app_id,
                 workflow_id=workflow.id,
@@ -545,11 +549,12 @@ def test_operation_union_rejects_foreign_owner(db_session_with_containers: Sessi
     assert require(session.get(Coordination, operation), Coordination).app_id == owner.app.id
 
 
-def test_work_and_sweep_explicit_workflow_queue(flask_app_with_containers: Flask) -> None:
-    assert cast(RoutedTask, process_workflow_draft_coordination).queue == "workflow"
-    assert cast(RoutedTask, sweep_workflow_draft_coordination).queue == "workflow"
+def test_work_and_sweep_use_shared_persistence_and_scheduling_queues(flask_app_with_containers: Flask) -> None:
+    """Given initialized Celery tasks, verify their queues and the Beat schedule agree."""
+    assert require(process_workflow_draft_coordination, RoutedTask).queue == "workflow_storage"
+    assert require(sweep_workflow_draft_coordination, RoutedTask).queue == "schedule_executor"
     schedule = flask_app_with_containers.extensions["celery"].conf.beat_schedule["workflow_draft_coordination_sweeper"]
-    assert schedule["options"]["queue"] == "workflow"
+    assert schedule["options"]["queue"] == "schedule_executor"
 
 
 def test_coordination_actual_migration_upgrade_downgrade_and_offline(flask_app_with_containers: Flask) -> None:
@@ -751,8 +756,9 @@ def test_builder_prepared_caller_stages_before_commit(db_session_with_containers
     actor = Actor(account_id=owner.account.id, tenant_id=owner.app.tenant_id)
     # Prepared binding materialization is a labeled double; production Builder/Workflow SQL owners are real.
 
-    def prepared(**kwargs: object) -> tuple[Graph, AgentBindingService]:
-        return cast(Graph, kwargs["graph"]), AgentBindingService(require(kwargs["session"], Session))
+    def prepared(*, graph: Graph, session: Session, **_kwargs: object) -> tuple[Graph, AgentBindingService]:
+        """Given a graph and session, return the real binding owner without materialization."""
+        return graph, AgentBindingService(session)
 
     def sync_prepared(_service: AgentBindingService, **_kwargs: object) -> set[str]:
         return {candidate}
