@@ -3,7 +3,7 @@
 import dataclasses
 import json
 from collections.abc import Mapping, Sequence
-from typing import Any, Protocol, cast
+from typing import Any, Protocol
 
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.workflow.environment_variables import load_environment_variables
@@ -17,18 +17,12 @@ from services.workflow.contracts import WorkflowSnapshot
 
 
 def environment_variable_values(workflow: WorkflowSnapshot) -> Sequence[Variable]:
-    return cast(
-        Sequence[Variable],
-        load_environment_variables(tenant_id=workflow.tenant_id, serialized_variables=workflow.environment_variables),
-    )
+    return load_environment_variables(tenant_id=workflow.tenant_id, serialized_variables=workflow.environment_variables)
 
 
 def conversation_variable_values(workflow: WorkflowSnapshot) -> Sequence[Variable]:
-    variables = cast(dict[str, dict[str, Any]], json.loads(workflow.conversation_variables or "{}"))
-    return cast(
-        Sequence[Variable],
-        [variable_factory.build_conversation_variable_from_mapping(value) for value in variables.values()],
-    )
+    variables: dict[str, dict[str, Any]] = json.loads(workflow.conversation_variables or "{}")
+    return [variable_factory.build_conversation_variable_from_mapping(value) for value in variables.values()]
 
 
 class WorkflowExecutionVariables(Protocol):

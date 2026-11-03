@@ -1,7 +1,7 @@
 import json
 import logging
 from collections import defaultdict
-from typing import Any, cast
+from typing import Any
 
 from sqlalchemy import and_, func, literal, or_, select, update
 from sqlalchemy.exc import DBAPIError
@@ -58,7 +58,7 @@ _HIT_COUNT_UPDATE_MAX_ATTEMPTS = 3
 def _is_postgres_deadlock_error(exc: BaseException) -> bool:
     if not isinstance(exc, DBAPIError) or exc.orig is None:
         return False
-    orig = cast(Any, exc.orig)
+    orig: Any = exc.orig
     return (hasattr(orig, "sqlstate") and orig.sqlstate == _POSTGRES_DEADLOCK_SQLSTATE) or (
         hasattr(orig, "pgcode") and orig.pgcode == _POSTGRES_DEADLOCK_SQLSTATE
     )
