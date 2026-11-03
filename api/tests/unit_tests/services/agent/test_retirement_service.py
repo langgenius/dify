@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import partial
 from unittest.mock import MagicMock, create_autospec
@@ -31,6 +32,25 @@ from repositories.workflow.debug_reservation_repository import WorkflowDebugRese
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.workflow.debug_reservation_service import WorkflowDebugReservationService
 from tests.unit_tests.workflow_execution import debug_lease, execution_binding, set_debug_deadline
+
+
+@dataclass
+class _TaskDelaySpy:
+    side_effect: list[object] | None = None
+    call_count: int = 0
+    last_kwargs: dict[str, object] = field(default_factory=dict)
+
+    def __call__(self, *args: object, **kwargs: object) -> None:
+        del args
+        self.call_count += 1
+        self.last_kwargs = dict(kwargs)
+        if self.side_effect:
+            effect = self.side_effect.pop(0)
+            if isinstance(effect, Exception):
+                raise effect
+
+    def assert_called_with(self, **kwargs: object) -> None:
+        assert self.last_kwargs == kwargs
 
 
 def test_retire_unowned_failure_propagates() -> None:
@@ -352,8 +372,8 @@ def test_cancel_execution_retries_retirement_with_persisted_candidates(
     binding_id = binding.id
     run_id = run.id
     error = RuntimeError("broker unavailable")
-    cleanup_app = MagicMock(side_effect=[error, None] if failure_stage == "hidden-app" else None)
-    enqueue_collection = MagicMock(side_effect=[error, None] if failure_stage == "collector" else None)
+    cleanup_app = _TaskDelaySpy([error, None] if failure_stage == "hidden-app" else None)
+    enqueue_collection = _TaskDelaySpy([error, None] if failure_stage == "collector" else None)
     monkeypatch.setattr("services.agent.retirement_service.remove_app_and_related_data_task.delay", cleanup_app)
     monkeypatch.setattr(
         "tasks.collect_agent_resources_task.collect_agent_resources.delay",

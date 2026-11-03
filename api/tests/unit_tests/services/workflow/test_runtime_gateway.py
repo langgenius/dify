@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Callable, Generator, Iterable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Literal, NoReturn, Self, override
 from unittest.mock import create_autospec
 
@@ -157,6 +157,64 @@ def test_generate_closes_session_before_stream_is_consumed(
     assert list(stream) == ["data: ready\n\n"]
 
 
+@dataclass
+class _CallArgs:
+    args: tuple[object, ...]
+    kwargs: dict[str, object]
+
+
+@dataclass
+class _TopicPublishSpy:
+    call_args_list: list[_CallArgs] = field(default_factory=list)
+
+    def __call__(self, *args: object, **kwargs: object) -> None:
+        self.call_args_list.append(_CallArgs(args=args, kwargs=kwargs))
+
+    def reset_mock(self) -> None:
+        self.call_args_list.clear()
+
+
+@dataclass
+class _TopicSpy:
+    publish: _TopicPublishSpy = field(default_factory=_TopicPublishSpy)
+
+
+@dataclass
+class _CollectorDelaySpy:
+    side_effect: list[object] | None = None
+    calls: list[_CallArgs] = field(default_factory=list)
+
+    def __call__(self, *args: object, **kwargs: object) -> None:
+        self.calls.append(_CallArgs(args=args, kwargs=kwargs))
+        if self.side_effect:
+            effect = self.side_effect.pop(0)
+            if isinstance(effect, Exception):
+                raise effect
+
+    @property
+    def call_count(self) -> int:
+        return len(self.calls)
+
+    @property
+    def call_args(self) -> _CallArgs:
+        assert self.calls, "Expected at least one call"
+        return self.calls[-1]
+
+    def assert_not_called(self) -> None:
+        assert len(self.calls) == 0, f"Expected 0 calls, got {len(self.calls)}"
+
+
+@dataclass
+class _EngineSpy:
+    calls: list[_CallArgs] = field(default_factory=list)
+
+    def __call__(self, *args: object, **kwargs: object) -> None:
+        self.calls.append(_CallArgs(args=args, kwargs=kwargs))
+
+    def assert_not_called(self) -> None:
+        assert len(self.calls) == 0, f"Expected 0 calls, got {len(self.calls)}"
+
+
 @pytest.mark.parametrize("handoff", ["abandoned", "fresh", "running", "paused", "lost_worker"])
 @pytest.mark.parametrize("broker_failure", [False, True])
 def test_recover_abandoned_debug_reservation_without_global_database(
@@ -220,9 +278,9 @@ def test_recover_abandoned_debug_reservation_without_global_database(
 
     # The complete operation must use its injected database, including retirement.
     monkeypatch.setattr("core.db.session_factory._session_maker", sessionmaker())
-    engine = Mock()
+    engine = _EngineSpy()
     monkeypatch.setattr(task_module._AppRunner, "_run_app", engine)
-    topic = Mock()
+    topic = _TopicSpy()
     monkeypatch.setattr(task_module.WorkflowEventStream, "get_response_topic", lambda *_args: topic)
     if handoff == "abandoned":
         # An expired lease is fenced even before the periodic sweep gets to it.
@@ -232,7 +290,7 @@ def test_recover_abandoned_debug_reservation_without_global_database(
         assert [payload["event"] for payload in payloads] == ["workflow_started", "workflow_finished"]
         assert payloads[-1]["data"]["status"] == "failed"
         assert "expired before worker startup" in payloads[-1]["data"]["error"]
-    collector = Mock(side_effect=[RuntimeError("broker unavailable"), None] if broker_failure else None)
+    collector = _CollectorDelaySpy(side_effect=[RuntimeError("broker unavailable"), None] if broker_failure else None)
     monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", collector)
     recovery = WorkflowDebugReservationService(
         WorkflowDebugReservationRepository(sqlite_session_factory),
