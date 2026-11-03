@@ -120,6 +120,7 @@
   "fileUploader.uploadFromComputerLimit": "Încărcarea {{type}} nu poate depăși {{size}}",
   "fileUploader.uploadFromComputerReadError": "Citirea fișierului a eșuat, vă rugăm să încercați din nou.",
   "fileUploader.uploadFromComputerUploadError": "Încărcarea fișierului a eșuat, vă rugăm să încărcați din nou.",
+  "fileUploader.uploadNumLimit": "Poți încărca cel mult {{count}} fișiere",
   "imageGallery.previewImage": "Previzualizează imaginea {{index}} din {{total}}",
   "imageInput.browse": "naviga",
   "imageInput.dropImageHere": "Trageți imaginea aici sau",

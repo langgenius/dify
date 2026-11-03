@@ -120,6 +120,7 @@
   "fileUploader.uploadFromComputerLimit": "Przesyłanie {{type}} nie może przekraczać {{size}}",
   "fileUploader.uploadFromComputerReadError": "Odczyt pliku nie powiódł się, spróbuj ponownie.",
   "fileUploader.uploadFromComputerUploadError": "Przesyłanie pliku nie powiodło się, prześlij ponownie.",
+  "fileUploader.uploadNumLimit": "Możesz przesłać maksymalnie {{count}} plików",
   "imageGallery.previewImage": "Wyświetl podgląd obrazu {{index}} z {{total}}",
   "imageInput.browse": "przeglądaj",
   "imageInput.dropImageHere": "Upuść swój obraz tutaj, lub",

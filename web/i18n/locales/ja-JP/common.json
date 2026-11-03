@@ -120,6 +120,7 @@
   "fileUploader.uploadFromComputerLimit": "{{type}}のアップロードは{{size}}を超えてはなりません",
   "fileUploader.uploadFromComputerReadError": "ファイルの読み取りに失敗しました。もう一度やり直してください。",
   "fileUploader.uploadFromComputerUploadError": "ファイルのアップロードに失敗しました。再度アップロードしてください。",
+  "fileUploader.uploadNumLimit": "アップロードできるファイルは最大{{count}}件です",
   "imageGallery.previewImage": "{{total}}枚中{{index}}枚目の画像をプレビュー",
   "imageInput.browse": "ブラウズする",
   "imageInput.dropImageHere": "ここに画像をドロップするか、",

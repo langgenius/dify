@@ -120,6 +120,7 @@
   "fileUploader.uploadFromComputerLimit": "آپلود {{type}} نمی تواند از {{size}} تجاوز کند",
   "fileUploader.uploadFromComputerReadError": "خواندن فایل انجام نشد، لطفا دوباره امتحان کنید.",
   "fileUploader.uploadFromComputerUploadError": "آپلود فایل انجام نشد، لطفا دوباره آپلود کنید.",
+  "fileUploader.uploadNumLimit": "فقط می‌توانید حداکثر {{count}} فایل بارگذاری کنید",
   "imageGallery.previewImage": "پیش‌نمایش تصویر {{index}} از {{total}}",
   "imageInput.browse": "مرورگر",
   "imageInput.dropImageHere": "عکس خود را اینجا رها کنید، یا",

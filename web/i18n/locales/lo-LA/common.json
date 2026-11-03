@@ -120,6 +120,7 @@
   "fileUploader.uploadFromComputerLimit": "ອັບໂຫຼດ {{type}} ຕ້ອງບໍ່ເກີນ {{size}}",
   "fileUploader.uploadFromComputerReadError": "ອ່ານໄຟລ໌ບໍ່ສຳເລັດ, ກະລຸນາລອງໃໝ່.",
   "fileUploader.uploadFromComputerUploadError": "ອັບໂຫຼດໄຟລ໌ບໍ່ສຳເລັດ, ກະລຸນາອັບໂຫຼດໃໝ່.",
+  "fileUploader.uploadNumLimit": "ທ່ານສາມາດອັບໂຫຼດໄດ້ສູງສຸດ {{count}} ໄຟລ໌ເທົ່ານັ້ນ",
   "imageGallery.previewImage": "ສະແດງຕົວຢ່າງຮູບທີ {{index}} ຈາກ {{total}}",
   "imageInput.browse": "ເລືອກເບິ່ງ",
   "imageInput.dropImageHere": "ວາງຮູບຂອງທ່ານທີ່ນີ້, ຫຼື",

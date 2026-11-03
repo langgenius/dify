@@ -120,6 +120,7 @@
   "fileUploader.uploadFromComputerLimit": "Yüklənən {{type}} faylının ölçüsü {{size}} həddini keçə bilməz",
   "fileUploader.uploadFromComputerReadError": "Faylı oxumaq alınmadı, yenidən cəhd edin.",
   "fileUploader.uploadFromComputerUploadError": "Faylı yükləmək alınmadı, yenidən yükləyin.",
+  "fileUploader.uploadNumLimit": "Yalnız {{count}} fayla qədər yükləyə bilərsiniz",
   "imageGallery.previewImage": "{{total}} şəkildən {{index}} nömrəli şəkli önbaxışda aç",
   "imageInput.browse": "Gözdən keçir",
   "imageInput.dropImageHere": "Şəkli buraya burax və ya",

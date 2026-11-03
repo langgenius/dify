@@ -120,6 +120,7 @@
   "fileUploader.uploadFromComputerLimit": "อัปโหลด {{type}} ต้องไม่เกิน {{size}}",
   "fileUploader.uploadFromComputerReadError": "การอ่านไฟล์ล้มเหลว โปรดลองอีกครั้ง",
   "fileUploader.uploadFromComputerUploadError": "อัปโหลดไฟล์ล้มเหลว โปรดอัปโหลดอีกครั้ง",
+  "fileUploader.uploadNumLimit": "คุณสามารถอัปโหลดไฟล์ได้สูงสุด {{count}} ไฟล์",
   "imageGallery.previewImage": "ดูตัวอย่างรูปภาพที่ {{index}} จาก {{total}}",
   "imageInput.browse": "ท่องเว็บ",
   "imageInput.dropImageHere": "วางภาพของคุณที่นี่ หรือ",

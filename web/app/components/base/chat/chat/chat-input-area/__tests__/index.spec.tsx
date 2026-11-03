@@ -1,10 +1,12 @@
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { FileUploadStrategy } from '@/app/components/base/file-uploader/upload-context'
 import type { VoiceRecorder } from '@/app/components/base/voice-input/recorder'
 import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { FeaturesProvider } from '@/app/components/base/features/context'
+import { FileUploadContext } from '@/app/components/base/file-uploader/upload-context'
 import { transcribeAudio } from '@/app/components/base/voice-input/api'
 import { startVoiceRecorder } from '@/app/components/base/voice-input/recorder'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -930,4 +932,64 @@ describe('ChatInputArea', () => {
       expect(onFeatureBarClick).not.toHaveBeenCalled()
     })
   })
+  it.each(['paste', 'drop'] as const)(
+    'sends only admitted files after a %s exceeds the upload limit',
+    async (method) => {
+      const user = userEvent.setup({ delay: null })
+      const onSend = vi.fn()
+      const uploadLocal = vi.fn<FileUploadStrategy['uploadLocal']>(
+        ({ file, onSuccessCallback }) => {
+          onSuccessCallback({
+            id: file.name,
+            name: file.name,
+            mime_type: file.type,
+            size: file.size,
+            created_at: 0,
+            created_by: 'user-1',
+            extension: 'txt',
+            preview_url: null,
+            source_url: '',
+          })
+        },
+      )
+      render(
+        <FileUploadContext value={{ uploadStrategy: { uploadLocal, uploadRemote: vi.fn() } }}>
+          <ChatInputArea
+            inputLabel="Upload test"
+            onSend={onSend}
+            visionConfig={{
+              ...mockVisionConfig,
+              allowed_file_types: ['document'],
+              number_limits: 1,
+            }}
+            speechToTextConfig={{ enabled: false }}
+          />
+        </FileUploadContext>,
+      )
+      const textbox = screen.getByRole('textbox', { name: 'Upload test' })
+      const files = ['first.txt', 'second.txt'].map(
+        (name) => new File(['content'], name, { type: 'text/plain' }),
+      )
+      if (method === 'paste') {
+        for (const file of files)
+          fireEvent.paste(textbox, { clipboardData: { files: [file], getData: () => '' } })
+      } else {
+        for (const file of files) fireEvent.drop(textbox, { dataTransfer: { files: [file] } })
+      }
+      await waitFor(() =>
+        expect(mockNotify).toHaveBeenCalledWith({
+          type: 'error',
+          message: expect.stringContaining('common.fileUploader.uploadNumLimit'),
+        }),
+      )
+      expect(uploadLocal).toHaveBeenCalledTimes(1)
+      await user.type(textbox, 'Send accepted files')
+      await user.keyboard('{Enter}')
+      expect(onSend).toHaveBeenCalledTimes(1)
+      expect(onSend.mock.calls[0]?.[1]).toHaveLength(1)
+      expect(onSend.mock.calls[0]?.[1][0]).toMatchObject({
+        uploadedId: uploadLocal.mock.calls[0]?.[0].file.name,
+      })
+    },
+  )
 })

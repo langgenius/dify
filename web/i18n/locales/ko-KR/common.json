@@ -120,6 +120,7 @@
   "fileUploader.uploadFromComputerLimit": "{{type}} 업로드는 {{size}}를 초과할 수 없습니다.",
   "fileUploader.uploadFromComputerReadError": "파일 읽기에 실패했습니다. 다시 시도하십시오.",
   "fileUploader.uploadFromComputerUploadError": "파일 업로드에 실패했습니다. 다시 업로드하십시오.",
+  "fileUploader.uploadNumLimit": "파일은 최대 {{count}}개까지 업로드할 수 있습니다",
   "imageGallery.previewImage": "이미지 {{total}}개 중 {{index}}번째 미리보기",
   "imageInput.browse": "찾아보기",
   "imageInput.dropImageHere": "여기에 이미지를 드롭하거나",

@@ -525,3 +525,77 @@ it('counts uploads admitted while other local FileReaders are pending', async ()
   expect(result.current.files).toHaveLength(1)
   expect(fileUpload).toHaveBeenCalledTimes(1)
 })
+
+it.each(['console', 'trial', 'public', 'injected'] as const)(
+  'rejects excess remote uploads before calling the %s transport',
+  async (transport) => {
+    const uploadRemote = vi
+      .fn<FileUploadStrategy['uploadRemote']>()
+      .mockResolvedValue(uploadResponse)
+    if (transport === 'public') navigation.params = { token: 'chat-token' }
+    const { result } = setup({
+      files: [entity('existing')],
+      fileConfig: { ...config, number_limits: 1 },
+      uploadUrls:
+        transport === 'trial'
+          ? { trialAppId: 'trial-1' }
+          : transport === 'injected'
+            ? { uploadStrategy: { uploadLocal: vi.fn(), uploadRemote } }
+            : {},
+    })
+    await act(async () => result.current.handleLoadFileFromLink('https://example.com/excess.pdf'))
+    expect(result.current.files.map((file) => file.id)).toEqual(['existing'])
+    expect(request).not.toHaveBeenCalled()
+    expect(uploadPublicRemoteFileInfo).not.toHaveBeenCalled()
+    expect(uploadRemote).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining('common.fileUploader.uploadNumLimit'),
+    )
+  },
+)
+
+it('admits only one remote upload when callers share the last available slot', async () => {
+  const { result } = setup({ fileConfig: { ...config, number_limits: 1 } })
+  await act(async () => {
+    result.current.handleLoadFileFromLink('https://example.com/first.pdf')
+    result.current.handleLoadFileFromLink('https://example.com/second.pdf')
+  })
+  expect(result.current.files).toHaveLength(1)
+  expect(request).toHaveBeenCalledTimes(1)
+  expect(await request.mock.calls[0]?.[2]?.request?.json()).toEqual({
+    url: 'https://example.com/first.pdf',
+  })
+  expect(toast.error).toHaveBeenCalledWith(
+    expect.stringContaining('common.fileUploader.uploadNumLimit'),
+  )
+})
+
+it('shares the count limit between remote uploads and pending local reads', async () => {
+  const { result } = setup({ fileConfig: { ...config, number_limits: 1 } })
+  act(() => {
+    result.current.handleLocalFileUpload(new File(['data'], 'local.txt', { type: 'text/plain' }))
+    result.current.handleLoadFileFromLink('https://example.com/remote.pdf')
+  })
+  await waitFor(() =>
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining('common.fileUploader.uploadNumLimit'),
+    ),
+  )
+  expect(result.current.files).toHaveLength(1)
+  expect(result.current.files[0]?.isRemote).toBe(true)
+  expect(fileUpload).not.toHaveBeenCalled()
+  expect(request).toHaveBeenCalledTimes(1)
+})
+
+it('makes a removed upload slot available to a later remote file', async () => {
+  const { result } = setup({
+    files: [entity('existing')],
+    fileConfig: { ...config, number_limits: 1 },
+  })
+  act(() => result.current.handleRemoveFile('existing'))
+  await act(async () => result.current.handleLoadFileFromLink('https://example.com/new.pdf'))
+  expect(result.current.files).toHaveLength(1)
+  expect(result.current.files[0]?.uploadedId).toBe(uploadResponse.id)
+  expect(request).toHaveBeenCalledTimes(1)
+  expect(toast.error).not.toHaveBeenCalled()
+})

@@ -120,6 +120,7 @@
   "fileUploader.uploadFromComputerLimit": "Nalaganje {{type}} ne sme presegati {{size}}",
   "fileUploader.uploadFromComputerReadError": "Branje datoteke ni uspelo, poskusite znova.",
   "fileUploader.uploadFromComputerUploadError": "Nalaganje datoteke ni uspelo, naložite ga znova.",
+  "fileUploader.uploadNumLimit": "Naložite lahko največ {{count}} datotek",
   "imageGallery.previewImage": "Prikaži predogled slike {{index}} od {{total}}",
   "imageInput.browse": "brskati",
   "imageInput.dropImageHere": "Tukaj spustite svojo sliko ali",

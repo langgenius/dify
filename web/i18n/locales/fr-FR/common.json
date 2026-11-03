@@ -120,6 +120,7 @@
   "fileUploader.uploadFromComputerLimit": "Le téléchargement de {{type}} ne peut pas dépasser {{size}}",
   "fileUploader.uploadFromComputerReadError": "Échec de la lecture du fichier, veuillez réessayer.",
   "fileUploader.uploadFromComputerUploadError": "Le téléchargement du fichier a échoué, veuillez le télécharger à nouveau.",
+  "fileUploader.uploadNumLimit": "Vous pouvez importer au maximum {{count}} fichiers",
   "imageGallery.previewImage": "Prévisualiser l’image {{index}} sur {{total}}",
   "imageInput.browse": "naviguer",
   "imageInput.dropImageHere": "Déposez votre image ici, ou",

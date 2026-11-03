@@ -233,8 +233,22 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
     },
     [fileStore, handleUpdateFile],
   )
+  const isCountLimitReached = useCallback(() => {
+    if (fileConfig.number_limits && fileStore.getState().files.length >= fileConfig.number_limits) {
+      toast.error(
+        t(($) => $['fileUploader.uploadNumLimit'], {
+          ns: 'common',
+          count: fileConfig.number_limits,
+        }),
+      )
+      return true
+    }
+    return false
+  }, [fileConfig.number_limits, fileStore, t])
+
   const handleLoadFileFromLink = useCallback(
     (url: string) => {
+      if (isCountLimitReached()) return
       const allowedFileTypes = fileConfig.allowed_file_types
 
       const uploadingFile = {
@@ -320,6 +334,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       uploadConsoleRemoteFile,
       uploadTrialRemoteFile,
       fileStore,
+      isCountLimitReached,
     ],
   )
 
@@ -338,21 +353,6 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       if (!noNeedToCheckEnable && !fileConfig.enabled) {
         toast.error(t(($) => $['fileUploader.uploadDisabled'], { ns: 'common' }))
         return
-      }
-      const isCountLimitReached = () => {
-        if (
-          fileConfig.number_limits &&
-          fileStore.getState().files.length >= fileConfig.number_limits
-        ) {
-          toast.error(
-            t(($) => $['fileUploader.uploadNumLimit'], {
-              ns: 'common',
-              count: fileConfig.number_limits,
-            }),
-          )
-          return true
-        }
-        return false
       }
       if (isCountLimitReached()) return
       if (
@@ -451,7 +451,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       fileConfig?.allowed_file_types,
       fileConfig?.allowed_file_extensions,
       fileConfig?.enabled,
-      fileConfig.number_limits,
+      isCountLimitReached,
       fileStore,
     ],
   )

@@ -120,6 +120,7 @@
   "fileUploader.uploadFromComputerLimit": "Unggahan {{type}} tidak boleh melebihi {{size}}",
   "fileUploader.uploadFromComputerReadError": "Pembacaan file gagal, silakan coba lagi.",
   "fileUploader.uploadFromComputerUploadError": "Unggahan file gagal, silakan unggah lagi.",
+  "fileUploader.uploadNumLimit": "Anda hanya dapat mengunggah hingga {{count}} file",
   "imageGallery.previewImage": "Pratinjau gambar {{index}} dari {{total}}",
   "imageInput.browse": "Telusuri",
   "imageInput.dropImageHere": "Letakkan gambar Anda di sini, atau",

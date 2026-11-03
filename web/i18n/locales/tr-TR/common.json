@@ -120,6 +120,7 @@
   "fileUploader.uploadFromComputerLimit": "{{type}} yüklemesi {{size}}'ı aşamaz",
   "fileUploader.uploadFromComputerReadError": "Dosya okuma başarısız oldu, lütfen tekrar deneyin.",
   "fileUploader.uploadFromComputerUploadError": "Dosya yükleme başarısız oldu, lütfen tekrar yükleyin.",
+  "fileUploader.uploadNumLimit": "En fazla {{count}} dosya yükleyebilirsiniz",
   "imageGallery.previewImage": "{{total}} görselden {{index}}. görseli önizle",
   "imageInput.browse": "göz atın",
   "imageInput.dropImageHere": "Görüntünüzü buraya bırakın veya",
