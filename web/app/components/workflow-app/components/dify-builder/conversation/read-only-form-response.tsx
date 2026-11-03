@@ -59,8 +59,8 @@ export const ReadOnlyFormResponse = ({
                 readOnly
               >
                 <SelectLabel>{renderText(field.label)}</SelectLabel>
-                <SelectTrigger className="h-auto min-h-8 min-w-0">
-                  <SelectValue className="block wrap-anywhere whitespace-normal">
+                <SelectTrigger className="min-w-0">
+                  <SelectValue className="block truncate">
                     {() => renderText(field.display_value)}
                   </SelectValue>
                 </SelectTrigger>

@@ -314,12 +314,12 @@ export const FormCard = memo(
                 >
                   <SelectLabel>{labelContent}</SelectLabel>
                   <SelectTrigger
-                    className="h-auto min-h-8 min-w-0"
+                    className="min-w-0"
                     aria-invalid={validationError ? true : undefined}
                     aria-describedby={validationError ? fieldErrorId : undefined}
                   >
                     <SelectValue
-                      className="block wrap-anywhere whitespace-normal"
+                      className="block truncate"
                       placeholder={renderText(field.placeholder) || ''}
                     />
                   </SelectTrigger>
