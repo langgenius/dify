@@ -72,7 +72,7 @@ and configure [HTTPS](#configure-https-and-telemetry) and
 | `.env` | Deployment inputs and explicit overrides, including Compose settings | Yes |
 | `envs/**/*.defaults` | Tracked defaults for the matching services | Yes, automatically |
 | `envs/**/*.env` | Optional service or provider overrides | Yes, when the matching service references the file |
-| `envs/**/*.env.example` | Templates for optional application and provider settings | No; use the override path in the template's comments |
+| `envs/**/*.env.example` | Templates for optional application and provider settings | No; remove `.example`, except for the middleware template below |
 | `envs/middleware.env.example` | Template for the separate source-code development stack | No; copy to `middleware.env` in `docker/` |
 
 Keep settings with usable defaults out of the root `.env.example`. To customize a
