@@ -6,7 +6,7 @@ import copy
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from itertools import starmap
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
@@ -27,12 +27,11 @@ from services.workflow.authoring.package_io import (
     write_package,
 )
 from services.workflow.authoring.plugins import fill_plugin_values
+from services.workflow.graph_check import GRAPH_MODES
 from services.workflow.node_defaults import editor_defaults
 
 if TYPE_CHECKING:
     from services.workflow.authoring import FillContext
-
-_GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
 
 
 @dataclass(frozen=True)
@@ -160,7 +159,7 @@ def graph_mode(document: Mapping[str, Any]) -> AppMode | None:
     mode = app.get("mode")
     if not isinstance(mode, str):
         return None
-    if mode not in _GRAPH_MODES:
+    if mode not in GRAPH_MODES:
         return None
     return AppMode(mode)
 
