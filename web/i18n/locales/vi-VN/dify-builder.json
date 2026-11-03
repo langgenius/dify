@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "Bắt đầu tác vụ tiếp theo mà không có tệp. Bạn có thể thêm tệp sau khi tác vụ bắt đầu.",
   "attachments.consumed": "Đã thêm vào ngữ cảnh",
+  "attachments.paused": "Tiếp tục tác vụ trước khi gửi tệp.",
   "attachments.pending": "Đang chờ",
   "attachments.rejected": "Không được dùng",
   "attachments.superseded": "Không còn được dùng",

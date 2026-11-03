@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "Începeți următoarea sarcină fără fișiere. Le puteți adăuga după ce aceasta începe.",
   "attachments.consumed": "Adăugat în context",
+  "attachments.paused": "Reluați sarcina înainte de a trimite fișiere.",
   "attachments.pending": "În așteptare",
   "attachments.rejected": "Neutilizat",
   "attachments.superseded": "Nu mai este utilizat",

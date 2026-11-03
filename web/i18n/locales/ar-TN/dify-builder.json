@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "ابدأ المهمة التالية دون ملفات. يمكنك إضافة الملفات بعد بدئها.",
   "attachments.consumed": "تمت الإضافة إلى السياق",
+  "attachments.paused": "استأنف المهمة قبل إرسال الملفات.",
   "attachments.pending": "في الانتظار",
   "attachments.rejected": "غير مستخدم",
   "attachments.superseded": "لم يعد مستخدمًا",

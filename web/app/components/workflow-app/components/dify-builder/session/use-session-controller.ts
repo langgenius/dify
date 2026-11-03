@@ -159,6 +159,8 @@ export function useDifyBuilderSessionController(
   const store = useStore()
   const { t } = useTranslation(['difyBuilder'])
   const onSessionStateChanged = runEvents?.onSessionStateChanged
+  const onAttachmentsAccepted = runEvents?.onAttachmentsAccepted
+  const clearAttachmentDraft = runEvents?.clearAttachmentDraft
   const observedView = useAtomValue(difyBuilderSessionViewAtom)
   // Keep native observation alive through terminal history hydration. Command
   // requests have a separate controller and never own this subscription.
@@ -341,6 +343,8 @@ export function useDifyBuilderSessionController(
 
   const clearSession = useCallback(
     (sessionId: string) => {
+      materialAbortRef.current?.abort()
+      materialAbortRef.current = null
       setActiveSessionId((current) => (current === sessionId ? null : current))
       setActiveCommand((current) => (current?.session_id === sessionId ? null : current))
       setView((current) => (current?.session_id === sessionId ? null : current))
@@ -348,12 +352,15 @@ export function useDifyBuilderSessionController(
       setConversationHasMore(false)
       setLocalUserMessage(null)
       setRetryableMessage(null)
+      store.set(difyBuilderMaterialControlAtom, null)
+      clearAttachmentDraft?.()
       executionProgress.clear()
       reasoningBuffer.clear()
       streamingTurnBuffer.clear()
       runEvents?.reset()
     },
     [
+      clearAttachmentDraft,
       executionProgress,
       reasoningBuffer,
       runEvents,
@@ -364,12 +371,15 @@ export function useDifyBuilderSessionController(
       setLocalUserMessage,
       setRetryableMessage,
       setView,
+      store,
       streamingTurnBuffer,
     ],
   )
 
   const isolateClearedConversation = useCallback(
     (reading?: AbortController) => {
+      materialAbortRef.current?.abort()
+      materialAbortRef.current = null
       if (abortRef.current !== reading) {
         abortRef.current?.abort()
         abortRef.current = null
@@ -382,6 +392,8 @@ export function useDifyBuilderSessionController(
       setConversationHasMore(false)
       setLocalUserMessage(null)
       setRetryableMessage(null)
+      store.set(difyBuilderMaterialControlAtom, null)
+      clearAttachmentDraft?.()
       store.set(difyBuilderDraftAtom, '')
       store.set(difyBuilderLocalInteractionResponseAtom, null)
       setView((current) =>
@@ -404,6 +416,7 @@ export function useDifyBuilderSessionController(
       runEvents?.reset()
     },
     [
+      clearAttachmentDraft,
       executionProgress,
       reasoningBuffer,
       runEvents,
@@ -509,8 +522,10 @@ export function useDifyBuilderSessionController(
       if (
         material?.phase === 'unknown' &&
         projected.attachments?.some((receipt) => receipt.client_turn_id === material.clientTurnId)
-      )
-        store.set(difyBuilderMaterialControlAtom, { ...material, phase: 'accepted' })
+      ) {
+        store.set(difyBuilderMaterialControlAtom, null)
+        onAttachmentsAccepted?.(material.attachments, material.text)
+      }
       if (projectLifecycleSettlement(projected, reading)) return true
       onSessionStateChanged?.(projected)
       const canvasCursor = canvasCursorRef.current
@@ -524,7 +539,14 @@ export function useDifyBuilderSessionController(
       setActiveSessionId(projected.session_id)
       return true
     },
-    [onSessionStateChanged, projectLifecycleSettlement, setActiveSessionId, setView, store],
+    [
+      onAttachmentsAccepted,
+      onSessionStateChanged,
+      projectLifecycleSettlement,
+      setActiveSessionId,
+      setView,
+      store,
+    ],
   )
 
   const consumeStream = useCallback(
@@ -533,6 +555,7 @@ export function useDifyBuilderSessionController(
       controller: AbortController,
       initialSessionId?: string,
       observedAtStart = nativeObservationRef.current,
+      initialAttachments?: DifyBuilderAttachmentPayload[],
     ): Promise<SessionStreamOutcome> => {
       const currentView = store.get(difyBuilderSessionViewAtom)
       const outcome: SessionStreamOutcome = {
@@ -573,6 +596,7 @@ export function useDifyBuilderSessionController(
           outcome.conversationStartSeq = currentItems.at(-1)?.seq ?? -1
           setActiveSessionId(event.data.session_id)
           setActiveCommand(event.data)
+          if (initialAttachments?.length) onAttachmentsAccepted?.(initialAttachments)
           runEvents?.onSessionStateChanged?.(event.data)
           setLocalUserMessage((current) =>
             current?.sessionId === null
@@ -769,6 +793,7 @@ export function useDifyBuilderSessionController(
       applySessionView,
       confirmLocalUserMessage,
       executionProgress,
+      onAttachmentsAccepted,
       reasoningBuffer,
       runEvents,
       setActiveCommand,
@@ -1072,6 +1097,7 @@ export function useDifyBuilderSessionController(
       startsSession = false,
       prepareDraft = true,
       prepareDispatch,
+      initialAttachments,
       trace,
     }: SessionCommandOptions & {
       prepareDispatch?: (signal: AbortSignal) => Promise<SessionCommandOptions['trace']>
@@ -1134,7 +1160,13 @@ export function useDifyBuilderSessionController(
         const observedAtStart = nativeObservationRef.current
         const events = await openStream(controller.signal)
         if (controller.signal.aborted) return false
-        const outcome = await consumeStream(events, controller, knownSessionId, observedAtStart)
+        const outcome = await consumeStream(
+          events,
+          controller,
+          knownSessionId,
+          observedAtStart,
+          initialAttachments,
+        )
         if (controller.signal.aborted) return false
         const sessionId = outcome.sessionId ?? knownSessionId
         const reconciledCommandSucceeded = (reconciled?: SessionStreamOutcome) => {
@@ -1437,6 +1469,7 @@ export function useDifyBuilderSessionController(
     ) => {
       const started = await runCommand({
         startsSession: true,
+        initialAttachments: attachments,
         expectTerminalEvent: true,
         openStream: (signal) =>
           createBuildSession(appId, goalText, modelConfig, signal, deriveAppName, attachments),
@@ -1471,6 +1504,7 @@ export function useDifyBuilderSessionController(
     ) =>
       runCommand({
         startsSession: true,
+        initialAttachments: attachments,
         expectTerminalEvent: true,
         openStream: (signal) =>
           createEditSession(appId, goalText, modelConfig, signal, attachments),
@@ -2203,7 +2237,8 @@ export function useDifyBuilderSessionController(
           .get(difyBuilderSessionViewAtom)
           ?.attachments?.some((receipt) => receipt.client_turn_id === clientTurnId)
         if (!admitted) throw new Error(UNEXPECTED_EOF_ERROR)
-        store.set(difyBuilderMaterialControlAtom, { ...material, phase: 'accepted' })
+        store.set(difyBuilderMaterialControlAtom, null)
+        onAttachmentsAccepted?.(attachments, text)
         return true
       } catch (error) {
         if (controller.signal.aborted) return false
@@ -2218,7 +2253,7 @@ export function useDifyBuilderSessionController(
         if (materialAbortRef.current === controller) materialAbortRef.current = null
       }
     },
-    [applySessionView, consumeStream, setLastError, store],
+    [applySessionView, consumeStream, onAttachmentsAccepted, setLastError, store],
   )
 
   const sendMessage = useCallback(
@@ -2309,6 +2344,7 @@ export function useDifyBuilderSessionController(
     materialAbortRef.current?.abort()
     materialAbortRef.current = null
     store.set(difyBuilderMaterialControlAtom, null)
+    clearAttachmentDraft?.()
     lifecycleAbortRef.current?.abort()
     lifecycleAbortRef.current = null
     store.set(difyBuilderLifecycleControlAtom, null)
@@ -2336,6 +2372,7 @@ export function useDifyBuilderSessionController(
     canvasCursorRef.current = undefined
     traceRef.current.clear()
   }, [
+    clearAttachmentDraft,
     executionProgress,
     reasoningBuffer,
     runEvents,
