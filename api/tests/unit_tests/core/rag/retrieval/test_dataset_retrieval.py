@@ -5697,9 +5697,7 @@ class TestDatasetRetrievalCases:
             event.listen(self.orm_engine, "before_cursor_execute", deadlock_first_update)
             try:
                 with patch.object(retrieval, "_send_trace_task") as mock_trace:
-                    retrieval._on_retrieval_end(
-                        tenant_id="tenant-1", documents=[doc], message_id="m1", timer=_timing()
-                    )
+                    retrieval._on_retrieval_end(tenant_id="tenant-1", documents=[doc], message_id="m1", timer=_timing())
             finally:
                 event.remove(self.orm_engine, "before_cursor_execute", deadlock_first_update)
 
