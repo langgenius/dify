@@ -143,7 +143,7 @@ def test_draft_workflow_get_serializes_materialized_record(
     monkeypatch.setattr(
         snippet_workflow_module.SnippetService,
         "get_draft_workflow_record",
-        Mock(return_value=workflow_record(workflow, sqlite_session)),
+        lambda *args, **kwargs: workflow_record(workflow, sqlite_session),
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowApi()
@@ -212,7 +212,7 @@ def test_published_workflow_get_serializes_materialized_record(
     monkeypatch.setattr(
         snippet_workflow_module.SnippetService,
         "get_published_workflow_record",
-        Mock(return_value=workflow_record(workflow, sqlite_session)),
+        lambda *args, **kwargs: workflow_record(workflow, sqlite_session),
     )
 
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()
@@ -278,9 +278,10 @@ def test_published_workflow_post_translates_preparation_conflict(app: Flask, mon
     from controllers.console.app.error import DraftWorkflowNotSync
     from services.errors.app import WorkflowHashNotEqualError
 
-    monkeypatch.setattr(
-        snippet_workflow_module.SnippetService, "publish_workflow", Mock(side_effect=WorkflowHashNotEqualError)
-    )
+    def fail_publish(*args: object, **kwargs: object) -> None:
+        raise WorkflowHashNotEqualError
+
+    monkeypatch.setattr(snippet_workflow_module.SnippetService, "publish_workflow", fail_publish)
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()
     with app.test_request_context("/snippets/snippet-1/workflows/publish", method="POST", json={}):
         with pytest.raises(DraftWorkflowNotSync) as error:
@@ -314,7 +315,7 @@ def test_list_published_snippet_workflows_includes_input_fields(
     monkeypatch.setattr(
         snippet_workflow_module.SnippetService,
         "get_all_published_workflows",
-        Mock(return_value=([workflow_record(workflow, sqlite_session)], False)),
+        lambda *args, **kwargs: ([workflow_record(workflow, sqlite_session)], False),
     )
 
     api = snippet_workflow_module.SnippetPublishedAllWorkflowApi()
@@ -338,7 +339,9 @@ def test_restore_published_snippet_workflow_to_draft_success(
     user = _account("account-1")
     snippet = _snippet()
 
-    monkeypatch.setattr(workflow_application.workflow_drafts, "restore", Mock(return_value=workflow_snapshot(workflow)))
+    monkeypatch.setattr(
+        workflow_application.workflow_drafts, "restore", lambda *args, **kwargs: workflow_snapshot(workflow)
+    )
 
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()
     handler = unwrap(api.post)
