@@ -9,9 +9,12 @@ import {
   FieldValidity,
 } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect } from 'react'
@@ -40,7 +43,6 @@ const InstallForm = () => {
   useDocumentTitle(pageTitle)
   const { push, replace } = useRouter()
   const queryClient = useQueryClient()
-  const [showPassword, setShowPassword] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const setupStatus = useQuery(
     consoleQuery.setup.get.queryOptions({
@@ -188,29 +190,15 @@ const InstallForm = () => {
               className="mb-5"
             >
               <FieldLabel>{t(($) => $.password, { ns: 'login' })}</FieldLabel>
-              <InputGroup>
-                <InputGroupInput
-                  type={showPassword ? 'text' : 'password'}
+              <PasswordField>
+                <PasswordFieldInput
                   autoComplete="new-password"
-                  spellCheck={false}
                   required
                   minLength={8}
                   placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
                 />
-                <InputGroupAddon align="inline-end">
-                  <IconButton
-                    aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
-                      ns: 'login',
-                    })}
-                    onClick={() => setShowPassword((visible) => !visible)}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={showPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'}
-                    />
-                  </IconButton>
-                </InputGroupAddon>
-              </InputGroup>
+                <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+              </PasswordField>
               <FieldValidity>
                 {({ validity }) =>
                   validity.valid === false ? null : (

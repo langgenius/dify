@@ -172,7 +172,7 @@ describe('InstallForm', () => {
     await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
     expect(passwordInput).toHaveAttribute('type', 'text')
 
-    await user.click(screen.getByRole('button', { name: 'login.hidePassword' }))
+    await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
     expect(passwordInput).toHaveAttribute('type', 'password')
   })
 

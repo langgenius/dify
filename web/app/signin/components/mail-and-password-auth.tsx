@@ -2,9 +2,12 @@ import type { LoginPayload } from '@dify/contracts/api/console/login/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,7 +36,6 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
-  const [showPassword, setShowPassword] = useState(false)
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
   const [password, setPassword] = useState('')
@@ -109,32 +111,16 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
 
       <Field name="password" className="relative mb-3">
         <FieldLabel>{t(($) => $.password, { ns: 'login' })}</FieldLabel>
-        <InputGroup>
-          <InputGroupInput
+        <PasswordField>
+          <PasswordFieldInput
             value={password}
             onValueChange={setPassword}
-            type={showPassword ? 'text' : 'password'}
             required
             autoComplete="current-password"
-            spellCheck={false}
             placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
           />
-          <InputGroupAddon align="inline-end">
-            <IconButton
-              size="lg"
-              aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
-                ns: 'login',
-              })}
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? (
-                <span className="i-ri-eye-off-line size-4" aria-hidden="true" />
-              ) : (
-                <span className="i-ri-eye-line size-4" aria-hidden="true" />
-              )}
-            </IconButton>
-          </InputGroupAddon>
-        </InputGroup>
+          <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+        </PasswordField>
         <Link
           href={`/reset-password?${searchParams.toString()}`}
           className={`absolute inset-e-0 top-1 rounded-sm system-xs-regular outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
