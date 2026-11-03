@@ -99,6 +99,38 @@ class TestCotAgentOutputParser:
             AgentScratchpadUnit.Action(action_name="lookup", action_input="abc")
         ]
 
+    def test_action_name_ignores_supplementary_keys(self, make_chunk, usage_dict) -> None:
+        content = (
+            '{"action": "google_search", "action_input": {"query": "latest AI news"}, '
+            '"thought": "I should search Google for the latest AI news"}'
+        )
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == [
+            AgentScratchpadUnit.Action(
+                action_name="google_search",
+                action_input={"query": "latest AI news"},
+            )
+        ]
+
+    def test_code_block_multiple_fences_are_parsed_independently(self, make_chunk, usage_dict) -> None:
+        content = """```json
+{"action": "a1", "input": "x"}
+```
+
+Some prose between blocks.
+
+```json
+{"action": "a2", "input": "y"}
+```"""
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        actions = [item for item in result if isinstance(item, AgentScratchpadUnit.Action)]
+        assert actions == [
+            AgentScratchpadUnit.Action(action_name="a1", action_input="x"),
+            AgentScratchpadUnit.Action(action_name="a2", action_input="y"),
+        ]
+
     def test_json_missing_fields_returns_string(self, make_chunk, usage_dict) -> None:
         content = '{"foo": "bar"}'
         chunks = [make_chunk(content)]

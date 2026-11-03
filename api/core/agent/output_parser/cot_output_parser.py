@@ -26,9 +26,10 @@ class CotAgentOutputParser:
                 action = action[0]
 
             for key, value in action.items():
-                if "input" in key.lower():
+                key_lower = key.lower()
+                if "input" in key_lower:
                     action_input = value
-                else:
+                elif key_lower == "action":
                     action_name = value
 
             if action_name is not None and action_input is not None:
@@ -40,13 +41,17 @@ class CotAgentOutputParser:
                 return json.dumps(action)
 
         def extra_json_from_code_block(code_block) -> list[list | dict]:
-            blocks = re.findall(r"```[json]*\s*([\[{].*[]}])\s*```", code_block, re.DOTALL | re.IGNORECASE)
+            # One match per fenced block: a non-greedy body keeps two separate
+            # fences from being read as one object spanning both (#45324).
+            blocks = re.findall(r"```(?:json)?\s*(.*?)\s*```", code_block, re.DOTALL | re.IGNORECASE)
             if not blocks:
                 return []
             try:
                 json_blocks = []
                 for block in blocks:
                     json_text = re.sub(r"^[a-zA-Z]+\n", "", block.strip(), flags=re.MULTILINE)
+                    if not json_text.lstrip().startswith(("{", "[")):
+                        continue
                     json_blocks.append(json.loads(json_text, strict=False))
                 return json_blocks
             except Exception:
