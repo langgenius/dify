@@ -156,6 +156,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       appId,
       generation: workflowDraftGeneration,
       localRevision: workflowDraftLocalRevision,
+      initialPlaceholder:
+        appMode === 'workflow' &&
+        allNodes.length === 1 &&
+        allNodes[0]?.data?.type === BlockEnum.StartPlaceholder &&
+        edges.length === 0,
       url: `/apps/${appId}/workflows/draft`,
       params: {
         graph: {
@@ -456,7 +461,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         try {
           return await doSyncWorkflowDraftLocally(baseParams, callback, options, {
             preparingBuilder,
-            force: emptyGraph,
+            force: emptyGraph && !baseParams.initialPlaceholder,
           })
         } finally {
           if (emptyGraph) emptySyncPendingRef.current = false

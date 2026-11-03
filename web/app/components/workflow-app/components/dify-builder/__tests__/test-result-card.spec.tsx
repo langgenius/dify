@@ -109,6 +109,8 @@ const runtime: DifyBuilderRuntime = {
     sendMessage: vi.fn(),
     updateModel: vi.fn(),
     reset: vi.fn(),
+    clearConversation: vi.fn(async () => true),
+    abandonTask: vi.fn(async () => true),
     getTrace: vi.fn(),
     onCanvasRefreshed: vi.fn(),
   },

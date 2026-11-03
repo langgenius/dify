@@ -14,9 +14,11 @@ import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
+import { DifyBuilderAttachmentScope } from '../attachments'
 import { difyBuilderSessionScopedAtoms } from '../session/state'
 import { useDifyBuilderSessionController } from '../session/use-session-controller'
 import { difyBuilderRuntimeAtom, difyBuilderScopedAtoms } from '../store'
+import { useDifyBuilderAttachmentDraft } from '../use-attachment-draft'
 import { DifyBuilderCanvasLockCleanup } from './canvas-sync'
 import { DifyBuilderCreationStart } from './creation-start'
 import { DifyBuilderSessionPersistence } from './session-persistence'
@@ -54,6 +56,7 @@ const DifyBuilderProviderContent = ({
     }),
   )
   const setShowPanel = useStore((state) => state.setShowDifyBuilderPanel)
+  const fileUploadConfig = useStore((state) => state.fileUploadConfig)
   const setPublishedAt = useStore((state) => state.setPublishedAt)
   const setLastPublishedHasUserInput = useStore((state) => state.setLastPublishedHasUserInput)
   const queryClient = useQueryClient()
@@ -97,6 +100,7 @@ const DifyBuilderProviderContent = ({
   }, [])
 
   const runEvents = useDifyBuilderRunEvents(appId)
+  const attachmentDraft = useDifyBuilderAttachmentDraft()
   const store = useAtomStore()
   const onCanvasRefreshed = useCallback(() => {
     store.get(difyBuilderRuntimeAtom)?.session.onCanvasRefreshed()
@@ -106,6 +110,7 @@ const DifyBuilderProviderContent = ({
   const sessionEvents = useMemo<SessionRunEvents>(
     () => ({
       ...runEvents,
+      ...attachmentDraft,
       onCommandStarted: canvasRefresh.cancel,
       onSessionStateChanged: (state) => {
         canvasEvents.onSessionStateChanged(state)
@@ -126,7 +131,7 @@ const DifyBuilderProviderContent = ({
         canvasRefresh.reset()
       },
     }),
-    [canvasEvents, canvasRefresh, runEvents],
+    [attachmentDraft, canvasEvents, canvasRefresh, runEvents],
   )
   const session = useDifyBuilderSessionController(onSyncDraft, sessionEvents)
   const runtime = useMemo(
@@ -138,8 +143,18 @@ const DifyBuilderProviderContent = ({
       session,
       retryCanvasRefresh: canvasRefresh.retry,
       setShowPanel,
+      fileUploadConfig,
     }),
-    [appId, canEdit, enabled, getCanvasSnapshot, session, setShowPanel, canvasRefresh.retry],
+    [
+      appId,
+      canEdit,
+      enabled,
+      getCanvasSnapshot,
+      session,
+      setShowPanel,
+      fileUploadConfig,
+      canvasRefresh.retry,
+    ],
   )
 
   useHydrateAtoms([[difyBuilderRuntimeAtom, runtime]] as const, {
@@ -176,7 +191,9 @@ export const DifyBuilderProvider = (props: DifyBuilderProviderProps) => {
       atoms={[...difyBuilderSessionScopedAtoms, ...difyBuilderScopedAtoms]}
       name="DifyBuilder"
     >
-      <DifyBuilderProviderContent {...props} />
+      <DifyBuilderAttachmentScope>
+        <DifyBuilderProviderContent {...props} />
+      </DifyBuilderAttachmentScope>
     </ScopeProvider>
   )
 }

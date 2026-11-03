@@ -77,7 +77,7 @@ const expectNoHorizontalScrolling = (panel: Element) => {
   expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth)
 }
 
-it('keeps long model selections and inputs inside both the active form and its submitted receipt', async () => {
+it('keeps truncated model selections and long inputs inside both the active form and its submitted receipt', async () => {
   const fields = [
     { key: 'model', label: 'Model', type: 'select', options: [model], default: model },
     { key: 'endpoint', label: 'Endpoint', type: 'text', default: endpoint },
@@ -123,7 +123,6 @@ it('keeps long model selections and inputs inside both the active form and its s
     await expect.element(notes).toHaveValue(endpoint)
     expect(select.element().textContent).toContain(model)
     expectContained(select.element(), surface.element())
-    expectTextContained(select.element(), select.element())
     expectContained(input.element(), surface.element())
     expectContained(notes.element(), surface.element())
     expect(notes.element().scrollWidth).toBeLessThanOrEqual(notes.element().clientWidth)

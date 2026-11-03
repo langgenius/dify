@@ -1,9 +1,49 @@
 import type {
+  DifyBuilderAttachmentPayload,
+  DifyBuilderConversationLifecyclePayload,
+  DifyBuilderFixIntentPayload,
   DifyBuilderReceiptSnapshot,
   DifyBuilderTaskControlPayload,
+  GetDifyBuilderSessionsBySessionIdFixIntentsData,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ChecklistErrorPayload, SessionModel } from '../types'
 import { consoleClient } from '@/service/console'
+
+export const controlSessionConversation = (
+  sessionId: string,
+  operation: 'clear' | 'abandon',
+  body: DifyBuilderConversationLifecyclePayload,
+  signal: AbortSignal,
+) =>
+  operation === 'clear'
+    ? consoleClient.difyBuilder.sessions.bySessionId.clear.post(
+        { params: { session_id: sessionId }, body: { ...body, confirmed: true } },
+        { context: { silent: true }, signal },
+      )
+    : consoleClient.difyBuilder.sessions.bySessionId.abandon.post(
+        { params: { session_id: sessionId }, body },
+        { context: { silent: true }, signal },
+      )
+
+export const getSessionFixControl = (
+  sessionId: string,
+  query: GetDifyBuilderSessionsBySessionIdFixIntentsData['query'],
+  signal: AbortSignal,
+) =>
+  consoleClient.difyBuilder.sessions.bySessionId.fixIntents.get(
+    { params: { session_id: sessionId }, query },
+    { context: { silent: true }, signal },
+  )
+
+export const prepareSessionFix = (
+  sessionId: string,
+  body: DifyBuilderFixIntentPayload,
+  signal: AbortSignal,
+) =>
+  consoleClient.difyBuilder.sessions.bySessionId.fixIntents.post(
+    { params: { session_id: sessionId }, body },
+    { context: { silent: true }, signal },
+  )
 
 export const createFixSession = (
   appId: string,
@@ -47,6 +87,7 @@ export const createBuildSession = (
   modelConfig: SessionModel | undefined,
   signal: AbortSignal,
   deriveAppName = false,
+  attachments?: DifyBuilderAttachmentPayload[],
 ) =>
   consoleClient.difyBuilder.sessions.post(
     {
@@ -55,6 +96,7 @@ export const createBuildSession = (
         scenario: 'build',
         goal_text: goalText,
         derive_app_name: deriveAppName,
+        ...(attachments?.length ? { attachments } : {}),
         ...(modelConfig ? { model_config: modelConfig } : {}),
       },
     },
@@ -66,12 +108,14 @@ export const createEditSession = (
   goalText: string,
   modelConfig: SessionModel | undefined,
   signal: AbortSignal,
+  attachments?: DifyBuilderAttachmentPayload[],
 ) =>
   consoleClient.difyBuilder.sessions.post(
     {
       body: {
         app_id: appId,
         scenario: 'edit',
+        ...(attachments?.length ? { attachments } : {}),
         goal_text: goalText,
         ...(modelConfig ? { model_config: modelConfig } : {}),
       },
@@ -149,6 +193,7 @@ export const sendSessionMessage = (
   baseVersion: number,
   clientTurnId: string,
   signal: AbortSignal,
+  attachments?: DifyBuilderAttachmentPayload[],
 ) =>
   consoleClient.difyBuilder.sessions.bySessionId.messages.post(
     {
@@ -157,6 +202,7 @@ export const sendSessionMessage = (
         text,
         base_version: baseVersion,
         client_turn_id: clientTurnId,
+        ...(attachments?.length ? { attachments } : {}),
       },
     },
     { signal },

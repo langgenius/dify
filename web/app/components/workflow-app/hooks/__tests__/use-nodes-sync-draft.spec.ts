@@ -493,18 +493,113 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('empty graph confirmation', () => {
-    it.each([
-      { scenario: 'no nodes', nodes: [] },
-      {
-        scenario: 'only the local start placeholder',
+    it('saves a viewport change on the initial Start placeholder without confirming a clear', async () => {
+      const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
+      const conversationVariables = [
+        {
+          id: 'cv-1',
+          name: 'context',
+          value_type: ChatVarType.String,
+          value: 'Keep this',
+          description: '',
+        },
+      ]
+      const environmentVariablePatch: EnvironmentVariablePatch = {
+        environmentVariables: [],
+        deletedEnvironmentVariableIds: ['env-1'],
+      }
+      const { result, store } = renderUseNodesSyncDraft({
         nodes: [
           createNode({ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }),
         ],
-      },
-    ])('saves an already empty draft with $scenario without confirmation', async ({ nodes }) => {
+        transform: [10, 20, 1.5],
+        features: {
+          opening: { enabled: true, opening_statement: 'Hello', suggested_questions: [] },
+        },
+        initialStoreState: { conversationVariables },
+      })
+      const { syncPromise } = await startEmptySave(result, false, callbacks, {
+        environmentVariablePatch,
+      })
+
+      expect(store.getState().showConfirm).toBeUndefined()
+
+      await act(async () => {
+        await expect(syncPromise).resolves.toEqual({ hash: 'new', updatedAt: 1 })
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
+        draftRequest(
+          expect.objectContaining({
+            graph: { nodes: [], edges: [], viewport: { x: 10, y: 20, zoom: 1.5 } },
+            hash: 'hash-123',
+            features: expect.objectContaining({ opening_statement: 'Hello' }),
+            conversation_variables: conversationVariables,
+            environment_variable_patch: {
+              environment_variables: [],
+              deleted_environment_variable_ids: ['env-1'],
+            },
+          }),
+        ),
+      )
+      expect(mockSyncWorkflowDraft.mock.calls[0]![0].params).not.toHaveProperty('force')
+      expect(callbacks.onSuccess).toHaveBeenCalledOnce()
+      expect(callbacks.onError).not.toHaveBeenCalled()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    })
+
+    it.each([
+      ['an out-of-date hash', draftNotSyncError],
+      [
+        'a nonempty server draft',
+        () =>
+          createHttpError(new Response(null, { status: 400 }), {
+            code: 'invalid_argument',
+            message: 'Saving an empty workflow requires force=true.',
+          }),
+      ],
+    ] as const)('does not force an initial placeholder over %s', async (_scenario, error) => {
+      mockSyncWorkflowDraft.mockRejectedValueOnce(error())
+      const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes: [
+          createNode({ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }),
+        ],
+      })
+      const { syncPromise } = await startEmptySave(result, false, callbacks)
+
+      expect(store.getState().showConfirm).toBeUndefined()
+      await act(async () => {
+        await expect(syncPromise).resolves.toBeNull()
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+      expect(mockSyncWorkflowDraft.mock.calls[0]![0].params).not.toHaveProperty('force')
+      expect(store.getState().showConfirm).toBeUndefined()
+      expect(store.getState().syncWorkflowDraftHash).toBe('hash-123')
+      expect(callbacks.onSuccess).not.toHaveBeenCalled()
+      expect(callbacks.onError).toHaveBeenCalledOnce()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    })
+
+    it('still confirms deleting the last real node and does not save a canceled clear', async () => {
+      const { result, store, setCanvas } = renderUseNodesSyncDraft()
+      act(() => setCanvas({ nodes: [], edges: [] }))
+      const { syncPromise } = await startEmptySave(result)
+
+      expect(store.getState().showConfirm).toBeDefined()
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+      await act(async () => {
+        store.getState().showConfirm?.onCancel?.()
+        await expect(syncPromise).resolves.toBeNull()
+      })
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    })
+
+    it('saves an already empty draft without confirmation', async () => {
       const callbacks = { onSuccess: vi.fn(), onSettled: vi.fn() }
       const { result, store } = renderUseNodesSyncDraft({
-        nodes,
+        nodes: [],
         initialStoreState: { syncWorkflowDraftIsEmpty: true },
       })
       const { syncPromise } = await startEmptySave(result, false, callbacks)

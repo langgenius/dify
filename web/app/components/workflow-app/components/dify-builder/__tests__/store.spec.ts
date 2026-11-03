@@ -9,6 +9,7 @@ import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
   difyBuilderLocalUserMessageAtom,
+  difyBuilderMaterialControlAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionViewAtom,
 } from '../session/state'
@@ -20,6 +21,7 @@ import {
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshGenerationAtom,
   difyBuilderCanvasRefreshingAtom,
+  difyBuilderCheckMaterialAtom,
   difyBuilderDraftAtom,
   difyBuilderHasSessionAtom,
   difyBuilderInteractionBusyAtom,
@@ -36,6 +38,7 @@ import {
   difyBuilderStartPromptAtom,
   difyBuilderStartRunFixAtom,
   difyBuilderSubmitActionAtom,
+  difyBuilderTaskControlOperationAtom,
 } from '../store'
 
 const builderModel = {
@@ -88,6 +91,8 @@ const createRuntime = (runAction: DifyBuilderRuntime['session']['runAction']) =>
       stopTask: vi.fn(async () => true),
       resumeTask: vi.fn(async () => true),
       reset: vi.fn(),
+      clearConversation: vi.fn(async () => true),
+      abandonTask: vi.fn(async () => true),
       runAction,
       sendMessage: vi.fn(async () => true),
       startBuild: vi.fn(async () => true),
@@ -406,7 +411,7 @@ describe('Dify Builder store', () => {
     expect(store.get(difyBuilderActiveInteractionAtom)?.card).toEqual(card)
   })
 
-  it('requires the feature, edit permission, and an idle session to start a fix', () => {
+  it('requires the feature and edit permission but allows Fix intake during an existing task', () => {
     const store = createStore()
     const runtime = createRuntime(vi.fn(async () => true))
     store.set(difyBuilderSessionViewAtom, createSessionView())
@@ -422,29 +427,29 @@ describe('Dify Builder store', () => {
 
     store.set(difyBuilderRuntimeAtom, runtime)
     store.set(difyBuilderSessionBusyAtom, true)
-    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(true)
 
     store.set(difyBuilderSessionBusyAtom, false)
     store.set(difyBuilderCanvasRefreshingAtom, true)
-    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(true)
 
     store.set(difyBuilderCanvasRefreshingAtom, false)
     store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'processing' }))
-    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(true)
     store.set(
       difyBuilderSessionViewAtom,
       createSessionView({ run_status: 'processing', interrupted: true }),
     )
-    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(true)
     store.set(
       difyBuilderSessionViewAtom,
       createSessionView({ phase: 'test', run_status: 'waiting_input' }),
     )
-    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(true)
   })
 
   it.each(['waiting_input', 'waiting_confirmation', 'paused'] as const)(
-    'starts a new Fix session while the current session is %s',
+    'stages a Fix in the existing %s session without discarding the draft',
     async (runStatus) => {
       const store = createStore()
       store.set(queryClientAtom, new QueryClient())
@@ -466,7 +471,7 @@ describe('Dify Builder store', () => {
         undefined,
       )
       expect(runtime.session.sendMessage).not.toHaveBeenCalled()
-      expect(store.get(difyBuilderDraftAtom)).toBe('')
+      expect(store.get(difyBuilderDraftAtom)).toBe('Old build conversation draft')
     },
   )
 
@@ -585,6 +590,30 @@ describe('Dify Builder store', () => {
     )
     expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
     expect(store.get(difyBuilderModelReadonlyAtom)).toBe(true)
+  })
+
+  it('accepts a new requirement in the abandoned conversation without offering Resume', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        task_id: 'task-1',
+        task_status: 'abandoned',
+        run_status: 'paused',
+      }),
+    )
+    expect(store.get(difyBuilderTaskControlOperationAtom)).toBeNull()
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(true)
+    expect(
+      await store.set(difyBuilderStartPromptAtom, {
+        text: 'Start the next task',
+        model: builderModel,
+      }),
+    ).toBe(true)
+    expect(runtime.session.sendMessage).toHaveBeenCalledExactlyOnceWith('Start the next task')
+    expect(runtime.session.startBuild).not.toHaveBeenCalled()
   })
 
   it('routes active waiting-flow composer text to a multi-turn message', async () => {
@@ -1002,4 +1031,59 @@ describe('Dify Builder store', () => {
     )
     expect(runAction).toHaveBeenCalledOnce()
   })
+})
+
+it('sends at most five uploaded material refs while busy, restores failed drafts, and checks unknown without resending', async () => {
+  const store = createStore()
+  const runtime = createRuntime(vi.fn(async () => true))
+  store.set(difyBuilderRuntimeAtom, runtime)
+  store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'processing' }))
+  store.set(difyBuilderSessionBusyAtom, true)
+  store.set(difyBuilderDraftAtom, 'Material context')
+  const attachments = [{ upload_file_id: 'upload-1' }]
+  runtime.session.sendMessage.mockResolvedValueOnce(false)
+  expect(await store.set(difyBuilderSendDraftAtom, builderModel, { attachments })).toBe(false)
+  expect(store.get(difyBuilderDraftAtom)).toBe('Material context')
+  expect(runtime.session.sendMessage).toHaveBeenCalledExactlyOnceWith(
+    'Material context',
+    undefined,
+    attachments,
+  )
+  expect(runtime.session.startBuild).not.toHaveBeenCalled()
+  expect(
+    await store.set(difyBuilderSendDraftAtom, builderModel, {
+      attachments: Array.from({ length: 6 }, (_, index) => ({ upload_file_id: `upload-${index}` })),
+    }),
+  ).toBe(false)
+  expect(runtime.session.sendMessage).toHaveBeenCalledOnce()
+  store.set(difyBuilderMaterialControlAtom, {
+    phase: 'unknown',
+    clientTurnId: 'material-turn',
+    text: 'Material context',
+    attachments,
+  })
+  expect(await store.set(difyBuilderSendDraftAtom, builderModel, { attachments })).toBe(false)
+  store.set(difyBuilderSessionBusyAtom, false)
+  expect(await store.set(difyBuilderCheckMaterialAtom)).toBe(true)
+  expect(runtime.session.refresh).toHaveBeenCalledOnce()
+  expect(runtime.session.sendMessage).toHaveBeenCalledOnce()
+})
+
+it('creates a file-only Build with uploaded refs and restores its text on rejection', async () => {
+  const store = createStore()
+  const runtime = createRuntime(vi.fn(async () => true))
+  store.set(difyBuilderRuntimeAtom, runtime)
+  const attachments = [{ upload_file_id: 'upload-1' }]
+  expect(await store.set(difyBuilderSendDraftAtom, builderModel, { attachments })).toBe(true)
+  expect(runtime.session.startBuild).toHaveBeenCalledExactlyOnceWith(
+    'app-1',
+    '',
+    builderModel,
+    false,
+    attachments,
+  )
+  runtime.session.startBuild.mockResolvedValueOnce(false)
+  store.set(difyBuilderDraftAtom, 'Use the rules')
+  expect(await store.set(difyBuilderSendDraftAtom, builderModel, { attachments })).toBe(false)
+  expect(store.get(difyBuilderDraftAtom)).toBe('Use the rules')
 })

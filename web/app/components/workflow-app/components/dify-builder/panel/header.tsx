@@ -8,15 +8,19 @@ import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction
 
 type DifyBuilderPanelHeaderProps = {
   resetDisabled: boolean
+  abandonDisabled: boolean
   titleRef: RefObject<HTMLHeadingElement | null>
   onReset: () => void
+  onAbandon: () => void
   onClose: () => void
 }
 
 export const DifyBuilderPanelHeader = ({
   resetDisabled,
+  abandonDisabled,
   titleRef,
   onReset,
+  onAbandon,
   onClose,
 }: DifyBuilderPanelHeaderProps) => {
   const locale = useDifyBuilderInteractionLocale()
@@ -48,6 +52,15 @@ export const DifyBuilderPanelHeader = ({
             </PopoverDescription>
           </InfotipContent>
         </Infotip>
+        <IconButton
+          size="md"
+          disabled={abandonDisabled}
+          aria-label={t(($) => $['taskControl.abandon'], { ns: 'difyBuilder' })}
+          className="size-7"
+          onClick={onAbandon}
+        >
+          <span aria-hidden className="i-ri-logout-box-r-line size-4" />
+        </IconButton>
         <IconButton
           size="md"
           disabled={resetDisabled}
