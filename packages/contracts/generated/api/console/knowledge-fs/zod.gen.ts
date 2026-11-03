@@ -23,7 +23,6 @@ export const zErrorResponse = z.object({
  */
 export const zKnowledgeFsFeaturesResponse = z.object({
   agent_enabled: z.boolean(),
-  enabled: z.boolean(),
   upload_enabled: z.boolean(),
 })
 

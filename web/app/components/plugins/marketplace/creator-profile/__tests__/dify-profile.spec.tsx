@@ -146,16 +146,19 @@ vi.mock('../../detail-dialog/use-silent-install', () => ({
   useSilentMarketplaceInstall: () => ({ install: vi.fn() }),
 }))
 // Exercise real dialog/frame message handling without loading external documents.
-vi.mock('../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../utils')>()
+vi.mock('@/features/marketplace/links', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/marketplace/links')>()
+  const toBlank = (url: string) =>
+    `about:blank${new URL(url, 'https://marketplace.example.test').search}`
   return {
     ...actual,
-    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) =>
-      `about:blank${new URL(actual.getPluginLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
-    getTemplateLinkInMarketplace: (
-      ...args: Parameters<typeof actual.getTemplateLinkInMarketplace>
-    ) =>
-      `about:blank${new URL(actual.getTemplateLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
+    marketplaceLinks: {
+      ...actual.marketplaceLinks,
+      plugin: (...args: Parameters<typeof actual.marketplaceLinks.plugin>) =>
+        toBlank(actual.marketplaceLinks.plugin(...args)),
+      template: (...args: Parameters<typeof actual.marketplaceLinks.template>) =>
+        toBlank(actual.marketplaceLinks.template(...args)),
+    },
   }
 })
 vi.mock('@/service/marketplace', async (importOriginal) => {

@@ -269,7 +269,7 @@ it('keeps the submitted modal and draft while reporting detail failure without i
   expect(screen.getByRole('dialog')).toBeInTheDocument()
   expect(screen.getByRole('textbox', { name: 'app.newApp.name' })).toHaveAttribute('readonly')
   await act(async () => rejectDetail?.(new Error('Unavailable')))
-  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Unavailable'))
   expect(request).toHaveBeenCalledOnce()
   expect(onClose).not.toHaveBeenCalled()
   expect(trackCreateApp).not.toHaveBeenCalled()
@@ -288,7 +288,9 @@ it('does not import an Agent detail through the Studio App template picker', asy
   await openFirst(user)
   await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
 
-  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
+  await waitFor(() =>
+    expect(toast.error).toHaveBeenCalledWith('Template mode does not match this picker'),
+  )
   expect(request).toHaveBeenCalledOnce()
   expect(trackCreateApp).not.toHaveBeenCalled()
 })

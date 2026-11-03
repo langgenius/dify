@@ -14,7 +14,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { toast } from '@/app/notifications'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplaceTemplateIconUrl } from '@/features/marketplace/api'
 import {
   fetchMarketplaceTemplateDSL,
   useMarketplaceTemplateDetail,
@@ -111,7 +111,7 @@ const ImportFromMarketplaceTemplateModal = ({
                     icon_type: template.icon_file_key ? 'image' : 'emoji',
                     icon: template.icon || 'page_facing_up',
                     icon_url: template.icon_file_key
-                      ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
+                      ? getMarketplaceTemplateIconUrl(template.id)
                       : undefined,
                     icon_background: template.icon_file_key ? undefined : template.icon_background,
                   }}

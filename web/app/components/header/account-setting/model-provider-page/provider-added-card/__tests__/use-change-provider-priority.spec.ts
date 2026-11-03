@@ -11,19 +11,6 @@ import {
 } from '../../declarations'
 import { useChangeProviderPriority } from '../use-change-provider-priority'
 
-const changePriority = vi.hoisted(() => vi.fn())
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.modelProviders.byProvider.preferredProviderType.post': (input) =>
-        changePriority(input),
-    }),
-  }
-})
-
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
   ({
     provider: 'langgenius/openai/openai',
@@ -68,16 +55,20 @@ function setup() {
 }
 beforeEach(() => {
   vi.resetAllMocks()
-  changePriority.mockResolvedValue({ result: 'success' })
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ result: 'success' }))
 })
+afterEach(() => vi.restoreAllMocks())
 
 it('submits provider preference and invalidates its models and supported model lists', async () => {
   const { result, queryClient, keys, unrelated } = setup()
   act(() => result.current.handleChangePriority(PreferredProviderTypeEnum.custom))
   await waitFor(() => expect(queryClient.getQueryState(keys[0]!)?.isInvalidated).toBe(true))
-  expect(changePriority).toHaveBeenCalledWith({
-    params: { provider: 'langgenius/openai/openai' },
-    body: { preferred_provider_type: PreferredProviderTypeEnum.custom },
+  const request = vi.mocked(globalThis.fetch).mock.calls[0]![0] as Request
+  expect(decodeURIComponent(request.url)).toContain(
+    '/model-providers/langgenius/openai/openai/preferred-provider-type',
+  )
+  expect(await request.clone().json()).toEqual({
+    preferred_provider_type: PreferredProviderTypeEnum.custom,
   })
   keys.forEach((key) => expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true))
   expect(queryClient.getQueryState(unrelated)?.isInvalidated).toBe(false)
@@ -86,29 +77,33 @@ it('submits provider preference and invalidates its models and supported model l
 it('does not submit an empty provider identifier', () => {
   const { result } = renderHook(() => useChangeProviderPriority(undefined))
   act(() => result.current.handleChangePriority(PreferredProviderTypeEnum.system))
-  expect(changePriority).not.toHaveBeenCalled()
+  expect(globalThis.fetch).not.toHaveBeenCalled()
 })
 
-it('leaves failure feedback to the request layer without invalidating model caches', async () => {
-  const response = createDeferred<{ result: string }>()
-  changePriority.mockReturnValue(response.promise)
+it('shows the server failure once through the request layer without invalidating model caches', async () => {
+  const response = createDeferred<Response>()
+  vi.mocked(globalThis.fetch).mockReturnValue(response.promise)
   const notify = vi.spyOn(toast, 'error')
   const { result, queryClient, keys } = setup()
   act(() => result.current.handleChangePriority(PreferredProviderTypeEnum.custom))
   await waitFor(() => expect(result.current.isChangingPriority).toBe(true))
-  await act(async () => response.reject(new Error('network error')))
+  await act(async () =>
+    response.resolve(
+      Response.json({ code: 'bad_request', message: 'Priority unavailable' }, { status: 400 }),
+    ),
+  )
   await waitFor(() => expect(result.current.isChangingPriority).toBe(false))
-  expect(notify).not.toHaveBeenCalled()
+  expect(notify).toHaveBeenCalledExactlyOnceWith('Priority unavailable')
   keys.forEach((key) => expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false))
   expect(result.current.isChangingPriority).toBe(false)
 })
 
 it('exposes pending state until the preference is saved', async () => {
-  const response = createDeferred<{ result: string }>()
-  changePriority.mockReturnValue(response.promise)
+  const response = createDeferred<Response>()
+  vi.mocked(globalThis.fetch).mockReturnValue(response.promise)
   const { result } = setup()
   act(() => result.current.handleChangePriority(PreferredProviderTypeEnum.custom))
   await waitFor(() => expect(result.current.isChangingPriority).toBe(true))
-  await act(async () => response.resolve({ result: 'success' }))
+  await act(async () => response.resolve(Response.json({ result: 'success' })))
   await waitFor(() => expect(result.current.isChangingPriority).toBe(false))
 })

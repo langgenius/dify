@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin } from './types'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
@@ -12,7 +13,6 @@ import { useLocale } from '#i18n'
 import usePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useMarketplaceDetailNavigation } from '@/app/components/plugins/marketplace/use-detail-navigation'
-import { getPluginLinkInMarketplace } from '@/app/components/plugins/marketplace/utils'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import Badge from '../base/badge'
 import Icon from './card/base/card-icon'
@@ -21,10 +21,11 @@ import DownloadCount from './card/base/download-count'
 
 type Props = Readonly<{
   className?: string
+  marketplace: MarketplaceLinks
   payload: Plugin
 }>
 
-const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
+const ProviderCardComponent: FC<Props> = ({ className, marketplace, payload }) => {
   const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation(['plugin'])
   const { theme } = useTheme()
@@ -97,8 +98,7 @@ const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
         <a
           aria-label={`${t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })} ${pluginLabel}`}
           href={
-            navigation.pluginHref(payload) ??
-            getPluginLinkInMarketplace(payload, marketplaceLinkParams)
+            navigation.pluginHref(payload) ?? marketplace.plugin(payload, marketplaceLinkParams)
           }
           target="_blank"
           rel="noopener noreferrer"

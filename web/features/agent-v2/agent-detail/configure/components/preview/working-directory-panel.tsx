@@ -18,7 +18,7 @@ import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-qu
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { getFileIconType } from '@/features/agent-v2/file-icon'
+import { getFileIconType, hasFileDataPreview } from '@/features/agent-v2/file-icon'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
 import { downloadUrl } from '@/utils/download'
@@ -383,10 +383,11 @@ function AgentWorkingDirectoryContent({
             },
           },
         )
+  const isFileDataPreview = hasFileDataPreview(selectedWorkingDirectoryFile?.icon)
+  const shouldReadFile = !!selectedWorkingDirectoryFile && !isFileDataPreview
   const fileReadQuery = useQuery({
     ...fileReadQueryOptions,
-    enabled:
-      open && !!selectedWorkingDirectoryFile && selectedWorkingDirectoryFile.icon !== 'image',
+    enabled: open && shouldReadFile,
     queryFn: async (context): Promise<SandboxReadResponse> => {
       try {
         return await fileReadQueryOptions.queryFn(context)
@@ -412,18 +413,16 @@ function AgentWorkingDirectoryContent({
     consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.download.post.mutationOptions(),
   )
   const { mutateAsync: downloadAgentSandboxFile } = agentSandboxDownloadMutation
-  const isImagePreviewFile = selectedWorkingDirectoryFile?.icon === 'image'
   const selectedWorkingDirectoryFilePath = selectedWorkingDirectoryFile?.id
   const { mutateAsync: downloadWorkflowSandboxFile } = workflowSandboxDownloadMutation
   const isFileDownloadPending =
     agentSandboxDownloadMutation.isPending || workflowSandboxDownloadMutation.isPending
-  const isFileReadLoading =
-    !!selectedWorkingDirectoryFile && !isImagePreviewFile && fileReadQuery.isPending
-  const imagePreviewQuery = useQuery({
+  const isFileReadLoading = shouldReadFile && fileReadQuery.isPending
+  const fileUrlQuery = useQuery({
     queryKey: [
       'agent-v2',
       'working-directory',
-      'image-preview',
+      'file-url',
       source.type,
       source.type === 'agent' ? source.agentId : source.appId,
       source.type === 'agent' ? source.callerType : source.workflowRunId,
@@ -462,7 +461,9 @@ function AgentWorkingDirectoryContent({
         },
       )
     },
-    enabled: open && !!selectedWorkingDirectoryFile && isImagePreviewFile,
+    enabled: open && isFileDataPreview,
+    refetchOnWindowFocus: false,
+    retry: false,
   })
   const handleDownloadFile = useCallback(
     async (action: AgentSkillDetailDownloadAction) => {
@@ -611,13 +612,14 @@ function AgentWorkingDirectoryContent({
           binary: fileReadQuery.data?.binary,
           content: fileReadQuery.data?.text ?? undefined,
           downloadActionLoadingTarget,
-          downloadUrl: imagePreviewQuery.data?.url,
+          downloadUrl: fileUrlQuery.data?.url,
           fileName: isFileListLoading ? '' : selectedWorkingDirectoryFile?.name,
-          isDownloadError: imagePreviewQuery.isError,
-          isDownloadLoading: !!isImagePreviewFile && imagePreviewQuery.isPending,
+          fileType: selectedWorkingDirectoryFile?.icon,
+          isDownloadError: fileUrlQuery.isError,
+          isDownloadLoading: isFileDataPreview && fileUrlQuery.isPending,
           isError: (fileListQuery.isError && !hasNoActiveBinding) || fileReadQuery.isError,
-          isImage: isImagePreviewFile,
           isLoading: isFileListLoading || isFileReadLoading,
+          truncated: fileReadQuery.data?.truncated,
         },
         onDownloadFile: selectedWorkingDirectoryFile ? handleDownloadFile : undefined,
         folderOpenState: ({ file }) => {

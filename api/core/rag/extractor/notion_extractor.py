@@ -83,7 +83,7 @@ class NotionExtractor(BaseExtractor):
     def _get_notion_database_data(
         self, database_id: str, query_dict: Mapping[str, Any] = MappingProxyType({})
     ) -> list[Document]:
-        """Get all the pages from a Notion database."""
+        """Get all database pages, failing on HTTP errors instead of returning partial content."""
         assert self._notion_access_token is not None, "Notion access token is required"
 
         database_content = []
@@ -106,6 +106,7 @@ class NotionExtractor(BaseExtractor):
                 timeout=_REQUEST_TIMEOUT,
             )
 
+            res.raise_for_status()
             response_data = res.json()
 
             if "results" not in response_data or response_data["results"] is None:
@@ -358,8 +359,6 @@ class NotionExtractor(BaseExtractor):
         else:
             retrieve_page_url = RETRIEVE_PAGE_URL_TMPL.format(page_id=obj_id)
 
-        query_dict: Mapping[str, Any] = MappingProxyType({})
-
         res = httpx.request(
             "GET",
             retrieve_page_url,
@@ -368,7 +367,6 @@ class NotionExtractor(BaseExtractor):
                 "Content-Type": "application/json",
                 "Notion-Version": "2022-06-28",
             },
-            json=query_dict,
             timeout=_REQUEST_TIMEOUT,
         )
 

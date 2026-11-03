@@ -1213,8 +1213,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      if (code === 'init_validate_failed' && !silent) {
-        toast.error(message, { timeout: 4000 })
+      if (code === 'init_validate_failed') {
+        if (!silent) toast.error(message, { timeout: 4000 })
         return Promise.reject(err)
       }
       if (code === 'not_init_validated') {

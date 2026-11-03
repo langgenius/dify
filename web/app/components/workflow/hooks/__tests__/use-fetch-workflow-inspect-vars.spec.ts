@@ -62,7 +62,7 @@ const variableQueryKeys = [
   consoleQuery.apps.byAppId.workflows.draft.systemVariables.get,
 ].map((endpoint) => endpoint.queryKey({ input: { params: { app_id: 'app-1' } } }))
 
-function setup(canvasNodes = nodes) {
+function setup(canvasNodes = nodes, appId = 'app-1') {
   const { queryClient } = createConsoleQueryWrapper()
   seedToolProviders(queryClient, {
     builtInTools: [],
@@ -84,7 +84,12 @@ function setup(canvasNodes = nodes) {
         ...useSetWorkflowVarsWithValue(),
         getNodes: useReactFlow().getNodes,
       }),
-      { nodes: canvasNodes, queryClient, initialStoreState: { dataSourceList: [] } },
+      {
+        nodes: canvasNodes,
+        queryClient,
+        resource: { kind: 'app', appId, mode: 'workflow' },
+        initialStoreState: { dataSourceList: [] },
+      },
     ),
     queryClient,
   }
@@ -167,6 +172,50 @@ describe('use-fetch-workflow-inspect-vars', () => {
       value: 'passed-in',
       schemaType: undefined,
     })
+  })
+
+  it('registers a first human-input node from persisted variables when no cache entry exists', async () => {
+    mockFetchAllInspectVars.mockResolvedValue([
+      createInspectVar({
+        id: 'action-result',
+        name: '__action_id',
+        selector: ['human-input-node', '__action_id'],
+        value: 'approve',
+      }),
+    ])
+    const { result, store } = setup(
+      [
+        createNode({
+          id: 'human-input-node',
+          data: {
+            type: BlockEnum.HumanInput,
+            title: 'Human Input',
+            desc: '',
+            inputs: [],
+            user_actions: [],
+          },
+        }),
+      ],
+      'flow-id',
+    )
+    expect(store.getState().nodesWithInspectVars).toEqual([])
+    await act(async () => {
+      await result.current.fetchInspectVars({})
+    })
+    expect(mockFetchAllInspectVars).toHaveBeenCalledWith({
+      kind: 'app',
+      appId: 'flow-id',
+      mode: 'workflow',
+    })
+    expect(store.getState().nodesWithInspectVars).toEqual([
+      expect.objectContaining({
+        nodeId: 'human-input-node',
+        nodeType: BlockEnum.HumanInput,
+        vars: [
+          expect.objectContaining({ id: 'action-result', name: '__action_id', value: 'approve' }),
+        ],
+      }),
+    ])
   })
 })
 

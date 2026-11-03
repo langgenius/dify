@@ -27,6 +27,7 @@ import { TagManagementModal } from '@/features/tag-management/components/tag-man
 import { TagSearchContentView } from '@/features/tag-management/components/tag-search-content'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { SkillPublishShortcut } from './publish-bar'
 import {
   invalidateSkillDetail,
@@ -60,7 +61,9 @@ export function SkillTagsEditor({
   const tags = persistedTags
   const visibleTags = draftTags ?? tags
   const metadataMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const tagsQuery = useQuery(consoleQuery.workspaces.current.skills.tags.get.queryOptions())
   const normalizedTagSearch = tagSearch.trim()
@@ -141,9 +144,11 @@ export function SkillTagsEditor({
           queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
         })
       })
-      .catch(() => {
+      .catch((error) => {
         invalidateSkillDetail(queryClient, skillId)
-        toast.error(t(($) => $['skillManagement.detail.updateTagsFailed']))
+        toast.error(
+          getErrorMessage(error) ?? t(($) => $['skillManagement.detail.updateTagsFailed']),
+        )
       })
       .finally(() => {
         setDraftTags(null)

@@ -1,0 +1,12 @@
+# Defaults for qdrant. Copy this file to qdrant.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+QDRANT_API_KEY=${QDRANT_API_KEY:-difyai123456}
+
+# Dify vector client settings (API, workers and Beat)
+# QDRANT_URL=http://qdrant:6333
+# QDRANT_CLIENT_TIMEOUT=20
+# QDRANT_GRPC_ENABLED=false
+# QDRANT_GRPC_PORT=6334
+# QDRANT_REPLICATION_FACTOR=1
