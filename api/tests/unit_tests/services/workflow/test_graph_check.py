@@ -89,6 +89,15 @@ def test_mode_incompatible_nodes() -> None:
     assert [(i.code, i.node_id) for i in issues] == [(IssueCode.MODE_INCOMPATIBLE, "a")]
 
 
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_knowledge_index_belongs_to_knowledge_pipelines_only(mode: AppMode) -> None:
+    index = _node("k", {"type": "knowledge-index", "title": "K"})
+    issues = check_graph({"nodes": [START, index], "edges": []}, mode=mode)
+    assert [(i.code, i.node_id) for i in issues if i.code == IssueCode.MODE_INCOMPATIBLE] == [
+        (IssueCode.MODE_INCOMPATIBLE, "k")
+    ]
+
+
 def test_unknown_type_and_invalid_data_are_located() -> None:
     weird = _node("w", {"type": "future-node", "title": "W"})
     llm = _node("l", {"type": "llm", "title": "L"})

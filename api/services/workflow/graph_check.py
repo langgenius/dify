@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.node_factory import node_data_model, resolve_workflow_node_class
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.variable_prefixes import ROOT_VARIABLE_NODE_IDS
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes
@@ -73,8 +74,8 @@ ResourceCheck = Callable[[Mapping[str, Any]], str | None]
 
 def refused_node_types(mode: AppMode) -> frozenset[str]:
     if mode == AppMode.ADVANCED_CHAT:
-        return frozenset({BuiltinNodeTypes.END, *TRIGGER_NODE_TYPES})
-    return frozenset({BuiltinNodeTypes.ANSWER})
+        return frozenset({BuiltinNodeTypes.END, *TRIGGER_NODE_TYPES, KNOWLEDGE_INDEX_NODE_TYPE})
+    return frozenset({BuiltinNodeTypes.ANSWER, KNOWLEDGE_INDEX_NODE_TYPE})
 
 
 def credential_check(workspace_id: str, environment: Mapping[str, VariableBase], session: Session) -> ResourceCheck:
