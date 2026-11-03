@@ -8,12 +8,28 @@ export type SimpleResultResponse = {
   result: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type PostLogoutData = {
   body?: never
   path?: never
   query?: never
   url: '/logout'
 }
+
+export type PostLogoutErrors = {
+  default: ErrorResponse
+}
+
+export type PostLogoutError = PostLogoutErrors[keyof PostLogoutErrors]
 
 export type PostLogoutResponses = {
   200: SimpleResultResponse

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   Autocomplete,
@@ -39,13 +39,20 @@ const renderAutocomplete = ({
   children,
   open = false,
   defaultValue = 'workflow',
+  readOnly = false,
 }: {
   children?: React.ReactNode
   open?: boolean
   defaultValue?: string
+  readOnly?: boolean
 } = {}) =>
   renderWithSafeViewport(
-    <Autocomplete open={open} defaultValue={defaultValue} items={['workflow', 'dataset']}>
+    <Autocomplete
+      open={open}
+      readOnly={readOnly}
+      defaultValue={defaultValue}
+      items={['workflow', 'dataset']}
+    >
       {children ?? (
         <React.Fragment>
           <AutocompleteInputGroup data-testid="input-group">
@@ -130,6 +137,13 @@ describe('Autocomplete wrappers', () => {
   })
 
   describe('Controls', () => {
+    it('should keep the popup trigger and hide clear when read-only', async () => {
+      const screen = await renderAutocomplete({ readOnly: true })
+
+      await expect.element(screen.getByTestId('trigger')).toBeVisible()
+      await expect.element(screen.getByTestId('clear')).not.toBeVisible()
+    })
+
     it('should provide fallback aria labels and decorative icons when labels are omitted', async () => {
       const screen = await renderAutocomplete()
 
@@ -189,6 +203,61 @@ describe('Autocomplete wrappers', () => {
   })
 
   describe('Content and options', () => {
+    it('should keep the status visible and scroll the list in a short viewport', async () => {
+      const popupRef = React.createRef<HTMLDivElement>()
+      const longOptions = Array.from({ length: 30 }, (_, index) => `Suggestion ${index + 1}`)
+      const originalViewport = {
+        height: window.innerHeight,
+        width: window.innerWidth,
+      }
+
+      await page.viewport(800, 360)
+
+      try {
+        const screen = await render(
+          <div style={{ padding: 16 }}>
+            <Autocomplete open items={longOptions}>
+              <AutocompleteInputGroup>
+                <AutocompleteInput aria-label="Search" />
+              </AutocompleteInputGroup>
+              <AutocompletePortal>
+                <AutocompletePositioner>
+                  <AutocompletePopup ref={popupRef}>
+                    <AutocompleteStatus>30 suggestions</AutocompleteStatus>
+                    <AutocompleteList<string>>
+                      {(item) => (
+                        <AutocompleteItem key={item} value={item}>
+                          {item}
+                        </AutocompleteItem>
+                      )}
+                    </AutocompleteList>
+                  </AutocompletePopup>
+                </AutocompletePositioner>
+              </AutocompletePortal>
+            </Autocomplete>
+          </div>,
+        )
+
+        const status = screen.getByText('30 suggestions')
+        const list = screen.getByRole('listbox')
+        await expect.element(list).toBeVisible()
+        await vi.waitFor(() => {
+          const popupBounds = popupRef.current!.getBoundingClientRect()
+          const statusBounds = status.element().getBoundingClientRect()
+
+          expect(window.innerHeight).toBe(360)
+          expect(popupBounds.top).toBeGreaterThanOrEqual(0)
+          expect(popupBounds.bottom).toBeLessThanOrEqual(window.innerHeight)
+          expect(statusBounds.top).toBeGreaterThanOrEqual(popupBounds.top)
+          expect(statusBounds.bottom).toBeLessThanOrEqual(popupBounds.bottom)
+          expect(list.element().scrollHeight).toBeGreaterThan(list.element().clientHeight)
+          expect(popupRef.current!.scrollHeight).toBeLessThanOrEqual(popupRef.current!.clientHeight)
+        })
+      } finally {
+        await page.viewport(originalViewport.width, originalViewport.height)
+      }
+    })
+
     it('should use default overlay placement', async () => {
       const screen = await renderAutocomplete({ open: true })
 
@@ -209,7 +278,8 @@ describe('Autocomplete wrappers', () => {
           </AutocompleteInputGroup>
           <AutocompletePortal>
             <AutocompletePositioner
-              placement="top-end"
+              side="top"
+              align="end"
               sideOffset={12}
               alignOffset={6}
               role="group"

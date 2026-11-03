@@ -9,6 +9,7 @@ import psycopg2.errors
 import psycopg2.extras
 import psycopg2.pool
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -288,7 +289,9 @@ class VastbaseVector(BaseVector):
 
 class VastbaseVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> VastbaseVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> VastbaseVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix

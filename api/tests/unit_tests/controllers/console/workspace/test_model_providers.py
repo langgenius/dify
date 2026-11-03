@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from inspect import unwrap
-from types import SimpleNamespace
+from types import FunctionType, SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -9,6 +9,10 @@ from pydantic_core import ValidationError
 from werkzeug.exceptions import Forbidden, UnprocessableEntity
 
 from configs import dify_config
+from controllers.common.rbac import AgentId, RBACPermission, Workspace
+from controllers.console.agent.composer import AgentComposerApi
+from controllers.console.agent.roster import AgentAppApi
+from controllers.console.datasets.rag_pipeline.datasource_auth import DatasourceAuth
 from controllers.console.workspace.model_providers import (
     ModelProviderCredentialApi,
     ModelProviderCredentialSwitchApi,
@@ -28,6 +32,12 @@ from controllers.console.workspace.model_providers import (
     ParserPreferredProviderType,
     PreferredProviderTypeUpdateApi,
 )
+from controllers.console.workspace.models import ModelProviderModelCredentialApi
+from controllers.console.workspace.tool_providers import (
+    ToolBuiltinProviderAddApi,
+    ToolMCPDetailApi,
+    ToolOAuthCustomClient,
+)
 from core.entities.provider_entities import CredentialConfiguration
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
@@ -37,6 +47,7 @@ from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from models import Account
 from models.account import TenantAccountRole
 from models.provider import ProviderType
+from services.billing_client import billing
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
@@ -48,7 +59,97 @@ from services.entities.model_provider_entities import (
     SystemConfigurationResponse,
 )
 from services.workspace.contracts import EffectiveCreditPool
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
+
+
+@pytest.mark.parametrize(
+    ("method", "permission"),
+    [
+        (ToolBuiltinProviderAddApi.post, RBACPermission.CREDENTIAL_CREATE),
+    ],
+)
+def test_workspace_credential_mutations_require_management_permission(
+    method: FunctionType, permission: RBACPermission
+) -> None:
+    legacy_wrapper = unwrap(method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname)
+    assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
+
+    [check] = rbac_checks(method)
+    assert check.scene == permission
+    assert isinstance(check.locator, Workspace)
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        ModelProviderCredentialApi.get,
+        ModelProviderModelCredentialApi.get,
+    ],
+)
+def test_model_provider_credential_get_requires_admin_and_rbac(
+    method: FunctionType,
+) -> None:
+    """GET endpoints that return provider credential details must enforce
+    the same admin + RBAC gates as their sibling POST/PUT/DELETE methods."""
+    legacy_wrapper = unwrap(method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname)
+    assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
+
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.CREDENTIAL_MANAGE
+    assert isinstance(check.locator, Workspace)
+
+
+def test_tool_oauth_custom_client_get_requires_admin_and_rbac() -> None:
+    """GET endpoint that returns custom OAuth client params must enforce
+    the same admin + RBAC gates as its sibling POST and DELETE methods."""
+    method = ToolOAuthCustomClient.get
+
+    legacy_wrapper = unwrap(method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname)
+    assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
+
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.CREDENTIAL_MANAGE
+    assert isinstance(check.locator, Workspace)
+
+
+def test_datasource_auth_get_requires_edit_and_rbac() -> None:
+    """GET endpoint that lists datasource credentials must enforce
+    the same edit + RBAC gates as its sibling POST method."""
+    method = DatasourceAuth.get
+
+    edit_wrapper = unwrap(method, stop=lambda wrapper: "edit_permission_required" in wrapper.__code__.co_qualname)
+    assert "edit_permission_required" in edit_wrapper.__code__.co_qualname
+
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.CREDENTIAL_MANAGE
+    assert isinstance(check.locator, Workspace)
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        AgentAppApi.get,
+        AgentComposerApi.get,
+    ],
+)
+def test_agent_app_get_requires_rbac(method: FunctionType) -> None:
+    """GET endpoints that return agent app details or composer state must require
+    the agent preview scene on the agent resource, same as their sibling routes."""
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.AGENT_PREVIEW
+    assert isinstance(check.locator, AgentId)
+
+
+def test_tool_mcp_detail_get_requires_rbac() -> None:
+    """GET endpoint that returns MCP provider details must enforce
+    the workspace MCP management RBAC gate."""
+    method = ToolMCPDetailApi.get
+
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.MCP_MANAGE
+    assert isinstance(check.locator, Workspace)
+
 
 VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
 INVALID_UUID = "123"
@@ -395,7 +496,7 @@ class TestModelProviderCredentialApi:
                 side_effect=CredentialsValidateFailedError("bad"),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="bad"):
                 method(api, ParserCredentialCreate.model_validate(_payload()), "tenant1", provider="openai")
 
     def test_put_update_success(self, app: Flask):
@@ -557,7 +658,7 @@ class TestModelProviderIconApi:
                 return_value=(None, None),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="icon not found for provider openai, icon_type logo, lang en"):
                 api.get("t1", "openai", "logo", "en")
 
 
@@ -603,7 +704,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
-                return_value={"payment_link": "https://payment.example.com/provider"},
+                return_value=billing.GetModelProviderPaymentLinkReply(url="https://payment.example.com/provider"),
             ) as get_model_provider_payment_link,
         ):
             result = method(api, "tenant1", user, provider="anthropic")
@@ -621,7 +722,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
         method = unwrap(api.get)
 
         with app.test_request_context("/"):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="provider name openai is invalid"):
                 method(api, "tenant1", make_account(), provider="openai")
 
     def test_checkout_rejects_non_privileged_role(self, app: Flask):

@@ -3,10 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { getNormalizedShortcutKey, SingleOptionTrigger } from '../test-run-menu-helpers'
 
 describe('test-run-menu helpers', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should normalize shortcut keys', () => {
     expect(getNormalizedShortcutKey(new KeyboardEvent('keydown', { key: '`' }))).toBe('~')
     expect(getNormalizedShortcutKey(new KeyboardEvent('keydown', { key: '1' }))).toBe('1')

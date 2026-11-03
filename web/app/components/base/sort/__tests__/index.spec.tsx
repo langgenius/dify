@@ -1,131 +1,97 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import type { SortValue } from '../index'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import { describe, expect, it, vi } from 'vite-plus/test'
-import Sort from '../index'
+import { useState } from 'react'
+import { Sort } from '../index'
 
-const mockItems = [
+const items = [
   { value: 'created_at', name: 'Date Created' },
   { value: 'name', name: 'Name' },
-  { value: 'status', name: 'Status' },
-]
+] as const
 
-describe('Sort component — real portal integration', () => {
-  const setup = (props: Partial<React.ComponentProps<typeof Sort>> = {}) => {
-    const onSelect = vi.fn()
-    const user = userEvent.setup()
-    const { rerender } = render(
-      <Sort value="created_at" items={mockItems} onSelect={onSelect} order="" {...props} />,
-    )
+it('requests a new field without changing the controlled value or its direction', async () => {
+  const user = userEvent.setup()
+  const onValueChange = vi.fn()
+  render(
+    <Sort
+      items={items}
+      value={{ field: 'created_at', order: 'asc' }}
+      onValueChange={onValueChange}
+    />,
+  )
+  await user.click(screen.getByRole('button', { name: /common.sorting.sortBy/ }))
+  await user.click(screen.getByRole('menuitemradio', { name: 'Name' }))
+  expect(onValueChange).toHaveBeenCalledExactlyOnceWith({ field: 'name', order: 'asc' })
+  expect(screen.getByRole('button', { name: /common.sorting.sortBy/ })).toHaveTextContent(
+    'Date Created',
+  )
+  await user.click(screen.getByRole('button', { name: 'common.sorting.descending' }))
+  expect(onValueChange).toHaveBeenLastCalledWith({ field: 'created_at', order: 'desc' })
+  expect(screen.getByRole('button', { name: 'common.sorting.descending' })).toBeInTheDocument()
+})
 
-    // helper: returns a non-null HTMLElement or throws with a clear message
-    const getTriggerWrapper = (): HTMLElement => {
-      const wrapper = screen.getByRole('button', { name: /appLog\.filter\.sortBy/i })
-      if (!wrapper) throw new Error('Trigger wrapper element not found for "Sort by" label')
-      return wrapper as HTMLElement
-    }
-
-    // helper: returns right-side sort button element
-    const getSortButton = (): HTMLElement => {
-      return screen.getByRole('button', {
-        name: props.order ? 'appLog.filter.ascending' : 'appLog.filter.descending',
-      })
-    }
-
-    return { user, onSelect, rerender, getTriggerWrapper, getSortButton }
-  }
-
-  it('renders and shows selected item label and sort icon', () => {
-    const { getSortButton } = setup({ order: '' })
-
-    expect(screen.getByText('Date Created')).toBeInTheDocument()
-
-    const sortButton = getSortButton()
-    expect(sortButton).toBeInstanceOf(HTMLElement)
-    expect(sortButton.querySelector('.i-ri-sort-asc')).toBeInTheDocument()
-  })
-
-  it('opens and closes the menu', async () => {
-    const { user, getTriggerWrapper } = setup()
-
-    await user.click(getTriggerWrapper())
-    expect(await screen.findByText('Name')).toBeInTheDocument()
-
-    // clicking the trigger again should close it
-    await user.click(getTriggerWrapper())
-    await waitFor(() => expect(screen.queryByText('Name')).not.toBeInTheDocument())
-  })
-
-  it('renders options and calls onSelect with descending prefix when order is "-"', async () => {
-    const { user, onSelect, getTriggerWrapper } = setup({ order: '-' })
-
-    await user.click(getTriggerWrapper())
-    await screen.findByText('Name')
-
-    mockItems.forEach((item) => {
-      expect(within(document.body).getAllByText(item.name).length).toBeGreaterThan(0)
+it('preserves direction when choosing a field and toggles it without losing the field', async () => {
+  const user = userEvent.setup()
+  const onValueChange = vi.fn()
+  function Harness() {
+    const [sort, setSort] = useState<SortValue<(typeof items)[number]['value']>>({
+      field: 'created_at',
+      order: 'desc',
     })
-
-    await user.click(screen.getByText('Name'))
-    expect(onSelect).toHaveBeenCalledWith('-name')
-    await waitFor(() => expect(screen.queryByText('Name')).not.toBeInTheDocument())
-  })
-
-  it('toggles sorting order: ascending -> descending via right-side button', async () => {
-    const { user, onSelect, getSortButton } = setup({ order: '', value: 'created_at' })
-    await user.click(getSortButton())
-    expect(onSelect).toHaveBeenCalledWith('-created_at')
-  })
-
-  it('toggles sorting order: descending -> ascending via right-side button', async () => {
-    const { user, onSelect, getSortButton } = setup({ order: '-', value: 'name' })
-    await user.click(getSortButton())
-    expect(onSelect).toHaveBeenCalledWith('name')
-  })
-
-  it('shows checkmark only for selected item in menu', async () => {
-    const { user, getTriggerWrapper } = setup({ value: 'status' })
-
-    await user.click(getTriggerWrapper())
-    await screen.findByText('Name')
-
-    const statusRow = screen.getAllByText('Status').at(-1)?.closest('.flex')
-    const nameRow = screen.getByText('Name').closest('.flex')
-
-    if (!statusRow) throw new Error('Status option row not found in menu')
-    if (!nameRow) throw new Error('Name option row not found in menu')
-
-    expect(statusRow.querySelector('.i-ri-check-line')).toBeInTheDocument()
-    expect(nameRow.querySelector('.i-ri-check-line')).not.toBeInTheDocument()
-  })
-
-  it('shows empty selection label when value is unknown', () => {
-    setup({ value: 'unknown_value' })
-    const label = screen.getByText('appLog.filter.sortBy')
-    const valueNode = label.nextSibling
-    if (!valueNode) throw new Error('Expected a sibling node for the selection text')
-    expect(String(valueNode.textContent || '').trim()).toBe('')
-  })
-
-  it('handles undefined order prop without asserting a literal "undefined" prefix', async () => {
-    const { user, onSelect, getTriggerWrapper } = setup({ order: undefined })
-
-    await user.click(getTriggerWrapper())
-    await screen.findByText('Name')
-
-    await user.click(screen.getByText('Name'))
-
-    expect(onSelect).toHaveBeenCalled()
-    expect(onSelect).toHaveBeenCalledWith(expect.stringMatching(/name$/))
-  })
-
-  it('clicking outside the open menu closes the portal', async () => {
-    const { user, getTriggerWrapper } = setup()
-    await user.click(getTriggerWrapper())
-    expect(await screen.findByText('Name')).toBeInTheDocument()
-
-    // click outside: body click should close the tooltip
-    await user.click(document.body)
-    await waitFor(() => expect(screen.queryByText('Name')).not.toBeInTheDocument())
-  })
+    return (
+      <Sort
+        items={items}
+        value={sort}
+        onValueChange={(next) => {
+          onValueChange(next)
+          setSort(next)
+        }}
+      />
+    )
+  }
+  render(<Harness />)
+  const trigger = screen.getByRole('button', { name: /common.sorting.sortBy/ })
+  await user.click(trigger)
+  expect(screen.getByRole('menuitemradio', { name: 'Date Created' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  expect(screen.getByRole('menuitemradio', { name: 'Name' })).toHaveAttribute(
+    'aria-checked',
+    'false',
+  )
+  await user.click(screen.getByRole('menuitemradio', { name: 'Name' }))
+  expect(onValueChange).toHaveBeenLastCalledWith({ field: 'name', order: 'desc' })
+  await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+  expect(trigger).toHaveTextContent('Name')
+  const directionButton = screen.getByRole('button', { name: 'common.sorting.ascending' })
+  expect(directionButton).not.toHaveAttribute('aria-pressed')
+  await user.hover(directionButton)
+  expect(await screen.findByText('common.sorting.ascending')).toBeVisible()
+  await user.click(directionButton)
+  expect(onValueChange).toHaveBeenLastCalledWith({ field: 'name', order: 'asc' })
+  await waitFor(() =>
+    expect(screen.queryByText('common.sorting.descending')).not.toBeInTheDocument(),
+  )
+  await user.click(screen.getByRole('button', { name: 'common.sorting.descending' }))
+  expect(onValueChange).toHaveBeenLastCalledWith({ field: 'name', order: 'desc' })
+})
+it('preserves numeric field identifiers when selecting a field or changing direction', async () => {
+  const user = userEvent.setup()
+  const onValueChange = vi.fn()
+  render(
+    <Sort
+      items={[
+        { value: 0, name: 'First field' },
+        { value: 1, name: 'Second field' },
+      ]}
+      value={{ field: 0, order: 'desc' }}
+      onValueChange={onValueChange}
+    />,
+  )
+  await user.click(screen.getByRole('button', { name: 'common.sorting.ascending' }))
+  expect(onValueChange).toHaveBeenLastCalledWith({ field: 0, order: 'asc' })
+  await user.click(screen.getByRole('button', { name: /common.sorting.sortBy/ }))
+  await user.click(screen.getByRole('menuitemradio', { name: 'Second field' }))
+  expect(onValueChange).toHaveBeenLastCalledWith({ field: 1, order: 'desc' })
 })

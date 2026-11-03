@@ -47,7 +47,6 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
     <ContextMenuContent
       finalFocus={() => (deletingRef.current ? (flowStore.getState().domNode ?? true) : true)}
       className={NODE_ACTIONS_MENU_WIDTH_CLASS_NAME}
-      sideOffset={4}
       onKeyDown={(event) =>
         handleWorkflowMenuKeyDown(event, [
           ['workflow.copy', hasEditGroup ? model.handleCopy : undefined],
@@ -65,14 +64,21 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
             <Popover modal="trap-focus">
               <ContextMenuItem
                 closeOnClick={false}
-                render={<PopoverTrigger nativeButton={false} render={<div />} />}
+                // The menu row owns the focus treatment, so the trigger adds no ring.
+                render={
+                  <PopoverTrigger
+                    nativeButton={false}
+                    className="focus-visible:ring-0"
+                    render={<div />}
+                  />
+                }
                 className="data-popup-open:bg-state-base-hover"
               >
                 {t(($) => $['panel.changeBlock'], { ns: 'workflow' })}
               </ContextMenuItem>
               <PopoverPortal>
                 <PopoverBackdrop />
-                <PopoverPositioner placement="right-start" positionMethod="fixed">
+                <PopoverPositioner side="right" align="start" positionMethod="fixed">
                   <ChangeBlockPopup
                     nodeId={model.id}
                     nodeData={model.data}

@@ -27,7 +27,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
-import Sort from '@/app/components/base/sort'
+import { Sort } from '@/app/components/base/sort'
 import { useDocLink } from '@/context/i18n'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/console'
@@ -63,16 +63,6 @@ const getPeriodQuery = (period: PeriodKey) => {
   return {
     start: dayjs().subtract(days, 'day').format(queryDateFormat),
     end: dayjs().add(1, 'minute').format(queryDateFormat),
-  }
-}
-
-const parseSortValue = (value: string): AgentLogsSort => {
-  const isDescending = value.startsWith('-')
-  const field = isDescending ? value.slice(1) : value
-
-  return {
-    field: field === 'updated_at' ? 'updated_at' : 'created_at',
-    order: isDescending ? 'desc' : 'asc',
   }
 }
 
@@ -201,8 +191,7 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
 
           <div className="ml-auto max-w-full">
             <Sort
-              order={sort.order === 'desc' ? '-' : ''}
-              value={sort.field}
+              value={sort}
               items={[
                 {
                   value: 'created_at',
@@ -213,9 +202,9 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
                   name: t(($) => $['agentDetail.logs.filters.sort.lastUpdatedTime']),
                 },
               ]}
-              onSelect={(nextSortValue) => {
+              onValueChange={(nextSortValue) => {
                 setPage(1)
-                setSort(parseSortValue(nextSortValue))
+                setSort(nextSortValue)
               }}
             />
           </div>

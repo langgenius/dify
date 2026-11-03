@@ -163,7 +163,7 @@ Wählen Sie den Kanal, der am besten zu Ihrem Anliegen passt:
 - [X](https://x.com/dify_ai): Neuigkeiten zu Releases und Projekt-Updates verfolgen.
 ## Star-Geschichte
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## Offenlegung der Sicherheit
 

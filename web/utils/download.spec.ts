@@ -1,75 +1,46 @@
 import { downloadBlob, downloadUrl } from './download'
 
-describe('downloadUrl', () => {
-  let mockAnchor: HTMLAnchorElement
+afterEach(() => vi.restoreAllMocks())
 
-  beforeEach(() => {
-    mockAnchor = {
-      href: '',
-      download: '',
-      rel: '',
-      target: '',
-      style: { display: '' },
-      click: vi.fn(),
-      remove: vi.fn(),
-    } as unknown as HTMLAnchorElement
-
-    vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor)
-    vi.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => node)
+it('downloads a URL with its filename and safe external-link attributes, then removes the link', () => {
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    expect(this).toBeInTheDocument()
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
+  downloadUrl({ url: 'https://example.com/file.txt', fileName: 'file.txt', target: '_blank' })
 
-  it('should create a link and trigger a download correctly', () => {
-    downloadUrl({ url: 'https://example.com/file.txt', fileName: 'file.txt', target: '_blank' })
-
-    expect(mockAnchor.href).toBe('https://example.com/file.txt')
-    expect(mockAnchor.download).toBe('file.txt')
-    expect(mockAnchor.rel).toBe('noopener noreferrer')
-    expect(mockAnchor.target).toBe('_blank')
-    expect(mockAnchor.style.display).toBe('none')
-    expect(mockAnchor.click).toHaveBeenCalled()
-    expect(mockAnchor.remove).toHaveBeenCalled()
-  })
-
-  it('should skip when url is empty', () => {
-    downloadUrl({ url: '' })
-    expect(document.createElement).not.toHaveBeenCalled()
-  })
+  const clicked = click.mock.contexts[0] as HTMLAnchorElement
+  expect(clicked.href).toBe('https://example.com/file.txt')
+  expect(clicked.download).toBe('file.txt')
+  expect(clicked.rel).toBe('noopener noreferrer')
+  expect(clicked.target).toBe('_blank')
+  expect(clicked).not.toBeInTheDocument()
 })
 
-describe('downloadBlob', () => {
-  it('should create a blob url, trigger download, and revoke url', () => {
-    const blob = new Blob(['test'], { type: 'text/plain' })
-    const mockUrl = 'blob:mock-url'
-    const createObjectURLMock = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue(mockUrl)
-    const revokeObjectURLMock = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {})
+it('skips downloading an empty URL', () => {
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  downloadUrl({ url: '' })
+  expect(click).not.toHaveBeenCalled()
+})
 
-    const mockAnchor = {
-      href: '',
-      download: '',
-      rel: '',
-      target: '',
-      style: { display: '' },
-      click: vi.fn(),
-      remove: vi.fn(),
-    } as unknown as HTMLAnchorElement
-
-    vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor)
-    vi.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => node)
-
-    downloadBlob({ data: blob, fileName: 'file.txt' })
-
-    expect(createObjectURLMock).toHaveBeenCalledWith(blob)
-    expect(mockAnchor.href).toBe(mockUrl)
-    expect(mockAnchor.download).toBe('file.txt')
-    expect(mockAnchor.rel).toBe('noopener noreferrer')
-    expect(mockAnchor.click).toHaveBeenCalled()
-    expect(mockAnchor.remove).toHaveBeenCalled()
-    expect(revokeObjectURLMock).toHaveBeenCalledWith(mockUrl)
-
-    vi.restoreAllMocks()
+it('downloads a blob and releases its temporary URL after activating the link', () => {
+  const blob = new Blob(['test'], { type: 'text/plain' })
+  const createURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:avatar')
+  const revokeURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    expect(this.href).toBe('blob:avatar')
+    expect(this.download).toBe('file.txt')
+    expect(revokeURL).not.toHaveBeenCalled()
   })
+
+  downloadBlob({ data: blob, fileName: 'file.txt' })
+
+  const clicked = click.mock.contexts[0] as HTMLAnchorElement
+  expect(createURL).toHaveBeenCalledWith(blob)
+  expect(revokeURL).toHaveBeenCalledWith('blob:avatar')
+  expect(clicked).not.toBeInTheDocument()
 })

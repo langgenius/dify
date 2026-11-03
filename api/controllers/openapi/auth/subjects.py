@@ -146,5 +146,28 @@ class ExternalSsoSubject(Subject):
         return account.id if account is not None else None
 
 
+class ResourceAccessSubject(Subject):
+    subject_type = SubjectType.RESOURCE_ACCESS
+    caller_role = CreatorUserRole.END_USER
+    webapp_modes = frozenset[WebAppAccessMode]()
+
+    @override
+    def resolve_caller(self, ctx: Context, session: Session) -> EndUser:
+        return application_services().app_scoped_end_users.commands.get_or_create_end_user_by_type(
+            EndUserType.OPENAPI,
+            tenant_id=ctx.workspace.id,
+            app_id=ctx.app.id,
+            user_id=f"resource-token:{self.token_id}",
+        )
+
+    @override
+    def mounts_caller(self, ctx: Context) -> bool:
+        return route_has_app(ctx)
+
+    @override
+    def webapp_user_id(self, session: Session) -> str | None:
+        return None
+
+
 def subject_from_auth(auth: AuthContext) -> Subject:
     return _SUBJECT_CLASSES[auth.subject_type](auth)

@@ -23,6 +23,18 @@ Given('the Agent Builder stable chat model is available', async function (this: 
   this.agentBuilder.fixtures.stableModel = stableModel
 })
 
+Given('the workspace default chat model is configured', async function (this: DifyWorld) {
+  const response = await this.getConsoleClient().workspaces.current.defaultModel.get({
+    query: { model_type: 'llm' },
+  })
+  if (!response.data)
+    throw new Error(
+      'The workspace default chat model is not configured. Run the prepared seed first.',
+    )
+
+  this.agentBuilder.fixtures.defaultChatModel = response.data
+})
+
 Given('the workspace default speech-to-text model is active', async function (this: DifyWorld) {
   const speechToTextModel = await requireAgentBuilderSpeechToTextModel(
     this,

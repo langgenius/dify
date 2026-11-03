@@ -1,6 +1,7 @@
 import type { CommandContext } from '@/plugins/base'
 import { z } from 'zod'
 import { assertNotEnvLogin, revokeAndClearSession } from '@/auth/logout'
+import { pendingLoginStore } from '@/auth/pending-login'
 import { Command } from '@/plugins/commands/command'
 import { session } from '@/plugins/session'
 
@@ -15,9 +16,10 @@ export default class Logout extends Command<typeof INPUT> {
 
   async run(_input: z.infer<typeof INPUT>, ctx: CommandContext) {
     const sessionService = await ctx.get(session)
-    const login = await sessionService.require()
+    // Refuse before touching anything: an env login must leave a pending interactive login alone.
     assertNotEnvLogin(sessionService.fromEnv, ENV_LOGOUT_MESSAGE)
-
+    await (await pendingLoginStore(ctx)).clear()
+    const login = await sessionService.require()
     await revokeAndClearSession(ctx, login)
 
     return { logged_out: true, server: login.server }

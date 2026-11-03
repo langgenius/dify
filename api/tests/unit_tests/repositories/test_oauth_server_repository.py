@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -81,6 +82,7 @@ def test_get_account_by_id_maps_record(
         timezone="UTC",
         status=status,
     )
+    account.created_at = datetime(2024, 1, 2, 3, 4, 5)
     with sqlite_session_factory.begin() as session:
         session.add(account)
         session.flush()
@@ -96,6 +98,7 @@ def test_get_account_by_id_maps_record(
         interface_language="en-US",
         timezone="UTC",
         status=expected_status,
+        created_at=datetime(2024, 1, 2, 3, 4, 5),
     )
 
 

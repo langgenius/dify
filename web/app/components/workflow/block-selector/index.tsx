@@ -1,8 +1,8 @@
 import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type {
+  PopoverChangeEventDetails,
   PopoverPopupProps,
   PopoverPositionerProps,
-  PopoverProps,
   PopoverTriggerProps,
 } from '@langgenius/dify-ui/popover'
 import type { CSSProperties, KeyboardEvent, MouseEventHandler, Ref } from 'react'
@@ -19,11 +19,12 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { FlowType } from '@/types/common'
 import TipPopup from '../operator/tip-popup'
 import { useStore } from '../store'
 import { BlockEnum, isTriggerNode } from '../types'
@@ -32,15 +33,12 @@ import { BlockSelectorPanels } from './tabs'
 
 export type BlockSelectorProps = Pick<
   PopoverPositionerProps,
-  'alignOffset' | 'placement' | 'sideOffset'
+  'alignOffset' | 'side' | 'align' | 'sideOffset'
 > & {
   finalFocus?: PopoverPopupProps['finalFocus']
   triggerRef?: Ref<HTMLButtonElement>
   open?: boolean
-  onOpenChange?: (
-    open: boolean,
-    details?: Parameters<NonNullable<PopoverProps['onOpenChange']>>[1],
-  ) => void
+  onOpenChange?: (open: boolean, details?: PopoverChangeEventDetails) => void
   onSelect: OnSelectBlock
   trigger?: NonNullable<PopoverTriggerProps['render']>
   triggerTooltip?: string
@@ -71,7 +69,8 @@ function BlockSelector({
   triggerTooltip,
   triggerRef,
   finalFocus,
-  placement = 'right',
+  side = 'right',
+  align,
   sideOffset,
   alignOffset,
   triggerClassName,
@@ -98,7 +97,7 @@ function BlockSelector({
   const searchInputRef = useRef<HTMLInputElement>(null)
   const open = openFromProps === undefined ? localOpen : openFromProps
   const handleOpenChange = useCallback(
-    (newOpen: boolean, details?: Parameters<NonNullable<PopoverProps['onOpenChange']>>[1]) => {
+    (newOpen: boolean, details?: PopoverChangeEventDetails) => {
       if (newOpen && disabled) return
 
       setLocalOpen(newOpen)
@@ -135,6 +134,7 @@ function BlockSelector({
       ref={triggerRef}
       aria-label={triggerAriaLabel}
       disabled={disabled}
+      className={triggerClassName}
       render={trigger}
       onClick={handleTrigger}
     />
@@ -167,7 +167,8 @@ function BlockSelector({
       {triggerWithTooltip}
       <PopoverPortal>
         <PopoverPositioner
-          placement={placement}
+          side={side}
+          align={align}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
           positionMethod="fixed"
@@ -254,7 +255,7 @@ export function BlockSelectorContent({
   standalonePanel,
 }: BlockSelectorContentProps) {
   const nodes = useNodes()
-  const flowType = useHooksStore((state) => state.configsMap?.flowType)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const availableNodesMetaData = useHooksStore((state) => state.availableNodesMetaData)
   const fallbackDataSources = useStore((state) => state.dataSourceList)
   const blocks = useMemo(() => {
@@ -298,12 +299,12 @@ export function BlockSelectorContent({
 
     return result
   }, [filteredNodes])
-  const disableStartTab = flowType === FlowType.snippet
+  const disableStartTab = resourceKind === 'snippet'
   const { initialTab, tabs } = useTabs({
     noBlocks,
     noSources: !dataSources.length,
     noTools,
-    noSnippets: flowType === FlowType.snippet,
+    noSnippets: resourceKind === 'snippet',
     noStart: !showStartTab,
     defaultActiveTab,
     hasStartPlaceholderNode,

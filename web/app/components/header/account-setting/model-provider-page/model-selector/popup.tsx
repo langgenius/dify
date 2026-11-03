@@ -19,7 +19,8 @@ import { useTranslation } from 'react-i18next'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
@@ -85,10 +86,7 @@ function Popup({
   const { t } = useTranslation(['common', 'modelProvider'])
   const { theme } = useTheme()
   const language = useLanguage()
-  const previewCardHandle = useMemo(
-    () => createPreviewCardHandle<ModelSelectorPreviewPayload>(),
-    [],
-  )
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<ModelSelectorPreviewPayload>())
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const [showIncompatibleModels, setShowIncompatibleModels] = useState(false)
   const { data: providerSummary } = useQuery(
@@ -96,10 +94,7 @@ function Popup({
   )
   const modelProviders = providerSummary?.data ?? EMPTY_MODEL_PROVIDERS
   const modelProviderPlugins = providerSummary?.plugins ?? EMPTY_MODEL_PROVIDER_PLUGINS
-  const { data: enableMarketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (systemFeatures) => systemFeatures.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -122,16 +117,16 @@ function Popup({
     [modelProviders],
   )
   const aiCreditVisibleProviders = useMemo(() => {
-    if (!enableMarketplace || isCreditsExhausted) return new Set<string>()
+    if (!marketplace || isCreditsExhausted) return new Set<string>()
 
     return new Set(
       modelProviders
         .filter((provider) => providerSupportsCredits(provider, trialModels, deploymentEdition))
         .map((provider) => provider.provider),
     )
-  }, [deploymentEdition, enableMarketplace, isCreditsExhausted, modelProviders, trialModels])
+  }, [deploymentEdition, marketplace, isCreditsExhausted, modelProviders, trialModels])
   const showCreditsExhaustedAlert =
-    enableMarketplace &&
+    marketplace !== null &&
     isCreditsExhausted &&
     modelProviders.some((provider) =>
       providerSupportsCredits(provider, trialModels, deploymentEdition),
@@ -148,7 +143,7 @@ function Popup({
 
   const handleInstallPlugin = useCallback(
     async (key: ModelProviderQuotaGetPaid) => {
-      if (!enableMarketplace || !canInstallPlugin || installingProvider) return
+      if (!marketplace || !canInstallPlugin || installingProvider) return
       const pluginId = providerKeyToPluginId[key]
       const [org, name] = pluginId.split('/')
       if (!org || !name) return
@@ -160,7 +155,11 @@ function Popup({
         const { all_installed, task_id } = await installPackageFromMarketPlace(uniqueIdentifier)
         if (!all_installed) {
           const { check } = checkTaskStatus()
-          await check({ taskId: task_id, pluginUniqueIdentifier: uniqueIdentifier })
+          const { status } = await check({
+            taskId: task_id,
+            pluginUniqueIdentifier: uniqueIdentifier,
+          })
+          if (status !== TaskStatus.success) return
         }
         refreshPluginList({ category: PluginCategoryEnum.model })
       } catch {
@@ -169,7 +168,7 @@ function Popup({
       }
     },
     [
-      enableMarketplace,
+      marketplace,
       canInstallPlugin,
       installPackageFromMarketPlace,
       installingProvider,
@@ -238,7 +237,7 @@ function Popup({
   const shouldShowModelPredicateReveal = !!modelPredicate
 
   const marketplaceProviders = useMemo(() => {
-    if (!enableMarketplace) return []
+    if (!marketplace) return []
 
     const installedPluginIds = new Set(
       Object.values(modelProviderPlugins).map((plugin) => plugin.plugin_id),
@@ -246,7 +245,7 @@ function Popup({
     return MODEL_PROVIDER_QUOTA_GET_PAID.filter(
       (key) => !installedPluginIds.has(providerKeyToPluginId[key]),
     )
-  }, [enableMarketplace, modelProviderPlugins])
+  }, [marketplace, modelProviderPlugins])
 
   const searchStatus =
     !filteredModelList.length && installedModelList.length > 0
@@ -307,8 +306,9 @@ function Popup({
                 onClick={() => setShowIncompatibleModels((value) => !value)}
               />
             )}
-            {enableMarketplace && (
+            {marketplace && (
               <MarketplaceSection
+                marketplace={marketplace}
                 marketplaceProviders={marketplaceProviders}
                 marketplaceCollapsed={marketplaceCollapsed}
                 installingProvider={installingProvider}
@@ -330,7 +330,7 @@ function Popup({
           <ModelSelectorPreviewCard
             capabilitiesLabel={t(($) => $['model.capabilities'], { ns: 'common' })}
             language={language}
-            payload={payload as ModelSelectorPreviewPayload | undefined}
+            payload={payload}
           />
         )}
       </PreviewCard>
@@ -360,7 +360,7 @@ function ModelSelectorPreviewCard({
 
   return (
     <PreviewCardContent
-      placement="right"
+      side="right"
       className="w-51.5 bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
     >
       <div className="flex flex-col gap-1">

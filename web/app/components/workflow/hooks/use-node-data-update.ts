@@ -1,4 +1,4 @@
-import type { SyncCallback } from './use-nodes-sync-draft'
+import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
@@ -34,7 +34,7 @@ export const useNodeDataUpdate = () => {
       options?: {
         sync?: boolean
         notRefreshWhenSyncError?: boolean
-        callback?: SyncCallback
+        callback?: SyncDraftCallback
       },
     ) => {
       if (getNodesReadOnly()) return

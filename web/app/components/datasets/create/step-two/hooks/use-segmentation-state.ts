@@ -1,6 +1,6 @@
+import type { PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
 import type {
   ParentMode,
-  PreProcessingRule,
   ProcessRule,
   Rules,
   SummaryIndexSetting as SummaryIndexSettingType,
@@ -12,9 +12,9 @@ import escape from './escape'
 import unescape from './unescape'
 
 // Constants
-export const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
-export const DEFAULT_MAXIMUM_CHUNK_LENGTH = 1024
-export const DEFAULT_OVERLAP = 50
+const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
+const DEFAULT_MAXIMUM_CHUNK_LENGTH = 1024
+const DEFAULT_OVERLAP = 50
 export const MAXIMUM_CHUNK_TOKEN_LENGTH = env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
 
 export type ParentChildConfig = {
@@ -29,7 +29,7 @@ export type ParentChildConfig = {
   }
 }
 
-export const defaultParentChildConfig: ParentChildConfig = {
+const defaultParentChildConfig: ParentChildConfig = {
   chunkForContext: 'paragraph',
   parent: {
     delimiter: '\\n\\n',

@@ -7,8 +7,8 @@ from pydantic import ValidationError
 from pydantic_ai.messages import BinaryContent, ImageUrl
 
 from dify_agent.layers.user_prompt import DifyUserPromptLayerConfig
-from dify_agent.layers.user_prompt.layer import DifyUserPromptLayer
-from dify_agent.runtime.compositor_factory import create_default_layer_providers
+from dify_agent.layers.user_prompt.layer import Capability
+from tests.local.dify_agent.module_support import deps_for
 
 
 @pytest.mark.parametrize("include_image", [False, True])
@@ -59,9 +59,9 @@ def test_user_prompt_layer_injects_file_locators(include_image: bool, download_t
             ],
         }
     )
-    layer = DifyUserPromptLayer.from_config(DifyUserPromptLayerConfig.model_validate_json(config.model_dump_json()))
+    layer = _content(DifyUserPromptLayerConfig.model_validate_json(config.model_dump_json()))
 
-    prompts = layer.user_prompts
+    prompts = layer
 
     assert prompts[0] == (
         "Inspect these files.\n"
@@ -72,9 +72,8 @@ def test_user_prompt_layer_injects_file_locators(include_image: bool, download_t
         '{"transfer_method":"tool_file","reference":"dify-file-ref:tool-file-1"},'
         '{"transfer_method":"datasource_file","reference":"dify-file-ref:datasource-file-1"}]'
     )
-    assert layer.config.text == "Inspect these files."
-    assert "locators" not in layer.config.model_dump()
-    assert layer.user_prompts == prompts
+    assert config.text == "Inspect these files."
+    assert "locators" not in config.model_dump()
     assert len(prompts) == (2 if include_image else 1)
     if include_image:
         assert isinstance(prompts[1], ImageUrl)
@@ -103,13 +102,13 @@ def test_user_prompt_layer_rejects_invalid_locators(locator: dict[str, str]) -> 
 
 
 def test_user_prompt_layer_preserves_text_without_locators() -> None:
-    layer = DifyUserPromptLayer.from_config(DifyUserPromptLayerConfig(text="  Original prompt.\n"))
+    layer = _content(DifyUserPromptLayerConfig(text="  Original prompt.\n"))
 
-    assert layer.user_prompts == ["  Original prompt.\n"]
+    assert layer == ["  Original prompt.\n"]
 
 
 def test_user_prompt_layer_restores_image_url_content() -> None:
-    layer = DifyUserPromptLayer.from_config(
+    layer = _content(
         DifyUserPromptLayerConfig.model_validate(
             {
                 "text": "What is in this image?",
@@ -128,7 +127,7 @@ def test_user_prompt_layer_restores_image_url_content() -> None:
         )
     )
 
-    prompts = layer.user_prompts
+    prompts = layer
 
     assert prompts[0] == "What is in this image?"
     assert isinstance(prompts[1], ImageUrl)
@@ -139,7 +138,7 @@ def test_user_prompt_layer_restores_image_url_content() -> None:
 
 def test_user_prompt_layer_restores_inline_binary_content() -> None:
     payload = base64.b64encode(b"image-bytes").decode()
-    layer = DifyUserPromptLayer.from_config(
+    layer = _content(
         DifyUserPromptLayerConfig.model_validate(
             {
                 "text": "Describe it.",
@@ -157,7 +156,7 @@ def test_user_prompt_layer_restores_inline_binary_content() -> None:
         )
     )
 
-    content = layer.user_prompts[1]
+    content = layer[1]
 
     assert isinstance(content, BinaryContent)
     assert content.data == b"image-bytes"
@@ -190,9 +189,5 @@ def test_user_prompt_file_requires_exactly_one_transport(file_payload: dict[str,
         DifyUserPromptLayerConfig.model_validate({"text": "Describe it.", "files": [file_payload]})
 
 
-def test_default_compositor_registers_user_prompt_layer() -> None:
-    provider = next(provider for provider in create_default_layer_providers() if provider.type_id == "dify.user_prompt")
-
-    layer = provider.create_layer({"text": "Describe it."})
-
-    assert isinstance(layer, DifyUserPromptLayer)
+def _content(config):
+    return Capability("user_prompt").build_user_content(deps_for("user_prompt", config))

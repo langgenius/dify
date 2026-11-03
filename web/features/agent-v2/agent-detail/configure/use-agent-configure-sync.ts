@@ -5,7 +5,9 @@ import type {
   AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { mutationOptions, useMutation, useQueryClient } from '@tanstack/react-query'
+import { omit } from 'es-toolkit'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
 import { useAtomValue, useSetAtom, useStore } from 'jotai'
@@ -26,7 +28,6 @@ import {
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerToolPresentationIdentitiesAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleQuery } from '@/service/console'
 import {
   getAgentToolPublishIssue,
@@ -174,7 +175,7 @@ export function useAgentConfigureSync({
             body: {
               variant: 'agent_app',
               save_strategy: 'save_to_current_version',
-              agent_soul: configSnapshot,
+              agent_soul: omit(configSnapshot, ['config_files']),
             },
           })
         } catch (error) {
@@ -245,7 +246,7 @@ export function useAgentConfigureSync({
           body: {
             variant: 'agent_app',
             save_strategy: 'save_to_current_version',
-            agent_soul: configSnapshot,
+            agent_soul: omit(configSnapshot, ['config_files']),
           },
         })
       } catch {
@@ -478,20 +479,7 @@ export function useAgentConfigureSync({
       })
       return { kind: published.publication_kind, draft }
     } catch (error) {
-      let errorData: unknown = error
-      if (error instanceof Response) {
-        try {
-          errorData = await error.clone().json()
-        } catch {}
-      }
-      toast.error(
-        errorData &&
-          typeof errorData === 'object' &&
-          'message' in errorData &&
-          typeof errorData.message === 'string'
-          ? errorData.message
-          : tCommon(($) => $['api.actionFailed']),
-      )
+      toast.error(error instanceof Error ? error.message : tCommon(($) => $['api.actionFailed']))
       throw error
     } finally {
       publishInFlightRef.current = false

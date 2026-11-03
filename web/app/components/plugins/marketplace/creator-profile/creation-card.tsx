@@ -34,13 +34,21 @@ function CreationCardContent({ creation }: { creation: CreatorCreation }) {
 
       <div className="flex min-w-0 shrink-0 items-center gap-3 px-4 pt-4 pr-20 pb-2">
         {creation.icon.type === 'image' ? (
-          <AppIcon size="large" iconType="image" imageUrl={creation.icon.src} />
+          <AppIcon
+            size="large"
+            icon={{
+              icon_type: 'image',
+              icon_url: creation.icon.src,
+            }}
+          />
         ) : (
           <AppIcon
             size="large"
-            iconType="emoji"
-            icon={creation.icon.value}
-            background={creation.icon.background}
+            icon={{
+              icon_type: 'emoji',
+              icon: creation.icon.value,
+              icon_background: creation.icon.background,
+            }}
           />
         )}
         <h3 className="min-w-0 flex-1 truncate system-md-medium text-text-primary">

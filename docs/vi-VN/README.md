@@ -154,7 +154,7 @@ Chọn kênh phù hợp nhất với câu hỏi của bạn:
 - [X](https://x.com/dify_ai): theo dõi tin tức phát hành và cập nhật dự án.
 ## Lịch sử Yêu thích
 
-[![Biểu đồ Lịch sử Yêu thích](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Biểu đồ Lịch sử Yêu thích](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Biểu đồ Lịch sử Yêu thích](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## Tiết lộ bảo mật
 

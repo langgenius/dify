@@ -2,16 +2,11 @@ import type { UnsupportedNode } from '@dify/contracts/enterprise-app-deploy/type
 import type { Node } from '@/app/components/workflow/types'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { findNodeIcon } from '@/app/components/workflow/hooks/use-tool-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 
 const PROVIDER_ICON_BLOCK_TYPES = new Set<string>([
@@ -35,10 +30,30 @@ export const useGetProviderIcon = (nodes: UnsupportedNode[]) => {
   const hasToolNode = nodes.some((node) => node.type === BlockEnum.Tool)
   const hasDataSourceNode = nodes.some((node) => node.type === BlockEnum.DataSource)
   const hasTriggerPluginNode = nodes.some((node) => node.type === BlockEnum.TriggerPlugin)
-  const { data: buildInTools } = useAllBuiltInTools(hasToolNode)
-  const { data: customTools } = useAllCustomTools(hasToolNode)
-  const { data: workflowTools } = useAllWorkflowTools(hasToolNode)
-  const { data: mcpTools } = useAllMCPTools(hasToolNode)
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      enabled: hasToolNode,
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({
+      enabled: hasToolNode,
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      enabled: hasToolNode,
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+      enabled: hasToolNode,
+      select: selectToolsWithProvider,
+    }),
+  )
   const { data: dataSourceList } = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({
       enabled: hasDataSourceNode,

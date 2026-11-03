@@ -1,12 +1,13 @@
 'use client'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useInvitationCheck } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 
 const ActivateForm = () => {
   const router = useRouter()
@@ -24,12 +25,11 @@ const ActivateForm = () => {
       token,
     },
   }
-  const { data: checkRes } = useInvitationCheck(
-    {
-      ...checkParams.params,
-      token: token || undefined,
-    },
-    true,
+  const { data: checkRes } = useQuery(
+    consoleQuery.activate.check.get.queryOptions({
+      input: token ? { query: { ...checkParams.params, token } } : skipToken,
+      retry: false,
+    }),
   )
   useDocumentTitle(
     checkRes?.is_valid === false
@@ -40,9 +40,8 @@ const ActivateForm = () => {
   useEffect(() => {
     if (checkRes?.is_valid) {
       const params = new URLSearchParams(searchParams)
-      const { email, workspace_id } = checkRes.data
-      params.set('email', encodeURIComponent(email))
-      params.set('workspace_id', encodeURIComponent(workspace_id))
+      params.set('email', encodeURIComponent(checkRes.data?.email ?? ''))
+      params.set('workspace_id', encodeURIComponent(checkRes.data?.workspace_id ?? ''))
       params.set('invite_token', encodeURIComponent(token as string))
       router.replace(`/signin?${params.toString()}`)
     }

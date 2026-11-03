@@ -2,7 +2,10 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zPaidPlanRequiredError } from './zod.gen.ts'
 import {
+  zDeleteWorkflowRunArchivesByYearByMonthPath,
+  zDeleteWorkflowRunArchivesByYearByMonthResponse,
   zGetWorkflowRunArchivesDownloadsByDownloadIdPath,
   zGetWorkflowRunArchivesDownloadsByDownloadIdResponse,
   zGetWorkflowRunArchivesResponse,
@@ -24,6 +27,7 @@ export const get = oc
   })
   .input(z.object({ params: zGetWorkflowRunArchivesDownloadsByDownloadIdPath }))
   .output(zGetWorkflowRunArchivesDownloadsByDownloadIdResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const byDownloadId = {
   get,
@@ -44,10 +48,36 @@ export const post = oc
   })
   .input(z.object({ body: zPostWorkflowRunArchivesDownloadsBody }))
   .output(zPostWorkflowRunArchivesDownloadsResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const downloads = {
   post,
   byDownloadId,
+}
+
+/**
+ * Permanently delete this workspace's monthly archive files and archive index
+ */
+export const delete_ = oc
+  .route({
+    description: "Permanently delete this workspace's monthly archive files and archive index",
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteWorkflowRunArchivesByYearByMonth',
+    path: '/workflow-run-archives/{year}/{month}',
+    successStatus: 202,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteWorkflowRunArchivesByYearByMonthPath }))
+  .output(zDeleteWorkflowRunArchivesByYearByMonthResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
+
+export const byMonth = {
+  delete: delete_,
+}
+
+export const byYear = {
+  byMonth,
 }
 
 /**
@@ -63,10 +93,12 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetWorkflowRunArchivesResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const workflowRunArchives = {
   get: get2,
   downloads,
+  byYear,
 }
 
 export const contract = {

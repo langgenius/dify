@@ -1,5 +1,5 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
@@ -72,7 +72,7 @@ export const coerceReplayUserInputs = (
 
 export const buildInitialFeatures = (
   featuresSource: WorkflowFeaturesLike | null | undefined,
-  fileUploadConfigResponse: FileUploadConfigResponse | undefined,
+  fileUploadConfigResponse: UploadConfig | undefined,
 ): FeaturesData => {
   const features = featuresSource || {}
   const fileUpload = features.file_upload

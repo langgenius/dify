@@ -125,10 +125,9 @@ const JinaReader: FC<Props> = ({
         await sleep(2500)
         return await waitForCrawlFinished(jobId)
       } catch (e: any) {
-        const errorBody = await e.json()
         return {
           isError: true,
-          errorMessage: errorBody.message,
+          errorMessage: e instanceof Error ? e.message : undefined,
           data: {
             data: [],
           },
@@ -224,7 +223,7 @@ const JinaReader: FC<Props> = ({
             )}
             {showError && (
               <ErrorMessage
-                className="rounded-b-xl"
+                className="mx-4 mt-2 mb-4"
                 title={t(($) => $[`${I18N_PREFIX}.exceptionErrorTitle`], { ns: 'datasetCreation' })}
                 errorMsg={crawlErrorMessage}
               />

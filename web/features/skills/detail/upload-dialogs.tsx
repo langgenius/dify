@@ -6,12 +6,15 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { getPathBaseName } from './shared'
 import { isUploadReviewItemSkipped, isUploadReviewResolved } from './upload-workflow'
@@ -169,27 +172,13 @@ export function SkillUploadReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-150 max-w-[calc(100vw-32px)] overflow-hidden! p-0!">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={tCommon(($) => $['operation.close'])}
-              size="lg"
-              className="absolute inset-e-5 top-5"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <header className="px-6 pt-6 pr-14 pb-3">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['skillManagement.detail.uploadReviewTitle'])}
-          </DialogTitle>
-          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
-            {summary}
-          </DialogDescription>
-        </header>
-        <div className="flex max-h-[min(520px,60dvh)] flex-col gap-4 overflow-y-auto px-6 py-3">
+      <DialogContent className="w-150 max-w-[calc(100vw-32px)]">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['skillManagement.detail.uploadReviewTitle'])}</DialogTitle>
+          <DialogDescription>{summary}</DialogDescription>
+          <DialogHeaderCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+        </DialogHeader>
+        <DialogBody className="flex flex-col gap-4">
           {candidateItems.length > 0 && (
             <div className="flex flex-col gap-1">
               {candidateItems.map((item) => (
@@ -209,8 +198,8 @@ export function SkillUploadReviewDialog({
               ))}
             </section>
           )}
-        </div>
-        <footer className="flex h-19 items-start justify-end gap-2 px-6 pt-5 pb-6">
+        </DialogBody>
+        <DialogFooter>
           <DialogClose render={<Button size="large" />}>
             {tCommon(($) => $['operation.cancel'])}
           </DialogClose>
@@ -222,7 +211,7 @@ export function SkillUploadReviewDialog({
           >
             {t(($) => $['skillManagement.detail.uploadFilesButton'], { count: readyCount })}
           </Button>
-        </footer>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
@@ -249,30 +238,18 @@ export function SkillUploadFailuresDialog({
   const retryableItems = failedItems.filter((item) => item.failureKind !== 'conflict')
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onDismiss()}>
-      <DialogContent className="w-150 max-w-[calc(100vw-32px)] overflow-hidden! p-0!">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={tCommon(($) => $['operation.close'])}
-              size="lg"
-              className="absolute inset-e-5 top-5"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <header className="px-6 pt-6 pr-14 pb-3">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['skillManagement.detail.uploadFailureTitle'])}
-          </DialogTitle>
-          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+      <DialogContent className="w-150 max-w-[calc(100vw-32px)]">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['skillManagement.detail.uploadFailureTitle'])}</DialogTitle>
+          <DialogDescription>
             {t(($) => $['skillManagement.detail.uploadFailureSummary'], {
               failed: failedItems.length,
               total: items.length,
             })}
           </DialogDescription>
-        </header>
-        <div className="flex max-h-[min(520px,60dvh)] flex-col gap-1 overflow-y-auto px-6 py-3">
+          <DialogHeaderCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+        </DialogHeader>
+        <DialogBody className="flex flex-col gap-1">
           {failedItems.map((item) => (
             <UploadRowShell
               key={item.id}
@@ -299,8 +276,8 @@ export function SkillUploadFailuresDialog({
               }
             />
           ))}
-        </div>
-        <footer className="flex h-19 items-start justify-end gap-2 px-6 pt-5 pb-6">
+        </DialogBody>
+        <DialogFooter>
           <DialogClose render={<Button size="large" />}>
             {tCommon(($) => $['operation.cancel'])}
           </DialogClose>
@@ -314,7 +291,7 @@ export function SkillUploadFailuresDialog({
               count: retryableItems.length,
             })}
           </Button>
-        </footer>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

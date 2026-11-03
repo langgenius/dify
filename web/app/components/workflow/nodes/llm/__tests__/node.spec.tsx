@@ -1,88 +1,74 @@
 import type { LLMNodeType } from '../types'
-import { render, screen } from '@testing-library/react'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { zProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { screen } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
+import { consoleQuery } from '@/service/console'
+import { createModelCreditsFixture } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import Node from '../node'
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useTextGenerationCurrentProviderAndModelAndModelList: vi.fn(),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
-    <div>{value ? `${value.provider}:${value.model}` : 'no-model'}</div>
-  ),
-}))
-
-const mockUseTextGeneration = vi.mocked(useTextGenerationCurrentProviderAndModelAndModelList)
-
-const createData = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
-  title: 'LLM',
-  desc: '',
-  type: BlockEnum.LLM,
-  model: {
-    provider: 'openai',
-    name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
-    completion_params: {},
-  } as LLMNodeType['model'],
-  prompt_template: [],
-  context: {
-    enabled: false,
-    variable_selector: [],
-  },
-  vision: {
-    enabled: false,
-  },
-  ...overrides,
+const render = createNuqsTestRenderer(renderWithConsoleQuery)
+const provider = zProviderWithModelsResponse.parse({
+  tenant_id: 'workspace-1',
+  provider: 'openai',
+  status: 'active',
+  label: { en_US: 'OpenAI' },
+  models: [
+    {
+      model: 'gpt-4o',
+      label: { en_US: 'GPT-4o' },
+      model_type: 'llm',
+      fetch_from: 'predefined-model',
+      status: 'active',
+      model_properties: {},
+      load_balancing_enabled: false,
+    },
+  ],
 })
-
-describe('llm/node', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseTextGeneration.mockReturnValue({
-      textGenerationModelList: [{ provider: 'openai', model: 'gpt-4o' }],
-    } as unknown as ReturnType<typeof useTextGenerationCurrentProviderAndModelAndModelList>)
-  })
-
-  it('renders the disabled model selector when a model is configured', () => {
-    render(<Node id="llm-node" data={createData()} />)
-
-    expect(screen.getByText('openai:gpt-4o')).toBeInTheDocument()
-  })
-
-  it('renders nothing when the node has no configured model', () => {
-    render(
-      <Node
-        id="llm-node"
-        data={createData({
-          model: {
-            provider: '',
-            name: '',
-            mode: AppModeEnum.CHAT,
-            completion_params: {},
-          } as LLMNodeType['model'],
-        })}
-      />,
+const createClient = () => {
+  const client = createConsoleQueryClient()
+  for (const model_type of [
+    'llm',
+    'moderation',
+    'rerank',
+    'speech2text',
+    'text-embedding',
+    'tts',
+  ] as const) {
+    client.setQueryData(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type } },
+      }),
+      { data: model_type === 'llm' ? [provider] : [] },
     )
-
-    expect(screen.queryByText('openai:gpt-4o')).not.toBeInTheDocument()
+  }
+  client.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    data: [],
+    plugins: {},
   })
+  client.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
+    createModelCreditsFixture(),
+  )
+  return client
+}
 
-  it('renders a cached environment model without requiring workflow context', () => {
-    const data = createData({
-      model: {
-        provider: 'anthropic',
-        name: 'claude-sonnet',
-        mode: AppModeEnum.CHAT,
-        completion_params: {},
-      },
-      model_selector: ['env', 'for_summarize'],
-    })
-
-    render(<Node id="llm-node" data={data} />)
-
-    expect(screen.getByText('anthropic:claude-sonnet')).toBeInTheDocument()
-  })
+it('displays a cached environment model without workflow context and hides an unconfigured model', () => {
+  const data: LLMNodeType = {
+    title: 'LLM',
+    desc: '',
+    type: BlockEnum.LLM,
+    model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
+    model_selector: ['env', 'for_summarize'],
+    prompt_template: [],
+    context: { enabled: false, variable_selector: [] },
+    vision: { enabled: false },
+  }
+  const { rerender } = render(<Node id="llm-node" data={data} />, { queryClient: createClient() })
+  expect(screen.getByText('GPT-4o')).toBeInTheDocument()
+  rerender(
+    <Node id="llm-node" data={{ ...data, model: { ...data.model, provider: '', name: '' } }} />,
+  )
+  expect(screen.queryByText('GPT-4o')).not.toBeInTheDocument()
 })

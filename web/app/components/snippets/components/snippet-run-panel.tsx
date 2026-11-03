@@ -2,7 +2,7 @@
 
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { InputVar as WorkflowInputVar } from '@/app/components/workflow/types'
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
@@ -28,7 +28,7 @@ import { toast } from '@/app/notifications'
 import { PipelineInputVarType } from '@/models/pipeline'
 
 type SnippetRunPanelProps = {
-  fields: SnippetInputField[]
+  fields: InputVar[]
 }
 
 type SnippetRunField = WorkflowInputVar & InputForm
@@ -43,7 +43,7 @@ const PIPELINE_TO_WORKFLOW_INPUT_VAR_TYPE: Record<PipelineInputVarType, InputVar
   [PipelineInputVarType.checkbox]: InputVarType.checkbox,
 }
 
-const buildPreviewFields = (fields: SnippetInputField[]): SnippetRunField[] => {
+const buildPreviewFields = (fields: InputVar[]): SnippetRunField[] => {
   return fields.map((field) => ({
     type: PIPELINE_TO_WORKFLOW_INPUT_VAR_TYPE[field.type],
     label: field.label,

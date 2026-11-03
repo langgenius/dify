@@ -53,7 +53,7 @@ def web_anonymous_admission[T, **P, R](
         if editions is None:
             return admitted
 
-        @wraps(view)
+        @wraps(admitted)
         def enforce_edition(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R | Response:
             if dify_config.DEPLOYMENT_EDITION not in editions:
                 abort(404)

@@ -4,7 +4,6 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { PluginCategoryEnum } from '../../../types'
 import useRefreshPluginList from '../use-refresh-plugin-list'
 
@@ -13,11 +12,7 @@ const mocks = vi.hoisted(() => ({
   installed: vi.fn(),
   checkInstalled: vi.fn(),
   defaultModel: vi.fn(),
-  toolProviders: vi.fn(),
-  builtInTools: vi.fn(),
-  dataSourceAuth: vi.fn(),
   triggers: vi.fn(),
-  recommended: vi.fn(),
 }))
 
 vi.mock('@/service/base', () => ({ request: mocks.request }))
@@ -27,14 +22,6 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useInvalidateDefaultModel: () => mocks.defaultModel,
-}))
-vi.mock('@/service/use-tools', () => ({
-  useInvalidateAllToolProviders: () => mocks.toolProviders,
-  useInvalidateAllBuiltInTools: () => mocks.builtInTools,
-  useInvalidateRAGRecommendedPlugins: () => mocks.recommended,
-}))
-vi.mock('@/service/use-datasource', () => ({
-  useInvalidDataSourceListAuth: () => mocks.dataSourceAuth,
 }))
 vi.mock('@/service/use-triggers', () => ({
   useInvalidateAllTriggerPlugins: () => mocks.triggers,
@@ -52,9 +39,29 @@ const strategyKeys = [
 ]
 const providerKeys = [
   current.modelProviders.summary.get.key(),
-  commonQueryKeys.modelProviderDetails,
+  consoleQuery.workspaces.current.modelProviders.get.key(),
+]
+const pluginVersionKeys = [
+  current.plugin.list.installations.ids.post.queryKey({
+    input: { body: { plugin_ids: ['langgenius/test'] } },
+  }),
+  current.plugin.list.latestVersions.post.queryKey({
+    input: { body: { plugin_ids: ['langgenius/test'] } },
+  }),
 ]
 const datasourceKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
+const dataSourceAuthKey = consoleQuery.auth.plugin.datasource.list.get.queryKey()
+const toolKeys = [
+  current.toolProviders.get.queryKey({ input: { query: {} } }),
+  current.toolProviders.get.queryKey({ input: { query: { type: 'mcp' } } }),
+  current.tools.builtin.get.queryKey(),
+  consoleQuery.rag.pipelines.recommendedPlugins.get.queryKey({
+    input: { query: { type: 'tool' } },
+  }),
+]
+const otherRecommendedKey = consoleQuery.rag.pipelines.recommendedPlugins.get.queryKey({
+  input: { query: { type: 'datasource' } },
+})
 const unrelatedKey = consoleQuery.account.profile.get.key()
 const modelTypes = ['llm', 'text-embedding', 'rerank', 'speech2text', 'tts']
 
@@ -69,9 +76,11 @@ describe('plugin installation refresh', () => {
     client = new QueryClient({
       defaultOptions: { queries: { retry: false, staleTime: Infinity } },
     })
-    for (const key of [...strategyKeys, ...providerKeys, unrelatedKey])
+    for (const key of [...strategyKeys, ...providerKeys, ...pluginVersionKeys, unrelatedKey])
       client.setQueryData(key, { cached: true })
     client.setQueryData(datasourceKey, [])
+    client.setQueryData(dataSourceAuthKey, { result: [] })
+    for (const key of [...toolKeys, otherRecommendedKey]) client.setQueryData(key, [])
     for (const model_type of modelTypes) {
       client.setQueryData(
         current.models.modelTypes.byModelType.get.queryKey({ input: { params: { model_type } } }),
@@ -87,6 +96,7 @@ describe('plugin installation refresh', () => {
     const { result } = renderHook(useRefreshPluginList, { wrapper })
 
     act(() => result.current.refreshPluginList({ category: PluginCategoryEnum.agent }))
+    for (const key of pluginVersionKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
 
     expect(mocks.installed).toHaveBeenCalledWith(PluginCategoryEnum.agent)
     expect(mocks.checkInstalled).toHaveBeenCalledOnce()
@@ -108,14 +118,12 @@ describe('plugin installation refresh', () => {
       expect(client.getQueryState(datasourceKey)?.isInvalidated).toBe(
         category === PluginCategoryEnum.datasource,
       )
-      if (category === PluginCategoryEnum.tool) {
-        expect(mocks.toolProviders).toHaveBeenCalledOnce()
-        expect(mocks.builtInTools).toHaveBeenCalledOnce()
-        expect(mocks.recommended).toHaveBeenCalledWith('tool')
-      }
+      for (const key of toolKeys)
+        expect(client.getQueryState(key)?.isInvalidated).toBe(category === PluginCategoryEnum.tool)
+      expect(client.getQueryState(otherRecommendedKey)?.isInvalidated).toBe(false)
       if (category === PluginCategoryEnum.datasource) {
         expect(client.getQueryState(datasourceKey)?.isInvalidated).toBe(true)
-        expect(mocks.dataSourceAuth).toHaveBeenCalledOnce()
+        expect(client.getQueryState(dataSourceAuthKey)?.isInvalidated).toBe(true)
       }
       if (category === PluginCategoryEnum.trigger) expect(mocks.triggers).toHaveBeenCalledOnce()
     },
@@ -139,30 +147,29 @@ describe('plugin installation refresh', () => {
     expect(client.getQueryState(datasourceKey)?.isInvalidated).toBe(all)
     if (all) {
       expect(mocks.installed).toHaveBeenCalledWith()
-      expect(mocks.toolProviders).toHaveBeenCalledOnce()
-      expect(mocks.builtInTools).toHaveBeenCalledOnce()
+      for (const key of toolKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
       expect(client.getQueryState(datasourceKey)?.isInvalidated).toBe(true)
-      expect(mocks.dataSourceAuth).toHaveBeenCalledOnce()
+      expect(client.getQueryState(dataSourceAuthKey)?.isInvalidated).toBe(true)
       expect(mocks.triggers).toHaveBeenCalledOnce()
-      expect(mocks.recommended).toHaveBeenCalledWith('tool')
     }
   })
 
-  it.each([null, undefined])(
-    'only refreshes installation caches without a manifest (%s)',
-    (manifest) => {
-      const { result } = renderHook(useRefreshPluginList, { wrapper })
+  it('only refreshes installation caches without a manifest', () => {
+    const { result } = renderHook(useRefreshPluginList, { wrapper })
 
-      act(() => result.current.refreshPluginList(manifest))
+    act(() => result.current.refreshPluginList())
 
-      expect(mocks.installed).toHaveBeenCalledWith()
-      expect(mocks.checkInstalled).toHaveBeenCalledOnce()
-      for (const key of [...strategyKeys, ...providerKeys])
-        expect(client.getQueryState(key)?.isInvalidated).toBe(false)
-      expect(mocks.toolProviders).not.toHaveBeenCalled()
-      expect(client.getQueryState(datasourceKey)?.isInvalidated).toBe(false)
-      expect(mocks.triggers).not.toHaveBeenCalled()
-      expect(mocks.request).not.toHaveBeenCalled()
-    },
-  )
+    expect(mocks.installed).toHaveBeenCalledWith()
+    expect(mocks.checkInstalled).toHaveBeenCalledOnce()
+    for (const key of [
+      ...strategyKeys,
+      ...providerKeys,
+      ...toolKeys,
+      datasourceKey,
+      dataSourceAuthKey,
+    ])
+      expect(client.getQueryState(key)?.isInvalidated).toBe(false)
+    expect(mocks.triggers).not.toHaveBeenCalled()
+    expect(mocks.request).not.toHaveBeenCalled()
+  })
 })

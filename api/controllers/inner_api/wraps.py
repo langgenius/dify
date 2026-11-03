@@ -10,6 +10,7 @@ from configs import dify_config
 from core.db.session_factory import session_factory
 from libs.exception import BaseHTTPException
 from models.model import EndUser
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 
 
 class InnerApiUnauthorizedError(BaseHTTPException):
@@ -103,3 +104,15 @@ def agent_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     """
 
     return plugin_inner_api_only(view)
+
+
+def knowledge_fs_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Authenticate the trusted KnowledgeFS process while the product is available."""
+
+    @wraps(view)
+    def enabled_view(*args: P.args, **kwargs: P.kwargs) -> R:
+        if not get_knowledge_fs_features().enabled:
+            abort(404)
+        return view(*args, **kwargs)
+
+    return plugin_inner_api_only(enabled_view)

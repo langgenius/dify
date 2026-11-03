@@ -1,5 +1,5 @@
 import type { DefaultValueForm } from './types'
-import type { CommonNodeType, Node } from '@/app/components/workflow/types'
+import type { Node } from '@/app/components/workflow/types'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,11 +30,11 @@ const ErrorHandle = ({ id, data }: ErrorHandleProps) => {
   const { handleFormChange } = useDefaultValue(id)
 
   const handleTypeChange = (value: ErrorHandleTypeEnum) => {
-    handleErrorHandleTypeChange(value, data as CommonNodeType)
+    handleErrorHandleTypeChange(value, data)
   }
 
   const handleDefaultValueChange = (value: DefaultValueForm) => {
-    handleFormChange(value, data as CommonNodeType)
+    handleFormChange(value, data)
   }
 
   return (

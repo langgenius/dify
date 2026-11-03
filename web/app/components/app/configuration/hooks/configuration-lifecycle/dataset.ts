@@ -1,5 +1,5 @@
 import type { AppModelConfigResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DatasetConfigs } from '@/models/debug'
 import { produce } from 'immer'
 import { useMemo } from 'react'
@@ -21,7 +21,7 @@ export function buildConfigurationDatasetConfigs({
   backendModelConfig: AppModelConfigResponse
   currentRerankModel?: string
   currentRerankProvider?: string
-  nextDataSets: DataSet[]
+  nextDataSets: DatasetDetailWithPartialMembersResponse[]
 }): DatasetConfigs {
   const retrievalConfig = getMultipleRetrievalConfig(
     {
@@ -93,12 +93,12 @@ export function buildConfigurationDatasetConfigs({
 type DatasetSelectHandlerOptions = {
   currentRerankModel?: string
   currentRerankProvider?: string
-  dataSets: DataSet[]
+  dataSets: DatasetDetailWithPartialMembersResponse[]
   datasetConfigs: DatasetConfigs
   datasetConfigsRef: { current: DatasetConfigs }
   formattingChangedDispatcher: () => void
   hideSelectDataSet: () => void
-  setDataSets: (data: DataSet[]) => void
+  setDataSets: (data: DatasetDetailWithPartialMembersResponse[]) => void
   setDatasetConfigs: (configs: DatasetConfigs) => void
   setRerankSettingModalOpen: (visible: boolean) => void
 }
@@ -116,7 +116,7 @@ export const createDatasetSelectHandler =
     setDatasetConfigs,
     setRerankSettingModalOpen,
   }: DatasetSelectHandlerOptions) =>
-  (nextDataSets: DataSet[]) => {
+  (nextDataSets: DatasetDetailWithPartialMembersResponse[]) => {
     if (
       nextDataSets.map((item) => item.id).join(',') === dataSets.map((item) => item.id).join(',')
     ) {

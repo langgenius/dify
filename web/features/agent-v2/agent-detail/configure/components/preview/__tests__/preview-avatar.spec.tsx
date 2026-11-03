@@ -38,23 +38,15 @@ function renderPreview(agent: ReturnType<typeof createAgentFixture>) {
 }
 
 describe('Agent preview avatar', () => {
-  it('renders an uploaded image from its signed URL instead of its file ID', () => {
-    renderPreview(
-      createAgentFixture({
-        icon_type: 'image',
-        icon: 'uploaded-file-id',
-        icon_url: 'https://files.example.com/avatar.png?sign=signature',
-      }),
-    )
-
-    expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute(
-      'src',
-      'https://files.example.com/avatar.png?sign=signature',
-    )
+  beforeEach(() => {
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(32)
   })
 
+  afterEach(() => vi.restoreAllMocks())
+
   it('renders an external image from the raw icon when icon_url is null', () => {
-    renderPreview(
+    const { container } = renderPreview(
       createAgentFixture({
         icon_type: 'link',
         icon: 'https://example.com/avatar.png',
@@ -62,14 +54,11 @@ describe('Agent preview avatar', () => {
       }),
     )
 
-    expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute(
-      'src',
-      'https://example.com/avatar.png',
-    )
+    expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/avatar.png')
   })
 
   it('shows a fallback without exposing the file ID when its signed URL is unavailable', () => {
-    renderPreview(
+    const { container } = renderPreview(
       createAgentFixture({
         icon_type: 'image',
         icon: 'uploaded-file-id',
@@ -77,13 +66,13 @@ describe('Agent preview avatar', () => {
       }),
     )
 
-    expect(screen.queryByRole('img', { name: 'app icon' })).not.toBeInTheDocument()
+    expect(container.querySelector('img')).not.toBeInTheDocument()
     expect(screen.queryByText('uploaded-file-id')).not.toBeInTheDocument()
     expect(screen.getByText('🤖')).toBeInTheDocument()
   })
 
   it('updates the avatar and name when the shared Agent query changes', async () => {
-    const { queryClient } = renderPreview(
+    const { queryClient, container } = renderPreview(
       createAgentFixture({
         name: 'Original Agent',
         icon_type: 'image',
@@ -92,7 +81,11 @@ describe('Agent preview avatar', () => {
       }),
     )
 
-    expect(screen.getByRole('img', { name: 'app icon' })).toBeInTheDocument()
+    expect(container.querySelector('img')).toHaveAttribute(
+      'src',
+      'https://files.example.com/avatar.png?sign=signature',
+    )
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
     expect(screen.getByText('Original Agent')).toBeInTheDocument()
 
     await act(async () => {
@@ -109,7 +102,7 @@ describe('Agent preview avatar', () => {
 
     expect(await screen.findByText('Updated Agent')).toBeInTheDocument()
     expect(screen.queryByText('Original Agent')).not.toBeInTheDocument()
-    expect(screen.queryByRole('img', { name: 'app icon' })).not.toBeInTheDocument()
+    expect(container.querySelector('img')).not.toBeInTheDocument()
     expect(screen.getByText('🚀')).toBeInTheDocument()
   })
 })

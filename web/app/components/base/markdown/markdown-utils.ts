@@ -36,7 +36,7 @@ export const preprocessLaTeX = (content: string) => {
  * Tool-call interruptions often drop the close tag, which nests the reply
  * inside the thinking HTML (github.com/langgenius/dify/issues/41558).
  */
-export const closeUnclosedThinkTags = (content: string) => {
+export const closeUnclosedThinkTags = (content: string, trailingClose = '</think>') => {
   if (typeof content !== 'string' || !content.includes('<think>')) return content
 
   const open = '<think>'
@@ -72,7 +72,7 @@ export const closeUnclosedThinkTags = (content: string) => {
     i += 1
   }
 
-  if (inside) result += close
+  if (inside) result += trailingClose
 
   return result
 }
@@ -81,7 +81,8 @@ export const preprocessThinkTag = (content: string) => {
   const thinkOpenTagRegex = /(<think>\s*)+/g
   const thinkCloseTagRegex = /(\s*<\/think>)+/g
   return flow([
-    closeUnclosedThinkTags,
+    // Balance the final HTML block without marking an in-flight thought complete.
+    (str: string) => closeUnclosedThinkTags(str, '</details>'),
     (str: string) => str.replace(thinkOpenTagRegex, '<details data-think=true>\n'),
     (str: string) => str.replace(thinkCloseTagRegex, '\n[ENDTHINKFLAG]</details>'),
     (str: string) => str.replace(/(<\/details>)(?![^\S\r\n]*[\r\n])(?![^\S\r\n]*$)/g, '$1\n'),

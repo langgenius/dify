@@ -9,11 +9,11 @@ from core.external_data_tool.external_data_fetch import ExternalDataFetch
 
 class TestExternalDataFetch:
     @pytest.fixture
-    def app(self):
+    def app(self) -> Flask:
         app = Flask(__name__)
         return app
 
-    def test_fetch_success(self, app: Flask):
+    def test_fetch_success(self, app: Flask) -> None:
         with app.app_context():
             fetcher = ExternalDataFetch()
 
@@ -25,12 +25,12 @@ class TestExternalDataFetch:
             inputs = {"input_key": "input_value"}
             query = "test query"
 
-            with patch("core.external_data_tool.external_data_fetch.ExternalDataToolFactory") as MockFactory:
+            with patch("core.external_data_tool.external_data_fetch.ExternalDataToolFactory") as mock_factory:
                 # Create distinct mock instances for each tool to ensure deterministic results
                 # This approach is robust regardless of thread scheduling order
                 from unittest.mock import MagicMock
 
-                def factory_side_effect[**P](*args: P.args, **kwargs: P.kwargs):
+                def factory_side_effect[**P](*args: P.args, **kwargs: P.kwargs) -> None:
                     variable = kwargs.get("variable")
                     mock_instance = MagicMock()
                     if variable == "var1":
@@ -39,7 +39,7 @@ class TestExternalDataFetch:
                         mock_instance.query.return_value = "result2"
                     return mock_instance
 
-                MockFactory.side_effect = factory_side_effect
+                mock_factory.side_effect = factory_side_effect
 
                 result_inputs = fetcher.fetch(
                     tenant_id="tenant1",
@@ -56,15 +56,15 @@ class TestExternalDataFetch:
                 assert len(result_inputs) == 3
 
                 # Verify factory calls
-                assert MockFactory.call_count == 2
-                MockFactory.assert_any_call(
+                assert mock_factory.call_count == 2
+                mock_factory.assert_any_call(
                     name="type1", tenant_id="tenant1", app_id="app1", variable="var1", config={"c1": "v1"}
                 )
-                MockFactory.assert_any_call(
+                mock_factory.assert_any_call(
                     name="type2", tenant_id="tenant1", app_id="app1", variable="var2", config={"c2": "v2"}
                 )
 
-    def test_fetch_no_tools(self):
+    def test_fetch_no_tools(self) -> None:
         # We don't necessarily need app_context if there are no tools,
         # but fetch calls current_app._get_current_object() only inside the loop.
         # Wait, let's look at the code.
@@ -79,7 +79,7 @@ class TestExternalDataFetch:
         assert result_inputs == inputs
         assert result_inputs is not inputs  # Should be a copy
 
-    def test_fetch_with_none_variable(self, app: Flask):
+    def test_fetch_with_none_variable(self, app: Flask) -> None:
         with app.app_context():
             fetcher = ExternalDataFetch()
             tool = ExternalDataVariableEntity(variable="var1", type="type1", config={})
@@ -95,12 +95,12 @@ class TestExternalDataFetch:
                 assert "var1" not in result_inputs
                 assert result_inputs == {"in": "val"}
 
-    def test_query_external_data_tool(self, app: Flask):
+    def test_query_external_data_tool(self, app: Flask) -> None:
         fetcher = ExternalDataFetch()
         tool = ExternalDataVariableEntity(variable="var1", type="type1", config={"k": "v"})
 
-        with patch("core.external_data_tool.external_data_fetch.ExternalDataToolFactory") as MockFactory:
-            mock_factory_instance = MockFactory.return_value
+        with patch("core.external_data_tool.external_data_fetch.ExternalDataToolFactory") as mock_factory:
+            mock_factory_instance = mock_factory.return_value
             mock_factory_instance.query.return_value = "query_result"
 
             var, res = fetcher._query_external_data_tool(
@@ -109,7 +109,7 @@ class TestExternalDataFetch:
 
             assert var == "var1"
             assert res == "query_result"
-            MockFactory.assert_called_once_with(
+            mock_factory.assert_called_once_with(
                 name="type1", tenant_id="t1", app_id="a1", variable="var1", config={"k": "v"}
             )
             mock_factory_instance.query.assert_called_once_with(inputs={"i": "v"}, query="q")

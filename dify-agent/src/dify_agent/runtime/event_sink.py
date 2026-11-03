@@ -10,15 +10,14 @@ implements the same contract with Redis streams in
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Protocol, TypeAlias, cast
+from typing import Protocol, TypeAlias
 
 from pydantic import JsonValue
 from pydantic_ai.messages import AgentStreamEvent
 
-from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
-    DeferredToolCallPayload,
     EmptyRunEventData,
     PydanticAIStreamRunEvent,
     RunEvent,
@@ -33,7 +32,6 @@ from dify_agent.protocol.schemas import (
 )
 
 
-_UNSET = object()
 TerminalRunEvent: TypeAlias = RunSucceededEvent | RunFailedEvent
 NonTerminalRunEvent: TypeAlias = RunStartedEvent | PydanticAIStreamRunEvent
 
@@ -47,11 +45,30 @@ class RunFinalizationResult:
     event_id: str | None = None
 
 
+class RunStreamSealedError(RuntimeError):
+    """Raised when a non-terminal event arrives after the run stream was sealed.
+
+    The first terminal transition seals the stream: later non-terminal appends
+    must not persist, consume a cursor, or refresh retention. ``status``
+    carries the winning terminal status so callers can coordinate without
+    re-reading the run record.
+    """
+
+    def __init__(self, run_id: str, status: RunStatus) -> None:
+        super().__init__(f"run {run_id} is already {status}; the stream no longer accepts non-terminal events")
+        self.run_id = run_id
+        self.status = status
+
+
 class RunEventSink(Protocol):
     """Boundary used by runtime code to publish observable run progress."""
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
-        """Persist a non-terminal event and return its cursor id."""
+        """Persist a non-terminal event and return its cursor id.
+
+        Raises ``RunStreamSealedError`` when the run already has a terminal
+        status; the sealed stream must not accept further non-terminal events.
+        """
         ...
 
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
@@ -75,6 +92,9 @@ class InMemoryRunEventSink:
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
         """Store a non-terminal event and assign a monotonic per-run cursor."""
+        current_status = self.statuses.get(event.run_id, "running")
+        if current_status != "running":
+            raise RunStreamSealedError(event.run_id, current_status)
         event_id = str(len(self.events[event.run_id]) + 1)
         stored = event.model_copy(update={"id": event_id})
         self.events[event.run_id].append(stored)
@@ -146,26 +166,15 @@ async def emit_run_succeeded(
     sink: RunEventSink,
     *,
     run_id: str,
-    output: JsonValue | None | object = _UNSET,
-    deferred_tool_call: DeferredToolCallPayload | object = _UNSET,
-    session_snapshot: CompositorSessionSnapshot,
+    output: JsonValue,
+    session_snapshot: SessionSnapshot,
     usage: AgentRunUsage | None = None,
 ) -> RunFinalizationResult:
-    """Finalize a run as succeeded with output or deferred continuation.
-
-    Callers must activate exactly one result branch. ``_UNSET`` is used instead
-    of ``None`` to preserve the distinction between an omitted inactive branch
-    and an active ``output`` branch whose JSON value is explicitly ``null``.
-    Without that sentinel, ``output=None`` would be indistinguishable from
-    “output field absent”, which would break nullable-success payloads.
-    """
-    data: dict[str, JsonValue | DeferredToolCallPayload | CompositorSessionSnapshot | AgentRunUsage | None] = {
+    """Finalize a successful run, including explicitly null output."""
+    data: dict[str, JsonValue | SessionSnapshot | AgentRunUsage | None] = {
         "session_snapshot": session_snapshot,
     }
-    if output is not _UNSET:
-        data["output"] = cast(JsonValue | None, output)
-    if deferred_tool_call is not _UNSET:
-        data["deferred_tool_call"] = cast(DeferredToolCallPayload, deferred_tool_call)
+    data["output"] = output
     if usage is not None:
         data["usage"] = usage
 
@@ -185,7 +194,7 @@ async def emit_run_failed(
     error: str,
     error_type: RunFailureType | None = None,
     reason: str | None = None,
-    session_snapshot: CompositorSessionSnapshot | None = None,
+    session_snapshot: SessionSnapshot | None = None,
     usage: AgentRunUsage | None = None,
 ) -> RunFinalizationResult:
     """Finalize a run with a failed terminal event."""
@@ -209,6 +218,7 @@ __all__ = [
     "NonTerminalRunEvent",
     "RunEventSink",
     "RunFinalizationResult",
+    "RunStreamSealedError",
     "TerminalRunEvent",
     "emit_pydantic_ai_event",
     "emit_run_event",

@@ -2,6 +2,7 @@
   "dateFormats.compact": "MM/DD/YYYY HH:mm",
   "dateFormats.withSeconds": "DD/MM/YYYY hh:mm:ss A",
   "operation.cancel": "ຍົກເລີກ",
+  "operation.close": "ປິດ",
   "operation.now": "ດຽວນີ້",
   "operation.ok": "ຕົກລົງ",
   "operation.pickDate": "ເລືອກວັນທີ",

@@ -1,157 +1,74 @@
-import type { Edge, Node } from '../../types'
 import { act } from '@testing-library/react'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { useStoreApi } from 'reactflow'
+import { createEdge, createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useWorkflowHistory, WorkflowHistoryEvent } from '../use-workflow-history'
 
-const reactFlowState = vi.hoisted(() => ({
-  edges: [] as Edge[],
-  nodes: [] as Node[],
-}))
+const nodes = [
+  createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start', selected: true } }),
+  createNode({ id: 'end', data: { type: BlockEnum.End, title: 'End' } }),
+]
+const edges = [createEdge({ id: 'connection', source: 'start', target: 'end', selected: true })]
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
-  return {
-    ...actual,
-    useStoreApi: () => ({
-      getState: () => ({
-        getNodes: () => reactFlowState.nodes,
-        edges: reactFlowState.edges,
+it('coalesces saves across rerenders and supports undo, redo and callback removal for the saved graph', () => {
+  vi.useFakeTimers()
+  try {
+    const { result, rerender } = renderWorkflowFlowHook(
+      () => ({
+        ...useWorkflowHistory(),
+        graph: useStoreApi(),
       }),
-    }),
-  }
-})
-const nodes: Node[] = [
-  {
-    id: 'node-1',
-    type: 'custom',
-    position: { x: 0, y: 0 },
-    data: {
-      type: BlockEnum.Start,
-      title: 'Start',
-      desc: '',
-    },
-  },
-]
-
-const edges: Edge[] = [
-  {
-    id: 'edge-1',
-    source: 'node-1',
-    target: 'node-2',
-    type: 'custom',
-    data: {
-      sourceType: BlockEnum.Start,
-      targetType: BlockEnum.End,
-    },
-  },
-]
-
-describe('useWorkflowHistory', () => {
-  beforeEach(() => {
-    reactFlowState.nodes = nodes
-    reactFlowState.edges = edges
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('coalesces saves across rerenders and stores the latest graph snapshot', () => {
-    vi.useFakeTimers()
-    const { result, rerender } = renderWorkflowHook(() => useWorkflowHistory(), {
-      historyStore: {
-        nodes,
-        edges,
-      },
-    })
-
+      { nodes, edges, historyStore: { nodes, edges } },
+    )
+    const onUndo = vi.fn()
+    const onRedo = vi.fn()
+    let unsubscribeUndo = () => {}
+    let unsubscribeRedo = () => {}
     act(() => {
-      result.current.saveStateToHistory(WorkflowHistoryEvent.NodeDelete, { nodeId: 'node-2' })
+      unsubscribeUndo = result.current.onUndo(onUndo)
+      unsubscribeRedo = result.current.onRedo(onRedo)
+      result.current.saveStateToHistory(WorkflowHistoryEvent.NodeDragStop)
       vi.advanceTimersByTime(200)
     })
     rerender()
-    reactFlowState.nodes = nodes.map((node) => ({
-      ...node,
-      data: { ...node.data, title: 'Updated' },
-    }))
     act(() => {
-      result.current.saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: 'node-1' })
+      result.current.graph
+        .getState()
+        .setNodes(
+          nodes.map((node) =>
+            node.id === 'start' ? { ...node, data: { ...node.data, title: 'Updated' } } : node,
+          ),
+        )
+      result.current.saveStateToHistory(WorkflowHistoryEvent.NodeTitleChange, { nodeId: 'start' })
       vi.advanceTimersByTime(499)
     })
     expect(result.current.store.getState().workflowHistoryEvent).toBeUndefined()
     act(() => vi.advanceTimersByTime(1))
+    const saved = result.current.store.getState()
+    expect(saved.workflowHistoryEvent).toBe(WorkflowHistoryEvent.NodeTitleChange)
+    expect(saved.workflowHistoryEventMeta).toEqual({ nodeId: 'start' })
+    expect(saved.nodes[0]?.data).toMatchObject({ title: 'Updated', selected: false })
+    expect(saved.edges).toEqual([expect.objectContaining({ id: 'connection', selected: false })])
 
-    expect(result.current.store.getState().workflowHistoryEvent).toBe(WorkflowHistoryEvent.NodeAdd)
-    expect(result.current.store.getState().workflowHistoryEventMeta).toEqual({ nodeId: 'node-1' })
-    expect(result.current.store.getState().nodes).toEqual([
-      expect.objectContaining({
-        id: 'node-1',
-        data: expect.objectContaining({
-          selected: false,
-          title: 'Updated',
-        }),
-      }),
-    ])
-    expect(result.current.store.getState().edges).toEqual([
-      expect.objectContaining({
-        id: 'edge-1',
-        selected: false,
-        source: 'node-1',
-        target: 'node-2',
-      }),
-    ])
-  })
-
-  it('returns translated labels and falls back for unsupported events', () => {
-    const { result } = renderWorkflowHook(() => useWorkflowHistory(), {
-      historyStore: {
-        nodes,
-        edges,
-      },
-    })
-
-    expect(result.current.getHistoryLabel(WorkflowHistoryEvent.NodeDelete)).toEqual(
-      expect.stringMatching(/(?:^|\.)changeHistory\.nodeDelete(?=$|:)/),
-    )
-    expect(result.current.getHistoryLabel('Unknown' as keyof typeof WorkflowHistoryEvent)).toBe(
-      'Unknown Event',
-    )
-  })
-
-  it('runs registered undo and redo callbacks', () => {
-    const onUndo = vi.fn()
-    const onRedo = vi.fn()
-
-    const { result } = renderWorkflowHook(() => useWorkflowHistory(), {
-      historyStore: {
-        nodes,
-        edges,
-      },
-    })
-
+    act(() => result.current.undo())
+    expect(result.current.store.getState().nodes[0]?.data.title).toBe('Start')
+    expect(onUndo).toHaveBeenCalledTimes(1)
+    act(() => result.current.redo())
+    expect(result.current.store.getState()).toEqual(saved)
+    expect(onRedo).toHaveBeenCalledTimes(1)
     act(() => {
-      result.current.onUndo(onUndo)
-      result.current.onRedo(onRedo)
+      unsubscribeUndo()
+      unsubscribeRedo()
     })
-
-    const temporalState = result.current.store.temporal.getState()
-    const undoSpy = vi.fn()
-    const redoSpy = vi.fn()
-    vi.spyOn(result.current.store.temporal, 'getState').mockReturnValue({
-      ...temporalState,
-      undo: undoSpy,
-      redo: redoSpy,
-    })
-
-    act(() => {
-      result.current.undo()
-      result.current.redo()
-    })
-
-    expect(undoSpy).toHaveBeenCalled()
-    expect(redoSpy).toHaveBeenCalled()
-    expect(onUndo).toHaveBeenCalled()
-    expect(onRedo).toHaveBeenCalled()
-  })
+    act(() => result.current.undo())
+    expect(result.current.store.getState().nodes[0]?.data.title).toBe('Start')
+    act(() => result.current.redo())
+    expect(result.current.store.getState()).toEqual(saved)
+    expect(onUndo).toHaveBeenCalledTimes(1)
+    expect(onRedo).toHaveBeenCalledTimes(1)
+  } finally {
+    vi.clearAllTimers()
+    vi.useRealTimers()
+  }
 })

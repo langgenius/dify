@@ -84,19 +84,6 @@ describe('InfiniteScrollSentinel', () => {
     vi.unstubAllGlobals()
   })
 
-  it('observes the sentinel relative to the provided scroll container', () => {
-    const { container } = render(<Harness canLoadMore preloadDistance={160} onLoadMore={vi.fn()} />)
-    const observer = getObserver(0)
-    const scrollContainer = container.firstElementChild
-
-    expect(observer.options).toEqual({
-      root: scrollContainer,
-      rootMargin: '0px 0px 160px 0px',
-      threshold: 0,
-    })
-    expect(observer.observe).toHaveBeenCalledOnce()
-  })
-
   it('resolves a business-owned preload distance from the scroll container', () => {
     const getPreloadDistance = vi.fn(() => 240)
     const { container } = render(
@@ -110,9 +97,17 @@ describe('InfiniteScrollSentinel', () => {
 
   it('notifies whenever the sentinel enters the preload area while loading is allowed', () => {
     const onLoadMore = vi.fn()
-    render(<Harness canLoadMore preloadDistance={160} onLoadMore={onLoadMore} />)
+    const { container } = render(
+      <Harness canLoadMore preloadDistance={160} onLoadMore={onLoadMore} />,
+    )
     const observer = getObserver(0)
 
+    expect(observer.options).toEqual({
+      root: container.firstElementChild,
+      rootMargin: '0px 0px 160px 0px',
+      threshold: 0,
+    })
+    expect(observer.observe).toHaveBeenCalledOnce()
     triggerIntersection(observer, true)
     triggerIntersection(observer, false)
     triggerIntersection(observer, true)

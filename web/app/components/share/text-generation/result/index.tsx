@@ -1,4 +1,5 @@
 'use client'
+import type { ToastType } from '@langgenius/dify-ui/toast'
 import type { FC } from 'react'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
@@ -72,13 +73,10 @@ const Result: FC<IResultProps> = ({
   onRunControlChange,
   hideInlineStopButton = false,
 }) => {
-  const { t } = useTranslation(['share', 'appDebug', 'common'])
-  const notify = useCallback(
-    ({ type, message }: { type: 'error' | 'info' | 'success' | 'warning'; message: string }) => {
-      toast(message, { type })
-    },
-    [],
-  )
+  const { t } = useTranslation(['share', 'appDebug', 'common', 'workflow'])
+  const notify = useCallback(({ type, message }: { type: ToastType; message: string }) => {
+    toast(message, { type })
+  }, [])
   const runState = useResultRunState({
     appId,
     appSourceType,
@@ -87,7 +85,7 @@ const Result: FC<IResultProps> = ({
     notify,
     onRunControlChange,
   })
-  const { handleSend } = useResultSender({
+  const { handleSend, prepareHumanInputSubmission } = useResultSender({
     appId,
     appSourceType,
     completionFiles,
@@ -129,6 +127,7 @@ const Result: FC<IResultProps> = ({
         workflowProcessData={runState.workflowProcessData}
         isError={isError}
         onRetry={handleSend}
+        prepareHumanInputSubmission={prepareHumanInputSubmission}
         content={runState.completionRes}
         messageId={runState.messageId}
         isInWebApp

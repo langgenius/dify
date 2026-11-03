@@ -7,7 +7,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   return (
     <React.Fragment>
       <ConsoleRuntimeProviders>
-        <div className="flex h-full flex-col overflow-hidden bg-background-body">
+        <div className="flex h-dvh flex-col overflow-hidden bg-background-body">
           <ConsoleContextProviders>
             <HeaderWrapper>
               <Header />

@@ -20,6 +20,7 @@ from extensions.ext_database import db
 from fields.dataset_fields import (
     DatasetDetailResponse,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -29,6 +30,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo,
 from services.knowledge.dataset_read_service import load_dataset_detail
 from services.knowledge.dataset_service import DatasetPermissionService, DatasetService
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
+from services.rbac import contracts as rbac_contracts
 
 
 class RagPipelineDatasetImportPayload(BaseModel):
@@ -41,6 +43,7 @@ register_response_schema_models(console_ns, DatasetDetailResponse, RagPipelineIm
 
 @console_ns.route("/rag/pipeline/dataset")
 class CreateRagPipelineDatasetApi(Resource):
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.expect(console_ns.models[RagPipelineDatasetImportPayload.__name__])
     @console_ns.response(
         201,
@@ -90,20 +93,20 @@ class CreateRagPipelineDatasetApi(Resource):
                     db.session(),
                 )
             db.session.commit()
-        except services.errors.dataset.DatasetNameDuplicateError:
-            raise DatasetNameDuplicateError()
+        except services.errors.dataset.DatasetNameDuplicateError as caught_error:
+            raise DatasetNameDuplicateError() from caught_error
 
         if dify_config.RBAC_ENABLED and dataset_id is not None:
             enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
                 current_tenant_id,
                 current_user.id,
                 dataset_id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
             enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
                 current_tenant_id,
                 current_user.id,
-                enterprise_rbac_service.RBACResourceType.DATASET,
+                rbac_contracts.RBACResourceType.DATASET,
                 dataset_id,
             )
 

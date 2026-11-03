@@ -7,7 +7,6 @@ import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { AppModeEnum } from '@/types/app'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
 import { useDebugWithMultipleModelContext } from './context'
 import { DebugWithMultipleModelContextProvider } from './context-provider'
@@ -28,7 +27,7 @@ const DebugWithMultipleModel = () => {
   const { multipleModelConfigs, checkCanSend } = useDebugWithMultipleModelContext()
 
   const { eventEmitter } = useEventEmitterContextContext()
-  const isChatMode = mode === AppModeEnum.CHAT || mode === AppModeEnum.AGENT_CHAT
+  const isChatMode = mode === 'chat' || mode === 'agent-chat'
 
   const handleSend = useCallback(
     (message: string, files?: FileEntity[]) => {

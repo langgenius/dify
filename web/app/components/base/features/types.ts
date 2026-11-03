@@ -1,12 +1,10 @@
 import type { AppModelSelectionResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { FileUploadConfigResponse } from '@/models/common'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 
 type EnabledOrDisabled = {
   enabled?: boolean
 }
-
-type MoreLikeThis = EnabledOrDisabled
 
 export type OpeningStatement = EnabledOrDisabled & {
   opening_statement?: string
@@ -23,10 +21,6 @@ type TextToSpeech = EnabledOrDisabled & {
   voice?: string
   autoPlay?: TtsAutoPlay
 }
-
-type SpeechToText = EnabledOrDisabled
-
-type RetrieverResource = EnabledOrDisabled
 
 type SensitiveWordAvoidance = EnabledOrDisabled & {
   type?: string
@@ -66,7 +60,7 @@ export type FileUpload = {
   allowed_file_extensions?: string[]
   allowed_file_upload_methods?: TransferMethod[]
   number_limits?: number
-  fileUploadConfig?: FileUploadConfigResponse
+  fileUploadConfig?: UploadConfig
   preview_config?: {
     mode?: PreviewMode
     file_type_list?: string[]
@@ -98,12 +92,12 @@ export const FeatureEnum = {
 export type FeatureEnum = (typeof FeatureEnum)[keyof typeof FeatureEnum]
 
 export type Features = {
-  [FeatureEnum.moreLikeThis]?: MoreLikeThis
+  [FeatureEnum.moreLikeThis]?: EnabledOrDisabled
   [FeatureEnum.opening]?: OpeningStatement
   [FeatureEnum.suggested]?: SuggestedQuestionsAfterAnswer
   [FeatureEnum.text2speech]?: TextToSpeech
-  [FeatureEnum.speech2text]?: SpeechToText
-  [FeatureEnum.citation]?: RetrieverResource
+  [FeatureEnum.speech2text]?: EnabledOrDisabled
+  [FeatureEnum.citation]?: EnabledOrDisabled
   [FeatureEnum.moderation]?: SensitiveWordAvoidance
   [FeatureEnum.file]?: FileUpload
   [FeatureEnum.annotationReply]?: AnnotationReplyConfig

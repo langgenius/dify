@@ -7,13 +7,13 @@ export const ErrorCode = {
   InputInvalid: 'input_invalid',
   ConfigInvalidKey: 'config_invalid_key',
   ConfigInvalidValue: 'config_invalid_value',
-  ConfigSchemaUnsupported: 'config_schema_unsupported',
   CatalogUnavailable: 'catalog_unavailable',
   UnknownOp: 'unknown_op',
   NetworkConnection: 'network_connection',
   RateLimited: 'rate_limited',
   ServerError: 'server_error',
   KeyringUnavailable: 'keyring_unavailable',
+  SkillMissing: 'skill_missing',
   Unknown: 'unknown',
 } as const
 
@@ -40,13 +40,13 @@ const CODE_TO_EXIT: Readonly<Record<ErrorCodeValue, ExitCodeValue>> = {
   input_invalid: ExitCode.Usage,
   config_invalid_key: ExitCode.Usage,
   config_invalid_value: ExitCode.Usage,
-  config_schema_unsupported: ExitCode.Catalog,
   catalog_unavailable: ExitCode.Catalog,
   unknown_op: ExitCode.Catalog,
   network_connection: ExitCode.Generic,
   rate_limited: ExitCode.RateLimited,
   server_error: ExitCode.Generic,
   keyring_unavailable: ExitCode.Generic,
+  skill_missing: ExitCode.Generic,
   unknown: ExitCode.Generic,
 }
 

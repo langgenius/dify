@@ -2,7 +2,7 @@ import type { Emitter, EventType, Handler, WildcardHandler } from 'mitt'
 import create from 'mitt'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-const merge = <T extends Record<string, any>>(...args: Array<T | undefined>): T => {
+const merge = <T extends object>(...args: Array<T | undefined>): T => {
   return Object.assign({}, ...args)
 }
 

@@ -21,14 +21,14 @@ export default function AppNavItem({
   const {
     id,
     is_pinned: isPinned,
-    app: { name, icon_type, icon, icon_background, icon_url },
+    app: { name },
   } = installedApp
   const url = buildInstalledAppPath(id)
 
   return (
     <div
       key={id}
-      className="group flex h-7 items-center justify-between gap-2 rounded-lg py-0.5 pr-0.5 pl-2 transition-colors not-has-[>a[aria-current=page]]:hover:bg-state-base-hover has-[>a:focus-visible]:inset-ring-2 has-[>a:focus-visible]:inset-ring-state-accent-solid has-[>a[aria-current=page]]:bg-state-base-active"
+      className="group flex h-7 items-center justify-between gap-2 rounded-lg py-0.5 ps-2 pe-0.5 transition-colors not-has-[>a[aria-current=page]]:hover:bg-state-base-hover has-[>a:focus-visible]:inset-ring-2 has-[>a:focus-visible]:inset-ring-state-accent-solid has-[>a[aria-current=page]]:bg-state-base-active"
     >
       <Link
         href={url}
@@ -38,16 +38,8 @@ export default function AppNavItem({
         aria-current={isSelected ? 'page' : undefined}
         className="flex min-w-0 flex-1 items-center gap-2 outline-hidden"
       >
-        <AppIcon
-          decorative
-          size="tiny"
-          className="size-5 rounded-md text-sm"
-          iconType={icon_type}
-          icon={icon ?? undefined}
-          background={icon_background}
-          imageUrl={icon_url}
-        />
-        <div className="min-w-0 flex-1 truncate py-1 pr-1 system-sm-regular" title={name}>
+        <AppIcon size="tiny" className="size-5 rounded-md text-sm" icon={installedApp.app} />
+        <div className="min-w-0 flex-1 truncate py-1 pe-1 system-sm-regular" title={name}>
           {name}
         </div>
       </Link>

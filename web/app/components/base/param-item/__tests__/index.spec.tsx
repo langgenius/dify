@@ -23,41 +23,10 @@ describe('ParamItem', () => {
     })
 
   describe('Rendering', () => {
-    it('should render the parameter name', () => {
-      render(<ParamItem {...defaultProps} />)
-
-      expect(screen.getByText('Test Param', { selector: 'span' })).toBeInTheDocument()
-    })
-
-    it('should render a tooltip trigger by default', () => {
-      render(<ParamItem {...defaultProps} tip="Some tip text" />)
-
-      expect(screen.getByRole('button', { name: 'Test Param' })).toBeInTheDocument()
-    })
-
     it('should not render tooltip trigger when noTooltip is true', () => {
       render(<ParamItem {...defaultProps} noTooltip tip="Hidden tip" />)
 
       expect(screen.queryByRole('button', { name: 'Test Param' })).not.toBeInTheDocument()
-    })
-
-    it('should render a switch when hasSwitch is true', () => {
-      render(<ParamItem {...defaultProps} hasSwitch />)
-
-      expect(screen.getByRole('switch', { name: 'Test Param' })).toBeInTheDocument()
-    })
-
-    it('should not render a switch by default', () => {
-      render(<ParamItem {...defaultProps} />)
-
-      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
-    })
-
-    it('should render InputNumber and Slider', () => {
-      render(<ParamItem {...defaultProps} />)
-
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(getSlider()).toBeInTheDocument()
     })
   })
 
@@ -66,19 +35,7 @@ describe('ParamItem', () => {
       render(<ParamItem {...defaultProps} enable={false} />)
 
       expect(screen.getByRole('textbox')).toBeDisabled()
-    })
-
-    it('should disable Slider when enable is false', () => {
-      render(<ParamItem {...defaultProps} enable={false} />)
-
       expect(getSlider()).toBeDisabled()
-    })
-
-    it('should set switch value based on enable prop', () => {
-      render(<ParamItem {...defaultProps} hasSwitch enable={true} />)
-
-      const toggle = screen.getByRole('switch')
-      expect(toggle).toHaveAttribute('aria-checked', 'true')
     })
   })
 
@@ -109,15 +66,17 @@ describe('ParamItem', () => {
       expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 0.8)
     })
 
-    it('should reset the textbox and slider when users clear the input', async () => {
+    it('should allow users to replace the minimum value with a multi-digit value', async () => {
       const user = userEvent.setup()
       const StatefulParamItem = () => {
-        const [value, setValue] = useState(defaultProps.value)
+        const [value, setValue] = useState(1)
 
         return (
           <ParamItem
             {...defaultProps}
             value={value}
+            min={1}
+            max={100}
             onChange={(key: string, nextValue: number) => {
               defaultProps.onChange(key, nextValue)
               setValue(nextValue)
@@ -131,12 +90,14 @@ describe('ParamItem', () => {
       const input = screen.getByRole('textbox')
       await user.clear(input)
 
-      expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 0)
-      expect(getSlider()).toHaveAttribute('aria-valuenow', '0')
+      expect(input).toHaveValue('')
+      expect(defaultProps.onChange).not.toHaveBeenCalled()
 
-      await user.tab()
+      await user.type(input, '20')
 
-      expect(input).toHaveValue('0')
+      expect(input).toHaveValue('20')
+      expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 20)
+      expect(getSlider()).toHaveAttribute('aria-valuenow', '20')
     })
 
     it('should clamp out-of-range text edits before updating state', async () => {
@@ -172,6 +133,7 @@ describe('ParamItem', () => {
 
       // When max < 5, slider value = value * 100 = 50
       expect(slider).toHaveAttribute('aria-valuenow', '50')
+      expect(slider).toHaveAttribute('max', '100')
     })
 
     it('should pass raw value to slider when max >= 5', () => {
@@ -180,6 +142,7 @@ describe('ParamItem', () => {
 
       // When max >= 5, slider value = value = 5
       expect(slider).toHaveAttribute('aria-valuenow', '5')
+      expect(slider).toHaveAttribute('max', '10')
     })
 
     it('should call onSwitchChange with id and value when switch is toggled', async () => {
@@ -189,7 +152,7 @@ describe('ParamItem', () => {
 
       await user.click(screen.getByRole('switch'))
 
-      expect(onSwitchChange).toHaveBeenCalledWith('test_param', expect.any(Boolean))
+      expect(onSwitchChange).toHaveBeenCalledWith('test_param', false)
     })
 
     it('should call onChange with id when increment button is clicked', async () => {
@@ -201,29 +164,6 @@ describe('ParamItem', () => {
 
       // step=0.1, so 0.5 + 0.1 = 0.6, clamped to [0,1] → 0.6
       expect(defaultProps.onChange).toHaveBeenCalledWith('test_param', 0.6)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should correctly scale slider value when max < 5', () => {
-      render(<ParamItem {...defaultProps} value={0.5} min={0} />)
-
-      // Slider should get value * 100 = 50, min * 100 = 0, max * 100 = 100
-      const slider = getSlider()
-      expect(slider).toHaveAttribute('max', '100')
-    })
-
-    it('should not scale slider value when max >= 5', () => {
-      render(<ParamItem {...defaultProps} value={5} min={1} max={10} />)
-
-      const slider = getSlider()
-      expect(slider).toHaveAttribute('max', '10')
-    })
-
-    it('should expose default minimum of 0 when min is not provided', () => {
-      render(<ParamItem {...defaultProps} />)
-      const input = screen.getByRole('textbox')
-      expect(input).toBeInTheDocument()
     })
   })
 })

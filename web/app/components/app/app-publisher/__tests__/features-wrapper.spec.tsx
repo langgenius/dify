@@ -1,12 +1,25 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { FeaturesContext } from '@/app/components/base/features/context'
+import { createFeaturesStore } from '@/app/components/base/features/store'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import {
+  createModelConfigFixture,
+  createPublishedConfigurationFixture,
+} from '@/test/fixtures/debug-configuration'
+import { Resolution, TransferMethod } from '@/types/app'
 import FeaturesWrappedAppPublisher from '../features-wrapper'
 
-const mockSetFeatures = vi.fn()
 const mockOnPublish = vi.fn()
-const mockAppPublisherProps = vi.hoisted(() => ({
-  current: null as null | Record<string, any>,
-}))
-
 const mockFeatures = {
   moreLikeThis: { enabled: false },
   opening: { enabled: false, opening_statement: '', suggested_questions: [] as string[] },
@@ -18,55 +31,38 @@ const mockFeatures = {
   annotationReply: { enabled: false },
   file: {
     image: {
-      detail: 'high',
+      detail: Resolution.high,
       enabled: false,
       number_limits: 3,
-      transfer_methods: ['local_file', 'remote_url'],
+      transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
     },
     enabled: false,
-    allowed_file_types: ['image'],
+    allowed_file_types: [SupportUploadFileTypes.image],
     allowed_file_extensions: ['.png'],
-    allowed_file_upload_methods: ['local_file'],
+    allowed_file_upload_methods: [TransferMethod.local_file],
     number_limits: 3,
   },
 }
-vi.mock('@/app/components/app/app-publisher', () => ({
-  AppPublisher: (props: Record<string, any>) => {
-    mockAppPublisherProps.current = props
-    return (
-      <div>
-        <button type="button" onClick={() => props.onPublish?.({ id: 'model-1' })}>
-          publish-through-wrapper
-        </button>
-        <button
-          type="button"
-          onClick={() => props.onPublish?.(undefined, { showSuccessToast: false })}
-        >
-          publish-silently-through-wrapper
-        </button>
-        <button type="button" onClick={() => props.onRestore?.()}>
-          restore-through-wrapper
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: { features: typeof mockFeatures }) => unknown) =>
-    selector({ features: mockFeatures }),
-  useFeaturesStore: () => ({
-    getState: () => ({
-      features: mockFeatures,
-      setFeatures: mockSetFeatures,
+let store: ReturnType<typeof createFeaturesStore>
+function render(ui: ReactElement) {
+  store = createFeaturesStore({ features: mockFeatures })
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'chat' }))
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      provider: 'openai',
+      models: [createCatalogModelFixture({ model: 'gpt-4o', label: { en_US: 'GPT-4o' } })],
     }),
-  }),
-}))
+  ])
+  return renderWorkflowComponent(<FeaturesContext value={store}>{ui}</FeaturesContext>, {
+    queryClient,
+  })
+}
 
 describe('FeaturesWrappedAppPublisher', () => {
   const resetAppConfig = vi.fn()
-  const publishedConfig = {
-    modelConfig: {
+  const publishedConfig = createPublishedConfigurationFixture({
+    modelConfig: createModelConfigFixture({
       more_like_this: { enabled: true },
       opening_statement: 'Hello there',
       suggested_questions: ['Q1'],
@@ -75,7 +71,12 @@ describe('FeaturesWrappedAppPublisher', () => {
       text_to_speech: { enabled: true },
       suggested_questions_after_answer: { enabled: true },
       retriever_resource: { enabled: true },
-      annotation_reply: { enabled: true },
+      annotation_reply: {
+        enabled: true,
+        id: 'annotation-1',
+        score_threshold: 0.7,
+        embedding_model: { embedding_model_name: 'embedding', embedding_provider_name: 'openai' },
+      },
       file_upload: {
         enabled: true,
         image: {
@@ -84,68 +85,69 @@ describe('FeaturesWrappedAppPublisher', () => {
           number_limits: 5,
           transfer_methods: ['remote_url'],
         },
-        allowed_file_types: ['image'],
+        allowed_file_types: [SupportUploadFileTypes.image],
         allowed_file_extensions: ['.jpg'],
         allowed_file_upload_methods: ['remote_url'],
         number_limits: 5,
       },
-    },
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockAppPublisherProps.current = null
+    }),
   })
 
   it('should pass current features through to onPublish', async () => {
+    const user = userEvent.setup()
     render(
       <FeaturesWrappedAppPublisher
         appId="app-1"
-        publishedConfig={publishedConfig as any}
+        publishedAt={1710000100000}
+        publishedConfig={publishedConfig}
         onPublish={mockOnPublish}
+        debugWithMultipleModel
+        multipleModelConfigs={[
+          { id: 'model-1', model: 'gpt-4o', provider: 'openai', parameters: {} },
+        ]}
       />,
     )
 
-    fireEvent.click(screen.getByText('publish-through-wrapper'))
-
-    await waitFor(() => {
-      expect(mockOnPublish).toHaveBeenCalledWith({ id: 'model-1' }, mockFeatures)
-    })
-  })
-
-  it('should pass publish notification options through to onPublish', async () => {
-    render(
-      <FeaturesWrappedAppPublisher
-        appId="app-1"
-        publishedConfig={publishedConfig as any}
-        onPublish={mockOnPublish}
-      />,
+    await user.click(screen.getByRole('button', { name: 'workflow.common.publish' }))
+    await user.click(screen.getByRole('button', { name: 'appDebug.operation.applyConfig' }))
+    await user.click(await screen.findByRole('menuitem', { name: /GPT-4o/ }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'appDebug.operation.applyConfig' })).toBeDisabled(),
     )
 
-    fireEvent.click(screen.getByText('publish-silently-through-wrapper'))
-
     await waitFor(() => {
-      expect(mockOnPublish).toHaveBeenCalledWith(undefined, mockFeatures, {
-        showSuccessToast: false,
-      })
+      expect(mockOnPublish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'model-1',
+          model: 'gpt-4o',
+          provider: 'openai',
+          parameters: {},
+        }),
+        mockFeatures,
+      )
     })
   })
 
   it('should restore published features after confirmation', async () => {
+    const user = userEvent.setup()
     render(
       <FeaturesWrappedAppPublisher
         appId="app-1"
-        publishedConfig={publishedConfig as any}
+        publishedAt={1710000100000}
+        publishedConfig={publishedConfig}
         resetAppConfig={resetAppConfig}
       />,
     )
 
-    fireEvent.click(screen.getByText('restore-through-wrapper'))
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.publish' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+    expect(store.getState().features).toEqual(mockFeatures)
+    expect(resetAppConfig).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
 
     await waitFor(() => {
       expect(resetAppConfig).toHaveBeenCalledTimes(1)
-      expect(mockSetFeatures).toHaveBeenCalledWith(
+      expect(store.getState().features).toEqual(
         expect.objectContaining({
           moreLikeThis: { enabled: true },
           opening: {
@@ -158,25 +160,29 @@ describe('FeaturesWrappedAppPublisher', () => {
           text2speech: { enabled: true },
           suggested: { enabled: true },
           citation: { enabled: true },
-          annotationReply: { enabled: true },
+          annotationReply: publishedConfig.modelConfig.annotation_reply,
+          file: publishedConfig.modelConfig.file_upload,
         }),
       )
     })
   })
 
   it('should close restore confirmation without restoring when cancelled', async () => {
+    const user = userEvent.setup()
     render(
       <FeaturesWrappedAppPublisher
         appId="app-1"
-        publishedConfig={publishedConfig as any}
+        publishedAt={1710000100000}
+        publishedConfig={publishedConfig}
         resetAppConfig={resetAppConfig}
       />,
     )
 
-    fireEvent.click(screen.getByText('restore-through-wrapper'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.publish' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
     const dialog = screen.getByRole('alertdialog')
 
-    fireEvent.click(
+    await user.click(
       within(dialog).getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }),
     )
 
@@ -184,6 +190,6 @@ describe('FeaturesWrappedAppPublisher', () => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
     expect(resetAppConfig).not.toHaveBeenCalled()
-    expect(mockSetFeatures).not.toHaveBeenCalled()
+    expect(store.getState().features).toEqual(mockFeatures)
   })
 })

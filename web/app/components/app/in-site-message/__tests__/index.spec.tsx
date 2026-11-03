@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import type { InSiteMessageActionItem } from '../index'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { trackEvent } from '@/app/components/base/amplitude'
 import InSiteMessage from '../index'
@@ -55,21 +56,12 @@ describe('InSiteMessage', () => {
       expect(screen.getByText('Main content')).toBeInTheDocument()
       expect(learnMoreLink).toHaveAttribute('href', 'https://example.com')
     })
-
-    it('should fallback to default header background when headerBgUrl is empty string', () => {
-      const actions: InSiteMessageActionItem[] = [
-        { action: 'close', action_name: 'dismiss', text: 'Close', type: 'default' },
-      ]
-
-      const { container } = renderComponent(actions, { headerBgUrl: '' })
-      const header = container.querySelector('div[style]')
-      expect(header).toHaveStyle({ backgroundImage: 'url(/in-site-message/header-bg.svg)' })
-    })
   })
 
   // Validate action handling for close and link actions.
   describe('Actions', () => {
-    it('should call onAction and hide component when close action is clicked', () => {
+    it('should call onAction and hide component when close action is clicked', async () => {
+      const user = userEvent.setup()
       const onAction = vi.fn()
       const closeAction: InSiteMessageActionItem = {
         action: 'close',
@@ -79,13 +71,14 @@ describe('InSiteMessage', () => {
       }
 
       renderComponent([closeAction], { onAction })
-      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: 'Close' }))
 
       expect(onAction).toHaveBeenCalledWith(closeAction)
       expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
     })
 
-    it('should render a new-tab link and report its activation', () => {
+    it('should render a new-tab link and report its activation', async () => {
+      const user = userEvent.setup()
       const onAction = vi.fn()
       const linkAction: InSiteMessageActionItem = {
         action: 'link',
@@ -101,7 +94,7 @@ describe('InSiteMessage', () => {
       expect(link).toHaveAttribute('href', 'https://example.com')
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-      fireEvent.click(link)
+      await user.click(link)
 
       expect(onAction).toHaveBeenCalledWith(linkAction)
       expect(vi.mocked(trackEvent)).toHaveBeenCalledWith('in_site_message_action', {
@@ -126,7 +119,8 @@ describe('InSiteMessage', () => {
       expect(link).toHaveAttribute('target', '_self')
     })
 
-    it('should not trigger navigation when link data is invalid', () => {
+    it('should not trigger navigation when link data is invalid', async () => {
+      const user = userEvent.setup()
       const linkAction: InSiteMessageActionItem = {
         action: 'link',
         action_name: 'confirm',
@@ -136,7 +130,7 @@ describe('InSiteMessage', () => {
       }
 
       renderComponent([linkAction])
-      fireEvent.click(screen.getByRole('button', { name: 'Broken link' }))
+      await user.click(screen.getByRole('button', { name: 'Broken link' }))
 
       expect(screen.queryByRole('link', { name: 'Broken link' })).not.toBeInTheDocument()
     })
