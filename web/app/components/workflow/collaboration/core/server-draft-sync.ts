@@ -1,9 +1,10 @@
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { Socket } from 'socket.io-client'
 import type { Edge, Node } from '../../types'
 import { emitWithAuthGuard } from './websocket-manager'
 
 export type ServerDraftGraph = { nodes: Node[]; edges: Edge[] }
-export type ServerDraftChange = {
+export type ServerDraftChange = Pick<WorkflowResponse, 'client_save_id'> & {
   revision: string
   hash: string
   updated_at: number
@@ -11,7 +12,10 @@ export type ServerDraftChange = {
   previous_graph: ServerDraftGraph | null
   base_update: string | null
 }
-export type ServerDraftUpdate = Pick<ServerDraftChange, 'revision' | 'hash' | 'updated_at'> & {
+export type ServerDraftUpdate = Pick<
+  ServerDraftChange,
+  'revision' | 'hash' | 'updated_at' | 'client_save_id'
+> & {
   update: Uint8Array
 }
 

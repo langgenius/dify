@@ -33,6 +33,7 @@ def _change_from_workflow(workflow: Workflow, previous_graph: dict[str, object] 
     return ServerDraftChange(
         revision=f"{updated_at.isoformat(timespec='microseconds')}:{workflow.unique_hash}",
         hash=workflow.unique_hash,
+        client_save_id=workflow.draft_client_save_id,
         updated_at=int(updated_at.timestamp()),
         graph=dict(workflow.graph_dict),
         previous_graph=previous_graph,
@@ -150,6 +151,7 @@ class WorkflowDraftSyncService:
         return {
             "revision": change.revision,
             "hash": change.hash,
+            "client_save_id": change.client_save_id,
             "updated_at": change.updated_at,
             "update": base64.b64decode(change.update),
         }
