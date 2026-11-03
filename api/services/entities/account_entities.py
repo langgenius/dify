@@ -9,6 +9,12 @@ from enum import StrEnum
 
 @dataclass(frozen=True, slots=True)
 class AccountSnapshot:
+    """Account data with independent profile and Builder lifecycle timestamps.
+
+    A missing first workspace time means no owned creation or legacy Builder
+    baseline is recorded. Invitation initialization remains a separate lifecycle.
+    """
+
     id: str
     name: str
     email: str
@@ -22,6 +28,7 @@ class AccountSnapshot:
     status: str
     initialized_at: datetime | None
     created_at: datetime
+    first_workspace_created_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)

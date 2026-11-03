@@ -241,10 +241,13 @@ def test_provider_gateway_translates_provider_rejection() -> None:
 
 
 @pytest.mark.parametrize("mode", list(LoginMode))
+@pytest.mark.parametrize("defer_workspace_creation", [False, True])
 def test_registration_gateway_creates_only_the_account(
-    account_domain: AccountDomain, sqlite_session: Session, mode: LoginMode
+    account_domain: AccountDomain, sqlite_session: Session, mode: LoginMode, defer_workspace_creation: bool
 ) -> None:
-    gateway = AccountLifecycleOAuthRegistrationGateway(accounts=account_domain.accounts)
+    gateway = AccountLifecycleOAuthRegistrationGateway(
+        accounts=account_domain.accounts, defer_workspace_creation=defer_workspace_creation
+    )
     account_id = gateway.register(
         OAuthAccountRegistration(
             mode=mode,
@@ -257,8 +260,9 @@ def test_registration_gateway_creates_only_the_account(
     )
     account = sqlite_session.get(Account, account_id)
     assert account is not None
-    assert account.status == (AccountStatus.UNINITIALIZED if mode == LoginMode.END_USER else AccountStatus.ACTIVE)
-    assert (account.initialized_at is None) is (mode == LoginMode.END_USER)
+    uninitialized = mode == LoginMode.END_USER or defer_workspace_creation
+    assert account.status == (AccountStatus.UNINITIALIZED if uninitialized else AccountStatus.ACTIVE)
+    assert (account.initialized_at is None) is uninitialized
     assert account.timezone == "Asia/Singapore"
     assert account.last_login_ip == "203.0.113.10"
     assert sqlite_session.scalar(select(func.count()).select_from(Tenant)) == 0

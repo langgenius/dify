@@ -27,6 +27,7 @@ export type AccountResponse = {
   readonly avatar_url: string | null
   created_at?: number | null
   email: string
+  first_workspace_created_at?: number | null
   id: string
   interface_language?: string | null
   interface_theme?: string | null
@@ -257,6 +258,7 @@ export type AccountResponseWritable = {
   avatar?: string | null
   created_at?: number | null
   email: string
+  first_workspace_created_at?: number | null
   id: string
   interface_language?: string | null
   interface_theme?: string | null

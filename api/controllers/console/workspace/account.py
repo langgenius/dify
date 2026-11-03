@@ -37,7 +37,7 @@ from controllers.console.error import (
     EmailSendIpLimitError,
     InvalidAccountPasswordRequestError,
 )
-from controllers.console.flask_admission import console_account_admission
+from controllers.console.flask_admission import console_account_admission, console_account_identity_admission
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
@@ -46,13 +46,13 @@ from controllers.console.workspace.error import (
     MissingInvitationCodeRequestError,
     RepeatPasswordNotMatchError,
 )
-from controllers.console.wraps import model_validate, setup_required
+from controllers.console.wraps import enterprise_license_required, model_validate, setup_required
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
 from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext, RequestContext
 from services import account_errors
 from services.account_education_service import EDUCATION_EDITIONS
 from services.entities.account_entities import AccountProfileChanges
@@ -321,8 +321,9 @@ class AccountInitApi(Resource):
 class AccountProfileApi(Resource):
     @error_responses(AccountNotFound)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission(require_valid_enterprise_license=True)
-    def get(self, request_context: RequestContext):
+    @console_account_identity_admission
+    @enterprise_license_required
+    def get(self, request_context: AccountRequestContext):
         try:
             account = application_services().accounts.profile.get(request_context)
         except account_errors.AccountNotFoundError as error:

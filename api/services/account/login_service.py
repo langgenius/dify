@@ -173,6 +173,7 @@ class ConsoleAuthenticationService:
         now: Callable[[], datetime],
         turnstile_enabled: bool,
         turnstile_verify_required: bool,
+        defer_workspace_creation: bool = False,
     ) -> None:
         self._accounts = accounts
         self._workspaces = workspaces
@@ -192,6 +193,7 @@ class ConsoleAuthenticationService:
         self._now = now
         self._turnstile_enabled = turnstile_enabled
         self._turnstile_verify_required = turnstile_verify_required
+        self._defer_workspace_creation = defer_workspace_creation
 
     def login_with_password(self, command: PasswordLoginCommand) -> PasswordLoginResult:
         if command.mode == LoginMode.END_USER and command.invite_token is not None:
@@ -221,13 +223,19 @@ class ConsoleAuthenticationService:
         if account is None:
             self._invalid_credentials(normalized_email, command.ip_address)
 
-        if command.mode == LoginMode.CONSOLE and not self._workspaces.has_active_for_account(account.id):
-            if invitation_token is not None:
-                self._invitations.ensure_membership(account_id=account.id, email=command.email, token=invitation_token)
-            if not self._workspaces.has_active_for_account(account.id):
-                if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
-                    raise account_errors.LoginWorkspaceLimitError
-                return PasswordLoginResult(tokens=None, workspace_found=False)
+        workspace_found = None
+        if command.mode == LoginMode.CONSOLE:
+            workspace_found = self._workspaces.has_active_for_account(account.id)
+            if not workspace_found:
+                if invitation_token is not None:
+                    self._invitations.ensure_membership(
+                        account_id=account.id, email=command.email, token=invitation_token
+                    )
+                workspace_found = self._workspaces.has_active_for_account(account.id)
+                if not workspace_found and not self._defer_workspace_creation:
+                    if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
+                        raise account_errors.LoginWorkspaceLimitError
+                    return PasswordLoginResult(tokens=None, workspace_found=False)
 
         tokens = self._issue_session(
             account_id=account.id,
@@ -235,7 +243,7 @@ class ConsoleAuthenticationService:
             activate_pending_account=False,
         )
         self._security.reset_login_failures(normalized_email)
-        return PasswordLoginResult(tokens=tokens, workspace_found=True if command.mode == LoginMode.CONSOLE else None)
+        return PasswordLoginResult(tokens=tokens, workspace_found=workspace_found)
 
     def logout(self, *, refresh_token: str) -> None:
         self._sessions.revoke(refresh_token)
@@ -298,7 +306,11 @@ class ConsoleAuthenticationService:
         account = self._preferred_account(command.email)
         self._ensure_account_not_banned(account, normalized_email, command.ip_address)
         if account is not None:
-            if command.mode == LoginMode.CONSOLE and not self._workspaces.has_active_for_account(account.id):
+            if (
+                command.mode == LoginMode.CONSOLE
+                and not self._defer_workspace_creation
+                and not self._workspaces.has_active_for_account(account.id)
+            ):
                 if not self._policies.has_workspace_capacity():
                     raise account_errors.LoginWorkspaceLimitError
                 if not self._policies.is_workspace_creation_allowed():
@@ -312,7 +324,7 @@ class ConsoleAuthenticationService:
                 raise account_errors.LoginSeatLimitError
             interface_language = get_valid_language(command.language)
             timezone = command.timezone or language_timezone_mapping.get(interface_language, "UTC")
-            if command.mode == LoginMode.END_USER:
+            if command.mode == LoginMode.END_USER or self._defer_workspace_creation:
                 try:
                     created = self._account_registration.create_account(
                         email=normalized_email,
