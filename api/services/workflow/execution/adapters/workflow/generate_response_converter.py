@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, cast, override
+from typing import Any, override
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.task_entities import (
@@ -52,7 +52,8 @@ class WorkflowAppGenerateResponseConverter(
         :return:
         """
         for chunk in stream_response:
-            chunk = cast(WorkflowAppStreamResponse, chunk)
+            if not isinstance(chunk, WorkflowAppStreamResponse):
+                raise TypeError(f"Expected WorkflowAppStreamResponse, got {type(chunk).__name__}")
             sub_stream_response = chunk.stream_response
 
             match sub_stream_response:
@@ -86,7 +87,8 @@ class WorkflowAppGenerateResponseConverter(
         :return:
         """
         for chunk in stream_response:
-            chunk = cast(WorkflowAppStreamResponse, chunk)
+            if not isinstance(chunk, WorkflowAppStreamResponse):
+                raise TypeError(f"Expected WorkflowAppStreamResponse, got {type(chunk).__name__}")
             sub_stream_response = chunk.stream_response
 
             match sub_stream_response:

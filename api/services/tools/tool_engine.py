@@ -5,7 +5,7 @@ from collections.abc import Generator, Iterable
 from copy import deepcopy
 from datetime import UTC, datetime
 from mimetypes import guess_type
-from typing import Any, cast
+from typing import Any
 
 from sqlalchemy.orm import Session
 from yarl import URL
@@ -260,6 +260,12 @@ class ToolEngine:
             yield meta
 
     @staticmethod
+    def _text_message_url(message: object) -> str:
+        if not isinstance(message, ToolInvokeMessage.TextMessage):
+            raise TypeError(f"Expected TextMessage, got {type(message).__name__}")
+        return message.text
+
+    @staticmethod
     def tool_response_to_str(tool_response: list[ToolInvokeMessage]) -> str:
         """Convert tool invoke messages into the plain-text observation shown to the model/user."""
         parts: list[str] = []
@@ -267,10 +273,10 @@ class ToolEngine:
 
         for response in tool_response:
             if response.type == ToolInvokeMessage.MessageType.TEXT:
-                parts.append(cast(ToolInvokeMessage.TextMessage, response.message).text)
+                parts.append(ToolEngine._text_message_url(response.message))
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 parts.append(
-                    f"result link: {cast(ToolInvokeMessage.TextMessage, response.message).text}."
+                    f"result link: {ToolEngine._text_message_url(response.message)}."
                     + " please tell user to check it."
                 )
             elif response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
@@ -279,12 +285,14 @@ class ToolEngine:
                     + "you do not need to create it, just tell the user to check it now."
                 )
             elif response.type == ToolInvokeMessage.MessageType.JSON:
-                json_message = cast(ToolInvokeMessage.JsonMessage, response.message)
+                if not isinstance(response.message, ToolInvokeMessage.JsonMessage):
+                    raise TypeError(f"Expected JsonMessage, got {type(response.message).__name__}")
+                json_message = response.message
                 if json_message.suppress_output:
                     continue
                 json_parts.append(
                     json.dumps(
-                        safe_json_value(cast(ToolInvokeMessage.JsonMessage, response.message).json_object),
+                        safe_json_value(json_message.json_object),
                         ensure_ascii=False,
                     )
                 )
@@ -327,7 +335,7 @@ class ToolEngine:
                     mimetype = response.meta.get("mime_type")
                 else:
                     with contextlib.suppress(Exception):
-                        url = URL(cast(ToolInvokeMessage.TextMessage, response.message).text)
+                        url = URL(ToolEngine._text_message_url(response.message))
                         extension = url.suffix
                         guess_type_result, _ = guess_type(f"a{extension}")
                         if guess_type_result:
@@ -342,7 +350,7 @@ class ToolEngine:
 
                 yield ToolInvokeMessageBinary(
                     mimetype=response.meta.get("mime_type", mimetype),
-                    url=cast(ToolInvokeMessage.TextMessage, response.message).text,
+                    url=ToolEngine._text_message_url(response.message),
                 )
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 if not response.meta:
@@ -350,7 +358,7 @@ class ToolEngine:
 
                 yield ToolInvokeMessageBinary(
                     mimetype=response.meta.get("mime_type", "application/octet-stream"),
-                    url=cast(ToolInvokeMessage.TextMessage, response.message).text,
+                    url=ToolEngine._text_message_url(response.message),
                 )
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 # check if there is a mime type in meta
@@ -359,7 +367,7 @@ class ToolEngine:
                         mimetype=response.meta.get("mime_type", "application/octet-stream")
                         if response.meta
                         else "application/octet-stream",
-                        url=cast(ToolInvokeMessage.TextMessage, response.message).text,
+                        url=ToolEngine._text_message_url(response.message),
                     )
 
     @staticmethod

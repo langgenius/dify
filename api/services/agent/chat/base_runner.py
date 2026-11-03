@@ -3,7 +3,6 @@ import logging
 import uuid
 from collections.abc import Callable
 from decimal import Decimal
-from typing import cast
 
 from core.agent.entities import AgentEntity, AgentToolEntity
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -104,14 +103,16 @@ class BaseAgentRunner(AppRunner):
             invoke_from=application_generate_entity.invoke_from,
             hit_callback=hit_callback,
             user_id=user_id,
-            inputs=cast(dict, application_generate_entity.inputs),
+            inputs=dict(application_generate_entity.inputs),
         )
         self.agent_thought_count = next(
             (len(entry.thoughts) for entry in history if entry.message.id == self.message.id), 0
         )
 
         # check if model supports stream tool call
-        llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
+        if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
+            raise TypeError(f"Expected LargeLanguageModel, got {type(model_instance.model_type_instance).__name__}")
+        llm_model = model_instance.model_type_instance
         model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
         features = model_schema.features if model_schema and model_schema.features else []
         self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features

@@ -203,14 +203,20 @@ def test_cleanup_keeps_other_documents_and_datasets(
     sqlite_session.commit()
     backend = MagicMock()
     configuration = VectorConfiguration(vector_type="qdrant", collection_name="bound-collection")
-    resolve_configuration = MagicMock(return_value=configuration)
+    resolved_datasets: list[str] = []
+
+    def resolve_configuration(target_dataset: Dataset, *, session: Session) -> VectorConfiguration:
+        assert session.is_active
+        resolved_datasets.append(target_dataset.id)
+        return configuration
+
     vector_factory = MagicMock(return_value=backend)
     monkeypatch.setattr(cleanup, "resolve_vector_configuration", resolve_configuration)
     monkeypatch.setattr(cleanup, "Vector", vector_factory)
     cleanup.clean_document_indexes(
         dataset_id=dataset.id, document_ids=[document.id], doc_form="text_model", new_session=sqlite_session_factory
     )
-    resolve_configuration.assert_called_once()
+    assert resolved_datasets == [dataset.id]
     assert vector_factory.call_args.kwargs == {"session": None, "configuration": configuration}
     assert vector_factory.call_args.kwargs["configuration"].collection_name == "bound-collection"
     backend.delete_by_ids.assert_called_once_with(["summary-node", "body-node"])
