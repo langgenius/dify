@@ -242,6 +242,22 @@ def _build_workflow_paused_blocking_response() -> WorkflowAppPausedBlockingRespo
     )
 
 
+@dataclass
+class _ToolProvidersStub:
+    def icon(self, *args: object, **kwargs: object) -> str | None:
+        return None
+
+
+@dataclass
+class _ToolsServiceStub:
+    tool_providers: object
+
+
+@dataclass
+class _AppServicesStub:
+    tools: _ToolsServiceStub
+
+
 @dataclass(frozen=True)
 class _FakePauseEntity(WorkflowPauseEntity):
     pause_id: str
@@ -400,11 +416,11 @@ class TestHitlServiceApi:
         )
         msg_generator = Mock()
         snapshot_calls: list[dict[str, object]] = []
-        tool_providers = Mock()
+        tool_providers = _ToolProvidersStub()
         monkeypatch.setattr(
             workflow_events_module,
             "application_services",
-            lambda: SimpleNamespace(tools=SimpleNamespace(tool_providers=tool_providers)),
+            lambda: _AppServicesStub(tools=_ToolsServiceStub(tool_providers=tool_providers)),
         )
 
         def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
@@ -840,7 +856,7 @@ class TestHitlServiceApi:
             resumption_context=resumption_context,
             session_maker=sqlite_session_maker,
             node_executions={},
-            tool_providers=Mock(),
+            tool_providers=_ToolProvidersStub(),
         )
 
         assert [event["event"] for event in events] == [
@@ -1031,11 +1047,11 @@ class TestWorkflowEventsApi:
         )
         msg_generator = Mock()
         snapshot_calls: list[dict[str, object]] = []
-        tool_providers = Mock()
+        tool_providers = _ToolProvidersStub()
         monkeypatch.setattr(
             workflow_events_module,
             "application_services",
-            lambda: SimpleNamespace(tools=SimpleNamespace(tool_providers=tool_providers)),
+            lambda: _AppServicesStub(tools=_ToolsServiceStub(tool_providers=tool_providers)),
         )
 
         def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
