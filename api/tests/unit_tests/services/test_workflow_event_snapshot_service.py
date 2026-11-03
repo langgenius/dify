@@ -1,5 +1,6 @@
 import json
 import queue
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -102,7 +103,7 @@ class _FakePauseEntity(WorkflowPauseEntity):
         return self.paused_at_value
 
 
-def _build_workflow_run(status: WorkflowExecutionStatus) -> WorkflowRun:
+def _build_workflow_run(status: WorkflowExecutionStatus, *, created_at: datetime | None = None) -> WorkflowRun:
     workflow_run = WorkflowRun(
         id="run-1",
         tenant_id="tenant-1",
@@ -122,13 +123,18 @@ def _build_workflow_run(status: WorkflowExecutionStatus) -> WorkflowRun:
         created_by_role=CreatorUserRole.END_USER,
         created_by="user-1",
     )
-    workflow_run.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+    workflow_run.created_at = created_at if created_at is not None else datetime(2024, 1, 1, tzinfo=UTC)
     return workflow_run
 
 
-def _build_snapshot(status: WorkflowNodeExecutionStatus) -> WorkflowNodeExecutionSnapshot:
-    created_at = datetime(2024, 1, 1, tzinfo=UTC)
-    finished_at = datetime(2024, 1, 1, 0, 0, 5, tzinfo=UTC)
+def _build_snapshot(
+    status: WorkflowNodeExecutionStatus,
+    *,
+    created_at: datetime | None = None,
+    finished_at: datetime | None = None,
+) -> WorkflowNodeExecutionSnapshot:
+    created_at = created_at if created_at is not None else datetime(2024, 1, 1, tzinfo=UTC)
+    finished_at = finished_at if finished_at is not None else datetime(2024, 1, 1, 0, 0, 5, tzinfo=UTC)
     return WorkflowNodeExecutionSnapshot(
         execution_id="exec-1",
         node_id="node-1",
@@ -1627,3 +1633,54 @@ def test_authorized_snapshot_indexes_legacy_pause_for_stop(
         tenant_id=run.tenant_id, app_id=run.app_id, task_id=task_id, owner=None
     )
     assert (stopped is not None) is (saved_run_id == run.id)
+
+
+def test_snapshot_timestamps_are_read_as_utc(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Persisted rows are naive UTC, so the host timezone must not shift replayed timestamps."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("tzset is only available on POSIX platforms")
+    recorded_at = datetime(2024, 5, 1)
+    expected = int(recorded_at.replace(tzinfo=UTC).timestamp())
+    monkeypatch.setenv("TZ", "Asia/Shanghai")
+    time.tzset()
+    try:
+        message = Message(id="msg-1", conversation_id="conv-1", answer="answer")
+        message.created_at = recorded_at
+        message_context = service_module._to_message_context(message)
+        assert message_context.created_at == expected
+
+        expiration_time = _persist_human_input_form(sqlite_session_factory)
+        workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED, created_at=recorded_at)
+        snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED, created_at=recorded_at, finished_at=recorded_at)
+        events = _build_checkpoint_snapshot_events(
+            workflow_run=workflow_run,
+            node_snapshots=[snapshot],
+            task_id="task-ctx",
+            message_context=None,
+            pause_entity=_FakePauseEntity(
+                pause_id="pause-1",
+                workflow_run_id="run-1",
+                paused_at_value=expiration_time,
+            ),
+            resumption_context=_build_resumption_context("task-ctx"),
+            session_maker=sqlite_session_factory,
+            node_executions={},
+        )
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+
+    assert [event["event"] for event in events] == [
+        StreamEvent.WORKFLOW_STARTED,
+        StreamEvent.NODE_STARTED,
+        StreamEvent.NODE_FINISHED,
+        StreamEvent.HUMAN_INPUT_REQUIRED,
+        StreamEvent.WORKFLOW_PAUSED,
+    ]
+    assert events[0]["data"]["created_at"] == expected
+    assert events[2]["data"]["created_at"] == expected
+    assert events[2]["data"]["finished_at"] == expected
+    assert events[-1]["data"]["created_at"] == expected
