@@ -34,7 +34,7 @@ type Props = Readonly<{
   onClose: () => void
   inWorkflow?: boolean
   showFileUpload?: boolean
-  showThoughts?: boolean
+  showThoughtsToggle?: boolean
   showModeration?: boolean
   showAnnotationReply?: boolean
   promptVariables?: PromptVariable[]
@@ -53,7 +53,7 @@ const NewFeaturePanel = ({
   onClose,
   inWorkflow = true,
   showFileUpload = true,
-  showThoughts = false,
+  showThoughtsToggle = false,
   showModeration = true,
   showAnnotationReply = true,
   promptVariables,
@@ -117,7 +117,9 @@ const NewFeaturePanel = ({
           {showFileUpload && isChatMode && <FileUpload disabled={disabled} onChange={onChange} />}
           {showFileUpload && !isChatMode && <ImageUpload disabled={disabled} onChange={onChange} />}
           {isChatMode && <Citation disabled={disabled} onChange={onChange} />}
-          {isChatMode && showThoughts && <ShowThoughts disabled={disabled} onChange={onChange} />}
+          {isChatMode && showThoughtsToggle && (
+            <ShowThoughts disabled={disabled} onChange={onChange} />
+          )}
           {showModeration && (isChatMode || !inWorkflow) && (
             <Moderation disabled={disabled} onChange={onChange} />
           )}

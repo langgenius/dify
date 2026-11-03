@@ -159,7 +159,7 @@ function AgentChatFeaturesPanelContent({
       isChatMode
       disabled={!!disabled}
       inWorkflow={false}
-      showThoughts
+      showThoughtsToggle
       showModeration={false}
       showAnnotationReply={false}
       drawerClassName="bg-components-panel-bg! data-[swipe-direction=right]:top-1! data-[swipe-direction=right]:right-0! data-[swipe-direction=right]:bottom-1! data-[swipe-direction=right]:rounded-r-none!"
