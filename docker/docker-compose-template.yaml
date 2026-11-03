@@ -945,6 +945,10 @@ services:
     restart: always
     volumes:
       - ./volumes/qdrant:/qdrant/storage
+    ulimits:
+      nofile:
+        soft: ${QDRANT_NOFILE_SOFT:-524288}
+        hard: ${QDRANT_NOFILE_HARD:-524288}
 
   # The Couchbase vector store.
   couchbase-server:
