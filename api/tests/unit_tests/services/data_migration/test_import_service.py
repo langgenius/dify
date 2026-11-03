@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import cast
-from unittest.mock import Mock, create_autospec
+from unittest.mock import create_autospec
 
 import pytest
 import yaml
@@ -28,6 +28,7 @@ from services.data_migration.import_service import (
     ImportRequest,
     ImportTargetResolver,
     MigrationImportService,
+    WorkflowDslImporter,
     WorkflowPublisher,
 )
 from services.entities.dsl_entities import ImportStatus
@@ -44,6 +45,10 @@ class Database:
 
 def _workflow_publisher() -> WorkflowPublisher:
     return create_autospec(WorkflowPublisher, instance=True, spec_set=True)
+
+
+def _app_dsl_importer(_session: Session | None = None) -> WorkflowDslImporter:
+    return create_autospec(WorkflowDslImporter, instance=True, spec_set=True)
 
 
 @pytest.fixture
@@ -282,7 +287,7 @@ def test_options_override_replaces_package_defaults(database: Database, *, workf
     override = ImportOptions(create_app_api_token_on_import=False, conflict_strategy=ConflictStrategy.SKIP)
 
     CapturingImportService(
-        app_dsl=Mock(),
+        app_dsl=_app_dsl_importer,
         workflows=_workflow_publisher(),
         target_resolver=StubResolver(),
         workflow_tools=workflow_tools,
@@ -295,7 +300,7 @@ def test_options_override_replaces_package_defaults(database: Database, *, workf
 
 
 def test_only_preserve_id_strategy_reuses_source_app_id(*, workflow_tools):
-    service = MigrationImportService(app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools)
+    service = MigrationImportService(app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools)
 
     assert service._should_preserve_source_app_id(ImportOptions(id_strategy=IdStrategy.PRESERVE_ID)) is True
     assert service._should_preserve_source_app_id(ImportOptions(id_strategy=IdStrategy.GENERATE_NEW_ID)) is False
@@ -305,7 +310,7 @@ def test_find_existing_app_ignores_invalid_uuid(database: Database, *, workflow_
     _persist_app(database.session, app_id="app-other", tenant_id="tenant-2")
     assert (
         MigrationImportService(
-            app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+            app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
         )._find_existing_app("not-a-uuid", "tenant-1", session=database.session)
         is None
     )
@@ -321,7 +326,7 @@ def test_find_existing_workflow_tool_does_not_compare_invalid_uuid(database: Dat
     event.listen(database.session, "do_orm_execute", capture_statement)
     try:
         result = MigrationImportService(
-            app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+            app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
         )._find_existing_workflow_tool("tenant-1", "not-a-uuid", "tool-name", "app-id", session=database.session)
     finally:
         event.remove(database.session, "do_orm_execute", capture_statement)
@@ -341,7 +346,7 @@ def test_find_existing_mcp_tool_does_not_compare_invalid_uuid(database: Database
     event.listen(database.session, "do_orm_execute", capture_statement)
     try:
         result = MigrationImportService(
-            app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+            app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
         )._find_existing_mcp_tool("tenant-1", "my-test-mcp", "my-test-mcp", session=database.session)
     finally:
         event.remove(database.session, "do_orm_execute", capture_statement)
@@ -419,7 +424,7 @@ def test_rewrite_workflow_dsl_replaces_tool_provider_ids(*, workflow_tools):
     )
 
     rewritten = MigrationImportService(
-        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
     )._rewrite_workflow_dsl_provider_ids(
         dsl_content,
         {
@@ -465,7 +470,7 @@ def test_source_api_provider_ids_are_discovered_from_workflow_dsl(*, workflow_to
     )
 
     assert MigrationImportService(
-        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
     )._source_api_provider_ids_by_name(package) == {"weather": {"source-api-provider-id"}}
 
 
@@ -491,7 +496,7 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(
 
     monkeypatch.setattr(workflow_tools, "create_workflow_tool", create_workflow_tool)
     PublishingImportService(
-        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
     )._import_workflow_tools(
         MigrationPackage.from_mapping(
             {
@@ -516,7 +521,7 @@ def test_ensure_workflow_app_is_published_updates_current_workflow(database: Dat
     _persist_app(database.session, app_id=app_id)
     publisher = create_autospec(WorkflowPublisher, instance=True, spec_set=True)
     MigrationImportService(
-        app_dsl=Mock(), workflows=publisher, workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=publisher, workflow_tools=workflow_tools
     )._ensure_workflow_app_is_published(
         ImportTarget("tenant-1", "target", "account-1", "owner@example.com"),
         account,
@@ -558,7 +563,7 @@ def test_workflow_tool_import_id_follows_id_strategy(
 
     monkeypatch.setattr(workflow_tools, "create_workflow_tool", create_workflow_tool)
     StrategyImportService(
-        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
     )._import_workflow_tools(
         MigrationPackage.from_mapping(
             {
@@ -601,7 +606,7 @@ def test_workflow_tool_skip_records_id_mapping(database: Database, *, workflow_t
             return None
 
     SkipImportService(
-        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
     )._import_workflow_tools(
         MigrationPackage.from_mapping(
             {
@@ -638,7 +643,7 @@ def test_api_tool_existing_provider_records_id_mapping(
     monkeypatch.setattr(import_service.ApiToolManageService, "update_api_tool_provider", lambda **kwargs: None)
 
     MigrationImportService(
-        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
     )._import_api_tools(
         MigrationPackage.from_mapping(
             {
@@ -683,7 +688,7 @@ def test_api_tool_create_records_id_mapping(monkeypatch: pytest.MonkeyPatch, dat
     monkeypatch.setattr(import_service.ApiToolManageService, "create_api_tool_provider", create_api_tool_provider)
 
     MigrationImportService(
-        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
     )._import_api_tools(
         MigrationPackage.from_mapping(
             {
@@ -724,7 +729,7 @@ def test_mcp_tool_import_restores_exported_tool_list(
     monkeypatch.setattr(import_service, "MCPToolManageService", StubMCPToolManageService)
 
     MigrationImportService(
-        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
     )._import_mcp_tools(
         MigrationPackage.from_mapping(
             {
@@ -784,7 +789,7 @@ def test_mcp_tool_existing_provider_records_id_mapping(
     monkeypatch.setattr(import_service, "MCPToolManageService", StubMCPToolManageService)
 
     MigrationImportService(
-        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
     )._import_mcp_tools(
         MigrationPackage.from_mapping(
             {
@@ -840,7 +845,7 @@ def test_mcp_tool_create_records_id_mapping(monkeypatch: pytest.MonkeyPatch, dat
     monkeypatch.setattr(import_service, "MCPToolManageService", StubMCPToolManageService)
 
     MigrationImportService(
-        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
     )._import_mcp_tools(
         MigrationPackage.from_mapping(
             {
@@ -914,7 +919,7 @@ def test_dependency_only_mcp_preflight_reports_missing_target_provider_with_work
     )
 
     MigrationImportService(
-        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
     )._preflight_dependency_only_mcp(
         package,
         ImportTarget(
@@ -951,7 +956,7 @@ def test_dependency_only_mcp_lookup_does_not_compare_non_uuid_identifier_to_uuid
     event.listen(database.session, "do_orm_execute", capture_statement)
     try:
         result = MigrationImportService(
-            app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+            app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
         )._find_dependency_only_mcp_provider(
             "tenant-1",
             "my-test-mcp-server",
@@ -988,7 +993,7 @@ def test_dependency_only_mcp_preflight_reports_available_target_provider(databas
     )
 
     MigrationImportService(
-        app_dsl=Mock(), workflows=_workflow_publisher(), workflow_tools=workflow_tools
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
     )._preflight_dependency_only_mcp(
         package,
         ImportTarget(
@@ -1088,7 +1093,7 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers(dat
     )
 
     OrderedImportService(
-        app_dsl=Mock(),
+        app_dsl=_app_dsl_importer,
         workflows=_workflow_publisher(),
         target_resolver=StubResolver(),
         workflow_tools=workflow_tools,
