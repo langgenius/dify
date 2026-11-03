@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.rbac import RBACPermission, RBACResourceScope
+from core.workflow.editor_graph import editor_node_wrapper
 from enums import DeploymentEdition
 from events.app_event import app_was_updated
 from graphon.enums import BuiltinNodeTypes
@@ -93,14 +94,9 @@ _DISCARDED_COPY_STATUSES: Final = frozenset({ImportStatus.FAILED, ImportStatus.P
 def _editor_node(node_id: str, column: int, data: dict[str, Any]) -> dict[str, Any]:
     """A node as the editor's generateNewNode shapes it."""
     x, y = _START_POSITION
-    return {
-        "id": node_id,
-        "type": "custom",
-        "data": data,
-        "position": {"x": x + _NODE_X_STEP * column, "y": y},
-        "targetPosition": "left",
-        "sourcePosition": "right",
-    }
+    node = {"id": node_id, "data": data}
+    editor_node_wrapper(node, position={"x": x + _NODE_X_STEP * column, "y": y})
+    return node
 
 
 def _editor_edge(source: str, target: str) -> dict[str, Any]:
