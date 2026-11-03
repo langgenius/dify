@@ -236,10 +236,13 @@ it('waits for the latest graph and fields to save before publishing', async () =
   expect(api.publish).not.toHaveBeenCalled()
   await act(async () => saved.resolve({ result: 'success', hash: 'latest', updated_at: 3 }))
   await waitFor(() =>
-    expect(api.publish).toHaveBeenCalledExactlyOnceWith({
-      params: { snippet_id: 'snippet-1' },
-      body: {},
-    }),
+    expect(api.publish).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { snippet_id: 'snippet-1' },
+        body: {},
+      },
+      { context: { silent: true } },
+    ),
   )
   expect(screen.getByText('Draft transform')).toBeInTheDocument()
 })

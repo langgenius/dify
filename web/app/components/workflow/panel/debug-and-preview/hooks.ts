@@ -697,7 +697,10 @@ export const useChat = (
     formToken: string,
     formData: HumanInputFormSubmitData,
   ) => {
-    await submitHumanInputForm(formToken, formData)
+    const form = threadMessages
+      .flatMap((item) => item.humanInputFormDataList ?? [])
+      .find((item) => item.form_token === formToken)
+    await submitHumanInputForm(formToken, formData, form?.form_version)
   }
 
   const getHumanInputNodeData = (nodeID: string) => {

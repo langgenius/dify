@@ -50,6 +50,7 @@ from core.app.entities.queue_entities import (
     QueueRetrieverResourcesEvent,
 )
 from extensions.ext_database import db
+from extensions.tracing import application_tracing_hooks
 from graphon.file import File
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -765,8 +766,6 @@ class AgentAppRunner:
             binding_id=runtime.binding_id,
             snapshot=terminal.session_snapshot,
         )
-        from core.ops.base_trace_instance import application_tracing_hooks
-
         tracing_hooks = application_tracing_hooks()
         if tracing_hooks is not None:
             tracing_hooks.capture_agent_app_terminal(
@@ -1059,8 +1058,6 @@ class AgentAppRunner:
             # snapshot/usage, but let the original business failure own the root.
             # Check after cleanup so a Stop observed during its wait still wins.
             return
-        from core.ops.base_trace_instance import application_tracing_hooks
-
         tracing_hooks = application_tracing_hooks()
         if tracing_hooks is not None:
             outcome: Literal["succeeded", "failed", "cancelled"]

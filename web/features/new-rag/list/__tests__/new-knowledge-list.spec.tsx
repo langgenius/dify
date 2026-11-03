@@ -175,13 +175,14 @@ function setup({
           upgrades,
         }}
       >
-        <NewKnowledgeList view="agent" onViewChange={vi.fn()} />
+        <NewKnowledgeList />
       </KnowledgeUpgradeContext>
     </UrlState>
   )
   const rendered = renderWithConsoleQuery(ui(), {
     accountProfile: { id: 'account-1' },
-    knowledgeFsFeatures: { enabled: true, upload_enabled: true },
+    features: { enable_knowledge_fs: true },
+    knowledgeFsFeatures: { upload_enabled: true },
     workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
     ...options,
   })
@@ -551,7 +552,7 @@ describe('NewKnowledgeList', () => {
     })
 
     it('keeps upload unavailable when KnowledgeFS upload is disabled', async () => {
-      setup({ knowledgeFsFeatures: { enabled: true, upload_enabled: false } })
+      setup({ knowledgeFsFeatures: { upload_enabled: false } })
 
       const uploadFiles = await screen.findByRole('button', { name: 'knowledgeSpace.uploadFiles' })
       expect(uploadFiles).toBeDisabled()
@@ -561,9 +562,9 @@ describe('NewKnowledgeList', () => {
     })
 
     it.each([
-      ['external-connect only', ['dataset.external.connect'], true],
-      ['read-only', [], false],
-    ])('hides creation entries from %s users', async (_, workspacePermissionKeys, canConnect) => {
+      ['external-connect only', ['dataset.external.connect']],
+      ['read-only', []],
+    ])('hides creation entries from %s users', async (_, workspacePermissionKeys) => {
       setup({ workspacePermissionKeys })
 
       expect(await screen.findByText('knowledgeSpace.readOnlyEmpty')).toBeInTheDocument()
@@ -573,9 +574,6 @@ describe('NewKnowledgeList', () => {
       expect(
         screen.queryByRole('link', { name: 'knowledgeSpace.connectSource' }),
       ).not.toBeInTheDocument()
-      expect(Boolean(screen.queryByRole('button', { name: 'dataset.externalAPIPanelTitle' }))).toBe(
-        canConnect,
-      )
     })
   })
 

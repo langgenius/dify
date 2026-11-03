@@ -6,11 +6,8 @@ by the core workflow module. These models are independent of the storage mechani
 and don't contain implementation details like tenant_id, app_id, etc.
 """
 
-from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
-
-from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPauseReason
 
 
 class WorkflowPauseEntity(Protocol):
@@ -21,6 +18,9 @@ class WorkflowPauseEntity(Protocol):
     without implementation details like tenant_id, app_id, etc.
     It provides the interface for managing workflow pause/resume operations
     and state persistence through file storage.
+
+    Pause presentation is resolved by the service from checkpoint references;
+    this entity does not load relational pause reasons.
 
     The `WorkflowPauseEntity` is never reused. If a workflow execution pauses multiple times,
     it will generate multiple `WorkflowPauseEntity` records.
@@ -63,13 +63,4 @@ class WorkflowPauseEntity(Protocol):
     @property
     def paused_at(self) -> datetime:
         """`paused_at` returns the creation time of the pause."""
-        ...
-
-    def get_pause_reasons(self) -> Sequence[DifyPauseReason]:
-        """
-        Retrieve detailed reasons for this pause.
-
-        Returns a sequence of `PauseReason` objects describing the specific nodes and
-        reasons for which the workflow execution was paused.
-        """
         ...

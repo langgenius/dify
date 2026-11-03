@@ -1,14 +1,15 @@
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { modelNameMap, providerLogoMap } from '../utils'
 
 type MarketplaceSectionProps = {
+  marketplace: MarketplaceLinks
   marketplaceProviders: ModelProviderQuotaGetPaid[]
   marketplaceCollapsed: boolean
   installingProvider: ModelProviderQuotaGetPaid | null
@@ -20,6 +21,7 @@ type MarketplaceSectionProps = {
 }
 
 function MarketplaceSection({
+  marketplace,
   marketplaceProviders,
   marketplaceCollapsed,
   installingProvider,
@@ -135,7 +137,7 @@ function MarketplaceSection({
             ) : (
               <a
                 className="flex cursor-pointer items-center gap-0.5 rounded-md px-3 py-1.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
+                href={marketplace.category(PluginCategoryEnum.model, { theme })}
                 target="_blank"
                 rel="noopener noreferrer"
               >

@@ -1,6 +1,8 @@
 import type { AgentKnowledgeRetrievalItem } from './form-state'
 import { useTranslation } from 'react-i18next'
+import { comparisonOperatorNotRequireValue } from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/utils'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { checkoutRerankModelConfiguredInRetrievalSettings } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { RETRIEVE_TYPE } from '@/types/app'
 
 export type KnowledgeValidationIssueCode =
@@ -9,8 +11,10 @@ export type KnowledgeValidationIssueCode =
   | 'datasets_required'
   | 'custom_query_required'
   | 'single_model_required'
+  | 'rerank_model_required'
   | 'metadata_model_required'
   | 'metadata_conditions_required'
+  | 'metadata_value_required'
   | 'space_unavailable'
   | 'binding_invalid'
 
@@ -40,7 +44,7 @@ export const useKnowledgeValidationMessage = () => {
   const { t: tAppDebug } = useTranslation(['appDebug'])
   const { t: tWorkflow } = useTranslation(['workflowModels'])
 
-  return (issueCode?: KnowledgeValidationIssueCode) => {
+  return (issueCode?: KnowledgeValidationIssueCode, metadataFieldNames?: string) => {
     switch (issueCode) {
       case 'space_unavailable':
         return t(($) => $['agentDetail.configure.knowledgeFs.unavailable'])
@@ -74,11 +78,21 @@ export const useKnowledgeValidationMessage = () => {
         return t(
           ($) => $['agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired'],
         )
+      case 'rerank_model_required':
+        return tCommon(($) => $['errorMsg.fieldRequired'], {
+          field: tCommon(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' }),
+        })
       case 'metadata_conditions_required':
         return tCommon(($) => $['errorMsg.fieldRequired'], {
           field: tWorkflow(($) => $['nodes.knowledgeRetrieval.metadata.panel.conditions'], {
             ns: 'workflowModels',
           }),
+        })
+      case 'metadata_value_required':
+        return tAppDebug(($) => $['errorMessage.valueOfVarRequired'], {
+          key:
+            metadataFieldNames ??
+            tWorkflow(($) => $['nodes.knowledgeRetrieval.metadata.panel.conditions']),
         })
       default:
         return undefined
@@ -89,18 +103,32 @@ export const useKnowledgeValidationMessage = () => {
 const getKnowledgeDatasetCount = (item: AgentKnowledgeRetrievalItem) =>
   item.selectedDatasets?.length ?? item.datasetRefs?.length ?? 0
 
+export const getMetadataConditionsMissingValues = (item: AgentKnowledgeRetrievalItem) => {
+  if (item.metadataFilterMode !== MetadataFilteringModeEnum.manual) return []
+  return (item.metadataFilteringConditions?.conditions ?? []).filter(
+    ({ comparison_operator, value }) =>
+      !comparisonOperatorNotRequireValue(comparison_operator) &&
+      (value === undefined ||
+        value === null ||
+        (typeof value === 'string' && !value.trim()) ||
+        (Array.isArray(value) && value.length === 0)),
+  )
+}
+
 const getNormalizedKnowledgeName = (item: AgentKnowledgeRetrievalItem) =>
   getKnowledgeRetrievalConcreteName(item).toLowerCase()
 
 export const validateKnowledgeRetrievals = (
   retrievals: AgentKnowledgeRetrievalItem[],
+  nameScope: AgentKnowledgeRetrievalItem[] = retrievals,
 ): KnowledgeValidationResult => {
   const byId: KnowledgeValidationResult['byId'] = {}
   const issues: KnowledgeValidationIssue[] = []
   const nameCounts = new Map<string, number>()
   const spaceCount = retrievals.filter((item) => item.controlSpaceId).length
 
-  retrievals.forEach((item) => {
+  // Hidden bindings still reserve their names, without requiring field validation.
+  nameScope.forEach((item) => {
     const normalizedName = getNormalizedKnowledgeName(item)
     if (!normalizedName) return
 
@@ -191,6 +219,19 @@ export const validateKnowledgeRetrievals = (
     }
 
     if (
+      item.retrievalMode !== RETRIEVE_TYPE.oneWay &&
+      // Saved bindings may have only dataset refs. Without catalog details, an
+      // explicitly enabled reranker still requires a model; disabled ones do not.
+      (item.selectedDatasets || item.multipleRetrievalConfig?.reranking_enable) &&
+      !checkoutRerankModelConfiguredInRetrievalSettings(
+        item.selectedDatasets ?? [],
+        item.multipleRetrievalConfig,
+      )
+    ) {
+      pushIssue({ itemId: item.id, code: 'rerank_model_required', field: 'retrieval' })
+    }
+
+    if (
       item.metadataFilterMode === MetadataFilteringModeEnum.manual &&
       !item.metadataFilteringConditions?.conditions.length
     ) {
@@ -199,6 +240,9 @@ export const validateKnowledgeRetrievals = (
         code: 'metadata_conditions_required',
         field: 'metadata',
       })
+    }
+    if (getMetadataConditionsMissingValues(item).length) {
+      pushIssue({ itemId: item.id, code: 'metadata_value_required', field: 'metadata' })
     }
   })
 

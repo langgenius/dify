@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueErrorEvent,
@@ -77,6 +77,7 @@ def _build_workflow_app_config() -> WorkflowUIBasedAppConfig:
 
 def _build_generate_entity(run_id: str) -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task-id",
         app_config=_build_workflow_app_config(),
         inputs={},
@@ -183,7 +184,7 @@ def _make_pipeline():
         user_id="user",
         stream=False,
         invoke_from=InvokeFrom.WEB_APP,
-        trace_manager=None,
+        trace_scope=None,
         workflow_execution_id="run-id",
         extras={},
         call_depth=0,
@@ -240,6 +241,7 @@ class TestGenerateTaskPipelineCoreCases:
             assert response.data.reasons == [
                 {
                     "TYPE": "human_input_required",
+                    "form_version": "1",
                     "form_id": "form-1",
                     "node_id": "node-1",
                     "node_title": "Human Input",
@@ -626,7 +628,7 @@ class TestGenerateTaskPipelineCoreCases:
                 user_id="end-user-id",
                 stream=False,
                 invoke_from=InvokeFrom.WEB_APP,
-                trace_manager=None,
+                trace_scope=None,
                 workflow_execution_id="run-id",
                 extras={},
                 call_depth=0,

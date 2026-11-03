@@ -1,0 +1,155 @@
+{
+  "envelope_id": "sanitized-envelope-id",
+  "payload": {
+    "type": "block_actions",
+    "team": {
+      "id": "T012SANITIZED",
+      "domain": "sanitized-workspace"
+    },
+    "user": {
+      "id": "U012SANITIZED",
+      "username": "sanitized-user",
+      "name": "sanitized-user",
+      "team_id": "T012SANITIZED"
+    },
+    "api_app_id": "A012SANITIZED",
+    "token": "sanitized-verification-token",
+    "container": {
+      "type": "message",
+      "message_ts": "1786400000.000001",
+      "channel_id": "D012SANITIZED",
+      "is_ephemeral": false
+    },
+    "trigger_id": "sanitized-trigger-id",
+    "channel": {
+      "id": "D012SANITIZED",
+      "name": "directmessage"
+    },
+    "message": {
+      "user": "UAPP012SANITIZED",
+      "type": "message",
+      "ts": "1786400000.000001",
+      "bot_id": "B012SANITIZED",
+      "app_id": "A012SANITIZED",
+      "text": "Approval request [sanitized fixture]",
+      "team": "T012SANITIZED",
+      "blocks": [
+        {
+          "type": "header",
+          "block_id": "slack-generated-header",
+          "text": {
+            "type": "plain_text",
+            "text": "Approval request",
+            "emoji": true
+          }
+        },
+        {
+          "type": "input",
+          "block_id": "__dify.input.0",
+          "label": {
+            "type": "plain_text",
+            "text": "说明📝"
+          },
+          "optional": false,
+          "dispatch_action": false,
+          "element": {
+            "type": "plain_text_input",
+            "action_id": "说明📝",
+            "multiline": true
+          }
+        },
+        {
+          "type": "input",
+          "block_id": "__dify.input.1",
+          "label": {
+            "type": "plain_text",
+            "text": "选择🌐"
+          },
+          "optional": false,
+          "dispatch_action": false,
+          "element": {
+            "type": "static_select",
+            "action_id": "选择🌐",
+            "placeholder": {
+              "type": "plain_text",
+              "text": "Select an option",
+              "emoji": true
+            },
+            "options": [
+              {
+                "text": {
+                  "type": "plain_text",
+                  "text": "选项 α"
+                },
+                "value": "选项 α"
+              },
+              {
+                "text": {
+                  "type": "plain_text",
+                  "text": "选项 β"
+                },
+                "value": "选项 β"
+              }
+            ]
+          }
+        },
+        {
+          "type": "actions",
+          "block_id": "__dify.actions",
+          "elements": [
+            {
+              "type": "button",
+              "action_id": "批准✅",
+              "text": {
+                "type": "plain_text",
+                "text": "Approve"
+              },
+              "value": "{\"action_id\":\"批准✅\",\"correlation_token\":\"关联令牌-🌍\",\"version\":1}"
+            }
+          ]
+        }
+      ]
+    },
+    "state": {
+      "values": {
+        "__dify.input.0": {
+          "说明📝": {
+            "type": "plain_text_input",
+            "value": "你好，世界 🌍"
+          }
+        },
+        "__dify.input.1": {
+          "选择🌐": {
+            "type": "static_select",
+            "selected_option": {
+              "text": {
+                "type": "plain_text",
+                "text": "选项 β"
+              },
+              "value": "选项 β"
+            }
+          }
+        }
+      }
+    },
+    "response_url": "https://hooks.slack.com/actions/SANITIZED",
+    "actions": [
+      {
+        "action_id": "批准✅",
+        "block_id": "__dify.actions",
+        "text": {
+          "type": "plain_text",
+          "text": "Approve",
+          "emoji": true
+        },
+        "value": "{\"action_id\":\"批准✅\",\"correlation_token\":\"关联令牌-🌍\",\"version\":1}",
+        "type": "button",
+        "action_ts": "1786400001.000002"
+      }
+    ]
+  },
+  "retry_attempt": null,
+  "retry_reason": null,
+  "type": "interactive",
+  "accepts_response_payload": false
+}

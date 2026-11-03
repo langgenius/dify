@@ -10,6 +10,7 @@ from dev.check_knowledge_fs_coverage import (
     CoverageGateError,
     CoverageReport,
     CoverageSummary,
+    collect_changed_glue_lines,
     is_core_coverage_path,
     load_glue_coverage_paths,
     parse_added_lines,
@@ -265,6 +266,49 @@ def test_diff_base_resolution_is_explicit_and_fail_closed_for_a_single_commit(tm
         resolve_diff_base(tmp_path, "")
     with pytest.raises(CoverageGateError, match="cannot resolve coverage diff base missing-base"):
         resolve_diff_base(tmp_path, "missing-base")
+
+
+@pytest.mark.parametrize("configuration", ["diff.mnemonicPrefix", "diff.noprefix"])
+def test_changed_glue_collection_ignores_user_diff_prefix_configuration(tmp_path: Path, configuration: str) -> None:
+    subprocess.run(["git", "init", "--quiet"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", configuration, "true"], cwd=tmp_path, check=True)
+    source = tmp_path / "api/app_factory.py"
+    source.parent.mkdir()
+    source.write_text("value = 1\n")
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.email=coverage@example.com",
+            "-c",
+            "user.name=Coverage Test",
+            "commit",
+            "--quiet",
+            "-m",
+            "fixture",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+    source.write_text("value = 2\n")
+
+    changed_lines = collect_changed_glue_lines(tmp_path, "HEAD", glue_paths=("api/app_factory.py",))
+
+    assert changed_lines == {"api/app_factory.py": {1}}
+    report = coverage_report(
+        {
+            "api/app_factory.py": coverage_file(
+                covered_lines=0,
+                num_statements=1,
+                covered_branches=0,
+                num_branches=0,
+                missing_lines=[1],
+            )
+        }
+    )
+    with pytest.raises(CoverageGateError, match="changed-glue line coverage is 0.00%"):
+        validate_changed_glue_coverage(report, changed_lines=changed_lines, minimum=90)
 
 
 def coverage_report(files: dict[str, CoverageFile]) -> CoverageReport:

@@ -4,6 +4,7 @@ This test module verifies that the W3C traceparent header is properly
 generated and included in HTTP requests made by EnterpriseRequest.
 """
 
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,7 +16,7 @@ class TestTraceparentPropagation:
     """Unit tests for traceparent header propagation."""
 
     @pytest.fixture
-    def mock_enterprise_config(self):
+    def mock_enterprise_config(self) -> Iterator[None]:
         """Mock EnterpriseRequest configuration."""
         with (
             patch.object(EnterpriseRequest, "base_url", "https://enterprise-api.example.com"),
@@ -25,7 +26,7 @@ class TestTraceparentPropagation:
             yield
 
     @pytest.fixture
-    def mock_httpx_client(self):
+    def mock_httpx_client(self) -> Iterator[MagicMock]:
         """Mock httpx.Client for testing."""
         with patch("services.enterprise.base.httpx.Client", autospec=True) as mock_client_class:
             mock_client = MagicMock()
@@ -39,13 +40,17 @@ class TestTraceparentPropagation:
 
             yield mock_client
 
-    def test_traceparent_header_included_when_generated(self, mock_enterprise_config, mock_httpx_client):
+    def test_traceparent_header_included_when_generated(
+        self, mock_enterprise_config: None, mock_httpx_client: MagicMock
+    ) -> None:
         """Test that traceparent header is included when successfully generated."""
         # Arrange
         expected_traceparent = "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01"
 
         with patch(
-            "services.enterprise.base.generate_traceparent_header", return_value=expected_traceparent, autospec=True
+            "services.enterprise.base.generate_traceparent_header",
+            return_value=expected_traceparent,
+            autospec=True,
         ):
             # Act
             EnterpriseRequest.send_request("GET", "/test")

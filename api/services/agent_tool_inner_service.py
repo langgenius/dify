@@ -34,6 +34,7 @@ from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from models.model import App
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 from services.workflow_run_agg import WorkflowRunAgg
@@ -106,6 +107,8 @@ class AgentToolInnerService:
                     conversation_id=request.caller.conversation_id,
                 )
             )
+        except CredentialRefreshUnavailableError:
+            raise
         except ToolProviderNotFoundError as exc:
             raise AgentToolInnerServiceError(
                 error_code="agent_tool_declaration_not_found",

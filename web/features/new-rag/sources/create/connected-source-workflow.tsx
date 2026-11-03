@@ -405,7 +405,7 @@ function ResourceList({
         <span className="system-xs-medium text-text-primary">
           {t(($) => $.selectAll, { ns: 'knowledgeSources' })}
         </span>
-        <span className="ml-auto truncate system-xs-regular text-text-tertiary">
+        <span className="ms-auto truncate system-xs-regular text-text-tertiary">
           {connectionLabel(connection, resources, providerRegion)}
         </span>
       </div>
@@ -1390,7 +1390,7 @@ function ResourceConfiguration({
               <span role="status" className="system-xs-regular text-text-tertiary">
                 {t(($) => $.pagesSelected, { ns: 'knowledgeSources', count: selected.size })}
                 {selectionLimitVisible && (
-                  <span id={selectionLimitId} className="ml-2 text-text-destructive">
+                  <span id={selectionLimitId} className="ms-2 text-text-destructive">
                     {t(($) => $.maxPages, { ns: 'knowledgeSources' })}: {MAX_SELECTION}
                   </span>
                 )}
@@ -1995,7 +1995,7 @@ function ConnectedSourceWorkflowSession({
         <ConnectedSourceSyncPolicyField draft={providerDraft} onDraftChange={onDraftChange} />
       )}
       {!connection && (
-        <div className="mt-1 flex justify-between gap-2 border-t border-divider-subtle pt-4.75">
+        <div className="mt-1 flex justify-end gap-2 border-t border-divider-subtle pt-4.75">
           <Button type="button" onClick={onExit}>
             {t(($) => $.cancelAddSource, { ns: 'knowledgeSources' })}
           </Button>
