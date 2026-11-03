@@ -46,7 +46,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         with (self.project / ".env").open("a") as target:
             target.write("\n" + "\n".join(f"{key}={value}" for key, value in values.items()) + "\n")
 
-    def render(self, *compose_args):
+    def render(self, *compose_args, all_profiles=True):
         inputs = set(re.findall(r"\$\{(\w+)", (DOCKER_DIR / "docker-compose.yaml").read_text()))
         for source in (DOCKER_DIR / "envs").rglob("*.defaults"):
             inputs.update(re.findall(r"\$\{(\w+)", source.read_text()))
@@ -56,8 +56,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
                 "docker",
                 "compose",
                 *compose_args,
-                "--profile",
-                "*",
+                *(["--profile", "*"] if all_profiles else []),
                 "config",
                 "--format",
                 "json",
@@ -342,7 +341,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
                 "OPENSEARCH_USER": "admin",
                 "OPENSEARCH_PASSWORD": "Qazwsxedc!@#123",
                 "OPENSEARCH_SECURE": "true",
-                "OPENSEARCH_VERIFY_CERTS": "false",
+                "OPENSEARCH_VERIFY_CERTS": "true",
             },
             "opengauss": {
                 "OPENGAUSS_HOST": "opengauss",
@@ -444,6 +443,99 @@ class ComposeEnvironmentTests(unittest.TestCase):
                     (self.project / target).unlink(missing_ok=True)
                     root.write_text(original)
 
+    def test_external_opensearch_tls_verification_and_overrides(self):
+        self.override_root(
+            {
+                "VECTOR_STORE": "opensearch",
+                "COMPOSE_PROFILES": "postgresql,collaboration",
+                "OPENSEARCH_HOST": "search.example.test",
+                "OPENSEARCH_PORT": "443",
+                "OPENSEARCH_SECURE": "true",
+            }
+        )
+        root = self.project / ".env"
+        original = root.read_text()
+        source = "envs/vectorstores/opensearch.defaults"
+        target = "envs/vectorstores/opensearch.env"
+
+        def assert_verification(expected):
+            services = self.render(all_profiles=False)
+            self.assertNotIn("opensearch", services)
+            for name in ("api", "api_websocket", "worker", "worker_beat"):
+                values = services[name]["environment"]
+                self.assertEqual(values["OPENSEARCH_HOST"], "search.example.test", name)
+                self.assertEqual(values["OPENSEARCH_SECURE"], "true", name)
+                self.assertEqual(values["OPENSEARCH_VERIFY_CERTS"], expected, name)
+
+        assert_verification("true")
+        self.copy_template(source, target)
+        assert_verification("true")
+        self.copy_template(source, target, {"OPENSEARCH_VERIFY_CERTS": "false"})
+        assert_verification("false")
+        self.override_root({"OPENSEARCH_VERIFY_CERTS": "true"})
+        assert_verification("true")
+        root.write_text(original)
+        assert_verification("false")
+        (self.project / target).unlink()
+        assert_verification("true")
+        self.override_root({"OPENSEARCH_VERIFY_CERTS": "false"})
+        assert_verification("false")
+
+    def test_weaviate_connections_survive_selecting_another_vector_store(self):
+        self.override_root({"VECTOR_STORE": "qdrant", "COMPOSE_PROFILES": "weaviate,qdrant,postgresql,collaboration"})
+        root = self.project / ".env"
+        original = root.read_text()
+        defaults = {
+            "WEAVIATE_ENDPOINT": "http://weaviate:8080",
+            "WEAVIATE_API_KEY": "WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih",
+            "WEAVIATE_GRPC_ENDPOINT": "grpc://weaviate:50051",
+        }
+        custom = {
+            "WEAVIATE_ENDPOINT": "https://existing-weaviate:443",
+            "WEAVIATE_API_KEY": "",
+            "WEAVIATE_GRPC_ENDPOINT": "",
+        }
+        root_values = {
+            "WEAVIATE_ENDPOINT": "https://root-weaviate:443",
+            "WEAVIATE_API_KEY": "root-weaviate-key",
+            "WEAVIATE_GRPC_ENDPOINT": "grpcs://root-weaviate:443",
+        }
+
+        def assert_connections(expected):
+            services = self.render()
+            for name in ("api", "api_websocket", "worker", "worker_knowledge_fs_upgrade", "worker_beat"):
+                values = services[name]["environment"]
+                self.assertEqual(values["VECTOR_STORE"], "qdrant", name)
+                self.assertEqual(values["QDRANT_URL"], "http://qdrant:6333", name)
+                for key, value in expected.items():
+                    self.assertEqual(values.get(key), value, f"{name}.{key}")
+
+        active = self.render(all_profiles=False)
+        self.assertIn("weaviate", active)
+        self.assertIn("qdrant", active)
+        assert_connections(defaults)
+        for source, target in (
+            ("core-services/api-worker.defaults", "core-services/api-worker.env"),
+            ("core-services/api-worker.defaults", "core-services/shared.env"),
+            ("vectorstores/weaviate.defaults", "vectorstores/weaviate.env"),
+        ):
+            with self.subTest(source=target):
+                try:
+                    self.copy_template(f"envs/{source}", f"envs/{target}")
+                    assert_connections(defaults)
+                    self.copy_template(f"envs/{source}", f"envs/{target}", custom)
+                    assert_connections(custom)
+                    self.override_root(root_values)
+                    assert_connections(root_values)
+                    root.write_text(original)
+                    assert_connections(custom)
+                finally:
+                    (self.project / "envs" / target).unlink(missing_ok=True)
+                    root.write_text(original)
+        assert_connections(defaults)
+        self.override_root(root_values)
+        assert_connections(root_values)
+
     def test_selected_vector_defaults_preserve_credentials_and_existing_overrides(self):
         root = self.project / ".env"
         original = root.read_text()
@@ -512,7 +604,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
             values = services[name]["environment"]
             self.assertEqual(values["QDRANT_URL"], "http://existing-qdrant:6333")
             self.assertEqual(values["QDRANT_API_KEY"], "")
-            self.assertNotIn("WEAVIATE_ENDPOINT", values)
+            self.assertEqual(values["WEAVIATE_ENDPOINT"], "http://weaviate:8080")
             self.assertNotIn("PGVECTOR_HOST", values)
 
         # External providers have no bundled defaults file and keep their explicit connection settings.

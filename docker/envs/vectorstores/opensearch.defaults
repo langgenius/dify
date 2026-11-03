@@ -13,8 +13,8 @@ OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD-${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-Q
 OPENSEARCH_HOST=${OPENSEARCH_HOST-opensearch}
 # OPENSEARCH_PORT=9200
 OPENSEARCH_SECURE=${OPENSEARCH_SECURE-true}
-# The bundled image uses demo certificates; enable verification after installing trusted certificates.
-OPENSEARCH_VERIFY_CERTS=${OPENSEARCH_VERIFY_CERTS-false}
+# Bundled demo certificates require an explicit false override; use trusted certificates in production.
+OPENSEARCH_VERIFY_CERTS=${OPENSEARCH_VERIFY_CERTS-true}
 # OPENSEARCH_AUTH_METHOD=basic
 OPENSEARCH_USER=${OPENSEARCH_USER-admin}
 OPENSEARCH_DISCOVERY_TYPE=${OPENSEARCH_DISCOVERY_TYPE:-single-node}

@@ -168,16 +168,28 @@ These optional overrides do not need to be added to `.env.example`.
 
 In root `.env`, set `VECTOR_STORE` and update `COMPOSE_PROFILES` to select the
 matching bundled vector store. Compose supplies its connection defaults to the
-API, workers and Beat automatically. For example, Qdrant with PostgreSQL uses:
+API, workers and Beat automatically. For example, a new deployment with Qdrant
+and PostgreSQL uses:
 
 ```dotenv
 VECTOR_STORE=qdrant
 COMPOSE_PROFILES=qdrant,postgresql,collaboration
 ```
 
+Changing `VECTOR_STORE` selects the default for new indexes. Existing knowledge
+bases keep using their stored backend, so preserve its connection settings and
+keep its service running. If any use bundled Weaviate, retain its profile with
+`COMPOSE_PROFILES=weaviate,qdrant,postgresql,collaboration` for this example.
+
+Bundled Weaviate connection defaults remain available when another provider is
+selected. An unchanged bundled service needs no additional connection settings;
+existing overrides in `weaviate.env`, `api-worker.env`, and `shared.env` still
+apply, with root `.env` taking precedence.
+
 To customize the connection, copy the provider's `.defaults` file under
-`envs/vectorstores/` to its `.env` path and edit the copy. Elasticsearch's two
-selectors use `elasticsearch.env`. Existing provider `.env` and `shared.env`
+`envs/vectorstores/` to its `.env` path if that file does not already exist. Edit
+the copy or the existing `.env` file. Elasticsearch's two selectors use
+`elasticsearch.env`. Existing provider `.env` and `shared.env`
 overrides remain supported. Keep `VECTOR_STORE` in root `.env`, since Compose
 selects the defaults file before reading service files.
 
@@ -185,6 +197,16 @@ For an external vector store, omit its bundled profile and provide its connectio
 settings and credentials. For databases with stored user passwords, change the
 password in the database before updating the corresponding client setting.
 Starting a different database or vector store does not migrate existing data.
+
+For OpenSearch HTTPS connections, `OPENSEARCH_VERIFY_CERTS` defaults to `true`
+whenever `VECTOR_STORE=opensearch`, even without the bundled `opensearch` profile.
+Keep verification enabled for production and external HTTPS servers, and use
+certificates trusted by the client.
+
+The bundled OpenSearch image uses demo certificates. For local development with
+those certificates, explicitly set `OPENSEARCH_VERIFY_CERTS=false` in
+`envs/vectorstores/opensearch.env` or root `.env`. To keep verification enabled,
+configure certificates trusted by the client.
 
 For example, the default deployment selects PostgreSQL and Weaviate with
 `COMPOSE_PROFILES=weaviate,postgresql,collaboration`. The `collaboration` profile
@@ -278,6 +300,10 @@ not application readiness.
 Review the new root `.env.example` for required deployment inputs and the matching
 `.defaults` files for changed service defaults. Preserve your existing `.env`
 files; a copied service file can pin values from an older release.
+
+Review any saved `OPENSEARCH_VERIFY_CERTS=false`: it stays in effect after an
+upgrade. Remove the assignment or set it to `true` to enable certificate
+verification.
 
 Bundled service templates now use the `.defaults` extension. Existing service
 `.env` paths still work. Root `.env.example` remains the only required starting

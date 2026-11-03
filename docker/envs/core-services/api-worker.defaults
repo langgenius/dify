@@ -467,6 +467,10 @@ OPENDAL_FS_ROOT=${OPENDAL_FS_ROOT-storage}
 VECTOR_STORE=${VECTOR_STORE-weaviate}
 # Prefix used to create collection names in the vector database.
 # VECTOR_INDEX_NAME_PREFIX=Vector_index
+# Keep legacy Weaviate connections for existing datasets after changing VECTOR_STORE.
+WEAVIATE_ENDPOINT=${WEAVIATE_ENDPOINT-http://weaviate:8080}
+WEAVIATE_API_KEY=${WEAVIATE_API_KEY-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
+WEAVIATE_GRPC_ENDPOINT=${WEAVIATE_GRPC_ENDPOINT-grpc://weaviate:50051}
 
 # ------------------------------
 # TiDB and TiDB on Qdrant
