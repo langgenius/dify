@@ -36,7 +36,7 @@ from services.model_provider.service import ModelProviderService, _ProviderSumma
 def _create_service_with_mocked_manager() -> tuple[ModelProviderService, MagicMock]:
     manager = MagicMock()
     service = ModelProviderService()
-    service._get_provider_manager = MagicMock(return_value=manager)
+    service._get_provider_manager = MagicMock(return_value=manager)  # pyrefly: ignore[method-assign]
     return service, manager
 
 
@@ -266,7 +266,7 @@ class TestModelProviderServiceCases:
 
         def test__get_provider_configuration_should_raise_error_when_provider_is_missing(self) -> None:
             service, manager = _create_service_with_mocked_manager()
-            manager.get_configurations.return_value = {}
+            manager.get_configurations.return_value = dict[str, Any]()
 
             with pytest.raises(ProviderNotFoundError, match="does not exist"):
                 service._get_provider_configuration(tenant_id="tenant-1", provider="missing")
@@ -643,7 +643,7 @@ class TestModelProviderServiceCases:
             sqlite_session.commit()
             statements: list[str] = []
 
-            def capture_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+            def capture_statement(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
                 statements.append(statement)
 
             event.listen(sqlite_engine, "before_cursor_execute", capture_statement)
@@ -1189,7 +1189,7 @@ class TestModelProviderServiceCases:
 
         def test_get_default_model_selection_returns_none_when_no_active_models(self, sqlite_session: Session) -> None:
             service, manager = _create_service_with_mocked_manager()
-            manager.get_configurations.return_value.get_models.return_value = []
+            manager.get_configurations.return_value.get_models.return_value = list[Any]()
 
             result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
 

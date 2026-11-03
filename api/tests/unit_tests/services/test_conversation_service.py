@@ -61,7 +61,7 @@ class ConversationServiceTestDataFactory:
     """
 
     @staticmethod
-    def create_account(account_id: str = ACCOUNT_ID, **kwargs) -> Account:
+    def create_account(account_id: str = ACCOUNT_ID, **kwargs) -> Account:  # pyrefly: ignore[implicit-any-parameter]
         """
         Create an Account object.
 
@@ -79,7 +79,7 @@ class ConversationServiceTestDataFactory:
         return account
 
     @staticmethod
-    def create_app(app_id: str = APP_ID, tenant_id: str = TENANT_ID, **kwargs) -> App:
+    def create_app(app_id: str = APP_ID, tenant_id: str = TENANT_ID, **kwargs) -> App:  # pyrefly: ignore[implicit-any-parameter]
         """
         Create an App object.
 
@@ -111,7 +111,7 @@ class ConversationServiceTestDataFactory:
         conversation_id: str = CONVERSATION_ID,
         app_id: str = APP_ID,
         from_source: ConversationFromSource = ConversationFromSource.CONSOLE,
-        **kwargs,
+        **kwargs,  # pyrefly: ignore[implicit-any-parameter]
     ) -> Conversation:
         """
         Create a Conversation object.
