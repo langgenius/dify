@@ -1,11 +1,11 @@
 import json
-from collections.abc import Sequence
-from types import SimpleNamespace
+from collections.abc import Mapping, Sequence
 from unittest.mock import patch
 
 import pytest
 
-from core.agent.plugin_entities import AgentStrategyParameter
+from core.agent.plugin_entities import AgentStrategyEntity, AgentStrategyIdentity, AgentStrategyParameter
+from core.agent.strategy.plugin import PluginAgentStrategy
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.provider_entities import CustomProviderConfiguration
 from core.model_manager import ModelInstance
@@ -175,11 +175,24 @@ def _declared_parameter(name: str, parameter_type: _ParameterType) -> AgentStrat
     return AgentStrategyParameter(name=name, label=ToolI18nObject(en_US=name), type=parameter_type)
 
 
+def _resolved_strategy() -> PluginAgentStrategy:
+    label = ToolI18nObject(en_US="strategy")
+    return PluginAgentStrategy(
+        tenant_id="tenant-1",
+        declaration=AgentStrategyEntity(
+            identity=AgentStrategyIdentity(author="author", name="strategy", label=label, provider="provider"),
+            description=label,
+        ),
+        meta_version="0.0.2",
+        plugin_unique_identifier="identifier",
+    )
+
+
 def _build_parameters(
     *,
-    configured: dict[str, object],
+    configured: Mapping[str, object],
     declared: Sequence[AgentStrategyParameter],
-    variables: dict[str, object],
+    variables: Mapping[str, object],
     for_log: bool = False,
 ) -> dict[str, object]:
     variable_pool = VariablePool()
@@ -190,7 +203,7 @@ def _build_parameters(
         agent_parameters=declared,
         variable_pool=variable_pool,
         node_data=node_data,
-        strategy=SimpleNamespace(meta_version="0.0.2"),
+        strategy=_resolved_strategy(),
         tenant_id="tenant-1",
         user_id="user-1",
         app_id="app-1",
@@ -245,7 +258,9 @@ def test_build_parameters_resolves_template_embedded_in_a_longer_tool_setting():
         for_log=True,
     )
 
-    assert result["tools"][0]["settings"]["target"]["value"] == 'room a\t"tabbed"\tname!'
+    tools = result["tools"]
+    assert isinstance(tools, list)
+    assert tools[0]["settings"]["target"]["value"] == 'room a\t"tabbed"\tname!'
 
 
 def test_build_parameters_preserves_nested_constant_structure():
@@ -303,5 +318,10 @@ def test_build_parameters_selects_log_form_for_nested_leaves_when_logging():
     logged = _build_parameters(configured=configured, declared=declared, variables=variables, for_log=True)
     rendered = _build_parameters(configured=configured, declared=declared, variables=variables, for_log=False)
 
-    assert logged["options"]["payload"] == json.dumps({"key": "value"}, ensure_ascii=False, indent=2)
-    assert rendered["options"]["payload"] == json.dumps({"key": "value"}, ensure_ascii=False)
+    logged_options = logged["options"]
+    rendered_options = rendered["options"]
+    assert isinstance(logged_options, dict)
+    assert isinstance(rendered_options, dict)
+
+    assert logged_options["payload"] == json.dumps({"key": "value"}, ensure_ascii=False, indent=2)
+    assert rendered_options["payload"] == json.dumps({"key": "value"}, ensure_ascii=False)
