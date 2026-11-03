@@ -9,10 +9,13 @@ from typing import TYPE_CHECKING, Any, Final
 from pydantic import BaseModel
 
 from core.workflow.node_factory import node_data_model
+from graphon.nodes.base.node import Node
 from services.workflow.authoring.plugins import (
     NO_DEFAULT,
     DeclarationStatus,
     DeclaredParameter,
+    PluginDeclaration,
+    PluginReference,
     node_class,
     node_references,
 )
@@ -152,18 +155,31 @@ def field_hint(model: type[BaseModel], loc: Sequence[str | int], *, required: bo
     return _field_hint(model.model_json_schema(), tuple(loc), required=required)
 
 
-def _declared_parameters(data: Mapping[str, Any], ctx: FillContext) -> tuple[DeclaredParameter, ...]:
-    declarations = (reference.resolve(ctx) for reference in node_references(data))
-    return tuple(
-        parameter
-        for declaration in declarations
-        if declaration.status == DeclarationStatus.FOUND
-        for parameter in declaration.parameters
-    )
+@dataclass(frozen=True)
+class ResolvedReference:
+    reference: PluginReference
+    declaration: PluginDeclaration
 
 
-def node_spec(raw_node: Mapping[str, Any], ctx: FillContext) -> NodeSpec | None:
-    """The spec of a graph node; None for a node it cannot read or of an unknown type, such as a canvas note."""
+@dataclass(frozen=True)
+class NodeTarget:
+    """A graph node of a known type, read once per check: every check and its spec share these lookups."""
+
+    id: str
+    data: Mapping[str, Any]
+    node_class: type[Node]
+    top_level: bool
+    references: tuple[ResolvedReference, ...]
+
+    @property
+    def model(self) -> type[BaseModel]:
+        return node_data_model(self.node_class)
+
+
+def read_node(raw_node: Mapping[str, Any], ctx: FillContext) -> NodeTarget | None:
+    """The node with its plugins looked up once; None for a node it cannot read or of an unknown type, such as a
+    canvas note. Never raises: a failed lookup is a declaration status.
+    """
     node_id = raw_node.get("id")
     if not isinstance(node_id, str):
         return None
@@ -173,18 +189,37 @@ def node_spec(raw_node: Mapping[str, Any], ctx: FillContext) -> NodeSpec | None:
     resolved = node_class(data)
     if resolved is None:
         return None
-    schema = node_data_schema(resolved)
-    model = node_data_model(resolved)
+    return NodeTarget(
+        id=node_id,
+        data=data,
+        node_class=resolved,
+        top_level=not raw_node.get("parentId"),
+        references=tuple(ResolvedReference(ref, ref.resolve(ctx)) for ref in node_references(data)),
+    )
+
+
+def _declared_parameters(node: NodeTarget) -> tuple[DeclaredParameter, ...]:
+    return tuple(
+        parameter
+        for resolved in node.references
+        if resolved.declaration.status == DeclarationStatus.FOUND
+        for parameter in resolved.declaration.parameters
+    )
+
+
+def node_spec(node: NodeTarget) -> NodeSpec:
+    """What the node still needs: its data schema, its found plugins' parameters, and each top-level field it lacks."""
+    schema = node_data_schema(node.node_class)
     open_fields = tuple(
         _field_hint(schema, (key,), required=field.is_required())
-        for name, field in model.model_fields.items()
-        if (key := field.alias or name) not in data
+        for name, field in node.model.model_fields.items()
+        if (key := field.alias or name) not in node.data
     )
     return NodeSpec(
-        node_id=node_id,
-        type=str(data["type"]),
-        version=resolved.version(),
+        node_id=node.id,
+        type=str(node.data["type"]),
+        version=node.node_class.version(),
         schema=schema,
-        plugin_parameters=_declared_parameters(data, ctx),
+        plugin_parameters=_declared_parameters(node),
         open_fields=open_fields,
     )

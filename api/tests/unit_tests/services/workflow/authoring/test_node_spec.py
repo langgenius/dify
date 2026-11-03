@@ -7,7 +7,7 @@ from core.plugin.impl.tool import PluginToolManager
 from core.workflow.node_factory import resolve_workflow_node_class
 from graphon.enums import BuiltinNodeTypes
 from services.workflow.authoring import FillContext
-from services.workflow.authoring.node_spec import FieldHint, field_hint, node_spec, schema_at
+from services.workflow.authoring.node_spec import FieldHint, NodeSpec, field_hint, node_spec, read_node, schema_at
 from services.workflow.authoring.plugins import NO_DEFAULT
 from services.workflow.node_defaults import node_data_schema
 
@@ -90,6 +90,12 @@ def test_field_hint_off_the_schema_still_locates_the_field() -> None:
     )
 
 
+def _spec(raw_node: dict[str, object]) -> NodeSpec:
+    node = read_node(raw_node, CTX)
+    assert node is not None
+    return node_spec(node)
+
+
 def _time_tool(**data: object) -> dict[str, object]:
     return {
         "id": "now",
@@ -105,9 +111,8 @@ def _time_tool(**data: object) -> dict[str, object]:
 
 
 def test_a_tool_node_spec_lists_the_tool_parameters() -> None:
-    spec = node_spec(_time_tool(), CTX)
+    spec = _spec(_time_tool())
 
-    assert spec is not None
     assert spec.node_id == "now"
     assert spec.type == BuiltinNodeTypes.TOOL
     assert [parameter.name for parameter in spec.plugin_parameters] == ["format", "timezone"]
@@ -115,25 +120,22 @@ def test_a_tool_node_spec_lists_the_tool_parameters() -> None:
 
 def test_a_tool_not_found_has_no_parameters(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(PluginToolManager, "fetch_tool_provider", lambda _self, _tenant_id, _provider: None)
-    spec = node_spec(_time_tool(provider_id="missing"), CTX)
+    spec = _spec(_time_tool(provider_id="missing"))
 
-    assert spec is not None
     assert spec.plugin_parameters == ()
 
 
 def test_the_spec_schema_is_the_one_describe_node_type_serves() -> None:
-    spec = node_spec({"id": "llm", "data": {"type": BuiltinNodeTypes.LLM}}, CTX)
+    spec = _spec({"id": "llm", "data": {"type": BuiltinNodeTypes.LLM}})
     node_class = resolve_workflow_node_class(node_type=BuiltinNodeTypes.LLM, node_version="1")
 
-    assert spec is not None
     assert spec.schema == node_data_schema(node_class)
     assert spec.version == node_class.version()
 
 
 def test_open_fields_are_every_top_level_field_the_data_lacks() -> None:
-    spec = node_spec({"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "title": "LLM"}}, CTX)
+    spec = _spec({"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "title": "LLM"}})
 
-    assert spec is not None
     fields = {hint.loc: hint for hint in spec.open_fields}
     assert ("type",) not in fields
     assert ("title",) not in fields
@@ -154,5 +156,5 @@ def test_open_fields_are_every_top_level_field_the_data_lacks() -> None:
         {"data": {"type": BuiltinNodeTypes.LLM}},
     ],
 )
-def test_a_node_it_cannot_read_has_no_spec(node: dict[str, object]) -> None:
-    assert node_spec(node, CTX) is None
+def test_a_node_it_cannot_read_is_not_read(node: dict[str, object]) -> None:
+    assert read_node(node, CTX) is None
