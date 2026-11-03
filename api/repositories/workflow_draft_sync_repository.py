@@ -64,13 +64,15 @@ class ServerDraftChange(BaseModel):
 
 
 class WorkflowDraftSyncRepository:
+    """Keep each app's draft and lease in one Redis Cluster slot for atomic acceptance."""
+
     @staticmethod
     def _key(app_id: str) -> str:
-        return f"workflow_server_draft:{app_id}"
+        return f"workflow_server_draft:{{{app_id}}}"
 
     @staticmethod
     def _lease_key(app_id: str) -> str:
-        return f"workflow_server_draft_lease:{app_id}"
+        return f"workflow_server_draft_lease:{{{app_id}}}"
 
     def announce(self, app_id: str, change: ServerDraftChange) -> bool:
         # Lua only inspects coordination metadata. Keep graphs as JSON strings
