@@ -577,7 +577,7 @@ def test_coordination_actual_migration_upgrade_downgrade_and_offline(flask_app_w
     assert spec.loader is not None
     migration = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(migration)
-    assert migration.down_revision == "d41e6b8c2a75"
+    assert migration.down_revision == ("c6f4a90d8b31", "7d2b9c4e61a8")
     schema = "draft_coordination_" + uuid4().hex
     table = "workflow_draft_coordination"
     with flask_app_with_containers.app_context(), db.engine.begin() as connection:

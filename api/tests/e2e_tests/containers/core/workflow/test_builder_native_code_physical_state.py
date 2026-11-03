@@ -165,17 +165,11 @@ def physical_migration(migrated_dispatch_claims: None, flask_app_with_containers
             assert material.down_revision == "3f51c8a6d902"
             policy = scripts.get_revision("3f51c8a6d902")
             assert policy is not None
-            assert policy.down_revision == "db7f42c9a801"
-            final_merge = scripts.get_revision("db7f42c9a801")
-            assert final_merge is not None
-            assert isinstance(final_merge.down_revision, tuple)
-            assert set(final_merge.down_revision) == {"e832a94f210b", "b9d3f7a5c102"}
+            assert isinstance(policy.down_revision, tuple)
+            assert set(policy.down_revision) == {"e832a94f210b", "b9d3f7a5c102"}
             coordination = scripts.get_revision("e832a94f210b")
             assert coordination is not None
-            assert coordination.down_revision == "d41e6b8c2a75"
-            merge = scripts.get_revision("d41e6b8c2a75")
-            assert merge is not None
-            assert merge.down_revision == ("c6f4a90d8b31", "7d2b9c4e61a8")
+            assert coordination.down_revision == ("c6f4a90d8b31", "7d2b9c4e61a8")
             for current in ("base", "c6f4a90d8b31", "7d2b9c4e61a8"):
                 planned = scripts._upgrade_revs("head", current)
                 assert planned[-1].revision.revision == "7d95a2e61346"

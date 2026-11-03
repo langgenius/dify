@@ -28,4 +28,4 @@ def test_current_policy_migration_is_portable(dialect: str, monkeypatch: pytest.
     sql = output.getvalue()
     assert "CREATE TABLE dify_builder_cognition_policies" in sql
     assert "DROP TABLE dify_builder_cognition_policies" in sql
-    assert module.down_revision == "db7f42c9a801"
+    assert module.down_revision == ("e832a94f210b", "b9d3f7a5c102")
