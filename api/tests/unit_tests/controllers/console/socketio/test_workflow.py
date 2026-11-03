@@ -129,19 +129,24 @@ def test_disconnect_clears_draft_only_after_the_last_session(
     monkeypatch: pytest.MonkeyPatch, remaining_sessions: list[str]
 ) -> None:
     """A disconnect preserves shared draft state while another collaborator remains."""
-    disconnect = MagicMock(return_value="workflow-1")
-    clear = MagicMock()
+    disconnected: list[str] = []
+    cleared: list[str] = []
+
+    def disconnect(sid: str) -> str:
+        disconnected.append(sid)
+        return "workflow-1"
+
+    def clear(workflow_id: str) -> None:
+        cleared.append(workflow_id)
+
     monkeypatch.setattr(workflow.collaboration_service, "disconnect_session", disconnect)
     monkeypatch.setattr(workflow.repository, "get_session_sids", lambda _workflow_id: remaining_sessions)
     monkeypatch.setattr(workflow.draft_sync_repository, "clear", clear)
 
     workflow.handle_disconnect("session-1")
 
-    disconnect.assert_called_once_with("session-1")
-    if remaining_sessions:
-        clear.assert_not_called()
-    else:
-        clear.assert_called_once_with("workflow-1")
+    assert disconnected == ["session-1"]
+    assert cleared == ([] if remaining_sessions else ["workflow-1"])
 
 
 @pytest.mark.parametrize("otel_enabled", [True, False])
