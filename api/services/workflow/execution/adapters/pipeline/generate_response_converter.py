@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, cast, override
+from typing import Any, override
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.task_entities import (
@@ -45,7 +45,8 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter[Workflow
         :return:
         """
         for chunk in stream_response:
-            chunk = cast(WorkflowAppStreamResponse, chunk)
+            if not isinstance(chunk, WorkflowAppStreamResponse):
+                raise TypeError(f"Expected WorkflowAppStreamResponse, got {type(chunk).__name__}")
             sub_stream_response = chunk.stream_response
 
             match sub_stream_response:
@@ -53,12 +54,12 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter[Workflow
                     yield "ping"
                     continue
                 case ErrorStreamResponse():
-                    response_chunk = {
+                    response_chunk: dict[str, Any] = {
                         "event": sub_stream_response.event.value,
                         "workflow_run_id": chunk.workflow_run_id,
                     }
                     data = cls._error_to_stream_response(sub_stream_response.err)
-                    response_chunk.update(cast(dict, data))
+                    response_chunk.update(data)
                 case _:
                     response_chunk = {
                         "event": sub_stream_response.event.value,
@@ -79,7 +80,8 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter[Workflow
         :return:
         """
         for chunk in stream_response:
-            chunk = cast(WorkflowAppStreamResponse, chunk)
+            if not isinstance(chunk, WorkflowAppStreamResponse):
+                raise TypeError(f"Expected WorkflowAppStreamResponse, got {type(chunk).__name__}")
             sub_stream_response = chunk.stream_response
 
             match sub_stream_response:
@@ -87,18 +89,18 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter[Workflow
                     yield "ping"
                     continue
                 case ErrorStreamResponse():
-                    response_chunk = {
+                    response_chunk: dict[str, Any] = {
                         "event": sub_stream_response.event.value,
                         "workflow_run_id": chunk.workflow_run_id,
                     }
                     data = cls._error_to_stream_response(sub_stream_response.err)
-                    response_chunk.update(cast(dict, data))
+                    response_chunk.update(data)
                 case NodeStartStreamResponse() | NodeFinishStreamResponse():
                     response_chunk = {
                         "event": sub_stream_response.event.value,
                         "workflow_run_id": chunk.workflow_run_id,
                     }
-                    response_chunk.update(cast(dict, sub_stream_response.to_ignore_detail_dict()))
+                    response_chunk.update(sub_stream_response.to_ignore_detail_dict())
                 case _:
                     response_chunk = {
                         "event": sub_stream_response.event.value,

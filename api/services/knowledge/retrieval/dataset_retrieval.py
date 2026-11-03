@@ -5,8 +5,8 @@ import re
 import threading
 import time
 from collections import Counter
-from collections.abc import Generator, Mapping
-from typing import Any, cast
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from opentelemetry.trace import get_current_span
 
@@ -62,10 +62,9 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import (
 from extensions.ext_redis import redis_client
 from extensions.otel import trace_span
 from graphon.file import File
-from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
-from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.helper import parse_uuid_str_or_none
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import (
@@ -183,7 +182,6 @@ class DatasetRetrieval:
 
             provider_model_bundle = model_instance.provider_model_bundle
             model_type_instance = model_instance.model_type_instance
-            model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
             model_credentials = model_instance.credentials
 
@@ -346,7 +344,7 @@ class DatasetRetrieval:
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id, model_type=ModelType.LLM, provider=model_config.provider, model=model_config.model
         )
-        model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
+        model_type_instance = model_instance.model_type_instance
 
         # Reuse the caller-bound model instance for both schema resolution and
         # downstream planner/invoke calls so a single request never mixes
@@ -559,9 +557,7 @@ class DatasetRetrieval:
                         else:
                             return []
                     retrieval_model_config: DefaultRetrievalModelDict = (
-                        cast(DefaultRetrievalModelDict, selected_dataset.retrieval_model)
-                        if selected_dataset.retrieval_model
-                        else default_retrieval_model
+                        selected_dataset.retrieval_model or default_retrieval_model
                     )
 
                     # get top k
@@ -872,11 +868,7 @@ class DatasetRetrieval:
                 all_documents.append(document)
         else:
             # get retrieval model , if the model is not setting , using default
-            retrieval_model: DefaultRetrievalModelDict = (
-                cast(DefaultRetrievalModelDict, dataset.retrieval_model)
-                if dataset.retrieval_model
-                else default_retrieval_model
-            )
+            retrieval_model: DefaultRetrievalModelDict = dataset.retrieval_model or default_retrieval_model
 
             if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 # use keyword table query
@@ -891,12 +883,16 @@ class DatasetRetrieval:
                     all_documents.extend(documents)
             else:
                 if top_k > 0:
+                    # top_k=0 is a legal explicit value (the SINGLE-retrieval
+                    # tool path reads the stored top_k as-is); only a missing
+                    # entry falls back to the default.
+                    dataset_top_k = retrieval_model.get("top_k")
                     # retrieval source
                     documents = RetrievalService.retrieve(
                         retrieval_method=retrieval_model["search_method"],
                         dataset_id=dataset.id,
                         query=query,
-                        top_k=retrieval_model.get("top_k") or 4,
+                        top_k=dataset_top_k if dataset_top_k is not None else 4,
                         score_threshold=retrieval_model.get("score_threshold", 0.0)
                         if retrieval_model["score_threshold_enabled"]
                         else 0.0,
@@ -1240,14 +1236,11 @@ class DatasetRetrieval:
 
         try:
             # handle invoke result
-            invoke_result = cast(
-                Generator[LLMResult],
-                model_instance.invoke_llm(
-                    prompt_messages=prompt_messages,
-                    model_parameters=model_config.parameters,
-                    stop=stop,
-                    stream=True,
-                ),
+            invoke_result: Any = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters=model_config.parameters,
+                stop=stop,
+                stream=True,
             )
 
             # handle invoke result
@@ -1290,7 +1283,6 @@ class DatasetRetrieval:
 
         provider_model_bundle = model_instance.provider_model_bundle
         model_type_instance = model_instance.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
         model_credentials = model_instance.credentials
 
@@ -1394,7 +1386,7 @@ class DatasetRetrieval:
 
         return prompt_messages, stop
 
-    def _handle_invoke_result(self, invoke_result: Generator) -> tuple[str, LLMUsage]:
+    def _handle_invoke_result(self, invoke_result: Iterable[Any]) -> tuple[str, LLMUsage]:
         """
         Handle invoke result
         :param invoke_result: invoke result
