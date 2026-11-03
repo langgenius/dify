@@ -70,6 +70,10 @@ import {
   zDeleteConnectionsByConnectionIdResponse,
   zDeleteConversationsByCIdPath,
   zDeleteConversationsByCIdResponse,
+  zDeleteMeAppsByAppIdFavoritePath,
+  zDeleteMeAppsByAppIdFavoriteResponse,
+  zDeleteMeConnectionsByConnectionIdPath,
+  zDeleteMeConnectionsByConnectionIdResponse,
   zDeleteSavedMessagesByMessageIdPath,
   zDeleteSavedMessagesByMessageIdResponse,
   zGetAccountProfileResponse,
@@ -91,6 +95,12 @@ import {
   zGetFormHumanInputByFormTokenResponse,
   zGetLoginStatusQuery,
   zGetLoginStatusResponse,
+  zGetMeAppsQuery,
+  zGetMeAppsResponse,
+  zGetMeConnectionsByConnectionIdPath,
+  zGetMeConnectionsByConnectionIdResponse,
+  zGetMeConnectionsQuery,
+  zGetMeConnectionsResponse,
   zGetMessagesByMessageIdMoreLikeThisPath,
   zGetMessagesByMessageIdMoreLikeThisQuery,
   zGetMessagesByMessageIdMoreLikeThisResponse,
@@ -186,6 +196,8 @@ import {
   zPostWorkflowsTasksByTaskIdStopResponse,
   zPutConnectionsConfigurationBody,
   zPutConnectionsConfigurationResponse,
+  zPutMeAppsByAppIdFavoritePath,
+  zPutMeAppsByAppIdFavoriteResponse,
 } from './zod.gen.ts'
 
 /**
@@ -1214,6 +1226,123 @@ export const logout = {
   post: post21,
 }
 
+export const delete3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteMeAppsByAppIdFavorite',
+    path: '/me/apps/{app_id}/favorite',
+    successStatus: 204,
+    tags: ['web'],
+  })
+  .input(z.object({ params: zDeleteMeAppsByAppIdFavoritePath }))
+  .output(zDeleteMeAppsByAppIdFavoriteResponse)
+
+export const put2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putMeAppsByAppIdFavorite',
+    path: '/me/apps/{app_id}/favorite',
+    successStatus: 204,
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPutMeAppsByAppIdFavoritePath }))
+  .output(zPutMeAppsByAppIdFavoriteResponse)
+
+export const favorite = {
+  delete: delete3,
+  put: put2,
+}
+
+export const byAppId = {
+  favorite,
+}
+
+/**
+ * List accessible personal Apps using the WebApp Account login cookie. No App Passport or workspace membership is required.
+ */
+export const get11 = oc
+  .route({
+    description:
+      'List accessible personal Apps using the WebApp Account login cookie. No App Passport or workspace membership is required.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getMeApps',
+    path: '/me/apps',
+    tags: ['web'],
+  })
+  .input(z.object({ query: zGetMeAppsQuery.optional() }).optional())
+  .output(zGetMeAppsResponse)
+
+export const apps = {
+  get: get11,
+  byAppId,
+}
+
+/**
+ * Disconnect an owned Connection. Cookie-authenticated browser mutations require the configured WebApp Origin.
+ */
+export const delete4 = oc
+  .route({
+    description:
+      'Disconnect an owned Connection. Cookie-authenticated browser mutations require the configured WebApp Origin.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteMeConnectionsByConnectionId',
+    path: '/me/connections/{connection_id}',
+    successStatus: 204,
+    tags: ['web'],
+  })
+  .input(z.object({ params: zDeleteMeConnectionsByConnectionIdPath }))
+  .output(zDeleteMeConnectionsByConnectionIdResponse)
+  .errors({
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+  })
+
+export const get12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getMeConnectionsByConnectionId',
+    path: '/me/connections/{connection_id}',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetMeConnectionsByConnectionIdPath }))
+  .output(zGetMeConnectionsByConnectionIdResponse)
+  .errors({ connection_not_found: { status: 404, data: zConnectionNotFoundError } })
+
+export const byConnectionId2 = {
+  delete: delete4,
+  get: get12,
+}
+
+/**
+ * List the signed-in Account's personal Connections using the WebApp login cookie.
+ */
+export const get13 = oc
+  .route({
+    description: "List the signed-in Account's personal Connections using the WebApp login cookie.",
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getMeConnections',
+    path: '/me/connections',
+    tags: ['web'],
+  })
+  .input(z.object({ query: zGetMeConnectionsQuery.optional() }).optional())
+  .output(zGetMeConnectionsResponse)
+
+export const connections2 = {
+  get: get13,
+  byConnectionId: byConnectionId2,
+}
+
+export const me = {
+  apps,
+  connections: connections2,
+}
+
 /**
  * Submit feedback (like/dislike) for a specific message.
  */
@@ -1242,7 +1371,7 @@ export const feedbacks = {
 /**
  * Generate a new completion similar to an existing message (completion apps only).
  */
-export const get11 = oc
+export const get14 = oc
   .route({
     description: 'Generate a new completion similar to an existing message (completion apps only).',
     inputStructure: 'detailed',
@@ -1268,13 +1397,13 @@ export const get11 = oc
   })
 
 export const moreLikeThis = {
-  get: get11,
+  get: get14,
 }
 
 /**
  * Get suggested follow-up questions after a message (chat apps only).
  */
-export const get12 = oc
+export const get15 = oc
   .route({
     description: 'Get suggested follow-up questions after a message (chat apps only).',
     inputStructure: 'detailed',
@@ -1298,7 +1427,7 @@ export const get12 = oc
   })
 
 export const suggestedQuestions = {
-  get: get12,
+  get: get15,
 }
 
 export const byMessageId = {
@@ -1310,7 +1439,7 @@ export const byMessageId = {
 /**
  * Retrieve paginated list of messages from a conversation in a chat application.
  */
-export const get13 = oc
+export const get16 = oc
   .route({
     description: 'Retrieve paginated list of messages from a conversation in a chat application.',
     inputStructure: 'detailed',
@@ -1324,7 +1453,7 @@ export const get13 = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const messages = {
-  get: get13,
+  get: get16,
   byMessageId,
 }
 
@@ -1333,7 +1462,7 @@ export const messages = {
  *
  * Retrieve the metadata for a specific app.
  */
-export const get14 = oc
+export const get17 = oc
   .route({
     description: 'Retrieve the metadata for a specific app.',
     inputStructure: 'detailed',
@@ -1347,7 +1476,7 @@ export const get14 = oc
   .errors({ app_unavailable: { status: 400, data: zAppUnavailableError } })
 
 export const meta = {
-  get: get14,
+  get: get17,
 }
 
 /**
@@ -1405,7 +1534,7 @@ export const migration = {
  *
  * Retrieve the parameters for a specific app.
  */
-export const get15 = oc
+export const get18 = oc
   .route({
     description: 'Retrieve the parameters for a specific app.',
     inputStructure: 'detailed',
@@ -1422,13 +1551,13 @@ export const get15 = oc
   })
 
 export const parameters = {
-  get: get15,
+  get: get18,
 }
 
 /**
  * Get authentication passport for web application access
  */
-export const get16 = oc
+export const get19 = oc
   .route({
     description: 'Get authentication passport for web application access',
     inputStructure: 'detailed',
@@ -1462,7 +1591,7 @@ export const post25 = oc
   })
 
 export const passport = {
-  get: get16,
+  get: get19,
   post: post25,
 }
 
@@ -1542,7 +1671,7 @@ export const upload2 = {
  * Raises:
  * HTTPException: If the remote file cannot be accessed
  */
-export const get17 = oc
+export const get20 = oc
   .route({
     description:
       'Get information about a remote file\nRetrieves basic information about a file located at a remote URL,\nincluding content type and content length.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n    url: URL-encoded path to the remote file\n\nReturns:\n    dict: Remote file information including type and length\n\nRaises:\n    HTTPException: If the remote file cannot be accessed',
@@ -1565,7 +1694,7 @@ export const get17 = oc
   })
 
 export const byUrl = {
-  get: get17,
+  get: get20,
 }
 
 export const remoteFiles = {
@@ -1576,7 +1705,7 @@ export const remoteFiles = {
 /**
  * Remove a message from saved messages.
  */
-export const delete3 = oc
+export const delete5 = oc
   .route({
     description: 'Remove a message from saved messages.',
     inputStructure: 'detailed',
@@ -1591,13 +1720,13 @@ export const delete3 = oc
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const byMessageId2 = {
-  delete: delete3,
+  delete: delete5,
 }
 
 /**
  * Retrieve paginated list of saved messages for a completion application.
  */
-export const get18 = oc
+export const get21 = oc
   .route({
     description: 'Retrieve paginated list of saved messages for a completion application.',
     inputStructure: 'detailed',
@@ -1627,7 +1756,7 @@ export const post27 = oc
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const savedMessages = {
-  get: get18,
+  get: get21,
   post: post27,
   byMessageId: byMessageId2,
 }
@@ -1637,7 +1766,7 @@ export const savedMessages = {
  *
  * Retrieve app site information and configuration.
  */
-export const get19 = oc
+export const get22 = oc
   .route({
     description: 'Retrieve app site information and configuration.',
     inputStructure: 'detailed',
@@ -1650,7 +1779,7 @@ export const get19 = oc
   .output(zGetSiteResponse)
 
 export const site = {
-  get: get19,
+  get: get22,
 }
 
 /**
@@ -1662,7 +1791,7 @@ export const site = {
  *
  * Authentication configuration must be available before the authentication flow can be selected.
  */
-export const get20 = oc
+export const get23 = oc
   .route({
     description:
       'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nAuthentication configuration must be available before the authentication flow can be selected.',
@@ -1676,7 +1805,7 @@ export const get20 = oc
   .output(zGetSystemFeaturesResponse)
 
 export const systemFeatures = {
-  get: get20,
+  get: get23,
 }
 
 /**
@@ -1711,7 +1840,7 @@ export const textToAudio = {
 /**
  * Retrieve the access mode for a web application (public or restricted).
  */
-export const get21 = oc
+export const get24 = oc
   .route({
     description: 'Retrieve the access mode for a web application (public or restricted).',
     inputStructure: 'detailed',
@@ -1725,13 +1854,13 @@ export const get21 = oc
   .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const accessMode = {
-  get: get21,
+  get: get24,
 }
 
 /**
  * Check if user has permission to access a web application.
  */
-export const get22 = oc
+export const get25 = oc
   .route({
     description: 'Check if user has permission to access a web application.',
     inputStructure: 'detailed',
@@ -1744,7 +1873,7 @@ export const get22 = oc
   .output(zGetWebappPermissionResponse)
 
 export const permission = {
-  get: get22,
+  get: get25,
 }
 
 export const webapp = {
@@ -1759,7 +1888,7 @@ export const webapp = {
  *
  * Returns Server-Sent Events stream.
  */
-export const get23 = oc
+export const get26 = oc
   .route({
     description: 'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.',
     inputStructure: 'detailed',
@@ -1774,7 +1903,7 @@ export const get23 = oc
   .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const events = {
-  get: get23,
+  get: get26,
 }
 
 export const byTaskId3 = {
@@ -1885,6 +2014,7 @@ export const contract = {
   humanInputForms,
   login,
   logout,
+  me,
   messages,
   meta,
   migration,

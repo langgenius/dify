@@ -7,7 +7,6 @@ from repositories.end_user_connection_repository import EndUserConnectionReposit
 from services.consumer_adapters import SharedConsumerAppDiscovery
 from services.consumer_service import ConsumerAppAccess, ConsumerService
 from services.end_user_connections.management import ConnectionService
-from services.end_user_connections.oauth import OAuthConnectionService
 from services.web_identity_service import WebIdentityService
 from services.web_passport_service import WebPassportTokenGateway
 
@@ -18,7 +17,6 @@ def build_consumer_service(
     access: ConsumerAppAccess,
     shared_apps_enabled: bool,
     management: ConnectionService,
-    oauth: OAuthConnectionService,
     identities: WebIdentityService,
     tokens: WebPassportTokenGateway,
 ) -> ConsumerService:
@@ -28,7 +26,6 @@ def build_consumer_service(
         access=access,
         shared_apps=SharedConsumerAppDiscovery(enabled=shared_apps_enabled),
         management=management,
-        oauth=oauth,
         identities=identities,
         tokens=tokens,
     )

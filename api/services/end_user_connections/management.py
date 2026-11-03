@@ -78,7 +78,7 @@ class ConnectionStore(Protocol):
         ...
 
     def update(
-        self, context: ConnectionManagementContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
+        self, context: WebConnectionContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
     ) -> StoredConnection:
         """Revalidate identity and CAS; a no-change check still verifies the guard."""
         ...
@@ -155,17 +155,6 @@ class ConnectionService:
     def get_connection(self, context: ConnectionManagementContext, connection_id: str) -> ConnectionSummary:
         return self._load(context, connection_id).summary
 
-    def get_owned_api_key_schema(
-        self, context: ConnectionManagementContext, connection_id: str
-    ) -> tuple[ProviderConfig, ...]:
-        record = self._load(context, connection_id)
-        self._require_api_key(record)
-        revision = self._revisions.resolve(context, record.access.provider)
-        admitted = self._revisions.require(context, record.access.provider, revision)
-        return self._credentials.get_schema(
-            context.tenant_id, record.access.provider, plugin_unique_identifier=admitted.plugin_unique_identifier
-        )
-
     def create_api_key(self, context: WebConnectionContext, command: CreateApiKeyConnectionInput) -> ConnectionSummary:
         require_personal_connection_access(context)
         target = self._targets.resolve(context, command)
@@ -227,7 +216,7 @@ class ConnectionService:
         )
 
     def update_connection(
-        self, context: ConnectionManagementContext, connection_id: str, command: UpdateConnectionInput
+        self, context: WebConnectionContext, connection_id: str, command: UpdateConnectionInput
     ) -> ConnectionSummary:
         record = self._load(context, connection_id)
         guard = connection_mutation_guard(context, record.access)

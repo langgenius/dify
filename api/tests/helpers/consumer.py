@@ -33,11 +33,12 @@ class ConsumerHarness:
     service: ConsumerService
     identity: ConsumerIdentity
 
-    def token(self, *, source: str | None = None, subject: str = "Console API Passport") -> str:
+    def token(self, *, source: str | None = "webapp_account_login", subject: str = "Web API Account Login") -> str:
         return PassportService().issue(
             {
                 "sub": subject,
                 "user_id": self.identity.account_id,
+                "auth_type": "internal",
                 "token_source": source,
                 "exp": datetime.now(UTC) + timedelta(minutes=10),
             }
@@ -65,7 +66,6 @@ def make_consumer_harness(sessions: sessionmaker[Session], monkeypatch: pytest.M
             access=access,
             shared_apps=lambda: (oauth.base.context.app_id,),
             management=oauth.base.service,
-            oauth=oauth.service,
             identities=WebIdentityService(
                 accounts=SQLAlchemyAccountRepository(session_factory=sessions),
                 allow_console_login=True,

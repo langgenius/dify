@@ -270,6 +270,64 @@ export const zConnectionRevisionChangeDetails = z.object({
 })
 
 /**
+ * ConsumerAppResponse
+ */
+export const zConsumerAppResponse = z.object({
+  app_code: z.string(),
+  description: z.string(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: z.string().nullable(),
+  id: z.string(),
+  is_favorite: z.boolean(),
+  last_used_at: z.int().nullable(),
+  mode: z.string(),
+  name: z.string(),
+})
+
+/**
+ * ConsumerAppsResponse
+ */
+export const zConsumerAppsResponse = z.object({
+  data: z.array(zConsumerAppResponse),
+  has_more: z.boolean(),
+  next_cursor: z.string().nullable(),
+})
+
+/**
+ * ConsumerConnectionResponse
+ */
+export const zConsumerConnectionResponse = z.object({
+  account_label: z.string().nullable(),
+  created_at: z.int(),
+  credential_status: zConnectionCredentialStatus,
+  credential_type: zConnectionCredentialType,
+  expires_at: z.int().nullable(),
+  id: z.string(),
+  last_active_at: z.int(),
+  name: z.string(),
+  provider: z.string(),
+  updated_at: z.int(),
+})
+
+/**
+ * ConsumerConnectionDetailResponse
+ */
+export const zConsumerConnectionDetailResponse = z.object({
+  apps: z.array(zConsumerAppResponse),
+  connection: zConsumerConnectionResponse,
+})
+
+/**
+ * ConsumerConnectionsResponse
+ */
+export const zConsumerConnectionsResponse = z.object({
+  data: z.array(zConsumerConnectionDetailResponse),
+  has_more: z.boolean(),
+  next_cursor: z.string().nullable(),
+})
+
+/**
  * ConversationListQuery
  */
 export const zConversationListQuery = z.object({
@@ -2805,6 +2863,65 @@ export const zGetLoginStatusResponse = zLoginStatusResponse
  * Logout successful
  */
 export const zPostLogoutResponse = zSimpleResultResponse
+
+export const zGetMeAppsQuery = z.object({
+  cursor: z.string().max(2048).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  name: z.string().max(255).optional(),
+  view: z.enum(['favorites', 'recent', 'shared']).optional().default('recent'),
+})
+
+/**
+ * Accessible personal Apps
+ */
+export const zGetMeAppsResponse = zConsumerAppsResponse
+
+export const zDeleteMeAppsByAppIdFavoritePath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App unfavorited
+ */
+export const zDeleteMeAppsByAppIdFavoriteResponse = z.void()
+
+export const zPutMeAppsByAppIdFavoritePath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App favorited
+ */
+export const zPutMeAppsByAppIdFavoriteResponse = z.void()
+
+export const zGetMeConnectionsQuery = z.object({
+  cursor: z.string().min(1).max(1024).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  provider: z.string().min(1).max(255).optional(),
+})
+
+/**
+ * Account Connections
+ */
+export const zGetMeConnectionsResponse = zConsumerConnectionsResponse
+
+export const zDeleteMeConnectionsByConnectionIdPath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * Connection disconnected
+ */
+export const zDeleteMeConnectionsByConnectionIdResponse = z.void()
+
+export const zGetMeConnectionsByConnectionIdPath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * Owned Connection
+ */
+export const zGetMeConnectionsByConnectionIdResponse = zConsumerConnectionDetailResponse
 
 export const zGetMessagesQuery = z.object({
   conversation_id: z.string(),

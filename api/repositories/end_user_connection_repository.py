@@ -908,10 +908,10 @@ class EndUserConnectionRepository:
             return self._summary(row)
 
     def update(
-        self, context: ConnectionManagementContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
+        self, context: WebConnectionContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
     ) -> StoredConnection:
         with self._sessions.begin() as session:
-            self._require_management_context(session, context, lock=True)
+            self._require_context(session, context, lock=True)
             predicates = self._guard(context, guard)
             values: dict[str, Any] = {}
             if changes.name is not None:
@@ -940,7 +940,7 @@ class EndUserConnectionRepository:
                 row = session.scalar(sa.select(EndUserConnection).where(*predicates).with_for_update())
             if row is None:
                 raise ConnectionConflictError()
-            if changes.revision_acceptance is not None and isinstance(context, WebConnectionContext):
+            if changes.revision_acceptance is not None:
                 self._record_revision_acceptance(session, context, changes.revision_acceptance)
             return self._stored(row)
 
@@ -1058,7 +1058,7 @@ class EndUserConnectionRepository:
 
     def validate_oauth_context(self, attempt: ConnectionOAuthAttempt) -> None:
         with self._sessions() as session:
-            self._require_management_context(session, attempt.context, lock=False)
+            self._require_context(session, attempt.context, lock=False)
 
     @staticmethod
     def _oauth_client_configuration(
@@ -1099,7 +1099,7 @@ class EndUserConnectionRepository:
     ) -> ConnectionSummary:
         context = attempt.context
         with self._sessions.begin() as session:
-            app = self._require_management_context(session, context, lock=True)
+            app = self._require_context(session, context, lock=True)
             client = attempt.client
             current = self._oauth_client_configuration(
                 session, context.tenant_id, attempt.provider, client.source, lock=True
@@ -1111,7 +1111,7 @@ class EndUserConnectionRepository:
             ):
                 raise ConnectionReauthorizationRequiredError()
             if attempt.guard is None:
-                if attempt.target is None or not isinstance(context, WebConnectionContext) or app is None:
+                if attempt.target is None:
                     raise ConnectionConfigurationError()
                 if attempt.target_workflow_id is None:
                     raise ConnectionConfigurationError()
@@ -1177,8 +1177,7 @@ class EndUserConnectionRepository:
                 )
                 if row is None:
                     raise ConnectionConflictError()
-            if isinstance(context, WebConnectionContext):
-                self._record_revision_acceptance(session, context, revision_acceptance)
+            self._record_revision_acceptance(session, context, revision_acceptance)
             return self._summary(row)
 
     def _guard(

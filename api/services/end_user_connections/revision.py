@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict
 from constants.end_user_connections import ConnectionRevisionAcceptanceReason, OAuthClientSource
 from core.tools.entities.common_entities import I18nObject
 from libs.helper import UUIDStr
-from services.end_user_connections.entities import ConnectionManagementContext
+from services.end_user_connections.entities import WebConnectionContext
 
 ConnectionRevision = UUIDStr
 
@@ -114,7 +114,7 @@ class ConnectionSelectionRevisions(Protocol):
 class ConnectionProviderRevisions(Protocol):
     def resolve(
         self,
-        context: ConnectionManagementContext,
+        context: WebConnectionContext,
         provider: str,
         *,
         oauth_client_source: OAuthClientSource | None = None,
@@ -122,7 +122,7 @@ class ConnectionProviderRevisions(Protocol):
 
     def require(
         self,
-        context: ConnectionManagementContext,
+        context: WebConnectionContext,
         provider: str,
         revision: str,
         *,
@@ -130,5 +130,5 @@ class ConnectionProviderRevisions(Protocol):
     ) -> ProviderContractSnapshot: ...
 
     def acceptance(
-        self, context: ConnectionManagementContext, provider: str, revision: str, admitted: ProviderContractSnapshot
+        self, context: WebConnectionContext, provider: str, revision: str, admitted: ProviderContractSnapshot
     ) -> ConnectionRevisionAcceptance: ...

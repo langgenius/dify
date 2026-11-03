@@ -51,7 +51,7 @@ class WebConnectionContext:
 
 @dataclass(frozen=True, slots=True)
 class AccountConnectionContext:
-    """An owned Connection resolved from an authenticated Account, without an App.
+    """Account-owned Connection authority for queries and disconnect, without an App.
 
     Repositories revalidate the Account and the exact tenant/Connection/owner chain
     after asynchronous boundaries. This context never authorizes node execution.

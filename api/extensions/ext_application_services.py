@@ -628,7 +628,6 @@ def build_application_services(
             access=installed_apps.access,
             shared_apps_enabled=webapp_auth_enabled,
             management=end_user_connections,
-            oauth=end_user_connection_oauth,
             identities=web_identity,
             tokens=web_passport_tokens,
         ),

@@ -12,15 +12,9 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.entities.provider_entities import ProviderConfig
-from services.end_user_connections.contracts import (
-    ConnectionOAuthStart,
-    ConnectionSummary,
-    UpdateConnectionInput,
-)
+from services.end_user_connections.contracts import ConnectionSummary
 from services.end_user_connections.entities import AccountConnectionContext
 from services.end_user_connections.management import ConnectionService
-from services.end_user_connections.oauth import OAuthConnectionService
 from services.web_identity_service import WebIdentityError, WebIdentityService
 from services.web_passport_service import WebPassportTokenGateway
 
@@ -139,7 +133,6 @@ class ConsumerService:
         access: ConsumerAppAccess,
         shared_apps: SharedConsumerApps,
         management: ConnectionService,
-        oauth: OAuthConnectionService,
         identities: WebIdentityService,
         tokens: WebPassportTokenGateway,
     ) -> None:
@@ -148,16 +141,14 @@ class ConsumerService:
         self._access = access
         self._shared_apps = shared_apps
         self._management = management
-        self._oauth = oauth
         self._identities = identities
         self._tokens = tokens
 
     def authenticate(self, access_token: str | None) -> ConsumerIdentity:
         if not access_token:
             raise WebIdentityError("Account login required.")
-        claims = self._identities.resolve_login(self._tokens.verify(access_token))
-        if claims.token_source not in {None, "webapp_account_login"} or claims.account_id is None:
-            raise WebIdentityError("Account login required.")
+        claims = self._identities.resolve_webapp_account_login(self._tokens.verify(access_token))
+        assert claims.account_id is not None
         return ConsumerIdentity(claims.account_id)
 
     def _visible(self, identity: ConsumerIdentity, apps: Sequence[ConsumerApp]) -> tuple[ConsumerApp, ...]:
@@ -233,30 +224,5 @@ class ConsumerService:
         summary = self._management.get_connection(context, connection_id)
         return self._with_apps(identity, (summary,))[0]
 
-    def update_connection(
-        self, identity: ConsumerIdentity, connection_id: str, command: UpdateConnectionInput
-    ) -> ConnectionSummary:
-        context = self.connection_context(identity, connection_id)
-        return self._management.update_connection(context, connection_id, command)
-
     def delete_connection(self, identity: ConsumerIdentity, connection_id: str) -> None:
         self._management.delete_connection(self.connection_context(identity, connection_id), connection_id)
-
-    def credential_schema(self, identity: ConsumerIdentity, connection_id: str) -> tuple[ProviderConfig, ...]:
-        return self._management.get_owned_api_key_schema(
-            self.connection_context(identity, connection_id),
-            connection_id,
-        )
-
-    def reauthorize(
-        self,
-        identity: ConsumerIdentity,
-        connection_id: str,
-        *,
-        callback_url: str,
-    ) -> ConnectionOAuthStart:
-        return self._oauth.reauthorize_oauth(
-            self.connection_context(identity, connection_id),
-            connection_id,
-            callback_url=callback_url,
-        )

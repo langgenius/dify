@@ -14,9 +14,8 @@ from models.end_user_connection import AppConnection, EndUserConnection
 from models.enums import CustomizeTokenStrategy
 from models.model import App, AppStar, EndUser, Site
 from services.consumer_service import ConsumerAppNotFoundError, ConsumerAppsQuery, ConsumerIdentity
-from services.end_user_connections.contracts import UpdateConnectionInput
 from services.end_user_connections.entities import AccountConnectionContext
-from services.end_user_connections.errors import ConnectionConflictError, ConnectionNotFoundError
+from services.end_user_connections.errors import ConnectionNotFoundError
 from services.web_identity_service import WebIdentityError
 from tests.helpers.consumer import ConsumerHarness, make_consumer_harness
 from tests.helpers.end_user_api_key import make_harness
@@ -34,7 +33,7 @@ def test_account_authentication_does_not_provision_workspace(harness: ConsumerHa
         assert session.scalar(sa.select(sa.func.count()).select_from(TenantAccountJoin)) == 0
 
 
-@pytest.mark.parametrize("source", ["webapp", "webapp_account", "webapp_login_token", "unknown"])
+@pytest.mark.parametrize("source", [None, "webapp", "webapp_account", "webapp_login_token", "unknown"])
 def test_app_tokens_cannot_become_consumer_identity(harness: ConsumerHarness, source: str) -> None:
     with pytest.raises(WebIdentityError):
         harness.service.authenticate(harness.token(source=source))
@@ -121,7 +120,7 @@ def test_connection_queries_do_not_decrypt_or_expose_foreign_and_guest_credentia
     assert harness.service.get_connection(harness.identity, owned.id).apps == ()
 
 
-def test_orphan_connection_can_be_repaired_and_deleted_without_app(harness: ConsumerHarness) -> None:
+def test_orphan_connection_can_be_disconnected_without_app(harness: ConsumerHarness) -> None:
     base = harness.oauth.base
     owned = base.service.create_api_key(base.context, base.command())
     context = harness.service.connection_context(harness.identity, owned.id)
@@ -130,65 +129,32 @@ def test_orphan_connection_can_be_repaired_and_deleted_without_app(harness: Cons
         session.execute(sa.delete(EndUser).where(EndUser.id == base.context.end_user_id))
         session.execute(sa.delete(App).where(App.id == base.context.app_id))
     assert harness.service.get_connection(harness.identity, owned.id).connection.id == owned.id
-    updated = harness.service.update_connection(
-        harness.identity,
-        owned.id,
-        UpdateConnectionInput(
-            name="Repaired",
-            credentials={"api_key": "replacement-secret"},
-        ),
-    )
-    assert updated.name == "Repaired"
     harness.service.delete_connection(harness.identity, owned.id)
     with base.sessions() as session:
         assert session.get(EndUserConnection, owned.id) is None
 
 
-def test_changed_owner_during_external_check_cannot_overwrite_credentials(harness: ConsumerHarness) -> None:
+def test_disconnect_rejects_foreign_connections_without_calling_revoke(harness: ConsumerHarness) -> None:
     base = harness.oauth.base
-    owned = base.service.create_api_key(base.context, base.command())
-
-    def change_owner() -> None:
-        with base.sessions.begin() as session:
-            session.execute(
-                sa.update(EndUserConnection).where(EndUserConnection.id == owned.id).values(account_id=str(uuid4()))
-            )
-
-    base.auth.on_check = change_owner
-    with pytest.raises((ConnectionNotFoundError, ConnectionConflictError)):
-        harness.service.update_connection(
-            harness.identity,
-            owned.id,
-            UpdateConnectionInput(
-                credentials={"api_key": "uncommitted-secret"},
-            ),
-        )
-    with base.sessions() as session:
-        row = session.get(EndUserConnection, owned.id)
-        assert row is not None
-        assert "uncommitted-secret" not in row.encrypted_credentials
+    with base.sessions.begin() as session:
+        foreign = replace(new_connection(), tenant_id=base.context.tenant_id, account_id=str(uuid4()))
+        session.add(foreign)
+    with pytest.raises(ConnectionNotFoundError):
+        harness.service.delete_connection(harness.identity, foreign.id)
+    assert base.auth.revocations == []
 
 
-def test_account_oauth_reauthorization_survives_app_deletion_and_rejects_replay(harness: ConsumerHarness) -> None:
-    oauth = harness.oauth
-    base = oauth.base
-    created = oauth.finish(oauth.start())
-    start = harness.service.reauthorize(
-        harness.identity,
-        created.id,
-        callback_url="https://console.example/me/oauth",
-    )
+def test_disconnect_oauth_connection_revokes_original_grant_without_app(harness: ConsumerHarness) -> None:
+    base = harness.oauth.base
+    connection = harness.oauth.finish(harness.oauth.start())
     with base.sessions.begin() as session:
         session.execute(sa.delete(App).where(App.id == base.context.app_id))
         session.execute(sa.delete(EndUser).where(EndUser.id == base.context.end_user_id))
-    reauthorized = oauth.finish(start)
-    assert reauthorized.id == created.id
-    from services.end_user_connections.errors import ConnectionOAuthError
-
-    with pytest.raises(ConnectionOAuthError):
-        oauth.finish(start)
-    harness.service.delete_connection(harness.identity, created.id)
-    assert base.auth.revocations
+    harness.service.delete_connection(harness.identity, connection.id)
+    with base.sessions() as session:
+        assert session.get(EndUserConnection, connection.id) is None
+    assert len(base.auth.revocations) == 1
+    assert base.auth.revocations[0][1] == harness.identity.account_id
 
 
 def test_recent_pagination_fills_pages_after_denials_and_handles_equal_timestamps(harness: ConsumerHarness) -> None:
