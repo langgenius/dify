@@ -8,13 +8,10 @@ from dataclasses import dataclass
 from types import UnionType
 from typing import Any, Final, Union, get_args, get_origin
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from core.workflow.human_input_adapter import DeliveryChannelConfig
-from core.workflow.node_factory import resolve_workflow_node_class
-from core.workflow.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.node_factory import node_data_model, resolve_workflow_node_class
 from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.base.node import Node
 
 # Only empty containers: values the editor reads without a guard and that mean "none yet".
 EDITOR_EMPTY: Final[Mapping[str, Mapping[str, object]]] = {
@@ -29,22 +26,6 @@ EDITOR_EMPTY: Final[Mapping[str, Mapping[str, object]]] = {
     BuiltinNodeTypes.HUMAN_INPUT: {"delivery_methods": [], "user_actions": [], "inputs": []},
     BuiltinNodeTypes.DATASOURCE: {"datasource_parameters": {}},
 }
-
-
-class HumanInputNodeSpec(HumanInputNodeData):
-    """Human-input data as the editor saves it; the run parses delivery methods beside the node data."""
-
-    delivery_methods: list[DeliveryChannelConfig] = Field(default_factory=list)
-
-
-# Graphon keeps these node data opaque; Dify parses them with its own model when the node runs.
-_DIFY_NODE_DATA: Final[Mapping[str, type[BaseModel]]] = {
-    BuiltinNodeTypes.HUMAN_INPUT: HumanInputNodeSpec,
-}
-
-
-def node_data_type(node_type: str, node_class: type[Node]) -> type[BaseModel]:
-    return _DIFY_NODE_DATA.get(node_type) or node_class._get_node_data_type()
 
 
 _LEGACY_IF_CASE_ID: Final = "true"
@@ -137,7 +118,7 @@ def fill_node_data(data: Mapping[str, Any]) -> dict[str, Any]:
         )
     except ValueError:
         return filled
-    return complete_sub_models(node_data_type(node_type, node_class), filled)
+    return complete_sub_models(node_data_model(node_class), filled)
 
 
 def fill_graph(graph: Mapping[str, Any]) -> dict[str, Any]:
