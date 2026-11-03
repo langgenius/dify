@@ -174,13 +174,20 @@ describe('dataset-config/card-item', () => {
     await user.keyboard('{ControlOrMeta>}a{/ControlOrMeta}6{Tab}')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(updateDatasetSetting).toHaveBeenCalledWith({
-      datasetId: dataset.id,
-      body: expect.objectContaining({
-        name: dataset.name,
-        retrieval_model: expect.objectContaining({ top_k: 6, score_threshold: 0 }),
-      }),
-    })
+    expect(updateDatasetSetting).toHaveBeenCalledWith(
+      {
+        datasetId: dataset.id,
+        body: expect.objectContaining({
+          name: dataset.name,
+          retrieval_model: expect.objectContaining({
+            search_method: RETRIEVE_METHOD.semantic,
+            top_k: 6,
+            score_threshold: 0,
+          }),
+        }),
+      },
+      { silent: true },
+    )
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
         expect.objectContaining({
