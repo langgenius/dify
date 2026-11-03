@@ -516,7 +516,8 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result(tool_pr
     events = list(_node(tool_providers=tool_providers, agent_backend_client=PlainTextOutputBackendClient())._run())
 
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
     agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
@@ -672,7 +673,8 @@ def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure(tool
     events = list(_node(tool_providers=tool_providers, session_store=_UnavailableParticipantStore())._run())
 
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "Workflow node participant Binding is unavailable"
     assert result.error_type == "agent_workflow_node_runtime_error"
@@ -708,7 +710,8 @@ def test_agent_node_records_agent_message_delta_without_text_stream(tool_provide
 
     assert not any(isinstance(event, StreamChunkEvent) for event in events)
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
@@ -727,7 +730,8 @@ def test_agent_node_structured_run_keeps_agent_message_delta_out_of_text_stream(
     )
 
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
     assert agent_backend["agent_message_delta_count"] == 1
 
@@ -743,7 +747,8 @@ def test_agent_node_default_value_plain_run_keeps_agent_message_delta_out_of_tex
 
     assert not any(isinstance(event, StreamChunkEvent) for event in events)
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.outputs == {"text": "hello agent"}
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
     assert agent_backend["agent_message_delta_count"] == 1
@@ -861,7 +866,8 @@ def test_agent_node_run_maps_failed_agent_backend_run_to_node_result(tool_provid
     )
 
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "fake failure"
     assert result.error_type == "unit_test"
@@ -895,7 +901,8 @@ def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_
     events = list(_node(tool_providers=tool_providers, session_store=store)._run())
 
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
     assert agent_backend["session_snapshot_persisted"] is False
@@ -959,7 +966,8 @@ def test_agent_node_unexpected_post_resolution_failure_keeps_binding_identity(to
     events = list(_node(tool_providers=tool_providers, session_store=_FailingSessionStore())._run())
 
     assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "session store failed"
     assert result.error_type == "agent_workflow_node_runtime_error"

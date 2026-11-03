@@ -1294,7 +1294,7 @@ def _guarded_overwrite(
     workflow_service = _DraftWorkflowService(draft=draft)
     service = AppDslService(
         session=session,
-        drafts=cast(WorkflowDraftService[WorkflowAgentBindingStore], workflow_service),
+        drafts=workflow_service,  # type: ignore[arg-type]
         overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     )
     monkeypatch.setattr(

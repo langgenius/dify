@@ -5,7 +5,7 @@ import threading
 import uuid
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 from unittest.mock import Mock, create_autospec, patch
 
 import pytest
@@ -76,7 +76,7 @@ def sqlite_tool_db(
 ) -> Iterator[SqliteToolDb]:
     """Bind service-owned sessions to SQLite."""
     models = (App, Workflow, EndUser, Account, Tenant, TenantAccountJoin)
-    TypeBase.metadata.create_all(sqlite_engine, tables=[cast(Table, model.__table__) for model in models])
+    TypeBase.metadata.create_all(sqlite_engine, tables=[model.__table__ for model in models])  # type: ignore[arg-type]
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     with session_maker() as caller_session:
         yield SqliteToolDb(engine=sqlite_engine, session_maker=session_maker, caller_session=caller_session)

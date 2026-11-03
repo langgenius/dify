@@ -542,7 +542,8 @@ def test_workflow_and_bindings_delete_atomically_before_agent_retirement(
             assert session.scalar(select(func.count()).select_from(WorkflowAgentNodeBinding)) == 0
         retired.append(agent_ids)
 
-    cast(Mock, service._runtime).retire_agents.side_effect = retire
+    assert isinstance(service._runtime, Mock)
+    service._runtime.retire_agents.side_effect = retire
 
     def fail_commit(_session: Session) -> None:
         if rollback:
@@ -649,13 +650,15 @@ def test_queries_and_updates_keep_complete_owner_chain(
 
 
 def application(lifecycle: WorkflowDefinitionGateway) -> ConsoleWorkflowService[WorkflowAgentBindingStore]:
+    assert isinstance(lifecycle._definitions, WorkflowDefinitionRepository)
+    assert isinstance(lifecycle._drafts, WorkflowDraftRepository)
     return ConsoleWorkflowService(
         conversion=create_autospec(WorkflowConversion, instance=True),
         agent_services=WorkflowAgentPublishService,
-        definitions=cast(WorkflowDefinitionRepository, lifecycle._definitions),
+        definitions=lifecycle._definitions,
         drafts=WorkflowDraftService(
             agent_services=WorkflowAgentPublishService,
-            definitions=cast(WorkflowDraftRepository, lifecycle._drafts),
+            definitions=lifecycle._drafts,
             lifecycle=lifecycle,
             retirement=create_autospec(DraftAgentRetirement, instance=True),
         ),
@@ -856,7 +859,8 @@ def test_use_case_notifies_only_after_real_transaction_commits(
             assert session.get(WorkflowAgentNodeBinding, "removed-binding") is None
         steps.append("retire")
 
-    cast(Mock, service._drafts._retirement).retire_unowned.side_effect = lambda **kwargs: retire(
+    assert isinstance(service._drafts._retirement, Mock)
+    service._drafts._retirement.retire_unowned.side_effect = lambda **kwargs: retire(
         CONTEXT, kwargs["agent_ids"]
     )
 

@@ -3,7 +3,6 @@
 import contextvars
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import cast
 from unittest.mock import create_autospec
 from uuid import uuid4
 
@@ -73,7 +72,7 @@ def agent_database(
     TypeBase.metadata.create_all(
         engine,
         tables=[
-            cast(Table, model.__table__)
+            model.__table__  # type: ignore[arg-type]
             for model in (App, Conversation, Message, MessageAgentThought, MessageFile, UploadFile)
         ],
     )
@@ -140,7 +139,7 @@ def test_dataset_images_are_owned_ordered_and_materialized_before_storage(
         queue_manager=create_autospec(AppQueueManager, instance=True, spec_set=True),
         message=_message(),
         user_id="user",
-        model_instance=cast(ModelInstance, Model(LLM())),
+        model_instance=Model(LLM()),  # type: ignore[arg-type]
     )
     reads = []
 
@@ -180,7 +179,7 @@ def test_dataset_images_are_owned_ordered_and_materialized_before_storage(
     tool = DatasetRetrieverTool(
         entity=_tool_entity("dataset"),
         runtime=ToolRuntime(tenant_id="tenant"),
-        retrieval=cast(DatasetToolRetrieval, Retrieval()),
+        retrieval=Retrieval(),  # type: ignore[arg-type]
         dataset_id="dataset",
         config=DatasetRetrieveConfigEntity(retrieve_strategy="single"),
         top_k=2,

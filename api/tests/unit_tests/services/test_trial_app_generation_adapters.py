@@ -391,7 +391,7 @@ def _patch_chat_generation(monkeypatch: pytest.MonkeyPatch, harness: _Harness) -
         ).generate(
             app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming, session=session
         )
-        return cast(GenerationResponse, convert_to_event_stream(response))
+        return convert_to_event_stream(response)  # type: ignore[return-value]
 
     monkeypatch.setattr(AppGenerateService, "generate", boundary_generate)
 
