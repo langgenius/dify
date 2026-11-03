@@ -782,9 +782,11 @@ def test_agent_node_streams_text_and_emits_trusted_knowledge_sources(tool_provid
         StreamChunkEvent(selector=["agent-node", "text"], chunk="hello ", is_final=False),
         StreamChunkEvent(selector=["agent-node", "text"], chunk="", is_final=True),
     ]
-    resource_event = cast(RunRetrieverResourceEvent, events[2])
+    assert isinstance(events[2], RunRetrieverResourceEvent)
+    resource_event = events[2]
     assert resource_event.retriever_resources[0]["knowledge_fs_citation"]["id"] == citation["id"]
-    result = cast(StreamCompletedEvent, events[3]).node_run_result
+    assert isinstance(events[3], StreamCompletedEvent)
+    result = events[3].node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
 
