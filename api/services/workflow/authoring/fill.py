@@ -13,14 +13,13 @@ import yaml
 from configs import dify_config
 from libs.archive_writer import ArchiveEntry, ArchiveLimits
 from models.model import AppMode
-from services.agent.roster_package_reader import PackageYamlLoader
 from services.dsl_content import DSL_MAX_SIZE
 from services.workflow.authoring.graph_wiring import fill_graph_wiring
 from services.workflow.authoring.package_io import (
     APP_PATH,
     MANIFEST_PATH,
-    YAML_ERRORS,
     bytes_entry,
+    load_member_yaml,
     merge_manifest,
     new_manifest,
     read_member,
@@ -102,10 +101,7 @@ def filled_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits:
 
 
 def _read_app(content: bytes) -> _App:
-    try:
-        document = yaml.load(content, Loader=PackageYamlLoader)  # noqa: S506
-    except YAML_ERRORS:
-        return _App(content, None)
+    document = load_member_yaml(content)
     return _App(content, document if isinstance(document, dict) else None)
 
 

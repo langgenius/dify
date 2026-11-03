@@ -42,7 +42,7 @@ _ZIP_ERRORS: Final = (
     zlib.error,
     lzma.LZMAError,
 )
-YAML_ERRORS: Final = (UnicodeDecodeError, yaml.YAMLError, ValueError, RecursionError)
+_YAML_ERRORS: Final = (UnicodeDecodeError, yaml.YAMLError, ValueError, RecursionError)
 
 
 class PackageUnreadableError(ValueError):
@@ -108,7 +108,7 @@ def merge_manifest(manifest: bytes, app: bytes) -> bytes | None:
     """The manifest for `app`: kept byte for byte when `apps[0]` already describes it, else with only
     `apps[0].size` and `sha256` rewritten; None when it cannot be read or the rewrite is not a valid manifest.
     """
-    data = _load_manifest(manifest)
+    data = load_member_yaml(manifest)
     root = _root_app(data)
     if root is None:
         return None
@@ -128,17 +128,17 @@ def manifest_is_stale(manifest: bytes, app: bytes) -> bool:
 
     A manifest that cannot be read, or whose `apps[0]` is not `app.yaml`, is not stale.
     """
-    root = _root_app(_load_manifest(manifest))
+    root = _root_app(load_member_yaml(manifest))
     if root is None:
         return False
     return not _describes(root, _app(app))
 
 
-def _load_manifest(manifest: bytes) -> object:
-    """The manifest's YAML data; None when it cannot be parsed."""
+def load_member_yaml(content: bytes) -> object:
+    """A member's YAML data, read as the package reader reads it; None when it cannot be parsed."""
     try:
-        return yaml.load(manifest, Loader=PackageYamlLoader)  # noqa: S506
-    except YAML_ERRORS:
+        return yaml.load(content, Loader=PackageYamlLoader)  # noqa: S506
+    except _YAML_ERRORS:
         return None
 
 
