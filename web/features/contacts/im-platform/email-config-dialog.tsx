@@ -296,9 +296,6 @@ export function ContactEmailConfigContent({
               <Input
                 disabled={credentialsDisabled}
                 autoComplete="off"
-                spellCheck={false}
-                autoCapitalize="off"
-                autoCorrect="off"
                 placeholder={
                   canRetainSecret ? '••••••••' : t(($) => $['imPlatform.email.apiKeyPlaceholder'])
                 }
