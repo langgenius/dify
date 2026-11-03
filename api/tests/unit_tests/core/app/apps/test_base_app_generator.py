@@ -826,7 +826,7 @@ def test_api_shaped_and_remote_upload_defaults(default_upload_file: UploadFile, 
         ("checkbox", False, False),
     ],
 )
-def test_prepare_user_inputs_uses_form_default(variable_type, default, expected):
+def test_prepare_user_inputs_uses_form_default(variable_type: str, default: object, expected: object):
     """Given an omitted optional input, convert and validate its declared default."""
     variables, _ = BasicVariablesConfigManager.convert(
         {
@@ -844,7 +844,7 @@ def test_prepare_user_inputs_uses_form_default(variable_type, default, expected)
 
 @pytest.mark.parametrize("user_inputs", [{}, {"value": None}])
 @pytest.mark.parametrize("variable_type", ["select", "checkbox"])
-def test_prepare_user_inputs_ignores_empty_choice_default(variable_type, user_inputs):
+def test_prepare_user_inputs_ignores_empty_choice_default(variable_type: str, user_inputs: dict[str, object]):
     """Given an optional choice saved without a default, omitted or null input stays None."""
     variables, _ = BasicVariablesConfigManager.convert(
         {"user_input_form": [{variable_type: {"variable": "value", "label": "Value", "default": "", "options": ["a"]}}]}
@@ -875,7 +875,7 @@ def test_prepare_user_inputs_uses_form_default_for_null_input():
         ("select", "missing", "must be one of the following"),
     ],
 )
-def test_prepare_user_inputs_rejects_invalid_form_default(variable_type, default, message):
+def test_prepare_user_inputs_rejects_invalid_form_default(variable_type: str, default: str, message: str):
     """Given an invalid default, omitted input still triggers existing validation."""
     variables, _ = BasicVariablesConfigManager.convert(
         {
@@ -890,7 +890,7 @@ def test_prepare_user_inputs_rejects_invalid_form_default(variable_type, default
 
 
 @pytest.mark.parametrize("required", [False, True])
-def test_prepare_user_inputs_without_form_default(required):
+def test_prepare_user_inputs_without_form_default(required: bool):
     """Given no default, omitted optional inputs stay None and required inputs fail."""
     variables, _ = BasicVariablesConfigManager.convert(
         {"user_input_form": [{"text-input": {"variable": "value", "label": "Value", "required": required}}]}

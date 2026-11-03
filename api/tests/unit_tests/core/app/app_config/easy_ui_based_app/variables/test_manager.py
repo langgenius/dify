@@ -20,7 +20,7 @@ class TestBasicVariablesConfigManagerConvert:
             ("checkbox", False),
         ],
     )
-    def test_convert_preserves_default(self, variable_type, default):
+    def test_convert_preserves_default(self, variable_type: str, default: object):
         """Given a supported form default, conversion preserves its value and type."""
         variables, _ = BasicVariablesConfigManager.convert(
             {"user_input_form": [{variable_type: {"variable": "value", "label": "Value", "default": default}}]}
@@ -30,7 +30,7 @@ class TestBasicVariablesConfigManagerConvert:
         assert type(variables[0].default) is type(default)
 
     @pytest.mark.parametrize("variable_type", ["select", "checkbox"])
-    def test_convert_treats_empty_choice_default_as_unset(self, variable_type):
+    def test_convert_treats_empty_choice_default_as_unset(self, variable_type: str):
         """Given the empty default Studio saves for an unset choice, conversion leaves the default unset."""
         variables, _ = BasicVariablesConfigManager.convert(
             {"user_input_form": [{variable_type: {"variable": "value", "label": "Value", "default": ""}}]}
