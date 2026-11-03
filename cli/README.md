@@ -1,0 +1,148 @@
+# difyctl
+
+CLI client for the [Dify] platform. Browser device-flow sign-in, then a server-published catalog of operations you discover and call at run time, each one a command. Results are JSON; help and errors are text on a terminal, JSON in a pipe.
+
+## Install
+
+difyctl ships as assets on Dify releases. The installer picks the build from the latest release; set `DIFY_VERSION` to match your Dify server:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh
+```
+
+Windows (PowerShell): `irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install.ps1 | iex`.
+
+The binary goes to `$HOME/.local/bin` (Windows: `%LOCALAPPDATA%\difyctl\bin`). Every installer accepts `DIFYCTL_INSTALL_DIR` (the bin folder itself) and `DIFYCTL_PREFIX` (the folder above it, so the binary lands in `<prefix>/bin`); `DIFYCTL_INSTALL_DIR` wins when both are set.
+
+## Install (edge, internal)
+
+Per-commit `edge` builds are published to Cloudflare R2. The installer script lives in this repo; binaries are fetched from R2 via `DIFYCTL_R2_BASE` (shared internally):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.sh | DIFYCTL_R2_BASE=<BASE> sh
+```
+
+| Env                     | Default            | Purpose                                                                                                         |
+| ----------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `DIFYCTL_R2_BASE`       | — (required)       | R2 public base, e.g. `https://pub-….r2.dev`.                                                                    |
+| `DIFYCTL_CHANNEL`       | `edge`             | Channel to install.                                                                                             |
+| `DIFYCTL_INSTALL_DIR`   | `$HOME/.local/bin` | Directory the binary is written to (`<dir>/difyctl`). On Windows the default is `%LOCALAPPDATA%\difyctl\bin`.   |
+| `DIFYCTL_PREFIX`        | `$HOME/.local`     | Used as `<prefix>/bin` when `DIFYCTL_INSTALL_DIR` is unset. On Windows the default is `%LOCALAPPDATA%\difyctl`. |
+| `DIFYCTL_VERSION`       | latest             | Pin an exact published version.                                                                                 |
+| `DIFYCTL_COMMIT`        | latest             | Pin by git commit (short or full sha).                                                                          |
+| `DIFYCTL_R2_PREFIX`     | `difyctl`          | R2 key root for the pointer JSONs (`manifest.json` / `index.json`).                                             |
+| `DIFYCTL_R2_BIN_PREFIX` | `difyctl/bin`      | R2 key root for binaries (the lifecycle/TTL target).                                                            |
+
+By default the channel pointer (latest build) is installed. Set `DIFYCTL_COMMIT` (e.g. `ce4af86`) or `DIFYCTL_VERSION` to install a specific past build — both resolve through the channel's `index.json`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.sh | DIFYCTL_R2_BASE=<BASE> DIFYCTL_COMMIT=ce4af86 sh
+```
+
+Windows: `$env:DIFYCTL_R2_BASE='<BASE>'; irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.ps1 | iex` (same env vars, e.g. `$env:DIFYCTL_COMMIT='ce4af86'`).
+
+Re-run to upgrade. For tagged `rc`/`stable` builds, use the GitHub installer (`install-cli.sh` / `install.ps1`), which resolves releases via the GitHub API. That API caps unauthenticated requests at 60/hour per IP; behind a shared NAT or in CI, set `GITHUB_TOKEN` (or `GH_TOKEN`) to raise it to 5000/hour — the installer sends it as a bearer token.
+
+## Quickstart
+
+```sh
+difyctl login --server https://dify.example.com   # opens the browser; approve the device code shown
+difyctl help                                      # the map: every command and operation namespace
+difyctl help chatbot                              # search commands and operations by plain words
+difyctl get workspace                             # workspaces visible to this account
+difyctl describe workspace                        # the workspace difyctl uses
+difyctl get console_app --limit 5                 # list apps
+difyctl run console_app workflow --app-id <id> --inputs @vars.json --stream
+```
+
+difyctl has no built-in business commands. Every operation the server publishes is a command: `run.console_app.workflow` is `difyctl run console_app workflow`, and its input fields are flags (`--app-id`, `--inputs`). A field named like one of difyctl's own flags (`input`, `stream`, `only`, `output`, `verbose`, `json`, `help`) is passed through `--input`. The table lists the local commands; `difyctl help` lists the server's too. See [Agent skill] for the discovery flow.
+
+## Commands
+
+| Command                    | Purpose                                                |
+| -------------------------- | ------------------------------------------------------ |
+| `login`                    | Log in via the OAuth device flow                       |
+| `logout`                   | Log out of the current session                         |
+| `version`                  | Print the client and (if logged in) server versions    |
+| `use workspace <id>`       | Pin this device to a workspace you belong to           |
+| `get config [key]`         | Print the local config, or one key                     |
+| `set config <key> <value>` | Set a local config value                               |
+| `unset config <key>`       | Remove a local config value, restoring its default     |
+| `refresh cache`            | Refetch the server catalog and replace the local cache |
+| `delete cache`             | Delete the local server catalog cache                  |
+| `install skills <dir>`     | Write the difyctl skill into a skills root (`--from`)  |
+
+`login` needs `--server`; there is no default server. It blocks until the browser approval arrives. An agent uses `--no-wait` instead: it gives the user the URL and code, then runs `login --resume` after the user approves. If it sets `DIFY_CONFIG_DIR`, it sets it on every call.
+
+`--verbose` is global: it may appear on any command, and it keeps the raw server
+response in the error envelope instead of dropping it.
+
+`difyctl help` covers local commands and server operations as one tree. Bare, it prints the map. `difyctl help <namespace>` lists one namespace (the bare namespace, `difyctl get`, does the same), `difyctl help <words>` searches by plain words, and `difyctl help <id>` prints one descriptor, the same as `<command> --help`; the id may be dotted or spaced. `--all` adds hidden entries, `--full` on the bare `help` prints every descriptor. Help and errors are text on a terminal and JSON in a pipe; `--json` or `DIFY_OUTPUT=json` forces JSON. Results and streams are always JSON.
+
+## Agent skills
+
+difyctl ships one skill, `difyctl`, built into the binary. It teaches the discovery flow — `help` to see the map or search, `help <id>` to inspect one operation, then the operation's own command to run it — so it stays correct as the server's catalog grows. The skill is a tree of linked docs under [`skills/difyctl/`].
+
+- `difyctl install skills <dir> [--from <folder>]` — write the skill into `<dir>`, the agent's skills root: the folder that holds one subfolder per skill, for example `~/.claude/skills` for Claude Code or `~/.codex/skills` for Codex. The `difyctl` folder is replaced whole. It works offline. `--from` installs a local skill folder instead of the built-in one.
+
+difyctl does not detect agents. You name the root, and re-running the same command refreshes the copies.
+
+The same files install through the Vercel skills installer: `npx skills add langgenius/dify --skill difyctl -g`. Always pass `--skill`; without it the installer also offers the contributor skills under `.agents/skills/`.
+
+## Configuration
+
+| OS      | Config path                                  |
+| ------- | -------------------------------------------- |
+| Linux   | `${XDG_CONFIG_HOME:-$HOME/.config}/difyctl/` |
+| macOS   | `$HOME/.config/difyctl/`                     |
+| Windows | `%APPDATA%\difyctl\`                         |
+
+`get config [key]` prints the whole local config or one key; `set config <key> <value>` and `unset config <key>` change it. The only config key today is `http.timeout` (request timeout in milliseconds).
+
+Tokens use the OS keychain by default, falling back to `tokens.yml` in the config folder on hosts without one. On Linux without a DBus session (`DBUS_SESSION_BUS_ADDRESS` unset), the keychain would only hold the token until the session ends, so difyctl uses `tokens.yml` there too; `login --no-keyring` chooses the file outright. The catalog cache is kept in the config folder under `catalog/`; `DIFY_CACHE_DIR` is no longer used. Config and cache files are written `0600`, their directory `0700`.
+
+| Env var             | Effect                                                      |
+| ------------------- | ----------------------------------------------------------- |
+| `DIFY_SERVER`       | Server base URL; with `DIFY_TOKEN`, skips interactive login |
+| `DIFY_TOKEN`        | Bearer token; requires `DIFY_SERVER`                        |
+| `DIFY_WORKSPACE_ID` | Overrides the locally pinned workspace                      |
+| `DIFY_OUTPUT`       | `json` or `text`; overrides the terminal/pipe detection     |
+| `DIFY_CONFIG_DIR`   | Overrides the config directory                              |
+
+Resource access tokens can also be passed through `DIFY_TOKEN`. They can list
+their own workspace and discover only apps bound to that token; workspace
+details, members, and workspace switching remain unavailable.
+
+## Streaming
+
+Pass `--stream` on a streaming operation to print every event as one JSON line, instead of folding the whole run into a single result object:
+
+```sh
+difyctl run console_app chat --app-id … --query hello --inputs '{}' --stream
+```
+
+`--only <event>` filters the streamed events to the named event types; repeat it to keep more than one. Without `--stream`, a streaming operation's events fold into `{status, text, outputs?, message_id?, conversation_id?, run_id?, error?, hints}`.
+
+## Exit codes
+
+| Code | Meaning                                      |
+| ---- | -------------------------------------------- |
+| 0    | Success                                      |
+| 1    | Error                                        |
+| 2    | Usage or input error                         |
+| 4    | Not logged in, or forbidden                  |
+| 6    | Catalog unavailable, or unknown operation id |
+| 7    | Rate limited                                 |
+
+## Contributing
+
+See [`ARD.md`] for architecture patterns, scaffolding recipe, dev workflow.
+
+## License
+
+Apache-2.0.
+
+[Agent skill]: #agent-skills
+[Dify]: https://dify.ai
+[`ARD.md`]: ARD.md
+[`skills/difyctl/`]: ../skills/difyctl

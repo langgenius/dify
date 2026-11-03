@@ -1,14 +1,15 @@
 import json
 import logging
 import math
-from typing import Any, cast
+from typing import Any, cast, override
 from urllib.parse import urlparse
 
 from elasticsearch import ConnectionError as ElasticsearchConnectionError
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, NotFoundError
 from flask import current_app
 from packaging.version import parse as parse_version
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -139,9 +140,9 @@ class ElasticSearchVector(BaseVector):
                 raise ConnectionError("Failed to connect to Elasticsearch")
 
         except ElasticsearchConnectionError as e:
-            raise ConnectionError(f"Vector database connection error: {str(e)}")
+            raise ConnectionError(f"Vector database connection error: {str(e)}") from e
         except Exception as e:
-            raise ConnectionError(f"Elasticsearch client initialization failed: {str(e)}")
+            raise ConnectionError(f"Elasticsearch client initialization failed: {str(e)}") from e
 
         return client
 
@@ -154,9 +155,11 @@ class ElasticSearchVector(BaseVector):
         if parse_version(self._version) < parse_version("8.0.0"):
             raise ValueError("Elasticsearch vector database version must be greater than 8.0.0")
 
+    @override
     def get_type(self) -> str:
         return VectorType.ELASTICSEARCH
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
         for i in range(len(documents)):
@@ -172,15 +175,18 @@ class ElasticSearchVector(BaseVector):
         self._client.indices.refresh(index=self._collection_name)
         return uuids
 
+    @override
     def text_exists(self, id: str) -> bool:
         return bool(self._client.exists(index=self._collection_name, id=id))
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         for id in ids:
             self._client.delete(index=self._collection_name, id=id)
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         query_str = {"query": {"match": {f"metadata.{key}": f"{value}"}}}
         results = self._client.search(index=self._collection_name, body=query_str)
@@ -188,9 +194,18 @@ class ElasticSearchVector(BaseVector):
         if ids:
             self.delete_by_ids(ids)
 
-    def delete(self):
-        self._client.indices.delete(index=self._collection_name)
+    @override
+    def delete(self) -> None:
+        try:
+            self._client.indices.delete(index=self._collection_name)
+        except NotFoundError as exc:
+            error = exc.body.get("error") if isinstance(exc.body, dict) else None
+            if not isinstance(error, dict) or error.get("type") != "index_not_found_exception":
+                raise
+            # A previous attempt may have deleted the index before a relational commit failed.
+            logger.debug("Elasticsearch index already absent: %s", self._collection_name)
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         num_candidates = math.ceil(top_k * 1.5)
@@ -224,6 +239,7 @@ class ElasticSearchVector(BaseVector):
 
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         query_str: dict[str, Any] = {"match": {Field.CONTENT_KEY: query}}
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -249,6 +265,7 @@ class ElasticSearchVector(BaseVector):
 
         return docs
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         metadatas = [d.metadata if d.metadata is not None else {} for d in texts]
         self.create_collection(embeddings, metadatas)
@@ -297,7 +314,10 @@ class ElasticSearchVector(BaseVector):
 
 
 class ElasticSearchVectorFactory(AbstractVectorFactory):
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> ElasticSearchVector:
+    @override
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> ElasticSearchVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix
@@ -352,6 +372,6 @@ class ElasticSearchVectorFactory(AbstractVectorFactory):
 
         return ElasticSearchVector(
             index_name=collection_name,
-            config=ElasticSearchConfig(**config_dict),
+            config=ElasticSearchConfig.model_validate(config_dict),
             attributes=[],
         )

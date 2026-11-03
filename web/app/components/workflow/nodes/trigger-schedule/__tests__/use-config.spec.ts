@@ -1,29 +1,10 @@
 import type { ScheduleTriggerNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useAppContext } from '@/context/app-context'
+import { act, waitFor } from '@testing-library/react'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { BlockEnum } from '../../../types'
+import { renderNodeConfig } from '../../__tests__/render-node-config'
 import useConfig from '../use-config'
-
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
-
-const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
-const mockUseAppContext = vi.mocked(useAppContext)
-
-const setInputs = vi.fn()
 
 const createData = (overrides: Partial<ScheduleTriggerNodeType> = {}): ScheduleTriggerNodeType => ({
   title: 'Schedule Trigger',
@@ -32,90 +13,104 @@ const createData = (overrides: Partial<ScheduleTriggerNodeType> = {}): ScheduleT
   mode: 'visual',
   frequency: 'daily',
   timezone: 'UTC',
-  visual_config: {
-    time: '11:30 AM',
-    weekdays: ['mon'],
-    on_minute: 15,
-    monthly_days: [1],
-  },
+  visual_config: { time: '11:30 AM', weekdays: ['mon'], on_minute: 15, monthly_days: [1] },
   ...overrides,
 })
 
-describe('trigger-schedule/use-config', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false, getNodesReadOnly: () => false })
-    mockUseAppContext.mockReturnValue({
-      userProfile: { timezone: 'Asia/Shanghai' },
-    } as ReturnType<typeof useAppContext>)
-    mockUseNodeCrud.mockReturnValue({
-      inputs: createData(),
-      setInputs,
-    } as ReturnType<typeof useNodeCrud>)
-  })
-
-  it('hydrates defaults for missing mode, frequency, timezone, and visual config', () => {
-    renderHook(() => useConfig('schedule-node', createData({
-      mode: undefined as never,
+it('derives missing schedule defaults from the account timezone', () => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAccountProfileQuery(queryClient, { timezone: 'Asia/Shanghai' })
+  const { result } = renderNodeConfig(
+    useConfig,
+    createData({
       frequency: undefined,
       timezone: undefined,
       visual_config: undefined,
-    })))
-
-    expect(mockUseNodeCrud).toHaveBeenCalledWith('schedule-node', expect.objectContaining({
+    }),
+    { queryClient },
+  )
+  expect(result.current.config.inputs).toEqual(
+    expect.objectContaining({
       mode: 'visual',
       frequency: 'daily',
       timezone: 'Asia/Shanghai',
-      visual_config: expect.objectContaining({
-        time: '12:00 AM',
-        weekdays: ['sun'],
-        on_minute: 0,
-        monthly_days: [1],
-      }),
-    }))
-  })
+      visual_config: { time: '12:00 AM', weekdays: ['sun'], on_minute: 0, monthly_days: [1] },
+    }),
+  )
+})
 
-  it('updates visual mode configuration and clears cron expression when needed', () => {
-    const { result } = renderHook(() => useConfig('schedule-node', createData({
-      cron_expression: '0 0 * * *',
-    })))
-
-    result.current.handleModeChange('cron')
-    result.current.handleFrequencyChange('hourly')
-    result.current.handleWeekdaysChange(['tue', 'thu'])
-    result.current.handleTimeChange('08:15 AM')
-    result.current.handleOnMinuteChange(45)
-
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({ mode: 'cron' }))
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
+it('persists consecutive schedule edits and clears the stale cron expression', () => {
+  const { result } = renderNodeConfig(
+    useConfig,
+    createData({ mode: 'cron', cron_expression: '0 0 * * *' }),
+  )
+  act(() => result.current.config.handleModeChange('visual'))
+  act(() => result.current.config.handleFrequencyChange('hourly'))
+  act(() => result.current.config.handleWeekdaysChange(['tue', 'thu']))
+  act(() => result.current.config.handleTimeChange('08:15 AM'))
+  act(() => result.current.config.handleOnMinuteChange(45))
+  expect(result.current.flow.getNode('node')?.data).toEqual(
+    expect.objectContaining({
+      mode: 'visual',
       frequency: 'hourly',
       cron_expression: undefined,
-      visual_config: expect.objectContaining({ on_minute: 15 }),
-    }))
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
-      visual_config: expect.objectContaining({ weekdays: ['tue', 'thu'] }),
-      cron_expression: undefined,
-    }))
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
-      visual_config: expect.objectContaining({ time: '08:15 AM' }),
-      cron_expression: undefined,
-    }))
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
-      visual_config: expect.objectContaining({ on_minute: 45 }),
-      cron_expression: undefined,
-    }))
-  })
+      visual_config: {
+        time: '08:15 AM',
+        weekdays: ['tue', 'thu'],
+        on_minute: 45,
+        monthly_days: [1],
+      },
+    }),
+  )
+})
 
-  it('switches to raw cron mode and clears visual schedule fields', () => {
-    const { result } = renderHook(() => useConfig('schedule-node', createData()))
-
-    result.current.handleCronExpressionChange('*/15 * * * *')
-
-    expect(result.current.readOnly).toBe(false)
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
+it('persists raw cron mode without visual schedule fields', () => {
+  const { result } = renderNodeConfig(useConfig, createData())
+  act(() => result.current.config.handleModeChange('cron'))
+  act(() => result.current.config.handleCronExpressionChange('*/15 * * * *'))
+  expect(result.current.flow.getNode('node')?.data).toEqual(
+    expect.objectContaining({
+      mode: 'cron',
       cron_expression: '*/15 * * * *',
       frequency: undefined,
       visual_config: undefined,
-    }))
+    }),
+  )
+})
+
+it('saves the profile timezone when the node has none, so the backend does not fall back to UTC', async () => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAccountProfileQuery(queryClient, { timezone: 'Asia/Shanghai' })
+  const { result } = renderNodeConfig(useConfig, createData({ timezone: undefined }), {
+    queryClient,
   })
+  await waitFor(() => {
+    expect(result.current.flow.getNode('node')?.data).toEqual(
+      expect.objectContaining({ timezone: 'Asia/Shanghai' }),
+    )
+  })
+})
+
+it('does not overwrite a timezone that is already saved', async () => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAccountProfileQuery(queryClient, { timezone: 'Asia/Shanghai' })
+  const { result } = renderNodeConfig(useConfig, createData({ timezone: 'Europe/Berlin' }), {
+    queryClient,
+  })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(result.current.flow.getNode('node')?.data).toEqual(
+    expect.objectContaining({ timezone: 'Europe/Berlin' }),
+  )
+})
+
+it('does not save the timezone in read-only mode', async () => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAccountProfileQuery(queryClient, { timezone: 'Asia/Shanghai' })
+  const { result } = renderNodeConfig(useConfig, createData({ timezone: undefined }), {
+    queryClient,
+    initialStoreState: { isRestoring: true },
+  })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(result.current.config.readOnly).toBe(true)
+  expect(result.current.flow.getNode('node')?.data.timezone).toBeUndefined()
 })

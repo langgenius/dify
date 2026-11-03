@@ -1,8 +1,8 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { toast } from '@/app/notifications'
 import { ChatVarType } from '../../type'
 import VariableModal from '../variable-modal'
 
@@ -10,7 +10,8 @@ vi.mock('uuid', () => ({
   v4: () => 'generated-id',
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@/app/notifications', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: {
     error: vi.fn(),
     info: vi.fn(),
@@ -24,14 +25,11 @@ const renderVariableModal = (props?: Partial<React.ComponentProps<typeof Variabl
   const onSave = vi.fn()
 
   const result = renderWorkflowComponent(
-    React.createElement(
-      VariableModal,
-      {
-        onClose,
-        onSave,
-        ...props,
-      },
-    ),
+    React.createElement(VariableModal, {
+      onClose,
+      onSave,
+      ...props,
+    }),
   )
 
   return { ...result, onClose, onSave }
@@ -48,9 +46,18 @@ describe('variable-modal', () => {
     const user = userEvent.setup()
     const { onClose, onSave } = renderVariableModal()
 
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'), 'greeting')
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.valuePlaceholder'), 'hello')
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.descriptionPlaceholder'), 'demo variable')
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
+      'greeting',
+    )
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.valuePlaceholder'),
+      'hello',
+    )
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.descriptionPlaceholder'),
+      'demo variable',
+    )
     await user.click(screen.getByText('common.operation.save'))
 
     expect(onSave).toHaveBeenCalledWith({
@@ -67,20 +74,29 @@ describe('variable-modal', () => {
     const user = userEvent.setup()
     const { onSave, store } = renderVariableModal()
 
-    store.setState({
-      conversationVariables: [{
-        id: 'var-1',
-        name: 'existing_name',
-        description: '',
-        value_type: ChatVarType.String,
-        value: '',
-      }],
-    })
+    act(() =>
+      store.setState({
+        conversationVariables: [
+          {
+            id: 'var-1',
+            name: 'existing_name',
+            description: '',
+            value_type: ChatVarType.String,
+            value: '',
+          },
+        ],
+      }),
+    )
 
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'), 'existing_name')
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
+      'existing_name',
+    )
     await user.click(screen.getByText('common.operation.save'))
 
-    expect(mockToastError.mock.calls.at(-1)?.[0]).toBe('appDebug.varKeyError.keyAlreadyExists:{"key":"workflow.chatVariable.modal.name"}')
+    expect(mockToastError.mock.calls.at(-1)?.[0]).toBe(
+      'appDebug.varKeyError.keyAlreadyExists:{"key":"workflow.chatVariable.modal.name"}',
+    )
     expect(onSave).not.toHaveBeenCalled()
   })
 
@@ -122,7 +138,10 @@ describe('variable-modal', () => {
     const user = userEvent.setup()
     const { onSave } = renderVariableModal()
 
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'), 'flags')
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
+      'flags',
+    )
     await user.click(screen.getByText('string'))
     await user.click(screen.getByText('array[boolean]'))
     await user.click(screen.getByText('common.operation.save'))
@@ -136,9 +155,9 @@ describe('variable-modal', () => {
     })
   })
 
-  it('should toggle object editing modes without changing behavior', async () => {
+  it('preserves object values when switching between JSON and form modes', async () => {
     const user = userEvent.setup()
-    renderVariableModal({
+    const { onSave } = renderVariableModal({
       chatVar: {
         id: 'var-3',
         name: 'payload',
@@ -154,27 +173,41 @@ describe('variable-modal', () => {
     })
     await user.click(screen.getByText('workflow.chatVariable.modal.editInForm'))
     expect(screen.getByDisplayValue('enabled')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onSave).toHaveBeenCalledWith({
+      id: 'var-3',
+      name: 'payload',
+      description: '',
+      value_type: ChatVarType.Object,
+      value: { enabled: 1 },
+    })
   })
 
-  it('should validate variable names on blur-sm and preserve underscore replacement', () => {
-    renderVariableModal()
+  it('normalizes spaces in the saved variable name on blur', async () => {
+    const user = userEvent.setup()
+    const { onSave } = renderVariableModal()
     const input = screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder')
 
-    fireEvent.change(input, { target: { value: 'bad name' } })
-    fireEvent.blur(input)
+    await user.type(input, 'bad name')
+    await user.tab()
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect((input as HTMLInputElement).value).toBe('bad_name')
+    expect(input).toHaveValue('bad_name')
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'bad_name' }))
     expect(mockToastError).not.toHaveBeenCalled()
   })
 
   it('should stop invalid variable names before they are stored in local state', async () => {
+    const user = userEvent.setup()
     const { onSave } = renderVariableModal()
-    const input = screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder') as HTMLInputElement
+    const input = screen.getByPlaceholderText(
+      'workflow.chatVariable.modal.namePlaceholder',
+    ) as HTMLInputElement
 
     fireEvent.change(input, { target: { value: '1bad' } })
-    await userEvent.click(screen.getByText('common.operation.save'))
+    await user.click(screen.getByText('common.operation.save'))
 
-    expect(input.value).toBe('')
+    expect(input).toHaveValue('')
     expect(mockToastError).toHaveBeenCalled()
     expect(onSave).not.toHaveBeenCalled()
   })
@@ -183,10 +216,16 @@ describe('variable-modal', () => {
     const user = userEvent.setup()
     const { onSave } = renderVariableModal()
 
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'), 'timeout')
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
+      'timeout',
+    )
     await user.click(screen.getByText('string'))
     await user.click(screen.getByText('number'))
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.valuePlaceholder'), '3')
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.valuePlaceholder'),
+      '3',
+    )
     await user.click(screen.getByText('common.operation.save'))
 
     expect(onSave).toHaveBeenCalledWith({
@@ -210,9 +249,9 @@ describe('variable-modal', () => {
       },
     })
 
-    const input = screen.getByDisplayValue('3') as HTMLInputElement
+    const input = screen.getByRole('textbox', { name: 'workflow.chatVariable.modal.value' })
     await user.clear(input)
 
-    expect(input.value).toBe('')
+    expect(input).toHaveValue('')
   })
 })

@@ -1,5 +1,7 @@
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
+
+from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -8,14 +10,16 @@ from core.tools.utils.web_reader_tool import get_url
 
 
 class WebscraperTool(BuiltinTool):
+    @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         invoke tools
         """
@@ -36,4 +40,4 @@ class WebscraperTool(BuiltinTool):
                 # return full webpage
                 yield self.create_text_message(result)
         except Exception as e:
-            raise ToolInvokeError(str(e))
+            raise ToolInvokeError(str(e)) from e

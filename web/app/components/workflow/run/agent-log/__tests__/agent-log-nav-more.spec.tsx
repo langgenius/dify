@@ -3,7 +3,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AgentLogNavMore from '../agent-log-nav-more'
 
-const createLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): AgentLogItemWithChildren => ({
+const createLogItem = (
+  overrides: Partial<AgentLogItemWithChildren> = {},
+): AgentLogItemWithChildren => ({
   message_id: 'message-1',
   label: 'Planner',
   children: [],
@@ -15,24 +17,18 @@ const createLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): Agent
 })
 
 describe('AgentLogNavMore', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('renders nested options in the real menu and routes selection clicks', async () => {
     const user = userEvent.setup()
     const onShowAgentOrToolLog = vi.fn()
     const option = createLogItem({ message_id: 'mid', label: 'Intermediate Tool' })
 
-    render(
-      <AgentLogNavMore
-        options={[option]}
-        onShowAgentOrToolLog={onShowAgentOrToolLog}
-      />,
-    )
+    render(<AgentLogNavMore options={[option]} onShowAgentOrToolLog={onShowAgentOrToolLog} />)
 
-    await user.click(screen.getByRole('button'))
-    await user.click(screen.getByText('Intermediate Tool'))
+    const menuButton = screen.getByRole('button', {
+      name: 'common.operation.more',
+    })
+    await user.click(menuButton)
+    await user.click(screen.getByRole('menuitem', { name: 'Intermediate Tool' }))
 
     expect(onShowAgentOrToolLog).toHaveBeenCalledWith(option)
   })

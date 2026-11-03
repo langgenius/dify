@@ -1,172 +1,122 @@
-import type { ApiKeyModalProps } from '../api-key-modal'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { FormSchema } from '@/app/components/base/form/types'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { FormTypeEnum } from '@/app/components/base/form/types'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { createDeferred } from '@/test/deferred'
 import { AuthCategory } from '../../types'
+import ApiKeyModal from '../api-key-modal'
 
-const mockNotify = vi.fn()
-const mockToast = {
-  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
-  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
-  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
-  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}
-
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: mockToast,
-}))
-const mockAddPluginCredential = vi.fn().mockResolvedValue({})
-const mockUpdatePluginCredential = vi.fn().mockResolvedValue({})
-const mockFormValues = { isCheckValidated: true, values: { __name__: 'My Key', api_key: 'sk-123' } }
-
+const commands = vi.hoisted(() => ({ add: vi.fn(), update: vi.fn() }))
+const schemas: FormSchema[] = [
+  { name: 'api_key', label: 'API Key', type: FormTypeEnum.secretInput, required: true },
+]
+// Credential routing has separate hook tests; this suite owns form validation and submitted values.
 vi.mock('../../hooks/use-credential', () => ({
-  useAddPluginCredentialHook: () => ({
-    mutateAsync: mockAddPluginCredential,
-  }),
-  useGetPluginCredentialSchemaHook: () => ({
-    data: [
-      { name: 'api_key', label: 'API Key', type: 'secret-input', required: true },
-    ],
-    isLoading: false,
-  }),
-  useUpdatePluginCredentialHook: () => ({
-    mutateAsync: mockUpdatePluginCredential,
-  }),
+  useAddPluginCredentialHook: () => ({ mutateAsync: commands.add }),
+  useUpdatePluginCredentialHook: () => ({ mutateAsync: commands.update }),
+  useGetPluginCredentialSchemaHook: () => ({ data: schemas, isLoading: false }),
 }))
+const payload = { category: AuthCategory.tool, provider: 'test-provider' }
+beforeEach(() => {
+  commands.add.mockResolvedValue({})
+  commands.update.mockResolvedValue({})
+})
 
-vi.mock('../../../readme-panel/entrance', () => ({
-  ReadmeEntrance: () => <div data-testid="readme-entrance" />,
-}))
-
-vi.mock('../../../readme-panel/store', () => ({
-  ReadmeShowType: { modal: 'modal' },
-}))
-
-vi.mock('@/app/components/base/encrypted-bottom', () => ({
-  EncryptedBottom: () => <div data-testid="encrypted-bottom" />,
-}))
-
-vi.mock('@/app/components/base/modal/modal', () => ({
-  default: ({ children, title, onClose, onConfirm, onExtraButtonClick, showExtraButton, disabled }: {
-    children: React.ReactNode
-    title: string
-    onClose?: () => void
-    onCancel?: () => void
-    onConfirm?: () => void
-    onExtraButtonClick?: () => void
-    showExtraButton?: boolean
-    disabled?: boolean
-    [key: string]: unknown
-  }) => (
-    <div data-testid="modal">
-      <div data-testid="modal-title">{title}</div>
-      {children}
-      <button data-testid="modal-confirm" onClick={onConfirm} disabled={disabled}>Confirm</button>
-      <button data-testid="modal-close" onClick={onClose}>Close</button>
-      {showExtraButton && <button data-testid="modal-extra" onClick={onExtraButtonClick}>Remove</button>}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
-  default: React.forwardRef((_props: Record<string, unknown>, ref: React.Ref<unknown>) => {
-    React.useImperativeHandle(ref, () => ({
-      getFormValues: () => mockFormValues,
-    }))
-    return <div data-testid="auth-form" />
-  }),
-}))
-
-vi.mock('@/app/components/base/form/types', () => ({
-  FormTypeEnum: { textInput: 'text-input' },
-}))
-
-const basePayload = {
-  category: AuthCategory.tool,
-  provider: 'test-provider',
-}
-
-describe('ApiKeyModal', () => {
-  let ApiKeyModal: React.FC<ApiKeyModalProps>
-
-  beforeEach(async () => {
-    vi.clearAllMocks()
-    const mod = await import('../api-key-modal')
-    ApiKeyModal = mod.default
+it('validates the API key and submits the entered name, secret and selected visibility', async () => {
+  const user = userEvent.setup()
+  const onClose = vi.fn()
+  render(<ApiKeyModal pluginPayload={payload} onClose={onClose} />)
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  expect(commands.add).not.toHaveBeenCalled()
+  await user.type(screen.getByLabelText(/API Key/), 'sk-123')
+  await user.type(screen.getByRole('textbox', { name: 'plugin.auth.authorizationName' }), 'My Key')
+  await user.click(screen.getByRole('button', { name: /permissionsAllMember/ }))
+  await user.click(
+    within(screen.getByRole('menu', { name: /auth.whoCanUse/ })).getByRole('menuitemradio', {
+      name: /permissionsOnlyMe/,
+    }),
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+  expect(commands.add).toHaveBeenCalledExactlyOnceWith({
+    credentials: { api_key: 'sk-123' },
+    name: 'My Key',
+    type: 'api-key',
+    visibility: 'only_me',
   })
+})
 
-  it('should render modal with correct title', () => {
-    render(<ApiKeyModal pluginPayload={basePayload} />)
+it('uses the existing credential identity and preserves an unchanged secret on edit', async () => {
+  const user = userEvent.setup()
+  render(
+    <ApiKeyModal
+      pluginPayload={payload}
+      editValues={{ api_key: '[__HIDDEN__]', __credential_id__: 'cred-1', __name__: 'Existing' }}
+    />,
+  )
+  const name = screen.getByRole('textbox', { name: 'plugin.auth.authorizationName' })
+  expect(name).toHaveValue('Existing')
+  await user.clear(name)
+  await user.type(name, 'Renamed')
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() =>
+    expect(commands.update).toHaveBeenCalledExactlyOnceWith({
+      credentials: { api_key: '[__HIDDEN__]' },
+      credential_id: 'cred-1',
+      name: 'Renamed',
+    }),
+  )
+  expect(commands.add).not.toHaveBeenCalled()
+})
 
-    expect(screen.getByTestId('modal-title')).toHaveTextContent('plugin.auth.useApiAuth')
-  })
+it('prevents duplicate submissions while the credential command is pending', async () => {
+  const user = userEvent.setup()
+  const request = createDeferred<object>()
+  commands.add.mockReturnValue(request.promise)
+  const onClose = vi.fn()
+  render(<ApiKeyModal pluginPayload={payload} onClose={onClose} />)
+  await user.type(screen.getByLabelText(/API Key/), 'secret')
+  const save = screen.getByRole('button', { name: 'common.operation.save' })
+  await user.dblClick(save)
+  expect(save).toBeDisabled()
+  expect(commands.add).toHaveBeenCalledOnce()
+  expect(onClose).not.toHaveBeenCalled()
+  request.resolve({})
+  await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+})
 
-  it('should render auth form when data is loaded', () => {
-    render(<ApiKeyModal pluginPayload={basePayload} />)
-
-    expect(screen.getByTestId('auth-form')).toBeInTheDocument()
-  })
-
-  it('should show remove button when editValues is provided', () => {
-    render(<ApiKeyModal pluginPayload={basePayload} editValues={{ api_key: 'existing' }} />)
-
-    expect(screen.getByTestId('modal-extra')).toBeInTheDocument()
-  })
-
-  it('should not show remove button in add mode', () => {
-    render(<ApiKeyModal pluginPayload={basePayload} />)
-
-    expect(screen.queryByTestId('modal-extra')).not.toBeInTheDocument()
-  })
-
-  it('should call onClose when close button clicked', () => {
-    const mockOnClose = vi.fn()
-    render(<ApiKeyModal pluginPayload={basePayload} onClose={mockOnClose} />)
-
-    fireEvent.click(screen.getByTestId('modal-close'))
-    expect(mockOnClose).toHaveBeenCalled()
-  })
-
-  it('should call addPluginCredential on confirm in add mode', async () => {
-    const mockOnClose = vi.fn()
-    const mockOnUpdate = vi.fn()
-    render(<ApiKeyModal pluginPayload={basePayload} onClose={mockOnClose} onUpdate={mockOnUpdate} />)
-
-    fireEvent.click(screen.getByTestId('modal-confirm'))
-
-    await waitFor(() => {
-      expect(mockAddPluginCredential).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'api-key',
-        name: 'My Key',
-      }))
-    })
-  })
-
-  it('should call updatePluginCredential on confirm in edit mode', async () => {
-    render(<ApiKeyModal pluginPayload={basePayload} editValues={{ api_key: 'existing', __credential_id__: 'cred-1' }} />)
-
-    fireEvent.click(screen.getByTestId('modal-confirm'))
-
-    await waitFor(() => {
-      expect(mockUpdatePluginCredential).toHaveBeenCalled()
-    })
-  })
-
-  it('should call onRemove when remove button clicked', () => {
-    const mockOnRemove = vi.fn()
-    render(<ApiKeyModal pluginPayload={basePayload} editValues={{ api_key: 'existing' }} onRemove={mockOnRemove} />)
-
-    fireEvent.click(screen.getByTestId('modal-extra'))
-    expect(mockOnRemove).toHaveBeenCalled()
-  })
-
-  it('should render readme entrance when detail is provided', () => {
-    const payload = { ...basePayload, detail: { name: 'Test' } as never }
-    render(<ApiKeyModal pluginPayload={payload} />)
-
-    expect(screen.getByTestId('readme-entrance')).toBeInTheDocument()
-  })
+it('keeps the credentials popover open while editing inside its nested modal', async () => {
+  const user = userEvent.setup()
+  const onClose = vi.fn()
+  const onPopoverClose = vi.fn()
+  const Harness = () => {
+    const [open, setOpen] = useState(true)
+    return (
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (!next) onPopoverClose()
+        }}
+      >
+        <PopoverTrigger render={<button>Credentials</button>} />
+        <PopoverContent>
+          <ApiKeyModal
+            pluginPayload={payload}
+            open={open}
+            onOpenChange={setOpen}
+            onClose={onClose}
+          />
+        </PopoverContent>
+      </Popover>
+    )
+  }
+  render(<Harness />)
+  await user.type(await screen.findByLabelText(/API Key/), 'secret')
+  expect(screen.getByLabelText(/API Key/)).toHaveValue('secret')
+  expect(onClose).not.toHaveBeenCalled()
+  expect(onPopoverClose).not.toHaveBeenCalled()
 })

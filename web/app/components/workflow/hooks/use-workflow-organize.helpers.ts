@@ -20,9 +20,10 @@ type LayerInfo = {
 
 export const getLayoutContainerNodes = (nodes: Node[]) => {
   return nodes.filter(
-    node => (node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration)
-      && !node.parentId
-      && node.type === CUSTOM_NODE,
+    (node) =>
+      (node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration) &&
+      !node.parentId &&
+      node.type === CUSTOM_NODE,
   )
 }
 
@@ -32,11 +33,12 @@ export const getContainerSizeChanges = (
 ) => {
   return parentNodes.reduce<Record<string, ContainerSizeChange>>((acc, parentNode) => {
     const childLayout = childLayoutsMap[parentNode.id]
-    if (!childLayout || !childLayout.nodes.size)
-      return acc
+    if (!childLayout || !childLayout.nodes.size) return acc
 
-    const requiredWidth = (childLayout.bounds.maxX - childLayout.bounds.minX) + NODE_LAYOUT_HORIZONTAL_PADDING * 2
-    const requiredHeight = (childLayout.bounds.maxY - childLayout.bounds.minY) + NODE_LAYOUT_VERTICAL_PADDING * 2
+    const requiredWidth =
+      childLayout.bounds.maxX - childLayout.bounds.minX + NODE_LAYOUT_HORIZONTAL_PADDING * 2
+    const requiredHeight =
+      childLayout.bounds.maxY - childLayout.bounds.minY + NODE_LAYOUT_VERTICAL_PADDING * 2
 
     acc[parentNode.id] = {
       width: Math.max(parentNode.width || 0, requiredWidth),
@@ -49,22 +51,25 @@ export const getContainerSizeChanges = (
 export const applyContainerSizeChanges = (
   nodes: Node[],
   containerSizeChanges: Record<string, ContainerSizeChange>,
-) => produce(nodes, (draft) => {
-  draft.forEach((node) => {
-    const nextSize = containerSizeChanges[node.id]
-    if ((node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration) && nextSize) {
-      node.width = nextSize.width
-      node.height = nextSize.height
-      node.data.width = nextSize.width
-      node.data.height = nextSize.height
-    }
+) =>
+  produce(nodes, (draft) => {
+    draft.forEach((node) => {
+      const nextSize = containerSizeChanges[node.id]
+      if (
+        (node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration) &&
+        nextSize
+      ) {
+        node.width = nextSize.width
+        node.height = nextSize.height
+        node.data.width = nextSize.width
+        node.data.height = nextSize.height
+      }
+    })
   })
-})
 
 export const createLayerMap = (layout: LayoutResult) => {
   return Array.from(layout.nodes.values()).reduce<Map<number, LayerInfo>>((acc, layoutInfo) => {
-    if (layoutInfo.layer === undefined)
-      return acc
+    if (layoutInfo.layer === undefined) return acc
 
     const existing = acc.get(layoutInfo.layer)
     acc.set(layoutInfo.layer, {
@@ -79,14 +84,12 @@ const getAlignedYPosition = (
   layoutInfo: LayoutResult['nodes'] extends Map<string, infer T> ? T : never,
   layerMap: Map<number, LayerInfo>,
 ) => {
-  if (layoutInfo.layer === undefined)
-    return layoutInfo.y
+  if (layoutInfo.layer === undefined) return layoutInfo.y
 
   const layerInfo = layerMap.get(layoutInfo.layer)
-  if (!layerInfo)
-    return layoutInfo.y
+  if (!layerInfo) return layoutInfo.y
 
-  return (layerInfo.minY + layerInfo.maxHeight / 2) - layoutInfo.height / 2
+  return layerInfo.minY + layerInfo.maxHeight / 2 - layoutInfo.height / 2
 }
 
 export const applyLayoutToNodes = ({
@@ -106,8 +109,7 @@ export const applyLayoutToNodes = ({
     draft.forEach((node) => {
       if (!node.parentId && node.type === CUSTOM_NODE) {
         const layoutInfo = layout.nodes.get(node.id)
-        if (!layoutInfo)
-          return
+        if (!layoutInfo) return
 
         node.position = {
           x: layoutInfo.x,
@@ -118,15 +120,13 @@ export const applyLayoutToNodes = ({
 
     parentNodes.forEach((parentNode) => {
       const childLayout = childLayoutsMap[parentNode.id]
-      if (!childLayout)
-        return
+      if (!childLayout) return
 
       draft
-        .filter(node => node.parentId === parentNode.id)
+        .filter((node) => node.parentId === parentNode.id)
         .forEach((childNode) => {
           const layoutInfo = childLayout.nodes.get(childNode.id)
-          if (!layoutInfo)
-            return
+          if (!layoutInfo) return
 
           childNode.position = {
             x: NODE_LAYOUT_HORIZONTAL_PADDING + (layoutInfo.x - childLayout.bounds.minX),

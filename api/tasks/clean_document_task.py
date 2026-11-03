@@ -6,17 +6,24 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
 from models.model import UploadFile
+from services.dataset_knowledge_fs_upgrade_file_lease import reserve_upgrade_file_cleanup
+from services.knowledge.indexing.adapters.cleanup import clean_document_indexes
+from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_id: str | None):
+def clean_document_task(
+    document_id: str,
+    dataset_id: str,
+    doc_form: str,
+    file_id: str | None,
+) -> None:
     """
     Clean document when document deleted.
     :param document_id: document id
@@ -29,6 +36,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
     logger.info(click.style(f"Start clean document when document deleted: {document_id}", fg="green"))
     start_at = time.perf_counter()
     total_attachment_files = []
+    vector_cleanup_succeeded = False
 
     with session_factory.create_session() as session:
         try:
@@ -37,6 +45,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
             if not dataset:
                 raise Exception("Document has no dataset")
 
+            dataset_tenant_id = dataset.tenant_id
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
             # Use JOIN to fetch attachments with bindings in a single query
             attachments_with_bindings = session.execute(
@@ -53,21 +62,33 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
             binding_ids = [binding.id for binding, _ in attachments_with_bindings]
             total_attachment_files.extend([attachment_file.key for _, attachment_file in attachments_with_bindings])
 
-            index_node_ids = [segment.index_node_id for segment in segments]
+            index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
             segment_contents = [segment.content for segment in segments]
         except Exception:
             logger.exception("Cleaned document when document deleted failed")
             return
 
-    # check segment is exist
-    if index_node_ids:
-        index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-        with session_factory.create_session() as session:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-            if dataset:
-                index_processor.clean(
-                    dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
-                )
+    # A retry must also find summaries whose segments were already removed.
+    # Preserve relational cleanup if the external index is temporarily unavailable.
+    try:
+        vector_cleanup_succeeded = (
+            clean_document_indexes(
+                dataset_id=dataset_id,
+                document_ids=[document_id],
+                doc_form=doc_form,
+                new_session=session_factory.create_session,
+            )
+            is not None
+        )
+    except Exception:
+        logger.exception(
+            "Failed to clean vector / keyword index in clean_document_task, "
+            "document_id=%s, dataset_id=%s, index_node_ids_count=%d. "
+            "Continuing with PG / storage cleanup; vector orphans can be reaped later.",
+            document_id,
+            dataset_id,
+            len(index_node_ids),
+        )
 
     total_image_files = []
     with session_factory.create_session() as session, session.begin():
@@ -93,6 +114,14 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
             )
 
     with session_factory.create_session() as session, session.begin():
+        if file_id:
+            if file_id in reserve_upgrade_file_cleanup(session, [file_id]):
+                logger.info(
+                    "Keep source file while KnowledgeFS upgrade lease is active, file_id=%s, document_id=%s",
+                    file_id,
+                    document_id,
+                )
+                file_id = None
         if file_id:
             file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
             if file:
@@ -130,6 +159,9 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                 DatasetMetadataBinding.document_id == document_id,
             )
         )
+
+    if vector_cleanup_succeeded:
+        schedule_billing_vector_space_refresh(dataset_tenant_id)
 
     end_at = time.perf_counter()
     logger.info(

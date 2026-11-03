@@ -1,15 +1,16 @@
 import type { FC } from 'react'
 import type { LLMNodeType } from '../types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import MemoryConfig from '@/app/components/workflow/nodes/_base/components/memory-config'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
-  isChatMode: boolean
+  isChatflow: boolean
   isChatModel: boolean
   isCompletionModel: boolean
   inputs: LLMNodeType
@@ -20,28 +21,49 @@ type Props = {
   }
   availableVars: NodeOutPutVar[]
   availableNodesWithParent: Node[]
+  resourceKind?: EditorResource['kind']
   handleSyeQueryChange: (query: string) => void
   handleMemoryChange: (memory?: Memory) => void
-}
+}>
 
 const i18nPrefix = 'nodes.llm'
+const DEFAULT_MEMORY: Memory = {
+  window: {
+    enabled: false,
+    size: 50,
+  },
+  query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
+}
+const SNIPPET_DEFAULT_MEMORY: Memory = {
+  window: {
+    enabled: false,
+    size: 50,
+  },
+  query_prompt_template: '',
+}
 
 const PanelMemorySection: FC<Props> = ({
   readOnly,
-  isChatMode,
+  isChatflow,
   isChatModel,
   isCompletionModel,
   inputs,
   hasSetBlockStatus,
   availableVars,
   availableNodesWithParent,
+  resourceKind,
   handleSyeQueryChange,
   handleMemoryChange,
 }) => {
-  const { t } = useTranslation()
+  const userLabelId = React.useId()
+  const memoryLabelId = React.useId()
 
-  if (!isChatMode)
-    return null
+  const { t } = useTranslation(['workflow', 'workflowModels'])
+  const isSnippetFlow = resourceKind === 'snippet'
+  const shouldCheckSysQuery = !isSnippetFlow
+  const defaultMemory = isSnippetFlow ? SNIPPET_DEFAULT_MEMORY : DEFAULT_MEMORY
+
+  if (!isChatflow) return null
 
   return (
     <>
@@ -49,46 +71,42 @@ const PanelMemorySection: FC<Props> = ({
         <div className="mt-4">
           <div className="flex h-8 items-center justify-between rounded-lg bg-components-input-bg-normal pr-2 pl-3">
             <div className="flex items-center space-x-1">
-              <div className="text-xs font-semibold text-text-secondary uppercase">{t('nodes.common.memories.title', { ns: 'workflow' })}</div>
-              <Tooltip>
-                <TooltipTrigger
-                  delay={0}
-                  render={(
-                    <span className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center">
-                      <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
-                    </span>
-                  )}
-                />
-                <TooltipContent>
-                  {t('nodes.common.memories.tip', { ns: 'workflow' })}
-                </TooltipContent>
-              </Tooltip>
+              <div
+                id={memoryLabelId}
+                className="text-xs font-semibold text-text-secondary uppercase"
+              >
+                {t(($) => $['nodes.common.memories.title'], { ns: 'workflow' })}
+              </div>
+              <Infotip>
+                <InfotipTrigger aria-labelledby={memoryLabelId} />
+                <InfotipContent aria-labelledby={memoryLabelId}>
+                  {t(($) => $['nodes.common.memories.tip'], { ns: 'workflow' })}
+                </InfotipContent>
+              </Infotip>
             </div>
-            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 text-xs font-semibold text-text-tertiary uppercase">
-              {t('nodes.common.memories.builtIn', { ns: 'workflow' })}
+            <div className="flex h-4.5 items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 text-xs font-semibold text-text-tertiary uppercase">
+              {t(($) => $['nodes.common.memories.builtIn'], { ns: 'workflow' })}
             </div>
           </div>
           <div className="mt-4">
             <Editor
-              title={(
+              title={
                 <div className="flex items-center space-x-1">
-                  <div className="text-xs font-semibold text-text-secondary uppercase">user</div>
-                  <Tooltip>
-                    <TooltipTrigger
-                      delay={0}
-                      render={(
-                        <span className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center">
-                          <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
-                        </span>
-                      )}
-                    />
-                    <TooltipContent>
-                      <div className="max-w-[180px]">{t('nodes.llm.roleDescription.user', { ns: 'workflow' })}</div>
-                    </TooltipContent>
-                  </Tooltip>
+                  <div
+                    id={userLabelId}
+                    className="text-xs font-semibold text-text-secondary uppercase"
+                  >
+                    user
+                  </div>
+                  <Infotip>
+                    <InfotipTrigger aria-labelledby={userLabelId} />
+                    <InfotipContent aria-labelledby={userLabelId} className="w-45">
+                      {t(($) => $['nodes.llm.roleDescription.user'], { ns: 'workflowModels' })}
+                    </InfotipContent>
+                  </Infotip>
                 </div>
-              )}
-              value={inputs.memory.query_prompt_template || '{{#sys.query#}}'}
+              }
+              value={inputs.memory.query_prompt_template ?? defaultMemory.query_prompt_template}
               onChange={handleSyeQueryChange}
               readOnly={readOnly}
               isShowContext={false}
@@ -100,11 +118,13 @@ const PanelMemorySection: FC<Props> = ({
               isSupportFileVar
             />
 
-            {inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
-              <div className="text-xs leading-[18px] font-normal text-[#DC6803]">
-                {t(`${i18nPrefix}.sysQueryInUser`, { ns: 'workflow' })}
-              </div>
-            )}
+            {shouldCheckSysQuery &&
+              inputs.memory.query_prompt_template &&
+              !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
+                <div className="text-xs leading-4.5 font-normal text-[#DC6803]">
+                  {t(($) => $[`${i18nPrefix}.sysQueryInUser`], { ns: 'workflow' })}
+                </div>
+              )}
           </div>
         </div>
       )}
@@ -114,6 +134,7 @@ const PanelMemorySection: FC<Props> = ({
         config={{ data: inputs.memory }}
         onChange={handleMemoryChange}
         canSetRoleName={isCompletionModel}
+        defaultMemory={defaultMemory}
       />
     </>
   )

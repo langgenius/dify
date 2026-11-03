@@ -3,11 +3,12 @@ import json
 import logging
 import uuid
 from contextlib import contextmanager
-from typing import Any, Literal, cast
+from typing import Any, Literal, cast, override
 
 import mysql.connector
 from mysql.connector import Error as MySQLError
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import parse_metadata_json
@@ -81,6 +82,7 @@ class AlibabaCloudMySQLVector(BaseVector):
         self.hnsw_m = config.hnsw_m
         self._check_vector_support()
 
+    @override
     def get_type(self) -> str:
         return VectorType.ALIBABACLOUD_MYSQL
 
@@ -135,11 +137,13 @@ class AlibabaCloudMySQLVector(BaseVector):
             cur.close()
             conn.close()
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
         self._create_collection(dimension)
         return self.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         values = []
         pks = []
@@ -165,6 +169,7 @@ class AlibabaCloudMySQLVector(BaseVector):
             cur.executemany(insert_sql, values)
         return pks
 
+    @override
     def text_exists(self, id: str) -> bool:
         with self._get_cursor() as cur:
             cur.execute(f"SELECT id FROM {self.table_name} WHERE id = %s", (id,))
@@ -183,6 +188,7 @@ class AlibabaCloudMySQLVector(BaseVector):
                 docs.append(Document(page_content=record["text"], metadata=metadata))
         return docs
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         # Avoiding crashes caused by performing delete operations on empty lists
         if not ids:
@@ -199,12 +205,14 @@ class AlibabaCloudMySQLVector(BaseVector):
                 else:
                     raise e
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         with self._get_cursor() as cur:
             cur.execute(
                 f"DELETE FROM {self.table_name} WHERE JSON_UNQUOTE(JSON_EXTRACT(meta, %s)) = %s", (f"$.{key}", value)
             )
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
         Search the nearest neighbors to a vector using RDS MySQL vector distance functions.
@@ -254,13 +262,10 @@ class AlibabaCloudMySQLVector(BaseVector):
                 try:
                     distance = float(record["distance"])
                     # Convert distance to similarity score
-                    if self.distance_function == "cosine":
-                        # For cosine distance: similarity = 1 - distance
-                        similarity = 1.0 - distance
-                    else:
-                        # For euclidean distance: use inverse relationship
-                        # similarity = 1 / (1 + distance)
-                        similarity = 1.0 / (1.0 + distance)
+                    # For cosine distance: similarity = 1 - distance
+                    # For euclidean distance: use inverse relationship
+                    # similarity = 1 / (1 + distance)
+                    similarity = 1.0 - distance if self.distance_function == "cosine" else 1.0 / (1.0 + distance)
 
                     metadata = parse_metadata_json(record["meta"])
                     metadata["score"] = similarity
@@ -274,6 +279,7 @@ class AlibabaCloudMySQLVector(BaseVector):
 
             return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
         if not isinstance(top_k, int) or top_k <= 0:
@@ -308,6 +314,7 @@ class AlibabaCloudMySQLVector(BaseVector):
                 docs.append(Document(page_content=record["text"], metadata=metadata))
         return docs
 
+    @override
     def delete(self):
         with self._get_cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
@@ -355,7 +362,10 @@ class AlibabaCloudMySQLVectorFactory(AbstractVectorFactory):
             raise ValueError(f"Invalid distance function: {distance_function}. Must be 'cosine' or 'euclidean'")
         return cast(Literal["cosine", "euclidean"], distance_function)
 
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> AlibabaCloudMySQLVector:
+    @override
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> AlibabaCloudMySQLVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix

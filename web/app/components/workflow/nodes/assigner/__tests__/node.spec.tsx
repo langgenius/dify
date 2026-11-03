@@ -1,40 +1,36 @@
 import type { AssignerNodeOperation, AssignerNodeType } from '../types'
-import { render, screen } from '@testing-library/react'
-import { useNodes } from 'reactflow'
+import { render as renderComponent, screen } from '@testing-library/react'
+import { useLayoutEffect } from 'react'
+import { ReactFlowProvider, useStoreApi } from 'reactflow'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createNode } from '../../../__tests__/fixtures'
 import Node from '../node'
 import { AssignerNodeInputType, WriteMode } from '../types'
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
-  return {
-    ...actual,
-    useNodes: vi.fn(),
-  }
-})
+function Graph({ children }: { children: React.ReactNode }) {
+  const store = useStoreApi()
+  useLayoutEffect(() => {
+    store
+      .getState()
+      .setNodes([
+        createNode({ id: 'node-1', data: { title: 'Answer', type: BlockEnum.Answer } }),
+        createNode({ id: 'start-node', data: { title: 'Start', type: BlockEnum.Start } }),
+      ])
+  }, [store])
+  return children
+}
+const render = (ui: React.ReactElement) =>
+  renderComponent(ui, {
+    wrapper: ({ children }) => (
+      <ReactFlowProvider>
+        <Graph>{children}</Graph>
+      </ReactFlowProvider>
+    ),
+  })
 
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/variable-label', () => ({
-  VariableLabelInNode: ({
-    variables,
-    nodeTitle,
-    nodeType,
-    rightSlot,
-  }: {
-    variables: string[]
-    nodeTitle?: string
-    nodeType?: BlockEnum
-    rightSlot?: React.ReactNode
-  }) => (
-    <div>
-      <span>{`${nodeTitle}:${nodeType}:${variables.join('.')}`}</span>
-      {rightSlot}
-    </div>
-  ),
-}))
-
-const mockUseNodes = vi.mocked(useNodes)
-
-const createOperation = (overrides: Partial<AssignerNodeOperation> = {}): AssignerNodeOperation => ({
+const createOperation = (
+  overrides: Partial<AssignerNodeOperation> = {},
+): AssignerNodeOperation => ({
   variable_selector: ['node-1', 'count'],
   input_type: AssignerNodeInputType.variable,
   operation: WriteMode.overwrite,
@@ -52,26 +48,6 @@ const createData = (overrides: Partial<AssignerNodeType> = {}): AssignerNodeType
 })
 
 describe('assigner/node', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseNodes.mockReturnValue([
-      {
-        id: 'node-1',
-        data: {
-          title: 'Answer',
-          type: BlockEnum.Answer,
-        },
-      },
-      {
-        id: 'start-node',
-        data: {
-          title: 'Start',
-          type: BlockEnum.Start,
-        },
-      },
-    ] as ReturnType<typeof useNodes>)
-  })
-
   it('renders the empty-state hint when no assignable variable is configured', () => {
     render(
       <Node
@@ -82,46 +58,49 @@ describe('assigner/node', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.assigner.varNotSet')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.varNotSet')).toBeInTheDocument()
   })
 
   it('renders both version 2 and legacy previews with resolved node labels', () => {
-    const { container, rerender } = render(
+    const { container, rerender } = render(<Node id="assigner-node" data={createData()} />)
+
+    expect(screen.getByText('Answer')).toBeInTheDocument()
+    expect(screen.getByText('count')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowLogic.nodes.assigner.operations.over-write'),
+    ).toBeInTheDocument()
+
+    // Legacy persisted graph payload predates the current AssignerNodeType.
+    rerender(
       <Node
         id="assigner-node"
-        data={createData()}
+        data={
+          {
+            title: 'Legacy Assigner',
+            desc: '',
+            type: BlockEnum.VariableAssigner,
+            assigned_variable_selector: ['sys', 'query'],
+            write_mode: WriteMode.append,
+          } as unknown as AssignerNodeType
+        }
       />,
     )
 
-    expect(screen.getByText('Answer:answer:node-1.count')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.assigner.operations.over-write')).toBeInTheDocument()
+    expect(screen.getByText('query')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.operations.append')).toBeInTheDocument()
 
     rerender(
       <Node
         id="assigner-node"
-        data={{
-          title: 'Legacy Assigner',
-          desc: '',
-          type: BlockEnum.VariableAssigner,
-          assigned_variable_selector: ['sys', 'query'],
-          write_mode: WriteMode.append,
-        } as unknown as AssignerNodeType}
-      />,
-    )
-
-    expect(screen.getByText('Start:start:sys.query')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.assigner.operations.append')).toBeInTheDocument()
-
-    rerender(
-      <Node
-        id="assigner-node"
-        data={{
-          title: 'Legacy Assigner',
-          desc: '',
-          type: BlockEnum.VariableAssigner,
-          assigned_variable_selector: [],
-          write_mode: WriteMode.append,
-        } as unknown as AssignerNodeType}
+        data={
+          {
+            title: 'Legacy Assigner',
+            desc: '',
+            type: BlockEnum.VariableAssigner,
+            assigned_variable_selector: [],
+            write_mode: WriteMode.append,
+          } as unknown as AssignerNodeType
+        }
       />,
     )
 
@@ -144,7 +123,10 @@ describe('assigner/node', () => {
       />,
     )
 
-    expect(screen.getByText('Start:start:sys.query')).toBeInTheDocument()
-    expect(screen.queryByText('undefined:undefined:')).not.toBeInTheDocument()
+    expect(screen.getByText('query')).toBeInTheDocument()
+    expect(screen.getAllByText('workflowLogic.nodes.assigner.operations.append')).toHaveLength(1)
+    expect(
+      screen.queryByText('workflowLogic.nodes.assigner.operations.over-write'),
+    ).not.toBeInTheDocument()
   })
 })

@@ -93,7 +93,6 @@ class SimplePromptTransform(PromptTransform):
     def _get_prompt_str_and_rules(
         self,
         app_mode: AppMode,
-        model_config: ModelConfigWithCredentialsEntity,
         pre_prompt: str,
         inputs: dict[str, Any],
         query: str | None = None,
@@ -103,8 +102,6 @@ class SimplePromptTransform(PromptTransform):
         # get prompt template
         prompt_template_config = self.get_prompt_template(
             app_mode=app_mode,
-            provider=model_config.provider,
-            model=model_config.model,
             pre_prompt=pre_prompt,
             has_context=context is not None,
             query_in_prompt=query is not None,
@@ -123,12 +120,15 @@ class SimplePromptTransform(PromptTransform):
 
         for v in special_variable_keys:
             # support #context#, #query# and #histories#
-            if v == "#context#":
-                variables["#context#"] = context or ""
-            elif v == "#query#":
-                variables["#query#"] = query or ""
-            elif v == "#histories#":
-                variables["#histories#"] = histories or ""
+            match v:
+                case "#context#":
+                    variables["#context#"] = context or ""
+                case "#query#":
+                    variables["#query#"] = query or ""
+                case "#histories#":
+                    variables["#histories#"] = histories or ""
+                case _:
+                    pass
 
         prompt_template = prompt_template_config["prompt_template"]
         if not isinstance(prompt_template, PromptTemplateParser):
@@ -145,14 +145,12 @@ class SimplePromptTransform(PromptTransform):
     def get_prompt_template(
         self,
         app_mode: AppMode,
-        provider: str,
-        model: str,
         pre_prompt: str,
         has_context: bool,
         query_in_prompt: bool,
         with_memory_prompt: bool = False,
     ) -> PromptTemplateConfigDict:
-        prompt_rules = self._get_prompt_rule(app_mode=app_mode, provider=provider, model=model)
+        prompt_rules = self._get_prompt_rule(app_mode=app_mode)
 
         custom_variable_keys: list[str] = []
         special_variable_keys: list[str] = []
@@ -200,7 +198,6 @@ class SimplePromptTransform(PromptTransform):
         # get prompt
         prompt, _ = self._get_prompt_str_and_rules(
             app_mode=app_mode,
-            model_config=model_config,
             pre_prompt=pre_prompt,
             inputs=inputs,
             query=None,
@@ -245,7 +242,6 @@ class SimplePromptTransform(PromptTransform):
         # get prompt
         prompt, prompt_rules = self._get_prompt_str_and_rules(
             app_mode=app_mode,
-            model_config=model_config,
             pre_prompt=pre_prompt,
             inputs=inputs,
             query=query,
@@ -271,7 +267,6 @@ class SimplePromptTransform(PromptTransform):
             # get prompt
             prompt, prompt_rules = self._get_prompt_str_and_rules(
                 app_mode=app_mode,
-                model_config=model_config,
                 pre_prompt=pre_prompt,
                 inputs=inputs,
                 query=query,
@@ -312,15 +307,13 @@ class SimplePromptTransform(PromptTransform):
 
         return prompt_message
 
-    def _get_prompt_rule(self, app_mode: AppMode, provider: str, model: str) -> dict[str, Any]:
+    def _get_prompt_rule(self, app_mode: AppMode) -> dict[str, Any]:
         """
         Get simple prompt rule.
         :param app_mode: app mode
-        :param provider: model provider
-        :param model: model name
         :return:
         """
-        prompt_file_name = self._prompt_file_name(app_mode=app_mode, provider=provider, model=model)
+        prompt_file_name = "common_completion" if app_mode == AppMode.COMPLETION else "common_chat"
 
         # Check if the prompt file is already loaded
         if prompt_file_name in prompt_file_contents:
@@ -338,25 +331,3 @@ class SimplePromptTransform(PromptTransform):
             prompt_file_contents[prompt_file_name] = content
 
             return cast(dict[str, Any], content)
-
-    def _prompt_file_name(self, app_mode: AppMode, provider: str, model: str) -> str:
-        # baichuan
-        is_baichuan = False
-        if provider == "baichuan":
-            is_baichuan = True
-        else:
-            baichuan_supported_providers = ["huggingface_hub", "openllm", "xinference"]
-            if provider in baichuan_supported_providers and "baichuan" in model.lower():
-                is_baichuan = True
-
-        if is_baichuan:
-            if app_mode == AppMode.COMPLETION:
-                return "baichuan_completion"
-            else:
-                return "baichuan_chat"
-
-        # common
-        if app_mode == AppMode.COMPLETION:
-            return "common_completion"
-        else:
-            return "common_chat"

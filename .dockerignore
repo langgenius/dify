@@ -1,0 +1,15 @@
+**/node_modules
+**/.pnpm-store
+**/dist
+**/.next
+**/.turbo
+**/.cache
+**/__pycache__
+**/*.pyc
+**/.mypy_cache
+**/.ruff_cache
+.git
+.github
+*.md
+!web/README.md
+!api/README.md

@@ -1,26 +1,38 @@
+import type { TFunction } from 'i18next'
 import type { Item as SelectItem } from './type-select'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { checkKeys } from '@/utils/var'
 
 export const TEXT_MAX_LENGTH = 256
 export const CHECKBOX_DEFAULT_TRUE_VALUE = 'true'
 export const CHECKBOX_DEFAULT_FALSE_VALUE = 'false'
 
-type Translate = (key: string, options?: Record<string, unknown>) => string
-
 type ValidateConfigModalPayloadOptions = {
   tempPayload: InputVar
   payload?: InputVar
-  checkVariableName: (value: string, canBeEmpty?: boolean) => boolean
-  t: Translate
+  maxFileUploadLimit?: number
+  t: TFunction<['appDebug', 'workflow']>
+}
+
+export type ConfigModalValidationError = {
+  field:
+    | 'variable'
+    | 'label'
+    | 'options'
+    | 'allowed_file_types'
+    | 'allowed_file_extensions'
+    | 'json_schema'
+  message: string
 }
 
 type ValidateConfigModalPayloadResult = {
   payloadToSave?: InputVar
   moreInfo?: MoreInfo
   errorMessage?: string
+  errorField?: ConfigModalValidationError['field']
 }
 
 export const isStringInputType = (type: InputVarType) =>
@@ -30,39 +42,35 @@ export const getCheckboxDefaultSelectValue = (value: InputVar['default'] | boole
   if (typeof value === 'boolean')
     return value ? CHECKBOX_DEFAULT_TRUE_VALUE : CHECKBOX_DEFAULT_FALSE_VALUE
   if (typeof value === 'string')
-    return value.toLowerCase() === CHECKBOX_DEFAULT_TRUE_VALUE ? CHECKBOX_DEFAULT_TRUE_VALUE : CHECKBOX_DEFAULT_FALSE_VALUE
+    return value.toLowerCase() === CHECKBOX_DEFAULT_TRUE_VALUE
+      ? CHECKBOX_DEFAULT_TRUE_VALUE
+      : CHECKBOX_DEFAULT_FALSE_VALUE
   return CHECKBOX_DEFAULT_FALSE_VALUE
 }
-
-export const parseCheckboxSelectValue = (value: string) =>
-  value === CHECKBOX_DEFAULT_TRUE_VALUE
-
 export const normalizeSelectDefaultValue = (inputVar: InputVar) => {
   if (inputVar.type === InputVarType.select && inputVar.default === '')
     return { ...inputVar, default: undefined }
   return inputVar
 }
 
-export const getJsonSchemaEditorValue = (type: InputVarType, jsonSchema?: InputVar['json_schema']) => {
-  if (type !== InputVarType.jsonObject || !jsonSchema)
-    return ''
+export const getJsonSchemaEditorValue = (
+  type: InputVarType,
+  jsonSchema?: InputVar['json_schema'],
+) => {
+  if (type !== InputVarType.jsonObject || !jsonSchema) return ''
 
   try {
-    if (typeof jsonSchema !== 'string')
-      return JSON.stringify(jsonSchema, null, 2)
+    if (typeof jsonSchema !== 'string') return JSON.stringify(jsonSchema, null, 2)
 
     return jsonSchema
-  }
-  catch {
+  } catch {
     return ''
   }
 }
 
 export const isJsonSchemaEmpty = (value: InputVar['json_schema']) => {
-  if (value === null || value === undefined)
-    return true
-  if (typeof value !== 'string')
-    return false
+  if (value === null || value === undefined) return true
+  if (typeof value !== 'string') return false
   return value.trim() === ''
 }
 
@@ -74,8 +82,7 @@ export const updatePayloadField = (payload: InputVar, key: string, value: unknow
 
   if (key === 'options' && payload.default) {
     const options = Array.isArray(value) ? value : []
-    if (!options.includes(payload.default))
-      nextPayload.default = undefined
+    if (!options.includes(payload.default)) nextPayload.default = undefined
   }
 
   return nextPayload
@@ -83,14 +90,31 @@ export const updatePayloadField = (payload: InputVar, key: string, value: unknow
 
 export const createPayloadForType = (payload: InputVar, type: InputVarType) => {
   return produce(payload, (draft) => {
-    draft.type = type
-    if (type === InputVarType.select)
-      draft.default = undefined
+    const fileInputTypes: readonly InputVarType[] = [
+      InputVarType.singleFile,
+      InputVarType.multiFiles,
+    ]
 
-    if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
-      (Object.keys(DEFAULT_FILE_UPLOAD_SETTING) as Array<keyof typeof DEFAULT_FILE_UPLOAD_SETTING>).forEach((key) => {
-        if (key !== 'max_length')
-          draft[key] = DEFAULT_FILE_UPLOAD_SETTING[key] as never
+    if (fileInputTypes.includes(draft.type) && draft.type !== type) draft.default = undefined
+    draft.type = type
+    if (type === InputVarType.select) draft.default = undefined
+    if (isStringInputType(type) && typeof draft.default === 'number')
+      draft.default = String(draft.default)
+    if (type === InputVarType.number && typeof draft.default !== 'number') {
+      const value =
+        typeof draft.default === 'string' && draft.default.trim() !== ''
+          ? Number(draft.default)
+          : Number.NaN
+      draft.default = Number.isFinite(value) ? value : undefined
+    }
+
+    if (fileInputTypes.includes(type)) {
+      draft.hide = false
+      const fileUploadSettingKeys = Object.keys(DEFAULT_FILE_UPLOAD_SETTING) as Array<
+        keyof typeof DEFAULT_FILE_UPLOAD_SETTING
+      >
+      fileUploadSettingKeys.forEach((key) => {
+        if (key !== 'max_length') draft[key] = DEFAULT_FILE_UPLOAD_SETTING[key] as never
       })
 
       if (type === InputVarType.multiFiles)
@@ -106,37 +130,37 @@ export const buildSelectOptions = ({
 }: {
   isBasicApp: boolean
   supportFile?: boolean
-  t: Translate
+  t: TFunction<['appDebug', 'workflow']>
 }): SelectItem[] => {
   return [
     {
-      name: t('variableConfig.text-input', { ns: 'appDebug' }),
+      name: t(($) => $['variableConfig.text-input'], { ns: 'appDebug' }),
       value: InputVarType.textInput,
     },
     {
-      name: t('variableConfig.paragraph', { ns: 'appDebug' }),
+      name: t(($) => $['variableConfig.paragraph'], { ns: 'appDebug' }),
       value: InputVarType.paragraph,
     },
     {
-      name: t('variableConfig.select', { ns: 'appDebug' }),
+      name: t(($) => $['variableConfig.select'], { ns: 'appDebug' }),
       value: InputVarType.select,
     },
     {
-      name: t('variableConfig.number', { ns: 'appDebug' }),
+      name: t(($) => $['variableConfig.number'], { ns: 'appDebug' }),
       value: InputVarType.number,
     },
     {
-      name: t('variableConfig.checkbox', { ns: 'appDebug' }),
+      name: t(($) => $['variableConfig.checkbox'], { ns: 'appDebug' }),
       value: InputVarType.checkbox,
     },
     ...(supportFile
       ? [
           {
-            name: t('variableConfig.single-file', { ns: 'appDebug' }),
+            name: t(($) => $['variableConfig.single-file'], { ns: 'appDebug' }),
             value: InputVarType.singleFile,
           },
           {
-            name: t('variableConfig.multi-files', { ns: 'appDebug' }),
+            name: t(($) => $['variableConfig.multi-files'], { ns: 'appDebug' }),
             value: InputVarType.multiFiles,
           },
         ]
@@ -144,7 +168,7 @@ export const buildSelectOptions = ({
     ...(!isBasicApp
       ? [
           {
-            name: t('variableConfig.json', { ns: 'appDebug' }),
+            name: t(($) => $['variableConfig.json'], { ns: 'appDebug' }),
             value: InputVarType.jsonObject,
           },
         ]
@@ -155,43 +179,81 @@ export const buildSelectOptions = ({
 export const validateConfigModalPayload = ({
   tempPayload,
   payload,
-  checkVariableName,
+  maxFileUploadLimit,
   t,
 }: ValidateConfigModalPayloadOptions): ValidateConfigModalPayloadResult => {
+  const fileInputTypes: readonly InputVarType[] = [InputVarType.singleFile, InputVarType.multiFiles]
+
+  const normalizedTempPayload = fileInputTypes.includes(tempPayload.type)
+    ? {
+        ...tempPayload,
+        hide: false,
+        ...(tempPayload.type === InputVarType.multiFiles && {
+          max_length: Number.isFinite(tempPayload.max_length)
+            ? Math.min(Math.max(tempPayload.max_length!, 1), maxFileUploadLimit ?? Infinity)
+            : 1,
+        }),
+      }
+    : tempPayload
   const jsonSchemaValue = tempPayload.json_schema
   const schemaEmpty = isJsonSchemaEmpty(jsonSchemaValue)
   const normalizedJsonSchema = schemaEmpty ? undefined : jsonSchemaValue
-  const payloadToSave = tempPayload.type === InputVarType.jsonObject && schemaEmpty
-    ? { ...tempPayload, json_schema: undefined }
-    : tempPayload
+  const payloadToSave = produce(
+    normalizedTempPayload.type === InputVarType.jsonObject && schemaEmpty
+      ? { ...normalizedTempPayload, json_schema: undefined }
+      : normalizedTempPayload,
+    (draft) => {
+      if (
+        !fileInputTypes.includes(draft.type) ||
+        !draft.default ||
+        typeof draft.default !== 'object'
+      )
+        return
 
-  const moreInfo = tempPayload.variable === payload?.variable
-    ? undefined
-    : {
-        type: ChangeType.changeVarName,
-        payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
+      const files = Array.isArray(draft.default) ? draft.default : [draft.default]
+      for (const file of files) {
+        if (file?.originalFile instanceof Blob) delete file.originalFile
       }
+    },
+  )
 
-  if (!checkVariableName(tempPayload.variable))
-    return {}
+  const moreInfo =
+    normalizedTempPayload.variable === payload?.variable
+      ? undefined
+      : {
+          type: ChangeType.changeVarName,
+          payload: { beforeKey: payload?.variable || '', afterKey: normalizedTempPayload.variable },
+        }
 
-  if (!tempPayload.label) {
+  const { isValid, errorMessageKey } = checkKeys([normalizedTempPayload.variable])
+  if (!isValid) {
     return {
-      errorMessage: t('variableConfig.errorMsg.labelNameRequired', { ns: 'appDebug' }),
+      errorField: 'variable',
+      errorMessage: t(($) => $[`varKeyError.${errorMessageKey}`], {
+        ns: 'appDebug',
+        key: t(($) => $['variableConfig.varName'], { ns: 'appDebug' }),
+      }),
     }
   }
 
-  if (tempPayload.type === InputVarType.select) {
-    if (!tempPayload.options?.length) {
+  if (!normalizedTempPayload.label) {
+    return {
+      errorField: 'label',
+      errorMessage: t(($) => $['variableConfig.errorMsg.labelNameRequired'], { ns: 'appDebug' }),
+    }
+  }
+
+  if (normalizedTempPayload.type === InputVarType.select) {
+    if (!normalizedTempPayload.options?.length) {
       return {
-        errorMessage: t('variableConfig.errorMsg.atLeastOneOption', { ns: 'appDebug' }),
+        errorField: 'options',
+        errorMessage: t(($) => $['variableConfig.errorMsg.atLeastOneOption'], { ns: 'appDebug' }),
       }
     }
 
     const duplicated = new Set<string>()
-    const hasRepeatedItem = tempPayload.options.some((option) => {
-      if (duplicated.has(option))
-        return true
+    const hasRepeatedItem = normalizedTempPayload.options.some((option) => {
+      if (duplicated.has(option)) return true
 
       duplicated.add(option)
       return false
@@ -199,43 +261,56 @@ export const validateConfigModalPayload = ({
 
     if (hasRepeatedItem) {
       return {
-        errorMessage: t('variableConfig.errorMsg.optionRepeat', { ns: 'appDebug' }),
+        errorField: 'options',
+        errorMessage: t(($) => $['variableConfig.errorMsg.optionRepeat'], { ns: 'appDebug' }),
       }
     }
   }
 
-  if ([InputVarType.singleFile, InputVarType.multiFiles].includes(tempPayload.type)) {
-    if (!tempPayload.allowed_file_types?.length) {
+  if (fileInputTypes.includes(normalizedTempPayload.type)) {
+    if (!normalizedTempPayload.allowed_file_types?.length) {
       return {
-        errorMessage: t('errorMsg.fieldRequired', {
+        errorField: 'allowed_file_types',
+        errorMessage: t(($) => $['errorMsg.fieldRequired'], {
           ns: 'workflow',
-          field: t('variableConfig.file.supportFileTypes', { ns: 'appDebug' }),
+          field: t(($) => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' }),
         }),
       }
     }
 
-    if (tempPayload.allowed_file_types.includes(SupportUploadFileTypes.custom) && !tempPayload.allowed_file_extensions?.length) {
+    if (
+      normalizedTempPayload.allowed_file_types.includes(SupportUploadFileTypes.custom) &&
+      !normalizedTempPayload.allowed_file_extensions?.length
+    ) {
       return {
-        errorMessage: t('errorMsg.fieldRequired', {
+        errorField: 'allowed_file_extensions',
+        errorMessage: t(($) => $['errorMsg.fieldRequired'], {
           ns: 'workflow',
-          field: t('variableConfig.file.custom.name', { ns: 'appDebug' }),
+          field: t(($) => $['variableConfig.file.custom.name'], { ns: 'appDebug' }),
         }),
       }
     }
   }
 
-  if (tempPayload.type === InputVarType.jsonObject && !schemaEmpty && typeof normalizedJsonSchema === 'string') {
+  if (
+    normalizedTempPayload.type === InputVarType.jsonObject &&
+    !schemaEmpty &&
+    typeof normalizedJsonSchema === 'string'
+  ) {
     try {
       const schema = JSON.parse(normalizedJsonSchema)
       if (schema?.type !== 'object') {
         return {
-          errorMessage: t('variableConfig.errorMsg.jsonSchemaMustBeObject', { ns: 'appDebug' }),
+          errorField: 'json_schema',
+          errorMessage: t(($) => $['variableConfig.errorMsg.jsonSchemaMustBeObject'], {
+            ns: 'appDebug',
+          }),
         }
       }
-    }
-    catch {
+    } catch {
       return {
-        errorMessage: t('variableConfig.errorMsg.jsonSchemaInvalid', { ns: 'appDebug' }),
+        errorField: 'json_schema',
+        errorMessage: t(($) => $['variableConfig.errorMsg.jsonSchemaInvalid'], { ns: 'appDebug' }),
       }
     }
   }

@@ -1,11 +1,11 @@
 import type { ComponentProps } from 'react'
-import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TagInput from '../index'
 
 const mockNotify = vi.fn()
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => mockNotify(args),
   },
@@ -34,24 +34,17 @@ describe('TagInput', () => {
   })
 
   describe('Rendering', () => {
-    it('should render existing tags and default placeholder', () => {
-      renderTagInput({ items: ['alpha', 'beta'] })
+    it('should expose the current input text for CSS sizing', async () => {
+      const user = userEvent.setup()
+      renderTagInput({ placeholder: 'Tag' })
+      const input = screen.getByRole('textbox')
+      const inputContainer = input.parentElement
 
-      expect(screen.getByText('alpha'))!.toBeInTheDocument()
-      expect(screen.getByText('beta'))!.toBeInTheDocument()
-      expect(screen.getByPlaceholderText('datasetDocuments.segment.addKeyWord'))!.toBeInTheDocument()
-    })
+      expect(inputContainer).toHaveAttribute('data-input-value', 'Tag')
 
-    it('should render special mode placeholder when confirm key is Tab', () => {
-      renderTagInput({ customizedConfirmKey: 'Tab' })
+      await user.type(input, 'longer')
 
-      expect(screen.getByPlaceholderText('common.model.params.stop_sequencesPlaceholder'))!.toBeInTheDocument()
-    })
-
-    it('should render custom placeholder when placeholder prop is provided', () => {
-      renderTagInput({ placeholder: 'Custom placeholder' })
-
-      expect(screen.getByPlaceholderText('Custom placeholder'))!.toBeInTheDocument()
+      expect(inputContainer).toHaveAttribute('data-input-value', 'longer')
     })
 
     it('should hide input when add is disabled', () => {
@@ -63,39 +56,48 @@ describe('TagInput', () => {
     it('should hide remove controls when remove is disabled', () => {
       renderTagInput({ items: ['alpha'], disableRemove: true })
 
-      expect(screen.queryByTestId('remove-tag')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.remove alpha' }),
+      ).not.toBeInTheDocument()
     })
+  })
 
-    it('should apply focused style in special mode when input is focused', async () => {
-      renderTagInput({ customizedConfirmKey: 'Tab' })
-      const input = screen.getByRole('textbox')
-      const inputContainer = input.parentElement
+  it('associates an external label with the tag entry input', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(
+      <>
+        <label htmlFor="recipient-tags">Recipients</label>
+        <TagInput id="recipient-tags" items={[]} onChange={onChange} />
+      </>,
+    )
 
-      expect(inputContainer)!.toHaveClass('border-transparent')
-
-      await userEvent.click(input)
-
-      expect(inputContainer)!.toHaveClass('border-dashed')
-    })
+    const input = screen.getByRole('textbox', { name: 'Recipients' })
+    await user.click(screen.getByText('Recipients'))
+    expect(input).toHaveFocus()
+    await user.keyboard('alice{Enter}')
+    expect(onChange).toHaveBeenCalledWith(['alice'])
   })
 
   describe('User Interactions', () => {
     it('should remove item when remove control is clicked', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput({ items: ['alpha', 'beta'] })
 
-      const removeControl = screen.getAllByTestId('remove-tag')[0]
+      const removeControl = screen.getByRole('button', { name: 'common.operation.remove alpha' })
 
-      await userEvent.click(removeControl!)
+      await user.click(removeControl)
 
       expect(onChange).toHaveBeenCalledWith(['beta'])
     })
 
     it('should add trimmed tag on Enter and clear input', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput()
       const input = screen.getByRole('textbox')
 
-      await userEvent.type(input, '  new-tag  ')
-      await userEvent.type(input, '{Enter}')
+      await user.type(input, '  new-tag  ')
+      await user.type(input, '{Enter}')
 
       expect(onChange).toHaveBeenCalledWith(['new-tag'])
       await waitFor(() => {
@@ -103,12 +105,13 @@ describe('TagInput', () => {
       })
     })
 
-    it('should add tag on blur-sm when input has valid value', async () => {
+    it('should add tag on blur when input has valid value', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput()
       const input = screen.getByRole('textbox')
 
-      await userEvent.type(input, 'blur-tag')
-      await userEvent.click(document.body)
+      await user.type(input, 'blur-tag')
+      await user.click(document.body)
 
       expect(onChange).toHaveBeenCalledWith(['blur-tag'])
     })
@@ -125,24 +128,20 @@ describe('TagInput', () => {
       expect(input)!.toHaveValue('stop↵')
       expect(onChange).not.toHaveBeenCalled()
 
-      // Low-level test for preventDefault
-      const tabEvent = createEvent.keyDown(input, { key: 'Tab' })
-      tabEvent.preventDefault = vi.fn()
-
-      fireEvent(input, tabEvent)
-
-      expect(tabEvent.preventDefault).toHaveBeenCalledTimes(1)
+      await user.keyboard('{Tab}')
+      expect(input).toHaveFocus()
       expect(onChange).toHaveBeenCalledWith(['stop↵'])
     })
   })
 
   describe('Validation', () => {
     it('should notify duplicate error when tag already exists', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput({ items: ['dup-tag'] })
       const input = screen.getByRole('textbox')
 
-      await userEvent.type(input, 'dup-tag')
-      await userEvent.keyboard('{Enter}')
+      await user.type(input, 'dup-tag')
+      await user.keyboard('{Enter}')
 
       expect(onChange).not.toHaveBeenCalled()
       expect(mockNotify).toHaveBeenCalledWith({
@@ -152,11 +151,12 @@ describe('TagInput', () => {
     })
 
     it('should notify length error when tag is longer than 20 chars', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput()
       const input = screen.getByRole('textbox')
 
-      await userEvent.type(input, 'a'.repeat(21))
-      await userEvent.keyboard('{Enter}')
+      await user.type(input, 'a'.repeat(21))
+      await user.keyboard('{Enter}')
 
       expect(onChange).not.toHaveBeenCalled()
       expect(mockNotify).toHaveBeenCalledWith({
@@ -166,11 +166,12 @@ describe('TagInput', () => {
     })
 
     it('should notify required error when value is empty and required is true', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput({ required: true })
       const input = screen.getByRole('textbox')
 
-      await userEvent.type(input, '   ')
-      await userEvent.click(document.body)
+      await user.type(input, '   ')
+      await user.click(document.body)
 
       expect(onChange).not.toHaveBeenCalled()
       expect(mockNotify).toHaveBeenCalledWith({
@@ -180,11 +181,12 @@ describe('TagInput', () => {
     })
 
     it('should ignore empty value when required is false', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput({ required: false })
       const input = screen.getByRole('textbox')
 
-      await userEvent.type(input, '   ')
-      await userEvent.click(document.body)
+      await user.type(input, '   ')
+      await user.click(document.body)
 
       expect(onChange).not.toHaveBeenCalled()
       expect(mockNotify).not.toHaveBeenCalled()

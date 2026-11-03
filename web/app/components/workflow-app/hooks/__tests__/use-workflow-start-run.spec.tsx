@@ -1,124 +1,117 @@
-import { act, renderHook } from '@testing-library/react'
-import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
+import type { ReactNode } from 'react'
+import type { Features } from '@/app/components/base/features/types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
+import type { Shape } from '@/app/components/workflow/store'
+import type { Node } from '@/app/components/workflow/types'
+import { act } from '@testing-library/react'
+import { FeaturesContext } from '@/app/components/base/features/context'
+import { createFeaturesStore } from '@/app/components/base/features/store'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
-  BlockEnum,
-  WorkflowRunningStatus,
-} from '@/app/components/workflow/types'
-import { useWorkflowStartRun } from '../use-workflow-start-run'
+  baseRunningData,
+  renderWorkflowCanvasHook,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
+import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
+import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useWorkflowStartRunByCanEdit } from '../use-workflow-start-run'
 
-const mockGetNodes = vi.fn()
-const mockGetFeaturesState = vi.fn()
-const mockHandleCancelDebugAndPreviewPanel = vi.fn()
+// Draft persistence and the run stream are owned by their own hooks and suites.
 const mockHandleRun = vi.fn()
 const mockDoSyncWorkflowDraft = vi.fn()
-const mockUseIsChatMode = vi.fn()
 
-const mockSetShowDebugAndPreviewPanel = vi.fn()
-const mockSetShowInputsPanel = vi.fn()
-const mockSetShowEnvPanel = vi.fn()
-const mockSetShowGlobalVariablePanel = vi.fn()
-const mockSetShowChatVariablePanel = vi.fn()
-const mockSetListeningTriggerType = vi.fn()
-const mockSetListeningTriggerNodeId = vi.fn()
-const mockSetListeningTriggerNodeIds = vi.fn()
-const mockSetListeningTriggerIsAll = vi.fn()
-const mockSetHistoryWorkflowData = vi.fn()
-
-let workflowStoreState: Record<string, unknown>
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-    }),
-  }),
-}))
-
-vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeaturesStore: () => ({
-    getState: mockGetFeaturesState,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useWorkflowInteractions: () => ({
-    handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => workflowStoreState,
-  }),
-}))
-
-vi.mock('@/app/components/workflow-app/hooks', () => ({
-  useIsChatMode: () => mockUseIsChatMode(),
-  useNodesSyncDraft: () => ({
+vi.mock('../use-nodes-sync-draft', () => ({
+  useNodesSyncDraftByCanEdit: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),
-  useWorkflowRun: () => ({
+}))
+
+vi.mock('../use-workflow-run', () => ({
+  useWorkflowRunByCanEdit: () => ({
     handleRun: mockHandleRun,
   }),
 }))
 
-const createWorkflowStoreState = (overrides: Record<string, unknown> = {}) => ({
-  workflowRunningData: undefined,
+let workflowStoreState: Partial<Shape>
+let canvasNodes: Node[]
+let features: Partial<Features>
+let workflowStore: ReturnType<typeof renderWorkflowCanvasHook>['store']
+
+const toNodes = (nodes: { id: string; data: Record<string, unknown> }[]) =>
+  nodes.map(({ id, data }) => createNode({ id, data }))
+
+const renderHook = <R,>(callback: () => R, { resource }: { resource: EditorResource }) => {
+  const featuresStore = createFeaturesStore({ features })
+  const rendered = renderWorkflowCanvasHook(callback, {
+    resource,
+    initialStoreState: workflowStoreState,
+    nodes: canvasNodes,
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <FeaturesContext value={featuresStore}>{children}</FeaturesContext>
+    ),
+  })
+  workflowStore = rendered.store
+  return rendered
+}
+
+const createWorkflowStoreState = (overrides: Partial<Shape> = {}): Partial<Shape> => ({
   showDebugAndPreviewPanel: false,
-  setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
-  setShowInputsPanel: mockSetShowInputsPanel,
-  setShowEnvPanel: mockSetShowEnvPanel,
-  setShowGlobalVariablePanel: mockSetShowGlobalVariablePanel,
-  setShowChatVariablePanel: mockSetShowChatVariablePanel,
-  setListeningTriggerType: mockSetListeningTriggerType,
-  setListeningTriggerNodeId: mockSetListeningTriggerNodeId,
-  setListeningTriggerNodeIds: mockSetListeningTriggerNodeIds,
-  setListeningTriggerIsAll: mockSetListeningTriggerIsAll,
-  setHistoryWorkflowData: mockSetHistoryWorkflowData,
+  showEnvPanel: true,
+  showGlobalVariablePanel: true,
+  showChatVariablePanel: true,
   ...overrides,
 })
 
-describe('useWorkflowStartRun', () => {
+describe('useWorkflowStartRunByCanEdit', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     workflowStoreState = createWorkflowStoreState()
-    mockGetNodes.mockReturnValue([
-      { id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [] } },
-    ])
-    mockGetFeaturesState.mockReturnValue({
-      features: {
-        file: {
-          image: {
-            enabled: false,
-          },
-        },
-      },
-    })
+    canvasNodes = toNodes([{ id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [] } }])
+    features = { file: { image: { enabled: false } } }
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
-    mockUseIsChatMode.mockReturnValue(false)
   })
 
   it('should run the workflow immediately when there are no start variables and no image upload input', async () => {
-    const { result } = renderHook(() => useWorkflowStartRun())
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowStartRunInWorkflow()
     })
 
-    expect(mockSetShowEnvPanel).toHaveBeenCalledWith(false)
-    expect(mockSetShowGlobalVariablePanel).toHaveBeenCalledWith(false)
+    expect(workflowStore.getState().showEnvPanel).toEqual(false)
+    expect(workflowStore.getState().showGlobalVariablePanel).toEqual(false)
     expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
     expect(mockHandleRun).toHaveBeenCalledWith({ inputs: {}, files: [] })
-    expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
-    expect(mockSetShowInputsPanel).toHaveBeenCalledWith(false)
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toEqual(true)
+    expect(workflowStore.getState().showInputsPanel).toEqual(false)
+  })
+
+  it('should not sync or run when only the start placeholder exists', async () => {
+    canvasNodes = toNodes([{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }])
+
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
+
+    await act(async () => {
+      await result.current.handleWorkflowStartRunInWorkflow()
+    })
+
+    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockHandleRun).not.toHaveBeenCalled()
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toBe(false)
+    expect(workflowStore.getState().showInputsPanel).toBe(false)
   })
 
   it('should open the input panel instead of running immediately when start inputs are required', async () => {
-    mockGetNodes.mockReturnValue([
+    canvasNodes = toNodes([
       { id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [{ name: 'query' }] } },
     ])
 
-    const { result } = renderHook(() => useWorkflowStartRun())
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowStartRunInWorkflow()
@@ -126,22 +119,16 @@ describe('useWorkflowStartRun', () => {
 
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
-    expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
-    expect(mockSetShowInputsPanel).toHaveBeenCalledWith(true)
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toEqual(true)
+    expect(workflowStore.getState().showInputsPanel).toEqual(true)
   })
 
   it('should open the input panel when image upload is enabled even without start variables', async () => {
-    mockGetFeaturesState.mockReturnValue({
-      features: {
-        file: {
-          image: {
-            enabled: true,
-          },
-        },
-      },
-    })
+    features = { file: { image: { enabled: true } } }
 
-    const { result } = renderHook(() => useWorkflowStartRun())
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowStartRunInWorkflow()
@@ -149,8 +136,8 @@ describe('useWorkflowStartRun', () => {
 
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
-    expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
-    expect(mockSetShowInputsPanel).toHaveBeenCalledWith(true)
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toEqual(true)
+    expect(workflowStore.getState().showInputsPanel).toEqual(true)
   })
 
   it('should cancel the current debug panel instead of starting another workflow when one is already open', async () => {
@@ -158,82 +145,78 @@ describe('useWorkflowStartRun', () => {
       showDebugAndPreviewPanel: true,
     })
 
-    const { result } = renderHook(() => useWorkflowStartRun())
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowStartRunInWorkflow()
     })
 
-    expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalled()
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toBe(false)
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
   })
 
   it('should short-circuit workflow start when a run is already in progress', async () => {
     workflowStoreState = createWorkflowStoreState({
-      workflowRunningData: {
-        result: {
-          status: WorkflowRunningStatus.Running,
-        },
-      },
+      workflowRunningData: baseRunningData({ result: { status: WorkflowRunningStatus.Running } }),
     })
 
-    const { result } = renderHook(() => useWorkflowStartRun())
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowStartRunInWorkflow()
     })
 
-    expect(mockSetShowEnvPanel).not.toHaveBeenCalled()
+    expect(workflowStore.getState().showEnvPanel).toBe(true)
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
   })
 
   it('should configure schedule trigger runs and execute the workflow with schedule options', async () => {
-    mockGetNodes.mockReturnValue([
-      { id: 'schedule-1', data: { type: BlockEnum.TriggerSchedule } },
-    ])
+    canvasNodes = toNodes([{ id: 'schedule-1', data: { type: BlockEnum.TriggerSchedule } }])
 
-    const { result } = renderHook(() => useWorkflowStartRun())
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowTriggerScheduleRunInWorkflow('schedule-1')
     })
 
-    expect(mockSetShowEnvPanel).toHaveBeenCalledWith(false)
-    expect(mockSetShowGlobalVariablePanel).toHaveBeenCalledWith(false)
-    expect(mockSetListeningTriggerType).toHaveBeenCalledWith(BlockEnum.TriggerSchedule)
-    expect(mockSetListeningTriggerNodeId).toHaveBeenCalledWith('schedule-1')
-    expect(mockSetListeningTriggerNodeIds).toHaveBeenCalledWith(['schedule-1'])
-    expect(mockSetListeningTriggerIsAll).toHaveBeenCalledWith(false)
+    expect(workflowStore.getState().showEnvPanel).toEqual(false)
+    expect(workflowStore.getState().showGlobalVariablePanel).toEqual(false)
+    expect(workflowStore.getState().listeningTriggerType).toEqual(BlockEnum.TriggerSchedule)
+    expect(workflowStore.getState().listeningTriggerNodeId).toEqual('schedule-1')
+    expect(workflowStore.getState().listeningTriggerNodeIds).toEqual(['schedule-1'])
+    expect(workflowStore.getState().listeningTriggerIsAll).toEqual(false)
     expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
-    expect(mockHandleRun).toHaveBeenCalledWith(
-      {},
-      undefined,
-      {
-        mode: TriggerType.Schedule,
-        scheduleNodeId: 'schedule-1',
-      },
-    )
-    expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
-    expect(mockSetShowInputsPanel).toHaveBeenCalledWith(false)
+    expect(mockHandleRun).toHaveBeenCalledWith({}, undefined, {
+      mode: TriggerType.Schedule,
+      scheduleNodeId: 'schedule-1',
+    })
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toEqual(true)
+    expect(workflowStore.getState().showInputsPanel).toEqual(false)
   })
 
   it('should cancel schedule trigger execution when the debug panel is already open', async () => {
     workflowStoreState = createWorkflowStoreState({
       showDebugAndPreviewPanel: true,
     })
-    mockGetNodes.mockReturnValue([
-      { id: 'schedule-1', data: { type: BlockEnum.TriggerSchedule } },
-    ])
+    canvasNodes = toNodes([{ id: 'schedule-1', data: { type: BlockEnum.TriggerSchedule } }])
 
-    const { result } = renderHook(() => useWorkflowStartRun())
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowTriggerScheduleRunInWorkflow('schedule-1')
     })
 
-    expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalled()
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toBe(false)
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
   })
@@ -241,18 +224,23 @@ describe('useWorkflowStartRun', () => {
   it.each([
     {
       title: 'schedule',
-      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerScheduleRunInWorkflow(undefined),
+      invoke: (hook: ReturnType<typeof useWorkflowStartRunByCanEdit>) =>
+        hook.handleWorkflowTriggerScheduleRunInWorkflow(undefined),
     },
     {
       title: 'webhook',
-      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: '' }),
+      invoke: (hook: ReturnType<typeof useWorkflowStartRunByCanEdit>) =>
+        hook.handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: '' }),
     },
     {
       title: 'plugin',
-      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerPluginRunInWorkflow(''),
+      invoke: (hook: ReturnType<typeof useWorkflowStartRunByCanEdit>) =>
+        hook.handleWorkflowTriggerPluginRunInWorkflow(''),
     },
   ])('should ignore $title trigger execution when the node id is empty', async ({ invoke }) => {
-    const { result } = renderHook(() => useWorkflowStartRun())
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await invoke(result.current)
@@ -265,30 +253,31 @@ describe('useWorkflowStartRun', () => {
   it.each([
     {
       title: 'schedule',
-      warnMessage: 'handleWorkflowTriggerScheduleRunInWorkflow: schedule node not found',
-      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerScheduleRunInWorkflow('schedule-missing'),
+      invoke: (hook: ReturnType<typeof useWorkflowStartRunByCanEdit>) =>
+        hook.handleWorkflowTriggerScheduleRunInWorkflow('schedule-missing'),
     },
     {
       title: 'webhook',
-      warnMessage: 'handleWorkflowTriggerWebhookRunInWorkflow: webhook node not found',
-      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: 'webhook-missing' }),
+      invoke: (hook: ReturnType<typeof useWorkflowStartRunByCanEdit>) =>
+        hook.handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: 'webhook-missing' }),
     },
     {
       title: 'plugin',
-      warnMessage: 'handleWorkflowTriggerPluginRunInWorkflow: plugin node not found',
-      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerPluginRunInWorkflow('plugin-missing'),
+      invoke: (hook: ReturnType<typeof useWorkflowStartRunByCanEdit>) =>
+        hook.handleWorkflowTriggerPluginRunInWorkflow('plugin-missing'),
     },
-  ])('should warn when the $title trigger node cannot be found', async ({ warnMessage, invoke }) => {
+  ])('does not run when the $title trigger node cannot be found', async ({ invoke }) => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    mockGetNodes.mockReturnValue([{ id: 'other-node', data: { type: BlockEnum.Start } }])
+    canvasNodes = toNodes([{ id: 'other-node', data: { type: BlockEnum.Start } }])
 
-    const { result } = renderHook(() => useWorkflowStartRun())
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await invoke(result.current)
     })
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith(warnMessage, expect.stringContaining('missing'))
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
 
@@ -300,7 +289,8 @@ describe('useWorkflowStartRun', () => {
       title: 'webhook',
       nodeId: 'webhook-1',
       nodeType: BlockEnum.TriggerWebhook,
-      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: 'webhook-1' }),
+      invoke: (hook: ReturnType<typeof useWorkflowStartRunByCanEdit>) =>
+        hook.handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: 'webhook-1' }),
       expectedParams: { node_id: 'webhook-1' },
       expectedOptions: { mode: TriggerType.Webhook, webhookNodeId: 'webhook-1' },
     },
@@ -308,47 +298,53 @@ describe('useWorkflowStartRun', () => {
       title: 'plugin',
       nodeId: 'plugin-1',
       nodeType: BlockEnum.TriggerPlugin,
-      invoke: (hook: ReturnType<typeof useWorkflowStartRun>) => hook.handleWorkflowTriggerPluginRunInWorkflow('plugin-1'),
+      invoke: (hook: ReturnType<typeof useWorkflowStartRunByCanEdit>) =>
+        hook.handleWorkflowTriggerPluginRunInWorkflow('plugin-1'),
       expectedParams: { node_id: 'plugin-1' },
       expectedOptions: { mode: TriggerType.Plugin, pluginNodeId: 'plugin-1' },
     },
-  ])('should configure $title trigger runs with node-specific options', async ({ nodeId, nodeType, invoke, expectedParams, expectedOptions }) => {
-    mockGetNodes.mockReturnValue([
-      { id: nodeId, data: { type: nodeType } },
-    ])
+  ])(
+    'should configure $title trigger runs with node-specific options',
+    async ({ nodeId, nodeType, invoke, expectedParams, expectedOptions }) => {
+      canvasNodes = toNodes([{ id: nodeId, data: { type: nodeType } }])
 
-    const { result } = renderHook(() => useWorkflowStartRun())
+      const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
-    await act(async () => {
-      await invoke(result.current)
-    })
+      await act(async () => {
+        await invoke(result.current)
+      })
 
-    expect(mockSetShowEnvPanel).toHaveBeenCalledWith(false)
-    expect(mockSetShowGlobalVariablePanel).toHaveBeenCalledWith(false)
-    expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
-    expect(mockSetShowInputsPanel).toHaveBeenCalledWith(false)
-    expect(mockSetListeningTriggerType).toHaveBeenCalledWith(nodeType)
-    expect(mockSetListeningTriggerNodeId).toHaveBeenCalledWith(nodeId)
-    expect(mockSetListeningTriggerNodeIds).toHaveBeenCalledWith([nodeId])
-    expect(mockSetListeningTriggerIsAll).toHaveBeenCalledWith(false)
-    expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
-    expect(mockHandleRun).toHaveBeenCalledWith(expectedParams, undefined, expectedOptions)
-  })
+      expect(workflowStore.getState().showEnvPanel).toEqual(false)
+      expect(workflowStore.getState().showGlobalVariablePanel).toEqual(false)
+      expect(workflowStore.getState().showDebugAndPreviewPanel).toEqual(true)
+      expect(workflowStore.getState().showInputsPanel).toEqual(false)
+      expect(workflowStore.getState().listeningTriggerType).toEqual(nodeType)
+      expect(workflowStore.getState().listeningTriggerNodeId).toEqual(nodeId)
+      expect(workflowStore.getState().listeningTriggerNodeIds).toEqual([nodeId])
+      expect(workflowStore.getState().listeningTriggerIsAll).toEqual(false)
+      expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
+      expect(mockHandleRun).toHaveBeenCalledWith(expectedParams, undefined, expectedOptions)
+    },
+  )
 
   it('should run all triggers and mark the listener state as global', async () => {
-    const { result } = renderHook(() => useWorkflowStartRun())
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowRunAllTriggersInWorkflow(['trigger-1', 'trigger-2'])
     })
 
-    expect(mockSetShowEnvPanel).toHaveBeenCalledWith(false)
-    expect(mockSetShowGlobalVariablePanel).toHaveBeenCalledWith(false)
-    expect(mockSetShowInputsPanel).toHaveBeenCalledWith(false)
-    expect(mockSetListeningTriggerIsAll).toHaveBeenCalledWith(true)
-    expect(mockSetListeningTriggerNodeIds).toHaveBeenCalledWith(['trigger-1', 'trigger-2'])
-    expect(mockSetListeningTriggerNodeId).toHaveBeenCalledWith(null)
-    expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
+    expect(workflowStore.getState().showEnvPanel).toEqual(false)
+    expect(workflowStore.getState().showGlobalVariablePanel).toEqual(false)
+    expect(workflowStore.getState().showInputsPanel).toEqual(false)
+    expect(workflowStore.getState().listeningTriggerIsAll).toEqual(true)
+    expect(workflowStore.getState().listeningTriggerNodeIds).toEqual(['trigger-1', 'trigger-2'])
+    expect(workflowStore.getState().listeningTriggerNodeId).toEqual(null)
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toEqual(true)
     expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
     expect(mockHandleRun).toHaveBeenCalledWith(
       { node_ids: ['trigger-1', 'trigger-2'] },
@@ -361,31 +357,33 @@ describe('useWorkflowStartRun', () => {
   })
 
   it('should ignore run-all requests when there are no trigger nodes', async () => {
-    const { result } = renderHook(() => useWorkflowStartRun())
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowRunAllTriggersInWorkflow([])
     })
 
-    expect(mockSetListeningTriggerIsAll).not.toHaveBeenCalled()
+    expect(workflowStore.getState().listeningTriggerIsAll).toBe(false)
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockHandleRun).not.toHaveBeenCalled()
   })
 
   it('should route handleStartWorkflowRun to the chatflow path when chat mode is enabled', async () => {
-    mockUseIsChatMode.mockReturnValue(true)
-
-    const { result } = renderHook(() => useWorkflowStartRun())
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+    })
 
     await act(async () => {
       result.current.handleStartWorkflowRun()
     })
 
-    expect(mockSetShowEnvPanel).toHaveBeenCalledWith(false)
-    expect(mockSetShowChatVariablePanel).toHaveBeenCalledWith(false)
-    expect(mockSetShowGlobalVariablePanel).toHaveBeenCalledWith(false)
-    expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(true)
-    expect(mockSetHistoryWorkflowData).toHaveBeenCalledWith(undefined)
+    expect(workflowStore.getState().showEnvPanel).toEqual(false)
+    expect(workflowStore.getState().showChatVariablePanel).toEqual(false)
+    expect(workflowStore.getState().showGlobalVariablePanel).toEqual(false)
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toEqual(true)
+    expect(workflowStore.getState().historyWorkflowData).toEqual(undefined)
     expect(mockHandleRun).not.toHaveBeenCalled()
   })
 })

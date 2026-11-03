@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { CodeNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
@@ -27,11 +27,8 @@ const codeLanguages = [
     value: CodeLanguage.javascript,
   },
 ]
-const Panel: FC<NodePanelProps<CodeNodeType>> = ({
-  id,
-  data,
-}) => {
-  const { t } = useTranslation()
+const Panel: FC<NodePanelProps<CodeNodeType>> = ({ id, data }) => {
+  const { t } = useTranslation(['common', 'workflow'])
 
   const {
     readOnly,
@@ -54,11 +51,14 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
 
   const handleGeneratedCode = (value: string) => {
     const params = extractFunctionParams(value, inputs.code_language)
+    // Regenerating the code rebuilds the input list from the new signature, but a
+    // parameter that survives the regeneration should keep the variable entry the
+    // user already set up -- its upstream value selector and its value type --
+    // instead of being reset to an unbound variable.
+    const existingVariables = new Map(inputs.variables.map((v) => [v.variable, v]))
     const codeNewInput = params.map((p) => {
-      return {
-        variable: p,
-        value_selector: [],
-      }
+      const existing = existingVariables.get(p)
+      return existing ? { ...existing } : { variable: p, value_selector: [] }
     })
     const returnTypes = extractReturnType(value, inputs.code_language)
     handleCodeAndVarsChange(value, codeNewInput, returnTypes)
@@ -68,27 +68,37 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })}
           operations={
-            !readOnly
-              ? (
-                  <div className="flex gap-2">
-                    <Tooltip>
-                      <TooltipTrigger
-                        className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover"
-                        onClick={handleSyncFunctionSignature}
-                        data-testid="sync-button"
-                      >
-                        <span className="i-ri-refresh-line h-4 w-4 text-text-tertiary" />
-                      </TooltipTrigger>
-                      <TooltipContent>{t(`${i18nPrefix}.syncFunctionSignature`, { ns: 'workflow' })}</TooltipContent>
-                    </Tooltip>
-                    <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={handleAddVariable} data-testid="add-button">
-                      <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-                    </div>
-                  </div>
-                )
-              : undefined
+            !readOnly ? (
+              <div className="flex gap-2">
+                <Tooltip>
+                  <TooltipTrigger
+                    className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                    onClick={handleSyncFunctionSignature}
+                    aria-label={t(($) => $[`${i18nPrefix}.syncFunctionSignature`], {
+                      ns: 'workflow',
+                    })}
+                  >
+                    <span
+                      className="i-ri-refresh-line size-4 text-text-tertiary"
+                      aria-hidden="true"
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t(($) => $[`${i18nPrefix}.syncFunctionSignature`], { ns: 'workflow' })}
+                  </TooltipContent>
+                </Tooltip>
+                <button
+                  type="button"
+                  aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })}`}
+                  className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={handleAddVariable}
+                >
+                  <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+                </button>
+              </div>
+            ) : undefined
           }
         >
           <VarList
@@ -105,13 +115,14 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           nodeId={id}
           isInNode
           readOnly={readOnly}
-          title={(
+          title={
             <TypeSelector
+              readonly={readOnly}
               options={codeLanguages}
               value={inputs.code_language}
               onChange={handleCodeLanguageChange}
             />
-          )}
+          }
           language={inputs.code_language}
           value={inputs.code}
           onChange={handleCodeChange}
@@ -122,12 +133,19 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
       <Split />
       <div className="px-4 pt-4 pb-2">
         <Field
-          title={t(`${i18nPrefix}.outputVars`, { ns: 'workflow' })}
-          operations={(
-            <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={handleAddOutputVariable} data-testid="add-button">
-              <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-            </div>
-          )}
+          title={t(($) => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}
+          operations={
+            readOnly ? undefined : (
+              <button
+                type="button"
+                aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}`}
+                className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={handleAddOutputVariable}
+              >
+                <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+              </button>
+            )
+          }
           required
         >
           <OutputVarList

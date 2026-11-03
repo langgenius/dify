@@ -1,7 +1,1 @@
-import { defineConfig } from 'vite-plus'
-
-export default defineConfig({
-  staged: {
-    '*': 'eslint --fix --pass-on-unpruned-suppressions',
-  },
-})
+export { default } from '@dify/tooling/repository'

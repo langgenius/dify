@@ -1,1946 +1,597 @@
 import datetime
-from unittest.mock import MagicMock, PropertyMock, patch
+from dataclasses import dataclass
+from inspect import unwrap
+from types import SimpleNamespace
+from unittest.mock import MagicMock, create_autospec, patch
+from uuid import UUID
 
 import pytest
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
 import services
-from controllers.console import console_ns
+from controllers.common.errors import InvalidArgumentError, NotFoundError
+from controllers.common.rbac import DatasetId, RBACPermission, Workspace
 from controllers.console.app.error import ProviderNotInitializeError
+from controllers.console.datasets import datasets as controller
 from controllers.console.datasets.datasets import (
     DatasetApi,
     DatasetApiBaseUrlApi,
-    DatasetApiDeleteApi,
     DatasetApiKeyApi,
     DatasetAutoDisableLogApi,
+    DatasetCreatePayload,
     DatasetEnableApiApi,
     DatasetErrorDocs,
     DatasetIndexingEstimateApi,
     DatasetIndexingStatusApi,
+    DatasetKnowledgeFSUpgradeApi,
+    DatasetKnowledgeFSUpgradeJobApi,
+    DatasetKnowledgeFSUpgradeJobsApi,
     DatasetListApi,
     DatasetPermissionUserListApi,
     DatasetQueryApi,
     DatasetRelatedAppListApi,
     DatasetRetrievalSettingApi,
     DatasetRetrievalSettingMockApi,
+    DatasetUpdatePayload,
     DatasetUseCheckApi,
+    IndexingEstimatePayload,
+    _new_estimate_sources,
 )
-from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
-from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.provider_manager import ProviderManager
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from extensions.storage.storage_type import StorageType
-from models.enums import CreatorUserRole
-from models.model import ApiToken, UploadFile
-from services.dataset_service import DatasetPermissionService, DatasetService
+from controllers.console.datasets.error import (
+    DatasetAccessDeniedRequestError,
+    DatasetNameDuplicateError,
+    IndexingEstimateError,
+    KnowledgeFSUpgradeModelsUnavailableHTTPError,
+)
+from machinery.context import RequestContext
+from models.knowledge_fs import KnowledgeFSUpgradeJob, KnowledgeFSUpgradeJobStatus, KnowledgeFSUpgradeStage
+from services.data_source.entities.notion_import import NotionPageType
+from services.dataset_knowledge_fs_upgrade_service import (
+    KnowledgeFSUpgradeConflictError,
+    KnowledgeFSUpgradeModelsUnavailableError,
+    KnowledgeFSUpgradeNotFoundError,
+)
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.datasets.application import DatasetApplicationService, DatasetListFilter
+from services.knowledge.datasets.upgrades import (
+    KnowledgeFSUpgradeUnavailableError,
+    KnowledgeUpgradeApplicationService,
+)
+from services.knowledge.entities.indexing_estimate import (
+    NotionEstimateSource,
+    UploadFileEstimateSource,
+    WebsiteEstimateSource,
+)
+from services.knowledge.indexing.estimate import (
+    EstimateSourceNotFoundError,
+    IndexingEstimateCredentialUnavailableError,
+    IndexingEstimateExecutionError,
+    IndexingEstimateProviderUnavailableError,
+    UnsupportedEstimateSourceError,
+)
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSUpgradeModelIssueResponse,
+    KnowledgeFSUpgradeModelsPayload,
+    KnowledgeFSUpgradePreparationResponse,
+)
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
+
+CONTEXT = RequestContext("request-1", None, "account-1", "tenant-1")
+DATASET_ID = UUID(int=1)
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+def test_dataset_delete_requires_dataset_delete_permission() -> None:
+    [check] = rbac_checks(DatasetApi.delete)
+
+    assert check.scene is RBACPermission.DATASET_DELETE
+    assert isinstance(check.locator, DatasetId)
 
 
-class TestDatasetList:
-    def _mock_dataset_dict(self, **overrides):
-        base = {
-            "id": "ds-1",
-            "indexing_technique": "economy",
-            "embedding_model": None,
-            "embedding_model_provider": None,
-            "permission": "only_me",
+@pytest.fixture
+def datasets(monkeypatch):
+    service = create_autospec(DatasetApplicationService, instance=True, spec_set=True)
+    monkeypatch.setattr(
+        controller, "application_services", lambda: SimpleNamespace(knowledge=SimpleNamespace(datasets=service))
+    )
+    return service
+
+
+@pytest.mark.parametrize(
+    ("resource", "operation"),
+    [
+        (DatasetApi, lambda service: service.get_dataset),
+        (DatasetUseCheckApi, lambda service: service.is_in_use),
+        (DatasetQueryApi, lambda service: service.queries),
+        (DatasetRelatedAppListApi, lambda service: service.related_apps),
+        (DatasetIndexingStatusApi, lambda service: service.indexing_status),
+        (DatasetErrorDocs, lambda service: service.error_documents),
+        (DatasetPermissionUserListApi, lambda service: service.partial_members),
+        (DatasetAutoDisableLogApi, lambda service: service.auto_disable_logs),
+    ],
+)
+@pytest.mark.parametrize(
+    ("error", "http_error"), [(DatasetNotFoundError(), NotFound), (DatasetAccessDeniedError(), Forbidden)]
+)
+def test_scoped_reads_pass_context_and_map_access_errors(app, datasets, resource, operation, error, http_error):
+    method = operation(datasets)
+    method.side_effect = error
+    with app.test_request_context("/"), pytest.raises(http_error):
+        unwrap(resource.get)(resource(), CONTEXT, DATASET_ID)
+    assert method.call_args.args == (CONTEXT,)
+    assert method.call_args.kwargs["dataset_id"] == str(DATASET_ID)
+
+
+def test_list_parses_repeated_filters_and_serializes_page(app, datasets):
+    datasets.list_datasets.return_value = {"data": [], "page": 2, "limit": 3, "total": 4, "has_more": False}
+    with app.test_request_context(
+        "/?page=2&limit=3&ids=a&ids=b&tag_ids=x&tag_ids=y&creator_ids=c&include_all=true&keyword=term"
+    ):
+        result, status = unwrap(DatasetListApi.get)(DatasetListApi(), CONTEXT)
+    datasets.list_datasets.assert_called_once_with(
+        CONTEXT,
+        DatasetListFilter(
+            page=2,
+            limit=3,
+            ids=["a", "b"],
+            tag_ids=["x", "y"],
+            creator_ids=["c"],
+            include_all=True,
+            keyword="term",
+        ),
+    )
+    assert status == 200
+    assert result == datasets.list_datasets.return_value
+
+
+def test_patch_does_not_turn_omitted_fields_into_updates(datasets):
+    datasets.update_dataset.side_effect = DatasetNotFoundError()
+    with pytest.raises(NotFound):
+        unwrap(DatasetApi.patch)(DatasetApi(), DatasetUpdatePayload(name="Changed"), CONTEXT, DATASET_ID)
+    datasets.update_dataset.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID), values={"name": "Changed"})
+
+
+def test_duplicate_name_is_mapped_at_transport_on_create(datasets):
+    datasets.create_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
+    with pytest.raises(DatasetNameDuplicateError):
+        unwrap(DatasetListApi.post)(DatasetListApi(), DatasetCreatePayload(name="Duplicate"), CONTEXT)
+
+
+def test_delete_success_returns_empty_204(datasets):
+    assert unwrap(DatasetApi.delete)(DatasetApi(), CONTEXT, DATASET_ID) == ("", 204)
+    datasets.delete_dataset.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID))
+
+
+def test_request_base_url_and_explicit_status_are_forwarded(app, datasets):
+    datasets.api_base_url.return_value = "https://api.example/v1"
+    with app.test_request_context("/", base_url="https://console.example/"):
+        assert unwrap(DatasetApiBaseUrlApi.get)(DatasetApiBaseUrlApi(), CONTEXT) == {
+            "api_base_url": "https://api.example/v1"
         }
-        base.update(overrides)
-        return base
+    datasets.api_base_url.assert_called_once_with(CONTEXT, request_base_url="https://console.example")
+    assert unwrap(DatasetEnableApiApi.post)(DatasetEnableApiApi(), CONTEXT, DATASET_ID, "disable") == (
+        {"result": "success"},
+        200,
+    )
+    datasets.set_api_enabled.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID), status="disable")
 
-    def _mock_user(self):
-        user = MagicMock()
-        user.is_dataset_editor = True
-        return user
 
-    def test_get_success_basic(self, app):
-        api = DatasetListApi()
-        method = unwrap(api.get)
+def test_retrieval_settings_forward_mock_flag(datasets):
+    datasets.retrieval_settings.return_value = {"retrieval_method": ["semantic_search"]}
+    assert (
+        unwrap(DatasetRetrievalSettingApi.get)(DatasetRetrievalSettingApi(), CONTEXT)
+        == datasets.retrieval_settings.return_value
+    )
+    unwrap(DatasetRetrievalSettingMockApi.get)(DatasetRetrievalSettingMockApi(), CONTEXT, "milvus")
+    datasets.retrieval_settings.assert_called_with(CONTEXT, vector_type="milvus", is_mock=True)
 
-        current_user = self._mock_user()
-        datasets = [MagicMock()]
-        marshaled = [self._mock_dataset_dict()]
 
-        with app.test_request_context("/datasets"):
-            with (
-                patch(
-                    "controllers.console.datasets.datasets.current_account_with_tenant",
-                    return_value=(current_user, "tenant-1"),
-                ),
-                patch.object(
-                    DatasetService,
-                    "get_datasets",
-                    return_value=(datasets, 1),
-                ),
-                patch(
-                    "controllers.console.datasets.datasets.marshal",
-                    return_value=marshaled,
-                ),
-                patch.object(
-                    ProviderManager,
-                    "get_configurations",
-                    return_value=MagicMock(get_models=lambda **_: []),
-                ),
-            ):
-                resp, status = method(api)
+def test_new_estimate_sources_maps_each_supported_transport_shape() -> None:
+    upload_sources = _new_estimate_sources(
+        {"data_source_type": "upload_file", "file_info_list": {"file_ids": ["file-1", "file-2"]}}
+    )
+    notion_sources = _new_estimate_sources(
+        {
+            "data_source_type": "notion_import",
+            "notion_info_list": [
+                {
+                    "workspace_id": "notion-workspace",
+                    "credential_id": "credential-1",
+                    "pages": [{"page_id": "page-1", "type": "page"}],
+                }
+            ],
+        }
+    )
+    website_sources = _new_estimate_sources(
+        {
+            "data_source_type": "website_crawl",
+            "website_info_list": {
+                "provider": "firecrawl",
+                "job_id": "job-1",
+                "urls": ["https://example.com/a", "https://example.com/b"],
+                "only_main_content": True,
+            },
+        }
+    )
 
-        assert status == 200
-        assert resp["total"] == 1
-        assert resp["data"][0]["embedding_available"] is True
+    assert upload_sources == (UploadFileEstimateSource("file-1"), UploadFileEstimateSource("file-2"))
+    assert notion_sources == (NotionEstimateSource("notion-workspace", "page-1", NotionPageType.PAGE, "credential-1"),)
+    assert website_sources == (
+        WebsiteEstimateSource("firecrawl", "job-1", "https://example.com/a", only_main_content=True),
+        WebsiteEstimateSource("firecrawl", "job-1", "https://example.com/b", only_main_content=True),
+    )
 
-    def test_get_with_ids_filter(self, app):
-        api = DatasetListApi()
-        method = unwrap(api.get)
 
-        current_user = self._mock_user()
-        datasets = [MagicMock()]
-        marshaled = [self._mock_dataset_dict()]
+@pytest.mark.parametrize(("value", "expected"), [("false", False), ("true", True), (False, False), (True, True)])
+def test_website_estimate_parses_boolean_values(value: str | bool, expected: bool) -> None:
+    sources = _new_estimate_sources(
+        {
+            "data_source_type": "website_crawl",
+            "website_info_list": {
+                "provider": "firecrawl",
+                "job_id": "job-1",
+                "urls": ["https://example.com"],
+                "only_main_content": value,
+            },
+        }
+    )
+    assert sources == (WebsiteEstimateSource("firecrawl", "job-1", "https://example.com", only_main_content=expected),)
 
-        with app.test_request_context("/datasets?ids=1&ids=2"):
-            with (
-                patch(
-                    "controllers.console.datasets.datasets.current_account_with_tenant",
-                    return_value=(current_user, "tenant-1"),
-                ),
-                patch.object(
-                    DatasetService,
-                    "get_datasets_by_ids",
-                    return_value=(datasets, 2),
-                ) as by_ids_mock,
-                patch(
-                    "controllers.console.datasets.datasets.marshal",
-                    return_value=marshaled,
-                ),
-                patch.object(
-                    ProviderManager,
-                    "get_configurations",
-                    return_value=MagicMock(get_models=lambda **_: []),
-                ),
-            ):
-                resp, status = method(api)
 
-        by_ids_mock.assert_called_once()
-        assert status == 200
-        assert resp["total"] == 2
+@pytest.mark.parametrize("values", [{"only_main_content": "invalid"}, {"urls": [42]}])
+def test_website_estimate_rejects_invalid_field_types(values: dict[str, object]) -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for WebsiteInfo\\\nonly_main_content|1 validation error for WebsiteInfo\\\nurls\\.0)"
+        ),
+    ):
+        _new_estimate_sources(
+            {
+                "data_source_type": "website_crawl",
+                "website_info_list": {
+                    "provider": "firecrawl",
+                    "job_id": "job-1",
+                    "urls": ["https://example.com"],
+                    **values,
+                },
+            }
+        )
 
-    def test_get_with_tag_ids(self, app):
-        api = DatasetListApi()
-        method = unwrap(api.get)
 
-        current_user = self._mock_user()
-        datasets = [MagicMock()]
-        marshaled = [self._mock_dataset_dict()]
+def test_new_estimate_sources_deduplicates_upload_ids_without_reordering() -> None:
+    sources = _new_estimate_sources(
+        {"data_source_type": "upload_file", "file_info_list": {"file_ids": ["file-2", "file-1", "file-2"]}}
+    )
 
-        with app.test_request_context("/datasets?tag_ids=tag1"):
-            with (
-                patch(
-                    "controllers.console.datasets.datasets.current_account_with_tenant",
-                    return_value=(current_user, "tenant-1"),
-                ),
-                patch.object(
-                    DatasetService,
-                    "get_datasets",
-                    return_value=(datasets, 1),
-                ),
-                patch(
-                    "controllers.console.datasets.datasets.marshal",
-                    return_value=marshaled,
-                ),
-                patch.object(
-                    ProviderManager,
-                    "get_configurations",
-                    return_value=MagicMock(get_models=lambda **_: []),
-                ),
-            ):
-                resp, status = method(api)
+    assert sources == (UploadFileEstimateSource("file-2"), UploadFileEstimateSource("file-1"))
 
-        assert status == 200
 
-    def test_embedding_available_false(self, app):
-        api = DatasetListApi()
-        method = unwrap(api.get)
+@pytest.mark.parametrize(
+    "info_list",
+    [
+        {"data_source_type": "upload_file", "file_info_list": {}},
+        {"data_source_type": "notion_import", "notion_info_list": [{"workspace_id": "workspace"}]},
+        {
+            "data_source_type": "notion_import",
+            "notion_info_list": [
+                {
+                    "workspace_id": "workspace",
+                    "credential_id": "credential",
+                    "pages": [{"page_id": "page", "type": "unknown"}],
+                }
+            ],
+        },
+        {"data_source_type": "unsupported"},
+    ],
+)
+def test_new_estimate_sources_rejects_malformed_transport_shapes(info_list: dict[str, object]) -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for FileInfo\\\nfile_ids|1 validation error for "
+            "list\\[NotionEstimateWorkspacePayload\\]\\\n0\\.pages\\.0\\.type|2 "
+            "validation errors for list\\[NotionEstimateWorkspacePayload\\]\\\n0\\."
+            "credential_id|Data source type not support)"
+        ),
+    ):
+        _new_estimate_sources(info_list)
 
-        current_user = self._mock_user()
-        datasets = [MagicMock()]
-        marshaled = [
-            self._mock_dataset_dict(
-                indexing_technique="high_quality",
-                embedding_model="text-embed",
-                embedding_model_provider="openai",
+
+@pytest.mark.parametrize(
+    ("error", "expected_http_error"),
+    [
+        (IndexingEstimateCredentialUnavailableError(), NotFoundError),
+        (EstimateSourceNotFoundError("source-1"), NotFoundError),
+        (DatasetNotFoundError(), NotFoundError),
+        (DatasetAccessDeniedError(), DatasetAccessDeniedRequestError),
+        (UnsupportedEstimateSourceError("unsupported"), InvalidArgumentError),
+        (IndexingEstimateProviderUnavailableError(), ProviderNotInitializeError),
+        (IndexingEstimateExecutionError(), IndexingEstimateError),
+    ],
+)
+def test_new_source_estimate_maps_application_errors(
+    error: Exception,
+    expected_http_error: type[Exception],
+) -> None:
+    estimates = MagicMock()
+    estimates.estimate_new_sources.side_effect = error
+    registry = SimpleNamespace(knowledge=SimpleNamespace(indexing_estimates=estimates))
+    api = DatasetIndexingEstimateApi()
+    method = unwrap(api.post)
+    payload = IndexingEstimatePayload(
+        info_list={"data_source_type": "upload_file", "file_info_list": {"file_ids": ["file-1"]}},
+        process_rule={"mode": "automatic"},
+        indexing_technique="economy",
+    )
+    context = RequestContext("request-1", None, "account-1", "workspace-1")
+
+    with patch("controllers.console.datasets.datasets.application_services", return_value=registry):
+        with pytest.raises(expected_http_error):
+            method(api, payload, context)
+
+
+@pytest.mark.parametrize(
+    ("dataset_id", "scene", "locator_type"),
+    [
+        ("dataset-1", RBACPermission.DATASET_USE, DatasetId),
+        (None, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace),
+    ],
+)
+def test_new_source_estimate_authorizes_before_execution(dataset_id, scene, locator_type):
+    estimates = MagicMock()
+    registry = SimpleNamespace(knowledge=SimpleNamespace(indexing_estimates=estimates))
+    payload = IndexingEstimatePayload(
+        info_list={"data_source_type": "upload_file", "file_info_list": {"file_ids": ["file-1"]}},
+        process_rule={"mode": "automatic"},
+        indexing_technique="economy",
+        dataset_id=dataset_id,
+    )
+    with (
+        patch.object(controller, "application_services", return_value=registry),
+        patch.object(controller, "enforce_rbac_checks", side_effect=Forbidden) as enforce_checks,
+        pytest.raises(Forbidden),
+    ):
+        unwrap(DatasetIndexingEstimateApi.post)(DatasetIndexingEstimateApi(), payload, CONTEXT)
+
+    enforce_checks.assert_called_once()
+    kwargs = enforce_checks.call_args.kwargs
+    assert kwargs["tenant_id"] == CONTEXT.active_workspace_id
+    assert kwargs["account_id"] == CONTEXT.account_id
+    assert kwargs["path_args"] == ({"dataset_id": dataset_id} if dataset_id else None)
+    [check] = kwargs["checks"]
+    assert check.scene is scene
+    assert isinstance(check.locator, locator_type)
+    estimates.estimate_new_sources.assert_not_called()
+
+
+def _upgrade_job(job_id: str = "upgrade-job-1") -> KnowledgeFSUpgradeJob:
+    job = KnowledgeFSUpgradeJob(
+        tenant_id="tenant-1",
+        old_dataset_id=str(DATASET_ID),
+        requested_by_account_id="account-1",
+        owner_account_id="account-1",
+        idempotency_key="upgrade-request-1",
+        snapshot_at=datetime.datetime(2026, 8, 17, tzinfo=datetime.UTC),
+        config_snapshot={},
+        permission_snapshot={},
+        app_binding_snapshot=[],
+        tag_ids_snapshot=[],
+        status=KnowledgeFSUpgradeJobStatus.QUEUED,
+        stage=KnowledgeFSUpgradeStage.VALIDATING,
+        total_documents=1,
+    )
+    job.id = job_id
+    return job
+
+
+@dataclass(frozen=True)
+class _UpgradeKnowledgeServices:
+    upgrades: KnowledgeUpgradeApplicationService
+
+
+@dataclass(frozen=True)
+class _UpgradeApplicationServices:
+    knowledge: _UpgradeKnowledgeServices
+
+
+@pytest.fixture
+def upgrades(monkeypatch):
+    service = create_autospec(KnowledgeUpgradeApplicationService, instance=True, spec_set=True)
+    services = _UpgradeApplicationServices(knowledge=_UpgradeKnowledgeServices(upgrades=service))
+    monkeypatch.setattr(controller, "application_services", lambda: services)
+    return service
+
+
+def test_upgrade_writes_require_dataset_edit_permission() -> None:
+    for method in (DatasetKnowledgeFSUpgradeApi.post, DatasetKnowledgeFSUpgradeJobApi.post):
+        [check] = rbac_checks(method)
+        assert check.scene is RBACPermission.DATASET_EDIT
+        assert isinstance(check.locator, DatasetId)
+    [check] = rbac_checks(DatasetKnowledgeFSUpgradeJobsApi.get)
+    assert check.scene is RBACPermission.DATASET_READONLY
+    assert isinstance(check.locator, Workspace)
+
+
+def test_upgrade_jobs_serializes_recoverable_jobs(app, upgrades):
+    upgrades.list_recoverable_jobs.return_value = [_upgrade_job(job_id="job-1")]
+    with app.test_request_context("/datasets/knowledge-fs-upgrade-jobs"):
+        response = unwrap(DatasetKnowledgeFSUpgradeJobsApi.get)(DatasetKnowledgeFSUpgradeJobsApi(), CONTEXT)
+    upgrades.list_recoverable_jobs.assert_called_once_with(CONTEXT)
+    assert [job["id"] for job in response["data"]] == ["job-1"]
+
+
+def test_upgrade_start_forwards_idempotency_key(app, upgrades):
+    upgrades.start.return_value = _upgrade_job()
+    with app.test_request_context(
+        f"/datasets/{DATASET_ID}/knowledge-fs-upgrades", headers={"Idempotency-Key": "upgrade-request-1"}
+    ):
+        response, status = unwrap(DatasetKnowledgeFSUpgradeApi.post)(
+            DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID
+        )
+    assert status == 202
+    assert response["id"] == "upgrade-job-1"
+    upgrades.start.assert_called_once_with(
+        CONTEXT, dataset_id=str(DATASET_ID), idempotency_key="upgrade-request-1", models=None
+    )
+
+
+def test_upgrade_start_forwards_all_model_choices(app, upgrades):
+    upgrades.start.return_value = _upgrade_job()
+    choices = {
+        "embedding": {"provider": "langgenius/openai/openai", "model": "embedding"},
+        "rerank": {"provider": "langgenius/cohere/cohere", "model": "rerank"},
+        "reasoning": {"provider": "langgenius/anthropic/anthropic", "model": "reasoning"},
+    }
+    with app.test_request_context(
+        f"/datasets/{DATASET_ID}/knowledge-fs-upgrades",
+        method="POST",
+        headers={"Idempotency-Key": "upgrade-request-1"},
+        json={"models": choices},
+    ):
+        response, status = unwrap(DatasetKnowledgeFSUpgradeApi.post)(
+            DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID
+        )
+    assert status == 202
+    assert response["id"] == "upgrade-job-1"
+    upgrades.start.assert_called_once_with(
+        CONTEXT,
+        dataset_id=str(DATASET_ID),
+        idempotency_key="upgrade-request-1",
+        models=KnowledgeFSUpgradeModelsPayload.model_validate(choices),
+    )
+
+
+def test_upgrade_start_rejects_incomplete_model_selection(app, upgrades):
+    with (
+        app.test_request_context(
+            f"/datasets/{DATASET_ID}/knowledge-fs-upgrades",
+            method="POST",
+            headers={"Idempotency-Key": "upgrade-request-1"},
+            json={"models": {"embedding": {"provider": "openai", "model": "embedding"}}},
+        ),
+        pytest.raises(BadRequest, match="Invalid upgrade model selection"),
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeApi.post)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
+
+    upgrades.start.assert_not_called()
+
+
+def test_upgrade_start_returns_field_specific_model_errors(app, upgrades):
+    upgrades.start.side_effect = KnowledgeFSUpgradeModelsUnavailableError(
+        [
+            KnowledgeFSUpgradeModelIssueResponse(
+                field="embedding", reason="credential-removed", provider="openai", model="embedding"
             )
         ]
-
-        config = MagicMock()
-        config.get_models.return_value = []  # model not available
-
-        with app.test_request_context("/datasets"):
-            with (
-                patch(
-                    "controllers.console.datasets.datasets.current_account_with_tenant",
-                    return_value=(current_user, "tenant-1"),
-                ),
-                patch.object(
-                    DatasetService,
-                    "get_datasets",
-                    return_value=(datasets, 1),
-                ),
-                patch(
-                    "controllers.console.datasets.datasets.marshal",
-                    return_value=marshaled,
-                ),
-                patch.object(
-                    ProviderManager,
-                    "get_configurations",
-                    return_value=config,
-                ),
-            ):
-                resp, status = method(api)
-
-        assert resp["data"][0]["embedding_available"] is False
-
-    def test_partial_members_permission(self, app):
-        api = DatasetListApi()
-        method = unwrap(api.get)
-
-        current_user = self._mock_user()
-        datasets = [MagicMock()]
-        marshaled = [self._mock_dataset_dict(permission="partial_members")]
-
-        with app.test_request_context("/datasets"):
-            with (
-                patch(
-                    "controllers.console.datasets.datasets.current_account_with_tenant",
-                    return_value=(current_user, "tenant-1"),
-                ),
-                patch.object(
-                    DatasetService,
-                    "get_datasets",
-                    return_value=(datasets, 1),
-                ),
-                patch(
-                    "controllers.console.datasets.datasets.db.session.execute",
-                    return_value=MagicMock(all=lambda: [("ds-1", "u1")]),
-                ),
-                patch(
-                    "controllers.console.datasets.datasets.marshal",
-                    return_value=marshaled,
-                ),
-                patch.object(
-                    ProviderManager,
-                    "get_configurations",
-                    return_value=MagicMock(get_models=lambda **_: []),
-                ),
-            ):
-                resp, status = method(api)
-
-        assert resp["data"][0]["partial_member_list"] == ["u1"]
-
-
-class TestDatasetListApiPost:
-    def test_post_success(self, app):
-        api = DatasetListApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "name": "My Dataset",
-            "description": "desc",
-            "indexing_technique": "economy",
-            "provider": "vendor",
-        }
-
-        user = MagicMock()
-        user.is_dataset_editor = True
-
-        dataset = MagicMock()
-        # ---- minimal required fields for marshal ----
-        dataset.embedding_available = True
-        dataset.built_in_field_enabled = False
-        dataset.is_published = False
-        dataset.enable_api = False
-        dataset.is_multimodal = False
-        dataset.documents = []
-        dataset.retrieval_model_dict = {}
-        dataset.tags = []
-        dataset.external_knowledge_info = None
-        dataset.external_retrieval_model = None
-        dataset.doc_metadata = []
-        dataset.icon_info = None
-        dataset.summary_index_setting = MagicMock()
-        dataset.summary_index_setting.enable = False
-
-        with (
-            app.test_request_context("/datasets", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
-            patch.object(
-                DatasetService,
-                "create_empty_dataset",
-                return_value=dataset,
-            ),
-        ):
-            _, status = method(api)
-
-        assert status == 201
-
-    def test_post_forbidden(self, app):
-        api = DatasetListApi()
-        method = unwrap(api.post)
-
-        payload = {"name": "test"}
-
-        user = MagicMock()
-        user.is_dataset_editor = False
-
-        with (
-            app.test_request_context("/datasets", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api)
-
-    def test_post_duplicate_name(self, app):
-        api = DatasetListApi()
-        method = unwrap(api.post)
-
-        payload = {"name": "duplicate"}
-
-        user = MagicMock()
-        user.is_dataset_editor = True
-
-        with (
-            app.test_request_context("/datasets", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
-            patch.object(
-                DatasetService,
-                "create_empty_dataset",
-                side_effect=services.errors.dataset.DatasetNameDuplicateError(),
-            ),
-        ):
-            with pytest.raises(DatasetNameDuplicateError):
-                method(api)
-
-    def test_post_invalid_payload_missing_name(self, app):
-        api = DatasetListApi()
-        method = unwrap(api.post)
-
-        with app.test_request_context("/datasets", json={}), patch.object(type(console_ns), "payload", {}):
-            with pytest.raises(ValueError):
-                method(api)
-
-    def test_post_invalid_indexing_technique(self, app):
-        api = DatasetListApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "name": "bad",
-            "indexing_technique": "invalid-tech",
-        }
-
-        with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
-            with pytest.raises(ValueError, match="Invalid indexing technique"):
-                method(api)
-
-    def test_post_invalid_provider(self, app):
-        api = DatasetListApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "name": "bad",
-            "provider": "unknown",
-        }
-
-        with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
-            with pytest.raises(ValueError, match="Invalid provider"):
-                method(api)
-
-
-class TestDatasetApiGet:
-    def test_get_success_basic(self, app):
-        api = DatasetApi()
-        method = unwrap(api.get)
-
-        dataset_id = "123e4567-e89b-12d3-a456-426614174000"
-
-        user = MagicMock()
-        tenant_id = "tenant-1"
-
-        dataset = MagicMock()
-        dataset.id = dataset_id
-        dataset.indexing_technique = "economy"
-        dataset.embedding_model_provider = None
-
-        dataset.embedding_available = True
-        dataset.built_in_field_enabled = False
-        dataset.is_published = False
-        dataset.enable_api = False
-        dataset.is_multimodal = False
-        dataset.documents = []
-        dataset.retrieval_model_dict = {}
-        dataset.tags = []
-        dataset.external_knowledge_info = None
-        dataset.external_retrieval_model = None
-        dataset.doc_metadata = []
-        dataset.icon_info = None
-        dataset.summary_index_setting = MagicMock()
-        dataset.summary_index_setting.enable = False
-        dataset.permission = "only_me"
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(user, tenant_id),
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetService,
-                "check_dataset_permission",
-                return_value=None,
-            ),
-            patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
-        ):
-            # embedding models exist → embedding_available stays True
-            provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
-
-            data, status = method(api, dataset_id)
-
-        assert status == 200
-        assert data["embedding_available"] is True
-
-    def test_get_dataset_not_found(self, app):
-        api = DatasetApi()
-        method = unwrap(api.get)
-
-        dataset_id = "missing-id"
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant"),
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, dataset_id)
-
-    def test_get_permission_denied(self, app):
-        api = DatasetApi()
-        method = unwrap(api.get)
-
-        dataset_id = "dataset-id"
-        dataset = MagicMock()
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant"),
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetService,
-                "check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no access"),
-            ),
-        ):
-            with pytest.raises(Forbidden, match="no access"):
-                method(api, dataset_id)
-
-    def test_get_high_quality_embedding_unavailable(self, app):
-        api = DatasetApi()
-        method = unwrap(api.get)
-
-        dataset_id = "dataset-id"
-        user = MagicMock()
-        tenant_id = "tenant-1"
-
-        dataset = MagicMock()
-        dataset.id = dataset_id
-        dataset.indexing_technique = "high_quality"
-        dataset.embedding_model = "text-embedding"
-        dataset.embedding_model_provider = "openai"
-
-        dataset.embedding_available = True
-        dataset.built_in_field_enabled = False
-        dataset.is_published = False
-        dataset.enable_api = False
-        dataset.is_multimodal = False
-        dataset.documents = []
-        dataset.retrieval_model_dict = {}
-        dataset.tags = []
-        dataset.external_knowledge_info = None
-        dataset.external_retrieval_model = None
-        dataset.doc_metadata = []
-        dataset.icon_info = None
-        dataset.summary_index_setting = MagicMock()
-        dataset.summary_index_setting.enable = False
-        dataset.permission = "only_me"
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(user, tenant_id),
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetService,
-                "check_dataset_permission",
-                return_value=None,
-            ),
-            patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
-        ):
-            # embedding model NOT configured
-            provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
-
-            data, _ = method(api, dataset_id)
-
-        assert data["embedding_available"] is False
-
-    def test_get_partial_members_permission(self, app):
-        api = DatasetApi()
-        method = unwrap(api.get)
-
-        dataset_id = "dataset-id"
-
-        dataset = MagicMock()
-        dataset.id = dataset_id
-        dataset.indexing_technique = "economy"
-        dataset.embedding_model_provider = None
-        dataset.permission = "partial_members"
-
-        dataset.embedding_available = True
-        dataset.built_in_field_enabled = False
-        dataset.is_published = False
-        dataset.enable_api = False
-        dataset.is_multimodal = False
-        dataset.documents = []
-        dataset.retrieval_model_dict = {}
-        dataset.tags = []
-        dataset.external_knowledge_info = None
-        dataset.external_retrieval_model = None
-        dataset.doc_metadata = []
-        dataset.icon_info = None
-        dataset.summary_index_setting = MagicMock()
-        dataset.summary_index_setting.enable = False
-
-        partial_members = [{"id": "u1"}, {"id": "u2"}]
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant"),
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetService,
-                "check_dataset_permission",
-                return_value=None,
-            ),
-            patch.object(
-                DatasetPermissionService,
-                "get_dataset_partial_member_list",
-                return_value=partial_members,
-            ),
-            patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
-        ):
-            provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
-
-            data, _ = method(api, dataset_id)
-
-        assert data["partial_member_list"] == partial_members
-
-
-class TestDatasetApiPatch:
-    def test_patch_success_basic(self, app):
-        api = DatasetApi()
-        method = unwrap(api.patch)
-
-        dataset_id = "dataset-id"
-
-        payload = {
-            "name": "updated-name",
-            "description": "updated description",
-        }
-
-        user = MagicMock()
-        tenant_id = "tenant-1"
-
-        dataset = MagicMock()
-        dataset.id = dataset_id
-        dataset.tenant_id = tenant_id
-        dataset.permission = "only_me"
-        dataset.indexing_technique = "economy"
-        dataset.embedding_model_provider = None
-
-        dataset.embedding_available = True
-        dataset.built_in_field_enabled = False
-        dataset.is_published = False
-        dataset.enable_api = False
-        dataset.is_multimodal = False
-        dataset.documents = []
-        dataset.retrieval_model_dict = {}
-        dataset.tags = []
-        dataset.external_knowledge_info = None
-        dataset.external_retrieval_model = None
-        dataset.doc_metadata = []
-        dataset.icon_info = None
-        dataset.summary_index_setting = MagicMock()
-        dataset.summary_index_setting.enable = False
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(user, tenant_id),
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetPermissionService,
-                "check_permission",
-                return_value=None,
-            ),
-            patch.object(
-                DatasetService,
-                "update_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetPermissionService,
-                "get_dataset_partial_member_list",
-                return_value=[],
-            ),
-        ):
-            result, status = method(api, dataset_id)
-
-        assert status == 200
-        assert result["partial_member_list"] == []
-
-    def test_patch_dataset_not_found(self, app):
-        api = DatasetApi()
-        method = unwrap(api.patch)
-
-        with (
-            app.test_request_context("/datasets/missing"),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, "missing")
-
-    def test_patch_permission_denied(self, app):
-        api = DatasetApi()
-        method = unwrap(api.patch)
-
-        dataset_id = "dataset-id"
-        dataset = MagicMock()
-
-        payload = {"name": "x"}
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch.object(type(console_ns), "payload", payload),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant"),
-            ),
-            patch.object(
-                DatasetPermissionService,
-                "check_permission",
-                side_effect=Forbidden("no permission"),
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, dataset_id)
-
-    def test_patch_partial_members_update(self, app):
-        api = DatasetApi()
-        method = unwrap(api.patch)
-
-        dataset_id = "dataset-id"
-
-        payload = {
-            "permission": "partial_members",
-            "partial_member_list": [{"id": "u1"}, {"id": "u2"}],
-        }
-
-        dataset = MagicMock()
-        dataset.id = dataset_id
-        dataset.permission = "partial_members"
-        dataset.indexing_technique = "economy"
-        dataset.embedding_model_provider = None
-
-        dataset.embedding_available = True
-        dataset.built_in_field_enabled = False
-        dataset.is_published = False
-        dataset.enable_api = False
-        dataset.is_multimodal = False
-        dataset.documents = []
-        dataset.retrieval_model_dict = {}
-        dataset.tags = []
-        dataset.external_knowledge_info = None
-        dataset.external_retrieval_model = None
-        dataset.doc_metadata = []
-        dataset.icon_info = None
-        dataset.summary_index_setting = MagicMock()
-        dataset.summary_index_setting.enable = False
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant"),
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetPermissionService,
-                "check_permission",
-                return_value=None,
-            ),
-            patch.object(
-                DatasetService,
-                "update_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetPermissionService,
-                "update_partial_member_list",
-                return_value=None,
-            ),
-            patch.object(
-                DatasetPermissionService,
-                "get_dataset_partial_member_list",
-                return_value=payload["partial_member_list"],
-            ),
-        ):
-            result, _ = method(api, dataset_id)
-
-        assert result["partial_member_list"] == payload["partial_member_list"]
-
-    def test_patch_clear_partial_members(self, app):
-        api = DatasetApi()
-        method = unwrap(api.patch)
-
-        dataset_id = "dataset-id"
-
-        payload = {
-            "permission": "only_me",
-        }
-
-        dataset = MagicMock()
-        dataset.id = dataset_id
-        dataset.permission = "only_me"
-        dataset.indexing_technique = "economy"
-        dataset.embedding_model_provider = None
-
-        dataset.embedding_available = True
-        dataset.built_in_field_enabled = False
-        dataset.is_published = False
-        dataset.enable_api = False
-        dataset.is_multimodal = False
-        dataset.documents = []
-        dataset.retrieval_model_dict = {}
-        dataset.tags = []
-        dataset.external_knowledge_info = None
-        dataset.external_retrieval_model = None
-        dataset.doc_metadata = []
-        dataset.icon_info = None
-        dataset.summary_index_setting = MagicMock()
-        dataset.summary_index_setting.enable = False
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant"),
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetPermissionService,
-                "check_permission",
-                return_value=None,
-            ),
-            patch.object(
-                DatasetService,
-                "update_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetPermissionService,
-                "clear_partial_member_list",
-                return_value=None,
-            ),
-            patch.object(
-                DatasetPermissionService,
-                "get_dataset_partial_member_list",
-                return_value=[],
-            ),
-        ):
-            result, _ = method(api, dataset_id)
-
-        assert result["partial_member_list"] == []
-
-
-class TestDatasetApiDelete:
-    def test_delete_success(self, app):
-        api = DatasetApi()
-        method = unwrap(api.delete)
-
-        dataset_id = "dataset-id"
-        user = MagicMock()
-        user.has_edit_permission = True
-        user.is_dataset_operator = False
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch.object(
-                DatasetService,
-                "delete_dataset",
-                return_value=True,
-            ),
-            patch.object(
-                DatasetPermissionService,
-                "clear_partial_member_list",
-                return_value=None,
-            ),
-        ):
-            result, status = method(api, dataset_id)
-
-        assert status == 204
-        assert result == {"result": "success"}
-
-    def test_delete_forbidden_no_permission(self, app):
-        api = DatasetApi()
-        method = unwrap(api.delete)
-
-        dataset_id = "dataset-id"
-        user = MagicMock()
-        user.has_edit_permission = False
-        user.is_dataset_operator = False
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, dataset_id)
-
-    def test_delete_dataset_not_found(self, app):
-        api = DatasetApi()
-        method = unwrap(api.delete)
-
-        dataset_id = "missing-dataset"
-        user = MagicMock()
-        user.has_edit_permission = True
-        user.is_dataset_operator = False
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch.object(
-                DatasetService,
-                "delete_dataset",
-                return_value=False,
-            ),
-        ):
-            with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, dataset_id)
-
-    def test_delete_dataset_in_use(self, app):
-        api = DatasetApi()
-        method = unwrap(api.delete)
-
-        dataset_id = "dataset-id"
-        user = MagicMock()
-        user.has_edit_permission = True
-        user.is_dataset_operator = False
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch.object(
-                DatasetService,
-                "delete_dataset",
-                side_effect=services.errors.dataset.DatasetInUseError(),
-            ),
-        ):
-            with pytest.raises(DatasetInUseError):
-                method(api, dataset_id)
-
-
-class TestDatasetUseCheckApi:
-    def test_get_use_check_true(self, app):
-        api = DatasetUseCheckApi()
-        method = unwrap(api.get)
-
-        dataset_id = "dataset-id"
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}/use-check"),
-            patch.object(
-                DatasetService,
-                "dataset_use_check",
-                return_value=True,
-            ),
-        ):
-            result, status = method(api, dataset_id)
-
-        assert status == 200
-        assert result == {"is_using": True}
-
-    def test_get_use_check_false(self, app):
-        api = DatasetUseCheckApi()
-        method = unwrap(api.get)
-
-        dataset_id = "dataset-id"
-
-        with (
-            app.test_request_context(f"/datasets/{dataset_id}/use-check"),
-            patch.object(
-                DatasetService,
-                "dataset_use_check",
-                return_value=False,
-            ),
-        ):
-            result, status = method(api, dataset_id)
-
-        assert status == 200
-        assert result == {"is_using": False}
-
-
-class TestDatasetQueryApi:
-    def test_get_queries_success(self, app):
-        api = DatasetQueryApi()
-        method = unwrap(api.get)
-
-        dataset_id = "dataset-id"
-
-        current_user = MagicMock()
-
-        dataset = MagicMock()
-        dataset.id = dataset_id
-
-        queries = [MagicMock(), MagicMock()]
-
-        with (
-            app.test_request_context("/datasets/queries?page=1&limit=20"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(current_user, "tenant-1"),
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetService,
-                "check_dataset_permission",
-                return_value=None,
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset_queries",
-                return_value=(queries, 2),
-            ),
-        ):
-            response, status = method(api, dataset_id)
-
-        assert status == 200
-        assert response["total"] == 2
-        assert response["page"] == 1
-        assert response["limit"] == 20
-        assert response["has_more"] is False
-        assert len(response["data"]) == 2
-
-    def test_get_queries_dataset_not_found(self, app):
-        api = DatasetQueryApi()
-        method = unwrap(api.get)
-
-        dataset_id = "dataset-id"
-        current_user = MagicMock()
-
-        with (
-            app.test_request_context("/datasets/queries"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(current_user, "tenant-1"),
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, dataset_id)
-
-    def test_get_queries_permission_denied(self, app):
-        api = DatasetQueryApi()
-        method = unwrap(api.get)
-
-        dataset_id = "dataset-id"
-        current_user = MagicMock()
-
-        dataset = MagicMock()
-
-        with (
-            app.test_request_context("/datasets/queries"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(current_user, "tenant-1"),
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetService,
-                "check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no access"),
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, dataset_id)
-
-    def test_get_queries_pagination_has_more(self, app):
-        api = DatasetQueryApi()
-        method = unwrap(api.get)
-
-        dataset_id = "dataset-id"
-        current_user = MagicMock()
-
-        dataset = MagicMock()
-        dataset.id = dataset_id
-
-        queries = [MagicMock() for _ in range(20)]
-
-        with (
-            app.test_request_context("/datasets/queries?page=1&limit=20"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(current_user, "tenant-1"),
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset",
-                return_value=dataset,
-            ),
-            patch.object(
-                DatasetService,
-                "check_dataset_permission",
-                return_value=None,
-            ),
-            patch.object(
-                DatasetService,
-                "get_dataset_queries",
-                return_value=(queries, 40),
-            ),
-        ):
-            response, status = method(api, dataset_id)
-
-        assert status == 200
-        assert response["has_more"] is True
-        assert len(response["data"]) == 20
-
-
-class TestDatasetIndexingEstimateApi:
-    def _upload_file(self, *, tenant_id: str = "tenant-1", file_id: str = "file-1") -> UploadFile:
-        upload_file = UploadFile(
-            tenant_id=tenant_id,
-            storage_type=StorageType.LOCAL,
-            key="key",
-            name="name.txt",
-            size=1,
-            extension="txt",
-            mime_type="text/plain",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="user-1",
-            created_at=datetime.datetime.now(tz=datetime.UTC),
-            used=False,
-        )
-        upload_file.id = file_id
-        return upload_file
-
-    def _base_payload(self):
-        return {
-            "info_list": {
-                "data_source_type": "upload_file",
-                "file_info_list": {
-                    "file_ids": ["file-1"],
+    )
+    with (
+        app.test_request_context(
+            f"/datasets/{DATASET_ID}/knowledge-fs-upgrades",
+            method="POST",
+            headers={"Idempotency-Key": "upgrade-request-1"},
+        ),
+        pytest.raises(KnowledgeFSUpgradeModelsUnavailableHTTPError) as error,
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeApi.post)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
+    assert error.value.data is not None
+    assert error.value.data["details"]["issues"] == [
+        {"field": "embedding", "reason": "credential-removed", "provider": "openai", "model": "embedding"}
+    ]
+
+
+def test_upgrade_start_requires_idempotency_key(app, upgrades):
+    with (
+        app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades"),
+        pytest.raises(BadRequest, match="Idempotency-Key"),
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeApi.post)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
+    upgrades.start.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("error", "http_error"),
+    [
+        (KnowledgeFSUpgradeUnavailableError(), NotFound),
+        (DatasetNotFoundError(), NotFound),
+        (DatasetAccessDeniedError(), Forbidden),
+        (KnowledgeFSUpgradeConflictError("already running"), Conflict),
+    ],
+)
+def test_upgrade_start_maps_domain_errors(app, upgrades, error, http_error):
+    upgrades.start.side_effect = error
+    with (
+        app.test_request_context(
+            f"/datasets/{DATASET_ID}/knowledge-fs-upgrades", headers={"Idempotency-Key": "upgrade-request-1"}
+        ),
+        pytest.raises(http_error),
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeApi.post)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
+
+
+def test_upgrade_discovery_serializes_service_result(app, upgrades):
+    upgrades.discovery.return_value = KnowledgeFSUpgradePreparationResponse.model_validate(
+        {
+            "job": None,
+            "can_upgrade": True,
+            "can_retry": False,
+            "models": {
+                "embedding": {
+                    "value": {"provider": "openai", "model": "embedding"},
+                    "source": "legacy",
+                    "available": True,
+                },
+                "rerank": {
+                    "value": {"provider": "cohere", "model": "rerank"},
+                    "source": "workspace_default",
+                    "available": True,
+                },
+                "reasoning": {
+                    "value": {"provider": "anthropic", "model": "reasoning"},
+                    "source": "workspace_default",
+                    "available": False,
+                    "unavailable_reason": "credential-removed",
                 },
             },
-            "process_rule": {"chunk_size": 100},
-            "indexing_technique": "high_quality",
-            "doc_form": IndexStructureType.PARAGRAPH_INDEX,
-            "doc_language": "English",
-            "dataset_id": None,
         }
-
-    def test_post_success_upload_file(self, app):
-        api = DatasetIndexingEstimateApi()
-        method = unwrap(api.post)
-
-        payload = self._base_payload()
-
-        mock_file = self._upload_file()
-
-        mock_response = MagicMock()
-        mock_response.model_dump.return_value = {"tokens": 100}
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch.object(
-                type(console_ns),
-                "payload",
-                new_callable=PropertyMock,
-                return_value=payload,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DocumentService.estimate_args_validate",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalars",
-                return_value=MagicMock(all=lambda: [mock_file]),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate",
-                return_value=mock_response,
-            ),
-        ):
-            response, status = method(api)
-
-        assert status == 200
-        assert response == {"tokens": 100}
-
-    def test_post_file_not_found(self, app):
-        api = DatasetIndexingEstimateApi()
-        method = unwrap(api.post)
-
-        payload = self._base_payload()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch.object(
-                type(console_ns),
-                "payload",
-                new_callable=PropertyMock,
-                return_value=payload,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DocumentService.estimate_args_validate",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalars",
-                return_value=MagicMock(all=lambda: None),
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api)
-
-    def test_post_llm_bad_request_error(self, app):
-        api = DatasetIndexingEstimateApi()
-        method = unwrap(api.post)
-        mock_file = self._upload_file()
-
-        payload = self._base_payload()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch.object(
-                type(console_ns),
-                "payload",
-                new_callable=PropertyMock,
-                return_value=payload,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DocumentService.estimate_args_validate",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalars",
-                return_value=MagicMock(all=lambda: [mock_file]),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate",
-                side_effect=LLMBadRequestError(),
-            ),
-        ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(api)
-
-    def test_post_provider_token_not_init(self, app):
-        api = DatasetIndexingEstimateApi()
-        method = unwrap(api.post)
-        mock_file = self._upload_file()
-
-        payload = self._base_payload()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch.object(
-                type(console_ns),
-                "payload",
-                new_callable=PropertyMock,
-                return_value=payload,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DocumentService.estimate_args_validate",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalars",
-                return_value=MagicMock(all=lambda: [mock_file]),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate",
-                side_effect=ProviderTokenNotInitError("token missing"),
-            ),
-        ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(api)
-
-    def test_post_generic_exception(self, app):
-        api = DatasetIndexingEstimateApi()
-        method = unwrap(api.post)
-        mock_file = self._upload_file()
-
-        payload = self._base_payload()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch.object(
-                type(console_ns),
-                "payload",
-                new_callable=PropertyMock,
-                return_value=payload,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DocumentService.estimate_args_validate",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalars",
-                return_value=MagicMock(all=lambda: [mock_file]),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.IndexingRunner.indexing_estimate",
-                side_effect=Exception("boom"),
-            ),
-        ):
-            with pytest.raises(IndexingEstimateError):
-                method(api)
-
-
-class TestDatasetRelatedAppListApi:
-    def test_get_success(self, app):
-        api = DatasetRelatedAppListApi()
-        method = unwrap(api.get)
-
-        dataset = MagicMock()
-        dataset.id = "dataset-1"
-
-        app1 = MagicMock()
-        app2 = MagicMock()
-
-        join1 = MagicMock(app=app1)
-        join2 = MagicMock(app=app2)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_related_apps",
-                return_value=[join1, join2],
-            ),
-        ):
-            response, status = method(api, "dataset-1")
-
-        assert status == 200
-        assert response["total"] == 2
-        assert response["data"] == [app1, app2]
-
-    def test_get_dataset_not_found(self, app):
-        api = DatasetRelatedAppListApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_dataset",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "dataset-1")
-
-    def test_get_permission_denied(self, app):
-        api = DatasetRelatedAppListApi()
-        method = unwrap(api.get)
-
-        dataset = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no permission"),
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, "dataset-1")
-
-    def test_get_filters_none_apps(self, app):
-        api = DatasetRelatedAppListApi()
-        method = unwrap(api.get)
-
-        dataset = MagicMock()
-        dataset.id = "dataset-1"
-
-        app1 = MagicMock()
-
-        join1 = MagicMock(app=app1)
-        join2 = MagicMock(app=None)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_related_apps",
-                return_value=[join1, join2],
-            ),
-        ):
-            response, status = method(api, "dataset-1")
-
-        assert status == 200
-        assert response["total"] == 1
-        assert response["data"] == [app1]
-
-
-class TestDatasetIndexingStatusApi:
-    def test_get_success_with_documents(self, app):
-        api = DatasetIndexingStatusApi()
-        method = unwrap(api.get)
-
-        document = MagicMock()
-        document.id = "doc-1"
-        document.indexing_status = "completed"
-        document.processing_started_at = None
-        document.parsing_completed_at = None
-        document.cleaning_completed_at = None
-        document.splitting_completed_at = None
-        document.completed_at = None
-        document.paused_at = None
-        document.error = None
-        document.stopped_at = None
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalars",
-                return_value=MagicMock(all=lambda: [document]),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalar",
-                return_value=3,
-            ),
-        ):
-            response, status = method(api, "dataset-1")
-
-        assert status == 200
-        assert "data" in response
-        assert len(response["data"]) == 1
-
-        item = response["data"][0]
-        assert item["completed_segments"] == 3
-        assert item["total_segments"] == 3
-
-    def test_get_success_no_documents(self, app):
-        api = DatasetIndexingStatusApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalars",
-                return_value=MagicMock(all=lambda: []),
-            ),
-        ):
-            response, status = method(api, "dataset-1")
-
-        assert status == 200
-        assert response == {"data": []}
-
-    def test_segment_counts_different_values(self, app):
-        api = DatasetIndexingStatusApi()
-        method = unwrap(api.get)
-
-        document = MagicMock()
-        document.id = "doc-1"
-        document.indexing_status = "indexing"
-        document.processing_started_at = None
-        document.parsing_completed_at = None
-        document.cleaning_completed_at = None
-        document.splitting_completed_at = None
-        document.completed_at = None
-        document.paused_at = None
-        document.error = None
-        document.stopped_at = None
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalars",
-                return_value=MagicMock(all=lambda: [document]),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalar",
-                side_effect=[2, 5],
-            ),
-        ):
-            response, status = method(api, "dataset-1")
-
-        assert status == 200
-        item = response["data"][0]
-        assert item["completed_segments"] == 2
-        assert item["total_segments"] == 5
-
-
-class TestDatasetApiKeyApi:
-    def test_get_api_keys_success(self, app):
-        api = DatasetApiKeyApi()
-        method = unwrap(api.get)
-
-        mock_key_1 = MagicMock(spec=ApiToken)
-        mock_key_1.id = "key-1"
-        mock_key_1.type = "dataset"
-        mock_key_1.token = "ds-abc"
-        mock_key_1.last_used_at = None
-        mock_key_1.created_at = None
-        mock_key_2 = MagicMock(spec=ApiToken)
-        mock_key_2.id = "key-2"
-        mock_key_2.type = "dataset"
-        mock_key_2.token = "ds-def"
-        mock_key_2.last_used_at = None
-        mock_key_2.created_at = None
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalars",
-                return_value=MagicMock(all=lambda: [mock_key_1, mock_key_2]),
-            ),
-        ):
-            response = method(api)
-
-        assert "data" in response
-        assert len(response["data"]) == 2
-        assert response["data"][0]["id"] == "key-1"
-        assert response["data"][0]["token"] == "ds-abc"
-        assert response["data"][1]["id"] == "key-2"
-        assert response["data"][1]["token"] == "ds-def"
-
-    def test_post_create_api_key_success(self, app):
-        api = DatasetApiKeyApi()
-        method = unwrap(api.post)
-
-        mock_token = MagicMock()
-        mock_token.id = "new-key-id"
-        mock_token.last_used_at = None
-        mock_token.created_at = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
-
-        mock_api_token_cls = MagicMock()
-        mock_api_token_cls.return_value = mock_token
-        mock_api_token_cls.generate_api_key.return_value = "dataset-abc123"
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalar",
-                return_value=3,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.ApiToken",
-                mock_api_token_cls,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.add",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.commit",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api)
-
-        assert status == 200
-        assert isinstance(response, dict)
-        assert response["id"] == "new-key-id"
-        assert response["token"] == "dataset-abc123"
-        assert response["type"] == "dataset"
-        assert response["created_at"] is not None
-
-    def test_post_exceed_max_keys(self, app):
-        api = DatasetApiKeyApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalar",
-                return_value=10,
-            ),
-        ):
-            with pytest.raises(BadRequest) as exc_info:
-                method(api)
-
-        assert exc_info.value.code == 400
-        assert exc_info.value.data == {
-            "message": "Cannot create more than 10 API keys for this resource type.",
-            "custom": "max_keys_exceeded",
-        }
-
-
-class TestDatasetApiDeleteApi:
-    def test_delete_success(self, app):
-        api = DatasetApiDeleteApi()
-        method = unwrap(api.delete)
-
-        mock_key = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalar",
-                return_value=mock_key,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.commit",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.delete",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "api-key-id")
-
-        assert status == 204
-        assert response["result"] == "success"
-
-    def test_delete_key_not_found(self, app):
-        api = DatasetApiDeleteApi()
-        method = unwrap(api.delete)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.db.session.scalar",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "api-key-id")
-
-
-class TestDatasetEnableApiApi:
-    def test_enable_api(self, app):
-        api = DatasetEnableApiApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.update_dataset_api_status",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "dataset-1", "enable")
-
-        assert status == 200
-        assert response["result"] == "success"
-
-    def test_disable_api(self, app):
-        api = DatasetEnableApiApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.update_dataset_api_status",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "dataset-1", "disable")
-
-        assert status == 200
-        assert response["result"] == "success"
-
-
-class TestDatasetApiBaseUrlApi:
-    def test_get_api_base_url_from_config(self, app):
-        api = DatasetApiBaseUrlApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.dify_config.SERVICE_API_URL",
-                "https://example.com",
-            ),
-        ):
-            response = method(api)
-
-        assert response["api_base_url"] == "https://example.com/v1"
-
-    def test_get_api_base_url_from_request(self, app):
-        api = DatasetApiBaseUrlApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("http://localhost:5000/"),
-            patch(
-                "controllers.console.datasets.datasets.dify_config.SERVICE_API_URL",
-                None,
-            ),
-        ):
-            response = method(api)
-
-        assert response["api_base_url"] == "http://localhost:5000/v1"
-
-
-class TestDatasetRetrievalSettingApi:
-    def test_get_success(self, app):
-        api = DatasetRetrievalSettingApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.dify_config.VECTOR_STORE",
-                "qdrant",
-            ),
-            patch(
-                "controllers.console.datasets.datasets._get_retrieval_methods_by_vector_type",
-                return_value={"retrieval_method": ["semantic", "hybrid"]},
-            ),
-        ):
-            response = method(api)
-
-        assert "retrieval_method" in response
-
-
-class TestDatasetRetrievalSettingMockApi:
-    def test_get_success(self, app):
-        api = DatasetRetrievalSettingMockApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets._get_retrieval_methods_by_vector_type",
-                return_value={"retrieval_method": ["semantic"]},
-            ),
-        ):
-            response = method(api, "milvus")
-
-        assert response["retrieval_method"] == ["semantic"]
-
-
-class TestDatasetErrorDocs:
-    def test_get_success(self, app):
-        api = DatasetErrorDocs()
-        method = unwrap(api.get)
-
-        dataset = MagicMock()
-        error_doc = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DocumentService.get_error_documents_by_dataset_id",
-                return_value=[error_doc],
-            ),
-        ):
-            response, status = method(api, "dataset-1")
-
-        assert status == 200
-        assert response["total"] == 1
-
-    def test_get_dataset_not_found(self, app):
-        api = DatasetErrorDocs()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_dataset",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "dataset-1")
-
-
-class TestDatasetPermissionUserListApi:
-    def test_get_success(self, app):
-        api = DatasetPermissionUserListApi()
-        method = unwrap(api.get)
-
-        dataset = MagicMock()
-        users = [{"id": "u1"}, {"id": "u2"}]
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetPermissionService.get_dataset_partial_member_list",
-                return_value=users,
-            ),
-        ):
-            response, status = method(api, "dataset-1")
-
-        assert status == 200
-        assert response["data"] == users
-
-    def test_get_permission_denied(self, app):
-        api = DatasetPermissionUserListApi()
-        method = unwrap(api.get)
-
-        dataset = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no permission"),
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, "dataset-1")
-
-
-class TestDatasetAutoDisableLogApi:
-    def test_get_success(self, app):
-        api = DatasetAutoDisableLogApi()
-        method = unwrap(api.get)
-
-        dataset = MagicMock()
-        logs = [{"reason": "quota"}]
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_dataset_auto_disable_logs",
-                return_value=logs,
-            ),
-        ):
-            response, status = method(api, "dataset-1")
-
-        assert status == 200
-        assert response == logs
-
-    def test_get_dataset_not_found(self, app):
-        api = DatasetAutoDisableLogApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets.DatasetService.get_dataset",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "dataset-1")
+    )
+    with app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades"):
+        response = unwrap(DatasetKnowledgeFSUpgradeApi.get)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
+    upgrades.discovery.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID))
+    assert response["can_upgrade"] is True
+    assert response["models"]["embedding"]["value"] == {"provider": "openai", "model": "embedding"}
+    assert response["models"]["reasoning"]["unavailable_reason"] == "credential-removed"
+
+
+def test_upgrade_job_status_maps_missing_job_to_not_found(app, upgrades):
+    upgrades.get_job.side_effect = KnowledgeFSUpgradeNotFoundError("Upgrade job was not found")
+    with (
+        app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades/job-1"),
+        pytest.raises(NotFound, match="Upgrade job was not found"),
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeJobApi.get)(DatasetKnowledgeFSUpgradeJobApi(), CONTEXT, DATASET_ID, "job-1")
+
+
+def test_upgrade_retry_returns_queued(app, upgrades):
+    upgrades.retry.return_value = _upgrade_job(job_id="job-1")
+    with app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades/job-1"):
+        response, status = unwrap(DatasetKnowledgeFSUpgradeJobApi.post)(
+            DatasetKnowledgeFSUpgradeJobApi(), CONTEXT, DATASET_ID, "job-1"
+        )
+    assert status == 202
+    assert response == {"id": "job-1", "status": "queued"}
+
+
+def test_upgrade_retry_maps_disabled_feature_to_not_found(app, upgrades):
+    upgrades.retry.side_effect = KnowledgeFSUpgradeUnavailableError()
+    with (
+        app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades/job-1"),
+        pytest.raises(NotFound),
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeJobApi.post)(DatasetKnowledgeFSUpgradeJobApi(), CONTEXT, DATASET_ID, "job-1")
+
+
+def test_api_key_create_rejects_non_string_dataset_ids_with_the_standard_error(app):
+    # A raised BadRequest gets the standard error body; ``Namespace.abort(message=...)`` replaced it.
+    with app.test_request_context("/", method="POST", json={"dataset_ids": [123]}), pytest.raises(BadRequest) as error:
+        unwrap(DatasetApiKeyApi.post)(DatasetApiKeyApi(), CONTEXT)
+    assert error.value.description == "dataset_ids must be a list of strings."

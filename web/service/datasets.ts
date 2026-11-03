@@ -1,38 +1,18 @@
+import type { DatasetUpdatePayload } from '@dify/contracts/api/console/datasets/types.gen'
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
-import type {
-  CreateApiKeyResponse,
-} from '@/models/app'
-import type { CommonResponse } from '@/models/common'
-import type {
-  CreateDocumentReq,
-  createDocumentResponse,
-  DataSet,
-  DataSetListResponse,
-  ExternalAPIDeleteResponse,
-  ExternalAPIItem,
-  ExternalAPIUsage,
-  ExternalKnowledgeItem,
-  FetchDatasetsParams,
-  FileIndexingEstimateResponse,
-  IndexingEstimateParams,
-  IndexingStatusBatchResponse,
-  IndexingStatusResponse,
-  ProcessRuleResponse,
-} from '@/models/datasets'
-import qs from 'qs'
+import type { FetchDatasetsParams } from '@/models/datasets'
+import type { ConsoleClientContext } from '@/service/console'
 import { DataSourceProvider } from '@/models/common'
-import { del, get, patch, post, put } from './base'
+// oxlint-disable-next-line no-restricted-imports -- the zip download needs the raw Blob response
+import { post } from './base'
+import { consoleClient } from './console'
 
 // apis for documents in a dataset
 
 type CommonDocReq = {
   datasetId: string
   documentId: string
-}
-
-export type DocumentDownloadResponse = {
-  url: string
 }
 
 export type DocumentDownloadZipRequest = {
@@ -47,193 +27,181 @@ type BatchReq = {
 
 export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
 
-export type MetadataType = 'all' | 'only' | 'without'
+export const updateDatasetSetting = (
+  {
+    datasetId,
+    body,
+  }: {
+    datasetId: string
+    body: DatasetUpdatePayload
+  },
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.datasets.byDatasetId.patch(
+    { params: { dataset_id: datasetId }, body },
+    { context },
+  )
+}
 
-export const updateDatasetSetting = ({
-  datasetId,
+export const fetchDatasets = ({ params }: FetchDatasetsParams) => {
+  return consoleClient.datasets.get({ query: params })
+}
+
+export const createEmptyDataset = ({ name }: { name: string }, context?: ConsoleClientContext) => {
+  return consoleClient.datasets.post({ body: { name } }, { context })
+}
+
+export const fetchExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
+  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get({
+    params: { external_knowledge_api_id: apiTemplateId },
+  })
+}
+
+export const updateExternalAPI = ({
+  apiTemplateId,
   body,
 }: {
+  apiTemplateId: string
+  body: CreateExternalAPIReq
+}) => {
+  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch({
+    params: { external_knowledge_api_id: apiTemplateId },
+    body,
+  })
+}
+
+export const deleteExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
+  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.delete({
+    params: { external_knowledge_api_id: apiTemplateId },
+  })
+}
+
+export const checkUsageExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
+  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.useCheck.get({
+    params: { external_knowledge_api_id: apiTemplateId },
+  })
+}
+
+export const createExternalAPI = ({ body }: { body: CreateExternalAPIReq }) => {
+  return consoleClient.datasets.externalKnowledgeApi.post({ body }, { context: { silent: true } })
+}
+
+export const createExternalKnowledgeBase = (
+  { body }: { body: CreateKnowledgeBaseReq },
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.datasets.external.post({ body }, { context })
+}
+
+export const fetchIndexingStatus = ({ datasetId, documentId }: CommonDocReq) => {
+  return consoleClient.datasets.byDatasetId.documents.byDocumentId.indexingStatus.get({
+    params: { dataset_id: datasetId, document_id: documentId },
+  })
+}
+
+export const fetchIndexingStatusBatch = ({ datasetId, batchId }: BatchReq) => {
+  return consoleClient.datasets.byDatasetId.batch.byBatch.indexingStatus.get({
+    params: { dataset_id: datasetId, batch: batchId },
+  })
+}
+
+export const renameDocumentName = (
+  { datasetId, documentId, name }: CommonDocReq & { name: string },
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.datasets.byDatasetId.documents.byDocumentId.rename.post(
+    {
+      params: { dataset_id: datasetId, document_id: documentId },
+      body: { name },
+    },
+    { context },
+  )
+}
+
+export const pauseDocIndexing = (
+  { datasetId, documentId }: CommonDocReq,
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.datasets.byDatasetId.documents.byDocumentId.processing.pause.patch(
+    {
+      params: { dataset_id: datasetId, document_id: documentId },
+    },
+    { context },
+  )
+}
+
+export const resumeDocIndexing = (
+  { datasetId, documentId }: CommonDocReq,
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.datasets.byDatasetId.documents.byDocumentId.processing.resume.patch(
+    {
+      params: { dataset_id: datasetId, document_id: documentId },
+    },
+    { context },
+  )
+}
+
+// Not migrated to the console contract: the endpoint streams a zip file, which the
+// JSON-based console client cannot return as a Blob.
+export const downloadDocumentsZip = (
+  { datasetId, documentIds }: DocumentDownloadZipRequest,
+  options?: { silent?: boolean },
+): Promise<Blob> => {
+  return post<Blob>(
+    `/datasets/${datasetId}/documents/download-zip`,
+    {
+      body: {
+        document_ids: documentIds,
+      },
+    },
+    options,
+  )
+}
+
+type WebsiteCrawlProvider = 'firecrawl' | 'jinareader' | 'watercrawl'
+
+type WebsiteCrawlTaskBody = {
+  url: string
+  options: Record<string, unknown>
+}
+
+const createWebsiteCrawlTask = (provider: WebsiteCrawlProvider, body: WebsiteCrawlTaskBody) =>
+  consoleClient.website.crawl.post({ body: { ...body, provider } })
+
+const checkWebsiteCrawlTaskStatus = (provider: WebsiteCrawlProvider, jobId: string) =>
+  consoleClient.website.crawl.status.byJobId.get(
+    { params: { job_id: jobId }, query: { provider } },
+    { context: { silent: true } },
+  )
+
+export const createFirecrawlTask = (body: WebsiteCrawlTaskBody) =>
+  createWebsiteCrawlTask(DataSourceProvider.fireCrawl, body)
+
+export const checkFirecrawlTaskStatus = (jobId: string) =>
+  checkWebsiteCrawlTaskStatus(DataSourceProvider.fireCrawl, jobId)
+
+export const createJinaReaderTask = (body: WebsiteCrawlTaskBody) =>
+  createWebsiteCrawlTask(DataSourceProvider.jinaReader, body)
+
+export const checkJinaReaderTaskStatus = (jobId: string) =>
+  checkWebsiteCrawlTaskStatus(DataSourceProvider.jinaReader, jobId)
+
+export const createWatercrawlTask = (body: WebsiteCrawlTaskBody) =>
+  createWebsiteCrawlTask(DataSourceProvider.waterCrawl, body)
+
+export const checkWatercrawlTaskStatus = (jobId: string) =>
+  checkWebsiteCrawlTaskStatus(DataSourceProvider.waterCrawl, jobId)
+
+export const retryErrorDocs = ({
+  datasetId,
+  document_ids,
+}: {
   datasetId: string
-  body: Partial<Pick<DataSet, 'name' | 'description' | 'permission' | 'partial_member_list' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider' | 'icon_info' | 'doc_form'>>
-}): Promise<DataSet> => {
-  return patch<DataSet>(`/datasets/${datasetId}`, { body })
-}
-
-export const fetchDatasets = ({ url, params }: FetchDatasetsParams): Promise<DataSetListResponse> => {
-  const urlParams = qs.stringify(params, { indices: false })
-  return get<DataSetListResponse>(`${url}?${urlParams}`)
-}
-
-export const createEmptyDataset = ({ name }: { name: string }): Promise<DataSet> => {
-  return post<DataSet>('/datasets', { body: { name } })
-}
-
-export const checkIsUsedInApp = (id: string): Promise<{ is_using: boolean }> => {
-  return get<{ is_using: boolean }>(`/datasets/${id}/use-check`, {}, {
-    silent: true,
+  document_ids: string[]
+}) => {
+  return consoleClient.datasets.byDatasetId.retry.post({
+    params: { dataset_id: datasetId },
+    body: { document_ids },
   })
-}
-
-export const deleteDataset = (datasetID: string): Promise<DataSet> => {
-  return del<DataSet>(`/datasets/${datasetID}`)
-}
-
-export const fetchExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }): Promise<ExternalAPIItem> => {
-  return get<ExternalAPIItem>(`/datasets/external-knowledge-api/${apiTemplateId}`)
-}
-
-export const updateExternalAPI = ({ apiTemplateId, body }: { apiTemplateId: string, body: ExternalAPIItem }): Promise<ExternalAPIItem> => {
-  return patch<ExternalAPIItem>(`/datasets/external-knowledge-api/${apiTemplateId}`, { body })
-}
-
-export const deleteExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }): Promise<ExternalAPIDeleteResponse> => {
-  return del<ExternalAPIDeleteResponse>(`/datasets/external-knowledge-api/${apiTemplateId}`)
-}
-
-export const checkUsageExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }): Promise<ExternalAPIUsage> => {
-  return get<ExternalAPIUsage>(`/datasets/external-knowledge-api/${apiTemplateId}/use-check`)
-}
-
-export const createExternalAPI = ({ body }: { body: CreateExternalAPIReq }): Promise<ExternalAPIItem> => {
-  return post<ExternalAPIItem>('/datasets/external-knowledge-api', { body })
-}
-
-export const createExternalKnowledgeBase = ({ body }: { body: CreateKnowledgeBaseReq }): Promise<ExternalKnowledgeItem> => {
-  return post<ExternalKnowledgeItem>('/datasets/external', { body })
-}
-
-export const fetchDefaultProcessRule = ({ url }: { url: string }): Promise<ProcessRuleResponse> => {
-  return get<ProcessRuleResponse>(url)
-}
-
-export const createFirstDocument = ({ body }: { body: CreateDocumentReq }): Promise<createDocumentResponse> => {
-  return post<createDocumentResponse>('/datasets/init', { body })
-}
-
-export const createDocument = ({ datasetId, body }: { datasetId: string, body: CreateDocumentReq }): Promise<createDocumentResponse> => {
-  return post<createDocumentResponse>(`/datasets/${datasetId}/documents`, { body })
-}
-
-export const fetchIndexingStatus = ({ datasetId, documentId }: CommonDocReq): Promise<IndexingStatusResponse> => {
-  return get<IndexingStatusResponse>(`/datasets/${datasetId}/documents/${documentId}/indexing-status`, {})
-}
-
-export const fetchIndexingStatusBatch = ({ datasetId, batchId }: BatchReq): Promise<IndexingStatusBatchResponse> => {
-  return get<IndexingStatusBatchResponse>(`/datasets/${datasetId}/batch/${batchId}/indexing-status`, {})
-}
-
-export const renameDocumentName = ({ datasetId, documentId, name }: CommonDocReq & { name: string }): Promise<CommonResponse> => {
-  return post<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/rename`, {
-    body: { name },
-  })
-}
-
-export const pauseDocIndexing = ({ datasetId, documentId }: CommonDocReq): Promise<CommonResponse> => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/processing/pause`)
-}
-
-export const resumeDocIndexing = ({ datasetId, documentId }: CommonDocReq): Promise<CommonResponse> => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/processing/resume`)
-}
-
-export const fetchDocumentDownloadUrl = ({ datasetId, documentId }: CommonDocReq): Promise<DocumentDownloadResponse> => {
-  return get<DocumentDownloadResponse>(`/datasets/${datasetId}/documents/${documentId}/download`, {})
-}
-
-export const downloadDocumentsZip = ({ datasetId, documentIds }: DocumentDownloadZipRequest): Promise<Blob> => {
-  return post<Blob>(`/datasets/${datasetId}/documents/download-zip`, {
-    body: {
-      document_ids: documentIds,
-    },
-  })
-}
-
-export const modifyDocMetadata = ({ datasetId, documentId, body }: CommonDocReq & { body: { doc_type: string, doc_metadata: Record<string, any> } }): Promise<CommonResponse> => {
-  return put<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/metadata`, { body })
-}
-
-// hit testing
-export const fetchFileIndexingEstimate = (body: IndexingEstimateParams): Promise<FileIndexingEstimateResponse> => {
-  return post<FileIndexingEstimateResponse>('/datasets/indexing-estimate', { body })
-}
-
-export const fetchNotionPagePreview = ({ pageID, pageType, credentialID }: { pageID: string, pageType: string, credentialID: string }): Promise<{ content: string }> => {
-  return get<{ content: string }>(`notion/pages/${pageID}/${pageType}/preview`, {
-    params: {
-      credential_id: credentialID,
-    },
-  })
-}
-
-export const delApikey = ({ url, params }: { url: string, params: Record<string, any> }): Promise<CommonResponse> => {
-  return del<CommonResponse>(url, params)
-}
-
-export const createApikey = ({ url, body }: { url: string, body: Record<string, any> }): Promise<CreateApiKeyResponse> => {
-  return post<CreateApiKeyResponse>(url, body)
-}
-
-export const createFirecrawlTask = (body: Record<string, any>): Promise<CommonResponse> => {
-  return post<CommonResponse>('website/crawl', {
-    body: {
-      ...body,
-      provider: DataSourceProvider.fireCrawl,
-    },
-  })
-}
-
-export const checkFirecrawlTaskStatus = (jobId: string): Promise<CommonResponse> => {
-  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
-    params: {
-      provider: DataSourceProvider.fireCrawl,
-    },
-  }, {
-    silent: true,
-  })
-}
-
-export const createJinaReaderTask = (body: Record<string, any>): Promise<CommonResponse> => {
-  return post<CommonResponse>('website/crawl', {
-    body: {
-      ...body,
-      provider: DataSourceProvider.jinaReader,
-    },
-  })
-}
-
-export const checkJinaReaderTaskStatus = (jobId: string): Promise<CommonResponse> => {
-  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
-    params: {
-      provider: 'jinareader',
-    },
-  }, {
-    silent: true,
-  })
-}
-
-export const createWatercrawlTask = (body: Record<string, any>): Promise<CommonResponse> => {
-  return post<CommonResponse>('website/crawl', {
-    body: {
-      ...body,
-      provider: DataSourceProvider.waterCrawl,
-    },
-  })
-}
-
-export const checkWatercrawlTaskStatus = (jobId: string): Promise<CommonResponse> => {
-  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
-    params: {
-      provider: DataSourceProvider.waterCrawl,
-    },
-  }, {
-    silent: true,
-  })
-}
-
-export type FileTypesRes = {
-  allowed_extensions: string[]
-}
-
-export const retryErrorDocs = ({ datasetId, document_ids }: { datasetId: string, document_ids: string[] }): Promise<CommonResponse> => {
-  return post<CommonResponse>(`/datasets/${datasetId}/retry`, { body: { document_ids } })
 }

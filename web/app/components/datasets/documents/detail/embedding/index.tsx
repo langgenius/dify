@@ -1,11 +1,13 @@
 import type { FC } from 'react'
 import type { IndexingType } from '../../../create/step-two'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
-import { useProcessRule } from '@/service/knowledge/use-dataset'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useDocumentContext } from '../context'
 import { ProgressBar, RuleDetail, SegmentProgress, StatusHeader } from './components'
 import { useEmbeddingStatus, usePauseIndexing, useResumeIndexing } from './hooks'
@@ -18,25 +20,51 @@ type EmbeddingDetailProps = {
   retrievalMethod?: RETRIEVE_METHOD
   detailUpdate: VoidFunction
 }
-const EmbeddingDetail: FC<EmbeddingDetailProps> = ({ datasetId: dstId, documentId: docId, detailUpdate, indexingType, retrievalMethod }) => {
-  const { t } = useTranslation()
-  const contextDatasetId = useDocumentContext(s => s.datasetId)
-  const contextDocumentId = useDocumentContext(s => s.documentId)
+const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
+  datasetId: dstId,
+  documentId: docId,
+  detailUpdate,
+  indexingType,
+  retrievalMethod,
+}) => {
+  const { t } = useTranslation(['common'])
+  const contextDatasetId = useDocumentContext((s) => s.datasetId)
+  const contextDocumentId = useDocumentContext((s) => s.documentId)
   const datasetId = dstId ?? contextDatasetId
   const documentId = docId ?? contextDocumentId
-  const { data: indexingStatus, isEmbedding, isCompleted, isPaused, isError, percent, resetStatus, refetch } = useEmbeddingStatus({
+  const {
+    data: indexingStatus,
+    isEmbedding,
+    isCompleted,
+    isPaused,
+    isError,
+    percent,
+    resetStatus,
+    refetch,
+  } = useEmbeddingStatus({
     datasetId,
     documentId,
     onComplete: detailUpdate,
   })
-  const { data: ruleDetail } = useProcessRule(documentId)
+  const { data: ruleDetail } = useQuery(
+    consoleQuery.datasets.processRule.get.queryOptions({
+      input: { query: { document_id: documentId } },
+      enabled: !!documentId,
+    }),
+  )
   const handleSuccess = useCallback(() => {
-    toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }, [t])
-  const handleError = useCallback(() => {
-    toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
-  }, [t])
+  const handleError = useCallback(
+    (error: unknown) => {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
+    },
+    [t],
+  )
   const pauseMutation = usePauseIndexing({
+    context: { silent: true },
     datasetId,
     documentId,
     onSuccess: () => {
@@ -46,6 +74,7 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({ datasetId: dstId, documentI
     onError: handleError,
   })
   const resumeMutation = useResumeIndexing({
+    context: { silent: true },
     datasetId,
     documentId,
     onSuccess: () => {
@@ -64,10 +93,33 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({ datasetId: dstId, documentI
   return (
     <>
       <div className="flex flex-col gap-y-2 px-16 py-12">
-        <StatusHeader isEmbedding={isEmbedding} isCompleted={isCompleted} isPaused={isPaused} isError={isError} onPause={handlePause} onResume={handleResume} isPauseLoading={pauseMutation.isPending} isResumeLoading={resumeMutation.isPending} />
-        <ProgressBar percent={percent} isEmbedding={isEmbedding} isCompleted={isCompleted} isPaused={isPaused} isError={isError} />
-        <SegmentProgress completedSegments={indexingStatus?.completed_segments} totalSegments={indexingStatus?.total_segments} percent={percent} />
-        <RuleDetail sourceData={ruleDetail} indexingType={indexingType} retrievalMethod={retrievalMethod} />
+        <StatusHeader
+          isEmbedding={isEmbedding}
+          isCompleted={isCompleted}
+          isPaused={isPaused}
+          isError={isError}
+          onPause={handlePause}
+          onResume={handleResume}
+          isPauseLoading={pauseMutation.isPending}
+          isResumeLoading={resumeMutation.isPending}
+        />
+        <ProgressBar
+          percent={percent}
+          isEmbedding={isEmbedding}
+          isCompleted={isCompleted}
+          isPaused={isPaused}
+          isError={isError}
+        />
+        <SegmentProgress
+          completedSegments={indexingStatus?.completed_segments ?? undefined}
+          totalSegments={indexingStatus?.total_segments ?? undefined}
+          percent={percent}
+        />
+        <RuleDetail
+          sourceData={ruleDetail}
+          indexingType={indexingType}
+          retrievalMethod={retrievalMethod}
+        />
       </div>
       <EmbeddingSkeleton />
     </>

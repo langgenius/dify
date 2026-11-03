@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from pydantic import BaseModel
 
 from configs import dify_config
-from core.entities.provider_entities import BasicProviderConfig
+from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.types import OAuthClientInformation, OAuthClientMetadata, OAuthTokens
@@ -37,6 +37,13 @@ class MCPSupportGrantType(StrEnum):
     REFRESH_TOKEN = "refresh_token"
 
 
+class IdentityMode(StrEnum):
+    """How Dify forwards the end-user's identity to an MCP server."""
+
+    OFF = "off"
+    IDP_TOKEN = "idp_token"
+
+
 class MCPAuthentication(BaseModel):
     client_id: str
     client_secret: str | None = None
@@ -52,7 +59,7 @@ class MCPProviderEntity(BaseModel):
 
     # Basic identification
     id: str
-    provider_id: str  # server_identifier
+    server_identifier: str
     name: str
     tenant_id: str
     user_id: str
@@ -76,13 +83,15 @@ class MCPProviderEntity(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    identity_mode: IdentityMode = IdentityMode.OFF
+
     @classmethod
     def from_db_model(cls, db_provider: MCPToolProvider) -> MCPProviderEntity:
         """Create entity from database model with decryption"""
 
         return cls(
             id=db_provider.id,
-            provider_id=db_provider.server_identifier,
+            server_identifier=db_provider.server_identifier,
             name=db_provider.name,
             tenant_id=db_provider.tenant_id,
             user_id=db_provider.user_id,
@@ -96,6 +105,7 @@ class MCPProviderEntity(BaseModel):
             icon=db_provider.icon or "",
             created_at=db_provider.created_at,
             updated_at=db_provider.updated_at,
+            identity_mode=IdentityMode(db_provider.identity_mode),
         )
 
     @property
@@ -166,10 +176,11 @@ class MCPProviderEntity(BaseModel):
             "type": ToolProviderType.MCP.value,
             "is_team_authorization": self.authed,
             "server_url": self.masked_server_url(),
-            "server_identifier": self.provider_id,
+            "server_identifier": self.server_identifier,
             "updated_at": int(self.updated_at.timestamp()),
             "label": I18nObject(en_US=self.name, zh_Hans=self.name).to_dict(),
             "description": I18nObject(en_US="", zh_Hans="").to_dict(),
+            "identity_mode": self.identity_mode,
         }
 
         # Add configuration
@@ -304,7 +315,7 @@ class MCPProviderEntity(BaseModel):
             return data
 
         # Create dynamic config only for encrypted fields
-        config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in encrypted_fields]
+        config = [BasicProviderConfig(type=ProviderConfigType.SECRET_INPUT, name=key) for key in encrypted_fields]
 
         encrypter_instance, _ = create_provider_encrypter(
             tenant_id=self.tenant_id,

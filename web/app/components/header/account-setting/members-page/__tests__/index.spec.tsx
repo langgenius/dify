@@ -1,377 +1,456 @@
-import type { AppContextValue } from '@/context/app-context'
-import type { ICurrentWorkspace, Member } from '@/models/common'
-import { render, screen } from '@testing-library/react'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { Role } from '@/models/access-control'
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { Plan } from '@/app/components/billing/type'
-import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useProviderContext } from '@/context/provider-context'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useMembers } from '@/service/use-common'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MembersPage from '../index'
 
-vi.mock('@/context/app-context')
-vi.mock('@/context/global-public-context')
-vi.mock('@/context/provider-context')
-vi.mock('@/hooks/use-format-time-from-now')
-vi.mock('@/service/use-common')
+const {
+  membersRequest,
+  rolesRequest,
+  memberRolesRequest,
+  updateRoles,
+  inviteMember,
+  removeMember,
+  contactsEnabled,
+} = vi.hoisted(() => ({
+  membersRequest: vi.fn(),
+  rolesRequest: vi.fn(),
+  memberRolesRequest: vi.fn(),
+  updateRoles: vi.fn(),
+  inviteMember: vi.fn(),
+  removeMember: vi.fn(),
+  contactsEnabled: vi.fn(() => false),
+}))
+vi.mock('@/features/contacts/management/feature-flag', () => ({
+  isContactsManagementEnabled: contactsEnabled,
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': async () =>
+        (await import('@dify/contracts/api/console/features/zod.gen')).zGetFeaturesResponse.parse({
+          is_allow_transfer_workspace: true,
+        }),
+      'workspaces.current.members.get': membersRequest,
+      'workspaces.current.rbac.roles.get': rolesRequest,
+      'workspaces.current.rbac.members.byMemberId.rbacRoles.get': memberRolesRequest,
+      'workspaces.current.rbac.members.byMemberId.rbacRoles.put': updateRoles,
+      'workspaces.current.members.inviteEmail.post': inviteMember,
+      'workspaces.current.members.byMemberId.delete': removeMember,
+    }),
+  }
+})
+vi.mock('@/hooks/use-format-time-from-now', () => ({
+  useFormatTimeFromNow: () => ({ formatTimeFromNow: (value: number) => `active:${value}` }),
+}))
 
-vi.mock('../edit-workspace-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div>
-      <div>Edit Workspace Modal</div>
-      <button onClick={onCancel}>Close Edit Workspace</button>
-    </div>
-  ),
-}))
-vi.mock('../invite-button', () => ({
-  default: ({ onClick, disabled }: { onClick: () => void, disabled: boolean }) => (
-    <button onClick={onClick} disabled={disabled}>Invite</button>
-  ),
-}))
-vi.mock('../invite-modal', () => ({
-  default: ({ onCancel, onSend }: { onCancel: () => void, onSend: (results: Array<{ email: string, status: 'success', url: string }>) => void }) => (
-    <div>
-      <div>Invite Modal</div>
-      <button onClick={onCancel}>Close Invite Modal</button>
-      <button onClick={() => onSend([{ email: 'sent@example.com', status: 'success', url: 'http://invite/link' }])}>Send Invite Results</button>
-    </div>
-  ),
-}))
-vi.mock('../invited-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div>
-      <div>Invited Modal</div>
-      <button onClick={onCancel}>Close Invited Modal</button>
-    </div>
-  ),
-}))
-vi.mock('../operation', () => ({
-  default: () => <div>Member Operation</div>,
-}))
-vi.mock('../operation/transfer-ownership', () => ({
-  default: ({ onOperate }: { onOperate: () => void }) => <button onClick={onOperate}>Transfer ownership</button>,
-}))
-vi.mock('../transfer-ownership-modal', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <div>
-      <div>Transfer Ownership Modal</div>
-      <button onClick={onClose}>Close Transfer Modal</button>
-    </div>
-  ),
-}))
-vi.mock('@/app/components/billing/upgrade-btn', () => ({
-  default: () => <div>Upgrade Button</div>,
-}))
+const createRole = (overrides: Partial<Role>): Role => ({
+  id: 'role-1',
+  tenant_id: 'tenant-1',
+  type: 'workspace',
+  category: 'global_custom',
+  name: 'Role',
+  description: '',
+  is_builtin: false,
+  permission_keys: [],
+  role_tag: '',
+  ...overrides,
+})
+
+const defaultAccounts: AccountWithRoleResponse[] = [
+  {
+    id: '1',
+    name: 'Owner User',
+    email: 'owner@example.com',
+    avatar: '',
+    avatar_url: '',
+    role: 'owner',
+    last_active_at: 1731000000,
+    last_login_at: 1731000000,
+    created_at: 1731000000,
+    status: 'active',
+    roles: [createRole({ id: 'owner-role', name: 'Owner', is_builtin: true, role_tag: 'owner' })],
+  },
+  {
+    id: '2',
+    name: 'Admin User',
+    email: 'admin@example.com',
+    avatar: '',
+    avatar_url: '',
+    role: 'admin',
+    last_active_at: 1731000000,
+    last_login_at: 1731000000,
+    created_at: 1731000000,
+    status: 'active',
+    roles: [createRole({ id: 'admin-role', name: 'Admin', is_builtin: true })],
+  },
+]
+
+let accounts: AccountWithRoleResponse[]
+const choices = [
+  createRole({ id: 'admin', name: 'Admin' }),
+  createRole({ id: 'role-next', name: 'Next role' }),
+  createRole({ id: 'role-extra', name: 'Extra role' }),
+]
+async function renderMembersPage(options: ConsoleQueryTestOptions = {}) {
+  const page = (
+    <NuqsTestingAdapter>
+      <MembersPage />
+    </NuqsTestingAdapter>
+  )
+  const view = renderWithConsoleQuery(page, {
+    accountProfile: { id: '1', email: 'owner@example.com' },
+    currentWorkspace: { name: 'Test Workspace', role: 'owner' },
+    workspacePermissionKeys: ['workspace.member.manage'],
+    features: { is_allow_transfer_workspace: true },
+    systemFeatures: { is_email_setup: true },
+    ...options,
+  })
+  await screen.findByRole('button', { name: 'Admin User' })
+  return view
+}
+const detailsDialog = () => screen.getByRole('dialog', { name: /members\.memberDetails\.title/ })
+async function chooseRoles(user: ReturnType<typeof userEvent.setup>, multiple: boolean) {
+  await user.click(screen.getByRole('button', { name: 'Admin User' }))
+  const details = detailsDialog()
+  await user.click(
+    within(details).getByRole('button', {
+      name: multiple ? /memberDetails\.assign(?=$|:)/ : 'common.operation.edit',
+    }),
+  )
+  await user.click(await screen.findByRole('option', { name: /Next role/ }))
+  if (multiple) await user.click(screen.getByRole('option', { name: /Extra role/ }))
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  return details
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  contactsEnabled.mockReturnValue(false)
+  accounts = structuredClone(defaultAccounts)
+  membersRequest.mockImplementation(async () => ({ accounts }))
+  removeMember.mockImplementation(async ({ params }: { params: { member_id: string } }) => {
+    accounts = accounts.filter((account) => account.id !== params.member_id)
+    return { result: 'success', tenant_id: 'tenant-1' }
+  })
+  rolesRequest.mockResolvedValue({
+    data: choices,
+    pagination: { current_page: 1, total_pages: 1, total_count: 3, per_page: 20 },
+  })
+  memberRolesRequest.mockResolvedValue({ roles: [] })
+  updateRoles.mockImplementation(
+    async ({ params, body }: { params: { member_id: string }; body: { role_ids: string[] } }) => {
+      accounts = accounts.map((account) =>
+        account.id === params.member_id
+          ? { ...account, roles: choices.filter((role) => body.role_ids.includes(role.id)) }
+          : account,
+      )
+      return { result: 'success' }
+    },
+  )
+  inviteMember.mockResolvedValue({
+    result: 'success',
+    tenant_id: 'tenant-id',
+    invitation_results: [
+      { email: 'sent@example.com', status: 'success', url: 'http://invite/link' },
+    ],
+  })
+})
+
+async function openAdminRemoval(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /members\.memberActions: Admin User/ }))
+  await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam$/ }))
+  return screen.findByRole('alertdialog')
+}
+
+const contactOptionsKey = consoleQuery.workspaces.current.humanInput.v2.contactOptions.get.key({
+  type: 'query',
+})
+
+describe('MembersPage removal', () => {
+  it.each([
+    { status: 'active', enabled: true, contactCopy: true },
+    { status: 'pending', enabled: true, contactCopy: false },
+    { status: 'active', enabled: false, contactCopy: false },
+  ])(
+    'uses the supported member endpoint for status=$status and gate=$enabled',
+    async ({ status, enabled, contactCopy }) => {
+      contactsEnabled.mockReturnValue(enabled)
+      accounts[1] = { ...accounts[1]!, status }
+      const user = userEvent.setup()
+      const { queryClient } = await renderMembersPage()
+      queryClient.setQueryData(contactOptionsKey, { cached: true })
+      const dialog = await openAdminRemoval(user)
+      expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
+      if (contactCopy) expect(dialog).toHaveTextContent('contacts.memberRemoval.accessImpact')
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: contactCopy ? 'contacts.memberRemoval.remove' : 'common.operation.confirm',
+        }),
+      )
+      await waitFor(() =>
+        expect(removeMember).toHaveBeenCalledExactlyOnceWith({ params: { member_id: '2' } }),
+      )
+      expect(queryClient.getQueryState(contactOptionsKey)?.isInvalidated).toBe(true)
+    },
+  )
+})
 
 describe('MembersPage', () => {
-  const mockRefetch = vi.fn()
-  const mockFormatTimeFromNow = vi.fn(() => 'just now')
+  it('shows account roles and the created time fallback in separate table cells', async () => {
+    accounts[1] = { ...accounts[1]!, last_active_at: null, created_at: 1700000000 }
+    await renderMembersPage()
+    const row = screen.getByRole('row', { name: /admin@example.com/ })
+    expect(within(row).getByRole('cell', { name: 'active:1700000000000' })).toBeInTheDocument()
+    expect(within(row).getByRole('cell', { name: 'Admin' })).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Admin User' })).not.toHaveTextContent(
+      'admin@example.com',
+    )
+  })
 
-  const mockAccounts: Member[] = [
-    {
-      id: '1',
-      name: 'Owner User',
-      email: 'owner@example.com',
-      avatar: '',
-      avatar_url: '',
-      role: 'owner',
-      last_active_at: '1731000000',
-      last_login_at: '1731000000',
-      created_at: '1731000000',
-      status: 'active',
+  it('sends an invitation and displays the returned invitation link', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage()
+    await user.click(screen.getByRole('button', { name: /members\.invite$/ }))
+    await user.type(
+      screen.getByRole('textbox', { name: /members\.emailRecipients/ }),
+      'sent@example.com',
+    )
+    await user.click(screen.getByRole('combobox', { name: /members\.role/ }))
+    await user.click(await screen.findByRole('option', { name: /Admin/ }))
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/ }))
+    expect(
+      await screen.findByRole('dialog', { name: /members\.invitationSent$/ }),
+    ).toBeInTheDocument()
+    expect(inviteMember).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'http://invite/link' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /members\.ok$/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it.each([
+    ['owner', 'owner@example.com', 'Owner User'],
+    ['admin', 'admin@example.com', 'Admin User'],
+  ] as const)(
+    'does not allow assigning roles to the %s current member',
+    async (role, email, name) => {
+      const user = userEvent.setup()
+      await renderMembersPage({ currentWorkspace: { role }, accountProfile: { email } })
+      await user.click(screen.getByRole('button', { name }))
+      const dialog = detailsDialog()
+      expect(
+        within(dialog).queryByRole('button', { name: 'common.operation.save' }),
+      ).not.toBeInTheDocument()
+      expect(
+        within(dialog).queryByRole('button', { name: 'common.operation.edit' }),
+      ).not.toBeInTheDocument()
+      expect(updateRoles).not.toHaveBeenCalled()
     },
-    {
-      id: '2',
-      name: 'Admin User',
-      email: 'admin@example.com',
-      avatar: '',
-      avatar_url: '',
-      role: 'admin',
-      last_active_at: '1731000000',
-      last_login_at: '1731000000',
-      created_at: '1731000000',
-      status: 'active',
+  )
+
+  it('hides member management without permission while allowing member details', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage({ currentWorkspace: { role: 'normal' }, workspacePermissionKeys: [] })
+    expect(screen.queryByRole('button', { name: /members\.invite$/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /members\.memberActions(?=$|:)/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /account\.editWorkspaceInfo/ }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Admin User' }))
+    expect(
+      within(detailsDialog()).queryByRole('button', { name: 'common.operation.save' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it.each([false, true])(
+    'saves selected roles and refreshes the member row with RBAC=%s',
+    async (multiple) => {
+      const user = userEvent.setup()
+      await renderMembersPage({ systemFeatures: { is_email_setup: true, rbac_enabled: multiple } })
+      const dialog = await chooseRoles(user, multiple)
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() =>
+        expect(updateRoles).toHaveBeenCalledWith({
+          params: { member_id: '2' },
+          body: { role_ids: multiple ? ['role-next', 'role-extra'] : ['role-next'] },
+        }),
+      )
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(
+        await within(screen.getByRole('row', { name: /admin@example.com/ })).findByText(
+          'Next role',
+        ),
+      ).toBeInTheDocument()
     },
-  ]
+  )
 
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it('discards canceled role edits when reopening the shared details dialog', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage()
+    const dialog = await chooseRoles(user, false)
+    expect(within(dialog).getByText('Next role')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Owner User' }))
+    expect(within(detailsDialog()).getByText('owner@example.com')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Admin User' }))
+    expect(within(detailsDialog()).getByText('admin@example.com')).toBeInTheDocument()
+    expect(within(detailsDialog()).queryByText('Next role')).not.toBeInTheDocument()
+    expect(updateRoles).not.toHaveBeenCalled()
+  })
 
-    vi.mocked(useAppContext).mockReturnValue({
-      userProfile: { email: 'owner@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'owner' } as ICurrentWorkspace,
-      isCurrentWorkspaceOwner: true,
-      isCurrentWorkspaceManager: true,
-    } as unknown as AppContextValue)
-
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: mockAccounts },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-      systemFeatures: { is_email_setup: true },
-    } as unknown as Parameters<typeof selector>[0]))
-
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: false,
-      isAllowTransferWorkspace: true,
-    }))
-
-    vi.mocked(useFormatTimeFromNow).mockReturnValue({
-      formatTimeFromNow: mockFormatTimeFromNow,
+  it('keeps role edits while saving and after failure, then closes only after a successful retry', async () => {
+    const user = userEvent.setup()
+    let rejectSave!: (error: Error) => void
+    updateRoles.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectSave = reject
+        }),
+    )
+    await renderMembersPage()
+    const dialog = await chooseRoles(user, false)
+    const save = within(dialog).getByRole('button', { name: 'common.operation.save' })
+    await user.click(save)
+    await user.click(save)
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    expect(updateRoles).toHaveBeenCalledOnce()
+    await act(async () => {
+      rejectSave(new Error('Save failed'))
     })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(within(dialog).getByText('Next role')).toBeInTheDocument()
+    await user.click(save)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(updateRoles).toHaveBeenCalledTimes(2)
   })
 
-  it('should render workspace and member information', () => {
-    render(<MembersPage />)
-
-    expect(screen.getByText('Test Workspace'))!.toBeInTheDocument()
-    expect(screen.getByText('Owner User'))!.toBeInTheDocument()
-    expect(screen.getByText('Admin User'))!.toBeInTheDocument()
-  })
-
-  it('should open and close invite modal', async () => {
+  it('opens ownership transfer from the owner action without opening member details', async () => {
     const user = userEvent.setup()
-
-    render(<MembersPage />)
-
-    await user.click(screen.getByRole('button', { name: /invite/i }))
-    expect(screen.getByText('Invite Modal'))!.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Close Invite Modal' }))
-    expect(screen.queryByText('Invite Modal')).not.toBeInTheDocument()
+    await renderMembersPage()
+    await user.click(
+      within(screen.getByRole('row', { name: /owner@example.com/ })).getByRole('button', {
+        name: /members\.memberActions(?=$|:)/,
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: /members\.transferOwnership$/ }))
+    expect(
+      await screen.findByRole('dialog', { name: /members\.transferModal\.title/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', { name: /members\.memberDetails\.title/ }),
+    ).not.toBeInTheDocument()
   })
 
-  it('should open invited modal after invite results are sent', async () => {
+  it('discards canceled role selection and search before reopening from the member menu', async () => {
     const user = userEvent.setup()
-
-    render(<MembersPage />)
-
-    await user.click(screen.getByRole('button', { name: /invite/i }))
-    await user.click(screen.getByRole('button', { name: 'Send Invite Results' }))
-
-    expect(screen.getByText('Invited Modal'))!.toBeInTheDocument()
-    expect(mockRefetch).toHaveBeenCalled()
-
-    await user.click(screen.getByRole('button', { name: 'Close Invited Modal' }))
-    expect(screen.queryByText('Invited Modal')).not.toBeInTheDocument()
-  })
-
-  it('should open transfer ownership modal when transfer action is used', async () => {
-    const user = userEvent.setup()
-
-    render(<MembersPage />)
-
-    await user.click(screen.getByRole('button', { name: /transfer ownership/i }))
-    expect(screen.getByText('Transfer Ownership Modal'))!.toBeInTheDocument()
-  })
-
-  it('should show non-interactive owner role when transfer ownership is not allowed', () => {
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: false,
-      isAllowTransferWorkspace: false,
-    }))
-
-    render(<MembersPage />)
-
-    expect(screen.getByText('common.members.owner'))!.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
-  })
-
-  it('should hide manager controls for non-owner non-manager users', () => {
-    vi.mocked(useAppContext).mockReturnValue({
-      userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
-      isCurrentWorkspaceOwner: false,
-      isCurrentWorkspaceManager: false,
-    } as unknown as AppContextValue)
-
-    render(<MembersPage />)
-
-    expect(screen.queryByRole('button', { name: /invite/i })).not.toBeInTheDocument()
-    expect(screen.queryByText('Transfer ownership')).not.toBeInTheDocument()
-  })
-
-  it('should open and close edit workspace modal', async () => {
-    const user = userEvent.setup()
-
-    render(<MembersPage />)
-
-    await user.click(screen.getByTestId('edit-workspace-pencil'))
-    expect(screen.getByText('Edit Workspace Modal'))!.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Close Edit Workspace' }))
-    expect(screen.queryByText('Edit Workspace Modal')).not.toBeInTheDocument()
-  })
-
-  it('should close transfer ownership modal when close is clicked', async () => {
-    const user = userEvent.setup()
-
-    render(<MembersPage />)
-
-    await user.click(screen.getByRole('button', { name: /transfer ownership/i }))
-    expect(screen.getByText('Transfer Ownership Modal'))!.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Close Transfer Modal' }))
-    expect(screen.queryByText('Transfer Ownership Modal')).not.toBeInTheDocument()
-  })
-
-  it('should show pending status and you indicator', () => {
-    const pendingAccount: Member = {
-      ...mockAccounts[1]!,
-      status: 'pending',
+    await renderMembersPage({ systemFeatures: { rbac_enabled: false } })
+    const more = within(screen.getByRole('row', { name: /admin@example.com/ })).getByRole(
+      'button',
+      { name: /members\.memberActions/ },
+    )
+    const openRoles = async () => {
+      await user.click(more)
+      await user.click(screen.getByRole('menuitem', { name: /members\.editRole(?=$|:)/ }))
+      const search = await screen.findByRole('combobox')
+      await waitFor(() => expect(search).toHaveFocus())
+      return search
     }
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [mockAccounts[0], pendingAccount] },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-
-    render(<MembersPage />)
-
-    expect(screen.getByText(/members\.pending/i))!.toBeInTheDocument()
-    expect(screen.getByText(/members\.you/i))!.toBeInTheDocument() // Current user is owner@example.com
+    const search = await openRoles()
+    await user.click(await screen.findByRole('option', { name: /Next role/ }))
+    await user.type(search, 'Next')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(await openRoles()).toHaveValue('')
+    expect(await screen.findByRole('option', { name: /Next role/ })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    )
+    expect(updateRoles).not.toHaveBeenCalled()
   })
 
-  it('should show billing information for limited plan', () => {
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        type: Plan.sandbox,
-        total: { teamMembers: 5 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
-      } as unknown as ReturnType<typeof useProviderContext>['plan'],
-    }))
-
-    render(<MembersPage />)
-
-    expect(screen.getByText(/plansCommon\.member/i))!.toBeInTheDocument()
-    expect(screen.getByText('2'))!.toBeInTheDocument() // accounts.length
-    expect(screen.getByText('/'))!.toBeInTheDocument()
-    expect(screen.getByText('5'))!.toBeInTheDocument() // plan.total.teamMembers
+  it('disables ownership transfer when the feature is unavailable', async () => {
+    await renderMembersPage({ features: { is_allow_transfer_workspace: false } })
+    expect(
+      within(screen.getByRole('row', { name: /owner@example.com/ })).queryByRole('button', {
+        name: /members\.memberActions(?=$|:)/,
+      }),
+    ).not.toBeInTheDocument()
   })
 
-  it('should show unlimited billing information', () => {
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        type: Plan.sandbox,
-        total: { teamMembers: -1 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
-      } as unknown as ReturnType<typeof useProviderContext>['plan'],
-    }))
-
-    render(<MembersPage />)
-
-    expect(screen.getByText(/plansCommon\.unlimited/i))!.toBeInTheDocument()
+  it('discards a canceled workspace name edit before reopening', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage()
+    const edit = screen.getByRole('button', { name: /account\.editWorkspaceInfo/ })
+    await user.click(edit)
+    const input = screen.getByRole('textbox', { name: /account\.workspaceName$/ })
+    await waitFor(() => expect(input).toHaveFocus())
+    await user.clear(input)
+    await user.type(input, 'Unsaved name')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(edit)
+    expect(screen.getByRole('textbox', { name: /account\.workspaceName$/ })).toHaveValue(
+      'Test Workspace',
+    )
   })
 
-  it('should show non-billing member format for team plan even when billing is enabled', () => {
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        type: Plan.team,
-        total: { teamMembers: 50 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
-      } as unknown as ReturnType<typeof useProviderContext>['plan'],
-    }))
-
-    render(<MembersPage />)
-
-    // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
-    // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
-    expect(screen.getByText(/plansCommon\.memberAfter/i))!.toBeInTheDocument()
+  it.each([
+    ['sandbox', 5, 'plansCommon.member'],
+    ['sandbox', 0, 'plansCommon.unlimited'],
+    ['team', 50, 'plansCommon.memberAfter'],
+  ] as const)('shows the %s member allowance with limit %s', async (plan, limit, label) => {
+    await renderMembersPage({
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { billing: { subscription: { plan } }, members: { size: 2, limit } },
+    })
+    expect(screen.getByText(new RegExp(label))).toBeInTheDocument()
   })
 
-  it('should show invite button when user is manager but not owner', () => {
-    vi.mocked(useAppContext).mockReturnValue({
-      userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
-      isCurrentWorkspaceOwner: false,
-      isCurrentWorkspaceManager: true,
-    } as unknown as AppContextValue)
-
-    render(<MembersPage />)
-
-    expect(screen.getByRole('button', { name: /invite/i }))!.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
+  it('hands invitation results to a persistent dialog and closes them normally', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage()
+    const invite = screen.getByRole('button', { name: /members\.invite$/ })
+    await user.click(invite)
+    await user.type(
+      screen.getByRole('textbox', { name: /members\.emailRecipients/ }),
+      'sent@example.com',
+    )
+    await user.click(screen.getByRole('combobox', { name: /members\.role$/ }))
+    await user.click(await screen.findByRole('option', { name: /Admin/ }))
+    await user.click(screen.getByRole('button', { name: /members\.sendInviteCount/ }))
+    const results = await screen.findByRole('dialog', { name: /members\.invitationSent$/ })
+    expect(results).toHaveTextContent('http://invite/link')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: /members\.inviteTeamMember$/ }),
+      ).not.toBeInTheDocument(),
+    )
+    await user.click(within(results).getByRole('button', { name: /members\.ok$/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(invite)
+    expect(screen.getByRole('textbox', { name: /members\.emailRecipients/ })).toHaveValue('')
   })
 
-  it('should use created_at as fallback when last_active_at is empty', () => {
-    const memberNoLastActive: Member = {
-      ...mockAccounts[1]!,
-      last_active_at: '',
-      created_at: '1700000000',
-    }
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [memberNoLastActive] },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-
-    render(<MembersPage />)
-
-    expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1700000000000)
-  })
-
-  it('should not show plural s when only one account in billing layout', () => {
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [mockAccounts[0]] },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        type: Plan.sandbox,
-        total: { teamMembers: 5 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
-      } as unknown as ReturnType<typeof useProviderContext>['plan'],
-    }))
-
-    render(<MembersPage />)
-
-    expect(screen.getByText(/plansCommon\.member/i))!.toBeInTheDocument()
-    expect(screen.getByText('1'))!.toBeInTheDocument()
-  })
-
-  it('should not show plural s when only one account in non-billing layout', () => {
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [mockAccounts[0]] },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-
-    render(<MembersPage />)
-
-    expect(screen.getByText(/plansCommon\.memberAfter/i))!.toBeInTheDocument()
-    expect(screen.getByText('1'))!.toBeInTheDocument()
-  })
-
-  it('should show normal role as fallback for unknown role', () => {
-    vi.mocked(useAppContext).mockReturnValue({
-      userProfile: { email: 'admin@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
-      isCurrentWorkspaceOwner: false,
-      isCurrentWorkspaceManager: false,
-    } as unknown as AppContextValue)
-    vi.mocked(useMembers).mockReturnValue({
-      data: { accounts: [{ ...mockAccounts[1], role: 'unknown_role' as Member['role'] }] },
-      refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useMembers>)
-
-    render(<MembersPage />)
-
-    expect(screen.getByText('common.members.normal'))!.toBeInTheDocument()
-  })
-
-  it('should show upgrade button when member limit is full', () => {
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        type: Plan.sandbox,
-        total: { teamMembers: 2 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
-      } as unknown as ReturnType<typeof useProviderContext>['plan'],
-    }))
-
-    render(<MembersPage />)
-
-    expect(screen.getByText('Upgrade Button'))!.toBeInTheDocument()
+  it('keeps invitation available at the displayed plan limit', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage({
+      systemFeatures: { deployment_edition: 'CLOUD', is_email_setup: true },
+      features: { billing: { subscription: { plan: 'sandbox' } }, members: { size: 2, limit: 2 } },
+    })
+    await user.click(screen.getByRole('button', { name: /members\.invite$/ }))
+    expect(screen.getByRole('dialog', { name: /members\.inviteTeamMember$/ })).toBeInTheDocument()
   })
 })

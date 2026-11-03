@@ -1,214 +1,110 @@
-import type { ReactNode } from 'react'
 import type { ModelProvider } from '../../declarations'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { ConfigurationMethodEnum, ModelTypeEnum, PreferredProviderTypeEnum } from '../../declarations'
+import { act, waitFor } from '@testing-library/react'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import {
+  ConfigurationMethodEnum,
+  ModelTypeEnum,
+  PreferredProviderTypeEnum,
+} from '../../declarations'
 import { useChangeProviderPriority } from '../use-change-provider-priority'
 
-const mockUpdateModelList = vi.fn()
-const mockUpdateModelProviders = vi.fn()
-const mockNotify = vi.fn()
-const mockQueryKey = vi.fn(({ input }: { input: { params: { provider: string } } }) => ['model-providers', 'models', input.params.provider])
-const mockChangePreferredProviderType = vi.fn()
-const mockMutationOptions = vi.fn((options: Record<string, unknown>) => ({
-  mutationFn: (variables: unknown) => mockChangePreferredProviderType(variables),
-  ...options,
-}))
-
-vi.mock('@/app/components/base/ui/toast', () => ({
-  default: {
-    notify: (...args: unknown[]) => mockNotify(...args),
-  },
-  toast: {
-    success: (message: string) => mockNotify({ type: 'success', message }),
-    error: (message: string) => mockNotify({ type: 'error', message }),
-    warning: (message: string) => mockNotify({ type: 'warning', message }),
-    info: (message: string) => mockNotify({ type: 'info', message }),
-  },
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    modelProviders: {
-      models: {
-        queryKey: (options: { input: { params: { provider: string } } }) => mockQueryKey(options),
-      },
-      changePreferredProviderType: {
-        mutationOptions: (options: Record<string, unknown>) => mockMutationOptions(options),
-      },
-    },
-  },
-}))
-
-vi.mock('../../hooks', () => ({
-  useUpdateModelList: () => mockUpdateModelList,
-  useUpdateModelProviders: () => mockUpdateModelProviders,
-}))
-
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'langgenius/openai/openai',
-  configurate_methods: [
-    ConfigurationMethodEnum.customizableModel,
-    ConfigurationMethodEnum.predefinedModel,
-  ],
-  supported_model_types: [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding],
-  label: { en_US: 'OpenAI' },
-  icon_small: { en_US: 'https://example.com/icon.png' },
-  provider_credential_schema: { credential_form_schemas: [] },
-  model_credential_schema: {
-    model: {
-      label: { en_US: 'Model' },
-      placeholder: { en_US: 'Select model' },
-    },
-    credential_form_schemas: [],
-  },
-  ...overrides,
-} as ModelProvider)
-
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false, gcTime: 0 },
-    mutations: { retry: false },
-  },
+const changePriority = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.preferredProviderType.post': (input) =>
+        changePriority(input),
+    }),
+  }
 })
 
-const createWrapper = (queryClient: QueryClient) => {
-  return ({ children }: { children: ReactNode }) => (
-    React.createElement(QueryClientProvider, { client: queryClient }, children)
-  )
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
+  ({
+    provider: 'langgenius/openai/openai',
+    configurate_methods: [
+      ConfigurationMethodEnum.customizableModel,
+      ConfigurationMethodEnum.predefinedModel,
+    ],
+    supported_model_types: [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding],
+    label: { en_US: 'OpenAI' },
+    icon_small: { en_US: 'https://example.com/icon.png' },
+    provider_credential_schema: { credential_form_schemas: [] },
+    model_credential_schema: {
+      model: {
+        label: { en_US: 'Model' },
+        placeholder: { en_US: 'Select model' },
+      },
+      credential_form_schemas: [],
+    },
+    ...overrides,
+  }) as ModelProvider
+
+function setup() {
+  const view = renderHook(() => useChangeProviderPriority(createProvider()))
+  const keys = [
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
+      input: { params: { provider: 'langgenius/openai/openai' } },
+    }),
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
+    consoleQuery.workspaces.current.modelProviders.get.queryKey(),
+    ...['llm', 'text-embedding'].map((model_type) =>
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type } },
+      }),
+    ),
+  ]
+  keys.forEach((key) => view.queryClient.setQueryData(key, { data: [] }))
+  const unrelated = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
+    input: { params: { provider: 'other' } },
+  })
+  view.queryClient.setQueryData(unrelated, { data: [] })
+  return { ...view, keys, unrelated }
 }
+beforeEach(() => {
+  vi.resetAllMocks()
+  changePriority.mockResolvedValue({ result: 'success' })
+})
 
-describe('useChangeProviderPriority', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockChangePreferredProviderType.mockResolvedValue(undefined)
+it('submits provider preference and invalidates its models and supported model lists', async () => {
+  const { result, queryClient, keys, unrelated } = setup()
+  act(() => result.current.handleChangePriority(PreferredProviderTypeEnum.custom))
+  await waitFor(() => expect(queryClient.getQueryState(keys[0]!)?.isInvalidated).toBe(true))
+  expect(changePriority).toHaveBeenCalledWith({
+    params: { provider: 'langgenius/openai/openai' },
+    body: { preferred_provider_type: PreferredProviderTypeEnum.custom },
   })
+  keys.forEach((key) => expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true))
+  expect(queryClient.getQueryState(unrelated)?.isInvalidated).toBe(false)
+})
 
-  describe('when changing provider priority', () => {
-    it('should submit the selected preferred provider type for the current provider', async () => {
-      const queryClient = createTestQueryClient()
-      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined)
-      const provider = createProvider()
-      const { result } = renderHook(() => useChangeProviderPriority(provider), {
-        wrapper: createWrapper(queryClient),
-      })
+it('does not submit an empty provider identifier', () => {
+  const { result } = renderHook(() => useChangeProviderPriority(undefined))
+  act(() => result.current.handleChangePriority(PreferredProviderTypeEnum.system))
+  expect(changePriority).not.toHaveBeenCalled()
+})
 
-      act(() => {
-        result.current.handleChangePriority(PreferredProviderTypeEnum.custom)
-      })
+it('reports a failed preference change without invalidating model caches', async () => {
+  changePriority.mockRejectedValue(new Error('network error'))
+  const notify = vi.spyOn(toast, 'error')
+  const { result, queryClient, keys } = setup()
+  act(() => result.current.handleChangePriority(PreferredProviderTypeEnum.custom))
+  await waitFor(() => expect(notify).toHaveBeenCalledWith('network error'))
+  keys.forEach((key) => expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false))
+  expect(result.current.isChangingPriority).toBe(false)
+})
 
-      await waitFor(() => {
-        expect(mockChangePreferredProviderType).toHaveBeenCalledWith({
-          params: { provider: 'langgenius/openai/openai' },
-          body: { preferred_provider_type: PreferredProviderTypeEnum.custom },
-        })
-      })
-
-      expect(mockQueryKey).toHaveBeenCalledWith({
-        input: {
-          params: {
-            provider: 'langgenius/openai/openai',
-          },
-        },
-      })
-      expect(mockMutationOptions).toHaveBeenCalled()
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-providers', 'models', 'langgenius/openai/openai'],
-        exact: true,
-        refetchType: 'none',
-      })
-      expect(mockUpdateModelProviders).toHaveBeenCalledTimes(1)
-      expect(mockUpdateModelList).toHaveBeenCalledTimes(2)
-      expect(mockUpdateModelList).toHaveBeenNthCalledWith(1, ModelTypeEnum.textGeneration)
-      expect(mockUpdateModelList).toHaveBeenNthCalledWith(2, ModelTypeEnum.textEmbedding)
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
-      expect(result.current.isChangingPriority).toBe(false)
-    })
-
-    it('should tolerate an undefined provider and still submit a request without refreshing model lists', async () => {
-      const queryClient = createTestQueryClient()
-      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined)
-      const { result } = renderHook(() => useChangeProviderPriority(undefined), {
-        wrapper: createWrapper(queryClient),
-      })
-
-      act(() => {
-        result.current.handleChangePriority(PreferredProviderTypeEnum.system)
-      })
-
-      await waitFor(() => {
-        expect(mockChangePreferredProviderType).toHaveBeenCalledWith({
-          params: { provider: '' },
-          body: { preferred_provider_type: PreferredProviderTypeEnum.system },
-        })
-      })
-
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-providers', 'models', ''],
-        exact: true,
-        refetchType: 'none',
-      })
-      expect(mockUpdateModelProviders).toHaveBeenCalledTimes(1)
-      expect(mockUpdateModelList).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('when the mutation is not successful immediately', () => {
-    it('should show an error toast when the mutation fails', async () => {
-      const queryClient = createTestQueryClient()
-      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined)
-      mockChangePreferredProviderType.mockRejectedValueOnce(new Error('network error'))
-      const { result } = renderHook(() => useChangeProviderPriority(createProvider()), {
-        wrapper: createWrapper(queryClient),
-      })
-
-      act(() => {
-        result.current.handleChangePriority(PreferredProviderTypeEnum.custom)
-      })
-
-      await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.actionMsg.modifiedUnsuccessfully',
-        })
-      })
-
-      expect(invalidateQueries).not.toHaveBeenCalled()
-      expect(mockUpdateModelProviders).not.toHaveBeenCalled()
-      expect(mockUpdateModelList).not.toHaveBeenCalled()
-      expect(result.current.isChangingPriority).toBe(false)
-    })
-
-    it('should expose the pending mutation state while the request is in flight', async () => {
-      let resolveMutation: (() => void) | undefined
-      mockChangePreferredProviderType.mockImplementationOnce(() => new Promise<void>((resolve) => {
-        resolveMutation = resolve
-      }))
-
-      const queryClient = createTestQueryClient()
-      const { result } = renderHook(() => useChangeProviderPriority(createProvider()), {
-        wrapper: createWrapper(queryClient),
-      })
-
-      act(() => {
-        result.current.handleChangePriority(PreferredProviderTypeEnum.custom)
-      })
-
-      await waitFor(() => {
-        expect(result.current.isChangingPriority).toBe(true)
-      })
-
-      await act(async () => {
-        resolveMutation?.()
-      })
-
-      await waitFor(() => {
-        expect(result.current.isChangingPriority).toBe(false)
-      })
-    })
-  })
+it('exposes pending state until the preference is saved', async () => {
+  const response = createDeferred<{ result: string }>()
+  changePriority.mockReturnValue(response.promise)
+  const { result } = setup()
+  act(() => result.current.handleChangePriority(PreferredProviderTypeEnum.custom))
+  await waitFor(() => expect(result.current.isChangingPriority).toBe(true))
+  await act(async () => response.resolve({ result: 'success' }))
+  await waitFor(() => expect(result.current.isChangingPriority).toBe(false))
 })

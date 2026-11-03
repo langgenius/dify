@@ -2,7 +2,6 @@
 !package.json
 !pnpm-lock.yaml
 !pnpm-workspace.yaml
-!.nvmrc
 !web/
 !web/**
 !e2e/

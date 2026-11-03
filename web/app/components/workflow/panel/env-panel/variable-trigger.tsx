@@ -1,52 +1,47 @@
 'use client'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/base/ui/popover'
 import VariableModal from '@/app/components/workflow/panel/env-panel/variable-modal'
 
-type Props = {
+type Props = Readonly<{
   open: boolean
   setOpen: (value: React.SetStateAction<boolean>) => void
   env?: EnvironmentVariable
   onClose: () => void
   onSave: (env: EnvironmentVariable) => void
-}
+}>
 
-const VariableTrigger = ({
-  open,
-  setOpen,
-  env,
-  onClose,
-  onSave,
-}: Props) => {
-  const { t } = useTranslation()
-  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
-    setOpen(nextOpen)
-    if (!nextOpen)
-      onClose()
-  }, [onClose, setOpen])
+const VariableTrigger = ({ open, setOpen, env, onClose, onSave }: Props) => {
+  const { t } = useTranslation(['workflow'])
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      setOpen(nextOpen)
+      if (!nextOpen) onClose()
+    },
+    [onClose, setOpen],
+  )
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={handleOpenChange}
-    >
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
-        render={(
+        render={
           <Button variant="primary">
-            <RiAddLine className="mr-1 h-4 w-4" />
-            <span className="system-sm-medium">{t('env.envPanelButton', { ns: 'workflow' })}</span>
+            <RiAddLine className="size-4" />
+            <span className="system-sm-medium">
+              {t(($) => $['env.envPanelButton'], { ns: 'workflow' })}
+            </span>
           </Button>
-        )}
+        }
       />
       <PopoverContent
-        placement="left-start"
-        sideOffset={8}
+        side="left"
+        align="start"
         alignOffset={-104}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <VariableModal
           env={env}

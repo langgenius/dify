@@ -1,31 +1,34 @@
 'use client'
 
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { WorkflowCommentList } from '@/service/workflow-comment'
 import { memo, useEffect, useMemo } from 'react'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useStore } from '../store'
 
 type CommentPreviewProps = {
-  comment: WorkflowCommentList
+  comment: WorkflowCommentBasic
   onClick?: () => void
 }
 
 const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const setCommentPreviewHovering = useStore(s => s.setCommentPreviewHovering)
+  const setCommentPreviewHovering = useStore((s) => s.setCommentPreviewHovering)
+  const authorName = comment.created_by_account?.name ?? ''
   const participants = useMemo(() => {
     const list = comment.participants ?? []
     const author = comment.created_by_account
-    if (!author)
-      return [...list]
-    const rest = list.filter(user => user.id !== author.id)
+    if (!author) return [...list]
+    const rest = list.filter((user) => user.id !== author.id)
     return [author, ...rest]
   }, [comment.created_by_account, comment.participants])
-  useEffect(() => () => {
-    setCommentPreviewHovering(false)
-  }, [setCommentPreviewHovering])
+  useEffect(
+    () => () => {
+      setCommentPreviewHovering(false)
+    },
+    [setCommentPreviewHovering],
+  )
 
   return (
     <div
@@ -35,23 +38,19 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
       onMouseLeave={() => setCommentPreviewHovering(false)}
     >
       <div className="mb-3 flex items-center justify-between">
-        <UserAvatarList
-          users={participants}
-          maxVisible={3}
-          size="sm"
-        />
+        <UserAvatarList users={participants} maxVisible={3} size="sm" />
       </div>
 
       <div className="mb-2 flex items-start">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="truncate system-sm-medium text-text-primary">{comment.created_by_account.name}</div>
+          <div className="truncate system-sm-medium text-text-primary">{authorName}</div>
           <div className="shrink-0 system-2xs-regular text-text-tertiary">
-            {formatTimeFromNow(comment.updated_at * 1000)}
+            {formatTimeFromNow((comment.updated_at ?? comment.created_at ?? 0) * 1000)}
           </div>
         </div>
       </div>
 
-      <div className="system-sm-regular break-words text-text-secondary">{comment.content}</div>
+      <div className="system-sm-regular wrap-break-word text-text-secondary">{comment.content}</div>
     </div>
   )
 }

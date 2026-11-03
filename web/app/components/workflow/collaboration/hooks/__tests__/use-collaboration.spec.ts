@@ -1,9 +1,12 @@
 import type { CursorPosition, NodePanelPresenceMap, OnlineUser } from '../../types/collaboration'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useCollaboration } from '../use-collaboration'
 
-type HookReactFlowStore = NonNullable<Parameters<typeof useCollaboration>[1]>
-type HookReactFlowInstance = Parameters<ReturnType<typeof useCollaboration>['startCursorTracking']>[1]
+type HookReactFlowStore = NonNullable<Parameters<typeof useCollaboration>[2]>
+type HookReactFlowInstance = Parameters<
+  ReturnType<typeof useCollaboration>['startCursorTracking']
+>[1]
 
 const mockConnect = vi.hoisted(() => vi.fn())
 const mockDisconnect = vi.hoisted(() => vi.fn())
@@ -11,7 +14,9 @@ const mockIsConnected = vi.hoisted(() => vi.fn(() => true))
 const mockEmitCursorMove = vi.hoisted(() => vi.fn())
 const mockGetLeaderId = vi.hoisted(() => vi.fn(() => 'leader-1'))
 
-let onStateChangeCallback: ((state: { isConnected?: boolean, disconnectReason?: string, error?: string }) => void) | null = null
+let onStateChangeCallback:
+  | ((state: { isConnected?: boolean; disconnectReason?: string; error?: string }) => void)
+  | null = null
 let onCursorCallback: ((cursors: Record<string, CursorPosition>) => void) | null = null
 let onUsersCallback: ((users: OnlineUser[]) => void) | null = null
 let onPresenceCallback: ((presence: NodePanelPresenceMap) => void) | null = null
@@ -27,13 +32,6 @@ let isCollaborationEnabled = true
 
 const mockStartTracking = vi.hoisted(() => vi.fn())
 const mockStopTracking = vi.hoisted(() => vi.fn())
-const cursorServiceInstances: Array<{ startTracking: typeof mockStartTracking, stopTracking: typeof mockStopTracking }> = []
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_collaboration_mode: boolean } }) => boolean) =>
-    selector({ systemFeatures: { enable_collaboration_mode: isCollaborationEnabled } }),
-}))
-
 vi.mock('../../core/collaboration-manager', () => ({
   collaborationManager: {
     connect: (...args: unknown[]) => mockConnect(...args),
@@ -41,7 +39,13 @@ vi.mock('../../core/collaboration-manager', () => ({
     isConnected: () => mockIsConnected(),
     emitCursorMove: (...args: unknown[]) => mockEmitCursorMove(...args),
     getLeaderId: () => mockGetLeaderId(),
-    onStateChange: (callback: (state: { isConnected?: boolean, disconnectReason?: string, error?: string }) => void) => {
+    onStateChange: (
+      callback: (state: {
+        isConnected?: boolean
+        disconnectReason?: string
+        error?: string
+      }) => void,
+    ) => {
       onStateChangeCallback = callback
       return unsubscribeState
     },
@@ -68,9 +72,6 @@ vi.mock('../../services/cursor-service', () => ({
   CursorService: class {
     startTracking = mockStartTracking
     stopTracking = mockStopTracking
-    constructor() {
-      cursorServiceInstances.push({ startTracking: this.startTracking, stopTracking: this.stopTracking })
-    }
   },
 }))
 
@@ -83,7 +84,6 @@ describe('useCollaboration', () => {
     onPresenceCallback = null
     onLeaderCallback = null
     isCollaborationEnabled = true
-    cursorServiceInstances.length = 0
     mockConnect.mockResolvedValue('conn-1')
     mockIsConnected.mockReturnValue(true)
   })
@@ -92,23 +92,36 @@ describe('useCollaboration', () => {
     const reactFlowStore: HookReactFlowStore = {
       getState: vi.fn(),
     }
-    const { result, unmount } = renderHook(() => useCollaboration('app-1', reactFlowStore))
+    const { result, unmount } = renderHookWithConsoleQuery(
+      () => useCollaboration('app-1', true, reactFlowStore),
+      {
+        systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
+      },
+    )
 
     await waitFor(() => {
       expect(mockConnect).toHaveBeenCalledWith('app-1', reactFlowStore)
     })
 
-    onStateChangeCallback?.({ isConnected: true })
-    onUsersCallback?.([{ user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' } as OnlineUser])
-    onCursorCallback?.({ u1: { x: 10, y: 20, userId: 'u1', timestamp: 1 } })
-    onPresenceCallback?.({ nodeA: { sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 } } })
-    onLeaderCallback?.(true)
+    act(() => {
+      onStateChangeCallback?.({ isConnected: true })
+      onUsersCallback?.([{ user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' } as OnlineUser])
+      onCursorCallback?.({ u1: { x: 10, y: 20, userId: 'u1', timestamp: 1 } })
+      onPresenceCallback?.({
+        nodeA: { sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 } },
+      })
+      onLeaderCallback?.(true)
+    })
 
     await waitFor(() => {
       expect(result.current.isConnected).toBe(true)
-      expect(result.current.onlineUsers).toHaveLength(1)
+      expect(result.current.onlineUsers).toEqual([
+        { user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' },
+      ])
       expect(result.current.cursors.u1?.x).toBe(10)
-      expect(result.current.nodePanelPresence.nodeA).toBeDefined()
+      expect(result.current.nodePanelPresence.nodeA).toEqual({
+        sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 },
+      })
       expect(result.current.isLeader).toBe(true)
       expect(result.current.leaderId).toBe('leader-1')
     })
@@ -120,7 +133,7 @@ describe('useCollaboration', () => {
     } as HookReactFlowInstance
     result.current.startCursorTracking(ref, reactFlowInstance)
     expect(mockStartTracking).toHaveBeenCalledTimes(1)
-    const emitPosition = mockStartTracking.mock.calls[0]?.[1] as ((position: CursorPosition) => void)
+    const emitPosition = mockStartTracking.mock.calls[0]?.[1] as (position: CursorPosition) => void
     emitPosition({ x: 1, y: 2, userId: 'u1', timestamp: 2 })
     expect(mockEmitCursorMove).toHaveBeenCalledWith({ x: 1, y: 2, userId: 'u1', timestamp: 2 })
 
@@ -136,16 +149,24 @@ describe('useCollaboration', () => {
     expect(mockDisconnect).toHaveBeenCalledWith('conn-1')
   })
 
-  it('does not connect or start cursor tracking when collaboration is disabled', async () => {
-    isCollaborationEnabled = false
-    const { result } = renderHook(() => useCollaboration('app-1'))
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    'does not connect or track cursors when a collaboration gate is disabled',
+    async (featureEnabled, canEdit) => {
+      isCollaborationEnabled = featureEnabled
+      const { result } = renderHookWithConsoleQuery(() => useCollaboration('app-1', canEdit), {
+        systemFeatures: { enable_collaboration_mode: featureEnabled },
+      })
 
-    await waitFor(() => {
-      expect(mockConnect).not.toHaveBeenCalled()
-      expect(result.current.isEnabled).toBe(false)
-    })
+      await waitFor(() => {
+        expect(mockConnect).not.toHaveBeenCalled()
+        expect(result.current.isEnabled).toBe(false)
+      })
 
-    result.current.startCursorTracking({ current: document.createElement('div') })
-    expect(mockStartTracking).not.toHaveBeenCalled()
-  })
+      result.current.startCursorTracking({ current: document.createElement('div') })
+      expect(mockStartTracking).not.toHaveBeenCalled()
+    },
+  )
 })

@@ -1,13 +1,6 @@
 import type { ChatItem } from '../../types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useChatLayout } from '../use-chat-layout'
 
 type ResizeCallback = (entries: ResizeObserverEntry[], observer: ResizeObserver) => void
@@ -15,6 +8,8 @@ type ResizeCallback = (entries: ResizeObserverEntry[], observer: ResizeObserver)
 let capturedResizeCallbacks: ResizeCallback[] = []
 let disconnectSpy: ReturnType<typeof vi.fn>
 let rafCallbacks: FrameRequestCallback[] = []
+
+const bodyWidthDescriptor = Object.getOwnPropertyDescriptor(document.body, 'clientWidth')
 
 const makeChatItem = (overrides: Partial<ChatItem> = {}): ChatItem => ({
   id: `item-${Math.random().toString(36).slice(2)}`,
@@ -31,7 +26,11 @@ const makeResizeEntry = (blockSize: number, inlineSize: number): ResizeObserverE
   target: document.createElement('div'),
 })
 
-const assignMetric = (node: HTMLElement, key: 'clientWidth' | 'clientHeight' | 'scrollHeight', value: number) => {
+const assignMetric = (
+  node: HTMLElement,
+  key: 'clientWidth' | 'clientHeight' | 'scrollHeight',
+  value: number,
+) => {
   Object.defineProperty(node, key, {
     configurable: true,
     value,
@@ -47,13 +46,8 @@ const LayoutHarness = ({
   sidebarCollapseState?: boolean
   attachRefs?: boolean
 }) => {
-  const {
-    width,
-    chatContainerRef,
-    chatContainerInnerRef,
-    chatFooterRef,
-    chatFooterInnerRef,
-  } = useChatLayout({ chatList, sidebarCollapseState })
+  const { chatContainerRef, chatContainerInnerRef, chatFooterRef, chatFooterInnerRef } =
+    useChatLayout({ chatList, sidebarCollapseState })
 
   return (
     <>
@@ -76,8 +70,7 @@ const LayoutHarness = ({
           data-testid="chat-container-inner"
           ref={(node) => {
             chatContainerInnerRef.current = attachRefs ? node : null
-            if (node && attachRefs)
-              assignMetric(node, 'clientWidth', 360)
+            if (node && attachRefs) assignMetric(node, 'clientWidth', 360)
           }}
         />
       </div>
@@ -94,7 +87,6 @@ const LayoutHarness = ({
           }}
         />
       </div>
-      <output data-testid="layout-width">{width}</output>
     </>
   )
 }
@@ -102,7 +94,7 @@ const LayoutHarness = ({
 const flushAnimationFrames = () => {
   const queuedCallbacks = [...rafCallbacks]
   rafCallbacks = []
-  queuedCallbacks.forEach(callback => callback(0))
+  queuedCallbacks.forEach((callback) => callback(0))
 }
 
 describe('useChatLayout', () => {
@@ -123,18 +115,24 @@ describe('useChatLayout', () => {
       return rafCallbacks.length
     })
 
-    vi.stubGlobal('ResizeObserver', class {
-      constructor(cb: ResizeCallback) {
-        capturedResizeCallbacks.push(cb)
-      }
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(cb: ResizeCallback) {
+          capturedResizeCallbacks.push(cb)
+        }
 
-      observe() { }
-      unobserve() { }
-      disconnect = disconnectSpy
-    })
+        observe() {}
+        unobserve() {}
+        disconnect = disconnectSpy
+      },
+    )
   })
 
   afterEach(() => {
+    if (bodyWidthDescriptor)
+      Object.defineProperty(document.body, 'clientWidth', bodyWidthDescriptor)
+    else Reflect.deleteProperty(document.body, 'clientWidth')
     vi.useRealTimers()
     vi.unstubAllGlobals()
   })
@@ -146,10 +144,7 @@ describe('useChatLayout', () => {
 
       render(
         <LayoutHarness
-          chatList={[
-            makeChatItem({ id: 'q1' }),
-            makeChatItem({ id: 'a1', isAnswer: true }),
-          ]}
+          chatList={[makeChatItem({ id: 'q1' }), makeChatItem({ id: 'a1', isAnswer: true })]}
           sidebarCollapseState={false}
         />,
       )
@@ -159,7 +154,6 @@ describe('useChatLayout', () => {
         vi.runAllTimers()
       })
 
-      expect(screen.getByTestId('layout-width')).toHaveTextContent('600')
       expect(screen.getByTestId('chat-footer').style.width).toBe('400px')
       expect(screen.getByTestId('chat-footer-inner').style.width).toBe('360px')
       expect((screen.getByTestId('chat-container') as HTMLDivElement).scrollTop).toBe(640)
@@ -173,20 +167,19 @@ describe('useChatLayout', () => {
       const removeSpy = vi.spyOn(window, 'removeEventListener')
       const { unmount } = render(
         <LayoutHarness
-          chatList={[
-            makeChatItem({ id: 'q1' }),
-            makeChatItem({ id: 'a1', isAnswer: true }),
-          ]}
+          chatList={[makeChatItem({ id: 'q1' }), makeChatItem({ id: 'a1', isAnswer: true })]}
         />,
       )
 
       act(() => {
         capturedResizeCallbacks[0]?.([makeResizeEntry(80, 400)], {} as ResizeObserver)
+        flushAnimationFrames()
       })
       expect(screen.getByTestId('chat-container').style.paddingBottom).toBe('80px')
 
       act(() => {
         capturedResizeCallbacks[1]?.([makeResizeEntry(50, 560)], {} as ResizeObserver)
+        flushAnimationFrames()
       })
       expect(screen.getByTestId('chat-footer').style.width).toBe('560px')
 
@@ -199,16 +192,14 @@ describe('useChatLayout', () => {
     it('should respect manual scrolling until a new first message arrives and safely ignore missing refs', () => {
       const { rerender } = render(
         <LayoutHarness
-          chatList={[
-            makeChatItem({ id: 'q1' }),
-            makeChatItem({ id: 'a1', isAnswer: true }),
-          ]}
+          chatList={[makeChatItem({ id: 'q1' }), makeChatItem({ id: 'a1', isAnswer: true })]}
         />,
       )
 
       const container = screen.getByTestId('chat-container') as HTMLDivElement
 
       act(() => {
+        flushAnimationFrames()
         fireEvent.scroll(container)
         flushAnimationFrames()
       })
@@ -233,6 +224,8 @@ describe('useChatLayout', () => {
         vi.runAllTimers()
       })
 
+      expect(container.scrollTop).toBe(10)
+
       act(() => {
         container.scrollTop = 420
         fireEvent.scroll(container)
@@ -240,10 +233,7 @@ describe('useChatLayout', () => {
 
       rerender(
         <LayoutHarness
-          chatList={[
-            makeChatItem({ id: 'q2' }),
-            makeChatItem({ id: 'a3', isAnswer: true }),
-          ]}
+          chatList={[makeChatItem({ id: 'q2' }), makeChatItem({ id: 'a3', isAnswer: true })]}
         />,
       )
 
@@ -256,15 +246,13 @@ describe('useChatLayout', () => {
 
       rerender(
         <LayoutHarness
-          chatList={[
-            makeChatItem({ id: 'q2' }),
-            makeChatItem({ id: 'a3', isAnswer: true }),
-          ]}
+          chatList={[makeChatItem({ id: 'q2' }), makeChatItem({ id: 'a3', isAnswer: true })]}
           attachRefs={false}
         />,
       )
 
       act(() => {
+        flushAnimationFrames()
         fireEvent.scroll(container)
         flushAnimationFrames()
       })
@@ -284,7 +272,6 @@ describe('useChatLayout', () => {
         vi.runAllTimers()
       })
 
-      expect(screen.getByTestId('layout-width')).toHaveTextContent('0')
       expect(capturedResizeCallbacks).toHaveLength(0)
       expect(screen.getByTestId('chat-footer').style.width).toBe('')
       expect(screen.getByTestId('chat-footer-inner').style.width).toBe('')

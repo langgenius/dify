@@ -1,27 +1,46 @@
 # @langgenius/dify-ui
 
-This package provides shared design tokens (colors, shadows, typography), the `cn()` utility, and a Tailwind CSS preset consumed by `web/`.
+This file owns the package boundary. Read the matching contract guide below directly; use the
+[package index] when discovering available primitives or usage examples.
 
-## Border Radius: Figma Token → Tailwind Class Mapping
+## Package boundary
 
-The Figma design system uses `--radius/*` tokens whose scale is **offset by one step** from Tailwind CSS v4 defaults. When translating Figma specs to code, always use this mapping — never use `radius-*` as a CSS class, and never extend `borderRadius` in the preset.
+- Keep this an independent primitive package. Do not import from application packages or depend on
+  routing, i18n, application state, schemas, data fetching, or business APIs.
+- Keep package contracts and contributor guidance self-contained here. Application docs and agent
+  skills may reference these guides; these guides must not require Web docs or skills to define package behavior.
+- Prefer `@base-ui/react` when it owns the required headless behavior. Style primitives with `cva`,
+  `cn`, and Dify design tokens. Keep one primitive per `src/<name>/` folder with optional colocated
+  stories and tests. A cohesive family may use `src/<family>/<primitive>/` public entrypoints,
+  with family-shared implementation in `src/<family>/internal/`.
+- Prefer Base UI data attributes for state styling and CSS variables for exposed dynamic values.
+  Follow [Styling] for state callbacks; do not mirror primitive state in React solely to add classes.
+- When an upstream API or selector contract is unclear, read the current official Base UI
+  documentation and installed `@base-ui/react` declarations before coding.
 
-| Figma Token     | Value | Tailwind Class   |
-| --------------- | ----- | ---------------- |
-| `--radius/2xs`  | 2px   | `rounded-xs`     |
-| `--radius/xs`   | 4px   | `rounded-sm`     |
-| `--radius/sm`   | 6px   | `rounded-md`     |
-| `--radius/md`   | 8px   | `rounded-lg`     |
-| `--radius/lg`   | 10px  | `rounded-[10px]` |
-| `--radius/xl`   | 12px  | `rounded-xl`     |
-| `--radius/2xl`  | 16px  | `rounded-2xl`    |
-| `--radius/3xl`  | 20px  | `rounded-[20px]` |
-| `--radius/6xl`  | 28px  | `rounded-[28px]` |
-| `--radius/full` | 999px | `rounded-full`   |
+## Contract owners
 
-### Rules
+- Imports, exports, naming, public types, generics, and anatomy: [Public API authoring]
+- Button and icon-only action behavior: [Button contract] and [Icon Button contract]
+- Cross-component accessible-name and description choices: [Accessible names and descriptions]
+- Compound input behavior: [Input Group contract]
+- Form structure, labels, and value ownership: [Forms]
+- Picker choice and typed values: [Selection]
+- Portals, presence, layering, and floating-surface semantics: [Overlays]
+- State styling, callbacks, composition, Tailwind integration, and border radius: [Styling]
+- Package test ownership and setup: [Testing and development]
 
-- **Do not** add custom `borderRadius` values to `tailwind-preset.ts`. We use Tailwind v4 defaults and arbitrary values (`rounded-[Npx]`) for sizes without a standard equivalent.
-- **Do not** use `radius-*` as CSS class names. The old `@utility radius-*` definitions have been removed.
-- When the Figma MCP returns `rounded-[var(--radius/sm, 6px)]`, convert it to the standard Tailwind class from the table above (e.g. `rounded-md`).
-- For values without a standard Tailwind equivalent (10px, 20px, 28px), use arbitrary values like `rounded-[10px]`.
+A component needs a local README only when it owns a substantial Dify-specific contract that its
+types, stories, and upstream documentation do not express. Do not create one for completeness.
+
+[Accessible names and descriptions]: docs/accessible-names-and-descriptions.md
+[Button contract]: src/button/README.md
+[Forms]: docs/forms.md
+[Icon Button contract]: src/icon-button/README.md
+[Input Group contract]: src/input-group/README.md
+[Overlays]: docs/overlays.md
+[Public API authoring]: docs/authoring.md
+[Selection]: docs/selection.md
+[Styling]: docs/styling.md
+[Testing and development]: docs/testing.md
+[package index]: README.md

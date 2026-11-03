@@ -1,0 +1,48 @@
+'use client'
+import type { ReadmePanelState } from './store'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useTranslation } from 'react-i18next'
+import { ReadmePanelContent } from './content'
+
+type ReadmeDialogProps = {
+  detail: ReadmePanelState['detail']
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  triggerId?: string
+}
+
+export function ReadmeDialog({ detail, open, onOpenChange, triggerId }: ReadmeDialogProps) {
+  const { t } = useTranslation(['common', 'plugin'])
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange} triggerId={triggerId}>
+      <DialogContent className="h-[calc(100dvh-16px)] w-200 overflow-hidden">
+        <ReadmePanelContent
+          detail={detail}
+          title={
+            <DialogTitle
+              // oxlint-disable-next-line shadcn/no-restyle -- README panel title is a section label in the panel header.
+              className="truncate text-xs font-medium text-text-tertiary uppercase"
+            >
+              {t(($) => $['readmeInfo.title'], { ns: 'plugin' })}
+            </DialogTitle>
+          }
+          closeButton={
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="static"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
+          }
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}

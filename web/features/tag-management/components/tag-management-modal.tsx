@@ -1,0 +1,108 @@
+'use client'
+import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
+import { hasPermission } from '@/utils/permission'
+import { getTagManagePermissionKey } from '../utils'
+import { TagItemEditor } from './tag-item-editor'
+
+type TagManagementModalProps = {
+  type: TagType
+  show: boolean
+  onClose: () => void
+  onTagsChange?: () => void
+}
+export const TagManagementModal = ({
+  show,
+  type,
+  onClose,
+  onTagsChange,
+}: TagManagementModalProps) => {
+  const { t } = useTranslation(['common'])
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
+  const { data: tagList = [] } = useQuery(
+    consoleQuery.tags.get.queryOptions({
+      input: {
+        query: {
+          type,
+        },
+      },
+      enabled: show && canManageTags,
+    }),
+  )
+  const createTagMutation = useMutation(
+    consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
+  )
+  const [name, setName] = useState<string>('')
+
+  const createNewTag = () => {
+    if (!canManageTags) return
+    if (!name) return
+    if (createTagMutation.isPending) return
+
+    createTagMutation.mutate(
+      {
+        body: {
+          name,
+          type,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success(t(($) => $['tag.created'], { ns: 'common' }))
+          setName('')
+        },
+        onError: (error) => {
+          toast.error(getErrorMessage(error) ?? t(($) => $['tag.failed'], { ns: 'common' }))
+        },
+      },
+    )
+  }
+  const handleClose = () => {
+    setName('')
+    onClose()
+  }
+
+  if (!canManageTags) return null
+
+  return (
+    <Dialog open={show} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="w-150">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['tag.manageTags'], { ns: 'common' })}</DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody className="flex flex-wrap gap-2">
+          <input
+            aria-label={t(($) => $['tag.addNew'], { ns: 'common' }) || ''}
+            className="w-25 shrink-0 appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm/5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid"
+            placeholder={t(($) => $['tag.addNew'], { ns: 'common' }) || ''}
+            value={name}
+            readOnly={createTagMutation.isPending}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && createNewTag()}
+            onBlur={createNewTag}
+          />
+          {tagList.map((tag) => (
+            <TagItemEditor key={tag.id} tag={tag} onTagsChange={onTagsChange} />
+          ))}
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
+  )
+}

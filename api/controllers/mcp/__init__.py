@@ -1,3 +1,5 @@
+from types import ModuleType
+
 from flask import Blueprint
 from flask_restx import Namespace
 
@@ -14,7 +16,16 @@ api = ExternalApi(
 
 mcp_ns = Namespace("mcp", description="MCP operations", path="/")
 
-from . import mcp
+
+def _register_controllers() -> tuple[ModuleType, ...]:
+    """Load route modules after their namespaces and schema models exist."""
+
+    from . import mcp
+
+    return (mcp,)
+
+
+(mcp,) = _register_controllers()
 
 api.add_namespace(mcp_ns)
 

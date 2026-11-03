@@ -1,0 +1,212 @@
+'use client'
+import type { AccessPolicyResourceType } from '@/models/access-control'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
+import { getEnterpriseDocUrl } from '@/context/i18n'
+import { getDocLanguage } from '@/i18n/language'
+import PermissionPicker from './permission-picker'
+
+export type PermissionSetModalMode = 'create' | 'edit' | 'view'
+
+export type PermissionSetFormValues = {
+  name: string
+  description: string
+  permissionKeys: string[]
+}
+
+type PermissionSetModalProps = {
+  open: boolean
+  mode: PermissionSetModalMode
+  resourceType: AccessPolicyResourceType
+  initialValues?: Partial<PermissionSetFormValues>
+  onClose: () => void
+  onSubmit: (values: PermissionSetFormValues) => void | Promise<void>
+}
+
+type PermissionSetModalBodyProps = Omit<PermissionSetModalProps, 'open'>
+
+const PermissionSetModalBody = ({
+  mode,
+  resourceType,
+  initialValues,
+  onClose,
+  onSubmit,
+}: PermissionSetModalBodyProps) => {
+  const { t } = useTranslation(['common', 'permission'])
+  const locale = useLocale()
+  const docLanguage = getDocLanguage(locale)
+  const [name, setName] = useState(initialValues?.name ?? '')
+  const [description, setDescription] = useState(initialValues?.description ?? '')
+  const [permissionKeys, setPermissionKeys] = useState<string[]>(
+    initialValues?.permissionKeys ?? [],
+  )
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitFailed, setSubmitFailed] = useState(false)
+
+  const trimmedName = name.trim()
+  const readonly = mode === 'view'
+  const canSubmit = trimmedName.length > 0
+
+  const handleConfirm = async () => {
+    if (readonly || !canSubmit || isSubmitting) return
+    setIsSubmitting(true)
+    setSubmitFailed(false)
+    try {
+      await onSubmit({
+        name: trimmedName,
+        description: description.trim(),
+        permissionKeys,
+      })
+      onClose()
+    } catch {
+      setSubmitFailed(true)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <DialogContent className="h-[85vh] w-140" backdropProps={{ forceRender: true }}>
+      <form
+        className="contents"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void handleConfirm()
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $[`permissionSet.modal.${mode}.${resourceType}.title`], {
+              ns: 'permission',
+            })}
+          </DialogTitle>
+          <DialogDescription>
+            {t(($) => $[`permissionSet.modal.${mode}.${resourceType}.description`], {
+              ns: 'permission',
+            })}
+          </DialogDescription>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+
+        <DialogBody className="flex flex-col gap-5">
+          <div className="flex shrink-0 flex-col gap-1">
+            <label htmlFor="permission-set-name" className="system-sm-medium text-text-secondary">
+              {t(($) => $['permissionSet.nameLabel'], { ns: 'permission' })}
+              <span aria-hidden className="ms-0.5 text-text-destructive">
+                *
+              </span>
+            </label>
+            <Input
+              id="permission-set-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t(($) => $['permissionSet.namePlaceholder'], { ns: 'permission' })}
+              disabled={readonly}
+              required
+            />
+          </div>
+
+          <div className="flex shrink-0 flex-col gap-1">
+            <label
+              htmlFor="permission-set-description"
+              className="system-sm-medium text-text-secondary"
+            >
+              {t(($) => $['permissionSet.descriptionLabel'], { ns: 'permission' })}
+            </label>
+            <Textarea
+              id="permission-set-description"
+              value={description}
+              onValueChange={(value) => setDescription(value)}
+              placeholder={t(($) => $['permissionSet.descriptionPlaceholder'], {
+                ns: 'permission',
+              })}
+              className="min-h-20 resize-none"
+              disabled={readonly}
+            />
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-2">
+            <div className="system-sm-medium text-text-secondary">
+              {t(($) => $['permissionSet.permissions'], { ns: 'permission' })}
+            </div>
+            <PermissionPicker
+              resourceType={resourceType}
+              value={permissionKeys}
+              onChange={setPermissionKeys}
+              readonly={readonly}
+            />
+          </div>
+        </DialogBody>
+
+        <DialogFooter>
+          {submitFailed && (
+            <p role="alert" className="me-auto system-xs-regular text-text-destructive">
+              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </p>
+          )}
+          <a
+            href={getEnterpriseDocUrl('/use/workspace/permission-reference', docLanguage)}
+            target="_blank"
+            rel="noreferrer"
+            className="me-auto inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
+          >
+            <span>{t(($) => $['permissionSet.learnMore'], { ns: 'permission' })}</span>
+            <span aria-hidden className="i-ri-external-link-line h-3.5 w-3.5" />
+          </a>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {readonly
+              ? t(($) => $['operation.close'], { ns: 'common' })
+              : t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          {!readonly && (
+            <Button type="submit" variant="primary" disabled={!canSubmit} loading={isSubmitting}>
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
+            </Button>
+          )}
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  )
+}
+
+const PermissionSetModal = ({
+  open,
+  mode,
+  resourceType,
+  initialValues,
+  onClose,
+  onSubmit,
+}: PermissionSetModalProps) => {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose()
+      }}
+    >
+      <PermissionSetModalBody
+        mode={mode}
+        resourceType={resourceType}
+        initialValues={initialValues}
+        onClose={onClose}
+        onSubmit={onSubmit}
+      />
+    </Dialog>
+  )
+}
+
+export default PermissionSetModal

@@ -1,49 +1,30 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import UpgradeModal from '../upgrade-modal'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { UpgradeModal } from '../upgrade-modal'
 
-const mockUseModalContextSelector = vi.hoisted(() => vi.fn())
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: (selector: (state: { setShowPricingModal: () => void }) => () => void) =>
-    mockUseModalContextSelector(selector),
-}))
-
-vi.mock('@/app/components/base/premium-badge', () => ({
-  __esModule: true,
-  default: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
-describe('human-input/delivery-method/upgrade-modal', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render upgrade copy and handle hide and upgrade actions', () => {
-    const handleClose = vi.fn()
-    const handleShowPricingModal = vi.fn()
-
-    mockUseModalContextSelector.mockImplementation(selector => selector({
-      setShowPricingModal: handleShowPricingModal,
-    }))
-
-    render(
-      <UpgradeModal
-        isShow
-        onClose={handleClose}
-      />,
-    )
-
-    expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.upgradeTip')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.upgradeTipContent')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.upgradeTipHide' }))
-    expect(handleClose).toHaveBeenCalledTimes(1)
-
-    fireEvent.click(screen.getByRole('button', { name: /billing.upgradeBtn.encourageShort/i }))
-    expect(handleShowPricingModal).toHaveBeenCalledTimes(1)
-  })
+it('renders upgrade copy and handles hide and pricing actions', async () => {
+  const user = userEvent.setup()
+  const onUrlUpdate = vi.fn()
+  const onOpenChange = vi.fn()
+  renderWithConsoleQuery(
+    <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>
+      <UpgradeModal open onOpenChange={onOpenChange} />
+    </NuqsTestingAdapter>,
+    { systemFeatures: { deployment_edition: 'CLOUD' } },
+  )
+  expect(screen.getByRole('dialog')).toHaveTextContent(
+    'workflowHumanInput.nodes.humanInput.deliveryMethod.upgradeTipContent',
+  )
+  await user.click(screen.getByRole('button', { name: /billing.upgradeBtn.encourageShort/i }))
+  await waitFor(() =>
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+  )
+  await user.click(
+    screen.getByRole('button', {
+      name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.upgradeTipHide',
+    }),
+  )
+  expect(onOpenChange).toHaveBeenCalledWith(false)
 })

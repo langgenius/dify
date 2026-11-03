@@ -1,0 +1,609 @@
+'use client'
+
+import type {
+  WorkflowRunArchiveDownloadStatus,
+  WorkflowRunArchiveDownloadTaskResponse,
+  WorkflowRunArchiveMonthResponse,
+} from '@dify/contracts/api/console/workflow-run-archives/types.gen'
+import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
+import { useEffect, useId, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import { toast } from '@/app/notifications'
+import { API_PREFIX } from '@/config'
+import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
+
+const numberFormatter = new Intl.NumberFormat()
+const byteFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 1,
+})
+const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB']
+const DOWNLOAD_TASK_POLLING_INTERVAL = 3000
+const ARCHIVE_MONTH_PAGE_SIZE = 20
+
+function formatNumber(value: number) {
+  return numberFormatter.format(value)
+}
+
+function formatBytes(bytes: number) {
+  if (bytes <= 0) return '0 B'
+
+  let value = bytes
+  let unitIndex = 0
+  while (value >= 1024 && unitIndex < BYTE_UNITS.length - 1) {
+    value /= 1024
+    unitIndex += 1
+  }
+  return `${byteFormatter.format(value)} ${BYTE_UNITS[unitIndex]}`
+}
+
+function formatMonth(year: number, month: number) {
+  return `${year}-${String(month).padStart(2, '0')}`
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return '-'
+  return value.slice(0, 10)
+}
+
+function isPreparingStatus(status: WorkflowRunArchiveDownloadStatus | undefined) {
+  return status === 'pending' || status === 'processing'
+}
+
+function latestDownloadTask(
+  snapshot: WorkflowRunArchiveDownloadTaskResponse | null | undefined,
+  candidate: WorkflowRunArchiveDownloadTaskResponse | null | undefined,
+) {
+  if (!candidate) return snapshot
+  if (!snapshot || Date.parse(candidate.updated_at) >= Date.parse(snapshot.updated_at)) {
+    return candidate
+  }
+  return snapshot
+}
+
+function isDeletingStatus(status: WorkflowRunArchiveMonthResponse['deletion_status']) {
+  return status === 'pending' || status === 'processing'
+}
+
+function buildArchiveDownloadFileUrl(downloadId: string) {
+  return `${API_PREFIX}/workflow-run-archives/downloads/${downloadId}/file`
+}
+
+export default function WorkflowLogArchivesPage() {
+  const { t } = useTranslation(['appLog'])
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  const [visibleArchiveMonthCount, setVisibleArchiveMonthCount] = useState(ARCHIVE_MONTH_PAGE_SIZE)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const archiveListQuery = useQuery(
+    consoleQuery.workflowRunArchives.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD' && (plan === 'professional' || plan === 'team'),
+      refetchInterval: (query) =>
+        query.state.data?.months.some((archive) => isDeletingStatus(archive.deletion_status))
+          ? DOWNLOAD_TASK_POLLING_INTERVAL
+          : false,
+    }),
+  )
+  const archiveData = archiveListQuery.data
+  const archiveMonths = archiveData?.months ?? []
+  const visibleArchiveMonths = archiveMonths.slice(0, visibleArchiveMonthCount)
+  const summary = archiveData?.summary
+  const isLoading =
+    (deploymentEdition === 'CLOUD' && plan === undefined) || archiveListQuery.isLoading
+  const isEmpty = !isLoading && !archiveListQuery.isError && archiveMonths.length === 0
+  const hasMoreArchives = visibleArchiveMonths.length < archiveMonths.length
+
+  useEffect(() => {
+    if (!hasMoreArchives) return
+
+    const loadMoreElement = loadMoreRef.current
+    if (!loadMoreElement) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return
+
+        setVisibleArchiveMonthCount((count) =>
+          Math.min(count + ARCHIVE_MONTH_PAGE_SIZE, archiveMonths.length),
+        )
+      },
+      { rootMargin: '120px' },
+    )
+    observer.observe(loadMoreElement)
+
+    return () => observer.disconnect()
+  }, [archiveMonths.length, hasMoreArchives, visibleArchiveMonthCount])
+
+  const summaryItems = [
+    {
+      label: t(($) => $['archives.summary.months'], { ns: 'appLog' }),
+      value: summary ? formatNumber(summary.archived_month_count) : '0',
+      icon: 'i-ri-calendar-2-line',
+    },
+    {
+      label: t(($) => $['archives.summary.runs'], { ns: 'appLog' }),
+      value: summary ? formatNumber(summary.workflow_run_count) : '0',
+      icon: 'i-ri-git-branch-line',
+    },
+    {
+      label: t(($) => $['archives.summary.size'], { ns: 'appLog' }),
+      value: summary ? formatBytes(summary.archive_bytes) : '0 B',
+      icon: 'i-ri-hard-drive-2-line',
+    },
+    {
+      label: t(($) => $['archives.summary.latest'], { ns: 'appLog' }),
+      value: formatDate(summary?.latest_archived_at),
+      icon: 'i-ri-time-line',
+    },
+  ]
+
+  if (deploymentEdition !== 'CLOUD' || plan === 'sandbox') {
+    return (
+      <div className="pb-6">
+        <ArchivedLogsUpgradeBanner />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-4 pb-6">
+      <div className="rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn p-2">
+        <div className="grid grid-cols-2 gap-1 lg:grid-cols-4">
+          {summaryItems.map((item) => (
+            <div
+              key={item.label}
+              className="flex min-h-23 flex-col gap-2 rounded-xl bg-components-panel-bg p-4"
+            >
+              <span className={cn(item.icon, 'size-4 text-text-tertiary')} aria-hidden="true" />
+              <div className="system-xs-medium text-text-tertiary">{item.label}</div>
+              <div className="flex min-h-6 items-center">
+                {isLoading ? (
+                  <SkeletonRectangle className="h-5 w-20 animate-pulse rounded-md" />
+                ) : (
+                  <div className="system-md-semibold whitespace-nowrap text-text-primary">
+                    {item.value}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs">
+        <div className="@container overflow-x-auto">
+          <table className="w-full min-w-140 table-auto">
+            <colgroup>
+              <col />
+              <col />
+              <col />
+              <col className="w-64" />
+            </colgroup>
+            <thead>
+              <tr className="h-8 border-b border-divider-subtle bg-background-section-burn">
+                <th className="px-2 text-center system-xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['archives.table.month'], { ns: 'appLog' })}
+                </th>
+                <th className="px-2 text-center system-xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['archives.table.runs'], { ns: 'appLog' })}
+                </th>
+                <th className="px-2 text-center system-xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['archives.table.size'], { ns: 'appLog' })}
+                </th>
+                <th className="px-2 text-center system-xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['archives.table.action'], { ns: 'appLog' })}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && (
+                <>
+                  {['first', 'second', 'third'].map((key) => (
+                    <tr
+                      key={key}
+                      className="h-15 border-b border-divider-subtle last:border-b-0"
+                      aria-hidden="true"
+                    >
+                      <td className="px-2 py-3">
+                        <SkeletonRectangle className="mx-auto h-4 w-16 animate-pulse" />
+                      </td>
+                      <td className="px-2 py-3">
+                        <SkeletonRectangle className="mx-auto h-4 w-16 animate-pulse" />
+                      </td>
+                      <td className="px-2 py-3">
+                        <SkeletonRectangle className="mx-auto h-4 w-14 animate-pulse" />
+                      </td>
+                      <td className="px-2 py-3">
+                        <SkeletonRectangle className="mx-auto h-8 w-24 animate-pulse rounded-lg" />
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              )}
+              {!isLoading && archiveListQuery.isError && (
+                <tr>
+                  <td colSpan={4}>
+                    <div className="sticky start-0 flex min-h-36 max-w-[100cqw] flex-col items-center justify-center gap-2 px-4 py-4 text-center">
+                      <span
+                        className="i-ri-error-warning-line size-6 text-text-tertiary"
+                        aria-hidden="true"
+                      />
+                      <div className="system-sm-semibold text-text-secondary">
+                        {t(($) => $['archives.error.title'], { ns: 'appLog' })}
+                      </div>
+                      <div className="system-xs-regular text-text-tertiary">
+                        {t(($) => $['archives.error.description'], { ns: 'appLog' })}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {!isLoading &&
+                visibleArchiveMonths.map((archive) => {
+                  const archiveMonth = formatMonth(archive.year, archive.month)
+
+                  return <WorkflowArchiveMonthRow key={archiveMonth} archive={archive} />
+                })}
+              {!isLoading && !archiveListQuery.isError && hasMoreArchives && (
+                <tr aria-hidden="true">
+                  <td colSpan={4}>
+                    <div
+                      ref={loadMoreRef}
+                      className="flex h-10 items-center justify-center border-t border-divider-subtle bg-components-card-bg"
+                    >
+                      <SkeletonRectangle className="h-4 w-20 animate-pulse rounded-md" />
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div role="status" aria-atomic="true" className={isEmpty ? 'p-px' : undefined}>
+          {isEmpty && (
+            <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 py-4 text-center">
+              <span className="i-ri-archive-line size-6 text-text-tertiary" aria-hidden="true" />
+              <div className="system-sm-semibold text-text-secondary">
+                {t(($) => $['archives.empty.title'], { ns: 'appLog' })}
+              </div>
+              <div className="system-xs-regular text-text-tertiary">
+                {t(($) => $['archives.empty.description'], { ns: 'appLog' })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ArchivedLogsUpgradeBanner() {
+  const { t } = useTranslation(['appLog', 'billing'])
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
+
+  return (
+    <div className="flex flex-col gap-4 rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 ps-6 shadow-lg backdrop-blur-xs sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-1 text-text-primary-on-surface">
+        <h4 className="title-xl-semi-bold">
+          {t(($) => $['archives.upgradeTip.title'], { ns: 'appLog' })}
+        </h4>
+        <div className="system-sm-regular">
+          {t(($) => $['archives.upgradeTip.description'], { ns: 'appLog' })}
+        </div>
+      </div>
+      <button
+        type="button"
+        className="flex h-10 w-30 shrink-0 cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
+        onClick={() => setPricing('open')}
+      >
+        {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
+      </button>
+    </div>
+  )
+}
+
+function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonthResponse }) {
+  const { t } = useTranslation(['appLog', 'common'])
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
+  const archiveMonthLabelId = useId()
+  const downloadActionLabelId = useId()
+  const downloadHintId = useId()
+  const deleteActionLabelId = useId()
+  const confirmDeleteLabelId = useId()
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [downloadTask, setDownloadTask] = useState<WorkflowRunArchiveDownloadTaskResponse | null>(
+    null,
+  )
+  const archiveMonth = formatMonth(archive.year, archive.month)
+  const deleteArchiveMutation = useMutation(
+    consoleQuery.workflowRunArchives.byYear.byMonth.delete.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+  const isDeletionActive = isDeletingStatus(archive.deletion_status)
+  const isDeleting = deleteArchiveMutation.isPending || isDeletionActive
+  const isDownloadUnavailable = deleteArchiveMutation.isPending || archive.deletion_status != null
+
+  const cachedTask = latestDownloadTask(archive.download_task, downloadTask)
+  const downloadTaskId = cachedTask?.download_id
+  const taskQuery = useQuery(
+    consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryOptions({
+      input: downloadTaskId
+        ? {
+            params: {
+              download_id: downloadTaskId,
+            },
+          }
+        : skipToken,
+      enabled: (query) =>
+        !!downloadTaskId &&
+        !isDownloadUnavailable &&
+        isPreparingStatus(latestDownloadTask(cachedTask, query.state.data)?.status),
+      refetchInterval: (query) =>
+        !isDownloadUnavailable &&
+        isPreparingStatus(latestDownloadTask(cachedTask, query.state.data)?.status)
+          ? DOWNLOAD_TASK_POLLING_INTERVAL
+          : false,
+    }),
+  )
+  const createDownloadMutation = useMutation(
+    consoleQuery.workflowRunArchives.downloads.post.mutationOptions({ context: { silent: true } }),
+  )
+  const currentTask = latestDownloadTask(cachedTask, taskQuery.data)
+  const isTaskPreparing = isPreparingStatus(currentTask?.status)
+  const isPreparing = createDownloadMutation.isPending || isTaskPreparing
+  const [observedPreparingTaskId, setObservedPreparingTaskId] = useState(
+    isTaskPreparing ? currentTask?.download_id : undefined,
+  )
+  // A list refresh can replace every preparing snapshot with the completed task.
+  if (
+    isTaskPreparing &&
+    !createDownloadMutation.isPending &&
+    observedPreparingTaskId !== currentTask?.download_id
+  ) {
+    setObservedPreparingTaskId(currentTask?.download_id)
+  } else if (observedPreparingTaskId && observedPreparingTaskId !== currentTask?.download_id) {
+    setObservedPreparingTaskId(undefined)
+  }
+  const isReady = currentTask?.status === 'ready'
+  const isFailed = currentTask?.status === 'failed'
+  const failureReason = isFailed ? currentTask?.error?.trim() : undefined
+  const downloadHint = isDownloadUnavailable
+    ? archive.deletion_status === 'failed'
+      ? t(($) => $['archives.delete.failed'], { ns: 'appLog' })
+      : t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
+    : isReady
+      ? t(($) => $['archives.downloadHint.ready'], { ns: 'appLog' })
+      : isFailed
+        ? failureReason
+          ? t(($) => $['archives.downloadHint.failedWithReason'], {
+              ns: 'appLog',
+              reason: failureReason,
+            })
+          : t(($) => $['archives.downloadHint.failed'], { ns: 'appLog' })
+        : isPreparing
+          ? t(($) => $['archives.downloadHint.preparing'], { ns: 'appLog' })
+          : t(($) => $['archives.downloadHint.prepare'], { ns: 'appLog' })
+  const announceDownloadResult =
+    !createDownloadMutation.isPending &&
+    !isDownloadUnavailable &&
+    observedPreparingTaskId === currentTask?.download_id &&
+    (isReady || isFailed)
+
+  const prepareDownload = () => {
+    if (createDownloadMutation.isPending || isDownloadUnavailable) return
+
+    setObservedPreparingTaskId(undefined)
+    createDownloadMutation.mutate(
+      {
+        body: {
+          year: archive.year,
+          month: archive.month,
+        },
+      },
+      {
+        onSuccess: (task) => {
+          setDownloadTask(task)
+          toast.success(
+            task.status === 'ready'
+              ? t(($) => $['archives.action.downloadReady'], { ns: 'appLog' })
+              : t(($) => $['archives.action.prepareStarted'], { ns: 'appLog' }),
+          )
+        },
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['archives.action.prepareFailed'], { ns: 'appLog' }),
+          )
+        },
+      },
+    )
+  }
+
+  const downloadArchive = () => {
+    if (isDownloadUnavailable || !currentTask || currentTask.status !== 'ready') return
+
+    globalThis.location.assign(buildArchiveDownloadFileUrl(currentTask.download_id))
+  }
+
+  const buttonContent = (() => {
+    if (isPreparing) return t(($) => $['archives.action.preparing'], { ns: 'appLog' })
+    if (isReady) return t(($) => $['operation.download'], { ns: 'common' })
+    if (isFailed) return t(($) => $['operation.retry'], { ns: 'common' })
+    return t(($) => $['archives.action.prepareDownload'], { ns: 'appLog' })
+  })()
+
+  const buttonIconClassName = isReady ? 'i-ri-download-2-line' : 'i-ri-inbox-archive-line'
+  const onAction = isReady ? downloadArchive : prepareDownload
+
+  const deleteArchive = () => {
+    if (!isCurrentWorkspaceOwner || isDeleting) return
+
+    deleteArchiveMutation.mutate(
+      { params: { year: archive.year, month: archive.month } },
+      { onSuccess: () => setDeleteDialogOpen(false) },
+    )
+  }
+
+  return (
+    <tr className="h-15 border-b border-divider-subtle last:border-b-0">
+      <td className="px-2 py-3 text-center">
+        <span id={archiveMonthLabelId} className="truncate system-sm-semibold text-text-primary">
+          {archiveMonth}
+        </span>
+      </td>
+      <td className="px-2 py-3 text-center system-sm-medium text-text-secondary tabular-nums">
+        {formatNumber(archive.workflow_run_count)}
+      </td>
+      <td className="px-2 py-3 text-center system-sm-medium text-text-secondary tabular-nums">
+        {formatBytes(archive.archive_bytes)}
+      </td>
+      <td className="px-2 py-3 text-center">
+        <div className="flex flex-col items-center gap-2">
+          <span role="status" aria-atomic="true" className="sr-only">
+            {announceDownloadResult ? `${archiveMonth}: ${downloadHint}` : ''}
+          </span>
+          <div className="flex items-center justify-center gap-1">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    size="small"
+                    variant="secondary"
+                    loading={isPreparing}
+                    disabled={isDownloadUnavailable}
+                    focusableWhenDisabled
+                    className="shrink-0 px-2"
+                    aria-labelledby={`${downloadActionLabelId} ${archiveMonthLabelId}`}
+                    aria-describedby={downloadHintId}
+                    onClick={onAction}
+                  />
+                }
+              >
+                {!isPreparing && (
+                  <span
+                    className={cn(buttonIconClassName, 'size-3.5 shrink-0')}
+                    aria-hidden="true"
+                  />
+                )}
+                <span id={downloadActionLabelId}>{buttonContent}</span>
+              </TooltipTrigger>
+              <TooltipContent id={downloadHintId} role="tooltip">
+                {downloadHint}
+              </TooltipContent>
+            </Tooltip>
+            {isCurrentWorkspaceOwner && (
+              <AlertDialog
+                open={deleteDialogOpen}
+                onOpenChange={(open, details) => {
+                  if (deleteArchiveMutation.isPending) {
+                    details.cancel()
+                    return
+                  }
+                  setDeleteDialogOpen(open)
+                }}
+                onOpenChangeComplete={(open) => {
+                  if (!open) deleteArchiveMutation.reset()
+                }}
+              >
+                <AlertDialogTrigger
+                  render={
+                    <Button
+                      size="small"
+                      variant="tertiary"
+                      tone="destructive"
+                      className="shrink-0"
+                      loading={isDeleting}
+                      aria-labelledby={`${deleteActionLabelId} ${archiveMonthLabelId}`}
+                    />
+                  }
+                >
+                  {!isDeleting && (
+                    <span className="i-ri-delete-bin-line size-3.5" aria-hidden="true" />
+                  )}
+                  <span id={deleteActionLabelId}>
+                    {isDeleting
+                      ? t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
+                      : archive.deletion_status === 'failed'
+                        ? t(($) => $['archives.delete.retry'], { ns: 'appLog' })
+                        : t(($) => $['operation.delete'], { ns: 'common' })}
+                  </span>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {t(($) => $['archives.delete.title'], { ns: 'appLog', month: archiveMonth })}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t(($) => $['archives.delete.description'], { ns: 'appLog' })}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  {deleteArchiveMutation.isError && (
+                    <AlertDialogBody>
+                      <div role="alert" className="system-sm-regular text-text-destructive">
+                        {t(($) => $['archives.delete.requestFailed'], { ns: 'appLog' })}
+                      </div>
+                    </AlertDialogBody>
+                  )}
+                  <AlertDialogFooter>
+                    <AlertDialogCancelButton disabled={deleteArchiveMutation.isPending}>
+                      {t(($) => $['operation.cancel'], { ns: 'common' })}
+                    </AlertDialogCancelButton>
+                    <AlertDialogConfirmButton
+                      loading={isDeleting}
+                      aria-labelledby={confirmDeleteLabelId}
+                      onClick={deleteArchive}
+                    >
+                      <span id={confirmDeleteLabelId}>
+                        {isDeleting
+                          ? t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
+                          : t(($) => $['archives.delete.confirm'], { ns: 'appLog' })}
+                      </span>
+                    </AlertDialogConfirmButton>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+          {archive.deletion_status === 'failed' && (
+            <div role="alert" className="max-w-56 system-xs-regular text-text-destructive">
+              {t(($) => $['archives.delete.failed'], { ns: 'appLog' })}
+            </div>
+          )}
+        </div>
+      </td>
+    </tr>
+  )
+}

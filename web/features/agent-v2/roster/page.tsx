@@ -1,0 +1,138 @@
+'use client'
+
+import type { AgentPublicationCountsResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentRosterListState } from './components/agent-roster-list'
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
+import { useDebounce } from 'ahooks'
+import { useQueryState } from 'nuqs'
+import { useId } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { consoleQuery } from '@/service/console'
+import { AgentRosterList } from './components/agent-roster-list'
+import { RosterToolbar } from './components/roster-toolbar'
+import {
+  rosterCreatedByMeQueryParser,
+  rosterFilterQueryParser,
+  rosterKeywordQueryParser,
+  rosterQueryParamNames,
+  rosterSortByQueryParser,
+} from './query-params'
+
+const ROSTER_PAGE_SIZE = 30
+const EMPTY_PUBLICATION_COUNTS: AgentPublicationCountsResponse = {
+  drafts: 0,
+  published: 0,
+}
+
+export default function RosterPage() {
+  const { t } = useTranslation(['agentRoster'])
+  const docLink = useDocLink()
+  const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
+  const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
+  const [createdByMe] = useQueryState(
+    rosterQueryParamNames.createdByMe,
+    rosterCreatedByMeQueryParser,
+  )
+  const [sortBy] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
+  const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
+  const rosterQueryInput = {
+    limit: ROSTER_PAGE_SIZE,
+    sort_by: sortBy,
+    ...(debouncedKeyword ? { name: debouncedKeyword } : {}),
+    ...(createdByMe ? { is_created_by_me: true } : {}),
+    ...(rosterFilter !== 'all' ? { publication_status: rosterFilter } : {}),
+  }
+
+  const {
+    data: rosterPages,
+    isPending,
+    isFetching,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    fetchNextPage,
+    hasNextPage,
+    isLoadingError,
+    isRefetchError,
+    refetch,
+  } = useInfiniteQuery({
+    ...consoleQuery.agent.get.infiniteOptions({
+      input: (pageParam) => ({
+        query: {
+          ...rosterQueryInput,
+          page: Number(pageParam),
+        },
+      }),
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      initialPageParam: 1,
+    }),
+    placeholderData: keepPreviousData,
+  })
+
+  const rosterItems = rosterPages?.pages.flatMap((page) => page.data) ?? []
+  const publicationCounts = rosterPages?.pages[0]?.publication_counts ?? EMPTY_PUBLICATION_COUNTS
+  const pageTitle = t(($) => $['roster.title'], { ns: 'agentRoster' })
+  const pageTitleId = useId()
+  const listState: AgentRosterListState = isLoadingError
+    ? { status: 'error', onRetry: () => void refetch() }
+    : isPending
+      ? { status: 'pending' }
+      : {
+          status: 'ready',
+          agents: rosterItems,
+          emptyState:
+            debouncedKeyword || rosterFilter !== 'all' || createdByMe ? 'filtered' : 'roster',
+          footer: isFetchNextPageError
+            ? { status: 'error', onRetry: () => void fetchNextPage() }
+            : isRefetchError
+              ? { status: 'error', onRetry: () => void refetch() }
+              : hasNextPage
+                ? {
+                    status: 'load-more',
+                    isLoading: isFetchingNextPage,
+                    onLoadMore: () => void fetchNextPage(),
+                  }
+                : { status: 'none' },
+          isFetching,
+        }
+  useDocumentTitle(pageTitle)
+
+  return (
+    <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body max-md:overflow-y-auto">
+      <div className="shrink-0 bg-background-body px-2 pt-4 pb-2 sm:px-8">
+        <div className="flex h-6 min-w-0 items-center justify-between gap-2 sm:gap-4">
+          <h1
+            id={pageTitleId}
+            className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary"
+            title={pageTitle}
+          >
+            {pageTitle}
+          </h1>
+          <a
+            href={docLink('/use-dify/build/new-agent/overview')}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex size-6 shrink-0 items-center justify-center rounded-md system-xs-regular text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:size-auto sm:gap-0.5"
+          >
+            <span className="sr-only sm:not-sr-only">
+              {t(($) => $['roster.learnMore'], { ns: 'agentRoster' })}
+            </span>
+            <span aria-hidden className="i-ri-book-open-line size-4 sm:hidden" />
+            <span
+              aria-hidden
+              className="i-ri-external-link-line hidden size-3 sm:inline-block [&:dir(rtl)]:-scale-x-100"
+            />
+          </a>
+        </div>
+        <div className="mt-3.5">
+          <RosterToolbar publicationCounts={publicationCounts} />
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 max-md:min-h-64">
+        <AgentRosterList aria-labelledby={pageTitleId} state={listState} />
+      </div>
+    </div>
+  )
+}

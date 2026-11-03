@@ -1,75 +1,77 @@
-import * as React from 'react'
-import { useAppContext } from '@/context/app-context'
-import AppInfoDetailPanel from './app-info-detail-panel'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppInfoOperation } from './app-info-modals'
+import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
+import { consoleClient, consoleQuery } from '@/service/console'
 import AppInfoModals from './app-info-modals'
 import AppInfoTrigger from './app-info-trigger'
-import { useAppInfoActions } from './use-app-info-actions'
+import { updateCachedAppMetadata } from './metadata'
 
-type IAppInfoProps = {
-  expand: boolean
-  onlyShowDetail?: boolean
-  openState?: boolean
-  onDetailExpand?: (expand: boolean) => void
-}
+type AppInfoViewProps = { appDetail: AppDetailWithSite; expand: boolean }
 
-const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailExpand }: IAppInfoProps) => {
-  const { isCurrentWorkspaceEditor } = useAppContext()
+export function AppInfoView({ appDetail, expand }: AppInfoViewProps) {
+  const appId = appDetail.id
+  const queryClient = useQueryClient()
+  const [activeModal, setActiveModal] = useState<AppInfoOperation | null>(null)
+  const [exportOpen, setExportOpen] = useState(false)
+  const { exportAppDsl, isExporting } = useExportAppDsl()
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null
+    let disposed = false
 
-  const {
-    appDetail,
-    panelOpen,
-    setPanelOpen,
-    closePanel,
-    activeModal,
-    openModal,
-    closeModal,
-    secretEnvList,
-    setSecretEnvList,
-    onEdit,
-    onCopy,
-    onExport,
-    exportCheck,
-    handleConfirmExport,
-    onConfirmDelete,
-  } = useAppInfoActions({ onDetailExpand })
+    void import('@/app/components/workflow/collaboration/core/collaboration-manager')
+      .then(({ collaborationManager }) => {
+        if (disposed) return
 
-  if (!appDetail)
-    return null
+        unsubscribe = collaborationManager.onAppMetaUpdate(async () => {
+          try {
+            const res = await consoleClient.apps.byAppId.get({ params: { app_id: appId } })
+            if (disposed) return
+            queryClient.setQueryData(
+              consoleQuery.apps.byAppId.get.queryKey({
+                input: { params: { app_id: appId } },
+              }),
+              (cachedApp) => updateCachedAppMetadata(cachedApp, res),
+            )
+            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
+          } catch (error) {
+            console.error('failed to refresh app detail from collaboration update:', error)
+          }
+        })
+      })
+      .catch(() => {})
+
+    return () => {
+      disposed = true
+      unsubscribe?.()
+    }
+  }, [appId, queryClient])
 
   return (
-    <div>
-      {!onlyShowDetail && (
-        <AppInfoTrigger
-          appDetail={appDetail}
-          expand={expand}
-          onClick={() => {
-            if (isCurrentWorkspaceEditor)
-              setPanelOpen(v => !v)
-          }}
-        />
-      )}
-      <AppInfoDetailPanel
+    <>
+      <AppInfoTrigger
         appDetail={appDetail}
-        show={onlyShowDetail ? openState : panelOpen}
-        onClose={closePanel}
-        openModal={openModal}
-        exportCheck={exportCheck}
+        expand={expand}
+        openModal={setActiveModal}
+        isExporting={isExporting}
+        exportCheck={() => {
+          if (appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat')
+            setExportOpen(true)
+          else if (!isExporting) void exportAppDsl({ appId, appName: appDetail.name })
+        }}
       />
       <AppInfoModals
         appDetail={appDetail}
         activeModal={activeModal}
-        closeModal={closeModal}
-        secretEnvList={secretEnvList}
-        setSecretEnvList={setSecretEnvList}
-        onEdit={onEdit}
-        onCopy={onCopy}
-        onExport={onExport}
-        exportCheck={exportCheck}
-        handleConfirmExport={handleConfirmExport}
-        onConfirmDelete={onConfirmDelete}
+        onOpenChange={(open) => {
+          if (!open) setActiveModal(null)
+        }}
+        exportOpen={exportOpen}
+        onExportOpenChange={setExportOpen}
       />
-    </div>
+    </>
   )
 }
-
-export default React.memo(AppInfo)

@@ -1,5 +1,5 @@
 {
-  "extends": "./web.json",
+  "extends": "./react.json",
   "compilerOptions": {
     "plugins": [
       {

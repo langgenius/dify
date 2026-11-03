@@ -7,36 +7,34 @@ consumes injected context managers when it needs to preserve thread-local state.
 
 import contextvars
 import threading
-from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import AbstractContextManager, contextmanager
-from typing import Any, Protocol, final, runtime_checkable
+from typing import Any, Protocol, final, override, runtime_checkable
 
 from pydantic import BaseModel
 
+from libs.contextvars import use_contextvars
 
-class AppContext(ABC):
+
+class AppContext(Protocol):
     """
-    Abstract application context interface.
+    Application context interface.
 
     Application adapters can implement this to restore framework-specific state
     such as Flask app context around worker execution.
     """
 
-    @abstractmethod
     def get_config(self, key: str, default: Any = None) -> Any:
         """Get configuration value by key."""
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
     def get_extension(self, name: str) -> Any:
         """Get application extension by name."""
-        raise NotImplementedError
+        ...
 
-    @abstractmethod
     def enter(self) -> AbstractContextManager[None]:
         """Enter the application context."""
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -67,8 +65,9 @@ class ExecutionContext:
     """
     Generic execution context used by application-layer adapters.
 
-    It restores captured `contextvars` and optionally enters an application
-    context before the worker executes graph logic.
+    It applies captured `contextvars` and optionally enters an application
+    context before the worker executes graph logic, then restores the caller's
+    bindings after application-context cleanup.
     """
 
     def __init__(
@@ -98,30 +97,29 @@ class ExecutionContext:
         return self._user
 
     @contextmanager
-    def enter(self) -> Generator[None, None, None]:
+    def enter(self) -> Generator[None]:
         """Enter this execution context."""
-        if self._context_vars:
-            for var, val in self._context_vars.items():
-                var.set(val)
-
-        if self._app_context is not None:
-            with self._app_context.enter():
+        with use_contextvars(self._context_vars):
+            if self._app_context is not None:
+                with self._app_context.enter():
+                    yield
+            else:
                 yield
-        else:
-            yield
 
     def __enter__(self) -> "ExecutionContext":
         """Enter the execution context."""
         cm = self.enter()
-        self._local.cm = cm
         cm.__enter__()
+        if not hasattr(self._local, "stack"):
+            self._local.stack = []
+        self._local.stack.append(cm)
         return self
 
     def __exit__(self, *args: Any) -> None:
         """Exit the execution context."""
-        cm = getattr(self._local, "cm", None)
-        if cm is not None:
-            cm.__exit__(*args)
+        stack = getattr(self._local, "stack", None)
+        if stack:
+            stack.pop().__exit__(*args)
 
 
 class NullAppContext(AppContext):
@@ -133,10 +131,12 @@ class NullAppContext(AppContext):
         self._config = config or {}
         self._extensions: dict[str, Any] = {}
 
+    @override
     def get_config(self, key: str, default: Any = None) -> Any:
         """Get configuration value by key."""
         return self._config.get(key, default)
 
+    @override
     def get_extension(self, name: str) -> Any:
         """Get extension by name."""
         return self._extensions.get(name)
@@ -146,7 +146,8 @@ class NullAppContext(AppContext):
         self._extensions[name] = extension
 
     @contextmanager
-    def enter(self) -> Generator[None, None, None]:
+    @override
+    def enter(self) -> Generator[None]:
         """Enter null context (no-op)."""
         yield
 

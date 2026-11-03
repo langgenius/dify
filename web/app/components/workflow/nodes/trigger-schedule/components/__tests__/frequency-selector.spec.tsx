@@ -7,21 +7,16 @@ describe('trigger-schedule/frequency-selector', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
-    render(
-      <FrequencySelector
-        frequency="daily"
-        onChange={onChange}
-      />,
-    )
+    render(<FrequencySelector frequency="daily" onChange={onChange} />)
 
-    const trigger = screen.getByRole('button', { name: 'workflow.nodes.triggerSchedule.frequency.daily' })
+    const trigger = screen.getByRole('combobox')
     await user.click(trigger)
 
-    await waitFor(() => {
-      expect(trigger).toHaveAttribute('aria-expanded', 'true')
-    })
-
-    await user.click(await screen.findByText('workflow.nodes.triggerSchedule.frequency.weekly'))
+    await user.click(
+      await screen.findByRole('option', {
+        name: 'workflowIntegrations.nodes.triggerSchedule.frequency.weekly',
+      }),
+    )
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith('weekly')

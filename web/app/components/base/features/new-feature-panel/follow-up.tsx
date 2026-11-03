@@ -1,57 +1,84 @@
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import type {
+  OnFeaturesChange,
+  SuggestedQuestionsAfterAnswer,
+} from '@/app/components/base/features/types'
 import { produce } from 'immer'
-import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
+import { FollowUpSettingsDialog } from '@/app/components/base/features/new-feature-panel/follow-up-setting-modal'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { VirtualAssistant } from '@/app/components/base/icons/src/vender/features'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
-const FollowUp = ({
-  disabled,
-  onChange,
-}: Props) => {
-  const { t } = useTranslation()
-  const features = useFeatures(s => s.features)
+export function FollowUp({ disabled, onChange }: Props) {
+  const { t } = useTranslation(['appDebug', 'common'])
+  const suggested = useFeatures((s) => s.features.suggested)
   const featuresStore = useFeaturesStore()
 
-  const handleChange = useCallback((type: FeatureEnum, enabled: boolean) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+  const handleChange = useCallback(
+    (type: FeatureEnum, enabled: boolean) => {
+      const { features, setFeatures } = featuresStore!.getState()
 
-    const newFeatures = produce(features, (draft) => {
-      draft[type] = {
-        ...draft[type],
-        enabled,
-      }
-    })
-    setFeatures(newFeatures)
-    if (onChange)
-      onChange(newFeatures)
-  }, [featuresStore, onChange])
+      const newFeatures = produce(features, (draft) => {
+        draft[type] = {
+          ...draft[type],
+          enabled,
+        }
+      })
+      setFeatures(newFeatures)
+      if (onChange) onChange(newFeatures)
+    },
+    [featuresStore, onChange],
+  )
+
+  const handleSave = useCallback(
+    (newSuggested: SuggestedQuestionsAfterAnswer) => {
+      const { features, setFeatures } = featuresStore!.getState()
+
+      const newFeatures = produce(features, (draft) => {
+        draft.suggested = {
+          ...newSuggested,
+          enabled: true,
+        }
+      })
+      setFeatures(newFeatures)
+      if (onChange) onChange(newFeatures)
+    },
+    [featuresStore, onChange],
+  )
 
   return (
-    <FeatureCard
-      icon={(
-        <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
-          <VirtualAssistant className="h-4 w-4 text-text-primary-on-surface" />
-        </div>
-      )}
-      title={t('feature.suggestedQuestionsAfterAnswer.title', { ns: 'appDebug' })}
-      value={!!features.suggested?.enabled}
-      description={t('feature.suggestedQuestionsAfterAnswer.description', { ns: 'appDebug' })!}
-      onChange={state => handleChange(FeatureEnum.suggested, state)}
-      disabled={disabled}
-    />
+    <div className="group/follow-up">
+      <FeatureCard
+        icon={
+          <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
+            <span
+              aria-hidden
+              className="i-custom-vender-features-virtual-assistant size-4 text-text-primary-on-surface"
+            />
+          </div>
+        }
+        title={t(($) => $['feature.suggestedQuestionsAfterAnswer.title'], { ns: 'appDebug' })}
+        value={!!suggested?.enabled}
+        onChange={(state) => handleChange(FeatureEnum.suggested, state)}
+        disabled={disabled}
+      >
+        <>
+          {!suggested?.enabled && (
+            <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+              {t(($) => $['feature.suggestedQuestionsAfterAnswer.description'], { ns: 'appDebug' })}
+            </div>
+          )}
+          {!!suggested?.enabled && (
+            <FollowUpSettingsDialog data={suggested} onSave={handleSave} disabled={disabled} />
+          )}
+        </>
+      </FeatureCard>
+    </div>
   )
 }
-
-export default FollowUp

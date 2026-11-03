@@ -1,20 +1,28 @@
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from pydantic import BaseModel, Field, RootModel, field_validator
 
 from constants import HIDDEN_VALUE
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.flask_admission import console_account_admission
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.login import current_account_with_tenant, login_required
-from models.api_based_extension import APIBasedExtension
-from services.api_based_extension_service import APIBasedExtensionService
+from libs.helper import dump_response, to_timestamp
+from libs.login import login_required
+from machinery.context import RequestContext
+from services.api_based_extension_application_service import (
+    APIBasedExtensionError,
+    APIBasedExtensionInput,
+    APIBasedExtensionRecord,
+    APIBasedExtensionUpdate,
+)
 from services.code_based_extension_service import CodeBasedExtensionService
 
-from ..common.schema import DEFAULT_REF_TEMPLATE_SWAGGER_2_0, register_schema_models
 from . import console_ns
-from .wraps import account_initialization_required, setup_required
+from .wraps import account_initialization_required, model_validate, setup_required
 
 
 class CodeBasedExtensionQuery(BaseModel):
@@ -27,9 +35,15 @@ class APIBasedExtensionPayload(BaseModel):
     api_key: str = Field(description="API key for authentication")
 
 
+class CodeBasedExtensionItemResponse(ResponseModel):
+    name: str
+    label: dict[str, Any] | None = None
+    form_schema: list[dict[str, Any]] | None = None
+
+
 class CodeBasedExtensionResponse(ResponseModel):
     module: str = Field(description="Module name")
-    data: Any = Field(description="Extension data")
+    data: list[CodeBasedExtensionItemResponse] = Field(description="Non-builtin extensions of the module")
 
 
 def _mask_api_key(api_key: str) -> str:
@@ -38,12 +52,6 @@ def _mask_api_key(api_key: str) -> str:
     if len(api_key) <= 8:
         return api_key[0] + "******" + api_key[-1]
     return api_key[:3] + "******" + api_key[-3:]
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
 
 
 class APIBasedExtensionResponse(ResponseModel):
@@ -61,25 +69,35 @@ class APIBasedExtensionResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
-register_schema_models(console_ns, APIBasedExtensionPayload, CodeBasedExtensionResponse, APIBasedExtensionResponse)
-console_ns.schema_model(
-    "APIBasedExtensionListResponse",
-    TypeAdapter(list[APIBasedExtensionResponse]).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+class APIBasedExtensionListResponse(RootModel[list[APIBasedExtensionResponse]]):
+    pass
+
+
+register_schema_models(
+    console_ns,
+    CodeBasedExtensionQuery,
+    APIBasedExtensionPayload,
+)
+register_response_schema_models(
+    console_ns,
+    CodeBasedExtensionResponse,
+    APIBasedExtensionResponse,
+    APIBasedExtensionListResponse,
 )
 
 
-def _serialize_api_based_extension(extension: APIBasedExtension) -> dict[str, Any]:
-    return APIBasedExtensionResponse.model_validate(extension, from_attributes=True).model_dump(mode="json")
+def _extension_response(extension: APIBasedExtensionRecord) -> dict[str, Any]:
+    return dump_response(APIBasedExtensionResponse, extension)
 
 
 @console_ns.route("/code-based-extension")
 class CodeBasedExtensionAPI(Resource):
     @console_ns.doc("get_code_based_extension")
     @console_ns.doc(description="Get code-based extension data by module name")
-    @console_ns.doc(params={"module": "Extension module name"})
+    @console_ns.doc(params=query_params_from_model(CodeBasedExtensionQuery))
     @console_ns.response(
         200,
         "Success",
@@ -88,9 +106,8 @@ class CodeBasedExtensionAPI(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        query = CodeBasedExtensionQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-
+    @model_validate(CodeBasedExtensionQuery)
+    def get(self, query: CodeBasedExtensionQuery):
         return CodeBasedExtensionResponse(
             module=query.module,
             data=CodeBasedExtensionService.get_code_based_extension(query.module),
@@ -101,36 +118,33 @@ class CodeBasedExtensionAPI(Resource):
 class APIBasedExtensionAPI(Resource):
     @console_ns.doc("get_api_based_extensions")
     @console_ns.doc(description="Get all API-based extensions for current tenant")
-    @console_ns.response(200, "Success", console_ns.models["APIBasedExtensionListResponse"])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-        return [
-            _serialize_api_based_extension(extension)
-            for extension in APIBasedExtensionService.get_all_by_tenant_id(tenant_id)
-        ]
+    @console_ns.response(200, "Success", console_ns.models[APIBasedExtensionListResponse.__name__])
+    @console_account_admission()
+    def get(self, request_context: RequestContext):
+        extensions = application_services().api_based_extensions.list_extensions(request_context)
+        return dump_response(APIBasedExtensionListResponse, extensions)
 
     @console_ns.doc("create_api_based_extension")
     @console_ns.doc(description="Create a new API-based extension")
     @console_ns.expect(console_ns.models[APIBasedExtensionPayload.__name__])
     @console_ns.response(201, "Extension created successfully", console_ns.models[APIBasedExtensionResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self):
-        payload = APIBasedExtensionPayload.model_validate(console_ns.payload or {})
-        _, current_tenant_id = current_account_with_tenant()
+    @console_account_admission()
+    @model_validate(APIBasedExtensionPayload)
+    def post(self, req_data: APIBasedExtensionPayload, request_context: RequestContext):
+        try:
+            extension = application_services().api_based_extensions.create_extension(
+                request_context,
+                APIBasedExtensionInput(
+                    name=req_data.name,
+                    api_endpoint=req_data.api_endpoint,
+                    api_key=req_data.api_key,
+                ),
+            )
+        except APIBasedExtensionError as error:
+            # Legacy clients receive the 400 `invalid_param` envelope for every extension failure.
+            raise ValueError(str(error)) from None
 
-        extension_data = APIBasedExtension(
-            tenant_id=current_tenant_id,
-            name=payload.name,
-            api_endpoint=payload.api_endpoint,
-            api_key=payload.api_key,
-        )
-
-        return _serialize_api_based_extension(APIBasedExtensionService.save(extension_data))
+        return _extension_response(extension), 201
 
 
 @console_ns.route("/api-based-extension/<uuid:id>")
@@ -139,54 +153,48 @@ class APIBasedExtensionDetailAPI(Resource):
     @console_ns.doc(description="Get API-based extension by ID")
     @console_ns.doc(params={"id": "Extension ID"})
     @console_ns.response(200, "Success", console_ns.models[APIBasedExtensionResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, id):
-        api_based_extension_id = str(id)
-        _, tenant_id = current_account_with_tenant()
+    @console_account_admission()
+    def get(self, request_context: RequestContext, id: UUID):
+        try:
+            extension = application_services().api_based_extensions.get_extension(request_context, str(id))
+        except APIBasedExtensionError as error:
+            raise ValueError(str(error)) from None
 
-        return _serialize_api_based_extension(
-            APIBasedExtensionService.get_with_tenant_id(tenant_id, api_based_extension_id)
-        )
+        return _extension_response(extension)
 
     @console_ns.doc("update_api_based_extension")
     @console_ns.doc(description="Update API-based extension")
     @console_ns.doc(params={"id": "Extension ID"})
     @console_ns.expect(console_ns.models[APIBasedExtensionPayload.__name__])
     @console_ns.response(200, "Extension updated successfully", console_ns.models[APIBasedExtensionResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self, id):
-        api_based_extension_id = str(id)
-        _, current_tenant_id = current_account_with_tenant()
+    @console_account_admission()
+    @model_validate(APIBasedExtensionPayload)
+    def post(self, req_data: APIBasedExtensionPayload, request_context: RequestContext, id: UUID):
+        try:
+            extension = application_services().api_based_extensions.update_extension(
+                request_context,
+                str(id),
+                APIBasedExtensionUpdate(
+                    name=req_data.name,
+                    api_endpoint=req_data.api_endpoint,
+                    # The console echoes the masked key back; keep the stored key when it is sent unchanged.
+                    api_key=None if req_data.api_key == HIDDEN_VALUE else req_data.api_key,
+                ),
+            )
+        except APIBasedExtensionError as error:
+            raise ValueError(str(error)) from None
 
-        extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
-
-        payload = APIBasedExtensionPayload.model_validate(console_ns.payload or {})
-
-        extension_data_from_db.name = payload.name
-        extension_data_from_db.api_endpoint = payload.api_endpoint
-
-        if payload.api_key != HIDDEN_VALUE:
-            extension_data_from_db.api_key = payload.api_key
-
-        return _serialize_api_based_extension(APIBasedExtensionService.save(extension_data_from_db))
+        return _extension_response(extension)
 
     @console_ns.doc("delete_api_based_extension")
     @console_ns.doc(description="Delete API-based extension")
     @console_ns.doc(params={"id": "Extension ID"})
     @console_ns.response(204, "Extension deleted successfully")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def delete(self, id):
-        api_based_extension_id = str(id)
-        _, current_tenant_id = current_account_with_tenant()
+    @console_account_admission()
+    def delete(self, request_context: RequestContext, id: UUID):
+        try:
+            application_services().api_based_extensions.delete_extension(request_context, str(id))
+        except APIBasedExtensionError as error:
+            raise ValueError(str(error)) from None
 
-        extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
-
-        APIBasedExtensionService.delete(extension_data_from_db)
-
-        return {"result": "success"}, 204
+        return "", 204

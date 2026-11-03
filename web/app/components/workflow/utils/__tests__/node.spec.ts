@@ -1,7 +1,7 @@
 import type { IterationNodeType } from '../../nodes/iteration/types'
 import type { LoopNodeType } from '../../nodes/loop/types'
 import type { CommonNodeType, Node } from '../../types'
-import { CUSTOM_NODE, ITERATION_CHILDREN_Z_INDEX, ITERATION_NODE_Z_INDEX, LOOP_CHILDREN_Z_INDEX, LOOP_NODE_Z_INDEX } from '../../constants'
+import { CUSTOM_NODE, NESTED_ELEMENT_Z_INDEX } from '../../constants'
 import { CUSTOM_ITERATION_START_NODE } from '../../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../../nodes/loop-start/constants'
 import { CUSTOM_SIMPLE_NODE } from '../../simple-node/constants'
@@ -12,10 +12,58 @@ import {
   getIterationStartNode,
   getLoopStartNode,
   getNestedNodePosition,
+  getNodeCatalogType,
   getNodeCustomTypeByNodeDataType,
   getTopLeftNodePosition,
   hasRetryNode,
 } from '../node'
+
+describe('getNodeCatalogType', () => {
+  it('should use Agent V2 catalog type for graph agent nodes with the Agent V2 discriminator', () => {
+    expect(
+      getNodeCatalogType({
+        title: 'Agent',
+        desc: '',
+        type: BlockEnum.Agent,
+        agent_node_kind: 'dify_agent',
+        version: '2',
+      } as CommonNodeType),
+    ).toBe(BlockEnum.AgentV2)
+  })
+
+  it('should keep the graph node type for regular nodes and legacy Agent nodes', () => {
+    expect(
+      getNodeCatalogType({
+        title: 'Code',
+        desc: '',
+        type: BlockEnum.Code,
+      }),
+    ).toBe(BlockEnum.Code)
+
+    expect(
+      getNodeCatalogType({
+        title: 'Agent',
+        desc: '',
+        type: BlockEnum.Agent,
+      }),
+    ).toBe(BlockEnum.Agent)
+  })
+
+  it('routes only exact persisted Human Input v2 data to its catalog identity', () => {
+    const humanInput = (version?: unknown) =>
+      ({
+        title: 'Human Input',
+        desc: '',
+        type: BlockEnum.HumanInput,
+        ...(version === undefined ? {} : { version }),
+      }) as CommonNodeType
+
+    expect(getNodeCatalogType(humanInput('2'))).toBe(BlockEnum.HumanInputV2)
+    expect(getNodeCatalogType(humanInput())).toBe(BlockEnum.HumanInput)
+    expect(getNodeCatalogType(humanInput('1'))).toBe(BlockEnum.HumanInput)
+    expect(getNodeCatalogType(humanInput(2))).toBe(BlockEnum.HumanInput)
+  })
+})
 
 describe('generateNewNode', () => {
   it('should create a basic node with default CUSTOM_NODE type', () => {
@@ -40,24 +88,6 @@ describe('generateNewNode', () => {
     expect(newNode.id).toBe('custom-id')
   })
 
-  it('should set ITERATION_NODE_Z_INDEX for iteration nodes', () => {
-    const { newNode } = generateNewNode({
-      data: { title: 'Iter', desc: '', type: BlockEnum.Iteration } as CommonNodeType,
-      position: { x: 0, y: 0 },
-    })
-
-    expect(newNode.zIndex).toBe(ITERATION_NODE_Z_INDEX)
-  })
-
-  it('should set LOOP_NODE_Z_INDEX for loop nodes', () => {
-    const { newNode } = generateNewNode({
-      data: { title: 'Loop', desc: '', type: BlockEnum.Loop } as CommonNodeType,
-      position: { x: 0, y: 0 },
-    })
-
-    expect(newNode.zIndex).toBe(LOOP_NODE_Z_INDEX)
-  })
-
   it('should create an iteration start node for iteration type', () => {
     const { newNode, newIterationStartNode } = generateNewNode({
       id: 'iter-1',
@@ -65,7 +95,8 @@ describe('generateNewNode', () => {
       position: { x: 0, y: 0 },
     })
 
-    expect(newIterationStartNode).toBeDefined()
+    expect(newNode.zIndex).toBe(0)
+    expect(newIterationStartNode!.zIndex).toBeGreaterThan(1000)
     expect(newIterationStartNode!.id).toBe('iter-1start')
     expect(newIterationStartNode!.data.type).toBe(BlockEnum.IterationStart)
     expect((newNode.data as IterationNodeType).start_node_id).toBe('iter-1start')
@@ -81,7 +112,8 @@ describe('generateNewNode', () => {
       position: { x: 0, y: 0 },
     })
 
-    expect(newLoopStartNode).toBeDefined()
+    expect(newNode.zIndex).toBe(0)
+    expect(newLoopStartNode!.zIndex).toBeGreaterThan(1000)
     expect(newLoopStartNode!.id).toBe('loop-1start')
     expect(newLoopStartNode!.data.type).toBe(BlockEnum.LoopStart)
     expect((newNode.data as LoopNodeType).start_node_id).toBe('loop-1start')
@@ -112,7 +144,7 @@ describe('getIterationStartNode', () => {
     expect(node.parentId).toBe('parent-iter')
     expect(node.selectable).toBe(false)
     expect(node.draggable).toBe(false)
-    expect(node.zIndex).toBe(ITERATION_CHILDREN_Z_INDEX)
+    expect(node.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
     expect(node.position).toEqual({ x: 24, y: 68 })
   })
 })
@@ -128,7 +160,7 @@ describe('getLoopStartNode', () => {
     expect(node.parentId).toBe('parent-loop')
     expect(node.selectable).toBe(false)
     expect(node.draggable).toBe(false)
-    expect(node.zIndex).toBe(LOOP_CHILDREN_Z_INDEX)
+    expect(node.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
     expect(node.position).toEqual({ x: 24, y: 68 })
   })
 })
@@ -169,10 +201,7 @@ describe('getTopLeftNodePosition', () => {
   })
 
   it('should handle negative positions', () => {
-    const nodes = [
-      { position: { x: -10, y: -20 } },
-      { position: { x: 5, y: -30 } },
-    ] as Node[]
+    const nodes = [{ position: { x: -10, y: -20 } }, { position: { x: 5, y: -30 } }] as Node[]
 
     expect(getTopLeftNodePosition(nodes)).toEqual({ x: -10, y: -30 })
   })

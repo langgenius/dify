@@ -1,183 +1,82 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import Countdown, { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../countdown'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { hydrateRoot } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
+import Countdown from '../countdown'
+import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../storage'
 
 describe('Countdown', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
-    localStorage.clear()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    localStorage.removeItem(COUNT_DOWN_KEY)
   })
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
-  // Rendering Tests
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Countdown />)
-      expect(screen.getByText('login.checkCode.didNotReceiveCode')).toBeInTheDocument()
-    })
+  it('restores the stored time after hydrating server markup', async () => {
+    vi.useRealTimers()
+    localStorage.setItem(COUNT_DOWN_KEY, '30000')
+    const container = document.createElement('div')
+    container.innerHTML = renderToString(<Countdown />)
+    expect(container).toHaveTextContent('login.checkCode.didNotReceiveCode')
+    expect(container).not.toHaveTextContent('30s')
+    expect(container.querySelector('button')).toBeNull()
 
-    it('should display countdown time when time > 0', () => {
-      localStorage.setItem(COUNT_DOWN_KEY, '30000')
-      render(<Countdown />)
+    const onRecoverableError = vi.fn()
+    const root = hydrateRoot(container, <Countdown />, { onRecoverableError })
 
-      expect(screen.getByText(/30/)).toBeInTheDocument()
-      expect(screen.getByText(/s$/)).toBeInTheDocument()
-    })
-
-    it('should display resend link when time <= 0', () => {
-      localStorage.setItem(COUNT_DOWN_KEY, '0')
-      render(<Countdown />)
-
-      expect(screen.getByText('login.checkCode.resend')).toBeInTheDocument()
-      expect(screen.queryByText('s')).not.toBeInTheDocument()
-    })
-
-    it('should not display resend link when time > 0', () => {
-      localStorage.setItem(COUNT_DOWN_KEY, '1000')
-      render(<Countdown />)
-
-      expect(screen.queryByText('login.checkCode.resend')).not.toBeInTheDocument()
-    })
+    try {
+      await waitFor(() => expect(container).toHaveTextContent('30s'))
+      expect(onRecoverableError).not.toHaveBeenCalled()
+    } finally {
+      act(() => root.unmount())
+    }
   })
 
-  // State Management Tests
-  describe('State Management', () => {
-    it('should initialize leftTime from localStorage if available', () => {
-      const savedTime = 45000
-      localStorage.setItem(COUNT_DOWN_KEY, String(savedTime))
-
-      render(<Countdown />)
-
-      expect(localStorage.getItem).toHaveBeenCalledWith(COUNT_DOWN_KEY)
-    })
-
-    it('should use default COUNT_DOWN_TIME_MS when localStorage is empty', () => {
-      render(<Countdown />)
-
-      expect(localStorage.getItem).toHaveBeenCalledWith(COUNT_DOWN_KEY)
-    })
-
-    it('should save time to localStorage on time change', () => {
-      render(<Countdown />)
-
-      act(() => {
-        vi.advanceTimersByTime(1000)
-      })
-
-      expect(localStorage.setItem).toHaveBeenCalledWith(COUNT_DOWN_KEY, expect.any(String))
-    })
+  it('enables resending when the stored countdown expires', () => {
+    localStorage.setItem(COUNT_DOWN_KEY, '1000')
+    render(<Countdown />)
+    act(() => vi.advanceTimersByTime(2000))
+    expect(screen.getByRole('button', { name: 'login.checkCode.resend' })).toBeEnabled()
+    expect(Number(localStorage.getItem(COUNT_DOWN_KEY))).toBe(0)
   })
 
-  // Event Handler Tests
-  describe('Event Handlers', () => {
-    it('should call onResend callback when resend is clicked', () => {
-      localStorage.setItem(COUNT_DOWN_KEY, '0')
-      const onResend = vi.fn()
+  it('resets the countdown and invokes the callback when resent', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    localStorage.setItem(COUNT_DOWN_KEY, '0')
+    const onResend = vi.fn()
+    render(<Countdown onResend={onResend} />)
 
-      render(<Countdown onResend={onResend} />)
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.resend' }))
 
-      const resendLink = screen.getByText('login.checkCode.resend')
-      fireEvent.click(resendLink)
-
-      expect(onResend).toHaveBeenCalledTimes(1)
-    })
-
-    it('should reset countdown when resend is clicked', () => {
-      localStorage.setItem(COUNT_DOWN_KEY, '0')
-
-      render(<Countdown />)
-
-      const resendLink = screen.getByText('login.checkCode.resend')
-      fireEvent.click(resendLink)
-
-      expect(localStorage.setItem).toHaveBeenCalledWith(COUNT_DOWN_KEY, String(COUNT_DOWN_TIME_MS))
-    })
-
-    it('should work without onResend callback (optional prop)', () => {
-      localStorage.setItem(COUNT_DOWN_KEY, '0')
-
-      render(<Countdown />)
-
-      const resendLink = screen.getByText('login.checkCode.resend')
-      expect(() => fireEvent.click(resendLink)).not.toThrow()
-    })
+    expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe(String(COUNT_DOWN_TIME_MS))
+    expect(onResend).toHaveBeenCalledOnce()
   })
 
-  // Countdown End Tests
-  describe('Countdown End', () => {
-    it('should remove localStorage item when countdown ends', () => {
-      localStorage.setItem(COUNT_DOWN_KEY, '1000')
+  it('does not restart the countdown while resend is disabled', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    localStorage.setItem(COUNT_DOWN_KEY, '0')
+    const onResend = vi.fn()
+    render(<Countdown onResend={onResend} resendDisabled />)
 
-      render(<Countdown />)
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.resend' }))
 
-      act(() => {
-        vi.advanceTimersByTime(2000)
-      })
-
-      expect(localStorage.removeItem).toHaveBeenCalledWith(COUNT_DOWN_KEY)
-    })
+    expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe('0')
+    expect(onResend).not.toHaveBeenCalled()
   })
 
-  // Edge Cases
-  describe('Edge Cases', () => {
-    it('should handle time exactly at 0', () => {
-      localStorage.setItem(COUNT_DOWN_KEY, '0')
-      render(<Countdown />)
+  it('lets the caller defer restarting the countdown until resend succeeds', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    localStorage.setItem(COUNT_DOWN_KEY, '0')
+    const onResend = vi.fn()
+    render(<Countdown onResend={onResend} restartOnResend={false} />)
 
-      expect(screen.getByText('login.checkCode.resend')).toBeInTheDocument()
-    })
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.resend' }))
 
-    it('should handle negative time values', () => {
-      localStorage.setItem(COUNT_DOWN_KEY, '-1000')
-      render(<Countdown />)
-
-      expect(screen.getByText('login.checkCode.resend')).toBeInTheDocument()
-    })
-
-    it('should round time display correctly', () => {
-      localStorage.setItem(COUNT_DOWN_KEY, '29500')
-      render(<Countdown />)
-
-      expect(screen.getByText(/30/)).toBeInTheDocument()
-    })
-
-    it('should display 1 second correctly', () => {
-      localStorage.setItem(COUNT_DOWN_KEY, '1000')
-      render(<Countdown />)
-
-      expect(screen.getByText(/^1/)).toBeInTheDocument()
-    })
-  })
-
-  // Props Tests
-  describe('Props', () => {
-    it('should render correctly with onResend prop', () => {
-      localStorage.setItem(COUNT_DOWN_KEY, '0')
-      const onResend = vi.fn()
-
-      render(<Countdown onResend={onResend} />)
-
-      expect(screen.getByText('login.checkCode.resend')).toBeInTheDocument()
-    })
-
-    it('should render correctly without any props', () => {
-      render(<Countdown />)
-
-      expect(screen.getByText('login.checkCode.didNotReceiveCode')).toBeInTheDocument()
-    })
-  })
-
-  // Exported Constants
-  describe('Exported Constants', () => {
-    it('should export COUNT_DOWN_TIME_MS as 59000', () => {
-      expect(COUNT_DOWN_TIME_MS).toBe(59000)
-    })
-
-    it('should export COUNT_DOWN_KEY as leftTime', () => {
-      expect(COUNT_DOWN_KEY).toBe('leftTime')
-    })
+    expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe('0')
+    expect(onResend).toHaveBeenCalledOnce()
   })
 })
