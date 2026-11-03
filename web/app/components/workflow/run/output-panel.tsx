@@ -86,7 +86,7 @@ const OutputPanel: FC<OutputPanelProps> = ({ isRunning, outputs, error, height }
             readOnly
             title="Output"
             language={CodeLanguage.json}
-            value={JSON.stringify(outputs, null, 2)}
+            value={outputs}
             isJSONStringifyBeauty
             height={height ? (height - 16) / 2 : undefined}
           />
