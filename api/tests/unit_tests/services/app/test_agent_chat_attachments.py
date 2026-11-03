@@ -3,13 +3,12 @@
 import contextvars
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import cast
 from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine, Table, create_engine
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
@@ -22,7 +21,6 @@ from core.app.entities.app_invoke_entities import (
     ModelConfigWithCredentialsEntity,
 )
 from core.db import session_factory
-from core.model_manager import ModelInstance
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolInvokeMeta
@@ -40,7 +38,7 @@ from services.app.generation.adapters import agent_chat as worker_module
 from services.app.generation.adapters.agent_chat import AgentChatAppGenerator
 from services.app.generation.ports import AgentMessageRecords
 from services.knowledge.retrieval.adapters.resource_events import DatasetIndexToolCallbackHandler
-from services.tools.dataset.tool import DatasetRetrieverTool, DatasetToolRetrieval
+from services.tools.dataset.tool import DatasetRetrieverTool
 from services.tools.tool_engine import ToolEngine
 from tests.helpers.unit.model_factories import make_app, make_upload_file
 from tests.unit_tests.core.agent.test_base_agent_runner import (
@@ -73,7 +71,7 @@ def agent_database(
     TypeBase.metadata.create_all(
         engine,
         tables=[
-            cast(Table, model.__table__)
+            TypeBase.metadata.tables[model.__tablename__]
             for model in (App, Conversation, Message, MessageAgentThought, MessageFile, UploadFile)
         ],
     )
@@ -140,7 +138,7 @@ def test_dataset_images_are_owned_ordered_and_materialized_before_storage(
         queue_manager=create_autospec(AppQueueManager, instance=True, spec_set=True),
         message=_message(),
         user_id="user",
-        model_instance=cast(ModelInstance, Model(LLM())),
+        model_instance=Model(LLM()),  # type: ignore[arg-type]
     )
     reads = []
 
@@ -180,7 +178,7 @@ def test_dataset_images_are_owned_ordered_and_materialized_before_storage(
     tool = DatasetRetrieverTool(
         entity=_tool_entity("dataset"),
         runtime=ToolRuntime(tenant_id="tenant"),
-        retrieval=cast(DatasetToolRetrieval, Retrieval()),
+        retrieval=Retrieval(),  # type: ignore[arg-type]
         dataset_id="dataset",
         config=DatasetRetrieveConfigEntity(retrieve_strategy="single"),
         top_k=2,

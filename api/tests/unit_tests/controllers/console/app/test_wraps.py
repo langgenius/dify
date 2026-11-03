@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from inspect import getsource
-from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -39,7 +38,8 @@ def test_get_app_model_injects_model(monkeypatch: pytest.MonkeyPatch, sqlite_ses
     def handler(app_model: App) -> str:
         return app_model.id
 
-    assert cast(Callable[..., str], handler)(app_id=app_model.id) == app_model.id
+    wrapped_handler: Callable[..., object] = handler
+    assert wrapped_handler(app_id=app_model.id) == app_model.id
 
 
 def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
@@ -51,8 +51,9 @@ def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch, sqlit
     def handler(app_model: App) -> str:
         return app_model.id
 
+    wrapped_handler: Callable[..., object] = handler
     with pytest.raises(AppNotFoundError):
-        cast(Callable[..., str], handler)(app_id=app_model.id)
+        wrapped_handler(app_id=app_model.id)
 
 
 def test_get_app_model_requires_app_id() -> None:
@@ -60,8 +61,9 @@ def test_get_app_model_requires_app_id() -> None:
     def handler(app_model: App) -> str:
         return app_model.id
 
+    wrapped_handler: Callable[..., object] = handler
     with pytest.raises(ValueError, match="missing app_id in path parameters"):
-        cast(Callable[..., str], handler)()
+        wrapped_handler()
 
 
 def test_wraps_with_session_reexports_common_session_decorator() -> None:
@@ -84,7 +86,7 @@ def test_get_app_model_prefers_injected_session(
     # request Session was preferred over the legacy scoped-session fallback.
     with Session() as scoped_session:
         monkeypatch.setattr(wraps_module.db, "session", scoped_session)
-        get = cast(Callable[..., str], Handler().get)
+        get: Callable[..., object] = Handler().get
         assert get(sqlite_session, app_id=app_model.id) == app_model.id
 
 
@@ -121,7 +123,7 @@ def test_get_app_model_hides_only_workflow_backing_apps(
             return app_model.id
 
     args = (sqlite_session,) if inject_session else ()
-    get = cast(Callable[..., str], Handler().get)
+    get: Callable[..., object] = Handler().get
     if workflow_only:
         with pytest.raises(AppNotFoundError):
             get(*args, app_id=app_model.id)

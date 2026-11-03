@@ -2,7 +2,7 @@
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-from types import SimpleNamespace
+from dataclasses import dataclass
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
@@ -29,10 +29,20 @@ def inner_api_app() -> Flask:
     return app
 
 
+@dataclass
+class _KnowledgeServices:
+    inner_retrieval: InnerKnowledgeRetrievalService
+
+
+@dataclass
+class _ApplicationServices:
+    knowledge: _KnowledgeServices
+
+
 @pytest.fixture
 def mock_retrieve(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     inner_retrieval = create_autospec(InnerKnowledgeRetrievalService, instance=True, spec_set=True)
-    services = SimpleNamespace(knowledge=SimpleNamespace(inner_retrieval=inner_retrieval))
+    services = _ApplicationServices(knowledge=_KnowledgeServices(inner_retrieval=inner_retrieval))
     monkeypatch.setattr(
         "controllers.inner_api.knowledge.retrieval.application_services",
         lambda: services,

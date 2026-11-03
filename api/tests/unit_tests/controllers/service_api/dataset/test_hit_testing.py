@@ -15,7 +15,7 @@ Strategy:
 """
 
 import uuid
-from types import SimpleNamespace
+from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -30,10 +30,20 @@ from models.dataset import Dataset
 from services.knowledge.entities.knowledge_entities import RetrievalModel
 
 
+@dataclass
+class _WorkflowRuntimeServices:
+    retrieval: object
+
+
+@dataclass
+class _ApplicationServices:
+    workflow_runtime: _WorkflowRuntimeServices
+
+
 @pytest.fixture
-def workflow_retrieval(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    retrieval = MagicMock(name="dataset_retrieval_factory")
-    services = SimpleNamespace(workflow_runtime=SimpleNamespace(retrieval=retrieval))
+def workflow_retrieval(monkeypatch: pytest.MonkeyPatch) -> object:
+    retrieval = object()
+    services = _ApplicationServices(workflow_runtime=_WorkflowRuntimeServices(retrieval=retrieval))
     monkeypatch.setattr(hit_testing_base_module, "application_services", lambda: services)
     return retrieval
 
@@ -161,7 +171,7 @@ class TestHitTestingApiPost:
         mock_hit_svc: MagicMock,
         mock_ns: MagicMock,
         app: Flask,
-        workflow_retrieval: MagicMock,
+        workflow_retrieval: object,
     ) -> None:
         """Test successful hit testing request."""
         dataset_id = str(uuid.uuid4())
@@ -198,7 +208,7 @@ class TestHitTestingApiPost:
         mock_hit_svc: MagicMock,
         mock_ns: MagicMock,
         app: Flask,
-        workflow_retrieval: MagicMock,
+        workflow_retrieval: object,
     ) -> None:
         """Test hit testing with custom retrieval model."""
         dataset_id = str(uuid.uuid4())
@@ -251,7 +261,7 @@ class TestHitTestingApiPost:
         mock_hit_svc: MagicMock,
         mock_ns: MagicMock,
         app: Flask,
-        workflow_retrieval: MagicMock,
+        workflow_retrieval: object,
     ) -> None:
         """Service API retrieval payload should not drop metadata filters."""
         dataset_id = str(uuid.uuid4())
@@ -306,7 +316,7 @@ class TestHitTestingApiPost:
         mock_hit_svc: MagicMock,
         mock_ns: MagicMock,
         app: Flask,
-        workflow_retrieval: MagicMock,
+        workflow_retrieval: object,
     ) -> None:
         """Test service API prepares nullable list fields from retrieval records."""
         dataset_id = str(uuid.uuid4())

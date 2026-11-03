@@ -659,12 +659,25 @@ def test_get_tool_runtime_workflow_path(
     assert runtime_tool._workflow_runtime.execution_driver is workflow_runtime.execution_driver
 
 
+@dataclass
+class _RuntimeToolStub:
+    runtime: ToolRuntime
+
+
+@dataclass
+class _ToolProviderStub:
+    tool: Any
+
+    def get_tool(self, _tool_name: str) -> Any:
+        return self.tool
+
+
 def test_get_tool_runtime_plugin_path(*, tool_providers, workflow_queries):
-    tool = SimpleNamespace(runtime=ToolRuntime(tenant_id="tenant-1"))
+    tool = _RuntimeToolStub(runtime=ToolRuntime(tenant_id="tenant-1"))
     with patch.object(
         ToolManager,
         "get_plugin_provider",
-        return_value=SimpleNamespace(get_tool=lambda _: tool),
+        return_value=_ToolProviderStub(tool=tool),
     ):
         result = ToolManager.get_tool_runtime(
             provider_type=ToolProviderType.PLUGIN,
@@ -686,11 +699,11 @@ def test_get_tool_runtime_plugin_path(*, tool_providers, workflow_queries):
 
 
 def test_get_tool_runtime_mcp_path(*, tool_providers, workflow_queries):
-    tool = SimpleNamespace(runtime=ToolRuntime(tenant_id="tenant-1"))
+    tool = _RuntimeToolStub(runtime=ToolRuntime(tenant_id="tenant-1"))
     with patch.object(
         ToolManager,
         "get_mcp_provider_controller",
-        return_value=SimpleNamespace(get_tool=lambda _: tool),
+        return_value=_ToolProviderStub(tool=tool),
     ):
         result = ToolManager.get_tool_runtime(
             provider_type=ToolProviderType.MCP,

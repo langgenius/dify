@@ -2,7 +2,6 @@
 
 from collections.abc import Callable
 from datetime import timedelta
-from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import Select, event
@@ -43,8 +42,20 @@ def write_execution(
         user=make_account(),
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
     )
-    queued = Mock()
-    monkeypatch.setattr(storage.save_workflow_execution_task, "delay", queued)
+    queued: list[tuple[dict[str, object], str, str, str, str, str]] = []
+
+    def delay(
+        *,
+        execution_data: dict[str, object],
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        creator_user_id: str,
+        creator_user_role: str,
+    ) -> None:
+        queued.append((execution_data, tenant_id, app_id, triggered_from, creator_user_id, creator_user_role))
+
+    monkeypatch.setattr(storage.save_workflow_execution_task, "delay", delay)
     monkeypatch.setattr(storage.session_factory, "create_session", sqlite_session_factory)
 
     def retry(*, exc: Exception, countdown: int) -> None:
@@ -56,7 +67,15 @@ def write_execution(
     def write(execution: WorkflowExecution) -> None:
         writer.save(execution)
         if request.param == "celery":
-            storage.save_workflow_execution_task(**queued.call_args.kwargs)
+            execution_data, tenant_id, app_id, triggered_from, creator_user_id, creator_user_role = queued.pop()
+            storage.save_workflow_execution_task(
+                execution_data=execution_data,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                triggered_from=triggered_from,
+                creator_user_id=creator_user_id,
+                creator_user_role=creator_user_role,
+            )
 
     return write
 

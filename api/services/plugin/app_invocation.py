@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Protocol, cast
+from typing import Any, Protocol
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -58,14 +58,14 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             if workflow is None:
                 raise ValueError("unexpected app type")
 
-            features_dict: dict[str, Any] = workflow.features_dict
+            features_dict: Mapping[str, Any] = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config_dict = cls._get_app_model_config_dict(app)
-            if app_model_config_dict is None:
+            if not isinstance(app_model_config_dict, dict):
                 raise ValueError("unexpected app type")
 
-            features_dict = cast(dict[str, Any], app_model_config_dict)
+            features_dict = app_model_config_dict
 
             user_input_form = features_dict.get("user_input_form", [])
 

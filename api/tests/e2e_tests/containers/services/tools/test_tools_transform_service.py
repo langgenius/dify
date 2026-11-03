@@ -880,8 +880,8 @@ class TestWorkflowProviderToUserProvider:
         identity = ToolProviderIdentity(**defaults)
         entity = ToolProviderEntity(identity=identity)
         return WorkflowToolProviderController(
-            draft_variable_saver=Mock(
-                return_value=create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
+            draft_variable_saver=lambda *args, **kwargs: create_autospec(  # noqa: ARG005
+                DraftVariableSaverFactory, instance=True, spec_set=True
             ),
             entity=entity,
             provider_id=provider_id,
