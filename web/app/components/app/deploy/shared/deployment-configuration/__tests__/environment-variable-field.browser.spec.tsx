@@ -1,18 +1,19 @@
 import type { EnvironmentVariableSlot } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { EnvVarValueSource, EnvVarValueType } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { render as renderBrowser } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
-import { createNuqsTestRenderer } from '@/test/nuqs-testing'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { EnvironmentVariableField } from '../environment-variable-field'
 
-const render = createNuqsTestRenderer((ui) => {
+async function render(ui: React.ReactElement) {
   const queryClient = createConsoleQueryClient()
   seedModelProviderQueries(queryClient, [
     createModelCatalogFixture({
@@ -53,8 +54,13 @@ const render = createNuqsTestRenderer((ui) => {
       },
     },
   )
-  return renderWithConsoleQuery(ui, { queryClient })
-})
+  const { wrapper: Wrapper } = createConsoleQueryWrapper({ queryClient })
+  return renderBrowser(
+    <NuqsTestingAdapter>
+      <Wrapper>{ui}</Wrapper>
+    </NuqsTestingAdapter>,
+  )
+}
 
 const llmSlot: EnvironmentVariableSlot = {
   configured_value: {
@@ -76,9 +82,8 @@ describe('EnvironmentVariableField', () => {
     await import('@/app/components/workflow/llm-environment-variable-value-field')
   })
   it('selects a compatible custom LLM and keeps its parameters structured', async () => {
-    const user = userEvent.setup()
     const onChange = vi.fn()
-    render(
+    await render(
       <EnvironmentVariableField
         slot={llmSlot}
         workflowId="workflow-1"
@@ -87,29 +92,29 @@ describe('EnvironmentVariableField', () => {
       />,
     )
 
-    const modelSelector = await screen.findByRole('button', { name: /^Chat model/ })
-    expect(modelSelector).toBeDisabled()
-    expect(screen.getByText('workflow.blocks.llm')).toBeInTheDocument()
+    const modelSelector = page.getByRole('button', { name: /^Chat model/ })
+    await expect.element(modelSelector).toBeDisabled()
+    await expect.element(page.getByText('workflow.blocks.llm')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('combobox', { name: /MODEL/ }))
-    await user.click(
-      await screen.findByRole('option', {
+    await page.getByRole('combobox', { name: /MODEL/ }).click()
+    await page
+      .getByRole('option', {
         name: 'deployments.deployDrawer.envVarSource.literal',
-      }),
-    )
+      })
+      .click()
 
-    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
-    const picker = within(
-      await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
-    )
-    expect(picker.queryByRole('button', { name: /^Completion model/ })).not.toBeInTheDocument()
-    await user.click(picker.getByRole('button', { name: /^Chat model v2/ }))
-    await user.click(screen.getByRole('button', { name: /modelProvider.modelSettings/ }))
-    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
-    const temperature = screen.getByRole('spinbutton', { name: 'Temperature' })
-    await user.clear(temperature)
-    await user.type(temperature, '0.4')
-    await user.tab()
+    await page.getByRole('button', { name: 'plugin.detailPanel.configureModel' }).click()
+    const picker = page.getByRole('dialog', { name: 'plugin.detailPanel.configureModel' })
+    await expect
+      .element(picker.getByRole('button', { name: /^Completion model/ }))
+      .not.toBeInTheDocument()
+    await picker.getByRole('button', { name: /^Chat model v2/ }).click()
+    await page.getByRole('button', { name: /modelProvider.modelSettings/ }).click()
+    await page.getByRole('switch', { name: 'Temperature' }).click()
+    const temperature = page.getByRole('spinbutton', { name: 'Temperature' })
+    await temperature.clear()
+    await userEvent.type(temperature, '0.4')
+    await userEvent.tab()
 
     expect(onChange).toHaveBeenLastCalledWith('workflow-1', 'MODEL', {
       customValue: {
@@ -123,7 +128,7 @@ describe('EnvironmentVariableField', () => {
   })
 
   it('shows the last deployed LLM as a read-only source', async () => {
-    render(
+    await render(
       <EnvironmentVariableField
         slot={{
           ...llmSlot,
@@ -143,11 +148,16 @@ describe('EnvironmentVariableField', () => {
       />,
     )
 
-    const modelSelector = await screen.findByRole('button', { name: /^Chat model/ })
-    expect(modelSelector).toBeDisabled()
-    expect(modelSelector).toHaveTextContent('Chat model v2')
-    expect(screen.getByRole('combobox', { name: /MODEL/ })).toHaveTextContent(
-      'deployments.deployDrawer.envVarSource.lastDeployment',
-    )
+    const modelSelector = page.getByRole('button', { name: /^Chat model/ })
+    await expect.element(modelSelector).toBeDisabled()
+    await expect.element(modelSelector.getByText('Chat model v2', { exact: true })).toBeVisible()
+    await expect
+      .element(page.getByRole('combobox', { name: /MODEL/ }))
+      .toHaveTextContent('deployments.deployDrawer.envVarSource.lastDeployment')
   })
+})
+
+beforeEach(async () => {
+  await page.viewport(1000, 800)
+  onTestFinished(guardUnexpectedFetch())
 })
