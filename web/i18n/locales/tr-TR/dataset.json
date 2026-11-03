@@ -78,7 +78,7 @@
   "firstEmpty.createTitle": "Kullanıma hazır bilgi tabanı oluştur",
   "firstEmpty.noCreatePermission": "Erişilebilir bilgi tabanı yok.\nErişim istemek için kaynak bakımcısı veya çalışma alanı sahibiyle iletişime geçin.",
   "firstEmpty.or": "Veya",
-  "firstEmpty.pipelineDescription": "Özel veriler için kendi parçalama, temizleme ve indeksleme akışınızı tanımlayın.",
+  "firstEmpty.pipelineDescription": "Esnek düğümler ve adımlarla özel bir veri işleme iş akışı oluşturun.",
   "firstEmpty.pipelineTitle": "Özel bilgi tabanı oluştur",
   "firstEmpty.recommended": "Önerilen",
   "firstEmpty.title": "Henüz bilgi tabanı yok",

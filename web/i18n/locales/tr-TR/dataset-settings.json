@@ -1,5 +1,5 @@
 {
-  "desc": "Burada Bilginin özelliklerini ve çalışma yöntemlerini değiştirebilirsiniz.",
+  "desc": "Burada bu Bilginin özelliklerini ve alım ayarlarını değiştirebilirsiniz.",
   "form.changeIcon": "Bilgi simgesini değiştir",
   "form.chunkStructure.description": "Yığın Yapısı hakkında.",
   "form.chunkStructure.learnMore": "Daha fazla bilgi edinin",
@@ -15,7 +15,7 @@
   "form.indexMethodChangeToEconomyDisabledTip": "Genel Merkezden ECO'ya düşürme için mevcut değil",
   "form.indexMethodEconomy": "Ekonomik",
   "form.indexMethodEconomyTip": "Her parça için {{count}} anahtar kelime kullanarak geri getirme yapın, token harcamadan doğruluğu azaltma pahasına.",
-  "form.indexMethodHighQualityTip": "Kullanıcılar sorguladığında daha yüksek doğruluk sağlamak için Yerleştirme modelini çağırır.",
+  "form.indexMethodHighQualityTip": "Daha isabetli alım için belgeleri Yerleştirme modeliyle işlemek, LLM'nin yüksek kaliteli yanıtlar üretmesine yardımcı olur.",
   "form.me": "(Siz)",
   "form.multimodalRetrievalGuidance.createDescription": "Bilginiz ekran görüntüleri, ürün görselleri, kılavuz çizimleri veya grafikler içeriyorsa Vision etiketli bir Yerleştirme modeli seçin. Yalnızca metin destekleyen modeller ağırlıklı olarak metin içeriğini işler ve görselleri geri alıma dahil etmeyebilir.",
   "form.multimodalRetrievalGuidance.createTitle": "Görsellerin de geri alıma katılmasını sağlayın",
