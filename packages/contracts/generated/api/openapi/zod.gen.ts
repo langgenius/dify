@@ -337,6 +337,25 @@ export const zAppListRow = z.object({
 })
 
 /**
+ * AppPackageCheckPayload
+ *
+ * Request body for POST /workspaces/<workspace_id>/apps/packages:check.
+ */
+export const zAppPackageCheckPayload = z.object({
+  app_id: z.string().nullish(),
+  package: z.union([
+    z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+    z.record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    ),
+  ]),
+})
+
+/**
  * AppPackageExportQuery
  *
  * Query parameters for GET /apps/<app_id>/package.
@@ -350,7 +369,7 @@ export const zAppPackageExportQuery = z.object({
 /**
  * AppPackageFillPayload
  *
- * Request body for POST /workspaces/<workspace_id>/apps/packages:fill and :check.
+ * Request body for POST /workspaces/<workspace_id>/apps/packages:fill.
  */
 export const zAppPackageFillPayload = z.object({
   package: z.union([
@@ -3743,7 +3762,7 @@ export const zPostWorkspacesByWorkspaceIdAppsPackagesPath = z.object({
  */
 export const zPostWorkspacesByWorkspaceIdAppsPackagesResponse = zAppDslImportResponse
 
-export const zPostWorkspacesByWorkspaceIdAppsPackagesCheckBody = zAppPackageFillPayload
+export const zPostWorkspacesByWorkspaceIdAppsPackagesCheckBody = zAppPackageCheckPayload
 
 export const zPostWorkspacesByWorkspaceIdAppsPackagesCheckPath = z.object({
   workspace_id: z.string(),

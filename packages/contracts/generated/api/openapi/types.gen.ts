@@ -311,6 +311,16 @@ export type AppMode =
   | 'rag-pipeline'
   | 'workflow'
 
+export type AppPackageCheckPayload = {
+  app_id?: string | null
+  package:
+    | Blob
+    | File
+    | {
+        [key: string]: Blob | File | Array<Blob | File>
+      }
+}
+
 export type AppPackageExportQuery = {
   include_secret?: boolean
   preserve_agent_bindings?: boolean
@@ -4129,7 +4139,7 @@ export type PostWorkspacesByWorkspaceIdAppsPackagesResponse =
   PostWorkspacesByWorkspaceIdAppsPackagesResponses[keyof PostWorkspacesByWorkspaceIdAppsPackagesResponses]
 
 export type PostWorkspacesByWorkspaceIdAppsPackagesCheckData = {
-  body: AppPackageFillPayload
+  body: AppPackageCheckPayload
   path: {
     workspace_id: string
   }
