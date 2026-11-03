@@ -2085,7 +2085,7 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_mode | query | The mode of the app the nodes go into | Yes | string, <br>**Available values:** "advanced-chat", "workflow" |
 | keyword | query | Words to match in the label, ignoring case | No | string |
-| kind | query | Only options of this kind | No | string, <br>**Available values:** "agent", "block", "tool" |
+| kind | query | Only options of this kind | No | string, <br>**Available values:** "agent", "block", "note", "tool" |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
 | workspace_id | path |  | Yes | string |
@@ -3781,7 +3781,7 @@ Where a node option comes from; a kind other than block seeds the nodes whose da
 | description | string |  | Yes |
 | kind | [NodeOptionKind](#nodeoptionkind) |  | Yes |
 | label | string |  | Yes |
-| seed | object | The smallest node data that names this option; copy it into the graph | Yes |
+| seed | object | The smallest node data that names this option, or the whole node for a note; copy it into the graph | Yes |
 | type | string |  | Yes |
 | version | string | Pass to describe.node_type for the node's schema | Yes |
 

@@ -51,6 +51,19 @@ def test_tool_labels_follow_the_accounts_language(admitted_bearer: AdmittedWorld
     assert [row["label"] for row in response.get_json()["data"]] == ["获取当前时间"]
 
 
+@pytest.mark.parametrize("app_mode", ["workflow", "advanced-chat"])
+def test_a_note_search_returns_the_note_seed(admitted_bearer: AdmittedWorld, app_mode: str) -> None:
+    response = _get(admitted_bearer, f"app_mode={app_mode}&kind=note")
+
+    assert response.status_code == 200, response.get_json()
+    [row] = response.get_json()["data"]
+    assert (row["kind"], row["type"], row["version"], row["label"]) == ("note", "custom-note", "", "custom-note")
+    assert row["seed"] == {
+        "type": "custom-note",
+        "data": {"type": "", "text": "", "showAuthor": True, "covers": []},
+    }
+
+
 def test_blocks_are_paged(admitted_bearer: AdmittedWorld) -> None:
     first = _get(admitted_bearer, "app_mode=advanced-chat&kind=block&limit=2").get_json()
     second = _get(admitted_bearer, "app_mode=advanced-chat&kind=block&limit=2&page=2").get_json()
@@ -114,7 +127,8 @@ def test_without_rbac_every_agent_is_listed(admitted_bearer: AdmittedWorld, monk
 
 
 @pytest.mark.parametrize(
-    ("kind", "asks"), [("&kind=block", False), ("&kind=tool", False), ("&kind=agent", True), ("", True)]
+    ("kind", "asks"),
+    [("&kind=block", False), ("&kind=tool", False), ("&kind=note", False), ("&kind=agent", True), ("", True)],
 )
 def test_agent_access_is_read_only_when_agents_can_be_listed(
     admitted_bearer: AdmittedWorld, monkeypatch: pytest.MonkeyPatch, kind: str, asks: bool

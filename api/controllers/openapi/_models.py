@@ -1162,7 +1162,10 @@ class NodeOptionRow(BaseModel):
     version: str = Field(description="Pass to describe.node_type for the node's schema")
     label: str
     description: str | None
-    seed: dict[str, Any] = Field(description="The smallest node data that names this option; copy it into the graph")
+    seed: dict[str, Any] = Field(
+        description="The smallest node data that names this option, or the whole node for a note; copy it into "
+        "the graph"
+    )
 
     @classmethod
     def of(cls, option: NodeOption) -> Self:

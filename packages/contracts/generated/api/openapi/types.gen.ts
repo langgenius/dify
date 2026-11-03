@@ -1148,7 +1148,7 @@ export type NodeChange = {
   type: string
 }
 
-export type NodeOptionKind = 'agent' | 'block' | 'tool'
+export type NodeOptionKind = 'agent' | 'block' | 'note' | 'tool'
 
 export type NodeOptionListResponse = {
   data: Array<NodeOptionRow>
@@ -4823,7 +4823,7 @@ export type GetWorkspacesByWorkspaceIdNodeOptionsData = {
   query: {
     app_mode: 'advanced-chat' | 'workflow'
     keyword?: string
-    kind?: 'agent' | 'block' | 'tool'
+    kind?: 'agent' | 'block' | 'note' | 'tool'
     limit?: number
     page?: number
   }
