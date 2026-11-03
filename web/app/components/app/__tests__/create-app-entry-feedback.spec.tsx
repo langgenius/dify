@@ -1,8 +1,10 @@
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FirstEmptyState from '@/app/components/apps/first-empty-state'
 import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
@@ -12,6 +14,7 @@ import { promptDefaultModel, promptModelProviders } from './prompt-model-fixture
 const mocks = vi.hoisted(() => ({
   create: vi.fn<() => Promise<Response>>(),
   improve: vi.fn<() => Promise<Response>>(),
+  features: vi.fn<() => Promise<Response>>(),
   push: vi.fn(),
 }))
 
@@ -20,7 +23,11 @@ vi.mock('@/utils/create-app-tracking', () => ({ trackCreateApp: vi.fn() }))
 
 let builderEnabled = false
 
-function renderEntry(builder = false, surface: 'menu' | 'empty' = 'menu') {
+function renderEntry(
+  builder = false,
+  surface: 'menu' | 'empty' = 'menu',
+  options: ConsoleQueryTestOptions = {},
+) {
   builderEnabled = builder
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
   return renderWithConsoleQuery(
@@ -35,6 +42,7 @@ function renderEntry(builder = false, surface: 'menu' | 'empty' = 'menu') {
       accountProfile: { id: 'creator' },
       workspacePermissionKeys: ['app.create_and_management'],
       features: { dify_builder_enabled: builder },
+      ...options,
     },
   )
 }
@@ -65,6 +73,11 @@ describe('Create app feedback', () => {
       .mockImplementation(async () =>
         Response.json({ instruction: 'Improved prompt', changed: true }),
       )
+    mocks.features
+      .mockReset()
+      .mockImplementation(async () =>
+        Response.json(zGetFeaturesResponse.parse({ dify_builder_enabled: builderEnabled })),
+      )
     vi.spyOn(toast, 'success').mockReturnValue('success-toast')
     vi.spyOn(toast, 'error').mockReturnValue('error-toast')
     vi.spyOn(toast, 'info').mockReturnValue('info-toast')
@@ -78,8 +91,7 @@ describe('Create app feedback', () => {
         return Response.json({ data: promptDefaultModel })
       if (pathname.endsWith('/workspaces/current/models/model-types/llm'))
         return Response.json({ data: promptModelProviders })
-      if (pathname.endsWith('/features'))
-        return Response.json(zGetFeaturesResponse.parse({ dify_builder_enabled: builderEnabled }))
+      if (pathname.endsWith('/features')) return mocks.features()
       throw new Error(`Unexpected request: ${request.method} ${pathname}`)
     })
   })
@@ -93,6 +105,60 @@ describe('Create app feedback', () => {
 
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow'))
     expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { surface: 'menu', edition: 'COMMUNITY', state: 'pending' },
+    { surface: 'empty', edition: 'COMMUNITY', state: 'error' },
+    { surface: 'menu', edition: 'CLOUD', state: 'error' },
+    { surface: 'empty', edition: 'CLOUD', state: 'pending' },
+  ] as const)(
+    'creates directly from $surface on $edition when features are $state',
+    async ({ surface, edition, state }) => {
+      if (state === 'pending')
+        mocks.features.mockImplementation(() => new Promise<Response>(() => {}))
+      else
+        mocks.features.mockResolvedValue(
+          Response.json({ message: 'Features unavailable' }, { status: 503 }),
+        )
+      const user = userEvent.setup()
+      const { queryClient } = renderEntry(false, surface, {
+        features: undefined,
+        systemFeatures: { deployment_edition: edition },
+      })
+      await waitFor(() => expect(mocks.features).toHaveBeenCalled())
+      if (state === 'error')
+        await waitFor(() =>
+          expect(queryClient.getQueryState(consoleQuery.features.get.queryKey())?.status).toBe(
+            'error',
+          ),
+        )
+
+      if (surface === 'menu') await selectWorkflow(user)
+      else await user.click(screen.getByRole('button', { name: /app.types.workflow/ }))
+
+      await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow'))
+      expect(mocks.create).toHaveBeenCalledOnce()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
+
+  it('falls back to direct creation when refreshing cached Builder capability fails', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderEntry(true)
+    await openStarter(user)
+    mocks.features.mockResolvedValue(
+      Response.json({ message: 'Features unavailable' }, { status: 503 }),
+    )
+
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+    })
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await selectWorkflow(user)
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow'))
+    expect(mocks.create).toHaveBeenCalledOnce()
   })
 
   it.each([false, true])(
