@@ -18,7 +18,12 @@ from controllers.openapi._errors import (
     OpenApiErrorCode,
     OpenApiErrorFormatter,
 )
-from controllers.openapi._models import AppPackageFillPayload, PackageCheckResponse
+from controllers.openapi._models import (
+    AppPackageFillPayload,
+    DeclaredParameterRow,
+    FieldHintRow,
+    PackageCheckResponse,
+)
 from controllers.openapi._upload import UploadParts
 from controllers.openapi.app_dsl import AppPackageCheckApi, AppPackageFillApi
 from controllers.openapi.auth.spec import Effect, Kind, spec_of
@@ -26,6 +31,8 @@ from graphon.enums import BuiltinNodeTypes
 from machinery.context import RequestContext
 from models.model import AppMode
 from services.app_package_service import AppPackageService
+from services.workflow.authoring.node_spec import FieldHint
+from services.workflow.authoring.plugins import NO_DEFAULT, DeclaredParameter
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.services.workflow.authoring.test_fill_package import _skeleton_dsl
 
@@ -255,6 +262,7 @@ def test_fill_and_check_refuse_a_package_file_over_the_limits(
 
     assert exc_info.value.code == 413
     assert mentions in str(exc_info.value.description)
+    assert "folder" not in str(exc_info.value.description)
 
 
 def test_check_refuses_a_package_without_an_app_yaml_mapping(app: Flask) -> None:
@@ -287,3 +295,29 @@ def test_fill_answers_over_the_wire_with_the_package(admitted_bearer: AdmittedWo
 
     assert (response.status_code, response.mimetype) == (200, "application/zip")
     assert set(_members(response.get_data())) == {_APP, _MANIFEST}
+
+
+@pytest.mark.parametrize(("default", "expected"), [(None, {"default": None}), (0, {"default": 0}), (NO_DEFAULT, {})])
+def test_a_field_hint_sends_a_null_default_and_leaves_out_a_missing_one(
+    default: object, expected: dict[str, object]
+) -> None:
+    hint = FieldHint(loc=("x",), type="string", options=(), description=None, required=False, default=default)
+
+    body = FieldHintRow.of(hint).model_dump(mode="json", by_alias=True)
+
+    assert {key: value for key, value in body.items() if key == "default"} == expected
+
+
+@pytest.mark.parametrize(
+    ("default", "expected"), [(None, {"default": None}), ("UTC", {"default": "UTC"}), (NO_DEFAULT, {})]
+)
+def test_a_declared_parameter_sends_a_null_default_and_leaves_out_a_missing_one(
+    default: object, expected: dict[str, object]
+) -> None:
+    parameter = DeclaredParameter(
+        name="timezone", form="form", type="select", required=False, default=default, options=(), help=None
+    )
+
+    body = DeclaredParameterRow.of(parameter).model_dump(mode="json", by_alias=True)
+
+    assert {key: value for key, value in body.items() if key == "default"} == expected

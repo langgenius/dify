@@ -6,28 +6,15 @@ from http import HTTPStatus
 
 from flask_restx import Resource
 
-from configs import dify_config
-from controllers.common.agent_access import resolve_agent_access_filter
+from controllers.common.agent_access import account_agent_access
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import NodeOptionListResponse, NodeOptionQuery, NodeOptionRow
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import WORKSPACE_READ_GUARDS
-from extensions.ext_application_services import application_services
 from services.agent.roster_service import AgentRosterService
 from services.workflow.authoring import FillContext
 from services.workflow.authoring.node_options import list_node_options
-
-
-def _accessible_agent_ids(tenant_id: str, account_id: str) -> list[str] | None:
-    """The Agents the account may see, as the console's Agent invite options reads them; None for every Agent."""
-    if not dify_config.RBAC_ENABLED:
-        return None
-    permissions = application_services().rbac.members.permissions(tenant_id, account_id)
-    access_filter = resolve_agent_access_filter(tenant_id, account_id, permissions=permissions)
-    if access_filter.accessible_agent_ids is None:
-        return None
-    return sorted(access_filter.accessible_agent_ids)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/node-options")
@@ -57,7 +44,7 @@ class NodeOptionListApi(Resource):
             mode=query.app_mode,
             kind=query.kind,
             keyword=query.keyword,
-            accessible_agent_ids=_accessible_agent_ids(tenant_id, account_id),
+            accessible_agent_ids=account_agent_access(tenant_id, account_id).sorted_ids(),
             roster=AgentRosterService(ctx.session),
             language=ctx.account.interface_language,
         )
