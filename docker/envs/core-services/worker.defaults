@@ -16,6 +16,11 @@ DIFY_AGENT_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
 AGENT_BACKEND_BASE_URL=${AGENT_BACKEND_BASE_URL:-http://agent_backend:5050}
 CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:${REDIS_PASSWORD:-difyai123456}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1}
 
+# Worker autoscaling
+# CELERY_AUTO_SCALE=false
+# CELERY_MAX_WORKERS=
+# CELERY_MIN_WORKERS=
+
 # Container variable mappings; keep these expressions unchanged in the copy.
 AGENT_BACKEND_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
 INNER_API_KEY_FOR_PLUGIN=${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}

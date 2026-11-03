@@ -77,16 +77,21 @@ and configure [HTTPS](#configure-https-and-telemetry) and
 Keep settings with usable defaults out of the root `.env.example`. To customize a
 service, copy its `.defaults` file to the override path named in its comments,
 usually replacing `.defaults` with `.env` in the same directory. Edit the copy,
-or the existing `.env` if one is already present. For an optional `.env.example`
-template, review its comments and fill in the settings before use.
+or the existing `.env` if one is already present. Uncomment only the optional
+assignments you want to change; leave unused empty values and placeholders
+commented. For an optional `.env.example` template, review its comments and fill
+in the settings before use.
 
 Find settings in:
 
-- [Core services](envs/core-services/): shared API/worker settings, API, workers,
-  web, plugin daemon, and sandboxes. Use `shared.defaults` for shared API/worker
-  defaults; `shared.env.example` is the larger application settings reference.
+- [Core services](envs/core-services/): API, workers, web, plugin daemon, and
+  sandboxes. [shared.defaults](envs/core-services/shared.defaults) contains the
+  common API, worker, and Beat settings, grouped by function. API process options
+  live in `api.defaults`; worker autoscaling lives in `worker.defaults`.
 - [Databases](envs/databases/): PostgreSQL, MySQL, and Redis.
-- [Vector stores](envs/vectorstores/): bundled and external vector databases.
+- [Vector stores](envs/vectorstores/): bundled and external vector databases,
+  including their API/worker client settings. Providers without a dedicated
+  template are documented in `shared.defaults`.
 - [Infrastructure](envs/infrastructure/): nginx, Certbot, proxies, and supporting services.
 
 ### Change a service setting
@@ -221,6 +226,19 @@ Bundled service templates now use the `.defaults` extension. Existing service
 `.env` paths still work. Root `.env.example` remains the only required starting
 template, and the Compose generator creates only a missing root `.env`.
 
+The shared application reference is now consolidated in
+[shared.defaults](envs/core-services/shared.defaults). Existing `shared.env`
+and other override paths still work; do not replace or rename your local files.
+New customizations use the matching template listed above. Root `.env` retains
+precedence, including for settings that have moved to a provider template.
+
+Review accidental empty assignments left by older template copies. For example,
+`CELERY_WORKER_AMOUNT=` overrides the Docker default of `4` and lets the worker
+entrypoint fall back to `1`. Remove or comment out that assignment to restore
+the Docker default. Likewise, remove accidental empty `SERVER_WORKER_CLASS=`
+or `GUNICORN_TIMEOUT=` entries to restore `gevent` and `360`. Keep intentional
+overrides; the configuration loader does not rewrite or discard them.
+
 To merge new root-template keys into an existing `.env`, optionally run:
 
 ```bash
@@ -258,10 +276,10 @@ Weaviate. Update that value if you need different profiles.
 For HTTPS certificates, follow the [Certbot guide](certbot/README.md).
 
 For OpenTelemetry, create `envs/core-services/shared.env` from `shared.defaults`
-if it does not exist. Set `ENABLE_OTEL=true` and set `OTLP_BASE_ENDPOINT` to your
-collector's endpoint, reachable from the API and worker containers. Refer to the
-`OTEL_*` settings in [shared.env.example](envs/core-services/shared.env.example)
-for optional tuning. Apply the changes with `docker compose up -d`.
+if it does not exist. Uncomment `ENABLE_OTEL` and set it to `true`; uncomment
+`OTLP_BASE_ENDPOINT` and set it to your collector's endpoint, reachable from
+the API and worker containers. The same file documents optional `OTEL_*`
+tuning. Apply the changes with `docker compose up -d`.
 
 ## Configure worker queues and webhooks
 

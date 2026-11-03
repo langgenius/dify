@@ -9,6 +9,15 @@ PGVECTOR_PGDATA=${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
 PGVECTOR_PG_BIGM=${PGVECTOR_PG_BIGM:-false}
 PGVECTOR_PG_BIGM_VERSION=${PGVECTOR_PG_BIGM_VERSION:-1.2-20240606}
 
+# Dify vector client settings (API, workers and Beat)
+# PGVECTOR_HOST=pgvector
+# PGVECTOR_PORT=5432
+# PGVECTOR_USER=postgres
+# PGVECTOR_PASSWORD=difyai123456
+# PGVECTOR_DATABASE=dify
+# PGVECTOR_MIN_CONNECTION=1
+# PGVECTOR_MAX_CONNECTION=5
+
 # Container variable mappings; keep these expressions unchanged in the copy.
 PGDATA=${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
 PGUSER=${PGVECTOR_PGUSER:-postgres}

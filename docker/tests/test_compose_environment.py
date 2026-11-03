@@ -116,6 +116,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
 
     def test_api_and_weaviate_defaults_and_isolated_overrides(self):
         cases = [
+            ("core-services/shared", "worker", "CELERY_WORKER_AMOUNT", "CELERY_WORKER_AMOUNT", "4", "2", "3"),
             ("core-services/shared", "api", "SERVER_WORKER_CLASS", "SERVER_WORKER_CLASS", "gevent", "sync", "gthread"),
             ("core-services/shared", "api", "GUNICORN_TIMEOUT", "GUNICORN_TIMEOUT", "360", "120", "240"),
             (
@@ -154,6 +155,122 @@ class ComposeEnvironmentTests(unittest.TestCase):
                 finally:
                     (self.project / target).unlink(missing_ok=True)
                     root.write_text(initial_root)
+
+    def test_copying_shared_defaults_does_not_activate_optional_settings(self):
+        baseline = self.render()
+        self.copy_template("envs/core-services/shared.defaults", "envs/core-services/shared.env")
+        # Compare the entire configuration, including extra variables introduced by an unsafe copy.
+        self.assertEqual(self.render(), baseline)
+
+    def test_consolidated_settings_reach_consumers_and_respect_root_precedence(self):
+        api_services = ("api", "api_websocket")
+        worker_services = (
+            "worker",
+            "worker_knowledge_fs_upgrade",
+            "knowledge_fs_document_worker",
+            "knowledge_fs_source_worker",
+            "knowledge_fs_research_worker",
+            "knowledge_fs_maintenance_worker",
+            "knowledge_fs_dispatch_worker",
+        )
+        vector_clients = (*api_services, "worker", "worker_knowledge_fs_upgrade", "worker_beat")
+        cases = [
+            (
+                "core-services/shared.defaults",
+                (*api_services, *worker_services, "worker_beat"),
+                {
+                    "CODE_MAX_STRING_LENGTH": ("500000", "600000"),
+                    "ENABLE_OTEL": ("true", "false"),
+                    "OTLP_BASE_ENDPOINT": ("http://collector:4318", "http://root-collector:4318"),
+                    "CELERY_BROKER_VISIBILITY_TIMEOUT": ("10800", "14400"),
+                    "OPS_TRACE_QUEUE": ("custom_traces", "root_traces"),
+                    "KNOWLEDGE_FS_BACKGROUND_POLL_INTERVAL_SECONDS": ("7", "9"),
+                    "AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS": ("60", "90"),
+                    "UNSTRUCTURED_API_URL": ("http://parser:8000", "http://root-parser:8000"),
+                    "S3_ENDPOINT": ("https://storage.example.test", "https://root-storage.example.test"),
+                    "TENCENT_COS_SECRET_KEY": ("app-storage-key", "root-storage-key"),
+                },
+            ),
+            (
+                "core-services/api.defaults",
+                api_services,
+                {"GUNICORN_KEEP_ALIVE": ("20", "30"), "RESPECT_XFORWARD_HEADERS_ENABLED": ("false", "true")},
+            ),
+            (
+                "core-services/worker.defaults",
+                worker_services,
+                {"CELERY_AUTO_SCALE": ("true", "false"), "CELERY_MIN_WORKERS": ("2", "3")},
+            ),
+            ("vectorstores/weaviate.defaults", vector_clients, {"WEAVIATE_TOKENIZATION": ("field", "word")}),
+            ("vectorstores/qdrant.defaults", vector_clients, {"QDRANT_CLIENT_TIMEOUT": ("42", "60")}),
+            (
+                "vectorstores/oceanbase.defaults",
+                vector_clients,
+                {"OCEANBASE_VECTOR_HOST": ("custom-oceanbase", "root-oceanbase")},
+            ),
+            ("vectorstores/pgvector.defaults", vector_clients, {"PGVECTOR_MIN_CONNECTION": ("2", "3")}),
+            ("vectorstores/milvus.env.example", vector_clients, {"MILVUS_DATABASE": ("custom_dify", "root_dify")}),
+        ]
+        root = self.project / ".env"
+        initial_root = root.read_text()
+        for template, consumers, values in cases:
+            source = f"envs/{template}"
+            target = source.removesuffix(".env.example").removesuffix(".defaults") + ".env"
+            custom = {key: pair[0] for key, pair in values.items()}
+            root_values = {key: pair[1] for key, pair in values.items()}
+            with self.subTest(template=template):
+                try:
+                    # Each stage changes one file; no other service override is present.
+                    self.override_root(custom)
+                    services = self.render()
+                    for name in consumers:
+                        for key, value in custom.items():
+                            self.assertEqual(services[name]["environment"][key], value, f"root only: {name}.{key}")
+                    root.write_text(initial_root)
+
+                    self.copy_template(source, target, custom)
+                    services = self.render()
+                    for name in consumers:
+                        for key, value in custom.items():
+                            self.assertEqual(services[name]["environment"][key], value, f"service only: {name}.{key}")
+
+                    self.override_root(root_values)
+                    services = self.render()
+                    for name in consumers:
+                        for key, value in root_values.items():
+                            self.assertEqual(
+                                services[name]["environment"][key], value, f"root precedence: {name}.{key}"
+                            )
+                finally:
+                    (self.project / target).unlink(missing_ok=True)
+                    root.write_text(initial_root)
+
+    def test_existing_shared_overrides_and_empty_value_cleanup(self):
+        values = {
+            "API_WEBSOCKET_WORKER_AMOUNT": "3",
+            "CELERY_MAX_WORKERS": "5",
+            "QDRANT_URL": "http://existing-qdrant:6333",
+            "PGVECTOR_HOST": "existing-pgvector",
+            "MILVUS_DATABASE": "existing_dify",
+            "CELERY_WORKER_AMOUNT": "",
+            "SERVER_WORKER_CLASS": "",
+            "GUNICORN_TIMEOUT": "",
+        }
+        override = self.project / "envs/core-services/shared.env"
+        override.write_text("\n".join(f"{key}={value}" for key, value in values.items()) + "\n")
+        services = self.render()
+        for name in ("api", "api_websocket", "worker", "worker_knowledge_fs_upgrade", "worker_beat"):
+            for key, value in values.items():
+                self.assertEqual(services[name]["environment"][key], value, f"existing override: {name}.{key}")
+
+        # Cleaning accidental blanks in the existing file restores Docker defaults without replacing it.
+        override.write_text("\n".join(f"{key}={value}" for key, value in values.items() if value) + "\n")
+        services = self.render()
+        self.assertEqual(services["worker"]["environment"]["CELERY_WORKER_AMOUNT"], "4")
+        self.assertEqual(services["api"]["environment"]["SERVER_WORKER_CLASS"], "gevent")
+        self.assertEqual(services["api"]["environment"]["GUNICORN_TIMEOUT"], "360")
+        self.assertEqual(services["api_websocket"]["environment"]["API_WEBSOCKET_WORKER_AMOUNT"], "3")
+        self.assertEqual(services["worker"]["environment"]["QDRANT_URL"], values["QDRANT_URL"])
 
     def test_service_overrides_and_root_precedence(self):
         cases = [
@@ -371,10 +488,10 @@ class ComposeEnvironmentTests(unittest.TestCase):
                     if name.startswith("knowledge_fs_"):
                         self.assertEqual(services[name]["environment"]["DIFY_INNER_API_KEY"], value, name)
 
-    def test_websocket_uses_copied_shared_settings(self):
+    def test_websocket_uses_copied_api_settings(self):
         self.copy_template(
-            "envs/core-services/shared.env.example",
-            "envs/core-services/shared.env",
+            "envs/core-services/api.defaults",
+            "envs/core-services/api.env",
             {"API_WEBSOCKET_WORKER_AMOUNT": "3"},
         )
         config = self.render()["api_websocket"]

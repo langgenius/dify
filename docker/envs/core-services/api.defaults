@@ -64,8 +64,32 @@ PLUGIN_DAEMON_TIMEOUT=${PLUGIN_DAEMON_TIMEOUT:-600.0}
 DIFY_AGENT_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
 AGENT_BACKEND_BASE_URL=${AGENT_BACKEND_BASE_URL:-http://agent_backend:5050}
 # The bundled Nginx supplies a verified client IP; keep direct API callers trusted.
+# Compose enables forwarded headers here; the bare application default is false.
+# Override in api.env or docker/.env. See docker/README.md#client-ip-and-trusted-proxies
+# before exposing the API directly.
 RESPECT_XFORWARD_HEADERS_ENABLED=${RESPECT_XFORWARD_HEADERS_ENABLED:-true}
 CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:${REDIS_PASSWORD:-difyai123456}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1}
+
+# API server and OpenAPI settings
+# DIFY_BIND_ADDRESS=0.0.0.0
+# DIFY_PORT=5001
+# SERVER_WORKER_AMOUNT=1
+# SERVER_WORKER_CONNECTIONS=10
+# Must stay above the idle connection reuse window of the HTTP clients that
+# pool connections to this server. Node's global fetch (undici) keeps a socket
+# idle for 4s before dropping it, so a shorter value here lets the server close
+# a connection the client still considers reusable, which surfaces as
+# intermittent ECONNRESET on server-side rendering. 0 disables keep-alive.
+# GUNICORN_KEEP_ALIVE=10
+# WEBSOCKET_MAX_HTTP_BUFFER_SIZE=10485760
+# SWAGGER_UI_ENABLED=false
+# SWAGGER_UI_PATH=/swagger-ui.html
+# OPENAPI_ENABLED=false
+# OPENAPI_CORS_ALLOW_ORIGINS=
+# OPENAPI_KNOWN_CLIENT_IDS=difyctl
+# OPENAPI_RATE_LIMIT_PER_TOKEN=60
+# DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR=10
+# ENABLE_OAUTH_BEARER=false
 
 # Container variable mappings; keep these expressions unchanged in the copy.
 AGENT_BACKEND_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
