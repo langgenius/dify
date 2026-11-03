@@ -7,6 +7,7 @@ from flask import Request as FlaskRequest
 from core.db.session_factory import session_factory
 from extensions.ext_application_services import application_services
 from extensions.ext_socketio import sio
+from extensions.otel.workflow_collaboration import observe_workflow_event
 from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
@@ -25,9 +26,10 @@ def _sio_on(event: str) -> Callable[[Callable[..., object]], Callable[..., objec
 
 
 @_sio_on("connect")
-def socket_connect(sid, environ, auth):
+@observe_workflow_event("connect", sio)
+def socket_connect(sid, environ, auth=None):
     """
-    WebSocket connect event, do authentication here.
+    Authenticate a connect with optional Socket.IO auth data; preserve token-based admission.
     """
     try:
         request_environ = FlaskRequest(environ)
@@ -65,6 +67,7 @@ def socket_connect(sid, environ, auth):
 
 
 @_sio_on("user_connect")
+@observe_workflow_event("user_connect", sio)
 def handle_user_connect(sid, data):
     """
     Handle user connect event. Each session (tab) is treated as an independent collaborator.
@@ -85,15 +88,12 @@ def handle_user_connect(sid, data):
     return {"msg": "connected", "user_id": user_id, "sid": sid, "isLeader": is_leader}
 
 
-@_sio_on("disconnect")
-def handle_disconnect(sid):
-    """
-    Handle session disconnect event. Remove the specific session from online users.
-    """
-    mapping = repository.get_sid_mapping(sid)
-    collaboration_service.disconnect_session(sid)
-    if mapping and not repository.get_session_sids(mapping["workflow_id"]):
-        draft_sync_repository.clear(mapping["workflow_id"])
+@observe_workflow_event("disconnect", sio)
+def _handle_disconnect(sid):
+    """Remove the session from online users and observe the result."""
+    workflow_id = collaboration_service.disconnect_session(sid)
+    if workflow_id and not repository.get_session_sids(workflow_id):
+        draft_sync_repository.clear(workflow_id)
 
 
 @_sio_on("server_draft_sync")
@@ -103,7 +103,17 @@ def handle_server_draft_sync(sid, _data):
         return draft_sync_service.sync(sid, session=session)
 
 
+@_sio_on("disconnect")
+def handle_disconnect(sid):
+    """Let Socket.IO discard its reason before starting observable cleanup.
+
+    A cleanup TypeError must propagate without Socket.IO retrying the cleanup.
+    """
+    _handle_disconnect(sid)
+
+
 @_sio_on("collaboration_event")
+@observe_workflow_event("collaboration_event", sio)
 def handle_collaboration_event(sid, data):
     """
     Handle general collaboration events, include:
@@ -119,6 +129,7 @@ def handle_collaboration_event(sid, data):
 
 
 @_sio_on("graph_event")
+@observe_workflow_event("graph_event", sio)
 def handle_graph_event(sid, data):
     """
     Handle graph events - simple broadcast relay.

@@ -981,10 +981,11 @@ class TestWorkflowCollaborationService:
             patch.object(collaboration_service, "broadcast_online_users") as broadcast_online_users,
         ):
             # Act
-            collaboration_service.disconnect_session("sid-1")
+            disconnected_workflow = collaboration_service.disconnect_session("sid-1")
 
         # Assert
         assert not repository.session_exists("wf-1", "sid-1")
+        assert disconnected_workflow == "wf-1"
         assert repository.get_sid_mapping("sid-1") is None
         handle_leader_disconnect.assert_called_once_with("wf-1", "sid-1")
         broadcast_online_users.assert_called_once_with("wf-1")

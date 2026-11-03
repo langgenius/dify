@@ -261,6 +261,9 @@ export type ModelConfig = {
     language?: string
     autoPlay?: TtsAutoPlay
   }
+  show_thoughts?: {
+    enabled: boolean
+  }
   retriever_resource: {
     enabled: boolean
   }
