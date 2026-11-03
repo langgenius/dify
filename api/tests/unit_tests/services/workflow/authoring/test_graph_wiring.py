@@ -191,3 +191,90 @@ def test_graph_without_nodes_or_edges_is_untouched() -> None:
     fill_graph_wiring(graph)
 
     assert graph == {}
+
+
+def test_node_without_readable_data_is_left_as_written() -> None:
+    broken = {"id": "broken", "data": None}
+    graph = {
+        "nodes": [_node("start", BuiltinNodeTypes.START), broken],
+        "edges": [{"source": "start", "target": "broken"}, {"source": "broken", "target": "start"}],
+    }
+
+    fill_graph_wiring(graph)
+
+    assert broken == {"id": "broken", "data": None}
+    assert _at(graph, "edges", 0, "id") == "start-source-broken-target"
+
+
+def test_edge_that_cannot_be_read_is_left_as_written() -> None:
+    bad_data = {"source": "start", "target": "end", "data": None}
+    bad_source = {"source": ["start"], "target": "end"}
+    graph = {
+        "nodes": [_node("start", BuiltinNodeTypes.START), _node("end", BuiltinNodeTypes.END)],
+        "edges": [bad_data, bad_source, "start->end", None],
+    }
+
+    fill_graph_wiring(graph)
+
+    assert bad_data == {"source": "start", "target": "end", "data": None}
+    assert bad_source == {"source": ["start"], "target": "end"}
+    assert graph["edges"][2:] == ["start->end", None]
+
+
+def test_node_with_unreadable_parent_id_is_left_as_written() -> None:
+    odd = {"id": "odd", "parentId": ["x"], "data": {"type": BuiltinNodeTypes.LLM}}
+    expected = copy.deepcopy(odd)
+    graph = {"nodes": [odd, _node("end", BuiltinNodeTypes.END)], "edges": [{"source": "odd", "target": "end"}]}
+
+    fill_graph_wiring(graph)
+
+    assert odd == expected
+
+
+def test_nodes_and_edges_that_are_not_lists_are_left_alone() -> None:
+    graph = {"nodes": "none", "edges": {"a": 1}}
+
+    fill_graph_wiring(graph)
+
+    assert graph == {"nodes": "none", "edges": {"a": 1}}
+
+
+def test_edge_between_iteration_children_gets_iteration_fields_and_children_stay() -> None:
+    first = {"id": "a", "parentId": "iter", "type": "custom", "position": {"x": 1, "y": 1}, "data": {"type": "llm"}}
+    second = {"id": "b", "parentId": "iter", "type": "custom", "position": {"x": 2, "y": 2}, "data": {"type": "llm"}}
+    expected = copy.deepcopy([first, second])
+    graph = {
+        "nodes": [_node("iter", BuiltinNodeTypes.ITERATION), first, second],
+        "edges": [{"source": "a", "target": "b"}],
+    }
+
+    fill_graph_wiring(graph)
+
+    assert [first, second] == expected
+    edge = _at(graph, "edges", 0)
+    assert isinstance(edge, dict)
+    assert edge["zIndex"] == 1002
+    assert _at(edge, "data", "iteration_id") == "iter"
+    assert _at(edge, "data", "isInIteration") is True
+    assert edge["id"] == "a-source-b-target"
+
+
+def test_null_position_counts_as_no_position() -> None:
+    graph = _skeleton()
+    graph["nodes"][0]["position"] = None
+
+    fill_graph_wiring(graph)
+
+    assert _at(graph, "nodes", 0, "position", "x") is not None
+    assert _at(graph, "nodes", 1, "position", "x") is not None
+
+
+def test_child_position_does_not_suppress_top_level_layout() -> None:
+    child = {"id": "inner", "parentId": "iter", "type": "custom", "position": {"x": 5, "y": 6}, "data": {"type": "llm"}}
+    no_edges: list[dict[str, object]] = []
+    graph = {"nodes": [_node("iter", BuiltinNodeTypes.ITERATION), child], "edges": no_edges}
+
+    fill_graph_wiring(graph)
+
+    assert "position" in graph["nodes"][0]
+    assert child["position"] == {"x": 5, "y": 6}
