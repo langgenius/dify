@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.entities.tool_entities import ToolProviderType
@@ -6,11 +7,26 @@ from core.tools.tool_manager import ToolManager
 from services.tools import tool_sources
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.tool_sources import ToolSource, resolve_tool
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 TENANT_ID = "tenant-1"
 USER_ID = "user-1"
+
+
+class _FakeSession:
+    def __enter__(self) -> "_FakeSession":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+
+class _FakeSessionFactory:
+    @staticmethod
+    def create_session() -> _FakeSession:
+        return _FakeSession()
 
 
 def test_members_and_values_are_unchanged() -> None:
@@ -50,13 +66,21 @@ def test_each_source_lists_through_its_own_service(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(WorkflowToolManageService, "list_tenant_workflow_tools", recorder("workflow"))
     monkeypatch.setattr(ApiToolManageService, "list_api_tools", recorder("api"))
 
-    for source in (ToolSource.BUILTIN, ToolSource.WORKFLOW, ToolSource.API):
+    def list_mcp(_self: MCPToolManageService, *, tenant_id: str, include_sensitive: bool) -> list:
+        calls.append(("mcp", (tenant_id, include_sensitive)))
+        return []
+
+    monkeypatch.setattr(MCPToolManageService, "list_providers", list_mcp)
+    monkeypatch.setattr(tool_sources, "session_factory", _FakeSessionFactory())
+
+    for source in ToolSource:
         assert source.list_providers(tenant_id=TENANT_ID, user_id=USER_ID) == []
 
     assert calls == [
         ("builtin", (USER_ID, TENANT_ID)),
         ("workflow", (USER_ID, TENANT_ID)),
         ("api", (TENANT_ID,)),
+        ("mcp", (TENANT_ID, False)),
     ]
 
 
@@ -103,3 +127,13 @@ def test_resolve_never_builds_a_tool_runtime(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(ToolManager, "get_tool_runtime", forbidden)
 
     assert resolve_tool(tenant_id=TENANT_ID, provider_type="builtin", provider_id="time", tool_name="weekday")
+
+
+def test_a_malformed_provider_is_not_reported_as_an_unknown_tool(monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken(_tenant_id: str, _provider_id: str):
+        raise ValidationError.from_exception_data("Provider", [])
+
+    monkeypatch.setattr(ToolManager, "get_mcp_provider_controller", broken)
+
+    with pytest.raises(ValidationError):
+        resolve_tool(tenant_id=TENANT_ID, provider_type="mcp", provider_id="p", tool_name="x")
