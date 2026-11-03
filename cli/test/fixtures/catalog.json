@@ -2028,6 +2028,7 @@
     },
     "check.console_app.package": {
       "bind": {
+        "app_id": "body",
         "package": "file",
         "workspace_id": "path"
       },
@@ -2035,6 +2036,7 @@
       "input": {
         "type": "object",
         "properties": {
+          "app_id": {},
           "package": {},
           "workspace_id": {}
         },
