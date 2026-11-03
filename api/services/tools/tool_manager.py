@@ -3,7 +3,7 @@ import mimetypes
 from collections.abc import Callable, Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Protocol
 
 from typing_extensions import TypedDict
 from yarl import URL
@@ -1008,13 +1008,13 @@ class ToolManager:
 
         input_value = config.get("value")
         if isinstance(input_value, dict) and cls._is_selector_value(parameter, input_value):
-            return cast("dict[str, Any]", parameter.init_frontend_parameter(input_value))
+            return parameter.init_frontend_parameter(input_value)
 
         if cls._is_selector_value(parameter, config):
             selector_value = dict(config)
             selector_value.pop("type", None)
             selector_value.pop("value", None)
-            return cast("dict[str, Any]", parameter.init_frontend_parameter(selector_value))
+            return parameter.init_frontend_parameter(selector_value)
 
         return None
 

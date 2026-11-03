@@ -1,6 +1,5 @@
-from unittest.mock import Mock
-
 import pytest
+from sqlalchemy.orm import Session
 
 from models.human_input_contracts import FormCreateParams
 from models.human_input_entities import HumanInputNodeData, UserActionConfig
@@ -9,7 +8,13 @@ from repositories.human_input.form_repository import HumanInputFormRepositoryImp
 
 @pytest.mark.parametrize("conversation_id", ["conversation-id", None])
 def test_runtime_form_requires_workflow_execution_id(conversation_id: str | None) -> None:
-    sessions = Mock(name="sessions")
+    session_calls = 0
+
+    def sessions() -> Session:
+        nonlocal session_calls
+        session_calls += 1
+        raise AssertionError("sessions factory should not be called")
+
     repository = HumanInputFormRepositoryImpl(
         tenant_id="tenant-id",
         app_id="app-id",
@@ -35,4 +40,4 @@ def test_runtime_form_requires_workflow_execution_id(conversation_id: str | None
     with pytest.raises(ValueError, match="^a runtime human input form requires a workflow_execution_id$"):
         repository.create_form(params)
 
-    sessions.assert_not_called()
+    assert session_calls == 0

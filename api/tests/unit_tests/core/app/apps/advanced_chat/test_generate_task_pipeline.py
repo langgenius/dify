@@ -487,6 +487,10 @@ def test_process_stream_response_breaks_after_workflow_partial_success() -> None
     pipeline._base_task_pipeline.ping_stream_response.assert_not_called()
 
 
+class _DummyToolProviders:
+    pass
+
+
 def _make_pipeline(app_records=None):
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant",
@@ -533,7 +537,7 @@ def _make_pipeline(app_records=None):
         stream=False,
         dialogue_count=1,
         draft_var_saver_factory=lambda **kwargs: None,
-        tool_providers=mock.MagicMock(),
+        tool_providers=_DummyToolProviders(),
     )
 
     return pipeline

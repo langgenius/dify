@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import contextlib
 import inspect
+from dataclasses import dataclass
 from decimal import Decimal
-from types import SimpleNamespace
 from unittest.mock import create_autospec
 
 import pytest
@@ -57,6 +57,12 @@ def _app(*, app_model_config_id: str | None = None) -> App:
         api_rpm=0,
         api_rph=0,
     )
+
+
+@dataclass(frozen=True)
+class _AppConfig:
+    app_id: str
+    tenant_id: str
 
 
 def _agent(*, agent_id: str = "agent1") -> Agent:
@@ -362,16 +368,26 @@ class TestGenerateWorker:
         files=(),
         file_upload_config=None,
     ):
+        class _GenerateEntity:
+            user_id = "user-1"
+            invoke_from = InvokeFrom.WEB_APP
+
+            def __init__(self, **kwargs: object) -> None:
+                self.__dict__.update(kwargs)
+
+        class _ModelConf:
+            model = "m"
+
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
             context=mocker.MagicMock(),
-            application_generate_entity=mocker.MagicMock(
-                app_config=SimpleNamespace(app_id="app1", tenant_id="tenant"),
+            application_generate_entity=_GenerateEntity(
+                app_config=_AppConfig(app_id="app1", tenant_id="tenant"),
                 agent_id="a",
                 agent_config_snapshot_id="s",
                 agent_config_version_kind="snapshot",
                 agent_session_scope_config_version_id=session_scope_config_version_id,
-                model_conf=mocker.MagicMock(model="m"),
+                model_conf=_ModelConf(),
                 query=query,
                 files=files,
                 file_upload_config=file_upload_config,

@@ -1,5 +1,6 @@
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 from datetime import datetime
-from unittest.mock import MagicMock
 
 import pytest
 from pydantic import SecretStr
@@ -14,6 +15,7 @@ from core.app.entities.queue_entities import (
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
 from core.human_input_v2.resolved_form import ResolvedForm, SelectInput
 from core.human_input_v2.shared.values import TenantId
+from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormFilledEvent
 from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
@@ -24,13 +26,14 @@ from graphon.engine.filter import EngineEventFilterContext
 from graphon.engine_events import GraphRunPausedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
-from graphon.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from models.account import Account
-from models.human_input_contracts import PauseFormSnapshot
+from models.human_input_contracts import HumanInputFormRecord, PauseFormSnapshot
 from models.human_input_entities import SelectInputConfig, StringListSource
 from models.model import AppMode
 from repositories.human_input_v2.form_repository import Form
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters import events as event_adapter
 from services.workflow.execution.adapters.events import WorkflowEventPublisher, enqueue_human_input_notifications
 from services.workflow.execution.adapters.human_input_events import (
@@ -38,7 +41,104 @@ from services.workflow.execution.adapters.human_input_events import (
     enrich_graph_pause_reasons,
 )
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
-from services.workflow.execution.contracts import WorkflowRunEntry
+from services.workflow.execution.ports import PipelineDatasetSnapshot
+
+
+@dataclass
+class _StubExecutionContexts:
+    snapshots: list[PauseFormSnapshot] = field(default_factory=list)
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def pause_forms(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        form_ids: Sequence[str],
+    ) -> list[PauseFormSnapshot]:
+        self.calls.append(
+            {
+                "tenant_id": tenant_id,
+                "app_id": app_id,
+                "workflow_run_id": workflow_run_id,
+                "form_ids": list(form_ids),
+            }
+        )
+        return list(self.snapshots)
+
+    def pipeline_workflow(self, *, tenant_id: str, pipeline_id: str, draft: bool) -> WorkflowSnapshot:
+        _ = (tenant_id, pipeline_id, draft)
+        raise NotImplementedError
+
+    def pipeline_dataset(self, *, tenant_id: str, pipeline_id: str) -> PipelineDatasetSnapshot:
+        _ = (tenant_id, pipeline_id)
+        raise NotImplementedError
+
+    def restore_graph(self, workflow: WorkflowSnapshot, workflow_run_id: str | None) -> WorkflowSnapshot:
+        _ = workflow_run_id
+        return workflow
+
+    def workflow(self, *, tenant_id: str, app_id: str, workflow_id: str) -> WorkflowSnapshot:
+        _ = (tenant_id, app_id, workflow_id)
+        raise NotImplementedError
+
+
+class _StubToolProviders:
+    def icon(self, *, tenant_id: str, provider_type: ToolProviderType, provider_id: str) -> str | None:
+        _ = (tenant_id, provider_type, provider_id)
+        return None
+
+
+@dataclass
+class _StubQueueManager:
+    published: list[tuple[object, PublishFrom]] = field(default_factory=list)
+
+    def publish(self, event: object, publish_from: PublishFrom) -> None:
+        self.published.append((event, publish_from))
+
+
+@dataclass
+class _StubDeliveryTask:
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def apply_async(self, *, kwargs: dict[str, object], queue: str) -> None:
+        self.calls.append({"kwargs": kwargs, "queue": queue})
+
+
+@dataclass
+class _StubGraphEngine:
+    runtime_state: RuntimeState
+
+
+@dataclass
+class _StubWorkflowRunEntry:
+    graph_engine: _StubGraphEngine
+
+
+@dataclass
+class _StubGraphNode:
+    id: str
+    node_type: NodeType
+    _version: str
+
+    def version(self) -> str:
+        return self._version
+
+
+@dataclass
+class _StubGraph:
+    root_node: _StubGraphNode
+    nodes: dict[str, _StubGraphNode]
+
+
+@dataclass
+class _StubFormReader:
+    calls: list[str] = field(default_factory=list)
+
+    def get_by_form_id(self, form_id: str) -> HumanInputFormRecord | None:
+        self.calls.append(form_id)
+        return None
 
 
 def _prepared_v2_form(*, form_id: str = "form-2") -> PreparedForm:
@@ -66,7 +166,7 @@ def _prepared_v2_form(*, form_id: str = "form-2") -> PreparedForm:
     return PreparedForm(form=form, form_token=SecretStr("v2-token"))
 
 
-def _response_converter(contexts: MagicMock) -> WorkflowResponseConverter:
+def _response_converter(contexts: _StubExecutionContexts) -> WorkflowResponseConverter:
     entity = WorkflowAppGenerateEntity(
         user_from=UserFrom.END_USER,
         task_id="task",
@@ -95,7 +195,7 @@ def _response_converter(contexts: MagicMock) -> WorkflowResponseConverter:
             workflow_execution_id="run-id",
         ),
         contexts=contexts,
-        tool_providers=MagicMock(),
+        tool_providers=_StubToolProviders(),
     )
 
 
@@ -116,15 +216,16 @@ def test_pause_converter_preserves_mixed_version_order_and_uses_v2_snapshot() ->
             )
         ],
     )
-    contexts = MagicMock()
-    contexts.pause_forms.return_value = [
-        PauseFormSnapshot(
-            id="form-1",
-            expiration_time=datetime(2026, 1, 2),
-            form_definition="{}",
-            recipients=(),
-        )
-    ]
+    contexts = _StubExecutionContexts(
+        snapshots=[
+            PauseFormSnapshot(
+                id="form-1",
+                expiration_time=datetime(2026, 1, 2),
+                form_definition="{}",
+                recipients=(),
+            )
+        ]
+    )
     converter = _response_converter(contexts)
     converter.workflow_start_to_stream_response(
         task_id="task",
@@ -176,12 +277,14 @@ def test_pause_converter_preserves_mixed_version_order_and_uses_v2_snapshot() ->
         "human_input_required",
     ]
     assert [responses[2].data.reasons[index]["form_version"] for index in (0, 2)] == ["2", "1"]
-    contexts.pause_forms.assert_called_once_with(
-        tenant_id="tenant-id",
-        app_id="app-id",
-        workflow_run_id="run-id",
-        form_ids=["form-1"],
-    )
+    assert contexts.calls == [
+        {
+            "tenant_id": "tenant-id",
+            "app_id": "app-id",
+            "workflow_run_id": "run-id",
+            "form_ids": ["form-1"],
+        }
+    ]
 
 
 def test_event_publisher_carries_v2_snapshots_and_notifies_only_v1() -> None:
@@ -197,26 +300,31 @@ def test_event_publisher_carries_v2_snapshots_and_notifies_only_v1() -> None:
         node_title="V1",
         form_content="Choose",
     )
-    queue_manager = MagicMock()
-    notify_pause = MagicMock()
-    publisher = WorkflowEventPublisher(queue_manager, notify_pause=notify_pause)
+    queue_manager = _StubQueueManager()
+    notified: list[Sequence[object]] = []
+    publisher = WorkflowEventPublisher(queue_manager, notify_pause=notified.append)  # type: ignore[arg-type]
+    entry = _StubWorkflowRunEntry(
+        graph_engine=_StubGraphEngine(
+            runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
+        )
+    )
 
     publisher.publish(
-        MagicMock(),
+        entry,  # type: ignore[arg-type]
         GraphRunPausedEvent(),
         pause_reasons=[v2_reason, v1_reason],
         human_input_v2_forms={prepared.form.id: prepared},
     )
 
-    notify_pause.assert_called_once_with([v1_reason])
-    queued = queue_manager.publish.call_args.args[0]
+    assert notified == [[v1_reason]]
+    queued, publish_from = queue_manager.published[0]
     assert isinstance(queued, QueueWorkflowPausedEvent)
     assert queued.human_input_v2_forms == {prepared.form.id: prepared}
-    assert queue_manager.publish.call_args.args[1] is PublishFrom.APPLICATION_MANAGER
+    assert publish_from is PublishFrom.APPLICATION_MANAGER
 
 
 def test_notification_adapter_dispatches_only_v1_with_generic_delivery_task(monkeypatch: pytest.MonkeyPatch) -> None:
-    delivery_task = MagicMock()
+    delivery_task = _StubDeliveryTask()
     monkeypatch.setattr(event_adapter, "dispatch_human_input_form_delivery_task", delivery_task)
     v1_reason = HumanInputRequired(
         form_id="form-1",
@@ -228,18 +336,21 @@ def test_notification_adapter_dispatches_only_v1_with_generic_delivery_task(monk
 
     enqueue_human_input_notifications([v2_reason, v1_reason])
 
-    delivery_task.apply_async.assert_called_once_with(
-        kwargs={"form_id": "form-1", "node_title": "V1"},
-        queue="mail",
-    )
+    assert delivery_task.calls == [
+        {
+            "kwargs": {"form_id": "form-1", "node_title": "V1"},
+            "queue": "mail",
+        }
+    ]
 
 
 def test_event_publisher_uses_v2_form_id_for_completion() -> None:
-    queue_manager = MagicMock()
-    publisher = WorkflowEventPublisher(queue_manager, notify_pause=MagicMock())
-    entry: WorkflowRunEntry = MagicMock()
-    entry.graph_engine = MagicMock(
-        runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
+    queue_manager = _StubQueueManager()
+    publisher = WorkflowEventPublisher(queue_manager, notify_pause=lambda _reasons: None)  # type: ignore[arg-type]
+    entry = _StubWorkflowRunEntry(
+        graph_engine=_StubGraphEngine(
+            runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
+        )
     )
     event = NodeRunHumanInputV2FormFilledEvent(
         id="execution-2",
@@ -252,26 +363,24 @@ def test_event_publisher_uses_v2_form_id_for_completion() -> None:
         action_text="Approve",
     )
 
-    publisher.publish(entry, event)
+    publisher.publish(entry, event)  # type: ignore[arg-type]
 
-    queued = queue_manager.publish.call_args.args[0]
+    queued, _publish_from = queue_manager.published[0]
     assert isinstance(queued, QueueHumanInputFormFilledEvent)
     assert queued.form_id == "form-2"
 
 
 def test_event_filter_does_not_synthesize_v1_completion_for_v2_node() -> None:
-    v2_node = MagicMock(id="node-2", node_type=BuiltinNodeTypes.HUMAN_INPUT)
-    v2_node.version.return_value = "2"
-    root_node = MagicMock(id="start", node_type=BuiltinNodeTypes.START)
-    root_node.version.return_value = "1"
-    graph = MagicMock(root_node=root_node, nodes={v2_node.id: v2_node})
+    v2_node = _StubGraphNode(id="node-2", node_type=BuiltinNodeTypes.HUMAN_INPUT, _version="2")
+    root_node = _StubGraphNode(id="start", node_type=BuiltinNodeTypes.START, _version="1")
+    graph = _StubGraph(root_node=root_node, nodes={v2_node.id: v2_node})
     context = EngineEventFilterContext(
-        graph=graph,
+        graph=graph,  # type: ignore[arg-type]
         runtime_state=ReadOnlyRuntimeStateWrapper(
             RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
         ),
     )
-    event_filter = HumanInputFormEventFilter(form_repository=MagicMock())
+    event_filter = HumanInputFormEventFilter(form_repository=_StubFormReader())
     event_filter.initialize(context)
     started = NodeRunStartedEvent(
         id="execution-2",
@@ -292,7 +401,7 @@ def test_event_filter_does_not_synthesize_v1_completion_for_v2_node() -> None:
 
 
 def test_pause_reason_adapter_rejects_v2_session_before_legacy_lookup() -> None:
-    form_repository = MagicMock()
+    form_repository = _StubFormReader()
 
     with pytest.raises(ValueError, match="Expected a Human Input v1 session"):
         enrich_graph_pause_reasons(
@@ -301,4 +410,4 @@ def test_pause_reason_adapter_rejects_v2_session_before_legacy_lookup() -> None:
             variable_pool=None,
         )
 
-    form_repository.get_by_form_id.assert_not_called()
+    assert form_repository.calls == []
