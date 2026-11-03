@@ -1,4 +1,5 @@
-from datetime import UTC, datetime
+import time
+from datetime import UTC, datetime, timedelta, timezone
 from unittest.mock import patch
 
 import pytest
@@ -166,6 +167,44 @@ def test_to_api_response_without_sensitive_data_skips_auth_related_work() -> Non
     assert response["masked_headers"] == {}
     assert response["is_dynamic_registration"] is True
     assert "authentication" not in response
+
+
+@pytest.mark.parametrize("include_sensitive", [False, True])
+@pytest.mark.parametrize(
+    "updated_at",
+    [
+        datetime(2025, 1, 1),
+        datetime(2025, 1, 1, tzinfo=UTC),
+        datetime(2025, 1, 1, 8, tzinfo=timezone(timedelta(hours=8))),
+    ],
+)
+def test_to_api_response_serializes_updated_at_as_utc(updated_at: datetime, include_sensitive: bool) -> None:
+    entity = _build_mcp_provider_entity().model_copy(update={"updated_at": updated_at})
+
+    with patch.object(MCPProviderEntity, "masked_server_url", return_value="https://api.example.com/******"):
+        response = entity.to_api_response(include_sensitive=include_sensitive)
+
+    assert response["updated_at"] == 1735689600
+
+
+@pytest.mark.skipif(not hasattr(time, "tzset"), reason="Host timezone switching requires time.tzset")
+@pytest.mark.parametrize("host_timezone", ["UTC-8", "UTC+5"])
+@pytest.mark.parametrize("include_sensitive", [False, True])
+def test_to_api_response_updated_at_ignores_host_timezone(
+    monkeypatch: pytest.MonkeyPatch, host_timezone: str, include_sensitive: bool
+) -> None:
+    try:
+        with monkeypatch.context() as context:
+            context.setenv("TZ", host_timezone)
+            time.tzset()
+            entity = _build_mcp_provider_entity().model_copy(update={"updated_at": datetime(2025, 1, 1)})
+
+            with patch.object(MCPProviderEntity, "masked_server_url", return_value="https://api.example.com/******"):
+                response = entity.to_api_response(include_sensitive=include_sensitive)
+
+            assert response["updated_at"] == 1735689600
+    finally:
+        time.tzset()
 
 
 def test_to_api_response_with_sensitive_data_includes_masked_values() -> None:

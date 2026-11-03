@@ -16,6 +16,7 @@ from core.mcp.types import OAuthClientInformation, OAuthClientMetadata, OAuthTok
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from graphon.file import helpers as file_helpers
+from libs.datetime_utils import to_utc_timestamp
 
 if TYPE_CHECKING:
     from models.tools import MCPToolProvider
@@ -164,6 +165,10 @@ class MCPProviderEntity(BaseModel):
     def to_api_response(self, user_name: str | None = None, include_sensitive: bool = True) -> dict[str, Any]:
         """Convert to API response format
 
+        Datetimes without a timezone are persisted UTC values. The returned
+        update timestamp preserves that instant regardless of the host timezone;
+        timezone-aware inputs preserve their explicit instant.
+
         Args:
             user_name: User name to display
             include_sensitive: If False, skip expensive decryption operations (for list view optimization)
@@ -177,7 +182,7 @@ class MCPProviderEntity(BaseModel):
             "is_team_authorization": self.authed,
             "server_url": self.masked_server_url(),
             "server_identifier": self.server_identifier,
-            "updated_at": int(self.updated_at.timestamp()),
+            "updated_at": to_utc_timestamp(self.updated_at),
             "label": I18nObject(en_US=self.name, zh_Hans=self.name).to_dict(),
             "description": I18nObject(en_US="", zh_Hans="").to_dict(),
             "identity_mode": self.identity_mode,
