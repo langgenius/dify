@@ -26,6 +26,7 @@ from controllers.console.workspace import workspace as controller
 from controllers.console.workspace.error import AccountNotInitializedError, CurrentWorkspaceArchivedError
 from controllers.console.workspace.workspace import WorkspacePermissionApi
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_redis import RedisClientWrapper
 from libs import login as login_adapter
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
@@ -170,7 +171,7 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
     account_domain: AccountDomain,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
-    redis_transport,
+    redis_transport: tuple[RedisClientWrapper, Mock],
     scenario: str,
     expected_status: int,
 ) -> None:
@@ -219,11 +220,13 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
     if scenario != "anonymous":
         client.set_cookie("__Host-access_token", tokens.access_token, domain="console.example.com", secure=True)
     client.set_cookie("__Host-csrf_token", tokens.csrf_token, domain="console.example.com", secure=True)
-    headers = {} if scenario == "missing_csrf" else {"X-CSRF-Token": tokens.csrf_token}
+    headers: dict[str, str] = {} if scenario == "missing_csrf" else {"X-CSRF-Token": tokens.csrf_token}
     if scenario == "success":
         profile = client.get("/console/api/account/profile", base_url="https://console.example.com", headers=headers)
         assert profile.status_code == 200
-        assert profile.json["first_workspace_created_at"] is None
+        profile_data = profile.get_json()
+        assert isinstance(profile_data, dict)
+        assert profile_data["first_workspace_created_at"] is None
     response = client.post(
         "/console/api/workspaces/activate",
         base_url="https://console.example.com",
@@ -232,18 +235,22 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
     )
     assert response.status_code == expected_status
     if scenario == "success":
-        assert response.json["workspace_id"] == "workspace"
-        assert response.json["first_workspace_created_at"] is not None
+        activation_data = response.get_json()
+        assert isinstance(activation_data, dict)
+        assert activation_data["workspace_id"] == "workspace"
+        assert activation_data["first_workspace_created_at"] is not None
         repeated = client.post(
             "/console/api/workspaces/activate",
             base_url="https://console.example.com",
             json={"name": "Ignored retry"},
             headers=headers,
         )
-        assert repeated.json == response.json
+        assert repeated.get_json() == activation_data
         effects.created.assert_called_once()
         profile = client.get("/console/api/account/profile", base_url="https://console.example.com", headers=headers)
-        assert profile.json["first_workspace_created_at"] == response.json["first_workspace_created_at"]
+        profile_data = profile.get_json()
+        assert isinstance(profile_data, dict)
+        assert profile_data["first_workspace_created_at"] == activation_data["first_workspace_created_at"]
     else:
         effects.prepare.assert_not_called()
     persisted = account_domain.repository.get(account.id)
