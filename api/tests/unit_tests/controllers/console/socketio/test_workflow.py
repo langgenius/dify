@@ -139,13 +139,19 @@ def test_disconnect_type_error_is_not_retried(
     assert isinstance(sid, str)
     metrics.connected(sid)
     failure = TypeError("cleanup failed after partial work")
-    cleanup = MagicMock(side_effect=[failure, None])
+    calls: list[str] = []
+
+    def cleanup(disconnected_sid: str) -> None:
+        calls.append(disconnected_sid)
+        if len(calls) == 1:
+            raise failure
+
     monkeypatch.setattr(workflow.collaboration_service, "disconnect_session", cleanup)
 
     with pytest.raises(TypeError) as caught:
         server._handle_disconnect(eio_sid, "/", server.reason.CLIENT_DISCONNECT)
 
     assert caught.value is failure
-    cleanup.assert_called_once_with(sid)
+    assert calls == [sid]
     if otel_enabled:
         _assert_single_event(_read_metrics(reader), "disconnect", "error")
