@@ -1,0 +1,21 @@
+# Defaults for oceanbase. Copy this file to oceanbase.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+OCEANBASE_CLUSTER_NAME=${OCEANBASE_CLUSTER_NAME:-difyai}
+OCEANBASE_MEMORY_LIMIT=${OCEANBASE_MEMORY_LIMIT:-6G}
+OCEANBASE_VECTOR_PASSWORD=${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+
+# Dify vector client settings (API, workers and Beat)
+# Set OCEANBASE_VECTOR_PORT in docker/.env to keep the client and published port aligned.
+# OCEANBASE_VECTOR_HOST=oceanbase
+# OCEANBASE_VECTOR_USER=root@test
+# OCEANBASE_VECTOR_DATABASE=test
+# OCEANBASE_ENABLE_HYBRID_SEARCH=false
+# OCEANBASE_FULLTEXT_PARSER=ik
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+OB_CLUSTER_NAME=${OCEANBASE_CLUSTER_NAME:-difyai}
+OB_MEMORY_LIMIT=${OCEANBASE_MEMORY_LIMIT:-6G}
+OB_SYS_PASSWORD=${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+OB_TENANT_PASSWORD=${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
