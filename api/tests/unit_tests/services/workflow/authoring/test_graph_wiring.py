@@ -1,6 +1,6 @@
 import copy
 
-from core.workflow.editor_graph import EDITOR_CUSTOM_TYPE
+from core.workflow.editor_graph import EDITOR_CUSTOM_TYPE, layout_top_level_nodes
 from graphon.enums import BuiltinNodeTypes
 from services.workflow.authoring.graph_wiring import fill_graph_wiring
 from services.workflow_variable_reference_validator import SOURCE_HANDLE
@@ -165,14 +165,35 @@ def test_unknown_node_type_gets_only_the_wrapper() -> None:
     assert graph["edges"][0]["sourceHandle"] == SOURCE_HANDLE
 
 
-def test_existing_positions_skip_layout() -> None:
+def test_existing_positions_are_kept() -> None:
     graph = _skeleton()
     graph["nodes"][0]["position"] = {"x": 1, "y": 2}
 
     fill_graph_wiring(graph)
 
     assert graph["nodes"][0]["position"] == {"x": 1, "y": 2}
-    assert "position" not in graph["nodes"][1]
+    assert "position" in graph["nodes"][1]
+
+
+def test_a_node_added_to_a_laid_out_graph_gets_a_position_and_the_others_stay() -> None:
+    graph = _skeleton()
+    fill_graph_wiring(graph)
+    for index, node in enumerate(graph["nodes"]):
+        node["position"] = {"x": 1000 + index, "y": 2000 + index}
+    laid_out = copy.deepcopy(graph["nodes"])
+    graph["nodes"].append(_node("answer", BuiltinNodeTypes.ANSWER))
+    graph["edges"].append({"source": "llm", "target": "answer"})
+
+    formula = copy.deepcopy(graph)
+    layout_top_level_nodes(nodes=formula["nodes"], edges=formula["edges"])
+
+    fill_graph_wiring(graph)
+
+    assert graph["nodes"][:4] == laid_out
+    assert graph["nodes"][4]["position"] == formula["nodes"][4]["position"]
+    once = copy.deepcopy(graph)
+    fill_graph_wiring(graph)
+    assert graph == once
 
 
 def test_second_call_changes_nothing() -> None:
