@@ -268,12 +268,14 @@ def _make_recommended_plugin(plugin_id: str) -> PipelineRecommendedPlugin:
 
 class TestRagPipelineServiceCases:
     @staticmethod
+    @pytest.mark.parametrize("typed_file", [False, True])
     @pytest.mark.parametrize("same_tenant", [False, True])
-    def test_draft_node_checks_nested_file_ownership(
+    def test_draft_node_preserves_file_json_and_checks_typed_file_ownership(
         sqlite_session: Session,
         sqlite_session_factory: sessionmaker[Session],
         monkeypatch: pytest.MonkeyPatch,
         same_tenant: bool,
+        typed_file: bool,
     ) -> None:
         monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_session.get_bind()))
         pipeline = _make_pipeline()
@@ -299,16 +301,22 @@ class TestRagPipelineServiceCases:
         )
         sqlite_session.add_all([pipeline, account, workflow, upload])
         sqlite_session.commit()
-        file_data = File(
+        file = File(
             file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             reference=upload.id,
-        ).model_dump(mode="json")
-        inputs = {"#source.value#": ["metadata", {"files": [file_data]}]}
+        )
+        value = ["metadata", {"files": [file if typed_file else file.model_dump(mode="json")]}]
+        inputs = {"#source.value#": value}
         service = RagPipelineService(sqlite_session, sqlite_session_factory)
 
         assert get_current_file_access_scope() is None
-        if same_tenant:
+        if not typed_file:
+            result = service.run_draft_workflow_node(pipeline, "end", inputs, account)
+            assert result is not None
+            assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+            assert result.outputs_dict == {"result": value}
+        elif same_tenant:
             result = service.run_draft_workflow_node(pipeline, "end", inputs, account)
             assert result is not None
             assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED

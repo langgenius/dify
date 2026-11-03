@@ -1179,6 +1179,7 @@ class WorkflowService:
         """Run an admitted account's draft node within the application tenant.
 
         Keep file access scoped through input loading, execution, and persistence.
+        Finalize started executions as failed when execution or terminal persistence raises.
         Restore the previous scope on success or failure.
         """
         with bind_file_access_scope(
@@ -1308,10 +1309,19 @@ class WorkflowService:
                     start_at=start_at,
                     node_id=node_id,
                 )
+                node_execution.workflow_id = draft_workflow.id
+                if started_event is not None:
+                    node_execution.id = started_event.id
+                    node_execution.node_execution_id = started_event.id
+                    node_execution.created_at = started_event.start_at
+                    node_execution.predecessor_node_id = started_event.predecessor_node_id
+                repository.save_synchronously(node_execution)
+                # LogStore needs its terminal append in addition to the synchronous SQL caller row.
+                repository.save(node_execution)
             except BaseException:
-                if is_agent_preview and started_execution is not None:
+                if started_execution is not None:
                     started_execution.status = WorkflowNodeExecutionStatus.FAILED
-                    started_execution.error = "Agent preview execution interrupted"
+                    started_execution.error = "Node execution interrupted"
                     started_execution.elapsed_time = time.perf_counter() - start_at
                     started_execution.finished_at = naive_utc_now()
                     try:
@@ -1320,19 +1330,9 @@ class WorkflowService:
                         repository.save(started_execution)
                     except Exception as persistence_error:
                         logging.getLogger(__name__).warning(
-                            "Agent preview terminal persistence failed (%s)", type(persistence_error).__name__
+                            "Node execution terminal persistence failed (%s)", type(persistence_error).__name__
                         )
                 raise
-
-            node_execution.workflow_id = draft_workflow.id
-            if started_event is not None:
-                node_execution.id = started_event.id
-                node_execution.node_execution_id = started_event.id
-                node_execution.created_at = started_event.start_at
-                node_execution.predecessor_node_id = started_event.predecessor_node_id
-            repository.save_synchronously(node_execution)
-            # LogStore needs its terminal append in addition to the synchronous SQL caller row.
-            repository.save(node_execution)
 
             workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
             if workflow_node_execution is None:
