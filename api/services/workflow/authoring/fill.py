@@ -36,10 +36,20 @@ _GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
 
 
 @dataclass(frozen=True)
+class SubmittedRoot:
+    """The root app's members as the caller sent them, before fill."""
+
+    app: bytes
+    manifest: bytes | None
+
+
+@dataclass(frozen=True)
 class FilledPackage:
     archive: bytes
     # The root app's document as `archive` holds it; None when there is no `app.yaml` or it is not a YAML mapping.
     document: dict[str, Any] | None
+    # None when there is no `app.yaml`.
+    submitted: SubmittedRoot | None
 
     @property
     def app_name(self) -> str | None:
@@ -76,16 +86,20 @@ def filled_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits:
     """`fill_package`'s archive, with the root app's document it holds; raises what `fill_package` raises."""
     by_path = {entry.path: entry for entry in entries}
     if APP_PATH not in by_path:
-        return FilledPackage(write_package(entries, limits=limits), None)
-    app = _read_app(read_member(by_path[APP_PATH], max_bytes=DSL_MAX_SIZE))
-    manifest = None
+        return FilledPackage(write_package(entries, limits=limits), None, None)
+    submitted_app = _read_app(read_member(by_path[APP_PATH], max_bytes=DSL_MAX_SIZE))
+    submitted_manifest = None
     if MANIFEST_PATH in by_path:
-        manifest = read_member(by_path[MANIFEST_PATH], max_bytes=dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES)
-    app, manifest = _filled(app, manifest, ctx)
+        submitted_manifest = read_member(by_path[MANIFEST_PATH], max_bytes=dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES)
+    app, manifest = _filled(submitted_app, submitted_manifest, ctx)
     # Read members are written again from their bytes: a folder part's stream can be read only once.
     replaced = {APP_PATH: app.content, MANIFEST_PATH: manifest}
     kept = [entry for entry in entries if entry.path not in replaced]
-    return FilledPackage(write_package([*kept, *starmap(bytes_entry, replaced.items())], limits=limits), app.document)
+    return FilledPackage(
+        write_package([*kept, *starmap(bytes_entry, replaced.items())], limits=limits),
+        app.document,
+        SubmittedRoot(submitted_app.content, submitted_manifest),
+    )
 
 
 def _read_app(content: bytes) -> _App:
