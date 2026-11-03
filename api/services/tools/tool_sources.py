@@ -1,6 +1,7 @@
 from collections.abc import Callable
+from dataclasses import dataclass
 from enum import StrEnum
-from typing import Self
+from typing import Final, Self
 
 from sqlalchemy import select
 
@@ -14,6 +15,7 @@ from core.tools.mcp_tool.provider import MCPToolProviderController
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+from libs.i18n_text import localized
 from models.tools import WorkflowToolProvider
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -30,6 +32,8 @@ type ToolController = (
     | WorkflowToolProviderController
 )
 type ControllerLoader = Callable[[str, str], ToolController]
+
+TOOL_NODE_VERSION: Final = "2"
 
 
 def _list_builtin(tenant_id: str, user_id: str) -> list[ToolProviderApiEntity]:
@@ -122,3 +126,31 @@ def resolve_tool(*, tenant_id: str, provider_type: str, provider_id: str, tool_n
     if tool is None:
         return None
     return ToolTransformService.convert_tool_entity_to_api_entity(tool, tenant_id)
+
+
+@dataclass(frozen=True)
+class ToolNodeIdentity:
+    """The values a tool node names its tool by, as the web writes them for a tool picked from the block menu."""
+
+    title: str
+    provider_type: str
+    provider_id: str
+    provider_name: str
+    plugin_id: str | None
+    plugin_unique_identifier: str | None
+    tool_name: str
+    tool_label: str
+
+    @classmethod
+    def of(cls, provider: ToolProviderApiEntity, tool: ToolApiEntity, language: str | None) -> Self:
+        label = localized(tool.label, language) or tool.name
+        return cls(
+            title=label,
+            provider_type=str(provider.type),
+            provider_id=provider.server_identifier or provider.id,
+            provider_name=provider.name,
+            plugin_id=provider.plugin_id or None,
+            plugin_unique_identifier=provider.plugin_unique_identifier or None,
+            tool_name=tool.name,
+            tool_label=label,
+        )
