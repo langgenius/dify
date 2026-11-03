@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, cast, final, override
 
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from configs import dify_config
@@ -54,6 +55,7 @@ from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapt
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
+from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from core.workflow.nodes.human_input_v2.node import HumanInputNode as HumanInputV2Node
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
@@ -73,6 +75,7 @@ from graphon.nodes.code.entities import CodeLanguage
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.nodes.document_extractor import UnstructuredApiConfig
 from graphon.nodes.http_request import build_http_request_config
+from graphon.nodes.human_input.human_input_node import HumanInputNode as GraphonHumanInputNode
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
@@ -177,6 +180,13 @@ def resolve_workflow_node_class(
     if not node_class:
         raise ValueError(f"No latest version class found for node type: {node_type}")
     return node_class
+
+
+def node_data_model(node_class: type[Node]) -> type[BaseModel]:
+    """The model a node's data is validated against; graphon's human-input v1 keeps `delivery_methods` opaque."""
+    if node_class is GraphonHumanInputNode:
+        return HumanInputNodeDataFull
+    return node_class._get_node_data_type()
 
 
 def is_start_node_type(node_type: NodeType) -> bool:

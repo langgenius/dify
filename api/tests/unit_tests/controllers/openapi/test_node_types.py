@@ -82,3 +82,12 @@ def test_sub_objects_that_fail_their_model_pass_through(describe: Callable[[str]
     response = describe(BuiltinNodeTypes.CODE)
 
     assert response.default_config == dict(graphon_default)
+
+
+def test_describe_node_type_human_input_returns_the_v2_schema(
+    describe: Callable[[str], NodeTypeDetailResponse],
+) -> None:
+    properties = describe(BuiltinNodeTypes.HUMAN_INPUT).schema_["properties"]
+
+    assert {"recipients_spec", "message_template"} <= set(properties)
+    assert "delivery_methods" not in properties

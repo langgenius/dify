@@ -14,8 +14,8 @@ from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._errors import NodeTypeNotFound
 from controllers.openapi._models import NodeTypeDetailResponse, NodeTypeListResponse, NodeTypeRow
 from controllers.openapi.auth.context import Context
-from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
-from services.workflow.node_defaults import complete_sub_models, node_data_type
+from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping, node_data_model
+from services.workflow.node_defaults import complete_sub_models
 from services.workflow_service import WorkflowService
 
 
@@ -58,7 +58,7 @@ class NodeTypeDetailApi(Resource):
         node_class = get_node_type_classes_mapping().get(node_type, {}).get(LATEST_VERSION)
         if node_class is None:
             raise NodeTypeNotFound()
-        model = node_data_type(node_type, node_class)
+        model = node_data_model(node_class)
         return NodeTypeDetailResponse(
             type=node_type,
             version=node_class.version(),

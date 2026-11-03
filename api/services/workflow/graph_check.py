@@ -13,14 +13,14 @@ from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
-from core.workflow.node_factory import resolve_workflow_node_class
+from core.workflow.node_factory import node_data_model, resolve_workflow_node_class
 from core.workflow.variable_prefixes import ROOT_VARIABLE_NODE_IDS
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.variables import VariableBase
 from models import AppMode
-from services.workflow.node_defaults import complete_sub_models, editor_defaults, node_data_type
+from services.workflow.node_defaults import complete_sub_models, editor_defaults
 from services.workflow_service import WorkflowService
 from services.workflow_variable_reference_validator import SOURCE_HANDLE, branch_handles
 
@@ -125,7 +125,7 @@ def _references(node_class: type[Node], config: Mapping[str, Any]) -> Mapping[st
 
 def _read_known_node(node_id: str, raw_data: Mapping[str, Any], node_class: type[Node]) -> _Node:
     data = editor_defaults(raw_data)
-    model = node_data_type(node_class.node_type, node_class)
+    model = node_data_model(node_class)
     config = adapt_node_config_for_graph({"id": node_id, "data": data})
     try:
         model.model_validate(config["data"])
