@@ -1,0 +1,20 @@
+# Defaults for iris. Copy this file to iris.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+# IRIS_CONNECTION_URL=
+# IRIS_MIN_CONNECTION=1
+# IRIS_MAX_CONNECTION=3
+# IRIS_TEXT_INDEX=true
+# IRIS_TEXT_INDEX_LANGUAGE=en
+IRIS_TIMEZONE=${IRIS_TIMEZONE:-UTC}
+# IRIS_PASSWORD=Dify@1234
+# IRIS_DATABASE=USER
+# IRIS_SCHEMA=dify
+# IRIS_HOST=iris
+# Set IRIS_SUPER_SERVER_PORT in docker/.env; Compose needs it before loading service files.
+# Set IRIS_WEB_SERVER_PORT in docker/.env; Compose needs it before loading service files.
+# IRIS_USER=_SYSTEM
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+TZ=${IRIS_TIMEZONE:-UTC}

@@ -7,7 +7,7 @@
 # - Synchronize latest settings from .env.example to .env
 # - Preserve custom settings in existing .env
 # - Add new environment variables
-# - Detect removed environment variables
+# - Report additional local overrides
 # - Create backup files
 # ================================================================
 
@@ -275,69 +275,44 @@ def detect_removed_variables(env_vars: dict[str, str], example_vars: dict[str, s
     Returns:
         Sorted list of variable names that no longer appear in .env.example.
     """
-    log_info("Detecting removed environment variables...")
+    log_info("Checking for additional local overrides...")
 
     removed = sorted(set(env_vars) - set(example_vars))
 
     if removed:
-        log_warning("The following environment variables have been removed from .env.example:")
+        log_warning("The following local overrides are not listed in .env.example:")
         for var in removed:
             log_warning(f"  - {var}")
-        log_warning("Consider manually removing these variables from .env")
+        log_warning("These overrides will be preserved in .env")
     else:
-        log_success("No removed environment variables found")
+        log_success("No additional local overrides found")
 
     return removed
 
 
-def sync_env_file(work_dir: Path, env_vars: dict[str, str], diffs: dict[str, tuple[str, str]]) -> None:
-    """Rewrite .env based on .env.example while preserving custom values.
-
-    The output file follows the exact line structure of .env.example
-    (preserving comments, blank lines, and ordering).  For every variable
-    that exists in .env with a different value from the example, the
-    current .env value is kept.  Variables that are new in .env.example
-    (not present in .env at all) are added with the example's default.
-
-    Args:
-        work_dir: Directory containing .env and .env.example.
-        env_vars: Parsed key/value pairs from the original .env.
-        diffs: Keys whose .env values differ from .env.example (to preserve).
-    """
-    log_info("Starting partial synchronization of .env file...")
+def sync_env_file(work_dir: Path, env_vars: dict[str, str]) -> None:
+    """Append missing template inputs without rewriting existing overrides or comments."""
+    log_info("Synchronizing new deployment inputs into .env...")
 
     example_file = work_dir / ".env.example"
     new_env_file = work_dir / ".env.new"
-
-    # Keys whose current .env value should override the example default
-    preserved_keys: set[str] = set(diffs.keys())
-
-    preserved_count = 0
-    updated_count = 0
-
-    env_var_pattern = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=")
+    shutil.copy2(work_dir / ".env", new_env_file)
+    existing_keys = set(env_vars)
+    added_count = 0
+    env_var_pattern = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=")
 
     with (
         example_file.open(encoding="utf-8") as src,
-        new_env_file.open("w", encoding="utf-8") as dst,
+        new_env_file.open("a", encoding="utf-8") as dst,
     ):
         for line in src:
-            raw_line = line.rstrip("\n")
-            match = env_var_pattern.match(raw_line)
-            if match:
-                key = match.group(1)
-                if key in preserved_keys:
-                    # Write the preserved value from .env
-                    dst.write(f"{key}={env_vars[key]}\n")
-                    log_info(f"  Preserved: {key} (.env value)")
-                    preserved_count += 1
-                else:
-                    # Use the example value (covers new vars and unchanged ones)
-                    dst.write(line if line.endswith("\n") else raw_line + "\n")
-                    updated_count += 1
-            else:
-                # Blank line, comment, or non-variable line — keep as-is
-                dst.write(line if line.endswith("\n") else raw_line + "\n")
+            match = env_var_pattern.match(line)
+            if match and match.group(1) not in existing_keys:
+                if added_count == 0:
+                    dst.write("\n# New deployment inputs from .env.example\n")
+                dst.write(line if line.endswith("\n") else line + "\n")
+                existing_keys.add(match.group(1))
+                added_count += 1
 
     # Atomically replace the original .env
     try:
@@ -347,10 +322,8 @@ def sync_env_file(work_dir: Path, env_vars: dict[str, str], diffs: dict[str, tup
         new_env_file.unlink(missing_ok=True)
         sys.exit(1)
 
-    log_success("Successfully created new .env file")
-    log_success("Partial synchronization of .env file completed")
-    log_info(f"  Preserved .env values: {preserved_count}")
-    log_info(f"  Updated to .env.example values: {updated_count}")
+    log_success("Synchronization of .env file completed")
+    log_info(f"  Preserved existing .env settings; added {added_count} new inputs")
 
 
 def show_statistics(work_dir: Path) -> None:
@@ -381,7 +354,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         prog="dify-env-sync",
         description=(
             "Synchronize .env with .env.example: add new variables, "
-            "preserve custom values, and report removed variables."
+            "preserve custom values, and report additional local overrides."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
@@ -430,13 +403,13 @@ def main() -> None:
     example_vars = parse_env_file(work_dir / ".env.example")
 
     # 4. Report differences (values that changed in the example)
-    diffs = detect_differences(env_vars, example_vars)
+    detect_differences(env_vars, example_vars)
 
-    # 5. Report variables removed from the example
+    # 5. Report additional local overrides
     detect_removed_variables(env_vars, example_vars)
 
-    # 6. Rewrite .env
-    sync_env_file(work_dir, env_vars, diffs)
+    # 6. Append missing inputs to .env
+    sync_env_file(work_dir, env_vars)
 
     # 7. Print summary statistics
     show_statistics(work_dir)

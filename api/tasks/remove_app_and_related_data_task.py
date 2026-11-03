@@ -612,7 +612,9 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
             """
             deleted_result = cast(
                 CursorResult[Any],
-                session.execute(sa.text(delete_sql), {"ids": tuple(draft_var_ids)}),
+                session.execute(
+                    sa.text(delete_sql).bindparams(sa.bindparam("ids", expanding=True)), {"ids": draft_var_ids}
+                ),
             )
             batch_deleted: int = int(getattr(deleted_result, "rowcount", 0) or 0)
             total_deleted += batch_deleted

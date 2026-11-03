@@ -1,10 +1,10 @@
 /**
  * Standalone Marketplace host contract.
  *
- * The Dify console never stamps `data-is-marketplace` or assigns
+ * The Dify console stamps `data-is-marketplace="false"` and never assigns
  * `window.__marketplaceTracking__`, so every helper here is a no-op in a Dify
  * build. The standalone marketplace (dify-marketplace) owns the producer: it
- * sets `data-is-marketplace` on `<body>` and injects `__marketplaceTracking__`
+ * sets `data-is-marketplace` on `<html>` and injects `__marketplaceTracking__`
  * from its analytics runtime. Shared Marketplace UI calls these helpers; the
  * host implements the bridge.
  */
@@ -17,9 +17,11 @@ type MarketplaceSiteFilter = {
   selected_values: string[]
 }
 
-const isMarketplaceSite = () =>
-  typeof globalThis.document !== 'undefined' &&
-  globalThis.document.body?.hasAttribute('data-is-marketplace')
+const isMarketplaceSite = () => {
+  if (typeof globalThis.document === 'undefined') return false
+  const value = globalThis.document.documentElement.dataset.isMarketplace
+  return value !== undefined && value !== 'false'
+}
 
 const marketplaceTracking = () => globalThis.window.__marketplaceTracking__
 

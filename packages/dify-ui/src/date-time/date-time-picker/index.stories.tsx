@@ -55,7 +55,9 @@ export const Default: Story = {
     })
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
     await userEvent.click(trigger)
-    await userEvent.click(await body.findByRole('button', { name: 'Thursday, January 16th, 2025' }))
+    await userEvent.click(
+      await body.findByRole('button', { name: '16: Thursday, January 16th, 2025' }),
+    )
     await expect(trigger).toHaveAccessibleName('Meeting time Jan 15, 2025, 1:30 PM')
     await userEvent.click(body.getByRole('button', { name: /Pick Time:/ }))
     const hours = within(await body.findByRole('listbox', { name: 'Hour' }))
@@ -66,6 +68,16 @@ export const Default: Story = {
     await expect(trigger).toHaveAccessibleName('Meeting time Jan 16, 2025, 2:30 PM')
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
   },
+}
+
+export const ReadOnly: Story = {
+  render: () => (
+    <DateTimePicker timeZone="UTC" defaultValue={new Date('2025-01-15T13:30:00Z')} readOnly>
+      <DateTimePickerLabel>Meeting time</DateTimePickerLabel>
+      <DateTimePickerTrigger />
+      <DateTimePickerContent />
+    </DateTimePicker>
+  ),
 }
 
 export const RTL: Story = {
