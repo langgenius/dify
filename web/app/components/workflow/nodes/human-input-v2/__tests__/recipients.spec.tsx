@@ -361,7 +361,9 @@ describe('recipient selection through generated queries', () => {
       screen.queryByText('workflow.nodes.humanInputV2.error.recipientInvalid'),
     ).not.toBeInTheDocument()
     await act(async () => fail(new Error('offline')))
-    const failedChip = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.loadError')
+    const failedChip = await screen.findByLabelText(
+      'workflow.nodes.humanInputV2.recipients.loadError',
+    )
     expect(failedChip).not.toHaveAttribute('aria-invalid', 'true')
     expect(failedChip).toHaveAccessibleDescription(contactId)
     expect(within(failedChip).getByText(contactId)).toHaveClass('sr-only')
