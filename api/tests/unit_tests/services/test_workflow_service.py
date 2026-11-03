@@ -18,6 +18,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine as _workflow_service_Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.file_access import get_current_file_access_scope
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.human_input_adapter import (
@@ -46,6 +47,7 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.errors import WorkflowNodeRunFailedError
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.node_events import NodeRunResult
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
@@ -69,7 +71,13 @@ from models.agent_config_entities import AgentSoulConfig
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider, WorkflowToolProvider
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow import (
+    Workflow,
+    WorkflowDraftVariable,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowType,
+)
 from repositories.factory import DifyAPIRepositoryFactory
 from services import workflow_service as workflow_service_module
 from services.agent.retirement_service import WorkflowAgentRetirementService
@@ -85,7 +93,7 @@ from services.workflow_service import (
 )
 from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_account, make_app
+from tests.helpers.unit.model_factories import make_account, make_app, make_upload_file
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """
@@ -3329,6 +3337,76 @@ class TestWorkflowServiceCases:
         @pytest.fixture
         def service(self, sqlite_engine: _workflow_service_Engine) -> WorkflowService:
             return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+
+        @pytest.mark.parametrize("from_draft", [False, True])
+        @pytest.mark.parametrize("same_tenant", [False, True])
+        def test_draft_node_checks_nested_file_ownership(
+            self,
+            service: WorkflowService,
+            sqlite_engine: _workflow_service_Engine,
+            sqlite_session: Session,
+            monkeypatch: pytest.MonkeyPatch,
+            from_draft: bool,
+            same_tenant: bool,
+        ) -> None:
+            monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_engine))
+            app = TestWorkflowAssociatedDataFactory.create_app()
+            account = TestWorkflowAssociatedDataFactory.create_account()
+            workflow = TestWorkflowAssociatedDataFactory.create_workflow(
+                graph={
+                    "nodes": [
+                        {
+                            "id": "end",
+                            "data": {
+                                "type": "end",
+                                "title": "End",
+                                "outputs": [{"variable": "result", "value_selector": ["source", "value"]}],
+                            },
+                        }
+                    ],
+                    "edges": [],
+                }
+            )
+            upload = make_upload_file(
+                tenant_id=app.tenant_id if same_tenant else "other-tenant",
+                created_by="another-account",
+            )
+            sqlite_session.add_all([app, account, workflow, upload])
+            file_data = File(
+                file_type=FileType.DOCUMENT,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                reference=upload.id,
+            ).model_dump(mode="json")
+            value = ["metadata", {"files": [file_data]}]
+            if from_draft:
+                sqlite_session.add(
+                    WorkflowDraftVariable(
+                        app_id=app.id,
+                        user_id=account.id,
+                        node_id="source",
+                        name="value",
+                        selector=json.dumps(["source", "value"]),
+                        value_type="array[any]",
+                        value=json.dumps(value),
+                    )
+                )
+            sqlite_session.commit()
+            inputs = {} if from_draft else {"#source.value#": value}
+
+            assert get_current_file_access_scope() is None
+            if same_tenant:
+                result = service.run_draft_workflow_node(app, workflow, "end", inputs, account)
+                assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert result.inputs_dict is not None
+                file_result = result.inputs_dict["result"][1]["files"][0]
+                assert file_result["reference"] == upload.id
+                assert f"/files/{upload.id}/file-preview?" in file_result["url"]
+                assert result.outputs_dict is not None
+                assert f"/files/{upload.id}/file-preview?" in result.outputs_dict["result"][1]["files"][0]["url"]
+            else:
+                with pytest.raises(ValueError, match=f"Upload file {upload.id} not found"):
+                    service.run_draft_workflow_node(app, workflow, "end", inputs, account)
+            assert get_current_file_access_scope() is None
 
         def test_run_draft_workflow_node_should_execute_start_node_successfully(
             self, service: WorkflowService, sqlite_engine: _workflow_service_Engine
