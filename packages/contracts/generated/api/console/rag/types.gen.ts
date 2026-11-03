@@ -196,7 +196,6 @@ export type DefaultBlockConfigResponse = {
 }
 
 export type WorkflowResponse = {
-  client_save_id?: string | null
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
   created_by?: SimpleAccountResponse | null
