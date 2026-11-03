@@ -813,7 +813,7 @@ Logout user from web application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /me/apps
-List accessible personal Apps using the WebApp Account login cookie. No App Passport or workspace membership is required.
+List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use is derived from retained published execution logs. No App Passport or workspace membership is required.
 
 #### Parameters
 
@@ -1840,7 +1840,7 @@ The connection requirements changed. Refresh and confirm again.
 | icon_type | string |  | Yes |
 | id | string |  | Yes |
 | is_favorite | boolean |  | Yes |
-| last_used_at | integer |  | Yes |
+| last_used_at | integer | Creation time of the Account's latest retained published execution. | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
 

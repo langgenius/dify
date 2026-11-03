@@ -132,7 +132,8 @@ register_response_schema_models(
 @web_ns.route("/me/apps")
 class ConsumerAppsApi(Resource):
     @web_ns.doc(
-        description="List accessible personal Apps using the WebApp Account login cookie. "
+        description="List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. "
+        "Recent use is derived from retained published execution logs. "
         "No App Passport or workspace membership is required."
     )
     @web_ns.doc(params=query_params_from_model(ConsumerAppsQuery))

@@ -36,7 +36,9 @@ class ConsumerApp(BaseModel):
     icon_background: str | None
     app_code: str
     is_favorite: bool
-    last_used_at: datetime | None
+    last_used_at: datetime | None = Field(
+        description="Creation time of the Account's latest retained published execution."
+    )
     continuation: str = Field(exclude=True)
 
 
@@ -89,10 +91,6 @@ class ConsumerAppsStore(Protocol):
         The existing tenant/Account/App unique key also prevents duplicate stars.
         No workspace membership is required or created.
         """
-        ...
-
-    def record_consumer_usage(self, *, account_id: str, tenant_id: str, app_id: str, used_at: datetime) -> None:
-        """Serialize first insertion on the Account and atomically preserve the latest time."""
         ...
 
 
@@ -185,15 +183,6 @@ class ConsumerService:
             if not self._visible(identity, apps):
                 raise ConsumerAppNotFoundError()
         self._apps.favorite(identity, app_id, enabled=enabled)
-
-    def record_usage(self, identity: ConsumerIdentity, *, tenant_id: str, app_id: str, used_at: datetime) -> None:
-        """Called only after a trusted Web execution request has been accepted."""
-        self._apps.record_consumer_usage(
-            account_id=identity.account_id,
-            tenant_id=tenant_id,
-            app_id=app_id,
-            used_at=used_at,
-        )
 
     def list_connections(
         self, identity: ConsumerIdentity, *, provider: str | None, cursor: str | None, limit: int

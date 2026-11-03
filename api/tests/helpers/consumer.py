@@ -7,14 +7,33 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from graphon.enums import WorkflowExecutionStatus
 from libs.passport import PassportService
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowRun, WorkflowType
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from services.consumer_service import ConsumerIdentity, ConsumerService
 from services.web_identity_service import WebIdentityService
 from services.web_passport_gateways import PassportTokenGateway
+from tests.helpers.end_user_api_key import ConnectionHarness
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 from tests.helpers.unit.config_override import apply_config_overrides
+
+
+def new_consumer_run(base: ConnectionHarness, *, created_at: datetime) -> WorkflowRun:
+    return WorkflowRun(
+        tenant_id=base.context.tenant_id,
+        app_id=base.context.app_id,
+        workflow_id=base.workflow_id,
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="published",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=base.context.end_user_id,
+        created_at=created_at,
+    )
 
 
 @dataclass

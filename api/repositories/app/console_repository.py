@@ -40,11 +40,10 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.consumer import AccountAppUsage
-from models.enums import AppStatus
-from models.model import App, AppMode, AppModelConfig, AppStar, IconType, Site
+from models.enums import AppStatus, CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.model import App, AppMode, AppModelConfig, AppStar, EndUser, IconType, Site
 from models.skill import AgentSkillBinding
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowRun
 from repositories.app.response import app_record, app_summary
 from repositories.app_definition_query_repository import load_app_parameter_config
 from repositories.tag_repository import TagRepository
@@ -131,9 +130,29 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         self._session_factory = session_factory
 
     @staticmethod
-    def _consumer_query(identity: ConsumerIdentity) -> sa.Select[ConsumerAppRow]:
+    def _consumer_query(identity: ConsumerIdentity, *, recent_only: bool) -> sa.Select[ConsumerAppRow]:
+        # Resolve recent use through the owner index without aggregating Run history.
+        last_run = (
+            select(WorkflowRun.created_at)
+            .where(
+                WorkflowRun.tenant_id == EndUser.tenant_id,
+                WorkflowRun.app_id == EndUser.app_id,
+                WorkflowRun.created_by_role == CreatorUserRole.END_USER,
+                WorkflowRun.created_by == EndUser.id,
+                WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.APP_RUN,
+            )
+            .order_by(WorkflowRun.created_at.desc())
+            .limit(1)
+            .correlate(EndUser)
+            .scalar_subquery()
+        )
+        usage = (
+            select(EndUser.tenant_id, EndUser.app_id, last_run.label("last_used_at"))
+            .where(EndUser.account_id == identity.account_id, EndUser.type == EndUserType.BROWSER)
+            .subquery()
+        )
         stmt = (
-            select(App, Site.code, AppStar.id, AccountAppUsage.last_used_at, AppStar.created_at)
+            select(App, Site.code, AppStar.id, usage.c.last_used_at, AppStar.created_at)
             .join(Site, Site.app_id == App.id)
             .outerjoin(
                 AppStar,
@@ -143,16 +162,17 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                     AppStar.account_id == identity.account_id,
                 ),
             )
-            .outerjoin(
-                AccountAppUsage,
+            .join(
+                usage,
                 sa.and_(
-                    AccountAppUsage.tenant_id == App.tenant_id,
-                    AccountAppUsage.app_id == App.id,
-                    AccountAppUsage.account_id == identity.account_id,
+                    usage.c.tenant_id == App.tenant_id,
+                    usage.c.app_id == App.id,
                 ),
+                isouter=not recent_only,
             )
             .where(
                 App.status == AppStatus.NORMAL,
+                App.mode.in_((AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)),
                 App.enable_site.is_(True),
                 Site.status == AppStatus.NORMAL,
                 Site.code.is_not(None),
@@ -200,11 +220,11 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         limit: int,
         shared_ids: Sequence[str] | None,
     ) -> tuple[ConsumerApp, ...]:
-        stmt = self._consumer_query(identity)
+        stmt = self._consumer_query(identity, recent_only=query.view == "recent")
         timestamp = None
         if query.view == "recent":
-            stmt = stmt.where(AccountAppUsage.id.is_not(None))
-            timestamp = AccountAppUsage.last_used_at
+            timestamp = stmt.selected_columns.last_used_at
+            stmt = stmt.where(timestamp.is_not(None))
         elif query.view == "favorites":
             stmt = stmt.where(AppStar.id.is_not(None))
             timestamp = AppStar.created_at
@@ -237,7 +257,9 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         with self._session_factory() as session:
             return tuple(
                 self._consumer_app(identity, row, "shared")
-                for row in session.execute(self._consumer_query(identity).where(App.id.in_(app_ids)).order_by(App.id))
+                for row in session.execute(
+                    self._consumer_query(identity, recent_only=False).where(App.id.in_(app_ids)).order_by(App.id)
+                )
             )
 
     def favorite(self, identity: ConsumerIdentity, app_id: str, *, enabled: bool) -> None:
@@ -271,7 +293,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                         )
                     )
                 return
-            row = session.execute(self._consumer_query(identity).where(App.id == app_id)).first()
+            row = session.execute(self._consumer_query(identity, recent_only=False).where(App.id == app_id)).first()
             if row is None:
                 raise ConsumerAppNotFoundError()
             app, _, star_id, _, _ = row
@@ -293,35 +315,6 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                         is None
                     ):
                         raise
-
-    def record_consumer_usage(self, *, account_id: str, tenant_id: str, app_id: str, used_at: datetime) -> None:
-        """Serialize first use on the Account and keep the timestamp monotonic."""
-        with self._session_factory.begin() as session:
-            account = session.scalar(
-                select(Account.id)
-                .where(
-                    Account.id == account_id,
-                    Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
-                )
-                .with_for_update()
-            )
-            if account is None:
-                return
-            if session.scalar(select(App.id).where(App.id == app_id, App.tenant_id == tenant_id)) is None:
-                return
-            usage = session.scalar(
-                select(AccountAppUsage).where(
-                    AccountAppUsage.account_id == account_id,
-                    AccountAppUsage.tenant_id == tenant_id,
-                    AccountAppUsage.app_id == app_id,
-                )
-            )
-            if usage is None:
-                session.add(
-                    AccountAppUsage(account_id=account_id, tenant_id=tenant_id, app_id=app_id, last_used_at=used_at)
-                )
-            elif usage.last_used_at < used_at:
-                usage.last_used_at = used_at
 
     def get_agent_binding(self, workspace_id: str, app_id: str) -> AppAgentBinding | None:
         with self._session_factory() as session:

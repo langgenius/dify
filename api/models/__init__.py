@@ -38,7 +38,6 @@ from .comment import (
     WorkflowCommentMention,
     WorkflowCommentReply,
 )
-from .consumer import AccountAppUsage
 from .credential_permission import CredentialPermission
 from .credential_permission import CredentialType as CredentialPermissionType
 from .dataset import (
@@ -215,7 +214,6 @@ __all__ = [
     "APIBasedExtension",
     "APIBasedExtensionPoint",
     "Account",
-    "AccountAppUsage",
     "AccountIntegrate",
     "AccountStatus",
     "AccountStepByStepTourState",

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from constants import COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from controllers.web import bp, me
-from tests.helpers.consumer import ConsumerHarness, make_consumer_harness
+from tests.helpers.consumer import ConsumerHarness, make_consumer_harness, new_consumer_run
 
 
 @pytest.fixture
@@ -37,9 +37,8 @@ def test_http_app_views_favorites_and_timestamps(client: FlaskClient, harness: C
     path = f"/api/me/apps/{base.context.app_id}/favorite"
     assert client.put(path).status_code == 204
     assert client.put(path).status_code == 204
-    harness.service.record_usage(
-        harness.identity, tenant_id=base.context.tenant_id, app_id=base.context.app_id, used_at=datetime(2026, 10, 30)
-    )
+    with base.sessions.begin() as session:
+        session.add(new_consumer_run(base, created_at=datetime(2026, 10, 30)))
     for view in ("recent", "favorites", "shared"):
         response = client.get(f"/api/me/apps?view={view}&limit=1")
         assert response.status_code == 200

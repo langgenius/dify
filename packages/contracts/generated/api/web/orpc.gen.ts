@@ -1294,12 +1294,12 @@ export const byAppId = {
 }
 
 /**
- * List accessible personal Apps using the WebApp Account login cookie. No App Passport or workspace membership is required.
+ * List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use is derived from retained published execution logs. No App Passport or workspace membership is required.
  */
 export const get12 = oc
   .route({
     description:
-      'List accessible personal Apps using the WebApp Account login cookie. No App Passport or workspace membership is required.',
+      'List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use is derived from retained published execution logs. No App Passport or workspace membership is required.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMeApps',
