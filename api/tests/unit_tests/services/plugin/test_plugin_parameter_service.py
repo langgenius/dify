@@ -13,6 +13,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -37,16 +38,17 @@ def trigger_declaration(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def plugin_parameter_db() -> Iterator[Session]:
-    """Provide the production database extension with an isolated SQLite credential table."""
+def plugin_parameter_db(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Session]:
+    """Point the production database extension at the shared SQLite database."""
     app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    app.config["SQLALCHEMY_DATABASE_URI"] = sqlite_engine.url
     db.init_app(app)
 
     with app.app_context():
-        BuiltinToolProvider.__table__.create(db.engine)  # pyrefly: ignore[missing-attribute]
-        with Session(db.engine, expire_on_commit=False) as session:
-            yield session
+        try:
+            yield sqlite_session
+        finally:
+            db.engine.dispose()
 
 
 class TestGetDynamicSelectOptionsTool:

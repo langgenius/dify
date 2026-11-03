@@ -9,7 +9,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from redis import Redis
-from sqlalchemy import Connection, ExecutionContext, event
+from sqlalchemy import Connection, Engine, ExecutionContext, event
 from sqlalchemy.orm import Session
 
 import services.api_token_service as api_token_service_module
@@ -299,16 +299,17 @@ def _assert_lock_released(commands: list[tuple[object, ...]]) -> None:
 class TestApiTokenServiceCases:
     @staticmethod
     @pytest.fixture
-    def api_token_db() -> Iterator[Session]:
-        """Provide the production database extension with an isolated SQLite token table."""
+    def api_token_db(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Session]:
+        """Point the production database extension at the shared SQLite database."""
         app = Flask(__name__)
-        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+        app.config["SQLALCHEMY_DATABASE_URI"] = sqlite_engine.url
         db.init_app(app)
 
         with app.app_context():
-            ApiToken.__table__.create(db.engine)  # pyrefly: ignore[missing-attribute]
-            with Session(db.engine, expire_on_commit=False) as session:
-                yield session
+            try:
+                yield sqlite_session
+            finally:
+                db.engine.dispose()
 
     class TestQueryTokenFromDb:
         def test_should_return_api_token_and_cache_when_token_exists(self, api_token_db: Session) -> None:
