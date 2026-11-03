@@ -4,7 +4,7 @@ from collections.abc import Callable, Generator
 from contextlib import _GeneratorContextManager, contextmanager
 from dataclasses import dataclass
 from types import ModuleType
-from typing import Never, cast
+from typing import Never, cast, override
 from unittest.mock import Mock
 
 import pytest
@@ -484,9 +484,19 @@ def test_empty_reference_preserves_default_selection(owner: _CredentialOwner) ->
 
 
 class _RefreshWriteSession:
-    """Transaction boundary double; the repository builds the actual SQL."""
+    """Transaction boundary double with real results and injected driver row counts."""
 
-    def __init__(self, rowcount: int | None, events: list[str], *, commit_fails: bool = False) -> None:
+    def __init__(
+        self,
+        engine: Engine,
+        rowcount: int | None,
+        events: list[str],
+        *,
+        monkeypatch: pytest.MonkeyPatch,
+        commit_fails: bool = False,
+    ) -> None:
+        self.engine = engine
+        self.monkeypatch = monkeypatch
         self.rowcount = rowcount
         self.events = events
         self.commit_fails = commit_fails
@@ -511,9 +521,14 @@ class _RefreshWriteSession:
         return transaction()
 
     def execute(self, statement: Update) -> CursorResult[object]:
+        """Capture repository SQL and return a real result reporting the chosen driver row count."""
         self.statement = statement
         self.events.append("update")
-        return cast(CursorResult[object], Mock(spec=CursorResult, rowcount=self.rowcount))
+        with self.engine.connect() as connection:
+            result = connection.exec_driver_sql("SELECT 1")
+            result.close()
+        self.monkeypatch.setattr(result, "rowcount", self.rowcount)
+        return result
 
 
 class _ObservedReadSession(Session):
@@ -521,6 +536,7 @@ class _ObservedReadSession(Session):
         super().__init__(bind=engine)
         self._events = events
 
+    @override
     def close(self) -> None:
         super().close()
         self._events.append("read-closed")
@@ -535,6 +551,7 @@ class _RefreshSessionFactory(sessionmaker[Session]):
     def __call__(self, **_kwargs: object) -> Session:
         return _ObservedReadSession(self._engine, self._writer.events)
 
+    @override
     @contextmanager
     def begin(self) -> Generator[Session]:
         with self._writer.begin():
@@ -542,7 +559,9 @@ class _RefreshSessionFactory(sessionmaker[Session]):
 
 
 @pytest.mark.parametrize("backend", ["postgresql", "mysql", "oceanbase", "seekdb"])
-def test_refresh_update_compiles_for_supported_database_configuration(owner: _CredentialOwner, backend: str) -> None:
+def test_refresh_update_compiles_for_supported_database_configuration(
+    owner: _CredentialOwner, backend: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from sqlalchemy.dialects import registry
 
     from configs.middleware import DatabaseConfig
@@ -550,9 +569,9 @@ def test_refresh_update_compiles_for_supported_database_configuration(owner: _Cr
 
     config = DatabaseConfig.model_validate({"DB_TYPE": backend})
     dialect = registry.load(config.SQLALCHEMY_DATABASE_URI_SCHEME.replace("+", "."))()
-    writer = _RefreshWriteSession(1, [])
     engine = owner.session.get_bind()
     assert isinstance(engine, Engine)
+    writer = _RefreshWriteSession(engine, 1, [], monkeypatch=monkeypatch)
     repository = CredentialQueryRepository(session_factory=_RefreshSessionFactory(engine, writer))
     record = repository.get_tool_credential(workspace_id="tenant-1", providers=(PROVIDER,), credential_id=CREDENTIAL)
     assert record is not None
@@ -588,9 +607,9 @@ def test_refresh_requires_proven_write_before_cache_and_dispatch(
     owner.row.expires_at = 1
     owner.session.commit()
     events: list[str] = []
-    writer = _RefreshWriteSession(rowcount, events)
     engine = owner.session.get_bind()
     assert isinstance(engine, Engine)
+    writer = _RefreshWriteSession(engine, rowcount, events, monkeypatch=monkeypatch)
     monkeypatch.setattr(tool_composition, "get_session_maker", lambda: _RefreshSessionFactory(engine, writer))
     monkeypatch.setattr(
         "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
@@ -629,9 +648,9 @@ def test_refresh_commit_uncertainty_refuses_cache_invalidation_and_dispatch(
     owner.row.expires_at = 1
     owner.session.commit()
     events: list[str] = []
-    writer = _RefreshWriteSession(1, events, commit_fails=True)
     engine = owner.session.get_bind()
     assert isinstance(engine, Engine)
+    writer = _RefreshWriteSession(engine, 1, events, monkeypatch=monkeypatch, commit_fails=True)
     monkeypatch.setattr(tool_composition, "get_session_maker", lambda: _RefreshSessionFactory(engine, writer))
     monkeypatch.setattr(
         "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
