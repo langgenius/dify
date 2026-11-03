@@ -1,0 +1,17 @@
+# Defaults for opengauss. Copy this file to opengauss.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+OPENGAUSS_PASSWORD=${OPENGAUSS_PASSWORD:-Dify@123}
+OPENGAUSS_DATABASE=${OPENGAUSS_DATABASE:-dify}
+# OPENGAUSS_MIN_CONNECTION=1
+# OPENGAUSS_MAX_CONNECTION=5
+# OPENGAUSS_ENABLE_PQ=false
+# OPENGAUSS_HOST=opengauss
+# Set OPENGAUSS_PORT in docker/.env; Compose needs it before loading service files.
+OPENGAUSS_USER=${OPENGAUSS_USER:-postgres}
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+GS_DB=${OPENGAUSS_DATABASE:-dify}
+GS_PASSWORD=${OPENGAUSS_PASSWORD:-Dify@123}
+GS_USERNAME=${OPENGAUSS_USER:-postgres}

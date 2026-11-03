@@ -47,6 +47,7 @@ from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from models import Account
 from models.account import TenantAccountRole
 from models.provider import ProviderType
+from services.billing_client import billing
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
@@ -703,7 +704,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
-                return_value={"payment_link": "https://payment.example.com/provider"},
+                return_value=billing.GetModelProviderPaymentLinkReply(url="https://payment.example.com/provider"),
             ) as get_model_provider_payment_link,
         ):
             result = method(api, "tenant1", user, provider="anthropic")

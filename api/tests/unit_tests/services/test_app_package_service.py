@@ -847,6 +847,9 @@ class TestAppPackageServiceCases:
         service = AppPackageService()
         with service.export(dsl=dsl, name="Example App", workflow_tools=[]) as package:
             assert package.filename == "example-app.ifpkg"
+            _, manifest = _read_export(package.archive.read())
+            assert manifest["format_version"] == 2
+            package.archive.seek(0)
             prepared = service.read_package(package.archive)
             assert prepared is not None
             with prepared:
@@ -855,7 +858,16 @@ class TestAppPackageServiceCases:
         assert package.archive.closed
 
     @staticmethod
-    @pytest.mark.parametrize("overrides", [{"format": "unknown"}, {"format_version": 2}, {"apps": []}])
+    @pytest.mark.parametrize("format_version", [1, 2])
+    def test_reads_packages_without_workflow_tools(format_version: int) -> None:
+        prepared = AppPackageService().read_package(_archive(_FOLDER_DSL, format_version=format_version))
+        assert prepared is not None
+        with prepared:
+            assert prepared.dsl == _FOLDER_DSL
+            assert prepared.workflow_tools == []
+
+    @staticmethod
+    @pytest.mark.parametrize("overrides", [{"format": "unknown"}, {"format_version": 3}, {"apps": []}])
     def test_rejects_unsupported_manifests(overrides: dict[str, object]) -> None:
         with pytest.raises(InvalidRosterAgentPackageError, match="manifest"):
             AppPackageService().read_package(_archive("kind: app\napp: {mode: workflow}\n", **overrides))
@@ -1166,21 +1178,34 @@ def _icon_archive(*, payload: bytes = b"image", digest: str | None = None, refer
 
 class TestPackageIconsCases:
     @staticmethod
-    def test_app_icon_export_deduplicates_uploads_and_restores_references(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_app_icon_export_deduplicates_uploads_and_restores_references(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         source_id = str(uuid4())
         payload = b"image payload"
-        backend = Mock()
-        backend.load_stream.side_effect = lambda _: iter([payload])
+        backend = _MemoryStorage()
+        backend.files["source/icon.png"] = payload
+        source = make_upload_file(
+            file_id=source_id,
+            tenant_id="source-tenant",
+            key="source/icon.png",
+            name="icon.png",
+            size=len(payload),
+            extension="png",
+            mime_type="image/png",
+        )
+        sqlite_session.add(source)
+        sqlite_session.commit()
         exporter = AgentPackageResourceExporter(storage_backend=backend)
-        upload_lookup = Mock(return_value={source_id: SimpleNamespace(key="source/icon.png", extension="png")})
-        monkeypatch.setattr(exporter, "_upload_files", upload_lookup)
+        monkeypatch.setattr(
+            "services.app_package_service.AgentPackageResourceImporter",
+            lambda: AgentPackageResourceImporter(storage_backend=backend),
+        )
         metadata = {"mode": "chat", "icon_type": "image", "icon": source_id}
         duplicate = dict(metadata)
-        exporter.collect_icon(session=Mock(), tenant_id="source-tenant", metadata=metadata)
-        exporter.collect_icon(session=Mock(), tenant_id="source-tenant", metadata=duplicate)
+        exporter.collect_icon(session=sqlite_session, tenant_id="source-tenant", metadata=metadata)
+        exporter.collect_icon(session=sqlite_session, tenant_id="source-tenant", metadata=duplicate)
         assert metadata["icon"] == duplicate["icon"] == "i_000001"
-        assert upload_lookup.call_args.kwargs["tenant_id"] == "source-tenant"
-        assert upload_lookup.call_count == 1
         dsl = yaml.safe_dump({"kind": "app", "app": metadata})
         with AppPackageService().export(dsl=dsl, name="Example", resources=exporter, workflow_tools=[]) as exported:
             with zipfile.ZipFile(exported.archive) as package:
@@ -1189,15 +1214,28 @@ class TestPackageIconsCases:
             prepared = AppPackageService().read_package(exported.archive)
             assert prepared is not None
             with prepared:
-                restore = Mock(return_value={"i_000001": "destination-id"})
-                monkeypatch.setattr(AgentPackageResourceImporter, "materialize_icons", restore)
+                assert len(prepared.icons) == 1
                 data = yaml.safe_load(prepared.dsl)
                 prepared.materialize_icons(data=data, tenant_id="destination", account_id="account")
-                assert data["app"]["icon"] == "destination-id"
-                assert restore.call_args.kwargs["tenant_id"] == "destination"
+                destination_id = data["app"]["icon"]
+                assert destination_id != source_id
+                restored = sqlite_session.get(UploadFile, destination_id)
+                assert restored is not None
+                assert restored.tenant_id == "destination"
+                assert restored.created_by == "account"
+                assert restored.mime_type == "image/png"
+                assert restored.size == len(payload)
+                assert backend.files[restored.key] == payload
+                assert sqlite_session.scalars(
+                    select(UploadFile).where(UploadFile.tenant_id == "destination")
+                ).all() == [restored]
+                assert source.tenant_id == "source-tenant"
+                assert backend.files[source.key] == payload
 
     @staticmethod
-    def test_app_package_restores_independent_site_image_icon(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_app_package_restores_independent_site_image_icon(
+        monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ) -> None:
         app_icon_id, site_icon_id = str(uuid4()), str(uuid4())
         backend = Mock()
         backend.load_stream.side_effect = lambda key: iter([key.encode()])
@@ -1213,8 +1251,8 @@ class TestPackageIconsCases:
         )
         app = {"mode": "chat", "icon_type": "image", "icon": app_icon_id}
         site = {"title": "Site", "icon_type": "image", "icon": site_icon_id}
-        exporter.collect_icon(session=Mock(), tenant_id="source", metadata=app)
-        exporter.collect_icon(session=Mock(), tenant_id="source", metadata=site)
+        exporter.collect_icon(session=unbound_session, tenant_id="source", metadata=app)
+        exporter.collect_icon(session=unbound_session, tenant_id="source", metadata=site)
         with AppPackageService().export(
             dsl=yaml.safe_dump({"kind": "app", "app": app, "site": site}),
             name="App",
@@ -1236,12 +1274,16 @@ class TestPackageIconsCases:
                 assert data["site"]["icon"] == "new-site-icon"
 
     @staticmethod
-    def test_icon_export_rejects_unavailable_tenant_upload(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_icon_export_rejects_unavailable_tenant_upload(
+        monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ) -> None:
         exporter = AgentPackageResourceExporter(storage_backend=Mock())
         monkeypatch.setattr(exporter, "_upload_files", Mock(return_value={}))
         with pytest.raises(RosterAgentPackageExportFailedError, match="unavailable"):
             exporter.collect_icon(
-                session=Mock(), tenant_id="tenant", metadata={"icon_type": "image", "icon": str(uuid4())}
+                session=unbound_session,
+                tenant_id="tenant",
+                metadata={"icon_type": "image", "icon": str(uuid4())},
             )
 
     @staticmethod
@@ -1262,7 +1304,7 @@ class TestPackageIconsCases:
             AppPackageService().read_package(_icon_archive())
 
     @staticmethod
-    def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
         from models.agent_config_entities import AgentSoulConfig
         from models.model import App, AppMode
         from services.agent.dsl_entities import AgentPackage, AgentPackageMetadata, make_agent_app_dsl
@@ -1284,7 +1326,7 @@ class TestPackageIconsCases:
                 }
             ),
         )
-        resources.collect_icon(session=Mock(), tenant_id="source", metadata=metadata)
+        resources.collect_icon(session=unbound_session, tenant_id="source", metadata=metadata)
         app = make_agent_app_dsl(
             App(name="Agent", mode=AppMode.AGENT),
             package_ref="agent_1",

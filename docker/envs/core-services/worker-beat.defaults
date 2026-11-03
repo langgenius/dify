@@ -1,0 +1,9 @@
+# Defaults for worker_beat. Copy this file to worker-beat.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+# MODE is selected by the Compose service.
+# Set COMPOSE_WORKER_HEALTHCHECK_DISABLED in docker/.env; Compose needs it before loading service files.
+# Set COMPOSE_WORKER_HEALTHCHECK_INTERVAL in docker/.env; Compose needs it before loading service files.
+# Set COMPOSE_WORKER_HEALTHCHECK_TIMEOUT in docker/.env; Compose needs it before loading service files.
+CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:${REDIS_PASSWORD:-difyai123456}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1}

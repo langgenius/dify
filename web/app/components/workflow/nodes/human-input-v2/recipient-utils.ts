@@ -93,13 +93,6 @@ export function updateRecipient(
   return recipients.map((item, itemIndex) => (itemIndex === index ? recipient : item))
 }
 
-export function removeRecipient(
-  recipients: HumanInputV2Recipient[],
-  index: number,
-): HumanInputV2Recipient[] {
-  return recipients.filter((_, itemIndex) => itemIndex !== index)
-}
-
 export type RecipientSummary = {
   state: 'empty' | 'configured' | 'overflow' | 'invalid'
   contactCount: number
@@ -113,7 +106,7 @@ export type RecipientSummary = {
 
 export function deriveRecipientSummary(
   recipients: HumanInputV2Recipient[],
-  contactLabels: ReadonlyMap<string, string> = new Map(),
+  contactLabels?: ReadonlyMap<string, string>,
   visibleLimit = 3,
 ): RecipientSummary {
   if (!recipients.length) {
@@ -139,8 +132,8 @@ export function deriveRecipientSummary(
     if (getRecipientValidationError(recipient)) invalid = true
     if (recipient.type === 'contact') {
       contactCount += 1
-      const label = contactLabels.get(recipient.contact_id)
-      if (!label) invalid = true
+      const label = contactLabels?.get(recipient.contact_id)
+      if (contactLabels && !contactLabels.has(recipient.contact_id)) invalid = true
       return label || recipient.contact_id || 'contact'
     }
     if (recipient.type === 'dynamic_email') {

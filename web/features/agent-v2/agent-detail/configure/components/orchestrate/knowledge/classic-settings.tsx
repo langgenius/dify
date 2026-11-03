@@ -12,7 +12,7 @@ import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-comp
 import type { KnowledgeValidationResult } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldLabel, Field as FormField } from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -22,7 +22,7 @@ import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
+import WorkflowField from '@/app/components/workflow/nodes/_base/components/field'
 import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
 import {
   comparisonOperatorNotRequireValue,
@@ -214,34 +214,36 @@ function ClassicSettingsFields({
   )
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-1 py-2">
-      <div className="flex flex-col gap-1 py-2">
-        <div id={queryModeLabelId} className="system-sm-medium text-text-secondary">
-          {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.label'])}
+      <div className="flex flex-col gap-2 py-2">
+        <div className="flex flex-col gap-1">
+          <div id={queryModeLabelId} className="system-sm-medium text-text-secondary">
+            {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.label'])}
+          </div>
+          <RadioGroup<KnowledgeRetrievalQueryMode>
+            aria-labelledby={queryModeLabelId}
+            className="w-full gap-2"
+            value={queryMode}
+            onValueChange={(nextMode) => {
+              if (nextMode) onChange({ queryMode: nextMode })
+            }}
+          >
+            {queryModeOptions.map((mode) => (
+              <RadioItem<KnowledgeRetrievalQueryMode>
+                key={mode}
+                value={mode}
+                nativeButton
+                render={<button type="button" className={optionCardClassName} />}
+              >
+                <span className="min-w-0 truncate">
+                  {t(($) => $[`agentDetail.configure.knowledgeRetrieval.dialog.query.${mode}`])}
+                </span>
+              </RadioItem>
+            ))}
+          </RadioGroup>
         </div>
-        <RadioGroup<KnowledgeRetrievalQueryMode>
-          aria-labelledby={queryModeLabelId}
-          className="w-full gap-2"
-          value={queryMode}
-          onValueChange={(nextMode) => {
-            if (nextMode) onChange({ queryMode: nextMode })
-          }}
-        >
-          {queryModeOptions.map((mode) => (
-            <RadioItem<KnowledgeRetrievalQueryMode>
-              key={mode}
-              value={mode}
-              nativeButton
-              render={<button type="button" className={optionCardClassName} />}
-            >
-              <span className="min-w-0 truncate">
-                {t(($) => $[`agentDetail.configure.knowledgeRetrieval.dialog.query.${mode}`])}
-              </span>
-            </RadioItem>
-          ))}
-        </RadioGroup>
         {queryMode === 'custom' ? (
           <>
-            <FormField className="pt-1">
+            <Field invalid={Boolean(queryError)}>
               <FieldLabel>
                 {t(
                   ($) =>
@@ -253,7 +255,6 @@ function ClassicSettingsFields({
                   ($) =>
                     $['agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel'],
                 )}
-                aria-invalid={queryError ? true : undefined}
                 className="h-20 resize-none rounded-lg px-3 py-2 system-sm-regular"
                 placeholder={t(
                   ($) =>
@@ -262,27 +263,24 @@ function ClassicSettingsFields({
                 value={customQuery}
                 onValueChange={(nextQuery) => onChange({ customQuery: nextQuery })}
               />
-            </FormField>
-            <p className="system-xs-regular text-text-tertiary">
-              {t(
-                ($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription'],
-              )}
-            </p>
-            {queryError && (
-              <p role="alert" className="system-xs-regular text-text-destructive">
-                {queryError}
-              </p>
-            )}
+              <FieldDescription>
+                {t(
+                  ($) =>
+                    $['agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription'],
+                )}
+              </FieldDescription>
+              <FieldError match={Boolean(queryError)}>{queryError}</FieldError>
+            </Field>
           </>
         ) : (
-          <p className="pt-1 system-xs-regular text-text-tertiary">
+          <p className="system-xs-regular text-text-tertiary">
             {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription'])}
           </p>
         )}
       </div>
 
       <div className="py-2">
-        <Field
+        <WorkflowField
           title={t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label'])}
           required
           operations={
@@ -370,7 +368,7 @@ function ClassicSettingsFields({
               </div>
             )}
           </>
-        </Field>
+        </WorkflowField>
       </div>
 
       {/* The shared workflow filter brings its own px-4 gutter; cancel it to line up with the fields above. */}

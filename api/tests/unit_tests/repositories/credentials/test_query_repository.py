@@ -3,11 +3,12 @@
 Tests visibility filtering and complete domain reads against real SQLite rows.
 """
 
+from dataclasses import replace
 from datetime import datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.entities.plugin_daemon import CredentialType as TriggerCredentialType
@@ -449,3 +450,107 @@ class TestApplyVisibilityFilter:
         )
 
         assert sqlite_session.scalars(query).all() == []
+
+
+@pytest.fixture
+def runtime_repository(sqlite_session_factory: sessionmaker[Session]) -> CredentialQueryRepository:
+    with sqlite_session_factory.begin() as session:
+        for index, (identity, provider, default) in enumerate(
+            [
+                ("oldest", "provider", False),
+                ("default", "org/plugin/provider", True),
+                ("other", "other", True),
+            ]
+        ):
+            row = BuiltinToolProvider(
+                tenant_id="workspace",
+                user_id="owner",
+                provider=provider,
+                name=identity,
+                credential_type=TriggerCredentialType.OAUTH2,
+                encrypted_credentials='{"token":"old"}',
+                expires_at=1,
+                is_default=default,
+            )
+            row.id = identity
+            row.created_at = datetime(2026, 1, index + 1)
+            row.updated_at = datetime(2026, 1, 1)
+            session.add(row)
+    return CredentialQueryRepository(session_factory=sqlite_session_factory)
+
+
+def test_lookup_is_scoped_and_prefers_default(runtime_repository: CredentialQueryRepository) -> None:
+    providers = ("org/plugin/provider", "provider")
+    record = runtime_repository.get_tool_credential(workspace_id="workspace", providers=providers, credential_id=None)
+    assert record is not None
+    assert record.id == "default"
+    assert (
+        runtime_repository.get_tool_credential(workspace_id="other", providers=providers, credential_id="default")
+        is None
+    )
+    assert (
+        runtime_repository.get_tool_credential(workspace_id="workspace", providers=providers, credential_id="other")
+        is None
+    )
+    oldest = runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id=None
+    )
+    assert oldest is not None
+    assert oldest.id == "oldest"
+
+
+def test_refresh_commits_for_a_detached_snapshot(
+    runtime_repository: CredentialQueryRepository, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    record = runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id="oldest"
+    )
+    assert record is not None
+    assert runtime_repository.update_tool_credential_if_unchanged(
+        record=record, encrypted_credentials='{"token":"new"}', expires_at=500
+    )
+    with sqlite_session_factory() as session:
+        persisted = session.get(BuiltinToolProvider, record.id)
+        assert persisted is not None
+        assert persisted.encrypted_credentials == '{"token":"new"}'
+        assert persisted.expires_at == 500
+        assert persisted.updated_at > datetime(2026, 1, 1)
+    assert record.encrypted_credentials == '{"token":"old"}'
+    assert not runtime_repository.update_tool_credential_if_unchanged(
+        record=record, encrypted_credentials="stale", expires_at=600
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("tenant_id", "other"),
+        ("provider", "other"),
+        ("user_id", "other"),
+        ("credential_type", TriggerCredentialType.API_KEY),
+        ("encrypted_credentials", "reauthorized"),
+        ("expires_at", 2),
+        ("deleted", None),
+    ],
+)
+def test_refresh_preserves_concurrent_changes(
+    runtime_repository: CredentialQueryRepository,
+    sqlite_session_factory: sessionmaker[Session],
+    field: str,
+    value: object,
+) -> None:
+    record = runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id="oldest"
+    )
+    assert record is not None
+    with sqlite_session_factory.begin() as session:
+        statement = (
+            delete(BuiltinToolProvider) if field == "deleted" else update(BuiltinToolProvider).values({field: value})
+        )
+        session.execute(statement.where(BuiltinToolProvider.id == record.id))
+    assert not runtime_repository.update_tool_credential_if_unchanged(
+        record=record, encrypted_credentials="refresh", expires_at=500
+    )
+    assert not runtime_repository.update_tool_credential_if_unchanged(
+        record=replace(record, workspace_id="foreign"), encrypted_credentials="refresh", expires_at=500
+    )
