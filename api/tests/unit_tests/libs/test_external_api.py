@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Literal, cast
+from typing import Literal
 
 import pytest
 from flask import Blueprint, Flask
@@ -25,6 +25,30 @@ from libs.external_api import (
     keeps_placeholder_error_code,
 )
 from libs.rate_limit import _BearerRateLimited
+
+
+def _as_mapping(value: object) -> dict[str, object]:
+    """Narrow an untyped Swagger document node to a string-keyed mapping."""
+    if not isinstance(value, dict):
+        msg = f"expected a mapping, got {type(value).__name__}"
+        raise TypeError(msg)
+    return {str(key): item for key, item in value.items()}
+
+
+def _as_items(value: object) -> list[object]:
+    """Narrow an untyped Swagger document node to a list."""
+    if not isinstance(value, list):
+        msg = f"expected a list, got {type(value).__name__}"
+        raise TypeError(msg)
+    return list(value)
+
+
+def _as_text(value: object) -> str:
+    """Narrow an untyped Swagger document node to a string."""
+    if not isinstance(value, str):
+        msg = f"expected a string, got {type(value).__name__}"
+        raise TypeError(msg)
+    return value
 
 
 def _create_api_app() -> Flask:
@@ -299,7 +323,7 @@ _ERROR_BODY_REF = {"$ref": "#/components/schemas/ErrorResponse"}
 def _at(container: object, *keys: str) -> object:
     """Walk nested Swagger JSON mappings so assertions stay type-clean."""
     for key in keys:
-        container = cast("dict[str, object]", container)[key]
+        container = _as_mapping(container)[key]
     return container
 
 
@@ -407,22 +431,24 @@ def _documented_operation(api: ExternalApi, *exceptions: type[Exception]) -> dic
             return {}
 
     api.add_namespace(ns)
-    app.register_blueprint(cast("Blueprint", api.blueprint))
+    blueprint = api.blueprint
+    assert isinstance(blueprint, Blueprint)
+    app.register_blueprint(blueprint)
     with app.test_request_context("/"):
-        return cast("dict[str, object]", Swagger(api).as_dict())
+        return _as_mapping(Swagger(api).as_dict())
 
 
 def _responses(document: dict[str, object]) -> dict[str, object]:
-    return cast("dict[str, object]", _at(document, "paths", "/documented", "get", "responses"))
+    return _as_mapping(_at(document, "paths", "/documented", "get", "responses"))
 
 
 def _error_options(document: dict[str, object], status: str, body_ref: dict[str, str] = _ERROR_BODY_REF) -> list[str]:
     """The component names a status documents, in order, before the open error body that ends them."""
-    schema = cast("dict[str, object]", _at(_responses(document), status, "content", "application/json", "schema"))
-    options = cast("list[object]", schema.get("anyOf", [schema]))
+    schema = _as_mapping(_at(_responses(document), status, "content", "application/json", "schema"))
+    options = _as_items(schema.get("anyOf", [schema]))
     # A generic error can answer any documented status, so the open body is always the last option.
     assert options[-1] == body_ref
-    return [cast("dict[str, str]", option)["$ref"].rsplit("/", 1)[-1] for option in options[:-1]]
+    return [_as_text(_as_mapping(option)["$ref"]).rsplit("/", 1)[-1] for option in options[:-1]]
 
 
 def _documented_names_for(*exceptions: type[Exception]) -> dict[str, bool]:
@@ -441,14 +467,14 @@ def test_document_errors_keeps_hidden_views_and_methods_hidden() -> None:
 
     document_errors(Partly, _GuardDeniedError)
 
-    apidoc = cast("dict[str, object]", Partly.__apidoc__)
+    apidoc = _as_mapping(Partly.__apidoc__)
     assert apidoc["get"] is False
-    post_doc = cast("dict[str, object]", apidoc["post"])
+    post_doc = _as_mapping(apidoc["post"])
     assert post_doc["description"] == "create"
-    post_vendor = cast("dict[str, object]", post_doc["vendor"])
+    post_vendor = _as_mapping(post_doc["vendor"])
     assert post_vendor[ERROR_CODES_VENDOR_KEY] == _documented_names_for(_GuardDeniedError)
-    delete_doc = cast("dict[str, object]", apidoc["delete"])
-    delete_vendor = cast("dict[str, object]", delete_doc["vendor"])
+    delete_doc = _as_mapping(apidoc["delete"])
+    delete_vendor = _as_mapping(delete_doc["vendor"])
     assert delete_vendor[ERROR_CODES_VENDOR_KEY] == _documented_names_for(_GuardDeniedError)
 
     class Hidden(Resource):
@@ -504,10 +530,10 @@ def test_openapi_surface_resolves_codes_like_its_formatter() -> None:
 
     body_ref = {"$ref": "#/components/schemas/ErrorBody"}
     assert _error_options(document, "400", body_ref) == ["DocumentedError"]
-    component = cast("dict[str, object]", _at(document, "components", "schemas", "DocumentedError"))
-    all_of = cast("list[object]", component["allOf"])
+    component = _as_mapping(_at(document, "components", "schemas", "DocumentedError"))
+    all_of = _as_items(component["allOf"])
     assert all_of[0] == body_ref
-    properties = cast("dict[str, object]", cast("dict[str, object]", all_of[1])["properties"])
+    properties = _as_mapping(_as_mapping(all_of[1])["properties"])
     assert properties["code"] == {"const": "documented_error", "type": "string"}
 
 
@@ -820,7 +846,7 @@ def test_generic_errors_are_implicit_codes_and_never_listed() -> None:
     assert "bootstrap_missing" not in api.implicit_error_codes(400)
     # The operation keeps its real business errors and documents nothing for the generic one.
     assert _error_options(document, "400") == ["DocumentedError"]
-    assert "BootstrapMissingError" not in cast("dict[str, object]", _at(document, "components", "schemas"))
+    assert "BootstrapMissingError" not in _as_mapping(_at(document, "components", "schemas"))
     assert _error_options(document, "401") == ["WrapperDeniedError"]
 
 
