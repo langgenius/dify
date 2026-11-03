@@ -6265,12 +6265,19 @@ export const switch3 = {
   post: post95,
 }
 
+/**
+ * Return an icon for a tenant UUID and a supported icon type
+ *
+ * Invalid path arguments fail before provider discovery or asset access.
+ */
 export const get134 = oc
   .route({
+    description: 'Invalid path arguments fail before provider discovery or asset access.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLang',
     path: '/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}',
+    summary: 'Return an icon for a tenant UUID and a supported icon type',
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangPath }))
