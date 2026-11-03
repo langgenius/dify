@@ -1710,6 +1710,31 @@ jobs:
               'test_v2_single_config_read_keeps_sql_recheck_after_io': 2,
               'test_protected_read_timing_failure_does_not_change_guard_result': 1,
           })
+          # Main adds real SDK collaboration metrics cases under the collected OTEL directory.
+          new_expected['tests.unit_tests.extensions.otel.test_instrumentation'] = {
+              'test_init_instruments_registers_app_owned_collaboration_metrics_before_events': 1,
+          }
+          new_expected['tests.unit_tests.extensions.otel.test_workflow_collaboration'] = {
+              'test_collecting_gauges_never_reads_live_socket_manager': 1,
+              'test_connect_completed_after_disconnect_does_not_restore_socket': 1,
+              'test_connect_counts_only_authenticated_sockets': 2,
+              'test_disabled_metrics_bypass_all_instrumentation_with_or_without_app_instance': 4,
+              'test_disconnect_failure_still_removes_all_local_membership': 1,
+              'test_duplicate_connections_and_joins_do_not_inflate_population': 1,
+              'test_empty_worker_emits_all_zero_gauges': 1,
+              'test_enabled_metrics_without_initialized_extension_leave_business_behavior_unchanged': 4,
+              'test_event_exception_is_recorded_and_reraised_unchanged': 1,
+              'test_event_outcome_preserves_exact_handler_return': 9,
+              'test_event_types_are_bounded_without_changing_payload': 8,
+              'test_native_thread_collection_uses_complete_numeric_snapshots': 1,
+              'test_partial_join_failure_reflects_real_membership': 1,
+              'test_record_event_exports_seconds_and_matching_counter': 1,
+              'test_room_distribution_crosses_fixed_bucket_boundaries': 8,
+              'test_room_lookup_failure_does_not_hide_return_or_event': 1,
+              'test_room_snapshot_replaces_membership_and_disconnect_clears_it': 1,
+              'test_sdk_failure_never_changes_handler_result_or_exception': 2,
+              'test_startup_instance_is_shared_and_repeated_initialization_preserves_state': 1,
+          }
           files = list(dict.fromkeys(files))
           new_actual = {module: Counter() for module in new_expected}
           expected = {path.removeprefix("api/").removesuffix(".py").replace("/", ".") for path in files}
