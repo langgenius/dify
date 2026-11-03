@@ -8,7 +8,7 @@ import type { WorkflowHistoryState } from './store/workflow/history-slice'
 import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import type { ConversationVariable, Edge, EnvironmentVariable, Node } from './types'
 import type { EventEmitterValue } from '@/context/event-emitter'
-import type { FetchWorkflowDraftResponse, VarInInspect } from '@/types/workflow'
+import type { VarInInspect } from '@/types/workflow'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -126,7 +126,7 @@ const WorkflowNodeSearch = memo(() => {
   return null
 })
 
-type WorkflowDataUpdatePayload = Pick<FetchWorkflowDraftResponse, 'client_save_id'> & {
+type WorkflowDataUpdatePayload = {
   nodes: Node[]
   edges: Edge[]
   viewport?: Viewport
@@ -319,7 +319,7 @@ export const Workflow: FC<WorkflowProps> = memo(
 
         if (payload.viewport) reactflow.setViewport(payload.viewport)
 
-        if (payload.hash) setSyncWorkflowDraftHash(payload.hash, payload, payload.client_save_id)
+        if (payload.hash) setSyncWorkflowDraftHash(payload.hash, payload)
 
         onWorkflowDataUpdate?.(payload)
         payload.onApplied?.()

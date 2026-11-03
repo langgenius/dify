@@ -192,18 +192,12 @@ it('opens the node context menu and clears its target when the graph is replaced
           }),
         ],
         edges: [],
-        hash: 'imported-hash',
-        client_save_id: '40c6cf5c-a5a1-4bfd-b3ae-f072e3f1efcd',
       },
     }),
   )
   expect(store.getState().contextMenuTarget).toBeUndefined()
   expect(screen.getByText('Imported graph')).toBeInTheDocument()
   expect(screen.queryByText('Transform documents')).not.toBeInTheDocument()
-  expect(store.getState()).toMatchObject({
-    syncWorkflowDraftHash: 'imported-hash',
-    syncWorkflowDraftSaveId: '40c6cf5c-a5a1-4bfd-b3ae-f072e3f1efcd',
-  })
 })
 
 it('reports a persistent error when the final save fails', async () => {

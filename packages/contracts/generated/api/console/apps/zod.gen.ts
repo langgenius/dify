@@ -1373,7 +1373,6 @@ export const zDraftWorkflowNotExistError = zErrorResponse.and(
  * SyncDraftWorkflowResponse
  */
 export const zSyncDraftWorkflowResponse = z.object({
-  client_save_id: z.uuid().nullish(),
   hash: z.string(),
   result: z.string(),
   updated_at: z.int(),
@@ -2833,7 +2832,6 @@ export const zPipelineVariableResponse = z.object({
  * WorkflowResponse
  */
 export const zWorkflowResponse = z.object({
-  client_save_id: z.uuid().nullish(),
   conversation_variables: z.array(zWorkflowConversationVariableResponse),
   created_at: z.int(),
   created_by: zSimpleAccountResponse.nullish(),
@@ -2871,27 +2869,16 @@ export const zSyncEnvironmentVariablePatchPayload = z.object({
 })
 
 /**
- * PredecessorDraftSavePayload
- */
-export const zPredecessorDraftSavePayload = z.object({
-  client_save_id: z.uuid(),
-  environment_variable_patch: zSyncEnvironmentVariablePatchPayload.nullish(),
-})
-
-/**
  * SyncDraftWorkflowPayload
  */
 export const zSyncDraftWorkflowPayload = z.object({
   _is_collaborative: z.boolean().optional().default(false),
-  base_client_save_id: z.uuid().nullish(),
-  client_save_id: z.uuid().nullish(),
   conversation_variables: z.array(z.record(z.string(), z.unknown())).optional(),
   environment_variable_patch: zSyncEnvironmentVariablePatchPayload.nullish(),
   features: z.record(z.string(), z.unknown()),
   force: z.boolean().optional().default(false),
   graph: z.record(z.string(), z.unknown()),
   hash: z.string().nullish(),
-  predecessor_saves: z.array(zPredecessorDraftSavePayload).optional(),
 })
 
 /**

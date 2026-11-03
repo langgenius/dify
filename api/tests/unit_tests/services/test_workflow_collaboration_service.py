@@ -1,9 +1,7 @@
-import json
 import logging
 from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, Mock, patch
-from uuid import uuid4
 
 import pytest
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError
@@ -15,7 +13,6 @@ from extensions.ext_redis import RedisClientWrapper
 from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowType
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
 from tests.helpers.unit.config_override import config_overrides_context
@@ -36,9 +33,8 @@ def collaboration_redis(
 
 
 @pytest.fixture
-def real_service(collaboration_redis: RedisClientWrapper, db_session: Session) -> ServiceFixture:
+def real_service(collaboration_redis: RedisClientWrapper) -> ServiceFixture:
     assert collaboration_redis._require_client() is not None
-    assert db_session.is_active
     repository = WorkflowCollaborationRepository()
     socketio = Mock()
     return WorkflowCollaborationService(repository, socketio, server_id="server-1"), repository, socketio
@@ -48,7 +44,7 @@ def real_service(collaboration_redis: RedisClientWrapper, db_session: Session) -
 def db_session(sqlite_engine: Engine) -> Iterator[Session]:
     """Provide a real session for tenant-scoped workflow app access checks."""
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__, Workflow.__table__])
+    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__])
     with Session(sqlite_engine, expire_on_commit=False) as session:
         yield session
 
@@ -66,97 +62,7 @@ def _app(*, app_id: str, tenant_id: str, maintainer: str | None = None) -> App:
     )
 
 
-def _draft(*, tenant_id: str = "t-1", version: str = Workflow.VERSION_DRAFT) -> Workflow:
-    return Workflow(
-        app_id="wf-1",
-        tenant_id=tenant_id,
-        version=version,
-        type=WorkflowType.WORKFLOW,
-        created_by="u-1",
-        graph=json.dumps({"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []}),
-        _features="{}",
-        draft_client_save_id=str(uuid4()),
-    )
-
-
 class TestWorkflowCollaborationService:
-    def test_initial_leader_status_includes_authoritative_draft_receipt(
-        self, real_service: ServiceFixture, db_session: Session
-    ) -> None:
-        collaboration_service, _repository, socketio = real_service
-        socketio.get_session.return_value = {"user_id": "u-1", "username": "Jane", "tenant_id": "t-1"}
-        draft = _draft()
-        db_session.add_all([_app(app_id="wf-1", tenant_id="t-1"), draft])
-        db_session.commit()
-
-        with config_overrides_context(RBAC_ENABLED=False):
-            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
-
-        assert result == ("u-1", True)
-        assert not db_session.in_transaction()
-        socketio.emit.assert_any_call(
-            "status",
-            {
-                "isLeader": True,
-                "draftBaseline": {"hash": draft.unique_hash, "client_save_id": draft.draft_client_save_id},
-            },
-            room="sid-1",
-        )
-
-    def test_promotion_status_refreshes_receipt_after_same_graph_save_without_remote_socket_lookup(
-        self, real_service: ServiceFixture, db_session: Session
-    ) -> None:
-        collaboration_service, repository, socketio = real_service
-        draft = _draft()
-        db_session.add_all([_app(app_id="wf-1", tenant_id="t-1"), draft])
-        db_session.commit()
-        initial_hash = draft.unique_hash
-        initial_receipt = draft.draft_client_save_id
-        draft.draft_client_save_id = str(uuid4())
-        db_session.commit()
-        assert draft.unique_hash == initial_hash
-        assert draft.draft_client_save_id != initial_receipt
-        seed_session(repository, "sid-1")
-        repository.set_session_info(
-            "wf-1",
-            {
-                "sid": "sid-2",
-                "user_id": "u-2",
-                "username": "Remote collaborator",
-                "avatar": None,
-                "connected_at": 2,
-                "server_id": "server-2",
-            },
-        )
-
-        collaboration_service.broadcast_leader_change("wf-1", "sid-2")
-
-        socketio.get_session.assert_not_called()
-        socketio.emit.assert_any_call("status", {"isLeader": False}, room="sid-1")
-        socketio.emit.assert_any_call(
-            "status",
-            {"isLeader": True, "draftBaseline": {"hash": initial_hash, "client_save_id": draft.draft_client_save_id}},
-            room="sid-2",
-        )
-
-    @pytest.mark.parametrize("excluded", ["wrong-tenant", "published"])
-    def test_promotion_baseline_excludes_other_owner_versions(
-        self, real_service: ServiceFixture, db_session: Session, excluded: str
-    ) -> None:
-        collaboration_service, repository, socketio = real_service
-        app = _app(app_id="wf-1", tenant_id="t-1")
-        draft = _draft(
-            tenant_id="other-tenant" if excluded == "wrong-tenant" else "t-1",
-            version="published" if excluded == "published" else Workflow.VERSION_DRAFT,
-        )
-        db_session.add_all([app, draft])
-        db_session.commit()
-        seed_session(repository, "sid-1")
-
-        collaboration_service.broadcast_leader_change("wf-1", "sid-1")
-
-        socketio.emit.assert_called_once_with("status", {"isLeader": True}, room="sid-1")
-
     def test_authorize_and_join_workflow_room_returns_leader_status(
         self, real_service: ServiceFixture, db_session: Session
     ) -> None:
@@ -480,11 +386,8 @@ class TestWorkflowCollaborationService:
         assert result == ({"msg": "invalid sync_request"}, 400)
         socketio.call.assert_not_called()
 
-    @pytest.mark.parametrize(
-        "receipt", [{}, {"clientSaveId": None}, {"clientSaveId": "0bd61160-cf57-46e0-9a83-1cf1dd155a27"}]
-    )
     def test_relay_collaboration_event_sync_request_forwards_to_active_leader(
-        self, real_service: ServiceFixture, receipt: dict[str, object]
+        self, real_service: ServiceFixture
     ) -> None:
         collaboration_service, repository, socketio = real_service
         seed_session(repository, "sid-1")
@@ -500,7 +403,7 @@ class TestWorkflowCollaborationService:
                 "graph_active": True,
             },
         )
-        socketio.call.return_value = {"success": True, "hash": "hash-2", "updatedAt": 456, **receipt}
+        socketio.call.return_value = {"success": True, "hash": "hash-2", "updatedAt": 456}
         payload = {
             "type": "sync_request",
             "data": {"reason": "join", "requestId": "req-1"},
@@ -520,7 +423,6 @@ class TestWorkflowCollaborationService:
                 "success": True,
                 "hash": "hash-2",
                 "updatedAt": 456,
-                **receipt,
             },
             200,
         )
@@ -604,7 +506,6 @@ class TestWorkflowCollaborationService:
             {"success": "true", "hash": "hash-2", "updatedAt": 456},
             {"success": True, "hash": "", "updatedAt": 456},
             {"success": True, "hash": "hash-2", "updatedAt": True},
-            {"success": True, "hash": "hash-2", "updatedAt": 456, "clientSaveId": 123},
         ],
     )
     def test_relay_collaboration_event_sync_request_rejects_invalid_target_response(

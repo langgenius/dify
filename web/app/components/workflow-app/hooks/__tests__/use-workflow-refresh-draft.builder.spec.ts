@@ -1,7 +1,6 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode } from 'react'
 import type { WorkflowDraftRefreshResult } from '../use-workflow-refresh-draft'
-import type { ServerDraftUpdate } from '@/app/components/workflow/collaboration/core/server-draft-sync'
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -39,7 +38,7 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
 vi.mock('@/service/workflow', () => ({ fetchWorkflowDraft: fetchDraft }))
 const collaboration = vi.hoisted(() => ({
   connected: vi.fn(() => false),
-  sync: vi.fn<() => Promise<Pick<ServerDraftUpdate, 'hash' | 'client_save_id'>>>(),
+  sync: vi.fn(),
   nodes: vi.fn(),
   edges: vi.fn(() => []),
 }))
@@ -55,7 +54,6 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 
 const draftResponse = {
   hash: 'server-hash',
-  client_save_id: '00000000-0000-4000-8000-000000000001',
   graph: {
     nodes: [createNode({ id: 'n1', data: { type: BlockEnum.Start } })],
     edges: [],
@@ -277,10 +275,7 @@ describe('useWorkflowRefreshDraft', () => {
     collaboration.connected.mockReturnValue(true)
     const accepted = [createNode({ id: 'accepted' })]
     collaboration.nodes.mockReturnValue(accepted)
-    collaboration.sync.mockResolvedValue({
-      hash: 'server-hash',
-      client_save_id: draftResponse.client_save_id,
-    })
+    collaboration.sync.mockResolvedValue({ hash: 'server-hash' })
     const { result, store } = setup()
     await act(async () =>
       expect(await result.current.handleRefreshWorkflowDraft()).toBe('refreshed'),
@@ -394,16 +389,8 @@ describe('useWorkflowRefreshDraft', () => {
   })
   it('reads matching metadata when collaboration has accepted a newer draft', async () => {
     collaboration.connected.mockReturnValue(true)
-    const latest = {
-      ...draftResponse,
-      hash: 'newer-hash',
-      client_save_id: '00000000-0000-4000-8000-000000000002',
-      conversation_variables: [],
-    }
-    collaboration.sync.mockResolvedValue({
-      hash: latest.hash,
-      client_save_id: latest.client_save_id,
-    })
+    collaboration.sync.mockResolvedValue({ hash: 'newer-hash' })
+    const latest = { ...draftResponse, hash: 'newer-hash', conversation_variables: [] }
     fetchDraft.mockResolvedValueOnce(draftResponse).mockResolvedValueOnce(latest)
     const { result, store } = setup()
     await act(async () =>
@@ -412,45 +399,11 @@ describe('useWorkflowRefreshDraft', () => {
     expect(fetchDraft).toHaveBeenCalledTimes(2)
     expect(updateCanvas).toHaveBeenCalledOnce()
     expect(store.getState().syncWorkflowDraftHash).toBe('newer-hash')
-    expect(store.getState().syncWorkflowDraftSaveId).toBe(latest.client_save_id)
-  })
-
-  it('refetches metadata when collaboration advances only the save receipt', async () => {
-    const latest = {
-      ...draftResponse,
-      client_save_id: '00000000-0000-4000-8000-000000000002',
-      environment_variables: [
-        { id: 'env-1', name: 'topic', value_type: 'string', value: 'Remote edit', description: '' },
-      ],
-    }
-    collaboration.connected.mockReturnValue(true)
-    collaboration.sync.mockResolvedValue({
-      hash: latest.hash,
-      client_save_id: latest.client_save_id,
-    })
-    collaboration.nodes.mockReturnValue(latest.graph.nodes)
-    fetchDraft.mockResolvedValueOnce(draftResponse).mockResolvedValueOnce(latest)
-    const { result, store } = setup()
-
-    await act(async () =>
-      expect(await result.current.handleRefreshWorkflowDraft()).toBe('refreshed'),
-    )
-
-    expect(fetchDraft).toHaveBeenCalledTimes(2)
-    expect(updateCanvas).toHaveBeenCalledOnce()
-    expect(store.getState()).toMatchObject({
-      syncWorkflowDraftHash: latest.hash,
-      syncWorkflowDraftSaveId: latest.client_save_id,
-      environmentVariables: latest.environment_variables,
-    })
   })
 
   it('finishes the Builder refresh without manual Retry when collaboration advances after the HTTP read', async () => {
     collaboration.connected.mockReturnValue(true)
-    collaboration.sync.mockResolvedValue({
-      hash: 'newer-hash',
-      client_save_id: draftResponse.client_save_id,
-    })
+    collaboration.sync.mockResolvedValue({ hash: 'newer-hash' })
     collaboration.nodes.mockReturnValue(draftResponse.graph.nodes)
     fetchDraft
       .mockResolvedValueOnce(draftResponse)

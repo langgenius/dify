@@ -85,24 +85,21 @@ it('sends cursor and workflow changes only while connected', async () => {
   expect(emit).not.toHaveBeenCalled()
 })
 
-it.each([undefined, null, '019b0766-9540-4dd9-a51f-bf7650f4b7bd'])(
-  'includes a graph snapshot and resolves the workflow save acknowledgement with receipt %s',
-  async (clientSaveId) => {
-    const { manager, messages, acknowledge } = await createSession({ nodes: [createNode('saved')] })
-    const saved = manager.requestWorkflowSync()
-    expect(messages('sync_request')).toEqual([
-      [
-        'collaboration_event',
-        expect.objectContaining({
-          data: { requestId: expect.any(String), graphSnapshot: expect.any(Uint8Array) },
-        }),
-        expect.any(Function),
-      ],
-    ])
-    acknowledge('sync_request', { success: true, hash: 'hash-2', updatedAt: 2, clientSaveId }, 200)
-    await expect(saved).resolves.toEqual({ hash: 'hash-2', updatedAt: 2, clientSaveId })
-  },
-)
+it('includes a graph snapshot and resolves the workflow save acknowledgement', async () => {
+  const { manager, messages, acknowledge } = await createSession({ nodes: [createNode('saved')] })
+  const saved = manager.requestWorkflowSync()
+  expect(messages('sync_request')).toEqual([
+    [
+      'collaboration_event',
+      expect.objectContaining({
+        data: { requestId: expect.any(String), graphSnapshot: expect.any(Uint8Array) },
+      }),
+      expect.any(Function),
+    ],
+  ])
+  acknowledge('sync_request', { success: true, hash: 'hash-2', updatedAt: 2 }, 200)
+  await expect(saved).resolves.toEqual({ hash: 'hash-2', updatedAt: 2 })
+})
 
 it('rejects a workflow save when the server reports failure', async () => {
   const { manager, acknowledge } = await createSession()
@@ -129,18 +126,12 @@ it('imports a directed save snapshot even when the local leader flag is stale an
   expect(requests).toHaveBeenCalledOnce()
   const request = requests.mock.calls[0]![0]
   expect(request.requestId).toBe('request-1')
-  request.acknowledge({
-    success: true,
-    hash: 'hash-1',
-    updatedAt: 1,
-    clientSaveId: '019b0766-9540-4dd9-a51f-bf7650f4b7bd',
-  })
+  request.acknowledge({ success: true, hash: 'hash-1', updatedAt: 1 })
   request.acknowledge({ success: false, error: 'duplicate' })
   expect(acknowledge).toHaveBeenCalledExactlyOnceWith({
     success: true,
     hash: 'hash-1',
     updatedAt: 1,
-    clientSaveId: '019b0766-9540-4dd9-a51f-bf7650f4b7bd',
   })
 })
 
@@ -390,39 +381,6 @@ it('keeps a promoted follower blocked until an authoritative snapshot or reload 
   manager.setNodes([], [createNode('must-not-save')])
   expect(manager.getNodes()).toEqual([])
   expect(manager.canPersistLocalGraph()).toBe(false)
-})
-
-it('delivers the promoted saver baseline before notifying listeners that saving is ready', async () => {
-  const remote = await createSession({ appId: 'remote', nodes: [createNode('shared')] })
-  const { manager, receive } = await createSession({ role: 'follower' })
-  receive('graph_update', remote.snapshot())
-  expect(manager.canPersistLocalGraph()).toBe(true)
-  const baseline = vi.fn()
-  const leader = vi.fn()
-  const ready = vi.fn()
-  const reload = vi.fn()
-  const unsubscribe = manager.onDraftBaseline(baseline)
-  manager.onLeaderChange(leader)
-  manager.onGraphReadyChange(ready)
-  manager.onGraphReloadRequired(reload)
-  ready.mockClear()
-  const draftBaseline = {
-    hash: 'shared-hash',
-    client_save_id: '00000000-0000-4000-8000-000000000002',
-  }
-
-  receive('status', { isLeader: true, draftBaseline })
-
-  expect(baseline).toHaveBeenCalledExactlyOnceWith(draftBaseline)
-  expect(leader).toHaveBeenCalledExactlyOnceWith(true)
-  expect(ready).toHaveBeenCalledWith(true)
-  expect(baseline.mock.invocationCallOrder[0]).toBeLessThan(leader.mock.invocationCallOrder[0]!)
-  expect(baseline.mock.invocationCallOrder[0]).toBeLessThan(ready.mock.invocationCallOrder[0]!)
-  expect(reload).not.toHaveBeenCalled()
-  expect(manager.canFlushGraphOnPageClose()).toBe(true)
-  unsubscribe()
-  receive('status', { isLeader: true, draftBaseline: { ...draftBaseline, client_save_id: null } })
-  expect(baseline).toHaveBeenCalledOnce()
 })
 
 it('retries follower resync until a snapshot arrives and then stops', async () => {

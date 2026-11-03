@@ -529,7 +529,6 @@ export const zPipelineVariableResponse = z.object({
  * WorkflowResponse
  */
 export const zWorkflowResponse = z.object({
-  client_save_id: z.uuid().nullish(),
   conversation_variables: z.array(zWorkflowConversationVariableResponse),
   created_at: z.int(),
   created_by: zSimpleAccountResponse.nullish(),

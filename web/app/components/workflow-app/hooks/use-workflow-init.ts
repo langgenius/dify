@@ -121,7 +121,7 @@ export const useWorkflowInit = () => {
         conversationVariables: initialData.conversation_variables || [],
         isWorkflowDataLoaded: true,
       })
-      setSyncWorkflowDraftHash(initialData.hash, res.graph, res.client_save_id)
+      setSyncWorkflowDraftHash(initialData.hash, res.graph)
       setIsLoading(false)
     } catch (error: unknown) {
       if (error instanceof ORPCError) {
@@ -175,7 +175,7 @@ export const useWorkflowInit = () => {
             )
             .then((res) => {
               workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-              setSyncWorkflowDraftHash(res.hash, initialGraph, res.client_save_id)
+              setSyncWorkflowDraftHash(res.hash, initialGraph)
               handleGetInitialWorkflowData()
             })
         }

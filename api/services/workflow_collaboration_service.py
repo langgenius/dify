@@ -13,11 +13,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.db.session_factory import session_factory
 from core.rbac import RBACPermission, RBACResourceScope
 from models.account import Account
 from models.model import App
-from models.workflow import Workflow
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
 from services.enterprise.rbac_service import RBACService
 
@@ -149,12 +147,7 @@ class WorkflowCollaborationService:
         self._socketio.enter_room(sid, workflow_id)
         self.broadcast_online_users(workflow_id)
 
-        status: dict[str, object] = {"isLeader": is_leader}
-        if is_leader:
-            baseline = self._get_draft_baseline(workflow_id, session=session)
-            if baseline is not None:
-                status["draftBaseline"] = baseline
-        self._socketio.emit("status", status, room=sid)
+        self._socketio.emit("status", {"isLeader": is_leader}, room=sid)
 
         return str(user_id), is_leader
 
@@ -192,12 +185,7 @@ class WorkflowCollaborationService:
         self.broadcast_online_users(workflow_id)
 
     def relay_collaboration_event(self, sid: str, data: Mapping[str, object]) -> tuple[dict[str, object], int]:
-        """Route authenticated collaboration events to the active leader or room.
-
-        Successful save acknowledgments retain the persisted hash and save receipt
-        together so a requester can safely become the next saver. Invalid or failed
-        acknowledgments are rejected without reporting a successful save.
-        """
+        """Route collaboration control events, directing save and graph-resync requests to the active leader."""
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
             return {"msg": "unauthorized"}, 401
@@ -302,12 +290,9 @@ class WorkflowCollaborationService:
 
             workflow_hash = result.get("hash")
             updated_at = result.get("updatedAt")
-            client_save_id = result.get("clientSaveId")
             if not isinstance(workflow_hash, str) or not workflow_hash:
                 return {"msg": "invalid_sync_response", "requestId": request_id}, 502
             if not isinstance(updated_at, int) or isinstance(updated_at, bool):
-                return {"msg": "invalid_sync_response", "requestId": request_id}, 502
-            if client_save_id is not None and not isinstance(client_save_id, str):
                 return {"msg": "invalid_sync_response", "requestId": request_id}, 502
 
             return {
@@ -316,7 +301,6 @@ class WorkflowCollaborationService:
                 "success": True,
                 "hash": workflow_hash,
                 "updatedAt": updated_at,
-                **({"clientSaveId": client_save_id} if "clientSaveId" in result else {}),
             }, 200
 
         if event_type == "graph_resync_request":
@@ -404,33 +388,9 @@ class WorkflowCollaborationService:
         for sid in self._repository.get_session_sids(workflow_id):
             try:
                 is_leader = new_leader_sid is not None and sid == new_leader_sid
-                status: dict[str, object] = {"isLeader": is_leader}
-                if is_leader:
-                    with session_factory.create_session() as session:
-                        baseline = self._get_draft_baseline(workflow_id, session=session)
-                    if baseline is not None:
-                        status["draftBaseline"] = baseline
-                self._socketio.emit("status", status, room=sid)
+                self._socketio.emit("status", {"isLeader": is_leader}, room=sid)
             except Exception:
                 logging.exception("Failed to emit leader status to session %s", sid)
-
-    @staticmethod
-    def _get_draft_baseline(workflow_id: str, *, session: Session) -> dict[str, str | None] | None:
-        """Read matching hash and receipt for an already-authorized App room.
-
-        Join the complete App/tenant owner because the promoted socket can belong
-        to another worker. End the read transaction before emitting its baseline;
-        the next save still validates this receipt under the draft row lock.
-        """
-        with session.begin():
-            workflow = session.scalar(
-                select(Workflow)
-                .join(App, (Workflow.app_id == App.id) & (Workflow.tenant_id == App.tenant_id))
-                .where(App.id == workflow_id, App.status == "normal", Workflow.version == Workflow.VERSION_DRAFT)
-            )
-            if workflow is None:
-                return None
-            return {"hash": workflow.unique_hash, "client_save_id": workflow.draft_client_save_id}
 
     def get_current_leader(self, workflow_id: str) -> str | None:
         return self._repository.get_current_leader(workflow_id)
