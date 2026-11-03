@@ -37,6 +37,7 @@ from typing import Any, ClassVar, cast
 import json_repair
 
 from configs import dify_config
+from core.workflow.editor_graph import editor_edge_data, editor_edge_id, layout_top_level_nodes
 from core.workflow.generator.prompts.node_builder_prompts import (
     NODE_BUILDER_USER_PROMPT,
     format_mode_section,
@@ -89,13 +90,6 @@ from graphon.model_runtime.errors.invoke import (
 logger = logging.getLogger(__name__)
 
 
-_NODE_X_OFFSET = 80
-_NODE_X_STEP = 320
-_NODE_Y = 280
-# Vertical gap between lanes when two branches share the same topological
-# depth (e.g. the two arms of an if-else). Default node height is 100, so
-# 160 leaves clear air between stacked nodes.
-_NODE_Y_STEP = 160
 _DEFAULT_VIEWPORT: GraphViewportDict = {"x": 0.0, "y": 0.0, "zoom": 0.7}
 _DEFAULT_NODE_WIDTH = 244
 _DEFAULT_NODE_HEIGHT = 100
@@ -1484,17 +1478,6 @@ class WorkflowGenerator:
             node.setdefault("sourcePosition", "right")
             node.setdefault("targetPosition", "left")
 
-        # ``parentId`` → set of inner-node ids, so edges between siblings can be
-        # marked ``isInIteration`` / ``isInLoop`` with the right container id.
-        inner_node_to_parent: dict[str, str] = {
-            n["id"]: n["parentId"] for n in nodes if n.get("parentId") and n.get("id")
-        }
-        # Map parent id → its container node-type so we can pick the right flag.
-        parent_type: dict[str, str] = {}
-        for n in nodes:
-            if n.get("id") in inner_node_to_parent.values():
-                parent_type[n["id"]] = n.get("data", {}).get("type", "")
-
         # Branch nodes (if-else / question-classifier) emit one handle per
         # case; an edge leaving them on the default "source" handle dangles
         # off a handle that doesn't exist on the canvas. Repair the
@@ -1506,43 +1489,22 @@ class WorkflowGenerator:
         deduped_edges = []
         for edge in edges:
             cls._fill_edge_defaults(edge)
-            key = (
-                edge.get("source", ""),
-                edge.get("sourceHandle", "source"),
-                edge.get("target", ""),
-                edge.get("targetHandle", "target"),
-            )
+            ends = {
+                "source": edge.get("source", ""),
+                "sourceHandle": edge.get("sourceHandle", "source"),
+                "target": edge.get("target", ""),
+                "targetHandle": edge.get("targetHandle", "target"),
+            }
+            key = tuple(ends.values())
             if key in seen:
                 continue
             seen.add(key)
-            edge["id"] = f"{key[0]}-{key[1]}-{key[2]}-{key[3]}"
+            edge["id"] = editor_edge_id(ends)
             deduped_edges.append(edge)
 
-        # Build source/target → node_type lookup so we can fill edge.data.{sourceType,targetType}
-        # which Dify's edge renderer needs.
-        type_by_id = {node.get("id", ""): node.get("data", {}).get("type", "") for node in nodes}
+        nodes_by_id = {node.get("id", ""): node for node in nodes}
         for edge in deduped_edges:
-            edge.setdefault("data", {})
-            edge["data"].setdefault("sourceType", type_by_id.get(edge.get("source", ""), ""))
-            edge["data"].setdefault("targetType", type_by_id.get(edge.get("target", ""), ""))
-
-            # An edge is "inside" a container iff both endpoints share the same
-            # parent. Set isInIteration / isInLoop + iteration_id / loop_id +
-            # zIndex so the canvas renders it inside the subgraph rather than
-            # at the top level. Edges connecting a container to the outside
-            # world keep the defaults (isInIteration=False, isInLoop=False).
-            src_parent = inner_node_to_parent.get(edge.get("source", ""))
-            tgt_parent = inner_node_to_parent.get(edge.get("target", ""))
-            in_iter = bool(src_parent and src_parent == tgt_parent and parent_type.get(src_parent) == "iteration")
-            in_loop = bool(src_parent and src_parent == tgt_parent and parent_type.get(src_parent) == "loop")
-            edge["data"].setdefault("isInIteration", in_iter)
-            edge["data"].setdefault("isInLoop", in_loop)
-            if in_iter:
-                edge["data"].setdefault("iteration_id", src_parent)
-                edge.setdefault("zIndex", 1002)
-            if in_loop:
-                edge["data"].setdefault("loop_id", src_parent)
-                edge.setdefault("zIndex", 1002)
+            editor_edge_data(edge, nodes_by_id=nodes_by_id)
 
         viewport = graph.get("viewport") or _DEFAULT_VIEWPORT
         # Coerce to floats in case the LLM emitted strings.
@@ -2254,59 +2216,7 @@ class WorkflowGenerator:
 
     @classmethod
     def _layout_top_level_nodes(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
-        """
-        Lay out top-level nodes by graph topology instead of array order.
-
-        x = longest-path depth from the entry layer, y = lane within the
-        layer — so an if-else's two arms render as two parallel rows instead
-        of overlapping on one line, and a builder that emits nodes out of
-        execution order still gets a left-to-right canvas. Longest-path (not
-        BFS) layering keeps a join node (variable-aggregator, end) to the
-        right of its deepest branch.
-
-        Cycle-safe: Kahn's algorithm simply never reaches nodes on a cycle,
-        and those get parked one layer past the deepest laid-out node in
-        declaration order — the cycle itself is flagged by the structural
-        validator afterwards.
-        """
-        top_level = [n for n in nodes if not n.get("parentId") and isinstance(n.get("id"), str) and n.get("id")]
-        id_set = {n["id"] for n in top_level}
-
-        succs: dict[str, list[str]] = {node_id: [] for node_id in id_set}
-        indegree: dict[str, int] = dict.fromkeys(id_set, 0)
-        seen_pairs: set[tuple[str, str]] = set()
-        for edge in edges:
-            src, tgt = edge.get("source"), edge.get("target")
-            if not isinstance(src, str) or not isinstance(tgt, str):
-                continue
-            if src not in id_set or tgt not in id_set or src == tgt or (src, tgt) in seen_pairs:
-                continue
-            seen_pairs.add((src, tgt))
-            succs[src].append(tgt)
-            indegree[tgt] += 1
-
-        depth: dict[str, int] = {}
-        queue = [n["id"] for n in top_level if indegree[n["id"]] == 0]
-        for node_id in queue:
-            depth[node_id] = 0
-        while queue:
-            cur = queue.pop(0)
-            for nxt in succs[cur]:
-                depth[nxt] = max(depth.get(nxt, 0), depth[cur] + 1)
-                indegree[nxt] -= 1
-                if indegree[nxt] == 0:
-                    queue.append(nxt)
-
-        overflow_depth = (max(depth.values()) + 1) if depth else 0
-        lanes: dict[int, int] = {}
-        for node in top_level:
-            d = depth.get(node["id"], overflow_depth)
-            lane = lanes.get(d, 0)
-            lanes[d] = lane + 1
-            node["position"] = {
-                "x": float(_NODE_X_OFFSET + _NODE_X_STEP * d),
-                "y": float(_NODE_Y + _NODE_Y_STEP * lane),
-            }
+        layout_top_level_nodes(nodes=nodes, edges=edges)
 
     @classmethod
     def _inject_start_variable(cls, start_node: dict[str, Any], var: str) -> None:
