@@ -2,19 +2,11 @@
 
 ## Setup and Run
 
-> [!IMPORTANT]
->
-> In the v1.3.0 release, `poetry` has been replaced with
-> [`uv`](https://docs.astral.sh/uv/) as the package manager
-> for Dify API backend service.
-
-`uv` and `pnpm` are required to run the setup and development commands below.
+[`uv`](https://docs.astral.sh/uv/), Docker Compose, and the Node.js and pnpm versions pinned in the root `package.json` are required. Run the commands below from the repository root, with each long-running service in its own terminal.
 
 ### Using scripts (recommended)
 
-The scripts resolve paths relative to their location, so you can run them from anywhere.
-
-1. Run setup (copies env files and installs dependencies).
+1. Run setup for a new checkout (copies env files and installs dependencies). This overwrites `api/.env`, `web/.env.local`, and `docker/middleware.env`; preserve existing configuration before rerunning it.
 
    ```bash
    ./dev/setup
@@ -40,99 +32,23 @@ The scripts resolve paths relative to their location, so you can run them from a
    ./dev/start-web
    ```
 
+   `./dev/setup` and `./dev/start-web` install JavaScript dependencies through the repository root workspace, so you do not need a separate `cd web && pnpm install` step.
+
 1. Set up your application by visiting `http://localhost:3000`.
 
-1. Optional: start the worker service (async tasks, runs from `api`).
+1. Start the worker service (executes queued async tasks).
 
    ```bash
    ./dev/start-worker
    ```
 
-1. Optional: start Celery Beat (scheduled tasks).
+1. Start Celery Beat when scheduled tasks are needed. This is required when
+   `KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED=true` so provisioning and deletion
+   outbox commands are dispatched to the lifecycle worker.
 
    ```bash
    ./dev/start-beat
    ```
-
-### Manual commands
-
-<details>
-<summary>Show manual setup and run steps</summary>
-
-These commands assume you start from the repository root.
-
-1. Start the docker-compose stack.
-
-   The backend requires middleware, including PostgreSQL, Redis, and Weaviate, which can be started together using `docker-compose`.
-
-   ```bash
-   cp docker/middleware.env.example docker/middleware.env
-   # Use mysql or another vector database profile if you are not using postgres/weaviate.
-   docker compose -f docker/docker-compose.middleware.yaml --profile postgresql --profile weaviate -p dify up -d
-   ```
-
-1. Copy env files.
-
-   ```bash
-   cp api/.env.example api/.env
-   cp web/.env.example web/.env.local
-   ```
-
-1. Install UV if needed.
-
-   ```bash
-   pip install uv
-   # Or on macOS
-   brew install uv
-   ```
-
-1. Install API dependencies.
-
-   ```bash
-   cd api
-   uv sync --group dev
-   ```
-
-1. Install web dependencies.
-
-   ```bash
-   cd web
-   pnpm install
-   cd ..
-   ```
-
-1. Start backend (runs migrations first, in a new terminal).
-
-   ```bash
-   cd api
-   uv run flask db upgrade
-   uv run flask run --host 0.0.0.0 --port=5001 --debug
-   ```
-
-1. Start Dify [web](../web) service (in a new terminal).
-
-   ```bash
-   cd web
-   pnpm dev:inspect
-   ```
-
-1. Set up your application by visiting `http://localhost:3000`.
-
-1. Optional: start the worker service (async tasks, in a new terminal).
-
-   ```bash
-   cd api
-   uv run celery -A app.celery worker -P threads -c 2 --loglevel INFO -Q api_token,dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention
-   ```
-
-1. Optional: start Celery Beat (scheduled tasks, in a new terminal).
-
-   ```bash
-   cd api
-   uv run celery -A app.celery beat
-   ```
-
-</details>
 
 ### Environment notes
 
@@ -140,42 +56,41 @@ These commands assume you start from the repository root.
 >
 > When the frontend and backend run on different subdomains, set COOKIE_DOMAIN to the site’s top-level domain (e.g., `example.com`). The frontend and backend must be under the same top-level domain in order to share authentication cookies.
 
-- Generate a `SECRET_KEY` in the `.env` file.
-
-  bash for Linux
-
-  ```bash
-  sed -i "/^SECRET_KEY=/c\\SECRET_KEY=$(openssl rand -base64 42)" .env
-  ```
-
-  bash for Mac
-
-  ```bash
-  secret_key=$(openssl rand -base64 42)
-  sed -i '' "/^SECRET_KEY=/c\\
-  SECRET_KEY=${secret_key}" .env
-  ```
+Leave `SECRET_KEY` empty to let Dify generate a persistent key in the storage directory. To manage it explicitly, generate a value with `openssl rand -base64 42` and set `SECRET_KEY` in `api/.env`.
 
 ## Testing
 
-1. Install dependencies for both the backend and the test environment
+Test real production behavior with real objects. Do not use mocks, `SimpleNamespace`, or other shortcuts that bypass real testing.
 
-   ```bash
-   cd api
-   uv sync --group dev
-   ```
+Backend unit-test directories must exactly mirror the production code's relative directory structure, and filenames must match the production filenames with a `test_` prefix. For example, `api/libs/schedule_utils.py` maps to `api/tests/unit_tests/libs/test_schedule_utils.py`.
 
-1. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`, more can check [Claude.md](../CLAUDE.md)
+Apply the same rule to provider-local suites: `<provider>/src/<package>/module.py` maps to `<provider>/tests/unit_tests/src/<package>/test_module.py`.
 
-   ```bash
-   cd api
-   uv run pytest                           # Run all tests
-   uv run pytest tests/unit_tests/         # Unit tests only
-   uv run pytest tests/integration_tests/  # Integration tests
+Run from the repository root:
 
-   # Code quality
-   ./dev/reformat               # Run all formatters and linters
-   uv run ruff check --fix ./   # Fix linting issues
-   uv run ruff format ./        # Format code
-   uv run basedpyright .        # Type checking
-   ```
+```bash
+uv sync --project api --group dev
+make test
+make test TARGET_TESTS=./api/tests/unit_tests/<path>
+make lint
+make type-check
+```
+
+`make test` includes provider unit tests and runs controller tests separately. Integration suites are CI-only and are not expected to run locally. Test environment defaults live in `api/pyproject.toml` under `tool.pytest_env`; see the backend [agent guide](AGENTS.md) for package conventions.
+
+## API contracts
+
+The [API schema guide](controllers/API_SCHEMA_GUIDE.md) owns schema changes and verification. Generate the OpenAPI specifications and TypeScript/Zod contracts through the workspace script:
+
+```bash
+pnpm -C packages/contracts gen-api-contract
+```
+
+Refresh the checked-in Markdown reference with:
+
+```bash
+uv run --project api python api/dev/generate_swagger_markdown_docs.py \
+  --swagger-dir packages/contracts/openapi --markdown-dir api/openapi/markdown --keep-swagger-json
+```
+
+Update the backend schema owner and regenerate contracts instead of converting types manually or editing generated files.

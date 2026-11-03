@@ -1,0 +1,373 @@
+import type { FeedbackType } from '@/app/components/base/chat/chat/type'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
+import { AppSourceType } from '@/service/share'
+import { useResultRunState } from '../use-result-run-state'
+
+const { stopChatMessageRespondingMock, stopWorkflowMessageMock, updateFeedbackMock } = vi.hoisted(
+  () => ({
+    stopChatMessageRespondingMock: vi.fn(),
+    stopWorkflowMessageMock: vi.fn(),
+    updateFeedbackMock: vi.fn(),
+  }),
+)
+
+vi.mock('@/service/share', async () => {
+  const actual = await vi.importActual<typeof import('@/service/share')>('@/service/share')
+  return {
+    ...actual,
+    stopChatMessageResponding: (...args: Parameters<typeof actual.stopChatMessageResponding>) =>
+      stopChatMessageRespondingMock(...args),
+    stopWorkflowMessage: (...args: Parameters<typeof actual.stopWorkflowMessage>) =>
+      stopWorkflowMessageMock(...args),
+    updateFeedback: (...args: Parameters<typeof actual.updateFeedback>) =>
+      updateFeedbackMock(...args),
+  }
+})
+
+describe('useResultRunState', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
+    captureAppAccessScope()
+    stopChatMessageRespondingMock.mockResolvedValue(undefined)
+    stopWorkflowMessageMock.mockResolvedValue(undefined)
+    updateFeedbackMock.mockResolvedValue(undefined)
+  })
+
+  it('should expose run control and stop completion requests', async () => {
+    const notify = vi.fn()
+    const onRunControlChange = vi.fn()
+    const { result } = renderHook(() =>
+      useResultRunState({
+        appId: 'app-1',
+        appSourceType: AppSourceType.webApp,
+        controlStopResponding: 0,
+        isWorkflow: false,
+        notify,
+        onRunControlChange,
+      }),
+    )
+
+    const controller = new AbortController()
+
+    act(() => {
+      result.current.abortControllerRef.current = controller
+      result.current.setCurrentTaskId('task-1')
+      result.current.setRespondingTrue()
+    })
+
+    await waitFor(() => {
+      expect(onRunControlChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          isStopping: false,
+        }),
+      )
+    })
+
+    await act(async () => {
+      await result.current.handleStop()
+    })
+
+    expect(stopChatMessageRespondingMock).toHaveBeenCalledWith(
+      'app-1',
+      'task-1',
+      AppSourceType.webApp,
+      'app-1',
+      { silent: true },
+    )
+    expect(controller.signal.aborted).toBe(true)
+  })
+
+  it.each([false, true])(
+    'should suppress IP denial feedback when stopping a workflow is %s',
+    async (isWorkflow) => {
+      window.history.replaceState(
+        {},
+        '',
+        isWorkflow ? '/workflow/stop-test' : '/completion/stop-test',
+      )
+      const scope = captureAppAccessScope()
+      const error = new Response(null, { status: 403 })
+      const stop = isWorkflow ? stopWorkflowMessageMock : stopChatMessageRespondingMock
+      stop.mockImplementationOnce(async () => {
+        handleAppAccessError(403, { code: 'ip_access_denied' }, scope, error)
+        throw error
+      })
+      const notify = vi.fn()
+      const { result } = renderHook(() =>
+        useResultRunState({
+          appSourceType: AppSourceType.webApp,
+          isWorkflow,
+          notify,
+        }),
+      )
+      act(() => result.current.setCurrentTaskId('task-denied'))
+
+      await act(async () => {
+        await expect(result.current.handleStop()).resolves.toBeUndefined()
+      })
+
+      expect(stop).toHaveBeenCalledOnce()
+      expect(notify).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    ['new run', 'resolve'],
+    ['new run', 'reject'],
+    ['navigation', 'resolve'],
+    ['navigation', 'reject'],
+    ['unmount', 'resolve'],
+    ['unmount', 'reject'],
+  ] as const)('should ignore a stop after %s when it ends with %s', async (transition, outcome) => {
+    window.history.replaceState({}, '', '/completion/stop-race')
+    let resolveStop!: () => void
+    let rejectStop!: (error: unknown) => void
+    const stopRequest = new Promise<void>((resolve, reject) => {
+      resolveStop = resolve
+      rejectStop = reject
+    })
+    stopChatMessageRespondingMock.mockReturnValueOnce(stopRequest)
+    const notify = vi.fn()
+    const onRunControlChange = vi.fn()
+    const { result, unmount } = renderHook(() =>
+      useResultRunState({
+        appSourceType: AppSourceType.webApp,
+        isWorkflow: false,
+        notify,
+        onRunControlChange,
+      }),
+    )
+    const controller = new AbortController()
+    const newController = new AbortController()
+    const abort = vi.spyOn(controller, 'abort')
+    const abortNewRun = vi.spyOn(newController, 'abort')
+    act(() => {
+      result.current.abortControllerRef.current = controller
+      result.current.setCurrentTaskId('task-old')
+      result.current.setRespondingTrue()
+    })
+    let stopping: Promise<void>
+    act(() => {
+      stopping = result.current.handleStop()
+    })
+    expect(result.current.isStopping).toBe(true)
+
+    act(() => {
+      if (transition === 'navigation')
+        window.history.replaceState({}, '', '/completion/another-app')
+      if (transition === 'unmount') unmount()
+      if (transition === 'new run') {
+        result.current.prepareForNewRun()
+        result.current.abortControllerRef.current = newController
+        result.current.setCurrentTaskId('task-new')
+        result.current.setIsStopping(true)
+      }
+    })
+    const controlsBeforeCompletion = onRunControlChange.mock.calls.length
+    const abortsBeforeCompletion = abort.mock.calls.length
+
+    await act(async () => {
+      if (outcome === 'resolve') resolveStop()
+      else rejectStop(new Error('Late stop failure'))
+      await stopping
+    })
+
+    expect(notify).not.toHaveBeenCalled()
+    expect(abortNewRun).not.toHaveBeenCalled()
+    expect(abort).toHaveBeenCalledTimes(abortsBeforeCompletion)
+    expect(onRunControlChange).toHaveBeenCalledTimes(controlsBeforeCompletion)
+    if (transition === 'new run') {
+      expect(result.current.currentTaskId).toBe('task-new')
+      expect(result.current.isStopping).toBe(true)
+    }
+  })
+
+  it('should not send a stop request after another public request denies access', async () => {
+    window.history.replaceState({}, '', '/workflow/already-denied')
+    const scope = captureAppAccessScope()
+    const notify = vi.fn()
+    const { result } = renderHook(() =>
+      useResultRunState({
+        appSourceType: AppSourceType.webApp,
+        isWorkflow: true,
+        notify,
+      }),
+    )
+    act(() => {
+      result.current.setCurrentTaskId('task-denied')
+      handleAppAccessError(403, { code: 'ip_access_denied' }, scope)
+    })
+    await act(async () => {
+      await result.current.handleStop()
+    })
+
+    expect(stopWorkflowMessageMock).not.toHaveBeenCalled()
+    expect(notify).not.toHaveBeenCalled()
+    expect(result.current.isStopping).toBe(false)
+  })
+
+  it('should update feedback and react to external stop control', async () => {
+    const notify = vi.fn()
+    const onRunControlChange = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ controlStopResponding }) =>
+        useResultRunState({
+          appId: 'app-2',
+          appSourceType: AppSourceType.installedApp,
+          controlStopResponding,
+          isWorkflow: true,
+          notify,
+          onRunControlChange,
+        }),
+      {
+        initialProps: { controlStopResponding: 0 },
+      },
+    )
+
+    const controller = new AbortController()
+    act(() => {
+      result.current.abortControllerRef.current = controller
+      result.current.setMessageId('message-1')
+    })
+
+    await act(async () => {
+      await result.current.handleFeedback({
+        rating: 'like',
+      } satisfies FeedbackType)
+    })
+
+    expect(updateFeedbackMock).toHaveBeenCalledWith(
+      {
+        messageId: 'message-1',
+        body: {
+          rating: 'like',
+          content: undefined,
+        },
+      },
+      AppSourceType.installedApp,
+      'app-2',
+    )
+    expect(result.current.feedback).toEqual({
+      rating: 'like',
+    })
+
+    act(() => {
+      result.current.setCurrentTaskId('task-2')
+      result.current.setRespondingTrue()
+    })
+
+    rerender({ controlStopResponding: 1 })
+
+    await waitFor(() => {
+      expect(controller.signal.aborted).toBe(true)
+      expect(result.current.currentTaskId).toBeNull()
+      expect(onRunControlChange).toHaveBeenLastCalledWith(null)
+    })
+  })
+
+  it('should stop workflow requests through the workflow stop API', async () => {
+    const notify = vi.fn()
+    const { result } = renderHook(() =>
+      useResultRunState({
+        appId: 'app-3',
+        appSourceType: AppSourceType.installedApp,
+        controlStopResponding: 0,
+        isWorkflow: true,
+        notify,
+      }),
+    )
+
+    act(() => {
+      result.current.setCurrentTaskId('task-3')
+    })
+
+    await act(async () => {
+      await result.current.handleStop()
+    })
+
+    expect(stopWorkflowMessageMock).toHaveBeenCalledWith(
+      'app-3',
+      'task-3',
+      AppSourceType.installedApp,
+      'app-3',
+      { silent: true },
+    )
+  })
+
+  it('should ignore invalid stops and report non-Error failures', async () => {
+    const notify = vi.fn()
+    stopChatMessageRespondingMock.mockRejectedValueOnce('stop failed')
+
+    const { result } = renderHook(() =>
+      useResultRunState({
+        appSourceType: AppSourceType.webApp,
+        controlStopResponding: 0,
+        isWorkflow: false,
+        notify,
+      }),
+    )
+
+    await act(async () => {
+      await result.current.handleStop()
+    })
+
+    expect(stopChatMessageRespondingMock).not.toHaveBeenCalled()
+
+    act(() => {
+      result.current.setCurrentTaskId('task-4')
+    })
+
+    await act(async () => {
+      await result.current.handleStop()
+    })
+
+    expect(stopChatMessageRespondingMock).toHaveBeenCalledWith(
+      undefined,
+      'task-4',
+      AppSourceType.webApp,
+      '',
+      { silent: true },
+    )
+    expect(notify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'stop failed',
+    })
+    expect(result.current.isStopping).toBe(false)
+  })
+
+  it('should report Error instances from workflow stop failures without an app id fallback', async () => {
+    const notify = vi.fn()
+    stopWorkflowMessageMock.mockRejectedValueOnce(new Error('workflow stop failed'))
+
+    const { result } = renderHook(() =>
+      useResultRunState({
+        appSourceType: AppSourceType.installedApp,
+        controlStopResponding: 0,
+        isWorkflow: true,
+        notify,
+      }),
+    )
+
+    act(() => {
+      result.current.setCurrentTaskId('task-5')
+    })
+
+    await act(async () => {
+      await result.current.handleStop()
+    })
+
+    expect(stopWorkflowMessageMock).toHaveBeenCalledWith(
+      undefined,
+      'task-5',
+      AppSourceType.installedApp,
+      '',
+      { silent: true },
+    )
+    expect(notify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'workflow stop failed',
+    })
+  })
+})

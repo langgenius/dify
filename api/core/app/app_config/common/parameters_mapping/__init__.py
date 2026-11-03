@@ -1,13 +1,40 @@
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, TypedDict
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 
 
+class FeatureToggleDict(TypedDict):
+    enabled: bool
+
+
+class SystemParametersDict(TypedDict):
+    image_file_size_limit: int
+    video_file_size_limit: int
+    audio_file_size_limit: int
+    file_size_limit: int
+    workflow_file_upload_limit: int
+
+
+class AppParametersDict(TypedDict):
+    opening_statement: str | None
+    suggested_questions: list[str]
+    suggested_questions_after_answer: FeatureToggleDict
+    speech_to_text: FeatureToggleDict
+    text_to_speech: FeatureToggleDict
+    retriever_resource: FeatureToggleDict
+    annotation_reply: FeatureToggleDict
+    more_like_this: FeatureToggleDict
+    user_input_form: list[dict[str, Any]]
+    sensitive_word_avoidance: dict[str, Any]
+    file_upload: dict[str, Any]
+    system_parameters: SystemParametersDict
+
+
 def get_parameters_from_feature_dict(
     *, features_dict: Mapping[str, Any], user_input_form: list[dict[str, Any]]
-) -> Mapping[str, Any]:
+) -> AppParametersDict:
     """
     Mapping from feature dict to webapp parameters
     """

@@ -1,22 +1,23 @@
-from typing import Any, cast
+from typing import Any, cast, override
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity, ModelConfig
-from core.rag.datasource.retrieval_service import RetrievalService
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.rag.entities.context_entities import DocumentContext
+from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
+from core.rag.entities import DocumentContext, RetrievalSourceMetadata
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document as RetrievalDocument
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
-from extensions.ext_database import db
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
-from services.external_knowledge_service import ExternalDatasetService
+from repositories.knowledge.segment_read_adapter import sign_segment_content
+from services.knowledge.external.service import ExternalDatasetService
 
-default_retrieval_model: dict[str, Any] = {
+default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
@@ -39,7 +40,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
     dataset_id: str
     user_id: str | None = None
     retrieve_config: DatasetRetrieveConfigEntity
-    inputs: dict
+    inputs: dict[str, Any]
 
     @classmethod
     def from_dataset(cls, dataset: Dataset, **kwargs):
@@ -56,16 +57,18 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             **kwargs,
         )
 
-    def _run(self, query: str) -> str:
+    @override
+    def _run(self, session: Session, query: str) -> str:
         dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
-        dataset = db.session.scalar(dataset_stmt)
+        dataset = session.scalar(dataset_stmt)
 
         if not dataset:
             return ""
         for hit_callback in self.hit_callbacks:
-            hit_callback.on_query(query, dataset.id)
+            hit_callback.on_query(query, dataset.id, session)
         dataset_retrieval = DatasetRetrieval()
         metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
+            session,
             [dataset.id],
             query,
             self.tenant_id,
@@ -75,13 +78,11 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             self.retrieve_config.metadata_filtering_conditions,
             self.inputs,
         )
-        if metadata_filter_document_ids:
-            document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
-        else:
-            document_ids_filter = None
+        document_ids_filter = metadata_filter_document_ids.get(dataset.id, []) if metadata_filter_document_ids else None
         if dataset.provider == "external":
             results: list[RetrievalDocument] = []
             external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
+                session=session,
                 tenant_id=dataset.tenant_id,
                 dataset_id=dataset.id,
                 query=query,
@@ -120,14 +121,14 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             for hit_callback in self.hit_callbacks:
                 hit_callback.return_retriever_resource_info(context_list)
 
-            return str("\n".join([item.page_content for item in results]))
+            return "\n".join([item.page_content for item in results])
         else:
             if metadata_condition and not document_ids_filter:
                 return ""
             # get retrieval model , if the model is not setting , using default
-            retrieval_model: dict[str, Any] = dataset.retrieval_model or default_retrieval_model
+            retrieval_model = dataset.retrieval_model or default_retrieval_model
             retrieval_resource_list: list[RetrievalSourceMetadata] = []
-            if dataset.indexing_technique == "economy":
+            if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 # use keyword table query
                 documents = RetrievalService.retrieve(
                     retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
@@ -136,7 +137,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     top_k=self.top_k,
                     document_ids_filter=document_ids_filter,
                 )
-                return str("\n".join([document.page_content for document in documents]))
+                return "\n".join([document.page_content for document in documents])
             else:
                 if self.top_k > 0:
                     # retrieval source
@@ -158,28 +159,28 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 else:
                     documents = []
                 for hit_callback in self.hit_callbacks:
-                    hit_callback.on_tool_end(documents)
+                    hit_callback.on_tool_end(documents, session)
                 document_score_list = {}
-                if dataset.indexing_technique != "economy":
+                if dataset.indexing_technique != IndexTechniqueType.ECONOMY:
                     for item in documents:
                         if item.metadata is not None and item.metadata.get("score"):
                             document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
                 document_context_list: list[DocumentContext] = []
-                records = RetrievalService.format_retrieval_documents(documents)
+                with Session(bind=session.get_bind()) as format_session:
+                    records = RetrievalService.format_retrieval_documents(format_session, documents)
                 if records:
                     for record in records:
                         segment = record.segment
                         # Build content: if summary exists, add it before the segment content
                         if segment.answer:
-                            segment_content = f"question:{segment.get_sign_content()} answer:{segment.answer}"
+                            segment_content = (
+                                f"question:{sign_segment_content(segment, session=session)} answer:{segment.answer}"
+                            )
                         else:
-                            segment_content = segment.get_sign_content()
+                            segment_content = sign_segment_content(segment, session=session)
 
                         # If summary exists, prepend it to the content
-                        if record.summary:
-                            final_content = f"{record.summary}\n{segment_content}"
-                        else:
-                            final_content = segment_content
+                        final_content = f"{record.summary}\n{segment_content}" if record.summary else segment_content
 
                         document_context_list.append(
                             DocumentContext(
@@ -191,13 +192,13 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     if self.return_resource:
                         for record in records:
                             segment = record.segment
-                            dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
+                            dataset = session.get(Dataset, segment.dataset_id)
                             dataset_document_stmt = select(DatasetDocument).where(
                                 DatasetDocument.id == segment.document_id,
-                                DatasetDocument.enabled == True,
-                                DatasetDocument.archived == False,
+                                DatasetDocument.enabled.is_(True),
+                                DatasetDocument.archived.is_(False),
                             )
-                            document = db.session.scalar(dataset_document_stmt)
+                            document = session.scalar(dataset_document_stmt)
                             if dataset and document:
                                 source = RetrievalSourceMetadata(
                                     dataset_id=dataset.id,
@@ -237,5 +238,5 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     hit_callback.return_retriever_resource_info(retrieval_resource_list)
             if document_context_list:
                 document_context_list = sorted(document_context_list, key=lambda x: x.score or 0.0, reverse=True)
-                return str("\n".join([document_context.content for document_context in document_context_list]))
+                return "\n".join([document_context.content for document_context in document_context_list])
             return ""

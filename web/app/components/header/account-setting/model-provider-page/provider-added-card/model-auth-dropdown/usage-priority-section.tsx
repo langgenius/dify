@@ -1,0 +1,77 @@
+import type { UsagePriority } from '../use-credential-panel-state'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PreferredProviderTypeEnum } from '../../declarations'
+
+type UsagePrioritySectionProps = {
+  value: UsagePriority
+  disabled?: boolean
+  onSelect: (key: PreferredProviderTypeEnum) => void
+}
+
+const options = [
+  { key: PreferredProviderTypeEnum.system, labelKey: 'modelProvider.card.aiCreditsOption' },
+  { key: PreferredProviderTypeEnum.custom, labelKey: 'modelProvider.card.apiKeyOption' },
+] as const
+
+export default function UsagePrioritySection({
+  value,
+  disabled,
+  onSelect,
+}: UsagePrioritySectionProps) {
+  const priorityLabelId = useId()
+
+  const { t } = useTranslation(['modelProvider'])
+  const selectedKey =
+    value === 'credits' ? PreferredProviderTypeEnum.system : PreferredProviderTypeEnum.custom
+  const usagePriorityTip = t(($) => $['modelProvider.card.usagePriorityTip'], {
+    ns: 'modelProvider',
+  })
+
+  return (
+    <div className="p-1">
+      <div className="flex items-center gap-1 rounded-lg p-1">
+        <div className="shrink-0 px-0.5 py-1">
+          <span
+            aria-hidden="true"
+            className="i-ri-arrow-up-double-line block size-4 text-text-tertiary"
+          />
+        </div>
+        <div className="flex min-w-0 flex-1 items-center gap-0.5 py-0.5">
+          <span id={priorityLabelId} className="truncate system-sm-medium text-text-secondary">
+            {t(($) => $['modelProvider.card.usagePriority'], { ns: 'modelProvider' })}
+          </span>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={priorityLabelId} />
+            <InfotipContent aria-labelledby={priorityLabelId}>{usagePriorityTip}</InfotipContent>
+          </Infotip>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {options.map((option) => {
+            const selected = selectedKey === option.key
+
+            return (
+              <button
+                key={option.key}
+                type="button"
+                aria-pressed={selected}
+                className={cn(
+                  'shrink-0 rounded-md px-2 py-1 text-center whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-components-button-primary-border focus-visible:outline-hidden disabled:opacity-50',
+                  selected
+                    ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-panel-bg system-xs-medium text-text-primary shadow-xs'
+                    : 'border border-components-option-card-option-border bg-components-option-card-option-bg system-xs-regular text-text-secondary hover:bg-components-option-card-option-bg-hover',
+                )}
+                disabled={disabled}
+                onClick={() => onSelect(option.key)}
+              >
+                {t(($) => $[option.labelKey], { ns: 'modelProvider' })}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}

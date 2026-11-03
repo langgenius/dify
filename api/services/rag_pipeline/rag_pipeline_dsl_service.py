@@ -5,8 +5,7 @@ import logging
 import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
-from enum import StrEnum
-from typing import cast
+from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -14,27 +13,40 @@ import yaml  # type: ignore
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from flask_login import current_user
-from packaging import version
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.helper.name_generator import generate_incremental_name
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import PluginDependency
-from core.workflow.enums import NodeType
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.workflow.llm_environment_variable import (
+    LLMEnvironmentVariable,
+    parse_llm_model_selector,
+    resolve_llm_model_config,
+    should_resolve_llm_model_selector,
+)
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
-from core.workflow.nodes.llm.entities import LLMNodeData
-from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
-from core.workflow.nodes.tool.entities import ToolNodeData
 from extensions.ext_redis import redis_client
 from factories import variable_factory
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes.llm.entities import LLMNodeData, ModelConfig
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.nodes.tool.entities import ToolNodeData
+from libs.url_utils import github_blob_to_raw_url
 from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
+from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
+from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
+from services.dsl_version import check_version_compatibility
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus, PendingImportOwner
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     KnowledgeConfiguration,
@@ -47,20 +59,7 @@ logger = logging.getLogger(__name__)
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
-DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = "0.1.0"
-
-
-class ImportMode(StrEnum):
-    YAML_CONTENT = "yaml-content"
-    YAML_URL = "yaml-url"
-
-
-class ImportStatus(StrEnum):
-    COMPLETED = "completed"
-    COMPLETED_WITH_WARNINGS = "completed-with-warnings"
-    PENDING = "pending"
-    FAILED = "failed"
 
 
 class RagPipelineImportInfo(BaseModel):
@@ -71,37 +70,11 @@ class RagPipelineImportInfo(BaseModel):
     imported_dsl_version: str = ""
     error: str = ""
     dataset_id: str | None = None
+    # Internal creation outcome for post-commit authorization; never part of the DSL response.
+    dataset_created: bool = Field(default=False, exclude=True)
 
 
-class CheckDependenciesResult(BaseModel):
-    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
-
-
-def _check_version_compatibility(imported_version: str) -> ImportStatus:
-    """Determine import status based on version comparison"""
-    try:
-        current_ver = version.parse(CURRENT_DSL_VERSION)
-        imported_ver = version.parse(imported_version)
-    except version.InvalidVersion:
-        return ImportStatus.FAILED
-
-    # If imported version is newer than current, always return PENDING
-    if imported_ver > current_ver:
-        return ImportStatus.PENDING
-
-    # If imported version is older than current's major, return PENDING
-    if imported_ver.major < current_ver.major:
-        return ImportStatus.PENDING
-
-    # If imported version is older than current's minor, return COMPLETED_WITH_WARNINGS
-    if imported_ver.minor < current_ver.minor:
-        return ImportStatus.COMPLETED_WITH_WARNINGS
-
-    # If imported version equals or is older than current's micro, return COMPLETED
-    return ImportStatus.COMPLETED
-
-
-class RagPipelinePendingData(BaseModel):
+class RagPipelinePendingData(PendingImportOwner):
     import_mode: str
     yaml_content: str
     pipeline_id: str | None
@@ -113,6 +86,13 @@ class CheckDependenciesPendingData(BaseModel):
 
 
 class RagPipelineDslService:
+    """Import, export, and inspect RAG pipeline DSL using the caller-owned session.
+
+    Callers pass a plain ``Session`` (not wrapped in ``.begin()``) and are responsible for calling
+    ``session.commit()`` on success or ``session.rollback()`` on failure.  Methods here only flush
+    when generated IDs are needed mid-operation; they never commit or rollback.
+    """
+
     def __init__(self, session: Session):
         self._session = session
 
@@ -134,8 +114,8 @@ class RagPipelineDslService:
         # Validate import mode
         try:
             mode = ImportMode(import_mode)
-        except ValueError:
-            raise ValueError(f"Invalid import_mode: {import_mode}")
+        except ValueError as caught_error:
+            raise ValueError(f"Invalid import_mode: {import_mode}") from caught_error
 
         # Get YAML content
         content: str = ""
@@ -148,24 +128,20 @@ class RagPipelineDslService:
                 )
             try:
                 parsed_url = urlparse(yaml_url)
-                if (
-                    parsed_url.scheme == "https"
-                    and parsed_url.netloc == "github.com"
-                    and parsed_url.path.endswith((".yml", ".yaml"))
-                ):
-                    yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
-                    yaml_url = yaml_url.replace("/blob/", "/")
-                response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
+                if parsed_url.path.endswith((".yml", ".yaml")):
+                    yaml_url = github_blob_to_raw_url(yaml_url)
+                response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
-                content = response.content.decode()
+                raw_content = response.content
 
-                if len(content) > DSL_MAX_SIZE:
+                if dsl_content_size(raw_content) > DSL_MAX_SIZE:
                     return RagPipelineImportInfo(
                         id=import_id,
                         status=ImportStatus.FAILED,
                         error="File size exceeds the limit of 10MB",
                     )
 
+                content = raw_content.decode("utf-8")
                 if not content:
                     return RagPipelineImportInfo(
                         id=import_id,
@@ -186,6 +162,12 @@ class RagPipelineDslService:
                     error="yaml_content is required when import_mode is yaml-content",
                 )
             content = yaml_content
+            if dsl_content_size(content) > DSL_MAX_SIZE:
+                return RagPipelineImportInfo(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="File size exceeds the limit of 10MB",
+                )
 
         # Process YAML content
         try:
@@ -208,7 +190,7 @@ class RagPipelineDslService:
             # check if imported_version is a float-like string
             if not isinstance(imported_version, str):
                 raise ValueError(f"Invalid version type, expected str, got {type(imported_version)}")
-            status = _check_version_compatibility(imported_version)
+            status = check_version_compatibility(imported_version, CURRENT_DSL_VERSION)
 
             # Extract app data
             pipeline_data = data.get("rag_pipeline")
@@ -234,11 +216,16 @@ class RagPipelineDslService:
                         status=ImportStatus.FAILED,
                         error="Pipeline not found",
                     )
-                dataset = pipeline.retrieve_dataset(session=self._session)
+                dataset = get_pipeline_dataset(pipeline, session=self._session)
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
                 pending_data = RagPipelinePendingData(
+                    tenant_id=tenant_id,
+                    account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
                     pipeline_id=pipeline_id,
@@ -286,8 +273,9 @@ class RagPipelineDslService:
             graph = workflow.get("graph", {})
             nodes = graph.get("nodes", [])
             dataset_id = None
+            dataset_created = False
             for node in nodes:
-                if node.get("data", {}).get("type") == "knowledge-index":
+                if node.get("data", {}).get("type") == KNOWLEDGE_INDEX_NODE_TYPE:
                     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
                     if (
                         dataset
@@ -296,11 +284,14 @@ class RagPipelineDslService:
                     ):
                         raise ValueError("Chunk structure is not compatible with the published pipeline")
                     if not dataset:
-                        datasets = self._session.query(Dataset).filter_by(tenant_id=account.current_tenant_id).all()
+                        dataset_created = True
+                        datasets = self._session.scalars(
+                            select(Dataset).where(Dataset.tenant_id == account.current_tenant_id)
+                        ).all()
                         names = [dataset.name for dataset in datasets]
                         generate_name = generate_incremental_name(names, name)
                         dataset = Dataset(
-                            tenant_id=account.current_tenant_id,
+                            tenant_id=cast(str, account.current_tenant_id),
                             name=generate_name,
                             description=description,
                             icon_info={
@@ -309,23 +300,24 @@ class RagPipelineDslService:
                                 "icon_background": icon_background,
                                 "icon_url": icon_url,
                             },
-                            indexing_technique=knowledge_configuration.indexing_technique,
+                            indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
+                            maintainer=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
-                            runtime_mode="rag_pipeline",
+                            runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
                         )
-                    if knowledge_configuration.indexing_technique == "high_quality":
-                        dataset_collection_binding = (
-                            self._session.query(DatasetCollectionBinding)
+                    if knowledge_configuration.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                        dataset_collection_binding = self._session.scalar(
+                            select(DatasetCollectionBinding)
                             .where(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
                                 DatasetCollectionBinding.model_name == knowledge_configuration.embedding_model,
-                                DatasetCollectionBinding.type == "dataset",
+                                DatasetCollectionBinding.type == CollectionBindingType.DATASET,
                             )
                             .order_by(DatasetCollectionBinding.created_at)
-                            .first()
+                            .limit(1)
                         )
 
                         if not dataset_collection_binding:
@@ -333,22 +325,22 @@ class RagPipelineDslService:
                                 provider_name=knowledge_configuration.embedding_model_provider,
                                 model_name=knowledge_configuration.embedding_model,
                                 collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
-                                type="dataset",
+                                type=CollectionBindingType.DATASET,
                             )
                             self._session.add(dataset_collection_binding)
-                            self._session.commit()
+                            self._session.flush()
                         dataset_collection_binding_id = dataset_collection_binding.id
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = knowledge_configuration.embedding_model
                         dataset.embedding_model_provider = knowledge_configuration.embedding_model_provider
-                    elif knowledge_configuration.indexing_technique == "economy":
+                    elif knowledge_configuration.indexing_technique == IndexTechniqueType.ECONOMY:
                         dataset.keyword_number = knowledge_configuration.keyword_number
                     # Update summary_index_setting if provided
                     if knowledge_configuration.summary_index_setting is not None:
                         dataset.summary_index_setting = knowledge_configuration.summary_index_setting
                     dataset.pipeline_id = pipeline.id
                     self._session.add(dataset)
-                    self._session.commit()
+                    self._session.flush()
                     dataset_id = dataset.id
             if not dataset_id:
                 raise ValueError("DSL is not valid, please check the Knowledge Index node.")
@@ -358,6 +350,7 @@ class RagPipelineDslService:
                 status=status,
                 pipeline_id=pipeline.id,
                 dataset_id=dataset_id,
+                dataset_created=dataset_created,
                 imported_dsl_version=imported_version,
             )
 
@@ -398,6 +391,15 @@ class RagPipelineDslService:
                     error="Invalid import information",
                 )
             pending_data = RagPipelinePendingData.model_validate_json(pending_data)
+            if not pending_data.is_accessible_by(
+                tenant_id=account.current_tenant_id,
+                account_id=account.id,
+            ):
+                return RagPipelineImportInfo(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="Import information expired or does not exist",
+                )
             data = yaml.safe_load(pending_data.yaml_content)
 
             pipeline = None
@@ -414,7 +416,7 @@ class RagPipelineDslService:
                 data=data,
                 account=account,
             )
-            dataset = pipeline.retrieve_dataset(session=self._session)
+            dataset = get_pipeline_dataset(pipeline, session=self._session)
 
             # create dataset
             name = pipeline.name
@@ -427,12 +429,14 @@ class RagPipelineDslService:
             graph = workflow.get("graph", {})
             nodes = graph.get("nodes", [])
             dataset_id = None
+            dataset_created = False
             for node in nodes:
-                if node.get("data", {}).get("type") == "knowledge-index":
+                if node.get("data", {}).get("type") == KNOWLEDGE_INDEX_NODE_TYPE:
                     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
                     if not dataset:
+                        dataset_created = True
                         dataset = Dataset(
-                            tenant_id=account.current_tenant_id,
+                            tenant_id=cast(str, account.current_tenant_id),
                             name=name,
                             description=description,
                             icon_info={
@@ -441,28 +445,29 @@ class RagPipelineDslService:
                                 "icon_background": icon_background,
                                 "icon_url": icon_url,
                             },
-                            indexing_technique=knowledge_configuration.indexing_technique,
+                            indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
+                            maintainer=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
-                            runtime_mode="rag_pipeline",
+                            runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
                         )
                     else:
-                        dataset.indexing_technique = knowledge_configuration.indexing_technique
+                        dataset.indexing_technique = IndexTechniqueType(knowledge_configuration.indexing_technique)
                         dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
-                        dataset.runtime_mode = "rag_pipeline"
+                        dataset.runtime_mode = DatasetRuntimeMode.RAG_PIPELINE
                         dataset.chunk_structure = knowledge_configuration.chunk_structure
-                    if knowledge_configuration.indexing_technique == "high_quality":
-                        dataset_collection_binding = (
-                            self._session.query(DatasetCollectionBinding)
+                    if knowledge_configuration.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                        dataset_collection_binding = self._session.scalar(
+                            select(DatasetCollectionBinding)
                             .where(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
                                 DatasetCollectionBinding.model_name == knowledge_configuration.embedding_model,
-                                DatasetCollectionBinding.type == "dataset",
+                                DatasetCollectionBinding.type == CollectionBindingType.DATASET,
                             )
                             .order_by(DatasetCollectionBinding.created_at)
-                            .first()
+                            .limit(1)
                         )
 
                         if not dataset_collection_binding:
@@ -470,22 +475,22 @@ class RagPipelineDslService:
                                 provider_name=knowledge_configuration.embedding_model_provider,
                                 model_name=knowledge_configuration.embedding_model,
                                 collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
-                                type="dataset",
+                                type=CollectionBindingType.DATASET,
                             )
                             self._session.add(dataset_collection_binding)
-                            self._session.commit()
+                            self._session.flush()
                         dataset_collection_binding_id = dataset_collection_binding.id
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = knowledge_configuration.embedding_model
                         dataset.embedding_model_provider = knowledge_configuration.embedding_model_provider
-                    elif knowledge_configuration.indexing_technique == "economy":
+                    elif knowledge_configuration.indexing_technique == IndexTechniqueType.ECONOMY:
                         dataset.keyword_number = knowledge_configuration.keyword_number
                     # Update summary_index_setting if provided
                     if knowledge_configuration.summary_index_setting is not None:
                         dataset.summary_index_setting = knowledge_configuration.summary_index_setting
                     dataset.pipeline_id = pipeline.id
                     self._session.add(dataset)
-                    self._session.commit()
+                    self._session.flush()
                     dataset_id = dataset.id
             if not dataset_id:
                 raise ValueError("DSL is not valid, please check the Knowledge Index node.")
@@ -498,6 +503,7 @@ class RagPipelineDslService:
                 status=ImportStatus.COMPLETED,
                 pipeline_id=pipeline.id,
                 dataset_id=dataset_id,
+                dataset_created=dataset_created,
                 current_dsl_version=CURRENT_DSL_VERSION,
                 imported_dsl_version=data.get("version", "0.1.0"),
             )
@@ -537,7 +543,7 @@ class RagPipelineDslService:
         self,
         *,
         pipeline: Pipeline | None,
-        data: dict,
+        data: dict[str, Any],
         account: Account,
         dependencies: list[PluginDependency] | None = None,
     ) -> Pipeline:
@@ -561,8 +567,13 @@ class RagPipelineDslService:
         rag_pipeline_variables_list = workflow_data.get("rag_pipeline_variables", [])
 
         graph = workflow_data.get("graph", {})
+        if not isinstance(graph, dict):
+            raise ValueError("Workflow graph must be a mapping")
+        # The source canvas position should not determine the imported pipeline's initial view.
+        graph = graph.copy()
+        graph.pop("viewport", None)
         for node in graph.get("nodes", []):
-            if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL:
+            if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node["data"].get("dataset_ids", [])
                 node["data"]["dataset_ids"] = [
                     decrypted_id
@@ -596,7 +607,7 @@ class RagPipelineDslService:
             pipeline.id = str(uuid4())
 
             self._session.add(pipeline)
-            self._session.commit()
+            self._session.flush()
         # save dependencies
         if dependencies:
             redis_client.setex(
@@ -604,14 +615,14 @@ class RagPipelineDslService:
                 IMPORT_INFO_REDIS_EXPIRY,
                 CheckDependenciesPendingData(pipeline_id=pipeline.id, dependencies=dependencies).model_dump_json(),
             )
-        workflow = (
-            self._session.query(Workflow)
+        workflow = self._session.scalar(
+            select(Workflow)
             .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
             )
-            .first()
+            .limit(1)
         )
 
         # create draft workflow if not found
@@ -619,14 +630,14 @@ class RagPipelineDslService:
             workflow = Workflow(
                 tenant_id=pipeline.tenant_id,
                 app_id=pipeline.id,
-                features="{}",
+                _features="{}",
                 type=WorkflowType.RAG_PIPELINE,
                 version="draft",
                 graph=json.dumps(graph),
                 created_by=account.id,
-                environment_variables=environment_variables,
-                conversation_variables=conversation_variables,
-                rag_pipeline_variables=rag_pipeline_variables_list,
+                _environment_variables=environment_variables,
+                _conversation_variables=conversation_variables,
+                _rag_pipeline_variables=rag_pipeline_variables_list,
             )
             self._session.add(workflow)
             self._session.flush()
@@ -638,8 +649,8 @@ class RagPipelineDslService:
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
             workflow.rag_pipeline_variables = rag_pipeline_variables_list
-        # commit db session changes
-        self._session.commit()
+        # Keep transaction ownership with the caller while materializing IDs and constraint checks before returning.
+        self._session.flush()
 
         return pipeline
 
@@ -650,7 +661,7 @@ class RagPipelineDslService:
         :param include_secret: Whether include secret variable
         :return:
         """
-        dataset = pipeline.retrieve_dataset(session=self._session)
+        dataset = get_pipeline_dataset(pipeline, session=self._session)
         if not dataset:
             raise ValueError("Missing dataset for rag pipeline")
         icon_info = dataset.icon_info
@@ -671,21 +682,21 @@ class RagPipelineDslService:
 
         return yaml.dump(export_data, allow_unicode=True)  # type: ignore
 
-    def _append_workflow_export_data(self, *, export_data: dict, pipeline: Pipeline, include_secret: bool) -> None:
+    def _append_workflow_export_data(
+        self, *, export_data: dict[str, Any], pipeline: Pipeline, include_secret: bool
+    ) -> None:
         """
         Append workflow export data
         :param export_data: export data
         :param pipeline: Pipeline instance
         """
 
-        workflow = (
-            self._session.query(Workflow)
-            .where(
+        workflow = self._session.scalar(
+            select(Workflow).where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
             )
-            .first()
         )
         if not workflow:
             raise ValueError("Missing draft workflow configuration, please check.")
@@ -696,17 +707,17 @@ class RagPipelineDslService:
             if not node_data:
                 continue
             data_type = node_data.get("type", "")
-            if data_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            if data_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node_data.get("dataset_ids", [])
                 node["data"]["dataset_ids"] = [
                     self.encrypt_dataset_id(dataset_id=dataset_id, tenant_id=pipeline.tenant_id)
                     for dataset_id in dataset_ids
                 ]
             # filter credential id from tool node
-            if not include_secret and data_type == NodeType.TOOL:
+            if not include_secret and data_type == BuiltinNodeTypes.TOOL:
                 node_data.pop("credential_id", None)
             # filter credential id from agent node
-            if not include_secret and data_type == NodeType.AGENT:
+            if not include_secret and data_type == BuiltinNodeTypes.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
                     tool.pop("credential_id", None)
 
@@ -726,6 +737,34 @@ class RagPipelineDslService:
         :return: dependencies list format like ["langgenius/google"]
         """
         graph = workflow.graph_dict
+        referenced_llm_nodes = [
+            node.get("data", {})
+            for node in graph.get("nodes", [])
+            if node.get("data", {}).get("type") == BuiltinNodeTypes.LLM
+            and should_resolve_llm_model_selector(node.get("data", {}).get("model_selector"))
+        ]
+        environment_variables = (
+            {variable.name: variable for variable in workflow.environment_variables} if referenced_llm_nodes else {}
+        )
+        for node_data in referenced_llm_nodes:
+            try:
+                selector = parse_llm_model_selector(node_data["model_selector"])
+                variable = environment_variables.get(selector[1])
+                if not isinstance(variable, LLMEnvironmentVariable):
+                    raise ValueError(
+                        f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
+                    )
+                node_data["model"] = resolve_llm_model_config(
+                    node_model=ModelConfig.model_validate(node_data.get("model", {})),
+                    variable_name=selector[1],
+                    variable_value=variable.value,
+                ).model_dump(mode="json")
+            except ValueError as exc:
+                logger.warning(
+                    "Skipping unresolved LLM environment model while extracting dependencies for selector %r: %s",
+                    node_data.get("model_selector"),
+                    exc,
+                )
         dependencies = self._extract_dependencies_from_workflow_graph(graph)
         return dependencies
 
@@ -738,39 +777,43 @@ class RagPipelineDslService:
         dependencies = []
         for node in graph.get("nodes", []):
             try:
-                typ = node.get("data", {}).get("type")
+                node_data = node.get("data", {})
+                typ = node_data.get("type")
+                if typ != BuiltinNodeTypes.DATASOURCE:
+                    dependencies.extend(DependenciesAnalysisService.extract_external_node_dependencies(node_data))
                 match typ:
-                    case NodeType.TOOL:
+                    case BuiltinNodeTypes.TOOL:
                         tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
-                            DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
+                            node_data.get("plugin_id")
+                            or DependenciesAnalysisService.analyze_tool_provider_reference(tool_entity.provider_id),
                         )
-                    case NodeType.DATASOURCE:
+                    case BuiltinNodeTypes.DATASOURCE:
                         datasource_entity = DatasourceNodeData.model_validate(node["data"])
                         if datasource_entity.provider_type != "local_file":
                             dependencies.append(datasource_entity.plugin_id)
-                    case NodeType.LLM:
+                    case BuiltinNodeTypes.LLM:
                         llm_entity = LLMNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(llm_entity.model.provider),
                         )
-                    case NodeType.QUESTION_CLASSIFIER:
+                    case BuiltinNodeTypes.QUESTION_CLASSIFIER:
                         question_classifier_entity = QuestionClassifierNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 question_classifier_entity.model.provider
                             ),
                         )
-                    case NodeType.PARAMETER_EXTRACTOR:
+                    case BuiltinNodeTypes.PARAMETER_EXTRACTOR:
                         parameter_extractor_entity = ParameterExtractorNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 parameter_extractor_entity.model.provider
                             ),
                         )
-                    case NodeType.KNOWLEDGE_INDEX:
+                    case _ if typ == KNOWLEDGE_INDEX_NODE_TYPE:
                         knowledge_index_entity = KnowledgeConfiguration.model_validate(node["data"])
-                        if knowledge_index_entity.indexing_technique == "high_quality":
+                        if knowledge_index_entity.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                             if knowledge_index_entity.embedding_model_provider:
                                 dependencies.append(
                                     DependenciesAnalysisService.analyze_model_provider_dependency(
@@ -789,7 +832,7 @@ class RagPipelineDslService:
                                                 knowledge_index_entity.retrieval_model.reranking_model.reranking_provider_name
                                             ),
                                         )
-                    case NodeType.KNOWLEDGE_RETRIEVAL:
+                    case BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         knowledge_retrieval_entity = KnowledgeRetrievalNodeData.model_validate(node["data"])
                         if knowledge_retrieval_entity.retrieval_mode == "multiple":
                             if knowledge_retrieval_entity.multiple_retrieval_config:
@@ -917,15 +960,16 @@ class RagPipelineDslService:
     ):
         if rag_pipeline_dataset_create_entity.name:
             # check if dataset name already exists
-            if (
-                self._session.query(Dataset)
-                .filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id)
-                .first()
+            if self._session.scalar(
+                select(Dataset).where(
+                    Dataset.name == rag_pipeline_dataset_create_entity.name,
+                    Dataset.tenant_id == tenant_id,
+                )
             ):
                 raise ValueError(f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists.")
         else:
             # generate a random name as Untitled 1 2 3 ...
-            datasets = self._session.query(Dataset).filter_by(tenant_id=tenant_id).all()
+            datasets = self._session.scalars(select(Dataset).where(Dataset.tenant_id == tenant_id)).all()
             names = [dataset.name for dataset in datasets]
             rag_pipeline_dataset_create_entity.name = generate_incremental_name(
                 names,

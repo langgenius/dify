@@ -1,31 +1,47 @@
 'use client'
 import type { FC } from 'react'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   onConfirm: () => void
   onCancel: () => void
-}
+}>
 const i18nPrefix = 'common.effectVarConfirm'
 
-const RemoveVarConfirm: FC<Props> = ({
-  isShow,
-  onConfirm,
-  onCancel,
-}) => {
-  const { t } = useTranslation()
+const RemoveVarConfirm: FC<Props> = ({ isShow, onConfirm, onCancel }) => {
+  const { t } = useTranslation(['common', 'workflow'])
+  const title = t(($) => $[`${i18nPrefix}.title`], { ns: 'workflow' })
+  const content = t(($) => $[`${i18nPrefix}.content`], { ns: 'workflow' })
 
   return (
-    <Confirm
-      isShow={isShow}
-      title={t(`${i18nPrefix}.title`, { ns: 'workflow' })}
-      content={t(`${i18nPrefix}.content`, { ns: 'workflow' })}
-      onConfirm={onConfirm}
-      onCancel={onCancel}
-    />
+    <AlertDialog open={isShow} onOpenChange={(open) => !open && onCancel()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{content}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancelButton>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </AlertDialogCancelButton>
+          <AlertDialogConfirmButton onClick={onConfirm}>
+            {t(($) => $['operation.confirm'], { ns: 'common' })}
+          </AlertDialogConfirmButton>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 export default React.memo(RemoveVarConfirm)

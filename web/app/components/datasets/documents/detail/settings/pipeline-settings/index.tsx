@@ -1,16 +1,22 @@
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { NotionPage } from '@/models/common'
-import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
-import type { OnlineDriveFile, PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
+import type { CrawlResultItem, CustomFile } from '@/models/datasets'
+import type { OnlineDriveFile } from '@/models/pipeline'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
-import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import {
+  isPipelineProcessingRun,
+  selectPipelineExecutionLog,
+  selectPreviewRunEstimate,
+} from '@/app/components/rag-pipeline/utils/query-select'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasourceType } from '@/models/pipeline'
-import { useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
-import { usePipelineExecutionLog, useRunPublishedPipeline } from '@/service/use-pipeline'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import ChunkPreview from '../../../create-from-pipeline/preview/chunk-preview'
 import LeftHeader from './left-header'
 import ProcessDocuments from './process-documents'
@@ -20,22 +26,25 @@ type PipelineSettingsProps = {
   documentId: string
 }
 
-const PipelineSettings = ({
-  datasetId,
-  documentId,
-}: PipelineSettingsProps) => {
-  const { t } = useTranslation()
+const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
+  const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const { push } = useRouter()
-  const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(undefined)
-  const pipelineId = useDatasetDetailContextWithSelector(state => state.dataset?.pipeline_id)
+  const [estimateData, setEstimateData] = useState<IndexingEstimateResponse | undefined>(undefined)
+  const pipelineId = useDatasetDetailContextWithSelector((state) => state.dataset?.pipeline_id)
 
   const isPreview = useRef(false)
   const formRef = useRef<any>(null)
 
-  const { data: lastRunData, isFetching: isFetchingLastRunData, isError } = usePipelineExecutionLog({
-    dataset_id: datasetId,
-    document_id: documentId,
-  })
+  const {
+    data: lastRunData,
+    isFetching: isFetchingLastRunData,
+    isError,
+  } = useQuery(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.pipelineExecutionLog.get.queryOptions({
+      input: { params: { dataset_id: datasetId, document_id: documentId } },
+      select: selectPipelineExecutionLog,
+    }),
+  )
 
   const files = useMemo(() => {
     const files: CustomFile[] = []
@@ -90,52 +99,92 @@ const PipelineSettings = ({
     return onlineDriveFiles
   }, [lastRunData])
 
-  const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
+  const {
+    mutateAsync: runPublishedPipeline,
+    isIdle,
+    isPending,
+  } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.published.run.post.mutationOptions(),
+  )
 
-  const handlePreviewChunks = useCallback(async (data: Record<string, any>) => {
-    if (!lastRunData)
-      return
-    const datasourceInfoList: Record<string, any>[] = []
-    const documentInfo = lastRunData.datasource_info
-    datasourceInfoList.push(documentInfo)
-    await runPublishedPipeline({
-      pipeline_id: pipelineId!,
-      inputs: data,
-      start_node_id: lastRunData.datasource_node_id,
-      datasource_type: lastRunData.datasource_type,
-      datasource_info_list: datasourceInfoList,
-      is_preview: true,
-    }, {
-      onSuccess: (res) => {
-        setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
-      },
-    })
-  }, [lastRunData, pipelineId, runPublishedPipeline])
+  const handlePreviewChunks = useCallback(
+    async (data: Record<string, any>) => {
+      if (!lastRunData) return
+      const datasourceInfoList: Record<string, any>[] = []
+      const documentInfo = lastRunData.datasource_info
+      datasourceInfoList.push(documentInfo)
+      await runPublishedPipeline(
+        {
+          params: { pipeline_id: pipelineId! },
+          body: {
+            inputs: data,
+            start_node_id: lastRunData.datasource_node_id,
+            datasource_type: lastRunData.datasource_type,
+            datasource_info_list: datasourceInfoList,
+            is_preview: true,
+            response_mode: 'blocking',
+          },
+        },
+        {
+          onSuccess: (res) => {
+            if (!isPipelineProcessingRun(res)) setEstimateData(selectPreviewRunEstimate(res))
+          },
+        },
+      )
+    },
+    [lastRunData, pipelineId, runPublishedPipeline],
+  )
 
-  const invalidDocumentList = useInvalidDocumentList(datasetId)
-  const invalidDocumentDetail = useInvalidDocumentDetail()
-  const handleProcess = useCallback(async (data: Record<string, any>) => {
-    if (!lastRunData)
-      return
-    const datasourceInfoList: Record<string, any>[] = []
-    const documentInfo = lastRunData.datasource_info
-    datasourceInfoList.push(documentInfo)
-    await runPublishedPipeline({
-      pipeline_id: pipelineId!,
-      inputs: data,
-      start_node_id: lastRunData.datasource_node_id,
-      datasource_type: lastRunData.datasource_type,
-      datasource_info_list: datasourceInfoList,
-      original_document_id: documentId,
-      is_preview: false,
-    }, {
-      onSuccess: () => {
-        invalidDocumentList()
-        invalidDocumentDetail()
-        push(`/datasets/${datasetId}/documents`)
-      },
+  const queryClient = useQueryClient()
+  const invalidDocumentList = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+        input: { params: { dataset_id: datasetId } },
+      }),
     })
-  }, [datasetId, documentId, invalidDocumentDetail, invalidDocumentList, lastRunData, pipelineId, push, runPublishedPipeline])
+  const invalidDocumentDetail = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+    })
+  const handleProcess = useCallback(
+    async (data: Record<string, any>) => {
+      if (!lastRunData) return
+      const datasourceInfoList: Record<string, any>[] = []
+      const documentInfo = lastRunData.datasource_info
+      datasourceInfoList.push(documentInfo)
+      await runPublishedPipeline(
+        {
+          params: { pipeline_id: pipelineId! },
+          body: {
+            inputs: data,
+            start_node_id: lastRunData.datasource_node_id,
+            datasource_type: lastRunData.datasource_type,
+            datasource_info_list: datasourceInfoList,
+            original_document_id: documentId,
+            is_preview: false,
+            response_mode: 'blocking',
+          },
+        },
+        {
+          onSuccess: () => {
+            invalidDocumentList()
+            invalidDocumentDetail()
+            push(`/datasets/${datasetId}/documents`)
+          },
+        },
+      )
+    },
+    [
+      datasetId,
+      documentId,
+      invalidDocumentDetail,
+      invalidDocumentList,
+      lastRunData,
+      pipelineId,
+      push,
+      runPublishedPipeline,
+    ],
+  )
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false
@@ -147,29 +196,31 @@ const PipelineSettings = ({
     formRef.current?.submit()
   }, [])
 
-  const handleSubmit = useCallback((data: Record<string, any>) => {
-    if (isPreview.current)
-      handlePreviewChunks(data)
-    else
-      handleProcess(data)
-  }, [handlePreviewChunks, handleProcess])
+  const handleSubmit = useCallback(
+    (data: Record<string, any>) => {
+      if (isPreview.current) handlePreviewChunks(data)
+      else handleProcess(data)
+    },
+    [handlePreviewChunks, handleProcess],
+  )
 
   if (isFetchingLastRunData) {
-    return (
-      <Loading type="app" />
-    )
+    return <LoadingPlaceholder className="h-full" />
   }
 
   if (isError)
-    return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
+    return (
+      <AppUnavailable
+        code={500}
+        unknownReason={t(($) => $['error.unavailable'], { ns: 'datasetCreation' }) as string}
+      />
+    )
 
   return (
-    <div
-      className="relative flex h-[calc(100vh-56px)] min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle"
-    >
+    <div className="relative flex h-[calc(100vh-56px)] min-w-5xl overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
       <div className="h-full min-w-0 flex-1">
         <div className="flex h-full flex-col px-14">
-          <LeftHeader title={t('documentSettings.title', { ns: 'datasetPipeline' })} />
+          <LeftHeader title={t(($) => $['documentSettings.title'], { ns: 'datasetPipeline' })} />
           <div className="grow overflow-y-auto">
             <ProcessDocuments
               ref={formRef}
@@ -185,7 +236,7 @@ const PipelineSettings = ({
       </div>
       {/* Preview */}
       <div className="h-full min-w-0 flex-1">
-        <div className="flex h-full flex-col pl-2 pt-2">
+        <div className="flex h-full flex-col pt-2 pl-2">
           <ChunkPreview
             dataSourceType={lastRunData!.datasource_type}
             localFiles={files}

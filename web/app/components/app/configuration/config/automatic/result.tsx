@@ -1,12 +1,25 @@
 'use client'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { FC } from 'react'
 import type { GenRes } from '@/service/debug'
-import { RiClipboardLine } from '@remixicon/react'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/app/configuration/toast'
 import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
 import PromptRes from './prompt-res'
 import PromptResInWorkflow from './prompt-res-in-workflow'
@@ -14,7 +27,7 @@ import PromptToast from './prompt-toast'
 import { GeneratorType } from './types'
 import VersionSelector from './version-selector'
 
-type Props = {
+type Props = Readonly<{
   isBasicMode?: boolean
   nodeId?: string
   current: GenRes
@@ -23,7 +36,7 @@ type Props = {
   versions: GenRes[]
   onApply: () => void
   generatorType: GeneratorType
-}
+}>
 
 const Result: FC<Props> = ({
   isBasicMode,
@@ -35,14 +48,17 @@ const Result: FC<Props> = ({
   onApply,
   generatorType,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'appGeneration'])
+  const actionsRef = useRef<AlertDialogActions>(null)
   const isGeneratorPrompt = generatorType === GeneratorType.prompt
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-3 flex shrink-0 items-center justify-between">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-y-3">
         <div>
-          <div className="shrink-0 text-base font-semibold leading-[160%] text-text-secondary">{t('generate.resTitle', { ns: 'appDebug' })}</div>
+          <div className="shrink-0 text-base leading-[160%] font-semibold text-text-secondary">
+            {t(($) => $['generate.resTitle'], { ns: 'appGeneration' })}
+          </div>
           <VersionSelector
             versionLen={versions.length}
             value={currentVersionIndex}
@@ -50,54 +66,74 @@ const Result: FC<Props> = ({
           />
         </div>
         <div className="flex items-center space-x-2">
-          <Button
-            className="px-2"
+          <IconButton
+            aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
+            variant="secondary"
+            size="lg"
             onClick={() => {
               copy(current.modified)
-              Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+              toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
             }}
           >
-            <RiClipboardLine className="h-4 w-4 text-text-secondary" />
-          </Button>
-          <Button variant="primary" onClick={onApply}>
-            {t('generate.apply', { ns: 'appDebug' })}
-          </Button>
+            <span aria-hidden="true" className="i-ri-clipboard-line size-4 text-text-secondary" />
+          </IconButton>
+          <AlertDialog actionsRef={actionsRef}>
+            <AlertDialogTrigger render={<Button variant="primary" />}>
+              {t(($) => $['generate.apply'], { ns: 'appGeneration' })}
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {isGeneratorPrompt
+                    ? t(($) => $['generate.overwriteTitle'], { ns: 'appGeneration' })
+                    : t(($) => $['codegen.overwriteConfirmTitle'], { ns: 'appGeneration' })}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {isGeneratorPrompt
+                    ? t(($) => $['generate.overwriteMessage'], { ns: 'appGeneration' })
+                    : t(($) => $['codegen.overwriteConfirmMessage'], { ns: 'appGeneration' })}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancelButton>
+                  {t(($) => $['operation.cancel'], { ns: 'common' })}
+                </AlertDialogCancelButton>
+                <AlertDialogConfirmButton
+                  onClick={() => {
+                    actionsRef.current?.close()
+                    onApply()
+                  }}
+                >
+                  {t(($) => $['operation.confirm'], { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
       <div className="flex grow flex-col overflow-y-auto">
-        {
-          current?.message && (
-            <PromptToast message={current.message} className="mb-3 shrink-0" />
-          )
-        }
+        {current?.message && <PromptToast message={current.message} className="mb-3 shrink-0" />}
         <div className="grow pb-6">
-          {isGeneratorPrompt
-            ? (
-                isBasicMode
-                  ? (
-                      <PromptRes
-                        value={current?.modified}
-                        workflowVariableBlock={{
-                          show: false,
-                        }}
-                      />
-                    )
-                  : (
-                      <PromptResInWorkflow
-                        value={current?.modified || ''}
-                        nodeId={nodeId!}
-                      />
-                    )
-              )
-            : (
-                <CodeEditor
-                  editorWrapperClassName="h-full"
-                  className="bg-transparent pt-0"
-                  value={current?.modified}
-                  readOnly
-                  hideTopMenu
-                />
-              )}
+          {isGeneratorPrompt ? (
+            isBasicMode ? (
+              <PromptRes
+                value={current?.modified}
+                workflowVariableBlock={{
+                  show: false,
+                }}
+              />
+            ) : (
+              <PromptResInWorkflow value={current?.modified || ''} nodeId={nodeId!} />
+            )
+          ) : (
+            <CodeEditor
+              editorWrapperClassName="h-full"
+              className="bg-transparent pt-0"
+              value={current?.modified}
+              readOnly
+              hideTopMenu
+            />
+          )}
         </div>
       </div>
     </div>

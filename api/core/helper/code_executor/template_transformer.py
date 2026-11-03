@@ -5,7 +5,7 @@ from base64 import b64encode
 from collections.abc import Mapping
 from typing import Any
 
-from core.variables.utils import dumps_with_segments
+from graphon.variables.utils import dumps_with_segments
 
 
 class TemplateTransformer(ABC):
@@ -36,14 +36,14 @@ class TemplateTransformer(ABC):
         return runner_script, preload_script
 
     @classmethod
-    def extract_result_str_from_response(cls, response: str):
+    def extract_result_str_from_response(cls, response: str) -> str:
         result = re.search(rf"{cls._result_tag}(.*){cls._result_tag}", response, re.DOTALL)
         if not result:
             raise ValueError(f"Failed to parse result: no result tag found in response. Response: {response[:200]}...")
         return result.group(1)
 
     @classmethod
-    def transform_response(cls, response: str) -> Mapping[str, Any]:
+    def transform_response(cls, response: str) -> dict[str, Any]:
         """
         Transform response to dict
         :param response: response
@@ -54,12 +54,12 @@ class TemplateTransformer(ABC):
             result_str = cls.extract_result_str_from_response(response)
             result = json.loads(result_str)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse JSON response: {str(e)}.")
+            raise ValueError(f"Failed to parse JSON response: {str(e)}.") from e
         except ValueError as e:
             # Re-raise ValueError from extract_result_str_from_response
             raise e
         except Exception as e:
-            raise ValueError(f"Unexpected error during response transformation: {str(e)}")
+            raise ValueError(f"Unexpected error during response transformation: {str(e)}") from e
 
         if not isinstance(result, dict):
             raise ValueError(f"Result must be a dict, got {type(result).__name__}")
@@ -71,26 +71,25 @@ class TemplateTransformer(ABC):
         return result
 
     @classmethod
-    def _post_process_result(cls, result: dict[Any, Any]) -> dict[Any, Any]:
+    def _post_process_result(cls, result: dict[str, Any]) -> dict[str, Any]:
         """
         Post-process the result to convert scientific notation strings back to numbers
         """
 
         def convert_scientific_notation(value: Any) -> Any:
-            if isinstance(value, str):
-                # Check if the string looks like scientific notation
-                if re.match(r"^-?\d+\.?\d*e[+-]\d+$", value, re.IGNORECASE):
+            match value:
+                case str() if re.match(r"^-?\d+\.?\d*e[+-]\d+$", value, re.IGNORECASE):
                     try:
                         return float(value)
                     except ValueError:
                         pass
-            elif isinstance(value, dict):
-                return {k: convert_scientific_notation(v) for k, v in value.items()}
-            elif isinstance(value, list):
-                return [convert_scientific_notation(v) for v in value]
+                case dict():
+                    return {k: convert_scientific_notation(v) for k, v in value.items()}
+                case list():
+                    return [convert_scientific_notation(v) for v in value]
             return value
 
-        return convert_scientific_notation(result)
+        return {key: convert_scientific_notation(value) for key, value in result.items()}
 
     @classmethod
     @abstractmethod
@@ -102,7 +101,7 @@ class TemplateTransformer(ABC):
 
     @classmethod
     def serialize_inputs(cls, inputs: Mapping[str, Any]) -> str:
-        inputs_json_str = dumps_with_segments(inputs, ensure_ascii=False).encode()
+        inputs_json_str = dumps_with_segments(inputs).encode()
         input_base64_encoded = b64encode(inputs_json_str).decode("utf-8")
         return input_base64_encoded
 
@@ -110,9 +109,13 @@ class TemplateTransformer(ABC):
     def assemble_runner_script(cls, code: str, inputs: Mapping[str, Any]) -> str:
         # assemble runner script
         script = cls.get_runner_script()
-        script = script.replace(cls._code_placeholder, code)
+        # Substitute the inputs placeholder before inserting the user code:
+        # a post-insertion substitution would also rewrite `{{inputs}}` literals
+        # inside the user's source (see #43435). The code placeholder is a single
+        # top-level slot, so substituting inputs first is always safe.
         inputs_str = cls.serialize_inputs(inputs)
         script = script.replace(cls._inputs_placeholder, inputs_str)
+        script = script.replace(cls._code_placeholder, code)
         return script
 
     @classmethod

@@ -1,26 +1,27 @@
 import type { FC } from 'react'
 import type { ToolNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { useStore } from '@/app/components/workflow/store'
 import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
 import Split from '../_base/components/split'
-import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
+import useMatchSchemaType, {
+  getMatchedSchemaType,
+} from '../_base/components/variable/use-match-schema-type'
 import ToolForm from './components/tool-form'
-import useConfig from './use-config'
+import useConfig from './hooks/use-config'
 
 const i18nPrefix = 'nodes.tool'
 
-const Panel: FC<NodePanelProps<ToolNodeType>> = ({
-  id,
-  data,
-}) => {
-  const { t } = useTranslation()
+const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
+  const { t } = useTranslation(['workflow'] as const)
   const {
     readOnly,
     inputs,
@@ -38,14 +39,14 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
   } = useConfig(id, data)
 
   const [collapsed, setCollapsed] = React.useState(false)
-  const pipelineId = useStore(s => s.pipelineId)
-  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
+  const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
   const { schemaTypeDefinitions } = useMatchSchemaType()
 
   if (isLoading) {
     return (
-      <div className="flex h-[200px] items-center justify-center">
-        <Loading />
+      <div className="flex h-50 items-center justify-center">
+        <LoadingPlaceholder />
       </div>
     )
   }
@@ -57,7 +58,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           {toolInputVarSchema.length > 0 && (
             <Field
               className="px-4"
-              title={t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}
+              title={t(($) => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })}
             >
               <ToolForm
                 readOnly={readOnly}
@@ -67,7 +68,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 onChange={setInputVar}
                 currentProvider={currCollection}
                 currentTool={currTool}
-                showManageInputField={!!pipelineId}
+                showManageInputField={resourceKind === 'knowledge-pipeline'}
                 onManageInputField={() => setShowInputFieldPanel?.(true)}
               />
             </Field>
@@ -80,7 +81,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           {toolSettingSchema.length > 0 && (
             <>
               <OutputVars
-                title={t(`${i18nPrefix}.settings`, { ns: 'workflow' })}
+                title={t(($) => $[`${i18nPrefix}.settings`], { ns: 'workflow' })}
                 collapsed={collapsed}
                 onCollapse={setCollapsed}
               >
@@ -104,19 +105,19 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
             <VarItem
               name="text"
               type="string"
-              description={t(`${i18nPrefix}.outputVars.text`, { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.text`], { ns: 'workflow' })}
               isIndent={hasObjectOutput}
             />
             <VarItem
               name="files"
               type="array[file]"
-              description={t(`${i18nPrefix}.outputVars.files.title`, { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.files.title`], { ns: 'workflow' })}
               isIndent={hasObjectOutput}
             />
             <VarItem
               name="json"
               type="array[object]"
-              description={t(`${i18nPrefix}.outputVars.json`, { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.json`], { ns: 'workflow' })}
               isIndent={hasObjectOutput}
             />
             {outputSchema.map((outputItem) => {
@@ -124,22 +125,19 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
               // TODO empty object type always match `qa_structured` schema type
               return (
                 <div key={outputItem.name}>
-                  {outputItem.value?.type === 'object'
-                    ? (
-                        <StructureOutputItem
-                          rootClassName="code-sm-semibold text-text-secondary"
-                          payload={wrapStructuredVarItem(outputItem, schemaType)}
-                        />
-                      )
-                    : (
-                        <VarItem
-                          name={outputItem.name}
-
-                          type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
-                          description={outputItem.description}
-                          isIndent={hasObjectOutput}
-                        />
-                      )}
+                  {outputItem.value?.type === 'object' ? (
+                    <StructureOutputItem
+                      rootClassName="code-sm-semibold text-text-secondary"
+                      payload={wrapStructuredVarItem(outputItem, schemaType)}
+                    />
+                  ) : (
+                    <VarItem
+                      name={outputItem.name}
+                      type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
+                      description={outputItem.description}
+                      isIndent={hasObjectOutput}
+                    />
+                  )}
                 </div>
               )
             })}

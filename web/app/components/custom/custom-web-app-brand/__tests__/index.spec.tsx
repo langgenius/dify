@@ -1,147 +1,261 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast'
-import { Plan } from '@/app/components/billing/type'
-import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useProviderContext } from '@/context/provider-context'
-import { updateCurrentWorkspace } from '@/service/common'
+import type { WorkspaceCustomConfigPayload } from '@dify/contracts/api/console/workspaces/types.gen'
+import { ORPCError } from '@orpc/client'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
+import { AppToaster } from '@/app/notifications/app-toaster'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import CustomWebAppBrand from '../index'
 
-vi.mock('@/app/components/base/toast', () => ({
-  useToastContext: vi.fn(),
-}))
-vi.mock('@/service/common', () => ({
-  updateCurrentWorkspace: vi.fn(),
-}))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
-vi.mock('@/app/components/base/image-uploader/utils', () => ({
-  imageUpload: vi.fn(),
-  getImageUploadErrorMessage: vi.fn(),
+const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
+const updateConfig = vi.hoisted(() =>
+  vi.fn<(input: { body: WorkspaceCustomConfigPayload }) => Promise<WorkspaceCustomConfigPayload>>(),
+)
+let config: WorkspaceCustomConfigPayload
+const getConfig = vi.hoisted(() => vi.fn<() => Promise<WorkspaceCustomConfigPayload>>())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.customConfig.get': getConfig,
+      'workspaces.customConfig.post': updateConfig,
+    }),
+  }
+})
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  upload,
 }))
 
-const mockNotify = vi.fn()
-const mockUseToastContext = vi.mocked(useToastContext)
-const mockUpdateCurrentWorkspace = vi.mocked(updateCurrentWorkspace)
-const mockUseAppContext = vi.mocked(useAppContext)
-const mockUseProviderContext = vi.mocked(useProviderContext)
-const mockUseGlobalPublicStore = vi.mocked(useGlobalPublicStore)
-const mockImageUpload = vi.mocked(imageUpload)
-const mockGetImageUploadErrorMessage = vi.mocked(getImageUploadErrorMessage)
-
-const defaultPlanUsage = {
-  buildApps: 0,
-  teamMembers: 0,
-  annotatedResponse: 0,
-  documentsUploadQuota: 0,
-  apiRateLimit: 0,
-  triggerEvents: 0,
-  vectorSpace: 0,
+const renderBrand = ({
+  canReplace = true,
+  canManage = true,
+  seedConfig = true,
+  workspaceLogo = '',
+} = {}) => {
+  const user = userEvent.setup()
+  const queryClient = createConsoleQueryClient()
+  if (seedConfig)
+    queryClient.setQueryData(consoleQuery.workspaces.customConfig.get.queryKey(), config)
+  const rendered = renderWithConsoleQuery(
+    <>
+      <CustomWebAppBrand />
+      <AppToaster timeout={0} />
+    </>,
+    {
+      queryClient,
+      features: { can_replace_logo: canReplace },
+      currentWorkspace: { role: 'normal' },
+      workspacePermissionKeys: canManage ? ['customization.manage'] : [],
+      systemFeatures: { branding: { enabled: !!workspaceLogo, workspace_logo: workspaceLogo } },
+    },
+  )
+  return { ...rendered, user }
+}
+const uploadInput = () => screen.getByLabelText('custom.webapp.changeLogo')
+const removalSwitch = () => screen.getByRole('switch', { name: 'custom.webapp.removeBrand' })
+const logoFile = () => new File(['logo'], 'logo.png', { type: 'image/png' })
+const expectPreviewLogo = (url: string) => {
+  const logos = screen.getAllByRole('img', { name: 'logo' })
+  expect(logos).toHaveLength(2)
+  for (const logo of logos) expect(logo).toHaveAttribute('src', expect.stringContaining(url))
 }
 
-const renderComponent = () => render(<CustomWebAppBrand />)
-
-describe('CustomWebAppBrand', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseToastContext.mockReturnValue({ notify: mockNotify } as unknown as ReturnType<typeof useToastContext>)
-    mockUpdateCurrentWorkspace.mockResolvedValue({} as unknown as Awaited<ReturnType<typeof updateCurrentWorkspace>>)
-    mockUseAppContext.mockReturnValue({
-      currentWorkspace: {
-        custom_config: {
-          replace_webapp_logo: 'https://example.com/replace.png',
-          remove_webapp_brand: false,
-        },
-      },
-      mutateCurrentWorkspace: vi.fn(),
-      isCurrentWorkspaceManager: true,
-    } as unknown as ReturnType<typeof useAppContext>)
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: Plan.professional,
-        usage: defaultPlanUsage,
-        total: defaultPlanUsage,
-        reset: {},
-      },
-      enableBilling: false,
-    } as unknown as ReturnType<typeof useProviderContext>)
-    const systemFeaturesState = {
-      branding: {
-        enabled: true,
-        workspace_logo: 'https://example.com/workspace-logo.png',
-      },
-    }
-    mockUseGlobalPublicStore.mockImplementation(selector => selector ? selector({ systemFeatures: systemFeaturesState, setSystemFeatures: vi.fn() } as unknown as ReturnType<typeof useGlobalPublicStore.getState>) : { systemFeatures: systemFeaturesState })
-    mockGetImageUploadErrorMessage.mockReturnValue('upload error')
+beforeEach(() => {
+  config = { replace_webapp_logo: 'https://example.com/logo.png', remove_webapp_brand: false }
+  getConfig.mockReset().mockImplementation(async () => config)
+  updateConfig.mockReset().mockImplementation(async ({ body }) => {
+    config = { ...config, ...body }
+    return config
   })
+  upload.mockReset().mockResolvedValue({ id: 'new-logo' })
+})
+afterEach(() => toast.dismiss())
 
-  it('disables upload controls when the user cannot manage the workspace', () => {
-    mockUseAppContext.mockReturnValue({
-      currentWorkspace: {
-        custom_config: {
-          replace_webapp_logo: '',
-          remove_webapp_brand: false,
-        },
-      },
-      mutateCurrentWorkspace: vi.fn(),
-      isCurrentWorkspaceManager: false,
-    } as unknown as ReturnType<typeof useAppContext>)
+it('opens the file chooser from the visible keyboard upload action', async () => {
+  const { user } = renderBrand()
+  const openChooser = vi.spyOn(uploadInput(), 'click').mockImplementation(() => {})
+  await user.tab()
+  expect(removalSwitch()).toHaveFocus()
+  await user.tab()
+  expect(screen.getByRole('button', { name: 'custom.restore' })).toHaveFocus()
+  await user.tab()
+  const changeButton = screen.getByRole('button', { name: 'custom.change' })
+  expect(changeButton).toHaveFocus()
+  await user.keyboard('{Enter}')
+  expect(openChooser).toHaveBeenCalledOnce()
+  expect(changeButton).toHaveFocus()
+  openChooser.mockRestore()
+})
 
-    const { container } = renderComponent()
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-    expect(fileInput).toBeDisabled()
+it('cancels an upload, accepts the same file again, then applies and restores the logo', async () => {
+  const { user } = renderBrand()
+  const file = logoFile()
+  await user.upload(uploadInput(), file)
+  await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
+  expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
+  expect(updateConfig).not.toHaveBeenCalled()
+  expectPreviewLogo('https://example.com/logo.png')
+  await user.upload(uploadInput(), file)
+  expect(upload).toHaveBeenCalledTimes(2)
+  expect(upload).toHaveBeenLastCalledWith(
+    expect.objectContaining({ data: expect.any(FormData) }),
+    false,
+    '/workspaces/custom-config/webapp-logo/upload',
+  )
+  const uploadedFile = upload.mock.lastCall?.[0].data.get('file')
+  expect(uploadedFile).toBeInstanceOf(File)
+  expect(uploadedFile).toMatchObject({ name: file.name, size: file.size, type: file.type })
+  await user.click(await screen.findByRole('button', { name: 'custom.apply' }))
+  await waitFor(() => expectPreviewLogo('new-logo'))
+  expect(updateConfig).toHaveBeenCalledExactlyOnceWith({
+    body: { remove_webapp_brand: false, replace_webapp_logo: 'new-logo' },
   })
-
-  it('toggles remove brand switch and calls the backend + mutate', async () => {
-    const mutateMock = vi.fn()
-    mockUseAppContext.mockReturnValue({
-      currentWorkspace: {
-        custom_config: {
-          replace_webapp_logo: '',
-          remove_webapp_brand: false,
-        },
-      },
-      mutateCurrentWorkspace: mutateMock,
-      isCurrentWorkspaceManager: true,
-    } as unknown as ReturnType<typeof useAppContext>)
-
-    renderComponent()
-    const switchInput = screen.getByRole('switch')
-    fireEvent.click(switchInput)
-
-    await waitFor(() => expect(mockUpdateCurrentWorkspace).toHaveBeenCalledWith({
-      url: '/workspaces/custom-config',
-      body: { remove_webapp_brand: true },
-    }))
-    await waitFor(() => expect(mutateMock).toHaveBeenCalled())
+  expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'custom.restore' }))
+  await waitFor(() => expect(screen.getAllByRole('img', { name: 'Dify' })).toHaveLength(2))
+  expect(uploadInput()).toBeEnabled()
+  expect(updateConfig).toHaveBeenLastCalledWith({
+    body: { remove_webapp_brand: false, replace_webapp_logo: '' },
   })
+  expect(screen.getAllByRole('img', { name: 'Dify' })).toHaveLength(2)
+})
 
-  it('shows cancel/apply buttons after successful upload and cancels properly', async () => {
-    mockImageUpload.mockImplementation(({ onProgressCallback, onSuccessCallback }) => {
-      onProgressCallback(50)
-      onSuccessCallback({ id: 'new-logo' })
+it('removes branding from both previews and restores it when switched back on', async () => {
+  const { user } = renderBrand()
+  expectPreviewLogo('https://example.com/logo.png')
+  await user.click(screen.getByText('custom.webapp.removeBrand'))
+  await waitFor(() => expect(removalSwitch()).toBeChecked())
+  expect(updateConfig).toHaveBeenCalledExactlyOnceWith({ body: { remove_webapp_brand: true } })
+  expect(screen.queryAllByText('POWERED BY')).toHaveLength(0)
+  expect(screen.queryAllByRole('img', { name: 'logo' })).toHaveLength(0)
+  expect(uploadInput()).toBeDisabled()
+  await user.click(removalSwitch())
+  await waitFor(() => expect(removalSwitch()).not.toBeChecked())
+  expectPreviewLogo('https://example.com/logo.png')
+  expect(uploadInput()).toBeEnabled()
+})
+
+it('prefers workspace branding over the custom web app logo in both previews', () => {
+  renderBrand({ workspaceLogo: 'https://example.com/workspace.png' })
+  expectPreviewLogo('https://example.com/workspace.png')
+})
+
+it('exposes only named actions while preserving the branding preview', () => {
+  renderBrand()
+  for (const button of screen.getAllByRole('button')) expect(button).toHaveAccessibleName()
+  expect(screen.getByRole('button', { name: 'Execute' })).toBeDisabled()
+  expectPreviewLogo('https://example.com/logo.png')
+})
+
+it.each([
+  { reason: 'plan restriction', canReplace: false, canManage: true },
+  { reason: 'missing permission', canReplace: true, canManage: false },
+])('prevents changes with $reason', async ({ canReplace, canManage }) => {
+  const { user } = renderBrand({ canReplace, canManage })
+  await user.click(removalSwitch())
+  await user.upload(uploadInput(), logoFile())
+  expect(removalSwitch()).toHaveAttribute('aria-disabled', 'true')
+  expect(uploadInput()).toBeDisabled()
+  expect(screen.queryByRole('button', { name: 'custom.restore' })).not.toBeInTheDocument()
+  expect(updateConfig).not.toHaveBeenCalled()
+  expect(upload).not.toHaveBeenCalled()
+})
+
+it('keeps edits disabled until the custom configuration arrives', async () => {
+  const request = createDeferred<WorkspaceCustomConfigPayload>()
+  getConfig.mockReturnValue(request.promise)
+  renderBrand({ seedConfig: false })
+  expect(removalSwitch()).toHaveAttribute('aria-disabled', 'true')
+  expect(uploadInput()).toBeDisabled()
+  await act(async () => request.resolve(config))
+  await waitFor(() => expect(uploadInput()).toBeEnabled())
+  expect(removalSwitch()).not.toHaveAttribute('aria-disabled', 'true')
+  expectPreviewLogo('https://example.com/logo.png')
+})
+
+it('keeps edits disabled when loading configuration fails', async () => {
+  getConfig.mockRejectedValue(new Error('Configuration unavailable'))
+  const { user, queryClient } = renderBrand({ seedConfig: false })
+  await waitFor(() =>
+    expect(
+      queryClient.getQueryState(consoleQuery.workspaces.customConfig.get.queryKey())?.status,
+    ).toBe('error'),
+  )
+  expect(removalSwitch()).toHaveAttribute('aria-disabled', 'true')
+  expect(uploadInput()).toBeDisabled()
+  await user.click(removalSwitch())
+  expect(updateConfig).not.toHaveBeenCalled()
+})
+
+it('rejects an oversized logo before sending an upload', async () => {
+  const { user } = renderBrand()
+  await user.upload(
+    uploadInput(),
+    new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'large.png', { type: 'image/png' }),
+  )
+  expect(
+    await screen.findByText('common.imageUploader.uploadFromComputerLimit:{"size":5}'),
+  ).toBeVisible()
+  expect(upload).not.toHaveBeenCalled()
+  expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
+})
+
+it.each([0, 100])(
+  'announces uploading and waits for the response at %s percent',
+  async (loaded) => {
+    const request = createDeferred<Awaited<ReturnType<typeof upload>>>()
+    upload.mockImplementation((options) => {
+      options.onprogress?.call(
+        options.xhr,
+        new ProgressEvent('progress', { lengthComputable: true, loaded, total: 100 }),
+      )
+      return request.promise
     })
+    const { user } = renderBrand()
+    const changeButton = screen.getByRole('button', { name: 'custom.change' })
+    await user.click(changeButton)
+    await user.upload(uploadInput(), logoFile())
+    const pendingButton = screen.getByRole('button', { name: 'custom.uploading' })
+    expect(pendingButton).toBe(changeButton)
+    expect(pendingButton).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('status')).toHaveTextContent('custom.uploading')
+    expect(uploadInput()).toBeDisabled()
+    await user.click(pendingButton)
+    expect(upload).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
+    await act(async () => request.resolve({ id: 'new-logo' }))
+    expect(await screen.findByRole('button', { name: 'custom.apply' })).toBeEnabled()
+    expect(changeButton).not.toHaveAttribute('aria-disabled', 'true')
+    expect(uploadInput()).toBeEnabled()
+    expect(screen.getByRole('status')).toHaveTextContent('custom.change')
+    expect(screen.queryByRole('button', { name: 'custom.uploading' })).not.toBeInTheDocument()
+  },
+)
 
-    const { container } = renderComponent()
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-    const testFile = new File(['content'], 'logo.png', { type: 'image/png' })
-    fireEvent.change(fileInput, { target: { files: [testFile] } })
-
-    await waitFor(() => expect(mockImageUpload).toHaveBeenCalled())
-    await waitFor(() => screen.getByRole('button', { name: 'custom.apply' }))
-
-    const cancelButton = screen.getByRole('button', { name: 'common.operation.cancel' })
-    fireEvent.click(cancelButton)
-
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'custom.apply' })).toBeNull())
-  })
+it.each([
+  {
+    error: new ORPCError('forbidden', { message: 'Workspace upload denied' }),
+    message: 'Workspace upload denied',
+  },
+  {
+    error: new Error('Network unavailable'),
+    message: 'common.imageUploader.uploadFromComputerUploadError',
+  },
+])('shows $message and allows retry after an upload failure', async ({ error, message }) => {
+  upload.mockRejectedValueOnce(error)
+  const { user } = renderBrand()
+  const file = logoFile()
+  await user.upload(uploadInput(), file)
+  expect(await screen.findByText(message)).toBeVisible()
+  expect(screen.getByText('custom.uploadedFail')).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
+  expect(updateConfig).not.toHaveBeenCalled()
+  await user.upload(uploadInput(), file)
+  expect(await screen.findByRole('button', { name: 'custom.apply' })).toBeEnabled()
+  expect(screen.queryByText('custom.uploadedFail')).not.toBeInTheDocument()
 })

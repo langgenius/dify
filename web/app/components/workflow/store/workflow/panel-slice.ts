@@ -1,7 +1,17 @@
 import type { StateCreator } from 'zustand'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
+
+export type WorkflowContextMenuTarget =
+  | { type: 'panel' }
+  | { type: 'selection' }
+  | { type: 'node'; nodeId: string }
+  | { type: 'edge'; edgeId: string }
 
 export type PanelSliceShape = {
+  messageLogItem?: IChatItem & { workflow_run_id: string }
+  setMessageLogItem: (item?: IChatItem) => void
   panelWidth: number
+  setPanelWidth: (width: number) => void
   showFeaturesPanel: boolean
   setShowFeaturesPanel: (showFeaturesPanel: boolean) => void
   showWorkflowVersionHistoryPanel: boolean
@@ -10,38 +20,59 @@ export type PanelSliceShape = {
   setShowInputsPanel: (showInputsPanel: boolean) => void
   showDebugAndPreviewPanel: boolean
   setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
-  panelMenu?: {
-    top: number
-    left: number
-  }
-  setPanelMenu: (panelMenu: PanelSliceShape['panelMenu']) => void
-  selectionMenu?: {
-    top: number
-    left: number
-  }
-  setSelectionMenu: (selectionMenu: PanelSliceShape['selectionMenu']) => void
+  showCommentsPanel: boolean
+  setShowCommentsPanel: (showCommentsPanel: boolean) => void
+  showUserComments: boolean
+  setShowUserComments: (showUserComments: boolean) => void
+  showUserCursors: boolean
+  setShowUserCursors: (showUserCursors: boolean) => void
+  contextMenuTarget?: WorkflowContextMenuTarget
+  setContextMenuTarget: (contextMenuTarget: WorkflowContextMenuTarget | undefined) => void
   showVariableInspectPanel: boolean
   setShowVariableInspectPanel: (showVariableInspectPanel: boolean) => void
   initShowLastRunTab: boolean
   setInitShowLastRunTab: (initShowLastRunTab: boolean) => void
+  activeCommentId?: string | null
+  setActiveCommentId: (commentId: string | null) => void
 }
 
-export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
-  panelWidth: localStorage.getItem('workflow-node-panel-width') ? Number.parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
+export const createPanelSlice: StateCreator<PanelSliceShape> = (set) => ({
+  messageLogItem: undefined,
+  setMessageLogItem: (item) => {
+    if (!item) {
+      set({ messageLogItem: undefined })
+      return
+    }
+    if (item.workflow_run_id) {
+      set({ messageLogItem: { ...item, workflow_run_id: item.workflow_run_id } })
+    }
+  },
+  panelWidth: 420,
+  setPanelWidth: (width) =>
+    set((state) => (state.panelWidth === width ? state : { panelWidth: width })),
   showFeaturesPanel: false,
-  setShowFeaturesPanel: showFeaturesPanel => set(() => ({ showFeaturesPanel })),
+  setShowFeaturesPanel: (showFeaturesPanel) => set(() => ({ showFeaturesPanel })),
   showWorkflowVersionHistoryPanel: false,
-  setShowWorkflowVersionHistoryPanel: showWorkflowVersionHistoryPanel => set(() => ({ showWorkflowVersionHistoryPanel })),
+  setShowWorkflowVersionHistoryPanel: (showWorkflowVersionHistoryPanel) =>
+    set(() => ({ showWorkflowVersionHistoryPanel })),
   showInputsPanel: false,
-  setShowInputsPanel: showInputsPanel => set(() => ({ showInputsPanel })),
+  setShowInputsPanel: (showInputsPanel) => set(() => ({ showInputsPanel })),
   showDebugAndPreviewPanel: false,
-  setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
-  panelMenu: undefined,
-  setPanelMenu: panelMenu => set(() => ({ panelMenu })),
-  selectionMenu: undefined,
-  setSelectionMenu: selectionMenu => set(() => ({ selectionMenu })),
+  setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel) =>
+    set(() => ({ showDebugAndPreviewPanel })),
+  showCommentsPanel: false,
+  setShowCommentsPanel: (showCommentsPanel) => set(() => ({ showCommentsPanel })),
+  showUserComments: true,
+  setShowUserComments: (showUserComments) => set(() => ({ showUserComments })),
+  showUserCursors: true,
+  setShowUserCursors: (showUserCursors) => set(() => ({ showUserCursors })),
+  contextMenuTarget: undefined,
+  setContextMenuTarget: (contextMenuTarget) => set(() => ({ contextMenuTarget })),
   showVariableInspectPanel: false,
-  setShowVariableInspectPanel: showVariableInspectPanel => set(() => ({ showVariableInspectPanel })),
+  setShowVariableInspectPanel: (showVariableInspectPanel) =>
+    set(() => ({ showVariableInspectPanel })),
   initShowLastRunTab: false,
-  setInitShowLastRunTab: initShowLastRunTab => set(() => ({ initShowLastRunTab })),
+  setInitShowLastRunTab: (initShowLastRunTab) => set(() => ({ initShowLastRunTab })),
+  activeCommentId: null,
+  setActiveCommentId: (commentId: string | null) => set(() => ({ activeCommentId: commentId })),
 })

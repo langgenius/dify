@@ -1,11 +1,17 @@
-import type { ReactMarkdownWrapperProps, SimplePluginInfo } from './react-markdown-wrapper'
+import type { SimplePluginInfo, StreamdownWrapperProps } from './streamdown-wrapper'
+import { cn } from '@langgenius/dify-ui/cn'
 import { flow } from 'es-toolkit/compat'
 import dynamic from 'next/dynamic'
-import { cn } from '@/utils/classnames'
+import { memo, useMemo } from 'react'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
-import 'katex/dist/katex.min.css'
 
-const ReactMarkdown = dynamic(() => import('./react-markdown-wrapper').then(mod => mod.ReactMarkdownWrapper), { ssr: false })
+const StreamdownWrapper = dynamic(() => import('./streamdown-wrapper'), { ssr: false })
+
+const preprocess = flow([preprocessThinkTag, preprocessLaTeX])
+
+const EMPTY_COMPONENTS = {} as const
+const MARKDOWN_DIVIDER_ONLY_RE =
+  /^(?:[ \t]*\r?\n)*[ \t]{0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})(?:\r?\n[ \t]*)*$/
 
 /**
  * @fileoverview Main Markdown rendering component.
@@ -18,24 +24,53 @@ export type MarkdownProps = {
   content: string
   className?: string
   pluginInfo?: SimplePluginInfo
-} & Pick<ReactMarkdownWrapperProps, 'customComponents' | 'customDisallowedElements' | 'rehypePlugins'>
+} & Pick<
+  StreamdownWrapperProps,
+  | 'customComponents'
+  | 'customDisallowedElements'
+  | 'remarkPlugins'
+  | 'rehypePlugins'
+  | 'isAnimating'
+  | 'mode'
+  | 'renderSoftBreaks'
+>
 
-export const Markdown = (props: MarkdownProps) => {
-  const { customComponents = {}, pluginInfo } = props
-  const latexContent = flow([
-    preprocessThinkTag,
-    preprocessLaTeX,
-  ])(props.content)
+export const Markdown = memo((props: MarkdownProps) => {
+  const {
+    content,
+    customComponents = EMPTY_COMPONENTS,
+    pluginInfo,
+    isAnimating,
+    customDisallowedElements,
+    remarkPlugins,
+    rehypePlugins,
+    mode,
+    className,
+    renderSoftBreaks,
+  } = props
+  const latexContent = useMemo(() => preprocess(content), [content])
+  const hasContent = !!latexContent.trim() && !MARKDOWN_DIVIDER_ONLY_RE.test(latexContent)
 
   return (
-    <div className={cn('markdown-body', '!text-text-primary', props.className)}>
-      <ReactMarkdown
-        pluginInfo={pluginInfo}
-        latexContent={latexContent}
-        customComponents={customComponents}
-        customDisallowedElements={props.customDisallowedElements}
-        rehypePlugins={props.rehypePlugins}
-      />
+    <div
+      className={cn('markdown-body', 'text-text-primary!', className)}
+      data-testid="markdown-body"
+    >
+      {hasContent && (
+        <StreamdownWrapper
+          pluginInfo={pluginInfo}
+          latexContent={latexContent}
+          customComponents={customComponents}
+          customDisallowedElements={customDisallowedElements}
+          remarkPlugins={remarkPlugins}
+          rehypePlugins={rehypePlugins}
+          isAnimating={isAnimating}
+          mode={mode}
+          renderSoftBreaks={renderSoftBreaks}
+        />
+      )}
     </div>
   )
-}
+})
+
+Markdown.displayName = 'Markdown'

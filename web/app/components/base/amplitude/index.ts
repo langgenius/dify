@@ -1,2 +1,2 @@
-export { default, isAmplitudeEnabled } from './AmplitudeProvider'
-export { resetUser, setUserId, setUserProperties, trackEvent } from './utils'
+export { default } from './lazy-amplitude-provider'
+export { setUserId, setUserProperties, trackEvent } from './utils'

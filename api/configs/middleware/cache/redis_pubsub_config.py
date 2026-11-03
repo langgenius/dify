@@ -1,7 +1,7 @@
-from typing import Literal, Protocol
+from typing import Literal, Protocol, cast
 from urllib.parse import quote_plus, urlunparse
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
@@ -12,54 +12,66 @@ class RedisConfigDefaults(Protocol):
     REDIS_PASSWORD: str | None
     REDIS_DB: int
     REDIS_USE_SSL: bool
-    REDIS_USE_SENTINEL: bool | None
-    REDIS_USE_CLUSTERS: bool
 
 
-class RedisConfigDefaultsMixin:
-    def _redis_defaults(self: RedisConfigDefaults) -> RedisConfigDefaults:
-        return self
+def _redis_defaults(config: object) -> RedisConfigDefaults:
+    return cast(RedisConfigDefaults, config)
 
 
-class RedisPubSubConfig(BaseSettings, RedisConfigDefaultsMixin):
+class RedisPubSubConfig(BaseSettings):
     """
-    Configuration settings for Redis pub/sub streaming.
+    Configuration settings for event transport between API and workers.
+
+    Supported transports:
+    - pubsub: Redis PUBLISH/SUBSCRIBE (at-most-once)
+    - sharded: Redis 7+ Sharded Pub/Sub (at-most-once, better scaling)
+    - streams: Redis Streams (at-least-once, supports late subscribers)
     """
 
     PUBSUB_REDIS_URL: str | None = Field(
-        alias="PUBSUB_REDIS_URL",
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_URL", "PUBSUB_REDIS_URL"),
         description=(
-            "Redis connection URL for pub/sub streaming events between API "
-            "and celery worker, defaults to url constructed from "
-            "`REDIS_*` configurations"
+            "Redis connection URL for streaming events between API and celery worker; "
+            "defaults to URL constructed from `REDIS_*` configurations. Also accepts ENV: EVENT_BUS_REDIS_URL."
         ),
         default=None,
     )
 
     PUBSUB_REDIS_USE_CLUSTERS: bool = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_USE_CLUSTERS", "PUBSUB_REDIS_USE_CLUSTERS"),
         description=(
-            "Enable Redis Cluster mode for pub/sub streaming. It's highly "
-            "recommended to enable this for large deployments."
+            "Enable Redis Cluster mode for pub/sub or streams transport. Recommended for large deployments. "
+            "Also accepts ENV: EVENT_BUS_REDIS_USE_CLUSTERS."
         ),
         default=False,
     )
 
-    PUBSUB_REDIS_CHANNEL_TYPE: Literal["pubsub", "sharded"] = Field(
+    PUBSUB_REDIS_CHANNEL_TYPE: Literal["pubsub", "sharded", "streams"] = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_CHANNEL_TYPE", "PUBSUB_REDIS_CHANNEL_TYPE"),
         description=(
-            "Pub/sub channel type for streaming events. "
-            "Valid options are:\n"
-            "\n"
-            " - pubsub: for normal Pub/Sub\n"
-            " - sharded: for sharded Pub/Sub\n"
-            "\n"
-            "It's highly recommended to use sharded Pub/Sub AND redis cluster "
-            "for large deployments."
+            "Event transport type. Options are:\n\n"
+            " - pubsub: normal Pub/Sub (at-most-once)\n"
+            " - sharded: sharded Pub/Sub (at-most-once)\n"
+            " - streams: Redis Streams (at-least-once, recommended to avoid subscriber races)\n\n"
+            "Note: Before enabling 'streams' in production, estimate your expected event volume and retention needs.\n"
+            "Configure Redis memory limits and stream trimming appropriately (e.g., MAXLEN and key expiry) to reduce\n"
+            "the risk of data loss from Redis auto-eviction under memory pressure.\n"
+            "Also accepts ENV: EVENT_BUS_REDIS_CHANNEL_TYPE."
         ),
         default="pubsub",
     )
 
+    PUBSUB_STREAMS_RETENTION_SECONDS: int = Field(
+        validation_alias=AliasChoices("EVENT_BUS_STREAMS_RETENTION_SECONDS", "PUBSUB_STREAMS_RETENTION_SECONDS"),
+        description=(
+            "When using 'streams', expire each stream key this many seconds after the last event is published. "
+            "Also accepts ENV: EVENT_BUS_STREAMS_RETENTION_SECONDS."
+        ),
+        default=600,
+    )
+
     def _build_default_pubsub_url(self) -> str:
-        defaults = self._redis_defaults()
+        defaults = _redis_defaults(self)
         if not defaults.REDIS_HOST or not defaults.REDIS_PORT:
             raise ValueError("PUBSUB_REDIS_URL must be set when default Redis URL cannot be constructed")
 
@@ -76,11 +88,9 @@ class RedisPubSubConfig(BaseSettings, RedisConfigDefaultsMixin):
         if userinfo:
             userinfo = f"{userinfo}@"
 
-        host = defaults.REDIS_HOST
-        port = defaults.REDIS_PORT
         db = defaults.REDIS_DB
 
-        netloc = f"{userinfo}{host}:{port}"
+        netloc = f"{userinfo}{defaults.REDIS_HOST}:{defaults.REDIS_PORT}"
         return urlunparse((scheme, netloc, f"/{db}", "", "", ""))
 
     @property

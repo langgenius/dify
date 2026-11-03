@@ -8,7 +8,7 @@ from httpx_sse import connect_sse
 
 from configs import dify_config
 from core.mcp.types import ErrorData, JSONRPCError
-from core.model_runtime.utils.encoders import jsonable_encoder
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 HTTP_REQUEST_NODE_SSL_VERIFY = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
 
@@ -127,9 +127,7 @@ def ssrf_proxy_sse_connect(url: str, **kwargs) -> AbstractContextManager[httpx_s
         raise
 
 
-def create_mcp_error_response(
-    request_id: int | str | None, code: int, message: str, data=None
-) -> Generator[bytes, None, None]:
+def create_mcp_error_response(request_id: int | str | None, code: int, message: str, data=None) -> Generator[bytes]:
     """Create MCP error response"""
     error_data = ErrorData(code=code, message=message, data=data)
     json_response = JSONRPCError(

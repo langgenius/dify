@@ -1,43 +1,78 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { NavIcon } from '@/app/components/app-sidebar/navLink'
-import type { App } from '@/types/app'
-import {
-  RiDashboard2Fill,
-  RiDashboard2Line,
-  RiFileList3Fill,
-  RiFileList3Line,
-  RiTerminalBoxFill,
-  RiTerminalBoxLine,
-  RiTerminalWindowFill,
-  RiTerminalWindowLine,
-} from '@remixicon/react'
-import { useUnmount } from 'ahooks'
-import dynamic from 'next/dynamic'
-import { usePathname, useRouter } from 'next/navigation'
+import type { ResourceMaintainerPermissionOptions } from '@/utils/permission'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
-import AppSideBar from '@/app/components/app-sidebar'
-import { useStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
-import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
-import { useAppContext } from '@/context/app-context'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import {
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+} from '@/context/permission-state'
+import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { fetchAppDetailDirect } from '@/service/apps'
-import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
-import s from './style.module.css'
+import { redirect, usePathname } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
+import { getRedirectionPath } from '@/utils/app-redirection'
+import { getAppACLCapabilities } from '@/utils/permission'
 
-const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
-  ssr: false,
-})
-
-export type IAppDetailLayoutProps = {
+type IAppDetailLayoutProps = {
   children: React.ReactNode
   appId: string
+}
+
+const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslation>['t']) => {
+  if (pathname.endsWith('/workflow') || pathname.endsWith('/configuration'))
+    return t(($) => $['appMenus.promptEng'], { ns: 'common' })
+  if (pathname.endsWith('/access-point'))
+    return t(($) => $['appMenus.accessPoint'], { ns: 'common' })
+  if (pathname.endsWith('/deploy')) return t(($) => $['appMenus.deploy'], { ns: 'common' })
+  if (pathname.endsWith('/logs')) return t(($) => $['appMenus.logs'], { ns: 'common' })
+  if (pathname.endsWith('/annotations'))
+    return t(($) => $['appMenus.annotations'], { ns: 'common' })
+  if (pathname.endsWith('/overview')) return t(($) => $['appMenus.overview'], { ns: 'common' })
+  if (pathname.endsWith('/access-config'))
+    return t(($) => $['settings.resourceAccess'], { ns: 'navigation' })
+
+  return t(($) => $['menus.appDetail'], { ns: 'navigation' })
+}
+
+const getAppDetailRedirectPath = (
+  appDetail: AppDetailWithSite,
+  pathname: string,
+  permissionOptions: ResourceMaintainerPermissionOptions,
+) => {
+  if (appDetail.mode === 'agent' && pathname.endsWith('/access-point'))
+    return appDetail.bound_agent_id ? `/agents/${appDetail.bound_agent_id}/access` : '/agents'
+
+  const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, permissionOptions)
+  const isWorkflowApp = appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat'
+  const isLayoutPath = pathname.endsWith('configuration') || pathname.endsWith('workflow')
+  const isLogsPath = pathname.endsWith('logs')
+  const isAnnotationsPath = pathname.endsWith('annotations')
+  const isOverviewPath = pathname.endsWith('overview')
+  const isAccessConfigPath = pathname.endsWith('access-config')
+  const isAccessPointPath = pathname.endsWith('access-point')
+  const isDeployPath = pathname.endsWith('deploy')
+  if (
+    (isLayoutPath && !appACLCapabilities.canAccessLayout) ||
+    (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
+    (isAnnotationsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
+    (isOverviewPath && !appACLCapabilities.canMonitor) ||
+    (isAccessConfigPath && (appDetail.mode === 'agent' || !appACLCapabilities.canAccessConfig)) ||
+    (isAccessPointPath && !appACLCapabilities.canViewAccessPoint) ||
+    (isDeployPath && (!isWorkflowApp || !appACLCapabilities.canDeploy))
+  )
+    return getRedirectionPath(appDetail, permissionOptions)
+
+  return undefined
 }
 
 const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
@@ -45,138 +80,74 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     children,
     appId, // get appId in path
   } = props
-  const { t } = useTranslation()
-  const router = useRouter()
+  const { t } = useTranslation(['common', 'navigation'])
   const pathname = usePathname()
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
-  const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
-  const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
-    appDetail: state.appDetail,
-    setAppDetail: state.setAppDetail,
-    setAppSidebarExpand: state.setAppSidebarExpand,
-  })))
-  const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
-  const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
-  const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
-  const [navigation, setNavigation] = useState<Array<{
-    name: string
-    href: string
-    icon: NavIcon
-    selectedIcon: NavIcon
-  }>>([])
-
-  const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: AppModeEnum) => {
-    const navConfig = [
-      ...(isCurrentWorkspaceEditor
-        ? [{
-            name: t('appMenus.promptEng', { ns: 'common' }),
-            href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
-            icon: RiTerminalWindowLine,
-            selectedIcon: RiTerminalWindowFill,
-          }]
-        : []
-      ),
-      {
-        name: t('appMenus.apiAccess', { ns: 'common' }),
-        href: `/app/${appId}/develop`,
-        icon: RiTerminalBoxLine,
-        selectedIcon: RiTerminalBoxFill,
-      },
-      ...(isCurrentWorkspaceEditor
-        ? [{
-            name: mode !== AppModeEnum.WORKFLOW
-              ? t('appMenus.logAndAnn', { ns: 'common' })
-              : t('appMenus.logs', { ns: 'common' }),
-            href: `/app/${appId}/logs`,
-            icon: RiFileList3Line,
-            selectedIcon: RiFileList3Fill,
-          }]
-        : []
-      ),
-      {
-        name: t('appMenus.overview', { ns: 'common' }),
-        href: `/app/${appId}/overview`,
-        icon: RiDashboard2Line,
-        selectedIcon: RiDashboard2Fill,
-      },
-    ]
-    return navConfig
-  }, [t])
-
-  useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
-
-  useEffect(() => {
-    if (appDetail) {
-      const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
-      const mode = isMobile ? 'collapse' : 'expand'
-      setAppSidebarExpand(isMobile ? mode : localeMode)
-      // TODO: consider screen size and mode
-      // if ((appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === 'workflow') && (pathname).endsWith('workflow'))
-      //   setAppSidebarExpand('collapse')
-    }
-  }, [appDetail, isMobile])
-
-  useEffect(() => {
-    setAppDetail()
-    setIsLoadingAppDetail(true)
-    fetchAppDetailDirect({ url: '/apps', id: appId }).then((res: App) => {
-      setAppDetailRes(res)
-    }).catch((e: any) => {
-      if (e.status === 404)
-        router.replace('/apps')
-    }).finally(() => {
-      setIsLoadingAppDetail(false)
-    })
-  }, [appId, pathname])
-
-  useEffect(() => {
-    if (!appDetailRes || !currentWorkspace.id || isLoadingCurrentWorkspace || isLoadingAppDetail)
-      return
-    const res = appDetailRes
-    // redirection
-    const canIEditApp = isCurrentWorkspaceEditor
-    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs'))) {
-      router.replace(`/app/${appId}/overview`)
-      return
-    }
-    if ((res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('configuration')) {
-      router.replace(`/app/${appId}/workflow`)
-    }
-    else if ((res.mode !== AppModeEnum.WORKFLOW && res.mode !== AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('workflow')) {
-      router.replace(`/app/${appId}/configuration`)
-    }
-    else {
-      setAppDetail({ ...res, enable_sso: false })
-      setNavigation(getNavigationConfig(appId, isCurrentWorkspaceEditor, res.mode))
-    }
-  }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace])
-
-  useUnmount(() => {
-    setAppDetail()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
   })
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const pageTitle = appDetailPageTitle(pathname, t)
+  // Not useSuspenseQuery: a missing app has to stay a returned error so it can redirect to /apps.
+  const { data: appDetail, error: appDetailError } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+    }),
+  )
+  const isPermissionContextReady =
+    !!currentWorkspace.id && !isLoadingCurrentWorkspace && !isLoadingWorkspacePermissionKeys
+  const redirectPath =
+    appDetail && isPermissionContextReady
+      ? getAppDetailRedirectPath(appDetail, pathname, {
+          currentUserId,
+          resourceMaintainer: appDetail.maintainer,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        })
+      : undefined
 
-  if (!appDetail) {
-    return (
-      <div className="flex h-full items-center justify-center bg-background-body">
-        <Loading />
+  useDocumentTitle(
+    `${pageTitle} · ${appDetail?.name || t(($) => $['menus.appDetail'], { ns: 'navigation' })}`,
+  )
+
+  if (appDetailError && !appDetail) {
+    if (isNotFoundError(appDetailError)) redirect('/apps')
+    throw appDetailError
+  }
+  if (redirectPath) redirect(redirectPath)
+
+  const isWorkflowPage = pathname.endsWith('/workflow')
+  const content =
+    !appDetail || !isPermissionContextReady ? (
+      <div className="flex min-w-0 grow items-center justify-center bg-background-body">
+        <LoadingPlaceholder />
+      </div>
+    ) : (
+      <div
+        className={cn(
+          'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
+          !isWorkflowPage && 'pt-1 pr-1 pb-1',
+        )}
+      >
+        <div
+          className={cn(
+            'min-w-0 grow overflow-hidden bg-components-panel-bg',
+            !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+          )}
+        >
+          {children}
+        </div>
       </div>
     )
-  }
 
   return (
-    <div className={cn(s.app, 'relative flex', 'overflow-hidden')}>
-      {appDetail && (
-        <AppSideBar
-          navigation={navigation}
-        />
-      )}
-      <div className="grow overflow-hidden bg-components-panel-bg">
-        {children}
-      </div>
-      {showTagManagementModal && (
-        <TagManagementModal type="app" show={showTagManagementModal} />
-      )}
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body">
+      {content}
     </div>
   )
 }

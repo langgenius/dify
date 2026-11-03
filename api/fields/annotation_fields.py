@@ -1,37 +1,28 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import Field, WithJsonSchema, field_validator
 
+from fields.base import ResponseModel
+from libs.helper import to_timestamp
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
+Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
 
 
 class Annotation(ResponseModel):
-    id: str
+    id: UUIDString
     question: str | None = None
     answer: str | None = Field(default=None, validation_alias="content")
     hit_count: int | None = None
-    created_at: int | None = None
+    created_at: Int64 | None = None
 
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AnnotationList(ResponseModel):
@@ -40,6 +31,15 @@ class AnnotationList(ResponseModel):
     limit: int
     total: int
     page: int
+
+
+class AnnotationJobStatusResponse(ResponseModel):
+    job_id: UUIDString
+    job_status: str
+
+
+class AnnotationJobStatusDetailResponse(AnnotationJobStatusResponse):
+    error_msg: str = ""
 
 
 class AnnotationExportList(ResponseModel):
@@ -58,7 +58,7 @@ class AnnotationHitHistory(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AnnotationHitHistoryList(ResponseModel):

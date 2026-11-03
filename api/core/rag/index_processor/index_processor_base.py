@@ -1,24 +1,25 @@
 """Abstract interface for document loader implementations."""
 
-import cgi
 import logging
 import mimetypes
 import os
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
 from urllib.parse import unquote, urlparse
 
 import httpx
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from werkzeug.http import parse_options_header
 
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import AttachmentDocument, Document
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.rag.splitter.fixed_text_splitter import (
     EnhanceRecursiveCharacterTextSplitter,
     FixedRecursiveCharacterTextSplitter,
@@ -35,15 +36,24 @@ if TYPE_CHECKING:
     from core.model_manager import ModelInstance
 
 
+class SummaryIndexSettingDict(TypedDict):
+    enable: bool
+    model_name: NotRequired[str]
+    model_provider_name: NotRequired[str]
+    summary_prompt: NotRequired[str]
+
+
 class BaseIndexProcessor(ABC):
     """Interface for extract files."""
 
     @abstractmethod
-    def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
+    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
         raise NotImplementedError
 
     @abstractmethod
-    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
+    def transform(
+        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
+    ) -> list[Document]:
         raise NotImplementedError
 
     @abstractmethod
@@ -51,8 +61,10 @@ class BaseIndexProcessor(ABC):
         self,
         tenant_id: str,
         preview_texts: list[PreviewDetail],
-        summary_index_setting: dict,
+        summary_index_setting: SummaryIndexSettingDict,
         doc_language: str | None = None,
+        *,
+        session: Session,
     ) -> list[PreviewDetail]:
         """
         For each segment in preview_texts, generate a summary using LLM and attach it to the segment.
@@ -64,6 +76,7 @@ class BaseIndexProcessor(ABC):
             preview_texts: List of preview details to generate summaries for
             summary_index_setting: Summary index configuration
             doc_language: Optional document language to ensure summary is generated in the correct language
+            session: SQLAlchemy session used for summary image lookups
         """
         raise NotImplementedError
 
@@ -74,32 +87,24 @@ class BaseIndexProcessor(ABC):
         documents: list[Document],
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
+        *,
+        session: Session,
         **kwargs,
-    ):
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
+    def clean(
+        self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any, session: Session) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:
-        raise NotImplementedError
-
-    @abstractmethod
-    def retrieve(
-        self,
-        retrieval_method: RetrievalMethod,
-        query: str,
-        dataset: Dataset,
-        top_k: int,
-        score_threshold: float,
-        reranking_model: dict,
-    ) -> list[Document]:
         raise NotImplementedError
 
     def _get_splitter(
@@ -108,11 +113,12 @@ class BaseIndexProcessor(ABC):
         max_tokens: int,
         chunk_overlap: int,
         separator: str,
-        embedding_model_instance: Optional["ModelInstance"],
+        embedding_model_instance: "ModelInstance | None",
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
         """
+        character_splitter: TextSplitter
         if processing_rule_mode in ["custom", "hierarchical"]:
             # The user-defined segmentation rule
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
@@ -138,9 +144,16 @@ class BaseIndexProcessor(ABC):
                 embedding_model_instance=embedding_model_instance,
             )
 
-        return character_splitter  # type: ignore
+        return character_splitter
 
-    def _get_content_files(self, document: Document, current_user: Account | None = None) -> list[AttachmentDocument]:
+    def _get_content_files(
+        self,
+        document: Document,
+        current_user: Account | None = None,
+        *,
+        tenant_id: str,
+        session: Session,
+    ) -> list[AttachmentDocument]:
         """
         Get the content files from the document.
         """
@@ -177,12 +190,26 @@ class BaseIndexProcessor(ABC):
             if match:
                 if current_user:
                     tool_file_id = match.group(1)
-                    upload_file_id = self._download_tool_file(tool_file_id, current_user)
+                    upload_file_id = self._download_tool_file(
+                        tool_file_id,
+                        current_user,
+                        tenant_id=tenant_id,
+                        session=session,
+                    )
                     if upload_file_id:
                         upload_file_id_list.append(upload_file_id)
                 continue
             if current_user:
-                upload_file_id = self._download_image(image.split(" ")[0], current_user)
+                image_url = image.split(" ")[0]
+                try:
+                    parsed_url = urlparse(image_url)
+                except ValueError:
+                    logging.debug("Skipping malformed image reference: %s", image_url)
+                    continue
+                if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+                    logging.debug("Skipping non-HTTP image reference: %s", image_url)
+                    continue
+                upload_file_id = self._download_image(image_url, current_user)
                 if upload_file_id:
                     upload_file_id_list.append(upload_file_id)
 
@@ -191,7 +218,12 @@ class BaseIndexProcessor(ABC):
 
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
-        upload_files = db.session.query(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids)).all()
+        upload_files = session.scalars(
+            select(UploadFile).where(
+                UploadFile.tenant_id == tenant_id,
+                UploadFile.id.in_(unique_upload_file_ids),
+            )
+        ).all()
 
         # Create a mapping from ID to UploadFile for quick lookup
         upload_file_map = {upload_file.id: upload_file for upload_file in upload_files}
@@ -228,17 +260,17 @@ class BaseIndexProcessor(ABC):
         """
         from services.file_service import FileService
 
-        MAX_IMAGE_SIZE = dify_config.ATTACHMENT_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
-        DOWNLOAD_TIMEOUT = dify_config.ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT
+        max_image_size = dify_config.ATTACHMENT_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+        download_timeout = dify_config.ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT
 
         try:
             # Download with timeout
-            response = ssrf_proxy.get(image_url, timeout=DOWNLOAD_TIMEOUT)
+            response = remote_fetcher.make_request("GET", image_url, timeout=download_timeout)
             response.raise_for_status()
 
             # Check Content-Length header if available
             content_length = response.headers.get("Content-Length")
-            if content_length and int(content_length) > MAX_IMAGE_SIZE:
+            if content_length and int(content_length) > max_image_size:
                 logging.warning("Image from %s exceeds 2MB limit (size: %s bytes)", image_url, content_length)
                 return None
 
@@ -246,10 +278,10 @@ class BaseIndexProcessor(ABC):
 
             content_disposition = response.headers.get("content-disposition")
             if content_disposition:
-                _, params = cgi.parse_header(content_disposition)
+                _, params = parse_options_header(content_disposition)
                 if "filename" in params:
+                    # Werkzeug decodes filename*; preserve literal percent escapes in the result.
                     filename = params["filename"]
-                    filename = unquote(filename)
 
             if not filename:
                 parsed_url = urlparse(image_url)
@@ -272,7 +304,7 @@ class BaseIndexProcessor(ABC):
             blob = b""
             for chunk in response.iter_bytes(chunk_size=8192):
                 blob += chunk
-                if len(blob) > MAX_IMAGE_SIZE:
+                if len(blob) > max_image_size:
                     logging.warning("Image from %s exceeds 2MB limit during download", image_url)
                     return None
 
@@ -288,22 +320,31 @@ class BaseIndexProcessor(ABC):
             )
             return upload_file.id
         except httpx.TimeoutException:
-            logging.warning("Timeout downloading image from %s after %s seconds", image_url, DOWNLOAD_TIMEOUT)
+            logging.warning("Timeout downloading image from %s after %s seconds", image_url, download_timeout)
             return None
         except httpx.RequestError as e:
             logging.warning("Error downloading image from %s: %s", image_url, str(e))
             return None
         except Exception:
-            logging.exception("Unexpected error downloading image from %s", image_url)
+            logging.warning("Unexpected error downloading image from %s", image_url, exc_info=True)
             return None
 
-    def _download_tool_file(self, tool_file_id: str, current_user: Account) -> str | None:
+    def _download_tool_file(
+        self,
+        tool_file_id: str,
+        current_user: Account,
+        *,
+        tenant_id: str,
+        session: Session,
+    ) -> str | None:
         """
         Download the tool file from the ID.
         """
         from services.file_service import FileService
 
-        tool_file = db.session.query(ToolFile).where(ToolFile.id == tool_file_id).first()
+        tool_file = session.scalar(
+            select(ToolFile).where(ToolFile.id == tool_file_id, ToolFile.tenant_id == tenant_id).limit(1)
+        )
         if not tool_file:
             return None
         blob = storage.load_once(tool_file.file_key)

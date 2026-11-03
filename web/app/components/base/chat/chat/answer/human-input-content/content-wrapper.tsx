@@ -1,8 +1,8 @@
-import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 type ContentWrapperProps = {
   nodeTitle: string
@@ -19,6 +19,7 @@ const ContentWrapper = ({
   className,
   expanded = false,
 }: ContentWrapperProps) => {
+  const { t } = useTranslation(['share'])
   const [isExpanded, setIsExpanded] = useState(expanded)
 
   const handleToggleExpand = useCallback(() => {
@@ -26,29 +27,41 @@ const ContentWrapper = ({
   }, [isExpanded])
 
   return (
-    <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-background-section p-2 shadow-md', className)}>
+    <div
+      className={cn(
+        'rounded-2xl border-[0.5px] border-components-panel-border bg-background-section p-2 shadow-md',
+        className,
+      )}
+      data-testid="content-wrapper"
+    >
       <div className="flex items-center gap-2 p-2">
         {/* node icon */}
         <BlockIcon type={BlockEnum.HumanInput} className="shrink-0" />
         {/* node name */}
         <div
-          className="system-sm-semibold-uppercase grow truncate text-text-primary"
+          className="grow truncate system-sm-semibold-uppercase text-text-primary"
           title={nodeTitle}
         >
           {nodeTitle}
         </div>
         {showExpandIcon && (
-          <div className="shrink-0 cursor-pointer" onClick={handleToggleExpand}>
-            {
+          <button
+            type="button"
+            aria-expanded={isExpanded}
+            aria-label={`${
               isExpanded
-                ? (
-                    <RiArrowDownSLine className="size-4" />
-                  )
-                : (
-                    <RiArrowRightSLine className="size-4" />
-                  )
-            }
-          </div>
+                ? t(($) => $['chat.collapse'], { ns: 'share' })
+                : t(($) => $['chat.expand'], { ns: 'share' })
+            } ${nodeTitle}`}
+            className="flex size-4 shrink-0 cursor-pointer appearance-none items-center justify-center focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            onClick={handleToggleExpand}
+          >
+            {isExpanded ? (
+              <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+            ) : (
+              <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
+            )}
+          </button>
         )}
       </div>
       {(!showExpandIcon || isExpanded) && (

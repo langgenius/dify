@@ -1,0 +1,97 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
+import type { TriggerWithProvider } from '../block-selector/types'
+import type { DataSourceNodeType } from '../nodes/data-source/types'
+import type { ToolNodeType } from '../nodes/tool/types'
+import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
+import type { CommonNodeType, ToolWithProvider } from '../types'
+import { CollectionType } from '@/app/components/tools/types'
+import { matchesProviderReference } from '@/utils/provider-reference'
+import { BlockEnum } from '../types'
+
+export function matchToolInCollection(
+  collection: ToolWithProvider[],
+  data: { plugin_id?: string; provider_id?: string; provider_name?: string },
+): ToolWithProvider | undefined {
+  return collection.find(
+    (tool) =>
+      (data.plugin_id && tool.plugin_id === data.plugin_id) ||
+      matchesProviderReference(tool, data.provider_id) ||
+      tool.name === data.provider_name,
+  )
+}
+
+export function matchTriggerProvider(
+  providers: TriggerWithProvider[],
+  data: { provider_name?: string; provider_id?: string; plugin_id?: string },
+): TriggerWithProvider | undefined {
+  return providers.find(
+    (provider) =>
+      provider.name === data.provider_name ||
+      provider.id === data.provider_id ||
+      (data.plugin_id && provider.plugin_id === data.plugin_id),
+  )
+}
+
+export function matchDataSource(
+  list: RagPipelineDatasourceProviderResponse[],
+  data: { plugin_unique_identifier?: string; plugin_id?: string; provider_name?: string },
+): RagPipelineDatasourceProviderResponse | undefined {
+  if (data.plugin_unique_identifier) {
+    const installedVersion = list.find(
+      (item) => item.plugin_unique_identifier === data.plugin_unique_identifier,
+    )
+    if (installedVersion) return installedVersion
+  }
+  if (data.plugin_id) return list.find((item) => item.plugin_id === data.plugin_id)
+  if (data.plugin_unique_identifier) return undefined
+  return list.find((item) => item.provider === data.provider_name)
+}
+
+type PluginInstallCheckContext = {
+  builtInTools?: ToolWithProvider[]
+  customTools?: ToolWithProvider[]
+  workflowTools?: ToolWithProvider[]
+  mcpTools?: ToolWithProvider[]
+  triggerPlugins?: TriggerWithProvider[]
+  dataSourceList?: RagPipelineDatasourceProviderResponse[]
+}
+
+export function isNodePluginMissing(
+  data: CommonNodeType,
+  context: PluginInstallCheckContext,
+): boolean {
+  switch (data.type as BlockEnum) {
+    case BlockEnum.Tool: {
+      const toolData = data as ToolNodeType
+      const collectionMap: Partial<Record<CollectionType, ToolWithProvider[] | undefined>> = {
+        [CollectionType.builtIn]: context.builtInTools,
+        [CollectionType.custom]: context.customTools,
+        [CollectionType.workflow]: context.workflowTools,
+        [CollectionType.mcp]: context.mcpTools,
+      }
+      const collection = collectionMap[toolData.provider_type]
+      if (!collection) return false
+      return (
+        !matchToolInCollection(collection, toolData) && Boolean(toolData.plugin_unique_identifier)
+      )
+    }
+    case BlockEnum.TriggerPlugin: {
+      const triggerData = data as PluginTriggerNodeType
+      if (!context.triggerPlugins) return false
+      return (
+        !matchTriggerProvider(context.triggerPlugins, triggerData) &&
+        Boolean(triggerData.plugin_unique_identifier)
+      )
+    }
+    case BlockEnum.DataSource: {
+      const dataSourceData = data as DataSourceNodeType
+      if (!context.dataSourceList) return false
+      return (
+        !matchDataSource(context.dataSourceList, dataSourceData) &&
+        Boolean(dataSourceData.plugin_unique_identifier)
+      )
+    }
+    default:
+      return false
+  }
+}

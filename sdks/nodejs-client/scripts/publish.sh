@@ -5,9 +5,11 @@
 # A beautiful and reliable script to publish the SDK to npm
 #
 # Usage:
-#   ./scripts/publish.sh          # Normal publish
+#   ./scripts/publish.sh            # Normal publish
 #   ./scripts/publish.sh --dry-run  # Test without publishing
 #   ./scripts/publish.sh --skip-tests  # Skip tests (not recommended)
+#
+# This script requires pnpm because the workspace uses catalog: dependencies.
 #
 
 set -euo pipefail
@@ -62,11 +64,27 @@ divider() {
     echo -e "${DIM}─────────────────────────────────────────────────────────────────${NC}"
 }
 
+run_npm() {
+    env \
+        -u npm_config_npm_globalconfig \
+        -u NPM_CONFIG_NPM_GLOBALCONFIG \
+        -u npm_config_verify_deps_before_run \
+        -u NPM_CONFIG_VERIFY_DEPS_BEFORE_RUN \
+        -u npm_config__jsr_registry \
+        -u NPM_CONFIG__JSR_REGISTRY \
+        -u npm_config_catalog \
+        -u NPM_CONFIG_CATALOG \
+        -u npm_config_overrides \
+        -u NPM_CONFIG_OVERRIDES \
+        npm "$@"
+}
+
 # ============================================================================
 # Configuration
 # ============================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || (cd "$SCRIPT_DIR/../../.." && pwd))"
 
 DRY_RUN=false
 SKIP_TESTS=false
@@ -123,23 +141,23 @@ main() {
         error "npm is not installed"
         exit 1
     fi
-    NPM_VERSION=$(npm -v)
+    NPM_VERSION=$(run_npm -v)
     success "npm: v$NPM_VERSION"
 
-    # Check pnpm (optional, for local dev)
-    if command -v pnpm &> /dev/null; then
-        PNPM_VERSION=$(pnpm -v)
-        success "pnpm: v$PNPM_VERSION"
-    else
-        info "pnpm not found (optional)"
+    if ! command -v pnpm &> /dev/null; then
+        error "pnpm is required because this workspace publishes catalog: dependencies"
+        info "Install pnpm with Corepack: corepack enable"
+        exit 1
     fi
+    PNPM_VERSION=$(pnpm -v)
+    success "pnpm: v$PNPM_VERSION"
 
     # Check npm login status
-    if ! npm whoami &> /dev/null; then
+    if ! run_npm whoami &> /dev/null; then
         error "Not logged in to npm. Run 'npm login' first."
         exit 1
     fi
-    NPM_USER=$(npm whoami)
+    NPM_USER=$(run_npm whoami)
     success "Logged in as: ${BOLD}$NPM_USER${NC}"
 
     # ========================================================================
@@ -154,11 +172,11 @@ main() {
     success "Version: ${BOLD}$PACKAGE_VERSION${NC}"
 
     # Check if version already exists on npm
-    if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version &> /dev/null; then
+    if run_npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version &> /dev/null; then
         error "Version $PACKAGE_VERSION already exists on npm!"
         echo ""
         info "Current published versions:"
-        npm view "$PACKAGE_NAME" versions --json 2>/dev/null | tail -5
+        run_npm view "$PACKAGE_NAME" versions --json 2>/dev/null | tail -5
         echo ""
         warning "Please update the version in package.json before publishing."
         exit 1
@@ -170,11 +188,7 @@ main() {
     # ========================================================================
     step "Step 3/6: Installing dependencies..."
     
-    if command -v pnpm &> /dev/null; then
-        pnpm install --frozen-lockfile 2>/dev/null || pnpm install
-    else
-        npm ci 2>/dev/null || npm install
-    fi
+    pnpm --dir "$REPO_ROOT" install --frozen-lockfile 2>/dev/null || pnpm --dir "$REPO_ROOT" install
     success "Dependencies installed"
 
     # ========================================================================
@@ -185,11 +199,7 @@ main() {
     if [[ "$SKIP_TESTS" == true ]]; then
         warning "Skipping tests (--skip-tests flag)"
     else
-        if command -v pnpm &> /dev/null; then
-            pnpm test
-        else
-            npm test
-        fi
+        pnpm test
         success "All tests passed"
     fi
 
@@ -201,11 +211,7 @@ main() {
     # Clean previous build
     rm -rf dist
     
-    if command -v pnpm &> /dev/null; then
-        pnpm run build
-    else
-        npm run build
-    fi
+    pnpm run build
     success "Build completed"
 
     # Verify build output
@@ -223,15 +229,32 @@ main() {
     # Step 6: Publish
     # ========================================================================
     step "Step 6/6: Publishing to npm..."
-    
+
+    PACK_DIR="$(mktemp -d)"
+    trap 'rm -rf "$PACK_DIR"' EXIT
+
+    pnpm pack --pack-destination "$PACK_DIR" >/dev/null
+    PACKAGE_TARBALL="$(find "$PACK_DIR" -maxdepth 1 -name '*.tgz' | head -n 1)"
+
+    if [[ -z "$PACKAGE_TARBALL" ]]; then
+        error "Pack failed - no tarball generated"
+        exit 1
+    fi
+
+    if tar -xOf "$PACKAGE_TARBALL" package/package.json | grep -q '"catalog:'; then
+        error "Packed manifest still contains catalog: references"
+        exit 1
+    fi
+
     divider
     echo -e "${CYAN}Package contents:${NC}"
-    npm pack --dry-run 2>&1 | head -30
+    tar -tzf "$PACKAGE_TARBALL" | head -30
     divider
 
     if [[ "$DRY_RUN" == true ]]; then
         warning "DRY-RUN: Skipping actual publish"
         echo ""
+        info "Packed artifact: $PACKAGE_TARBALL"
         info "To publish for real, run without --dry-run flag"
     else
         echo ""
@@ -239,7 +262,7 @@ main() {
         echo -e "${DIM}Press Enter to continue, or Ctrl+C to cancel...${NC}"
         read -r
 
-        npm publish --access public
+        pnpm publish --access public --no-git-checks
         
         echo ""
         success "🎉 Successfully published ${BOLD}$PACKAGE_NAME@$PACKAGE_VERSION${NC} to npm!"

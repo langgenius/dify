@@ -1,28 +1,60 @@
-import type { DataSourceProvider, NotionPage } from '@/models/common'
+import type {
+  StepTwoFile,
+  StepTwoNotionPage,
+} from '@/app/components/datasets/create/step-two/types'
+import type { DataSourceProvider } from '@/models/common'
 import type {
   CrawlOptions,
-  CustomFile,
-  DataSourceInfo,
   DataSourceType,
   LegacyDataSourceInfo,
   LocalFileInfo,
   OnlineDocumentInfo,
+  UploadFileIdInfo,
   WebsiteCrawlInfo,
 } from '@/models/datasets'
-import { useBoolean } from 'ahooks'
-import { useRouter } from 'next/navigation'
-import * as React from 'react'
-import { useMemo } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import StepTwo from '@/app/components/datasets/create/step-two'
-import AccountSetting from '@/app/components/header/account-setting'
+import { getNotionPageIcon } from '@/app/components/datasets/documents/document-source'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import DatasetDetailContext from '@/context/dataset-detail'
-import { useDocumentDetail, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+
+// data_source_info is written by the data source that imported the document.
+type DocumentSourceInfo = Record<string, unknown> | null | undefined
+
+const isCount = (value: unknown): value is number | string =>
+  typeof value === 'number' || typeof value === 'string'
+
+// Website imports store the crawl options they ran with next to the crawled page.
+const toCrawlOptions = (info: DocumentSourceInfo): CrawlOptions | undefined => {
+  if (!info) return undefined
+  const { includes, excludes, crawl_sub_pages, only_main_content, use_sitemap, limit, max_depth } =
+    info
+  if (
+    typeof includes !== 'string' ||
+    typeof excludes !== 'string' ||
+    typeof crawl_sub_pages !== 'boolean' ||
+    typeof only_main_content !== 'boolean' ||
+    typeof use_sitemap !== 'boolean' ||
+    !isCount(limit) ||
+    !isCount(max_depth)
+  )
+    return undefined
+  return { includes, excludes, crawl_sub_pages, only_main_content, use_sitemap, limit, max_depth }
+}
 
 type DocumentSettingsProps = {
   datasetId: string
@@ -30,14 +62,26 @@ type DocumentSettingsProps = {
 }
 
 const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation', 'datasetPipeline', 'navigation'])
   const router = useRouter()
-  const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { indexingTechnique, dataset } = useContext(DatasetDetailContext)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
+  const handleOpenAccountSetting = useCallback(() => {
+    setSettingsDestination('provider')
+  }, [setSettingsDestination])
 
-  const invalidDocumentList = useInvalidDocumentList(datasetId)
-  const invalidDocumentDetail = useInvalidDocumentDetail()
+  const queryClient = useQueryClient()
+  const invalidDocumentList = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+        input: { params: { dataset_id: datasetId } },
+      }),
+    })
+  const invalidDocumentDetail = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+    })
   const saveHandler = () => {
     invalidDocumentList()
     invalidDocumentDetail()
@@ -46,39 +90,55 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
 
   const cancelHandler = () => router.back()
 
-  const { data: documentDetail, error } = useDocumentDetail({
-    datasetId,
-    documentId,
-    params: { metadata: 'without' },
-  })
+  const { data: documentDetail, error } = useQuery(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.queryOptions({
+      input: {
+        params: { dataset_id: datasetId, document_id: documentId },
+        query: { metadata: 'without' },
+      },
+    }),
+  )
+  const settingsTitle = t(($) => $['documentSettings.title'], { ns: 'datasetPipeline' })
+  const documentTitle =
+    documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
+  const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'navigation' })
+  useDocumentTitle(`${settingsTitle} · ${documentTitle} · ${datasetTitle}`)
 
   const dataSourceInfo = documentDetail?.data_source_info
 
-  const isLegacyDataSourceInfo = (info: DataSourceInfo | undefined): info is LegacyDataSourceInfo => {
+  // Type guards for the data source info shapes
+  const isLegacyDataSourceInfo = (info: DocumentSourceInfo): info is LegacyDataSourceInfo => {
     return !!info && 'upload_file' in info
   }
-  const isWebsiteCrawlInfo = (info: DataSourceInfo | undefined): info is WebsiteCrawlInfo => {
+  const isWebsiteCrawlInfo = (info: DocumentSourceInfo): info is WebsiteCrawlInfo => {
     return !!info && 'source_url' in info && 'title' in info
   }
-  const isOnlineDocumentInfo = (info: DataSourceInfo | undefined): info is OnlineDocumentInfo => {
+  const isOnlineDocumentInfo = (info: DocumentSourceInfo): info is OnlineDocumentInfo => {
     return !!info && 'page' in info
   }
-  const isLocalFileInfo = (info: DataSourceInfo | undefined): info is LocalFileInfo => {
+  const isLocalFileInfo = (info: DocumentSourceInfo): info is LocalFileInfo => {
     return !!info && 'related_id' in info && 'transfer_method' in info
   }
+  const isUploadFileIdInfo = (info: DocumentSourceInfo): info is UploadFileIdInfo => {
+    return !!info && 'upload_file_id' in info
+  }
+
   const legacyInfo = isLegacyDataSourceInfo(dataSourceInfo) ? dataSourceInfo : undefined
   const websiteInfo = isWebsiteCrawlInfo(dataSourceInfo) ? dataSourceInfo : undefined
   const onlineDocumentInfo = isOnlineDocumentInfo(dataSourceInfo) ? dataSourceInfo : undefined
   const localFileInfo = isLocalFileInfo(dataSourceInfo) ? dataSourceInfo : undefined
+  const uploadFileIdInfo = isUploadFileIdInfo(dataSourceInfo) ? dataSourceInfo : undefined
 
-  const currentPage = useMemo(() => {
+  const currentPage = useMemo<StepTwoNotionPage | undefined>(() => {
     if (legacyInfo) {
+      // Only icon objects carry the icon type the import payload needs.
+      const icon = getNotionPageIcon(dataSourceInfo, false)
       return {
         workspace_id: legacyInfo.notion_workspace_id ?? '',
         page_id: legacyInfo.notion_page_id ?? '',
-        page_name: documentDetail?.name,
-        page_icon: legacyInfo.notion_page_icon,
-        type: documentDetail?.data_source_type,
+        page_name: documentDetail?.name ?? '',
+        page_icon: typeof icon === 'object' ? icon : null,
+        type: documentDetail?.data_source_type ?? '',
       }
     }
     if (onlineDocumentInfo) {
@@ -91,55 +151,76 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
       }
     }
     return undefined
-  }, [documentDetail?.data_source_type, documentDetail?.name, legacyInfo, onlineDocumentInfo])
+  }, [
+    dataSourceInfo,
+    documentDetail?.data_source_type,
+    documentDetail?.name,
+    legacyInfo,
+    onlineDocumentInfo,
+  ])
 
-  const files = useMemo<CustomFile[]>(() => {
-    if (legacyInfo?.upload_file)
-      return [legacyInfo.upload_file as CustomFile]
+  const files = useMemo<StepTwoFile[]>(() => {
+    // Handle upload_file_id format
+    if (uploadFileIdInfo) {
+      return [{ id: uploadFileIdInfo.upload_file_id, name: documentDetail?.name || '' }]
+    }
+
+    // Handle legacy upload_file format
+    if (legacyInfo?.upload_file) {
+      const { id, name, extension } = legacyInfo.upload_file
+      return [{ id, name, extension }]
+    }
+
+    // Handle local file info format
     if (localFileInfo) {
       const { related_id, name, extension } = localFileInfo
-      return [{
-        id: related_id,
-        name,
-        extension,
-      } as unknown as CustomFile]
+      return [{ id: related_id, name, extension }]
     }
+
     return []
-  }, [legacyInfo?.upload_file, localFileInfo])
+  }, [uploadFileIdInfo, legacyInfo?.upload_file, localFileInfo, documentDetail?.name])
 
   const websitePages = useMemo(() => {
-    if (!websiteInfo)
-      return []
-    return [{
-      title: websiteInfo.title,
-      source_url: websiteInfo.source_url,
-      markdown: websiteInfo.content,
-      description: websiteInfo.description,
-    }]
+    if (!websiteInfo) return []
+    return [
+      {
+        title: websiteInfo.title,
+        source_url: websiteInfo.source_url,
+        markdown: websiteInfo.content,
+        description: websiteInfo.description,
+      },
+    ]
   }, [websiteInfo])
 
-  const crawlOptions = (dataSourceInfo && typeof dataSourceInfo === 'object' && 'includes' in dataSourceInfo && 'excludes' in dataSourceInfo)
-    ? dataSourceInfo as unknown as CrawlOptions
-    : undefined
+  const crawlOptions = toCrawlOptions(dataSourceInfo)
 
-  const websiteCrawlProvider = (websiteInfo?.provider ?? legacyInfo?.provider) as DataSourceProvider | undefined
+  const websiteCrawlProvider = (websiteInfo?.provider ?? legacyInfo?.provider) as
+    | DataSourceProvider
+    | undefined
   const websiteCrawlJobId = websiteInfo?.job_id ?? legacyInfo?.job_id
 
   if (error)
-    return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
+    return (
+      <AppUnavailable
+        code={500}
+        unknownReason={t(($) => $['error.unavailable'], { ns: 'datasetCreation' }) as string}
+      />
+    )
 
   return (
     <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>
       <div className="grow">
-        {!documentDetail && <Loading type="app" />}
+        {!documentDetail && <LoadingPlaceholder className="h-full" />}
         {dataset && documentDetail && (
           <StepTwo
             isAPIKeySet={!!embeddingsDefaultModel}
-            onSetting={showSetAPIKey}
+            onSetting={handleOpenAccountSetting}
             datasetId={datasetId}
             dataSourceType={documentDetail.data_source_type as DataSourceType}
-            notionPages={currentPage ? [currentPage as unknown as NotionPage] : []}
-            notionCredentialId={legacyInfo?.credential_id || onlineDocumentInfo?.credential_id || ''}
+            notionPages={currentPage ? [currentPage] : []}
+            notionCredentialId={
+              legacyInfo?.credential_id || onlineDocumentInfo?.credential_id || ''
+            }
             websitePages={websitePages}
             websiteCrawlProvider={websiteCrawlProvider}
             websiteCrawlJobId={websiteCrawlJobId || ''}
@@ -153,14 +234,6 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
           />
         )}
       </div>
-      {isShowSetAPIKey && (
-        <AccountSetting
-          activeTab="provider"
-          onCancel={async () => {
-            hideSetAPIkey()
-          }}
-        />
-      )}
     </div>
   )
 }

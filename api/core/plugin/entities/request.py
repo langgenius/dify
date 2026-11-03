@@ -4,10 +4,23 @@ from collections.abc import Mapping
 from typing import Any, Literal
 
 from flask import Response
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from core.credit_usage import (
+    CreditUsageAppType,
+    CreditUsageCreatedBy,
+    normalize_credit_usage_app_type,
+    normalize_credit_usage_created_by,
+)
+from core.datasource.entities.datasource_entities import (
+    DatasourceProviderType,
+    GetOnlineDocumentPageContentRequest,
+)
+from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_entities import BasicProviderConfig
-from core.model_runtime.entities.message_entities import (
+from core.plugin.utils.http_parser import deserialize_response
+from core.workflow.file_reference import is_canonical_file_reference
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageRole,
@@ -16,19 +29,13 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import ModelType
-from core.plugin.utils.http_parser import deserialize_response
-from core.workflow.nodes.parameter_extractor.entities import (
-    ModelConfig as ParameterExtractorModelConfig,
-)
-from core.workflow.nodes.parameter_extractor.entities import (
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.nodes.llm.entities import ModelConfig as LLMModelConfig
+from graphon.nodes.parameter_extractor.entities import (
     ParameterConfig,
 )
-from core.workflow.nodes.question_classifier.entities import (
+from graphon.nodes.question_classifier.entities import (
     ClassConfig,
-)
-from core.workflow.nodes.question_classifier.entities import (
-    ModelConfig as QuestionClassifierModelConfig,
 )
 
 
@@ -54,16 +61,97 @@ class RequestInvokeTool(BaseModel):
     tool_type: Literal["builtin", "workflow", "api", "mcp"]
     provider: str
     tool: str
-    tool_parameters: dict
+    tool_parameters: dict[str, Any]
     credential_id: str | None = None
 
 
+DatasourceInvocationOperation = Literal[
+    "get_online_document_page_content",
+    "get_online_document_pages",
+    "get_website_crawl",
+    "online_drive_browse_files",
+    "online_drive_download_file",
+    "validate_credentials",
+]
+
+
+class RequestInvokeDatasource(BaseModel):
+    """Invoke one installed datasource using a Dify-owned credential reference.
+
+    Raw credentials are intentionally not part of this contract. ``tenant_id`` and
+    ``user_id`` are consumed by the inner-API request context, while the remaining
+    fields select an installed provider declaration and an operation-specific input.
+    """
+
+    tenant_id: str = Field(min_length=1, max_length=512)
+    user_id: str = Field(min_length=1, max_length=512)
+    provider: str = Field(min_length=1, max_length=768)
+    datasource: str = Field(min_length=1, max_length=256)
+    datasource_type: DatasourceProviderType
+    credential_id: str = Field(min_length=1, max_length=512)
+    operation: DatasourceInvocationOperation
+    datasource_parameters: dict[str, Any] = Field(default_factory=dict)
+    page: GetOnlineDocumentPageContentRequest | None = None
+    request: dict[str, Any] | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_operation_payload(self) -> "RequestInvokeDatasource":
+        expected_type = {
+            "get_online_document_page_content": DatasourceProviderType.ONLINE_DOCUMENT,
+            "get_online_document_pages": DatasourceProviderType.ONLINE_DOCUMENT,
+            "get_website_crawl": DatasourceProviderType.WEBSITE_CRAWL,
+            "online_drive_browse_files": DatasourceProviderType.ONLINE_DRIVE,
+            "online_drive_download_file": DatasourceProviderType.ONLINE_DRIVE,
+            "validate_credentials": self.datasource_type,
+        }[self.operation]
+        if self.datasource_type != expected_type:
+            raise ValueError(f"{self.operation} requires datasource_type {expected_type.value}")
+
+        page_required = self.operation == "get_online_document_page_content"
+        if page_required != (self.page is not None):
+            raise ValueError("page is required only for get_online_document_page_content")
+
+        request_required = self.operation in {"online_drive_browse_files", "online_drive_download_file"}
+        if request_required != (self.request is not None):
+            raise ValueError("request is required only for online-drive operations")
+
+        return self
+
+
 class BaseRequestInvokeModel(BaseModel):
+    """Model selection and optional business attribution from an inner-API caller.
+
+    ``created_by`` identifies the consuming feature, not a user ID. Callers that
+    omit attribution retain the generic plugin API classification.
+    """
+
     provider: str
     model: str
     model_type: ModelType
+    app_type: CreditUsageAppType | None = None
+    created_by: CreditUsageCreatedBy | None = None
 
     model_config = ConfigDict(protected_namespaces=())
+
+    @field_validator("app_type", mode="before")
+    @classmethod
+    def normalize_app_type(cls, value: object) -> CreditUsageAppType | None:
+        return normalize_credit_usage_app_type(value) if value is not None else None
+
+    @field_validator("created_by", mode="before")
+    @classmethod
+    def normalize_created_by(cls, value: object) -> CreditUsageCreatedBy | None:
+        return normalize_credit_usage_created_by(value) if value is not None else None
+
+    @property
+    def credit_usage_metadata(self) -> dict[str, object]:
+        return {
+            key: value
+            for key, value in {"app_type": self.app_type, "created_by": self.created_by}.items()
+            if value is not None
+        }
 
 
 class RequestInvokeLLM(BaseRequestInvokeModel):
@@ -77,7 +165,7 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
     prompt_messages: list[PromptMessage] = Field(default_factory=list)
     tools: list[PromptMessageTool] | None = Field(default_factory=list[PromptMessageTool])
     stop: list[str] | None = Field(default_factory=list[str])
-    stream: bool | None = False
+    stream: bool = False
 
     model_config = ConfigDict(protected_namespaces=())
 
@@ -119,6 +207,25 @@ class RequestInvokeTextEmbedding(BaseRequestInvokeModel):
 
     model_type: ModelType = ModelType.TEXT_EMBEDDING
     texts: list[str]
+    input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
+
+
+class MultimodalEmbeddingDocument(BaseModel):
+    """A document accepted by a multimodal text-embedding model."""
+
+    content: str
+    content_type: str
+    file_id: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class RequestInvokeMultimodalEmbedding(BaseRequestInvokeModel):
+    """Request to invoke a multimodal text-embedding model."""
+
+    model_type: ModelType = ModelType.TEXT_EMBEDDING
+    documents: list[MultimodalEmbeddingDocument] = Field(min_length=1)
+    input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
 
 
 class RequestInvokeRerank(BaseRequestInvokeModel):
@@ -129,8 +236,49 @@ class RequestInvokeRerank(BaseRequestInvokeModel):
     model_type: ModelType = ModelType.RERANK
     query: str
     docs: list[str]
-    score_threshold: float
-    top_n: int
+    score_threshold: float | None = None
+    top_n: int | None = None
+
+
+class RequestListModels(BaseModel):
+    """Tenant-scoped query for models that Dify can invoke."""
+
+    model_type: Literal[ModelType.LLM, ModelType.TEXT_EMBEDDING, ModelType.RERANK]
+    provider: str | None = None
+    model: str | None = None
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=50, ge=1, le=100)
+
+    model_config = ConfigDict(protected_namespaces=())
+
+
+class InvokableModelTokenLimits(BaseModel):
+    """Provider-declared limits, not completion defaults or credentials."""
+
+    context_tokens: int | None = Field(default=None, gt=0, le=1_000_000_000)
+    max_output_tokens: int | None = Field(default=None, gt=0, le=1_000_000_000)
+    output_parameter: str | None = Field(default=None, min_length=1, max_length=128)
+
+
+class InvokableModelCatalogItem(BaseModel):
+    """Installed identity and active Dify capability metadata for one model."""
+
+    plugin_id: str
+    plugin_unique_identifier: str
+    provider: str
+    model: str
+    model_type: ModelType
+    capabilities: dict[str, Any] = Field(default_factory=dict)
+    token_limits: InvokableModelTokenLimits | None = None
+
+    model_config = ConfigDict(protected_namespaces=())
+
+
+class InvokableModelCatalogPage(BaseModel):
+    """Offset page returned by the internal model catalog endpoint."""
+
+    items: list[InvokableModelCatalogItem] = Field(default_factory=list)
+    next_offset: int | None = None
 
 
 class RequestInvokeTTS(BaseRequestInvokeModel):
@@ -176,7 +324,7 @@ class RequestInvokeParameterExtractorNode(BaseModel):
     """
 
     parameters: list[ParameterConfig]
-    model: ParameterExtractorModelConfig
+    model: LLMModelConfig
     instruction: str
     query: str
 
@@ -187,7 +335,7 @@ class RequestInvokeQuestionClassifierNode(BaseModel):
     """
 
     query: str
-    model: QuestionClassifierModelConfig
+    model: LLMModelConfig
     classes: list[ClassConfig]
     instruction: str
 
@@ -214,7 +362,7 @@ class RequestInvokeEncrypt(BaseModel):
     opt: Literal["encrypt", "decrypt", "clear"]
     namespace: Literal["endpoint"]
     identity: str
-    data: dict = Field(default_factory=dict)
+    data: dict[str, Any] = Field(default_factory=dict)
     config: list[BasicProviderConfig] = Field(default_factory=list)
 
 
@@ -234,6 +382,55 @@ class RequestRequestUploadFile(BaseModel):
 
     filename: str
     mimetype: str
+    conversation_id: str | None = None
+
+
+class RequestDownloadFileMapping(BaseModel):
+    """File mapping accepted by trusted download-request control-plane APIs."""
+
+    transfer_method: Literal["local_file", "tool_file", "datasource_file", "remote_url"]
+    reference: str | None = None
+    url: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_locator(self) -> "RequestDownloadFileMapping":
+        if self.transfer_method == "remote_url":
+            if not self.url:
+                raise ValueError("url is required when transfer_method is remote_url")
+            if self.reference is not None:
+                raise ValueError("reference is not allowed when transfer_method is remote_url")
+            return self
+        if not self.reference:
+            raise ValueError("reference is required for non-remote file mappings")
+        if not is_canonical_file_reference(self.reference):
+            raise ValueError("reference must be a canonical Dify file reference")
+        if self.url is not None:
+            raise ValueError("url is not allowed for non-remote file mappings")
+        return self
+
+
+class RequestRequestDownloadFile(BaseModel):
+    """Request to resolve a signed download URL for one runtime file mapping."""
+
+    tenant_id: str
+    user_id: str
+    user_from: Literal["account", "end-user"]
+    invoke_from: Literal[
+        "service-api",
+        "openapi",
+        "web-app",
+        "trigger",
+        "explore",
+        "debugger",
+        "published",
+        "validation",
+    ]
+    file: RequestDownloadFileMapping
+    for_external: bool = True
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class RequestFetchAppInfo(BaseModel):

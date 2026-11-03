@@ -1,0 +1,71 @@
+import type { Item } from '../index'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import Chip from '../index'
+
+const items: Item[] = [
+  { value: 'all', name: 'All Items', triggerName: 'Item Types' },
+  { value: 'active', name: 'Active' },
+  { value: 'archived', name: 'Archived' },
+]
+
+describe('Chip', () => {
+  it('keeps distinct trigger and option labels while selecting the full item', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    render(<Chip value="all" items={items} onSelect={onSelect} onClear={vi.fn()} />)
+
+    await user.click(screen.getByRole('combobox', { name: 'Item Types' }))
+    const listbox = await screen.findByRole('listbox')
+    expect(within(listbox).getByRole('option', { name: 'All Items' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(within(listbox).queryByRole('option', { name: 'Item Types' })).not.toBeInTheDocument()
+    await user.click(within(listbox).getByRole('option', { name: 'Active' }))
+
+    expect(onSelect).toHaveBeenCalledWith(items[1])
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('clears the selected value without opening the listbox', async () => {
+    const user = userEvent.setup()
+    const onClear = vi.fn()
+    render(<Chip value="active" items={items} onSelect={vi.fn()} onClear={onClear} />)
+
+    await user.click(screen.getByRole('button', { name: /common\.operation\.clear Active/ }))
+
+    expect(onClear).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('treats numeric zero as a selected value', () => {
+    const numericItems: Item<number>[] = [
+      { value: 0, name: 'Zero' },
+      { value: 1, name: 'One' },
+    ]
+
+    render(<Chip value={0} items={numericItems} onSelect={vi.fn()} onClear={vi.fn()} />)
+
+    expect(screen.getByRole('combobox', { name: 'Zero' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /common\.operation\.clear Zero/ }),
+    ).toBeInTheDocument()
+  })
+})
+
+it('disables selection and clearing together without hiding the current value', async () => {
+  const user = userEvent.setup()
+  const onSelect = vi.fn()
+  const onClear = vi.fn()
+  render(<Chip disabled value="active" items={items} onSelect={onSelect} onClear={onClear} />)
+  const trigger = screen.getByRole('combobox', { name: 'Active' })
+  const clear = screen.getByRole('button', { name: /common\.operation\.clear Active/ })
+  expect(trigger).toBeDisabled()
+  expect(clear).toBeDisabled()
+  await user.click(trigger)
+  await user.click(clear)
+  expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  expect(onSelect).not.toHaveBeenCalled()
+  expect(onClear).not.toHaveBeenCalled()
+})

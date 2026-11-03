@@ -1,192 +1,287 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import dayjs from 'dayjs'
 import * as React from 'react'
-import { defaultPlan } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
-import { ModalContextProvider } from '@/context/modal-context'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { useModalContextSelector } from '@/context/modal-context'
+import { ModalContextProvider } from '@/context/modal-context-provider'
+import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
-
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 
-const mockUseProviderContext = vi.fn()
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
+vi.mock('@/app/components/plugins/install-plugin/install-from-github', () => ({
+  default: ({ onSuccess }: { onSuccess: () => void | Promise<void> }) => (
+    <button data-testid="save-plugin-update" onClick={onSuccess}>
+      Save plugin update
+    </button>
+  ),
 }))
 
-const mockUseAppContext = vi.fn()
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
-}))
+const ModalBlockingState = () => {
+  const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
 
-let latestTriggerEventsModalProps: any = null
-const triggerEventsLimitModalMock = vi.fn((props: any) => {
-  latestTriggerEventsModalProps = props
-  return (
-    <div data-testid="trigger-limit-modal">
-      <button type="button" onClick={props.onClose}>dismiss</button>
-      <button type="button" onClick={props.onUpgrade}>upgrade</button>
-    </div>
+  return <output>{hasBlockingModalOpen ? 'blocked' : 'clear'}</output>
+}
+
+const UpdatePluginTrigger = ({
+  onSave,
+  category = PluginCategoryEnum.model,
+}: {
+  onSave: () => void | Promise<void>
+  category?: PluginCategoryEnum
+}) => {
+  const setShowUpdatePluginModal = useModalContextSelector(
+    (state) => state.setShowUpdatePluginModal,
   )
-})
 
-vi.mock('@/app/components/billing/trigger-events-limit-modal', () => ({
-  default: (props: any) => triggerEventsLimitModalMock(props),
-}))
-
-type DefaultPlanShape = typeof defaultPlan
-type ResetShape = {
-  apiRateLimit: number | null
-  triggerEvents: number | null
+  return (
+    <button
+      onClick={() =>
+        setShowUpdatePluginModal({
+          onSaveCallback: onSave,
+          payload: {
+            category,
+            github: {
+              originalPackageInfo: {
+                id: 'plugin@1.0.0',
+                repo: 'owner/repo',
+                version: '1.0.0',
+                package: 'plugin.difypkg',
+                releases: [],
+              },
+            },
+          },
+        })
+      }
+    >
+      Open plugin update
+    </button>
+  )
 }
-type PlanShape = Omit<DefaultPlanShape, 'reset'> & { reset: ResetShape }
-type PlanOverrides = Partial<Omit<DefaultPlanShape, 'usage' | 'total' | 'reset'>> & {
-  usage?: Partial<DefaultPlanShape['usage']>
-  total?: Partial<DefaultPlanShape['total']>
-  reset?: Partial<ResetShape>
+
+const renderProvider = (
+  children: React.ReactNode = <ModalBlockingState />,
+  features: Parameters<typeof seedFeatures>[1] = {},
+  edition: DeploymentEdition = 'CLOUD',
+) => {
+  const { wrapper: QueryWrapper, queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: edition },
+    currentWorkspace: { id: 'workspace-1' },
+  })
+  seedFeatures(queryClient, features)
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper()
+  const wrapper = ({ children: wrapperChildren }: { children: React.ReactNode }) => (
+    <QueryWrapper>
+      <NuqsWrapper>{wrapperChildren}</NuqsWrapper>
+    </QueryWrapper>
+  )
+
+  return {
+    queryClient,
+    onUrlUpdate,
+    ...render(<ModalContextProvider>{children}</ModalContextProvider>, { wrapper }),
+  }
 }
-
-const createPlan = (overrides: PlanOverrides = {}): PlanShape => ({
-  ...defaultPlan,
-  ...overrides,
-  usage: {
-    ...defaultPlan.usage,
-    ...overrides.usage,
-  },
-  total: {
-    ...defaultPlan.total,
-    ...overrides.total,
-  },
-  reset: {
-    ...defaultPlan.reset,
-    ...overrides.reset,
-  },
-})
-
-const renderProvider = () => render(
-  <NuqsTestingAdapter>
-    <ModalContextProvider>
-      <div data-testid="modal-context-test-child" />
-    </ModalContextProvider>
-  </NuqsTestingAdapter>,
-)
 
 describe('ModalContextProvider trigger events limit modal', () => {
   beforeEach(() => {
-    latestTriggerEventsModalProps = null
-    triggerEventsLimitModalMock.mockClear()
-    mockUseAppContext.mockReset()
-    mockUseProviderContext.mockReset()
-    window.localStorage.clear()
-    mockUseAppContext.mockReturnValue({
-      currentWorkspace: {
-        id: 'workspace-1',
-      },
-    })
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('trigger-events-limit-dismissed-workspace-1-'))
+        localStorage.removeItem(key)
+    }
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  it('opens the trigger events limit modal and persists dismissal in localStorage', async () => {
-    const plan = createPlan({
-      type: Plan.professional,
-      usage: { triggerEvents: 3000 },
-      total: { triggerEvents: 3000 },
-      reset: { triggerEvents: 5 },
-    })
-    mockUseProviderContext.mockReturnValue({
-      plan,
-      isFetchedPlan: true,
-    })
-    // Note: vitest.setup.ts replaces localStorage with a mock object that has vi.fn() methods
-    // We need to spy on the mock's setItem, not Storage.prototype.setItem
-    const setItemSpy = vi.spyOn(localStorage, 'setItem')
+  it('updates the visible quota and closes the modal when usage drops below the limit', async () => {
+    const features = {
+      billing: { subscription: { plan: 'professional' as const } },
+      trigger_event: { usage: 200, limit: 200, reset_date: dayjs().add(3, 'day').unix() },
+    }
+    const { queryClient } = renderProvider(undefined, features)
 
-    renderProvider()
-
-    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal')).toBeInTheDocument())
-    expect(latestTriggerEventsModalProps).toMatchObject({
-      usage: 3000,
-      total: 3000,
-      resetInDays: 5,
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    act(() => {
+      seedFeatures(queryClient, {
+        ...features,
+        trigger_event: { ...features.trigger_event, usage: 250 },
+      })
     })
+    expect(await screen.findByText('250')).toBeInTheDocument()
 
     act(() => {
-      latestTriggerEventsModalProps.onClose()
+      seedFeatures(queryClient, {
+        ...features,
+        trigger_event: { ...features.trigger_event, usage: 100 },
+      })
     })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('clear')).toBeInTheDocument()
+  })
 
-    await waitFor(() => expect(screen.queryByTestId('trigger-limit-modal')).not.toBeInTheDocument())
-    await waitFor(() => {
-      expect(setItemSpy.mock.calls.length).toBeGreaterThan(0)
-    })
-    const [key, value] = setItemSpy.mock.calls[0]
-    expect(key).toContain('trigger-events-limit-dismissed-workspace-1-professional-3000-')
-    expect(value).toBe('1')
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'does not show Cloud quota prompts in %s',
+    (edition) => {
+      renderProvider(
+        undefined,
+        {
+          billing: { subscription: { plan: 'sandbox' } },
+          trigger_event: { usage: 200, limit: 200 },
+        },
+        edition,
+      )
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByText('clear')).toBeInTheDocument()
+    },
+  )
+
+  it('opens the trigger events limit modal and persists dismissal in localStorage', async () => {
+    const features = {
+      billing: { subscription: { plan: 'professional' as const } },
+      trigger_event: { usage: 3000, limit: 3000, reset_date: dayjs().add(5, 'day').unix() },
+    }
+    const dismissalKey = `trigger-events-limit-dismissed-workspace-1-professional-3000-${dayjs().add(5, 'day').format('YYYY-MM-DD')}`
+    const user = userEvent.setup()
+
+    renderProvider(undefined, features)
+
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
+    expect(screen.getAllByText('3000')).toHaveLength(2)
+    expect(screen.getByText('blocked')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('clear')).toBeInTheDocument()
+    expect(localStorage.getItem(dismissalKey)).toBe('1')
   })
 
   it('relies on the in-memory guard when localStorage reads throw', async () => {
-    const plan = createPlan({
-      type: Plan.professional,
-      usage: { triggerEvents: 200 },
-      total: { triggerEvents: 200 },
-      reset: { triggerEvents: 3 },
-    })
-    mockUseProviderContext.mockReturnValue({
-      plan,
-      isFetchedPlan: true,
-    })
+    const features = {
+      billing: { subscription: { plan: 'professional' as const } },
+      trigger_event: { usage: 200, limit: 200, reset_date: dayjs().add(3, 'day').unix() },
+    }
     vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
       throw new Error('Storage disabled')
     })
-    const setItemSpy = vi.spyOn(localStorage, 'setItem')
+    const user = userEvent.setup()
 
-    renderProvider()
+    const { rerender } = renderProvider(undefined, features)
 
-    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
 
-    act(() => {
-      latestTriggerEventsModalProps.onClose()
-    })
+    await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
 
-    await waitFor(() => expect(screen.queryByTestId('trigger-limit-modal')).not.toBeInTheDocument())
-    expect(setItemSpy).not.toHaveBeenCalled()
-    await waitFor(() => expect(triggerEventsLimitModalMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(
+      <ModalContextProvider>
+        <ModalBlockingState />
+      </ModalContextProvider>,
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('clear')).toBeInTheDocument()
   })
 
   it('falls back to the in-memory guard when localStorage.setItem fails', async () => {
-    const plan = createPlan({
-      type: Plan.professional,
-      usage: { triggerEvents: 120 },
-      total: { triggerEvents: 120 },
-      reset: { triggerEvents: 2 },
-    })
-    mockUseProviderContext.mockReturnValue({
-      plan,
-      isFetchedPlan: true,
-    })
+    const features = {
+      billing: { subscription: { plan: 'professional' as const } },
+      trigger_event: { usage: 120, limit: 120, reset_date: dayjs().add(2, 'day').unix() },
+    }
     vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
       throw new Error('Quota exceeded')
     })
+    const user = userEvent.setup()
 
-    renderProvider()
+    const { rerender } = renderProvider(undefined, features)
 
-    await waitFor(() => expect(screen.getByTestId('trigger-limit-modal')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
 
-    act(() => {
-      latestTriggerEventsModalProps.onClose()
+    await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(
+      <ModalContextProvider>
+        <ModalBlockingState />
+      </ModalContextProvider>,
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('clear')).toBeInTheDocument()
+  })
+
+  it('closes the trigger events limit modal and opens pricing when upgrading', async () => {
+    const features = {
+      billing: { subscription: { plan: 'professional' as const } },
+      trigger_event: { usage: 400, limit: 400, reset_date: dayjs().add(6, 'day').unix() },
+    }
+    const user = userEvent.setup()
+
+    const { onUrlUpdate } = renderProvider(undefined, features)
+
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
+
+    await user.click(screen.getByText('billing.triggerLimitModal.upgrade'))
+
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open')
+    expect(screen.queryByText('400')).not.toBeInTheDocument()
+    expect(screen.getByText('clear')).toBeInTheDocument()
+  })
+})
+
+describe('ModalContextProvider plugin update modal', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('trigger-events-limit-dismissed-workspace-1-'))
+        localStorage.removeItem(key)
+    }
+  })
+
+  it('keeps a model plugin update open until its refresh callback finishes', async () => {
+    let resolveSave: (() => void) | undefined
+    const onSave = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve
+        }),
+    )
+    const user = userEvent.setup()
+
+    renderProvider(<UpdatePluginTrigger onSave={onSave} />)
+
+    await user.click(screen.getByRole('button', { name: 'Open plugin update' }))
+    await user.click(screen.getByTestId('save-plugin-update'))
+
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('save-plugin-update')).toBeInTheDocument()
+
+    resolveSave?.()
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('save-plugin-update')).not.toBeInTheDocument()
     })
+  })
 
-    await waitFor(() => expect(screen.queryByTestId('trigger-limit-modal')).not.toBeInTheDocument())
-    await waitFor(() => expect(triggerEventsLimitModalMock).toHaveBeenCalledTimes(1))
+  it('closes a non-model plugin update immediately after saving', async () => {
+    const onSave = vi.fn()
+    const user = userEvent.setup()
+
+    renderProvider(<UpdatePluginTrigger onSave={onSave} category={PluginCategoryEnum.tool} />)
+
+    await user.click(screen.getByRole('button', { name: 'Open plugin update' }))
+    await user.click(screen.getByTestId('save-plugin-update'))
+
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(screen.queryByTestId('save-plugin-update')).not.toBeInTheDocument()
   })
 })

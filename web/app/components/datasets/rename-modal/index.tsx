@@ -1,71 +1,123 @@
 'use client'
-
-import type { MouseEventHandler } from 'react'
-import type { AppIconSelection } from '../../base/app-icon-picker'
-import type { DataSet } from '@/models/datasets'
-import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
-import { useCallback, useRef, useState } from 'react'
+import type { DatasetUpdatePayload } from '@dify/contracts/api/console/datasets/types.gen'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
-import Textarea from '@/app/components/base/textarea'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
+import { toast } from '@/app/notifications'
 import { updateDatasetSetting } from '@/service/datasets'
-import { cn } from '@/utils/classnames'
-import AppIcon from '../../base/app-icon'
-import AppIconPicker from '../../base/app-icon-picker'
-import Toast from '../../base/toast'
+import { getErrorMessage } from '@/utils/error-message'
 
 type RenameDatasetModalProps = {
-  show: boolean
-  dataset: DataSet
+  open: boolean
+  dataset: {
+    description?: string | null
+    external_knowledge_info?: {
+      external_knowledge_api_id?: string | null
+      external_knowledge_id?: string | null
+    } | null
+    icon_info?: {
+      icon?: string | null
+      icon_background?: string | null
+      icon_type?: string | null
+      icon_url?: string | null
+    } | null
+    id: string
+    name: string
+  }
   onSuccess?: () => void
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
+}
+const RenameDatasetModal = ({
+  open,
+  onOpenChange,
+  dataset,
+  onSuccess,
+}: RenameDatasetModalProps) => {
+  const [loading, setLoading] = useState(false)
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && loading) {
+          details.cancel()
+          return
+        }
+        onOpenChange(nextOpen)
+      }}
+    >
+      <DialogContent className="w-130">
+        <RenameDatasetForm
+          dataset={dataset}
+          loading={loading}
+          onLoadingChange={setLoading}
+          onSuccess={onSuccess}
+          onClose={() => onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  )
 }
 
-const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDatasetModalProps) => {
-  const { t } = useTranslation()
-  const [loading, setLoading] = useState(false)
+function RenameDatasetForm({
+  dataset,
+  onSuccess,
+  onClose,
+  loading,
+  onLoadingChange,
+}: Pick<RenameDatasetModalProps, 'dataset' | 'onSuccess'> & {
+  onClose: () => void
+  loading: boolean
+  onLoadingChange: (loading: boolean) => void
+}) {
+  const { t } = useTranslation(['common', 'datasetSettings'])
   const [name, setName] = useState<string>(dataset.name)
-  const [description, setDescription] = useState<string>(dataset.description)
-  const externalKnowledgeId = dataset.external_knowledge_info.external_knowledge_id
-  const externalKnowledgeApiId = dataset.external_knowledge_info.external_knowledge_api_id
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(
+  const [description, setDescription] = useState(dataset.description ?? '')
+  const externalKnowledgeId = dataset.external_knowledge_info?.external_knowledge_id
+  const externalKnowledgeApiId = dataset.external_knowledge_info?.external_knowledge_api_id
+  const [appIcon, setAppIcon] = useState<IconPickerValue>(
     dataset.icon_info?.icon_type === 'image'
-      ? { type: 'image' as const, url: dataset.icon_info?.icon_url || '', fileId: dataset.icon_info?.icon || '' }
-      : { type: 'emoji' as const, icon: dataset.icon_info?.icon || '', background: dataset.icon_info?.icon_background || '' },
+      ? {
+          type: 'image' as const,
+          url: dataset.icon_info?.icon_url || '',
+          fileId: dataset.icon_info?.icon || '',
+        }
+      : {
+          type: 'emoji' as const,
+          icon: dataset.icon_info?.icon || '',
+          background: dataset.icon_info?.icon_background || '',
+        },
   )
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const previousAppIcon = useRef<AppIconSelection>(
-    dataset.icon_info?.icon_type === 'image'
-      ? { type: 'image' as const, url: dataset.icon_info?.icon_url || '', fileId: dataset.icon_info?.icon || '' }
-      : { type: 'emoji' as const, icon: dataset.icon_info?.icon || '', background: dataset.icon_info?.icon_background || '' },
-  )
-
-  const handleOpenAppIconPicker = useCallback(() => {
-    setShowAppIconPicker(true)
-    previousAppIcon.current = appIcon
-  }, [appIcon])
-
-  const handleSelectAppIcon = useCallback((icon: AppIconSelection) => {
+  const handleSelectAppIcon = useCallback((icon: IconPickerValue) => {
     setAppIcon(icon)
-    setShowAppIconPicker(false)
   }, [])
-
-  const handleCloseAppIconPicker = useCallback(() => {
-    setAppIcon(previousAppIcon.current)
-    setShowAppIconPicker(false)
-  }, [])
-
-  const onConfirm: MouseEventHandler = useCallback(async () => {
+  const onConfirm = useCallback(async () => {
+    if (loading) return
     if (!name.trim()) {
-      Toast.notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
+      toast.error(t(($) => $['form.nameError'], { ns: 'datasetSettings' }))
       return
     }
     try {
-      setLoading(true)
-      const body: Partial<DataSet> & { external_knowledge_id?: string, external_knowledge_api_id?: string } = {
+      onLoadingChange(true)
+      const body: DatasetUpdatePayload = {
         name,
         description,
         icon_info: {
@@ -79,85 +131,100 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         body.external_knowledge_id = externalKnowledgeId
         body.external_knowledge_api_id = externalKnowledgeApiId
       }
-      await updateDatasetSetting({
-        datasetId: dataset.id,
-        body,
-      })
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
-      if (onSuccess)
-        onSuccess()
+      await updateDatasetSetting(
+        {
+          datasetId: dataset.id,
+          body,
+        },
+        { silent: true },
+      )
+      if (onSuccess) onSuccess()
       onClose()
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
+    } finally {
+      onLoadingChange(false)
     }
-    catch {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
-    }
-    finally {
-      setLoading(false)
-    }
-  }, [appIcon, description, dataset.id, externalKnowledgeApiId, externalKnowledgeId, name, onClose, onSuccess, t])
-
+  }, [
+    appIcon,
+    description,
+    dataset.id,
+    externalKnowledgeApiId,
+    externalKnowledgeId,
+    name,
+    loading,
+    onLoadingChange,
+    onClose,
+    onSuccess,
+    t,
+  ])
   return (
-    <Modal
-      className="w-[520px] max-w-[520px] rounded-xl px-8 py-6"
-      isShow={show}
-      onClose={noop}
+    <form
+      className="contents"
+      onSubmit={(event) => {
+        event.preventDefault()
+        onConfirm()
+      }}
     >
-      <div className="flex items-center justify-between pb-2">
-        <div className="text-xl font-medium leading-[30px] text-text-primary">{t('title', { ns: 'datasetSettings' })}</div>
-        <div className="cursor-pointer p-2" onClick={onClose}>
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-        </div>
-      </div>
-      <div>
-        <div className={cn('flex flex-col py-4')}>
-          <div className="shrink-0 py-2 text-sm font-medium leading-[20px] text-text-primary">
-            {t('form.name', { ns: 'datasetSettings' })}
-          </div>
-          <div className="flex items-center gap-x-2">
-            <AppIcon
-              size="medium"
-              onClick={handleOpenAppIconPicker}
-              className="cursor-pointer"
-              iconType={appIcon.type}
-              icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-              background={appIcon.type === 'image' ? undefined : appIcon.background}
-              imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-              showEditIcon
-            />
-            <Input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="h-9 grow"
-              placeholder={t('form.namePlaceholder', { ns: 'datasetSettings' }) || ''}
-            />
-          </div>
-        </div>
-        <div className={cn('flex flex-col py-4')}>
-          <div className="shrink-0 py-2 text-sm font-medium leading-[20px] text-text-primary">
-            {t('form.desc', { ns: 'datasetSettings' })}
-          </div>
-          <div className="w-full">
-            <Textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              className="resize-none"
-              placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
-            />
-          </div>
-        </div>
-      </div>
-      <div className="flex justify-end pt-6">
-        <Button className="mr-2" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-        <Button disabled={loading} variant="primary" onClick={onConfirm}>{t('operation.save', { ns: 'common' })}</Button>
-      </div>
-      {showAppIconPicker && (
-        <AppIconPicker
-          onSelect={handleSelectAppIcon}
-          onClose={handleCloseAppIconPicker}
+      <DialogHeader>
+        <DialogTitle>{t(($) => $.title, { ns: 'datasetSettings' })}</DialogTitle>
+        <DialogHeaderCloseButton
+          disabled={loading}
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
         />
-      )}
-    </Modal>
+      </DialogHeader>
+      <DialogBody>
+        <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
+          <Field name="name" className="gap-0 py-4">
+            <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
+              {t(($) => $['form.name'], { ns: 'datasetSettings' })}
+            </FieldLabel>
+            <div className="flex items-center gap-x-2">
+              <IconPickerTrigger
+                aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
+                className="group/edit-icon relative shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
+              >
+                <IconPickerIcon size="medium" />
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
+                >
+                  <span className="i-ri-edit-line size-5.5 text-text-primary-on-surface" />
+                </span>
+              </IconPickerTrigger>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-9 grow"
+                placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
+              />
+            </div>
+          </Field>
+          <IconPickerContent />
+        </IconPicker>
+        <Field name="description" className="gap-0 py-4">
+          <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
+            {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
+          </FieldLabel>
+          <Textarea
+            value={description}
+            onValueChange={(value) => setDescription(value)}
+            className="resize-none"
+            placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
+          />
+        </Field>
+      </DialogBody>
+      <DialogFooter>
+        <Button type="button" disabled={loading} onClick={onClose}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </Button>
+        <Button type="submit" loading={loading} variant="primary">
+          {t(($) => $['operation.save'], { ns: 'common' })}
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }
-
 export default RenameDatasetModal

@@ -1,13 +1,13 @@
-import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
+import type { SimplePluginInfo } from '../markdown/streamdown-wrapper'
 /**
  * @fileoverview Img component for rendering <img> tags in Markdown.
  * Extracted from the main markdown renderer for modularity.
  * Uses the ImageGallery component to display images.
  */
-import * as React from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { memo, useEffect, useMemo, useState } from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
-import { usePluginReadmeAsset } from '@/service/use-plugins'
+import { pluginAssetQueryOptions } from './plugin-asset-query'
 import { getMarkdownImageURL } from './utils'
 
 type ImgProps = {
@@ -15,10 +15,10 @@ type ImgProps = {
   pluginInfo?: SimplePluginInfo
 }
 
-export const PluginImg: React.FC<ImgProps> = ({ src, pluginInfo }) => {
+export const PluginImg = memo<ImgProps>(({ src, pluginInfo }) => {
   const { pluginUniqueIdentifier, pluginId } = pluginInfo || {}
-  const { data: assetData } = usePluginReadmeAsset({ plugin_unique_identifier: pluginUniqueIdentifier, file_name: src })
-  const [blobUrl, setBlobUrl] = useState<string>()
+  const { data: assetData } = useQuery(pluginAssetQueryOptions(src, pluginUniqueIdentifier))
+  const [blobUrl, setBlobUrl] = useState<{ data: Blob; url: string }>()
 
   useEffect(() => {
     if (!assetData) {
@@ -27,7 +27,7 @@ export const PluginImg: React.FC<ImgProps> = ({ src, pluginInfo }) => {
     }
 
     const objectUrl = URL.createObjectURL(assetData)
-    setBlobUrl(objectUrl)
+    setBlobUrl({ data: assetData, url: objectUrl })
 
     return () => {
       URL.revokeObjectURL(objectUrl)
@@ -35,15 +35,16 @@ export const PluginImg: React.FC<ImgProps> = ({ src, pluginInfo }) => {
   }, [assetData])
 
   const imageUrl = useMemo(() => {
-    if (blobUrl)
-      return blobUrl
+    if (blobUrl && blobUrl.data === assetData) return blobUrl.url
 
     return getMarkdownImageURL(src, pluginId)
-  }, [blobUrl, pluginId, src])
+  }, [assetData, blobUrl, pluginId, src])
+
+  const srcs = useMemo(() => [imageUrl], [imageUrl])
 
   return (
     <div className="markdown-img-wrapper">
-      <ImageGallery srcs={[imageUrl]} />
+      <ImageGallery key={JSON.stringify([pluginUniqueIdentifier, imageUrl])} srcs={srcs} />
     </div>
   )
-}
+})

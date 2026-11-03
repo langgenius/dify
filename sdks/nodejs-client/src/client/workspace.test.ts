@@ -1,0 +1,21 @@
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpClientWithSpies } from '../../tests/test-utils'
+import { WorkspaceClient } from './workspace'
+
+describe('WorkspaceClient', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('gets models by type', async () => {
+    const { client, request } = createHttpClientWithSpies()
+    const workspace = new WorkspaceClient(client)
+
+    await workspace.getModelsByType('llm')
+
+    expect(request).toHaveBeenCalledWith({
+      method: 'GET',
+      path: '/workspaces/current/models/model-types/llm',
+    })
+  })
+})

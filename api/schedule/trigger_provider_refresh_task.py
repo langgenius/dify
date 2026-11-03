@@ -1,6 +1,5 @@
 import logging
 import math
-import time
 from collections.abc import Iterable, Sequence
 
 from sqlalchemy import ColumnElement, and_, func, or_, select
@@ -12,14 +11,11 @@ from configs import dify_config
 from core.trigger.utils.locks import build_trigger_refresh_lock_keys
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.helper import current_timestamp
 from models.trigger import TriggerSubscription
 from tasks.trigger_subscription_refresh_tasks import trigger_subscription_refresh
 
 logger = logging.getLogger(__name__)
-
-
-def _now_ts() -> int:
-    return int(time.time())
 
 
 def _build_due_filter(now_ts: int):
@@ -53,7 +49,7 @@ def trigger_provider_refresh() -> None:
     """
     Scan due trigger subscriptions and enqueue refresh tasks with in-flight locks.
     """
-    now: int = _now_ts()
+    now: int = current_timestamp()
 
     batch_size: int = int(dify_config.TRIGGER_PROVIDER_REFRESH_BATCH_SIZE)
     lock_ttl: int = max(300, int(dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS))
@@ -85,12 +81,18 @@ def trigger_provider_refresh() -> None:
             lock_keys: list[str] = build_trigger_refresh_lock_keys(subscriptions)
             acquired: list[bool] = _acquire_locks(keys=lock_keys, ttl_seconds=lock_ttl)
 
-            enqueued: int = 0
-            for (tenant_id, subscription_id), is_locked in zip(subscriptions, acquired):
-                if not is_locked:
-                    continue
-                trigger_subscription_refresh.delay(tenant_id=tenant_id, subscription_id=subscription_id)
-                enqueued += 1
+            if not any(acquired):
+                continue
+
+            jobs = [
+                trigger_subscription_refresh.s(tenant_id=tenant_id, subscription_id=subscription_id)
+                for (tenant_id, subscription_id), is_locked in zip(subscriptions, acquired, strict=False)
+                if is_locked
+            ]
+            with app.celery.producer_or_acquire() as producer:  # type: ignore
+                for job in jobs:
+                    job.apply_async(producer=producer)
+            enqueued = len(jobs)
 
             logger.info(
                 "Trigger refresh page %d/%d: scanned=%d locks_acquired=%d enqueued=%d",

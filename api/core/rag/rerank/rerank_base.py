@@ -12,7 +12,6 @@ class BaseRerankRunner(ABC):
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """
@@ -21,7 +20,6 @@ class BaseRerankRunner(ABC):
         :param documents: documents for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id if needed
         :return:
         """
         raise NotImplementedError

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import override
 
-from pydantic import Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.db.session_factory import session_factory
 from core.plugin.entities.parameters import PluginParameterOption
@@ -24,6 +24,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.account import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -37,16 +38,18 @@ VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
     VariableEntityType.CHECKBOX: ToolParameter.ToolParameterType.BOOLEAN,
     VariableEntityType.FILE: ToolParameter.ToolParameterType.FILE,
     VariableEntityType.FILE_LIST: ToolParameter.ToolParameterType.FILES,
+    VariableEntityType.JSON_OBJECT: ToolParameter.ToolParameterType.OBJECT,
 }
 
 
-class WorkflowToolProviderController(ToolProviderController):
+class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, WorkflowTool | None]):
     provider_id: str
-    tools: list[WorkflowTool] = Field(default_factory=list)
+    tools: list[WorkflowTool] | None
 
     def __init__(self, entity: ToolProviderEntity, provider_id: str):
         super().__init__(entity=entity)
         self.provider_id = provider_id
+        self.tools = None
 
     @classmethod
     def from_db(cls, db_provider: WorkflowToolProvider) -> WorkflowToolProviderController:
@@ -72,19 +75,19 @@ class WorkflowToolProviderController(ToolProviderController):
             )
 
             controller.tools = [
-                controller._get_db_provider_tool(db_provider, app, session=session, user=user),
+                controller._get_db_provider_tool(db_provider, session=session, user=user),
             ]
 
         return controller
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         return ToolProviderType.WORKFLOW
 
     def _get_db_provider_tool(
         self,
         db_provider: WorkflowToolProvider,
-        app: App,
         *,
         session: Session,
         user: Account | None = None,
@@ -92,18 +95,22 @@ class WorkflowToolProviderController(ToolProviderController):
         """
         get db provider tool
         :param db_provider: the db provider
-        :param app: the app
         :return: the tool
         """
-        workflow: Workflow | None = (
-            session.query(Workflow)
+        workflow: Workflow | None = session.scalar(
+            select(Workflow)
             .where(Workflow.app_id == db_provider.app_id, Workflow.version == db_provider.version)
-            .first()
+            .limit(1)
         )
 
         if not workflow:
             raise ValueError("workflow not found")
 
+        return self.build_tool(db_provider, workflow, author=user.name if user else "")
+
+    @staticmethod
+    def build_tool(db_provider: WorkflowToolProvider, workflow: Workflow, *, author: str) -> WorkflowTool:
+        """Build a tool from an already-loaded provider and its pinned definition."""
         # fetch start node
         graph: Mapping = workflow.graph_dict
         features_dict: Mapping = workflow.features_dict
@@ -179,10 +186,10 @@ class WorkflowToolProviderController(ToolProviderController):
             workflow_as_tool_id=db_provider.id,
             entity=ToolEntity(
                 identity=ToolIdentity(
-                    author=user.name if user else "",
+                    author=author,
                     name=db_provider.name,
                     label=I18nObject(en_US=db_provider.label, zh_Hans=db_provider.label),
-                    provider=self.provider_id,
+                    provider=db_provider.id,
                     icon=db_provider.icon,
                 ),
                 description=ToolDescription(
@@ -195,11 +202,8 @@ class WorkflowToolProviderController(ToolProviderController):
             runtime=ToolRuntime(
                 tenant_id=db_provider.tenant_id,
             ),
-            workflow_app_id=app.id,
-            workflow_entities={
-                "app": app,
-                "workflow": workflow,
-            },
+            workflow_app_id=workflow.app_id,
+            workflow_id=workflow.id,
             version=db_provider.version,
             workflow_call_depth=0,
             label=db_provider.label,
@@ -216,13 +220,13 @@ class WorkflowToolProviderController(ToolProviderController):
             return self.tools
 
         with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            db_provider: WorkflowToolProvider | None = (
-                session.query(WorkflowToolProvider)
+            db_provider: WorkflowToolProvider | None = session.scalar(
+                select(WorkflowToolProvider)
                 .where(
                     WorkflowToolProvider.tenant_id == tenant_id,
                     WorkflowToolProvider.id == self.provider_id,
                 )
-                .first()
+                .limit(1)
             )
 
             if not db_provider:
@@ -233,11 +237,12 @@ class WorkflowToolProviderController(ToolProviderController):
                 raise ValueError("app not found")
 
             user = session.get(Account, db_provider.user_id) if db_provider.user_id else None
-            self.tools = [self._get_db_provider_tool(db_provider, app, session=session, user=user)]
+            self.tools = [self._get_db_provider_tool(db_provider, session=session, user=user)]
 
         return self.tools
 
-    def get_tool(self, tool_name: str) -> WorkflowTool | None:  # type: ignore
+    @override
+    def get_tool(self, tool_name: str) -> WorkflowTool | None:
         """
         get tool by name
 

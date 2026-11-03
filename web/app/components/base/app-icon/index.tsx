@@ -1,135 +1,69 @@
 'use client'
-import type { FC } from 'react'
-import type { AppIconType } from '@/types/app'
-import data from '@emoji-mart/data'
-import { RiEditLine } from '@remixicon/react'
-import { useHover } from 'ahooks'
-import { cva } from 'class-variance-authority'
-import { init } from 'emoji-mart'
-import * as React from 'react'
-import { useRef } from 'react'
-import { cn } from '@/utils/classnames'
 
-init({ data })
+import type { RecommendedAppInfoResponse } from '@dify/contracts/api/console/explore/types.gen'
+import type { ReactNode } from 'react'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { cn } from '@langgenius/dify-ui/cn'
+import { cva } from 'class-variance-authority'
+import { resolveEmoji } from '@/utils/emoji'
+
+type AppIconData = Pick<RecommendedAppInfoResponse, 'icon' | 'icon_type' | 'icon_background'> &
+  Partial<Pick<RecommendedAppInfoResponse, 'icon_url'>>
 
 export type AppIconProps = {
+  icon?: AppIconData | null
+  fallback?: { content: ReactNode; background?: string | null }
   size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large' | 'xl' | 'xxl'
-  rounded?: boolean
-  iconType?: AppIconType | null
-  icon?: string
-  background?: string | null
-  imageUrl?: string | null
+  shape?: 'square' | 'circle'
   className?: string
-  innerIcon?: React.ReactNode
-  coverElement?: React.ReactNode
-  showEditIcon?: boolean
-  onClick?: () => void
-}
+} & ({ decorative?: true; label?: never } | { decorative: false; label: string })
+
 const appIconVariants = cva(
-  'flex items-center justify-center relative grow-0 shrink-0 overflow-hidden leading-none border-[0.5px] border-divider-regular',
+  'flex shrink-0 grow-0 border-[0.5px] border-divider-regular leading-none',
   {
     variants: {
       size: {
-        xs: 'w-4 h-4 text-xs rounded-[4px]',
-        tiny: 'w-6 h-6 text-base rounded-md',
-        small: 'w-8 h-8 text-xl rounded-lg',
-        medium: 'w-9 h-9 text-[22px] rounded-[10px]',
-        large: 'w-10 h-10 text-[24px] rounded-[10px]',
-        xl: 'w-12 h-12 text-[28px] rounded-xl',
-        xxl: 'w-14 h-14 text-[32px] rounded-2xl',
+        xs: 'size-4 rounded-sm text-xs',
+        tiny: 'size-6 rounded-md text-base',
+        small: 'size-8 rounded-lg text-xl',
+        medium: 'size-9 rounded-[10px] text-[22px]',
+        large: 'size-10 rounded-[10px] text-2xl',
+        xl: 'size-12 rounded-xl text-[28px]',
+        xxl: 'size-14 rounded-2xl text-[32px]',
       },
-      rounded: {
-        true: 'rounded-full',
+      shape: {
+        square: '',
+        circle: 'rounded-full',
       },
-    },
-    defaultVariants: {
-      size: 'medium',
-      rounded: false,
     },
   },
 )
-const EditIconWrapperVariants = cva(
-  'absolute left-0 top-0 z-10 flex items-center justify-center bg-background-overlay-alt',
-  {
-    variants: {
-      size: {
-        xs: 'w-4 h-4 rounded-[4px]',
-        tiny: 'w-6 h-6 rounded-md',
-        small: 'w-8 h-8 rounded-lg',
-        medium: 'w-9 h-9 rounded-[10px]',
-        large: 'w-10 h-10 rounded-[10px]',
-        xl: 'w-12 h-12 rounded-xl',
-        xxl: 'w-14 h-14 rounded-2xl',
-      },
-      rounded: {
-        true: 'rounded-full',
-      },
-    },
-    defaultVariants: {
-      size: 'medium',
-      rounded: false,
-    },
-  },
-)
-const EditIconVariants = cva(
-  'text-text-primary-on-surface',
-  {
-    variants: {
-      size: {
-        xs: 'size-3',
-        tiny: 'size-3.5',
-        small: 'size-5',
-        medium: 'size-[22px]',
-        large: 'size-6',
-        xl: 'size-7',
-        xxl: 'size-8',
-      },
-    },
-    defaultVariants: {
-      size: 'medium',
-    },
-  },
-)
-const AppIcon: FC<AppIconProps> = ({
-  size = 'medium',
-  rounded = false,
-  iconType,
+
+export default function AppIcon({
   icon,
-  background,
-  imageUrl,
+  fallback,
+  size = 'medium',
+  shape = 'square',
+  decorative = true,
+  label,
   className,
-  innerIcon,
-  coverElement,
-  onClick,
-  showEditIcon = false,
-}) => {
-  const isValidImageIcon = iconType === 'image' && imageUrl
-  const Icon = (icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id="🤖" />
-  const wrapperRef = useRef<HTMLSpanElement>(null)
-  const isHovering = useHover(wrapperRef)
+}: AppIconProps) {
+  const isImage = icon?.icon_type === 'image' || icon?.icon_type === 'link'
+  const src = icon?.icon_type === 'link' ? icon.icon : icon?.icon_url
+  const emoji = !icon?.icon_type || icon.icon_type === 'emoji' ? icon?.icon : undefined
+  const background = (!isImage && icon?.icon_background) || fallback?.background || '#FFEAD5'
 
   return (
-    <span
-      ref={wrapperRef}
-      className={cn(appIconVariants({ size, rounded }), className)}
-      style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
-      onClick={onClick}
+    <Avatar
+      className={cn(appIconVariants({ size, shape }), className)}
+      aria-hidden={decorative || undefined}
+      role={decorative ? undefined : 'img'}
+      aria-label={decorative ? undefined : label}
     >
-      {
-        isValidImageIcon
-          ? <img src={imageUrl} className="h-full w-full" alt="app icon" />
-          : (innerIcon || Icon)
-      }
-      {
-        showEditIcon && isHovering && (
-          <div className={EditIconWrapperVariants({ size, rounded })}>
-            <RiEditLine className={EditIconVariants({ size })} />
-          </div>
-        )
-      }
-      {coverElement}
-    </span>
+      <AvatarFallback className="bg-transparent font-normal text-inherit" style={{ background }}>
+        {emoji ? resolveEmoji(emoji) : (fallback?.content ?? '🤖')}
+      </AvatarFallback>
+      {isImage && <AvatarImage src={src || undefined} alt="" className="object-fill" />}
+    </Avatar>
   )
 }
-
-export default React.memo(AppIcon)

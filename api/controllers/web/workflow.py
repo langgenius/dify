@@ -1,10 +1,12 @@
 import logging
-from typing import Any
 
-from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
-from controllers.common.schema import register_schema_models
+from controllers.common.controller_schemas import WorkflowRunPayload
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
@@ -12,36 +14,44 @@ from controllers.web.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 from services.errors.llm import InvokeRateLimitError
-
-
-class WorkflowRunPayload(BaseModel):
-    inputs: dict[str, Any] = Field(description="Input variables for the workflow")
-    files: list[dict[str, Any]] | None = Field(default=None, description="Files to be processed by the workflow")
-
 
 logger = logging.getLogger(__name__)
 
 register_schema_models(web_ns, WorkflowRunPayload)
+register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 @web_ns.route("/workflows/run")
 class WorkflowRunApi(WebApiResource):
+    @error_responses(
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotWorkflowAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        TriggerWorkflowServiceModeUnavailableError,
+    )
     @web_ns.doc("Run Workflow")
     @web_ns.doc(description="Execute a workflow with provided inputs and files.")
     @web_ns.expect(web_ns.models[WorkflowRunPayload.__name__])
@@ -55,7 +65,9 @@ class WorkflowRunApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user: EndUser):
+    @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """
         Run workflow
         """
@@ -68,29 +80,38 @@ class WorkflowRunApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=True
+                session=session,
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=True,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TriggerWorkflowServiceModeUnavailableServiceError as caught_error:
+            raise TriggerWorkflowServiceModeUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @web_ns.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(WebApiResource):
+    @error_responses(NotWorkflowAppError)
     @web_ns.doc("Stop Workflow Task")
     @web_ns.doc(description="Stop a running workflow task.")
     @web_ns.doc(
@@ -103,11 +124,11 @@ class WorkflowTaskStopApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Task Not Found",
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[SimpleResultResponse.__name__])
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """
         Stop workflow task
@@ -116,11 +137,12 @@ class WorkflowTaskStopApi(WebApiResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        # Stop using both mechanisms for backward compatibility
-        # Legacy stop flag mechanism (without user check)
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
+        AppTaskService.stop_workflow_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            task_id=task_id,
+            app_mode=app_mode,
+            owner=None,
+        )
 
-        # New graph engine command channel mechanism
-        GraphEngineManager.send_stop_command(task_id)
-
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")

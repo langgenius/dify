@@ -1,0 +1,18 @@
+import { defineConfig } from 'vite-plus'
+
+export default defineConfig({
+  pack: {
+    clean: true,
+    deps: { resolveDepSubpath: true, neverBundle: ['@hono/node-server', 'c12', 'hono'] },
+    entry: ['src/index.ts', 'src/cli.ts'],
+    format: ['esm'],
+    outDir: 'dist',
+    platform: 'node',
+    sourcemap: true,
+    target: 'node24',
+    treeshake: true,
+  },
+  test: {
+    environment: 'node',
+  },
+})

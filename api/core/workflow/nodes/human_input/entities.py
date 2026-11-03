@@ -1,158 +1,41 @@
-"""
-Human Input node entities.
+"""Dify-owned Human Input entities.
+
+Graphon v0.6.0 keeps only the minimal HITL callback contract. Dify owns the
+workflow-facing form schema, validation rules, and compatibility payload shapes
+that used to live in graphon.
 """
 
+import abc
 import re
-import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
-from typing import Annotated, Any, ClassVar, Literal, Self
+from typing import Annotated, Any, Literal, Self, assert_never, override
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, NonNegativeInt, field_validator, model_validator
 
-from core.variables.consts import SELECTORS_LENGTH
-from core.workflow.nodes.base import BaseNodeData
-from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
-from core.workflow.runtime import VariablePool
+from core.workflow.human_input_adapter import DeliveryChannelConfig
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
+from graphon.variables.consts import SELECTORS_LENGTH
+from graphon.variables.segments import Segment
 
-from .enums import ButtonStyle, DeliveryMethodType, EmailRecipientType, FormInputType, PlaceholderType, TimeoutUnit
+from . import _exc as exc
+from .enums import ButtonStyle, FormInputType, TimeoutUnit, ValueSourceType
 
-_OUTPUT_VARIABLE_PATTERN = re.compile(r"\{\{#\$output\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}")
-
-
-class _WebAppDeliveryConfig(BaseModel):
-    """Configuration for webapp delivery method."""
-
-    pass  # Empty for webapp delivery
-
-
-class MemberRecipient(BaseModel):
-    """Member recipient for email delivery."""
-
-    type: Literal[EmailRecipientType.MEMBER] = EmailRecipientType.MEMBER
-    user_id: str
+OUTPUT_VARIABLE_PATTERN = re.compile(
+    r"\{\{#\$output\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}",
+)
 
 
-class ExternalRecipient(BaseModel):
-    """External recipient for email delivery."""
+def extract_output_variable_names(form_content: str) -> tuple[str, ...]:
+    """Return source-ordered output slots using the authoring DSL grammar."""
 
-    type: Literal[EmailRecipientType.EXTERNAL] = EmailRecipientType.EXTERNAL
-    email: str
-
-
-EmailRecipient = Annotated[MemberRecipient | ExternalRecipient, Field(discriminator="type")]
+    return tuple(match.group("field_name") for match in OUTPUT_VARIABLE_PATTERN.finditer(form_content))
 
 
-class EmailRecipients(BaseModel):
-    """Email recipients configuration."""
-
-    # When true, recipients are the union of all workspace members and external items.
-    # Member items are ignored because they are already covered by the workspace scope.
-    # De-duplication is applied by email, with member recipients taking precedence.
-    whole_workspace: bool = False
-    items: list[EmailRecipient] = Field(default_factory=list)
-
-
-class EmailDeliveryConfig(BaseModel):
-    """Configuration for email delivery method."""
-
-    URL_PLACEHOLDER: ClassVar[str] = "{{#url#}}"
-
-    recipients: EmailRecipients
-
-    # the subject of email
-    subject: str
-
-    # Body is the content of email.It may contain the speical placeholder `{{#url#}}`, which
-    # represent the url to submit the form.
-    #
-    # It may also reference the output variable of the previous node with the syntax
-    # `{{#<node_id>.<field_name>#}}`.
-    body: str
-    debug_mode: bool = False
-
-    def with_debug_recipient(self, user_id: str) -> "EmailDeliveryConfig":
-        if not user_id:
-            debug_recipients = EmailRecipients(whole_workspace=False, items=[])
-            return self.model_copy(update={"recipients": debug_recipients})
-        debug_recipients = EmailRecipients(whole_workspace=False, items=[MemberRecipient(user_id=user_id)])
-        return self.model_copy(update={"recipients": debug_recipients})
-
-    @classmethod
-    def replace_url_placeholder(cls, body: str, url: str | None) -> str:
-        """Replace the url placeholder with provided value."""
-        return body.replace(cls.URL_PLACEHOLDER, url or "")
-
-    @classmethod
-    def render_body_template(
-        cls,
-        *,
-        body: str,
-        url: str | None,
-        variable_pool: VariablePool | None = None,
-    ) -> str:
-        """Render email body by replacing placeholders with runtime values."""
-        templated_body = cls.replace_url_placeholder(body, url)
-        if variable_pool is None:
-            return templated_body
-        return variable_pool.convert_template(templated_body).text
-
-
-class _DeliveryMethodBase(BaseModel):
-    """Base delivery method configuration."""
-
-    enabled: bool = True
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
-
-    def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
-        return ()
-
-
-class WebAppDeliveryMethod(_DeliveryMethodBase):
-    """Webapp delivery method configuration."""
-
-    type: Literal[DeliveryMethodType.WEBAPP] = DeliveryMethodType.WEBAPP
-    # The config field is not used currently.
-    config: _WebAppDeliveryConfig = Field(default_factory=_WebAppDeliveryConfig)
-
-
-class EmailDeliveryMethod(_DeliveryMethodBase):
-    """Email delivery method configuration."""
-
-    type: Literal[DeliveryMethodType.EMAIL] = DeliveryMethodType.EMAIL
-    config: EmailDeliveryConfig
-
-    def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
-        variable_template_parser = VariableTemplateParser(template=self.config.body)
-        selectors: list[Sequence[str]] = []
-        for variable_selector in variable_template_parser.extract_variable_selectors():
-            value_selector = list(variable_selector.value_selector)
-            if len(value_selector) < SELECTORS_LENGTH:
-                continue
-            selectors.append(value_selector[:SELECTORS_LENGTH])
-        return selectors
-
-
-DeliveryChannelConfig = Annotated[WebAppDeliveryMethod | EmailDeliveryMethod, Field(discriminator="type")]
-
-
-def apply_debug_email_recipient(
-    method: DeliveryChannelConfig,
-    *,
-    enabled: bool,
-    user_id: str,
-) -> DeliveryChannelConfig:
-    if not enabled:
-        return method
-    if not isinstance(method, EmailDeliveryMethod):
-        return method
-    if not method.config.debug_mode:
-        return method
-    debug_config = method.config.with_debug_recipient(user_id or "")
-    return method.model_copy(update={"config": debug_config})
-
-
-class FormInputDefault(BaseModel):
+class StringSource(BaseModel):
     """Default configuration for form inputs."""
 
     # NOTE: Ideally, a discriminated union would be used to model
@@ -160,156 +43,298 @@ class FormInputDefault(BaseModel):
     # value when switching between `VARIABLE` and `CONSTANT` types. This
     # necessitates retaining all fields, making a discriminated union unsuitable.
 
-    type: PlaceholderType
+    # NOTE: This class is renamed from FormInputDefault.
+
+    type: ValueSourceType
 
     # The selector of default variable, used when `type` is `VARIABLE`.
-    selector: Sequence[str] = Field(default_factory=tuple)  #
+    selector: Sequence[str] = Field(default_factory=tuple)
 
-    # The value of the default, used when `type` is `CONSTANT`.
-    # TODO: How should we express JSON values?
+    # Constant defaults are stored as strings because current form inputs are
+    # text-based (`TEXT_INPUT` and `PARAGRAPH`).
     value: str = ""
 
     @model_validator(mode="after")
     def _validate_selector(self) -> Self:
-        if self.type == PlaceholderType.CONSTANT:
+        if self.type == ValueSourceType.CONSTANT:
             return self
         if len(self.selector) < SELECTORS_LENGTH:
-            raise ValueError(f"the length of selector should be at least {SELECTORS_LENGTH}, selector={self.selector}")
+            msg = f"the length of selector should be at least {SELECTORS_LENGTH}, selector={self.selector}"
+            raise ValueError(msg)
         return self
 
 
-class FormInput(BaseModel):
+class StringListSource(BaseModel):
+    type: ValueSourceType = Field(
+        description=(
+            "Origin of the options. `constant` means `value` lists the options literally; `variable` means "
+            "`selector` points to an `array[string]` workflow variable that provides them."
+        )
+    )
+
+    # The selector of default variable, used when `type` is `VARIABLE`.
+    selector: Sequence[str] = Field(
+        default_factory=tuple,
+        description="Variable reference path when `type` is `variable`.",
+    )
+
+    # The value of the default, used when `type` is `CONSTANT`.
+    value: list[str] = Field(
+        default_factory=list,
+        description="Literal option list when `type` is `constant`.",
+    )
+
+
+class BaseInputConfig(BaseModel):
+    """BaseInputConfig is the base class for all input field definitions.
+    One input corresponds to one output variable during form submission.
+    """
+
+    output_variable_name: str
+
+    @abc.abstractmethod
+    def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
+        """`extract_variable_selectors` extracts variable selectors
+        used by this input field.
+        """
+
+    @abc.abstractmethod
+    def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
+        """`resolve_default_value` resolves the default value for form submission.
+
+        If the form input does not specify a default value, or the default value does
+        not depend on the runtime variable, this method should return `None`.
+        """
+
+
+class ParagraphInputConfig(BaseInputConfig):
     """Form input definition."""
 
-    type: FormInputType
-    output_variable_name: str
-    default: FormInputDefault | None = None
+    # NOTE: This class is renamed from FormInput.
+    type: Literal[FormInputType.PARAGRAPH] = FormInputType.PARAGRAPH
+    default: StringSource | None = Field(
+        default=None,
+        description=(
+            "Raw default-value configuration for the paragraph input. Runtime-resolved values are exposed in the "
+            "surrounding `resolved_default_values` mapping."
+        ),
+    )
+
+    @override
+    def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
+        default = self.default
+        if default is None:
+            return []
+        if default.type == ValueSourceType.CONSTANT:
+            return []
+        return [default.selector]
+
+    @override
+    def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
+        default = self.default
+        if default is None:
+            return None
+
+        if default.type == ValueSourceType.CONSTANT:
+            return None
+
+        return pool.get(default.selector)
+
+
+class SelectInputConfig(BaseInputConfig):
+    type: Literal[FormInputType.SELECT] = FormInputType.SELECT
+    option_source: StringListSource = Field(
+        description="Source of options for `select` inputs. Present only when `type` is `select`."
+    )
+
+    @override
+    def extract_variable_selectors(self) -> Sequence[Sequence[NodeType]]:
+        if self.option_source.type == ValueSourceType.CONSTANT:
+            return []
+        return [self.option_source.selector]
+
+    @override
+    def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
+        _ = pool
+        return None
+
+
+_ALLOWED_TRANSFER_METHOD = frozenset(
+    [
+        FileTransferMethod.LOCAL_FILE,
+        FileTransferMethod.REMOTE_URL,
+    ]
+)
+
+
+class _FileInputCommonConfig(BaseModel):
+    allowed_file_types: Sequence[FileType] = Field(default_factory=list[FileType])
+    allowed_file_extensions: Sequence[str] = Field(default_factory=list)
+    allowed_file_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list[FileTransferMethod])
+
+    @field_validator("allowed_file_upload_methods", mode="after")
+    @classmethod
+    def _validate_upload_methods(cls, transfer_methods: Sequence[FileTransferMethod]) -> Sequence[FileTransferMethod]:
+        validated_values: list[FileTransferMethod] = []
+        for value in transfer_methods:
+            if value not in _ALLOWED_TRANSFER_METHOD:
+                raise exc.InvalidTransferMethodError(value)
+            validated_values.append(value)
+
+        return validated_values
+
+    @model_validator(mode="after")
+    def _validate_extensions(self) -> Self:
+        if FileType.CUSTOM not in self.allowed_file_types:
+            return self
+        if not self.allowed_file_extensions:
+            raise exc.ExtensionsNotSetErrorValueError
+        return self
+
+
+class FileInputConfig(_FileInputCommonConfig, BaseInputConfig):
+    type: Literal[FormInputType.FILE] = FormInputType.FILE
+
+    @override
+    def extract_variable_selectors(self) -> Sequence[Sequence[NodeType]]:
+        return []
+
+    @override
+    def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
+        _ = pool
+        return None
+
+
+class FileListInputConfig(_FileInputCommonConfig, BaseInputConfig):
+    type: Literal[FormInputType.FILE_LIST] = FormInputType.FILE_LIST
+    number_limits: NonNegativeInt = 0
+
+    @override
+    def extract_variable_selectors(self) -> Sequence[Sequence[NodeType]]:
+        return []
+
+    @override
+    def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
+        _ = pool
+        return None
+
+
+type FormInputConfig = Annotated[
+    ParagraphInputConfig | SelectInputConfig | FileInputConfig | FileListInputConfig,
+    Field(discriminator="type"),
+]
 
 
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
-class UserAction(BaseModel):
+class UserActionConfig(BaseModel):
     """User action configuration."""
 
     # id is the identifier for this action.
     # It also serves as the identifiers of output handle.
     #
     # The id must be a valid identifier (satisfy the _IDENTIFIER_PATTERN above.)
-    id: str = Field(max_length=20)
-    title: str = Field(max_length=20)
+    id: str = Field(max_length=20, pattern=_IDENTIFIER_PATTERN)
+    title: str = Field(max_length=100)
     button_style: ButtonStyle = ButtonStyle.DEFAULT
 
     @field_validator("id")
     @classmethod
     def _validate_id(cls, value: str) -> str:
         if not _IDENTIFIER_PATTERN.match(value):
-            raise ValueError(
-                f"'{value}' is not a valid identifier. It must start with a letter or underscore, "
-                f"and contain only letters, numbers, or underscores."
+            msg = (
+                f"'{value}' is not a valid identifier. It must start with "
+                f"a letter or underscore, and contain only letters, "
+                f"numbers, or underscores."
             )
+            raise ValueError(msg)
         return value
+
+
+def validate_unique_input_names(inputs: Sequence[FormInputConfig]) -> None:
+    seen_names: set[str] = set()
+    for form_input in inputs:
+        name = form_input.output_variable_name
+        if name in seen_names:
+            raise ValueError(f"duplicated output_variable_name '{name}' in inputs")
+        seen_names.add(name)
+
+
+def validate_unique_action_ids(user_actions: Sequence[UserActionConfig]) -> None:
+    seen_ids: set[str] = set()
+    for action in user_actions:
+        action_id = action.id
+        if action_id in seen_ids:
+            raise ValueError(f"duplicated user action id '{action_id}'")
+        seen_ids.add(action_id)
 
 
 class HumanInputNodeData(BaseNodeData):
     """Human Input node data."""
 
-    delivery_methods: list[DeliveryChannelConfig] = Field(default_factory=list)
+    type: NodeType = BuiltinNodeTypes.HUMAN_INPUT
+    title: str = ""
     form_content: str = ""
-    inputs: list[FormInput] = Field(default_factory=list)
-    user_actions: list[UserAction] = Field(default_factory=list)
+    inputs: list[FormInputConfig] = Field(default_factory=list[FormInputConfig])
+    user_actions: list[UserActionConfig] = Field(default_factory=list[UserActionConfig])
     timeout: int = 36
     timeout_unit: TimeoutUnit = TimeoutUnit.HOUR
 
     @field_validator("inputs")
     @classmethod
-    def _validate_inputs(cls, inputs: list[FormInput]) -> list[FormInput]:
-        seen_names: set[str] = set()
-        for form_input in inputs:
-            name = form_input.output_variable_name
-            if name in seen_names:
-                raise ValueError(f"duplicated output_variable_name '{name}' in inputs")
-            seen_names.add(name)
+    def _validate_inputs(cls, inputs: list[FormInputConfig]) -> list[FormInputConfig]:
+        validate_unique_input_names(inputs)
         return inputs
 
     @field_validator("user_actions")
     @classmethod
-    def _validate_user_actions(cls, user_actions: list[UserAction]) -> list[UserAction]:
-        seen_ids: set[str] = set()
-        for action in user_actions:
-            action_id = action.id
-            if action_id in seen_ids:
-                raise ValueError(f"duplicated user action id '{action_id}'")
-            seen_ids.add(action_id)
+    def _validate_user_actions(cls, user_actions: list[UserActionConfig]) -> list[UserActionConfig]:
+        validate_unique_action_ids(user_actions)
         return user_actions
 
-    def is_webapp_enabled(self) -> bool:
-        for dm in self.delivery_methods:
-            if not dm.enabled:
-                continue
-            if dm.type == DeliveryMethodType.WEBAPP:
-                return True
-        return False
-
     def expiration_time(self, start_time: datetime) -> datetime:
-        if self.timeout_unit == TimeoutUnit.HOUR:
-            return start_time + timedelta(hours=self.timeout)
-        elif self.timeout_unit == TimeoutUnit.DAY:
-            return start_time + timedelta(days=self.timeout)
-        else:
-            raise AssertionError("unknown timeout unit.")
+        match self.timeout_unit:
+            case TimeoutUnit.HOUR:
+                return start_time + timedelta(hours=self.timeout)
+            case TimeoutUnit.DAY:
+                return start_time + timedelta(days=self.timeout)
+            case _:
+                assert_never(self.timeout_unit)
 
     def outputs_field_names(self) -> Sequence[str]:
-        field_names = []
-        for match in _OUTPUT_VARIABLE_PATTERN.finditer(self.form_content):
-            field_names.append(match.group("field_name"))
-        return field_names
-
-    def extract_variable_selector_to_variable_mapping(self, node_id: str) -> Mapping[str, Sequence[str]]:
-        variable_mappings: dict[str, Sequence[str]] = {}
-
-        def _add_variable_selectors(selectors: Sequence[Sequence[str]]) -> None:
-            for selector in selectors:
-                if len(selector) < SELECTORS_LENGTH:
-                    continue
-                qualified_variable_mapping_key = f"{node_id}.#{'.'.join(selector[:SELECTORS_LENGTH])}#"
-                variable_mappings[qualified_variable_mapping_key] = list(selector[:SELECTORS_LENGTH])
-
-        form_template_parser = VariableTemplateParser(template=self.form_content)
-        _add_variable_selectors(
-            [selector.value_selector for selector in form_template_parser.extract_variable_selectors()]
-        )
-        for delivery_method in self.delivery_methods:
-            if not delivery_method.enabled:
-                continue
-            _add_variable_selectors(delivery_method.extract_variable_selectors())
-
-        for input in self.inputs:
-            default_value = input.default
-            if default_value is None:
-                continue
-            if default_value.type == PlaceholderType.CONSTANT:
-                continue
-            default_value_key = ".".join(default_value.selector)
-            qualified_variable_mapping_key = f"{node_id}.#{default_value_key}#"
-            variable_mappings[qualified_variable_mapping_key] = default_value.selector
-
-        return variable_mappings
+        return list(extract_output_variable_names(self.form_content))
 
     def find_action_text(self, action_id: str) -> str:
-        """
-        Resolve action display text by id.
-        """
+        """Resolve action display text by id."""
         for action in self.user_actions:
             if action.id == action_id:
                 return action.title
         return action_id
 
+    def must_resolve_action_value(self, action_id: str) -> str:
+        """Resolve the selected action's workflow-facing value by id.
+
+        This method should only be called with action ids that have already been
+        validated against the node configuration.
+
+        Returns:
+            The configured workflow-facing value for the selected action id.
+
+        Raises:
+            AssertionError: If the action id is not present in the node config.
+        """
+        for action in self.user_actions:
+            if action.id == action_id:
+                return action.title
+        msg = f"Invalid action: {action_id}"
+        raise AssertionError(msg)
+
 
 class FormDefinition(BaseModel):
     form_content: str
-    inputs: list[FormInput] = Field(default_factory=list)
-    user_actions: list[UserAction] = Field(default_factory=list)
+    inputs: list[FormInputConfig] = Field(default_factory=list[FormInputConfig])
+    user_actions: list[UserActionConfig] = Field(default_factory=list[UserActionConfig])
     rendered_content: str
     expiration_time: datetime
 
@@ -329,14 +354,15 @@ class HumanInputSubmissionValidationError(ValueError):
 
 def validate_human_input_submission(
     *,
-    inputs: Sequence[FormInput],
-    user_actions: Sequence[UserAction],
+    inputs: Sequence[FormInputConfig],
+    user_actions: Sequence[UserActionConfig],
     selected_action_id: str,
     form_data: Mapping[str, Any],
 ) -> None:
     available_actions = {action.id for action in user_actions}
     if selected_action_id not in available_actions:
-        raise HumanInputSubmissionValidationError(f"Invalid action: {selected_action_id}")
+        msg = f"Invalid action: {selected_action_id}"
+        raise HumanInputSubmissionValidationError(msg)
 
     provided_inputs = set(form_data.keys())
     missing_inputs = [
@@ -347,4 +373,12 @@ def validate_human_input_submission(
 
     if missing_inputs:
         missing_list = ", ".join(missing_inputs)
-        raise HumanInputSubmissionValidationError(f"Missing required inputs: {missing_list}")
+        msg = f"Missing required inputs: {missing_list}"
+        raise HumanInputSubmissionValidationError(msg)
+
+
+class HumanInputNodeDataFull(HumanInputNodeData):
+    # This model is the full definition of HumanInputNodeData.
+    #
+    # The model above lacks some fields due to migration between Graphon and Dify. This model add them back.
+    delivery_methods: list[DeliveryChannelConfig] = Field(default_factory=list[DeliveryChannelConfig])

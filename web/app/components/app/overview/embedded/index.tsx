@@ -1,204 +1,421 @@
-import type { SiteInfo } from '@/models/share'
+import type { AppDetailSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { RefObject } from 'react'
+import type {
+  EmbeddedWebAppRoute,
+  WorkflowHiddenStartVariable,
+  WorkflowLaunchInputValue,
+} from '../app-card-utils'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import {
-  RiClipboardFill,
-  RiClipboardLine,
-} from '@remixicon/react'
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  ScrollArea,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
-import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { Suspense, use, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
-import Modal from '@/app/components/base/modal'
-import Tooltip from '@/app/components/base/tooltip'
-import { IS_CE_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
-import { cn } from '@/utils/classnames'
+import { createTheme } from '@/app/components/base/chat/embedded-chatbot/theme/theme'
+import { InputVarType } from '@/app/components/workflow/types'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { basePath } from '@/utils/var'
+import {
+  compressAndEncodeBase64,
+  createWorkflowLaunchInitialValues,
+  getChromePluginContent,
+  getEmbeddedIframeSnippet,
+  getEmbeddedScriptSnippet,
+  isWorkflowLaunchInputSupported,
+} from '../app-card-utils'
+import WorkflowHiddenInputFields from '../workflow-hidden-input-fields'
 import style from './style.module.css'
 
-type Props = {
-  siteInfo?: SiteInfo
-  isShow: boolean
-  onClose: () => void
+type EmbeddedDialogContentProps = Readonly<{
+  siteInfo?: Partial<Pick<AppDetailSiteResponse, 'chat_color_theme' | 'chat_color_theme_inverted'>>
   accessToken: string
-  appBaseUrl: string
-  className?: string
-}
+  appBaseUrl?: string
+  webAppRoute?: EmbeddedWebAppRoute
+  hiddenInputs?: WorkflowHiddenStartVariable[]
+}>
 
-const OPTION_MAP = {
-  iframe: {
-    getContent: (url: string, token: string) =>
-      `<iframe
- src="${url}${basePath}/chatbot/${token}"
- style="width: 100%; height: 100%; min-height: 700px"
- frameborder="0"
- allow="microphone">
-</iframe>`,
-  },
-  scripts: {
-    getContent: (url: string, token: string, primaryColor: string, isTestEnv?: boolean) =>
-      `<script>
- window.difyChatbotConfig = {
-  token: '${token}'${isTestEnv
-    ? `,
-  isDev: true`
-    : ''}${IS_CE_EDITION
-    ? `,
-  baseUrl: '${url}${basePath}'`
-    : ''},
-  inputs: {
-    // You can define the inputs from the Start node here
-    // key is the variable name
-    // e.g.
-    // name: "NAME"
-  },
-  systemVariables: {
-    // user_id: 'YOU CAN DEFINE USER ID HERE',
-    // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
-  },
-  userVariables: {
-    // avatar_url: 'YOU CAN DEFINE USER AVATAR URL HERE',
-    // name: 'YOU CAN DEFINE USER NAME HERE',
-  },
- }
-</script>
-<script
- src="${url}${basePath}/embed.min.js"
- id="${token}"
- defer>
-</script>
-<style>
-  #dify-chatbot-bubble-button {
-    background-color: ${primaryColor} !important;
-  }
-  #dify-chatbot-bubble-window {
-    width: 24rem !important;
-    height: 40rem !important;
-  }
-</style>`,
-  },
-  chromePlugin: {
-    getContent: (url: string, token: string) => `ChatBot URL: ${url}${basePath}/chatbot/${token}`,
-  },
-}
+const OPTION_KEYS = ['iframe', 'scripts', 'chromePlugin'] as const
 const prefixEmbedded = 'overview.appInfo.embedded'
 
-type Option = keyof typeof OPTION_MAP
+type Option = (typeof OPTION_KEYS)[number]
 
-type OptionStatus = {
-  iframe: boolean
-  scripts: boolean
-  chromePlugin: boolean
+const optionIconClassName: Record<Option, string> = {
+  iframe: style.iframeIcon!,
+  scripts: style.scriptsIcon!,
+  chromePlugin: style.chromePluginIcon!,
 }
 
-const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, className }: Props) => {
-  const { t } = useTranslation()
+const getSerializedHiddenInputValue = (
+  variable: WorkflowHiddenStartVariable,
+  values: Record<string, WorkflowLaunchInputValue>,
+) => {
+  const rawValue = values[variable.variable]
+  if (variable.type === InputVarType.checkbox) return String(Boolean(rawValue))
+
+  return String(rawValue ?? '')
+}
+
+const buildEmbeddedIframeUrl = async ({
+  appBaseUrl,
+  accessToken,
+  webAppRoute,
+  variables,
+  values,
+}: {
+  appBaseUrl: string
+  accessToken: string
+  webAppRoute: EmbeddedWebAppRoute
+  variables: WorkflowHiddenStartVariable[]
+  values: Record<string, WorkflowLaunchInputValue>
+}) => {
+  const iframeUrl = new URL(
+    `${appBaseUrl}${basePath}/${webAppRoute}/${accessToken}`,
+    window.location.origin,
+  )
+
+  await Promise.all(
+    variables.map(async (variable) => {
+      iframeUrl.searchParams.set(
+        variable.variable,
+        await compressAndEncodeBase64(getSerializedHiddenInputValue(variable, values)),
+      )
+    }),
+  )
+
+  return iframeUrl.toString()
+}
+
+const AsyncEmbeddedOptionContent = ({
+  option,
+  iframeUrlPromise,
+  latestResolvedIframeUrlRef,
+}: {
+  option: Option
+  iframeUrlPromise: Promise<string>
+  latestResolvedIframeUrlRef: RefObject<string>
+}) => {
+  const iframeUrl = use(iframeUrlPromise)
+  latestResolvedIframeUrlRef.current = iframeUrl
+
+  if (option === 'chromePlugin') return getChromePluginContent(iframeUrl)
+
+  return getEmbeddedIframeSnippet(iframeUrl)
+}
+
+const EmbeddedContent = ({
+  siteInfo,
+  appBaseUrl,
+  accessToken,
+  webAppRoute = 'chatbot',
+  hiddenInputs,
+}: Required<Pick<EmbeddedDialogContentProps, 'accessToken' | 'appBaseUrl'>> &
+  Pick<EmbeddedDialogContentProps, 'siteInfo' | 'webAppRoute' | 'hiddenInputs'>) => {
+  const { t } = useTranslation(['appOverview'])
+  const supportedHiddenInputs = useMemo<WorkflowHiddenStartVariable[]>(
+    () => (hiddenInputs ?? []).filter(isWorkflowLaunchInputSupported),
+    [hiddenInputs],
+  )
+  const initialHiddenInputValues = useMemo(
+    () => createWorkflowLaunchInitialValues(supportedHiddenInputs),
+    [supportedHiddenInputs],
+  )
+  const previewLabelId = useId()
   const [option, setOption] = useState<Option>('iframe')
-  const [isCopied, setIsCopied] = useState<OptionStatus>({ iframe: false, scripts: false, chromePlugin: false })
+  const [copiedOption, setCopiedOption] = useState<Option | null>(null)
+  const [hiddenInputValues, setHiddenInputValues] = useState<
+    Record<string, WorkflowLaunchInputValue>
+  >(() => initialHiddenInputValues)
+  const [previewIframeUrlPromise, setPreviewIframeUrlPromise] = useState<Promise<string>>(() =>
+    buildEmbeddedIframeUrl({
+      appBaseUrl,
+      accessToken,
+      webAppRoute,
+      variables: supportedHiddenInputs,
+      values: initialHiddenInputValues,
+    }),
+  )
+  const latestResolvedIframeUrlRef = useRef('')
 
-  const { langGeniusVersionInfo } = useAppContext()
-  const themeBuilder = useThemeContext()
-  themeBuilder.buildTheme(siteInfo?.chat_color_theme ?? null, siteInfo?.chat_color_theme_inverted ?? false)
-  const isTestEnv = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
-  const onClickCopy = () => {
-    if (option === 'chromePlugin') {
-      const splitUrl = OPTION_MAP[option].getContent(appBaseUrl, accessToken).split(': ')
-      if (splitUrl.length > 1)
-        copy(splitUrl[1])
+  const { data: currentEnv } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentEnv,
+  })
+  const theme = createTheme(
+    siteInfo?.chat_color_theme ?? null,
+    siteInfo?.chat_color_theme_inverted ?? false,
+  )
+  const isTestEnv = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
+
+  const handleHiddenInputValueChange = (variable: string, value: WorkflowLaunchInputValue) => {
+    const nextHiddenInputValues = {
+      ...hiddenInputValues,
+      [variable]: value,
     }
-    else {
-      copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeBuilder.theme?.primaryColor ?? '#1C64F2', isTestEnv))
-    }
-    setIsCopied({ ...isCopied, [option]: true })
+
+    setCopiedOption(null)
+    setHiddenInputValues(nextHiddenInputValues)
+    setPreviewIframeUrlPromise(
+      buildEmbeddedIframeUrl({
+        appBaseUrl,
+        accessToken,
+        webAppRoute,
+        variables: supportedHiddenInputs,
+        values: nextHiddenInputValues,
+      }),
+    )
   }
+  const scriptsContent = useMemo(
+    () =>
+      getEmbeddedScriptSnippet({
+        url: appBaseUrl,
+        token: accessToken,
+        webAppRoute,
+        primaryColor: theme.primaryColor,
+        isTestEnv,
+        inputValues: hiddenInputValues,
+      }),
+    [accessToken, appBaseUrl, hiddenInputValues, isTestEnv, theme.primaryColor, webAppRoute],
+  )
 
-  // when toggle option, reset then copy status
-  const resetCopyStatus = () => {
-    const cache = { ...isCopied }
-    Object.keys(cache).forEach((key) => {
-      cache[key as keyof OptionStatus] = false
+  const onClickCopy = async (selectedOption: Option) => {
+    const latestIframeUrl = await buildEmbeddedIframeUrl({
+      appBaseUrl,
+      accessToken,
+      webAppRoute,
+      variables: supportedHiddenInputs,
+      values: hiddenInputValues,
     })
-    setIsCopied(cache)
+
+    if (selectedOption === 'chromePlugin') {
+      const splitUrl = getChromePluginContent(latestIframeUrl).split(': ')
+      if (splitUrl.length > 1) copy(splitUrl[1]!)
+    } else if (selectedOption === 'iframe') {
+      copy(getEmbeddedIframeSnippet(latestIframeUrl))
+    } else {
+      copy(scriptsContent)
+    }
+    setCopiedOption(selectedOption)
   }
 
   const navigateToChromeUrl = () => {
-    window.open('https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf', '_blank', 'noopener,noreferrer')
+    window.open(
+      'https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf',
+      '_blank',
+      'noopener,noreferrer',
+    )
   }
 
-  useEffect(() => {
-    resetCopyStatus()
-  }, [isShow])
-
   return (
-    <Modal
-      title={t(`${prefixEmbedded}.title`, { ns: 'appOverview' })}
-      isShow={isShow}
-      onClose={onClose}
-      className="w-[640px] !max-w-2xl"
-      wrapperClassName={className}
-      closable={true}
-    >
-      <div className="system-sm-medium mb-4 mt-8 text-text-primary">
-        {t(`${prefixEmbedded}.explanation`, { ns: 'appOverview' })}
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-y-2">
-        {Object.keys(OPTION_MAP).map((v, index) => {
-          return (
-            <div
-              key={index}
+    <>
+      {supportedHiddenInputs.length > 0 && (
+        <Collapsible className="mb-6 rounded-xl border-[0.5px] border-components-panel-border bg-background-section">
+          <CollapsibleTrigger className="group flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left">
+            <div>
+              <div className="system-sm-medium text-text-primary">
+                {t(($) => $[`${prefixEmbedded}.hiddenInputs.title`], { ns: 'appOverview' })}
+              </div>
+              <div className="mt-1 system-xs-regular text-text-tertiary">
+                {t(($) => $[`${prefixEmbedded}.hiddenInputs.description`], { ns: 'appOverview' })}
+              </div>
+            </div>
+            <span
+              aria-hidden
+              className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary group-data-panel-open:rotate-90"
+            />
+          </CollapsibleTrigger>
+          <CollapsiblePanel>
+            <div className="max-h-72 space-y-4 overflow-y-auto border-t-[0.5px] border-divider-subtle px-4 py-4">
+              <WorkflowHiddenInputFields
+                hiddenVariables={supportedHiddenInputs}
+                values={hiddenInputValues}
+                onValueChange={handleHiddenInputValueChange}
+                fieldIdPrefix="embedded-hidden-input"
+              />
+            </div>
+          </CollapsiblePanel>
+        </Collapsible>
+      )}
+      <Tabs
+        value={option}
+        onValueChange={(value) => {
+          setOption(value as Option)
+          setCopiedOption(null)
+        }}
+      >
+        <TabsList
+          aria-label={t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
+          className="flex items-center justify-between gap-0"
+        >
+          {OPTION_KEYS.map((v) => (
+            <TabsTab
+              key={v}
+              value={v}
+              aria-label={t(($) => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' }) || v}
               className={cn(
                 style.option,
-                style[`${v}Icon`],
+                optionIconClassName[v],
+                'border-0! p-0!',
                 option === v && style.active,
               )}
-              onClick={() => {
-                setOption(v as Option)
-                resetCopyStatus()
-              }}
-            >
-            </div>
+            />
+          ))}
+        </TabsList>
+        {OPTION_KEYS.map((v) => {
+          const previewFallback = latestResolvedIframeUrlRef.current
+            ? v === 'chromePlugin'
+              ? getChromePluginContent(latestResolvedIframeUrlRef.current)
+              : getEmbeddedIframeSnippet(latestResolvedIframeUrlRef.current)
+            : ''
+
+          return (
+            <TabsPanel key={v} value={v} tabIndex={-1}>
+              {v === 'chromePlugin' && (
+                <div className="mt-6 w-full">
+                  <button
+                    type="button"
+                    className={cn(
+                      'inline-flex w-full items-center justify-center gap-2 rounded-lg py-3',
+                      'shrink-0 bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm',
+                    )}
+                    onClick={navigateToChromeUrl}
+                  >
+                    <div className={`relative size-4 ${style.pluginInstallIcon}`}></div>
+                    <div className="font-['Inter'] text-sm leading-tight font-medium text-white">
+                      {t(($) => $[`${prefixEmbedded}.chromePlugin`], { ns: 'appOverview' })}
+                    </div>
+                  </button>
+                </div>
+              )}
+              <div
+                className={cn(
+                  'inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section',
+                  'mt-6',
+                )}
+              >
+                <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
+                  <div
+                    id={`${previewLabelId}-${v}`}
+                    className="min-w-0 flex-1 system-sm-medium wrap-break-word text-text-secondary"
+                  >
+                    {t(($) => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' })}
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <IconButton
+                          className="shrink-0"
+                          aria-label={
+                            (copiedOption === v
+                              ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+                              : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''
+                          }
+                          onClick={() => void onClickCopy(v)}
+                        >
+                          {copiedOption === v ? (
+                            <span aria-hidden="true" className="i-ri-clipboard-fill size-4" />
+                          ) : (
+                            <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
+                          )}
+                        </IconButton>
+                      }
+                    />
+                    <TooltipContent>
+                      {(copiedOption === v
+                        ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+                        : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <ScrollArea className="relative w-full rounded-b-lg">
+                  <ScrollAreaViewport
+                    role="region"
+                    aria-labelledby={`${previewLabelId}-${v}`}
+                    tabIndex={0}
+                    className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] items-start justify-start gap-2 p-3"
+                  >
+                    <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
+                      <pre className="select-text">
+                        {v === 'scripts' ? (
+                          scriptsContent
+                        ) : (
+                          <Suspense fallback={previewFallback}>
+                            <AsyncEmbeddedOptionContent
+                              option={v}
+                              iframeUrlPromise={previewIframeUrlPromise}
+                              latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
+                            />
+                          </Suspense>
+                        )}
+                      </pre>
+                    </div>
+                  </ScrollAreaViewport>
+                  <ScrollAreaScrollbar orientation="vertical" className="right-0">
+                    <ScrollAreaThumb />
+                  </ScrollAreaScrollbar>
+                  <ScrollAreaScrollbar orientation="horizontal" className="bottom-0">
+                    <ScrollAreaThumb />
+                  </ScrollAreaScrollbar>
+                </ScrollArea>
+              </div>
+            </TabsPanel>
           )
         })}
-      </div>
-      {option === 'chromePlugin' && (
-        <div className="mt-6 w-full">
-          <div className={cn('inline-flex w-full items-center justify-center gap-2 rounded-lg py-3', 'shrink-0 cursor-pointer bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm')}>
-            <div className={`relative h-4 w-4 ${style.pluginInstallIcon}`}></div>
-            <div className="font-['Inter'] text-sm font-medium leading-tight text-white" onClick={navigateToChromeUrl}>{t(`${prefixEmbedded}.chromePlugin`, { ns: 'appOverview' })}</div>
-          </div>
-        </div>
-      )}
-      <div className={cn('inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section', 'mt-6')}>
-        <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1  pl-3 pr-1">
-          <div className="system-sm-medium shrink-0 grow text-text-secondary">
-            {t(`${prefixEmbedded}.${option}`, { ns: 'appOverview' })}
-          </div>
-          <Tooltip
-            popupContent={
-              (isCopied[option]
-                ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-                : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
-            }
-          >
-            <ActionButton>
-              <div
-                onClick={onClickCopy}
-              >
-                {isCopied[option] && <RiClipboardFill className="h-4 w-4" />}
-                {!isCopied[option] && <RiClipboardLine className="h-4 w-4" />}
-              </div>
-            </ActionButton>
-          </Tooltip>
-        </div>
-        <div className="flex w-full items-start justify-start gap-2 overflow-x-auto p-3">
-          <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
-            <pre className="select-text">{OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeBuilder.theme?.primaryColor ?? '#1C64F2', isTestEnv)}</pre>
-          </div>
-        </div>
-      </div>
-    </Modal>
+      </Tabs>
+    </>
   )
 }
 
-export default Embedded
+export function EmbeddedDialogContent({
+  siteInfo,
+  appBaseUrl,
+  accessToken,
+  webAppRoute = 'chatbot',
+  hiddenInputs,
+}: EmbeddedDialogContentProps) {
+  const { t } = useTranslation(['appOverview', 'common'])
+
+  return (
+    <DialogContent className="w-160">
+      <DialogHeader>
+        <DialogTitle>{t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}</DialogTitle>
+        <DialogDescription>
+          {t(($) => $[`${prefixEmbedded}.explanation`], { ns: 'appOverview' })}
+        </DialogDescription>
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
+      <DialogBody>
+        <Suspense
+          fallback={
+            <div className="py-8 text-text-tertiary">{t(($) => $.loading, { ns: 'common' })}</div>
+          }
+        >
+          <EmbeddedContent
+            key={`${appBaseUrl ?? ''}:${accessToken}:${webAppRoute}:${JSON.stringify(hiddenInputs ?? [])}`}
+            siteInfo={siteInfo}
+            appBaseUrl={appBaseUrl ?? ''}
+            accessToken={accessToken}
+            webAppRoute={webAppRoute}
+            hiddenInputs={hiddenInputs}
+          />
+        </Suspense>
+      </DialogBody>
+    </DialogContent>
+  )
+}

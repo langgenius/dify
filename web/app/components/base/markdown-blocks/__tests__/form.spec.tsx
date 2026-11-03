@@ -1,0 +1,843 @@
+import { act, render as renderUI, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { ChatContext } from '@/app/components/base/chat/chat/context'
+import { createDeferred } from '@/test/deferred'
+import MarkdownForm from '../form'
+
+const UNSUPPORTED_TAG_ARTICLE_RE = /Unsupported tag:\s*article/
+const UNSUPPORTED_TAG_RE = /Unsupported tag/
+
+type TextNode = {
+  type: 'text'
+  value: string
+}
+
+type ElementNode = {
+  type: 'element'
+  tagName: string
+  properties: Record<string, unknown>
+  children: Array<ElementNode | TextNode>
+}
+
+type RootNode = {
+  type: 'element'
+  tagName: 'form'
+  properties: Record<string, unknown>
+  children: Array<ElementNode | TextNode>
+}
+
+const { mockOnSend } = vi.hoisted(() => ({
+  mockOnSend: vi.fn(),
+}))
+
+const render = (ui: Parameters<typeof renderUI>[0]) =>
+  renderUI(ui, {
+    wrapper: ({ children }) => (
+      // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its custom Provider.
+      <ChatContext.Provider value={{ chatList: [], onSend: mockOnSend }}>
+        {children}
+      </ChatContext.Provider>
+    ),
+  })
+
+vi.mock('@/config', async () => {
+  const actual = await vi.importActual<typeof import('@/config')>('@/config')
+  return {
+    ...actual,
+    MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS: '()!*&（）！＊＆－。.;；+=—',
+  }
+})
+
+const createTextNode = (value: string): TextNode => ({
+  type: 'text',
+  value,
+})
+
+const createElementNode = (
+  tagName: string,
+  properties: Record<string, unknown> = {},
+  children: Array<ElementNode | TextNode> = [],
+): ElementNode => ({
+  type: 'element',
+  tagName,
+  properties,
+  children,
+})
+
+const createRootNode = (
+  children: Array<ElementNode | TextNode>,
+  properties: Record<string, unknown> = {},
+): RootNode => ({
+  type: 'element',
+  tagName: 'form',
+  properties,
+  children,
+})
+
+describe('MarkdownForm', () => {
+  beforeEach(() => {
+    mockOnSend.mockReset()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  describe('Rendering', () => {
+    it('should render label, inputs, textarea, button, and unsupported tag fallback', () => {
+      const node = createRootNode([
+        createElementNode('label', { for: 'name' }, [createTextNode('Name')]),
+        createElementNode('input', { type: 'text', name: 'name', placeholder: 'Enter name' }),
+        createElementNode('textarea', { name: 'bio', placeholder: 'Enter bio' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+        createElementNode('article', {}, [createTextNode('Unsupported child')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.getByText('Name'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Enter name'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Enter bio'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Submit' }))!.toBeInTheDocument()
+      expect(screen.getByText(UNSUPPORTED_TAG_ARTICLE_RE))!.toBeInTheDocument()
+    })
+  })
+
+  describe('Text format submission', () => {
+    it('should submit updated text input and textarea values after user typing', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('input', {
+          type: 'text',
+          name: 'name',
+          value: '',
+          placeholder: 'Name input',
+        }),
+        createElementNode('textarea', { name: 'bio', value: '', placeholder: 'Bio input' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const nameInput = screen.getByPlaceholderText('Name input')
+      const bioInput = screen.getByPlaceholderText('Bio input')
+      await user.type(nameInput, 'Bob')
+      await user.type(bioInput, 'Hi there')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('name: Bob\nbio: Hi there')
+      })
+    })
+
+    it('should omit fields without initial values', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: 'name', value: 'Alice' }),
+        createElementNode('input', { type: 'text', name: 'department' }),
+        createElementNode('input', { type: 'checkbox', name: 'acceptTerms' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('name: Alice')
+      })
+    })
+  })
+
+  describe('JSON format submission', () => {
+    it('should call onSend with JSON output when dataFormat is json', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'hidden', name: 'token', value: 'secret-token' }),
+          createElementNode('input', {
+            type: 'select',
+            name: 'color',
+            value: 'red',
+            dataOptions: ['red', 'blue'],
+          }),
+          createElementNode('button', {}, [createTextNode('Send JSON')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Send JSON' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{"token":"secret-token","color":"red"}')
+      })
+    })
+
+    it('should fallback hidden value to empty string when value is missing', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'hidden', name: 'token' }),
+          createElementNode('button', {}, [createTextNode('Send JSON')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Send JSON' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{"token":""}')
+      })
+    })
+  })
+
+  it('replaces an edited selection when a new form source arrives', async () => {
+    const user = userEvent.setup()
+    const form = (value: string) =>
+      createRootNode([
+        createElementNode('input', {
+          type: 'select',
+          name: 'city',
+          value,
+          dataOptions: ['Paris', 'Tokyo', 'Rome'],
+        }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+    const { rerender } = render(<MarkdownForm node={form('Paris')} />)
+    await user.click(screen.getByRole('combobox', { name: 'city' }))
+    await user.click(await screen.findByRole('option', { name: 'Tokyo' }))
+    rerender(<MarkdownForm node={form('Rome')} />)
+    expect(screen.getByRole('combobox', { name: 'city' })).toHaveTextContent('Rome')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    expect(mockOnSend).toHaveBeenCalledExactlyOnceWith('city: Rome')
+  })
+
+  it('allows retry after an asynchronous send failure', async () => {
+    const request = createDeferred<void>()
+    mockOnSend.mockReturnValueOnce(request.promise)
+    const user = userEvent.setup()
+    render(
+      <MarkdownForm
+        node={createRootNode([
+          createElementNode('input', { type: 'text', name: 'name', value: 'Alice' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ])}
+      />,
+    )
+    const submit = screen.getByRole('button', { name: 'Submit' })
+    await user.dblClick(submit)
+    expect(mockOnSend).toHaveBeenCalledTimes(1)
+    expect(submit).toBeDisabled()
+    await act(async () => request.reject(new Error('Send failed')))
+    expect(submit).toBeEnabled()
+    await user.click(submit)
+    expect(mockOnSend.mock.calls).toEqual([['name: Alice'], ['name: Alice']])
+    expect(submit).toBeDisabled()
+  })
+
+  describe('Select options parsing', () => {
+    it('should parse options from data-options string and submit selected value', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('input', {
+          type: 'select',
+          name: 'city',
+          value: 'Paris',
+          'data-options': '["Paris","Tokyo"]',
+        }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('combobox', { name: 'city' }))
+      await user.click(await screen.findByRole('option', { name: 'Tokyo' }))
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('city: Tokyo')
+      })
+    })
+
+    it('should update selected value via onSelect and submit the new option', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('input', {
+          type: 'select',
+          name: 'city',
+          value: 'Paris',
+          dataOptions: ['Paris', 'Tokyo'],
+        }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const triggerText = await screen.findByText('Paris')
+      await user.click(triggerText)
+      await user.click(await screen.findByText('Tokyo'))
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('city: Tokyo')
+      })
+    })
+  })
+
+  describe('Date formatting', () => {
+    it('should format date and datetime values before sending', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', {
+            type: 'date',
+            name: 'startDate',
+            value: '2026-01-10',
+          }),
+          createElementNode('input', {
+            type: 'datetime',
+            name: 'runAt',
+            value: '2026-01-10T08:30:00.000Z',
+          }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith(
+          '{"startDate":"2026-01-10","runAt":"2026-01-10T08:30:00.000Z"}',
+        )
+      })
+    })
+  })
+
+  describe('Checkbox interaction', () => {
+    it('should toggle checkbox value and submit updated value', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('input', {
+          type: 'checkbox',
+          name: 'acceptTerms',
+          value: false,
+          dataTip: 'Accept terms',
+        }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('checkbox', { name: 'Accept terms' }))
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('acceptTerms: true')
+      })
+    })
+
+    it('should toggle checkbox when external label is clicked', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('label', { htmlFor: 'acceptTerms' }, [createTextNode('Accept terms')]),
+        createElementNode('input', { type: 'checkbox', name: 'acceptTerms', value: false }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByText('Accept terms'))
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('acceptTerms: true')
+      })
+    })
+  })
+
+  describe('Form submit behavior', () => {
+    it('should submit with Enter without submitting the surrounding chat', async () => {
+      const user = userEvent.setup()
+      const parentOnSubmit = vi.fn()
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: 'name', value: 'Alice' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+      render(
+        <div onSubmit={parentOnSubmit}>
+          <MarkdownForm node={node} />
+        </div>,
+      )
+
+      await user.type(screen.getByRole('textbox', { name: 'name' }), '{Enter}')
+      expect(parentOnSubmit).not.toHaveBeenCalled()
+      expect(mockOnSend).toHaveBeenCalledExactlyOnceWith('name: Alice')
+    })
+  })
+
+  it.each(['date', 'time', 'datetime'])(
+    'focuses a %s picker from its visible label without opening it',
+    async (type) => {
+      const user = userEvent.setup()
+      render(
+        <MarkdownForm
+          node={createRootNode([
+            createElementNode('label', { htmlFor: 'departure' }, [createTextNode('Departure')]),
+            createElementNode('input', { id: 'departure', name: 'departure', type }),
+          ])}
+        />,
+      )
+      await user.click(screen.getByText('Departure', { exact: true }))
+      const placeholder = type === 'time' ? 'time.title.pickTime' : 'time.operation.pickDate'
+      const trigger = screen.getByRole('button', { name: `Departure ${placeholder}` })
+      expect(trigger).toHaveFocus()
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await user.keyboard('{Enter}')
+      expect(await screen.findByRole('dialog', { name: 'Departure' })).toBeInTheDocument()
+    },
+  )
+
+  describe('DatePicker interaction', () => {
+    it('should update form value when date is picked via onChange', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'date', name: 'startDate', value: '2026-01-10' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      const trigger = screen.getByRole('button', { name: /^startDate/ })
+      await user.click(trigger)
+
+      const nowButton = await screen.findByRole('button', { name: /January 11/ })
+      await user.click(nowButton)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledExactlyOnceWith('{"startDate":"2026-01-11"}')
+      })
+    })
+
+    it('should clear form value when date is cleared via onClear', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', {
+            type: 'date',
+            name: 'startDate',
+            value: '2026-01-10',
+          }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
+      await user.click(clearButton)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{}')
+      })
+    })
+  })
+
+  describe('TimePicker interaction', () => {
+    it('should update form value when time is picked via onChange', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date(2026, 0, 10, 9, 35, 0))
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('input', { type: 'time', name: 'meetingTime', value: '' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const trigger = screen.getByRole('button', { name: /^meetingTime/ })
+      await user.click(trigger)
+
+      const nowButtons = await screen.findAllByText('time.operation.now')
+      await user.click(nowButtons[0]!)
+      await user.click(screen.getByRole('button', { name: 'time.operation.ok' }))
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledExactlyOnceWith('meetingTime: 09:35')
+      })
+    })
+
+    it('should clear form value when time is cleared via onClear', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'time', name: 'meetingTime', value: '09:00' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
+      await user.click(clearButton)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{}')
+      })
+    })
+  })
+
+  describe('Unsafe name rejection', () => {
+    it('should not render input with prototype-poisoning name', () => {
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: '__proto__', placeholder: 'poison' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.queryByPlaceholderText('poison')).not.toBeInTheDocument()
+    })
+
+    it('should not render textarea with prototype-poisoning name', () => {
+      const node = createRootNode([
+        createElementNode('textarea', { name: 'constructor', placeholder: 'poison' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.queryByPlaceholderText('poison')).not.toBeInTheDocument()
+    })
+
+    it('should not render input when name exceeds 128 characters', () => {
+      const longName = 'a'.repeat(129)
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: longName, placeholder: 'long-name' }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.queryByPlaceholderText('long-name')).not.toBeInTheDocument()
+    })
+
+    it('should not render input when name starts with a digit', () => {
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: '1invalid', placeholder: 'bad-name' }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.queryByPlaceholderText('bad-name')).not.toBeInTheDocument()
+    })
+
+    it('should not include unsafe-named fields in submission output', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'text', name: 'valid', value: 'ok' }),
+          createElementNode('input', { type: 'text', name: 'prototype', value: 'bad' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{"valid":"ok"}')
+      })
+    })
+  })
+
+  describe('Unicode name support', () => {
+    it('should include fields whose names contain configured full-width and half-width punctuation', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', {
+            type: 'hidden',
+            name: '营业&售后（SD）',
+            value: 'mixed-width',
+          }),
+          createElementNode('input', {
+            type: 'hidden',
+            name: '字段（）！＊＆－',
+            value: 'full-width',
+          }),
+          createElementNode('input', { type: 'hidden', name: 'field()!*&-', value: 'half-width' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith(
+          '{"营业&售后（SD）":"mixed-width","字段（）！＊＆－":"full-width","field()!*&-":"half-width"}',
+        )
+      })
+    })
+
+    it('should include fields whose names contain configured extra characters', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', {
+            type: 'hidden',
+            name: '字段。.;；+=—',
+            value: 'configured',
+          }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{"字段。.;；+=—":"configured"}')
+      })
+    })
+
+    it('should reject extra characters that are not configured', () => {
+      const node = createRootNode([
+        createElementNode('input', {
+          type: 'text',
+          name: '字段/部门',
+          placeholder: 'unconfigured-character',
+        }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.queryByPlaceholderText('unconfigured-character')).not.toBeInTheDocument()
+    })
+
+    it('should include Unicode-named fields from all supported controls in JSON output', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('label', { for: '用户名' }, [createTextNode('Username:')]),
+          createElementNode('input', { type: 'text', name: '用户名', value: 'Alice' }),
+          createElementNode('label', { for: '密码' }, [createTextNode('Password:')]),
+          createElementNode('input', { type: 'password', name: '密码', value: 'secret' }),
+          createElementNode('label', { for: '内容' }, [createTextNode('Content:')]),
+          createElementNode('textarea', { name: '内容', value: 'Hello' }),
+          createElementNode('label', { for: '日期' }, [createTextNode('Date:')]),
+          createElementNode('input', { type: 'date', name: '日期', value: '2026-01-10' }),
+          createElementNode('label', { for: '时间' }, [createTextNode('Time:')]),
+          createElementNode('input', { type: 'time', name: '时间', value: '09:00' }),
+          createElementNode('label', { for: '日期时间' }, [createTextNode('Datetime:')]),
+          createElementNode('input', {
+            type: 'datetime',
+            name: '日期时间',
+            value: '2026-01-10T08:30:00.000Z',
+          }),
+          createElementNode('label', { for: 'café' }, [createTextNode('Select:')]),
+          createElementNode('input', {
+            type: 'select',
+            name: 'café',
+            value: 'hello',
+            dataOptions: ['hello', 'world'],
+          }),
+          createElementNode('input', {
+            type: 'checkbox',
+            name: '同意条款',
+            value: true,
+            dataTip: 'By checking this means you agreed',
+          }),
+          createElementNode('button', { dataSize: 'small', dataVariant: 'primary' }, [
+            createTextNode('Login'),
+          ]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Login' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalled()
+      })
+
+      const submittedPayload = JSON.parse(mockOnSend.mock.calls[0]![0]) as Record<string, unknown>
+      expect(submittedPayload).toMatchObject({
+        用户名: 'Alice',
+        密码: 'secret',
+        内容: 'Hello',
+        日期: '2026-01-10',
+        日期时间: '2026-01-10T08:30:00.000Z',
+        café: 'hello',
+        同意条款: true,
+      })
+      expect(submittedPayload).toHaveProperty('时间', '09:00')
+    })
+  })
+
+  describe('Double submit prevention', () => {
+    it('should call onSend only once on rapid double click', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: 'name', value: 'Alice' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const button = screen.getByRole('button', { name: 'Submit' })
+      await user.dblClick(button)
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledExactlyOnceWith('name: Alice')
+        expect(button).toBeDisabled()
+      })
+    })
+  })
+
+  describe('Submit error handling', () => {
+    it('should reset isSubmitting when onSend throws', async () => {
+      const user = userEvent.setup()
+      mockOnSend.mockImplementationOnce(() => {
+        throw new Error('send failed')
+      })
+
+      const node = createRootNode([
+        createElementNode('input', { type: 'text', name: 'name', value: 'Alice' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const button = screen.getByRole('button', { name: 'Submit' })
+      await user.click(button)
+
+      await waitFor(() => {
+        expect(button).not.toBeDisabled()
+      })
+      await user.click(button)
+      expect(mockOnSend.mock.calls).toEqual([['name: Alice'], ['name: Alice']])
+      expect(button).toBeDisabled()
+    })
+  })
+
+  describe('Standard input types', () => {
+    it('should render email input', () => {
+      const node = createRootNode([
+        createElementNode('input', { type: 'email', name: 'email', placeholder: 'Email' }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.getByPlaceholderText('Email'))!.toHaveAttribute('type', 'email')
+    })
+
+    it('should submit an edited decimal without changing the string output contract', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('label', { for: 'amount' }, [createTextNode('Amount')]),
+        createElementNode('input', { type: 'number', name: 'amount', value: '0' }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const input = screen.getByRole('textbox', { name: 'Amount' })
+      expect(input).toHaveValue('0')
+      await user.clear(input)
+      await user.type(input, '3.5')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      expect(mockOnSend).toHaveBeenCalledExactlyOnceWith('amount: 3.5')
+    })
+
+    it('should submit typed value from password input', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'password', name: 'secret', placeholder: 'Password' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.getByPlaceholderText('Password')).toHaveAttribute('type', 'password')
+      await user.type(screen.getByPlaceholderText('Password'), 'mypass')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{"secret":"mypass"}')
+      })
+    })
+  })
+
+  describe('Unsupported input type', () => {
+    it('should not render input with unsupported type like range', () => {
+      const node = createRootNode([createElementNode('input', { type: 'range', name: 'slider' })])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.queryByRole('slider')).not.toBeInTheDocument()
+      expect(screen.getByText(UNSUPPORTED_TAG_RE))!.toBeInTheDocument()
+    })
+  })
+})
+
+it.each([
+  ['date', '2025-01-15'],
+  ['time', '13:30'],
+  ['datetime', '2025-01-15T13:30:00.000Z'],
+])(
+  'omits disabled %s values while retaining read-only values in the chat payload',
+  async (type, value) => {
+    const user = userEvent.setup()
+    mockOnSend.mockReset()
+    const node = createRootNode(
+      [
+        createElementNode('input', { type, name: 'disabledDate', value, disabled: true }),
+        createElementNode('input', { type, name: 'readOnlyDate', value, readOnly: true }),
+        createElementNode('input', {
+          type: 'text',
+          name: 'disabledText',
+          value: 'Hidden from submission',
+          disabled: true,
+        }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ],
+      { dataFormat: 'json' },
+    )
+    render(<MarkdownForm node={node} />)
+    expect(screen.getByRole('button', { name: /^disabledDate/ })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await waitFor(() =>
+      expect(mockOnSend).toHaveBeenCalledExactlyOnceWith(JSON.stringify({ readOnlyDate: value })),
+    )
+    expect(screen.getByRole('textbox', { name: 'disabledText' })).toBeDisabled()
+  },
+)

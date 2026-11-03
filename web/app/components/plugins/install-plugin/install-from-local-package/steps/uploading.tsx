@@ -1,26 +1,38 @@
 'use client'
 import type { FC } from 'react'
-import type { Dependency, PluginDeclaration } from '../../../types'
-import { RiLoader2Line } from '@remixicon/react'
+import type { Dependency, Plugin, PluginDeclaration } from '../../../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { ORPCError } from '@orpc/client'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { uploadFile } from '@/service/plugins'
 import Card from '../../../card'
 
 const i18nPrefix = 'installModal'
 
-type Props = {
+type PackageUploadResponse = {
+  unique_identifier: string
+  manifest: PluginDeclaration
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isPackageUploadResponse(value: unknown): value is PackageUploadResponse {
+  if (!isObject(value)) return false
+
+  return typeof value.unique_identifier === 'string' && isObject(value.manifest)
+}
+
+type Props = Readonly<{
   isBundle: boolean
   file: File
   onCancel: () => void
-  onPackageUploaded: (result: {
-    uniqueIdentifier: string
-    manifest: PluginDeclaration
-  }) => void
+  onPackageUploaded: (result: { uniqueIdentifier: string; manifest: PluginDeclaration }) => void
   onBundleUploaded: (result: Dependency[]) => void
   onFailed: (errorMsg: string) => void
-}
+}>
 
 const Uploading: FC<Props> = ({
   isBundle,
@@ -30,40 +42,56 @@ const Uploading: FC<Props> = ({
   onBundleUploaded,
   onFailed,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const fileName = file.name
-  const handleUpload = async () => {
-    try {
-      await uploadFile(file, isBundle)
-    }
-    catch (e: any) {
-      if (e.response?.message) {
-        onFailed(e.response?.message)
-      }
-      else { // Why it would into this branch?
-        const res = e.response
-        if (isBundle) {
-          onBundleUploaded(res)
+  const handleUploadedResponse = React.useCallback(
+    (response: unknown) => {
+      if (isBundle) {
+        if (Array.isArray(response)) {
+          onBundleUploaded(response)
           return
         }
-        onPackageUploaded({
-          uniqueIdentifier: res.unique_identifier,
-          manifest: res.manifest,
-        })
+        onFailed(t(($) => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
+        return
       }
+
+      if (!isPackageUploadResponse(response)) {
+        onFailed(t(($) => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
+        return
+      }
+
+      onPackageUploaded({
+        uniqueIdentifier: response.unique_identifier,
+        manifest: response.manifest,
+      })
+    },
+    [isBundle, onBundleUploaded, onFailed, onPackageUploaded, t],
+  )
+
+  const handleUpload = React.useCallback(async () => {
+    try {
+      handleUploadedResponse(await uploadFile(file, isBundle))
+    } catch (error: unknown) {
+      // Only server answers carry a user-facing message; transport errors use the localized fallback.
+      const message = error instanceof ORPCError ? error.message : undefined
+      if (message) {
+        onFailed(message)
+        return
+      }
+      onFailed(t(($) => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
     }
-  }
+  }, [file, handleUploadedResponse, isBundle, onFailed, t])
 
   React.useEffect(() => {
     handleUpload()
-  }, [])
+  }, [handleUpload])
   return (
     <>
-      <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
+      <div className="flex flex-col items-start justify-center gap-2 self-stretch px-6 py-3">
         <div className="flex items-center gap-1 self-stretch">
-          <RiLoader2Line className="h-4 w-4 animate-spin-slow text-text-accent" />
+          <span className="i-ri-loader-2-line size-4 animate-spin-slow text-text-accent" />
           <div className="system-md-regular text-text-secondary">
-            {t(`${i18nPrefix}.uploadingPackage`, {
+            {t(($) => $[`${i18nPrefix}.uploadingPackage`], {
               ns: 'plugin',
               packageName: fileName,
             })}
@@ -72,7 +100,7 @@ const Uploading: FC<Props> = ({
         <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
           <Card
             className="w-full"
-            payload={{ name: fileName } as any}
+            payload={{ name: fileName } as Plugin}
             isLoading
             loadingFileName={fileName}
             installed={false}
@@ -82,15 +110,11 @@ const Uploading: FC<Props> = ({
 
       {/* Action Buttons */}
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
-        <Button variant="secondary" className="min-w-[72px]" onClick={onCancel}>
-          {t('operation.cancel', { ns: 'common' })}
+        <Button variant="secondary" className="min-w-18" onClick={onCancel}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Button
-          variant="primary"
-          className="min-w-[72px]"
-          disabled
-        >
-          {t(`${i18nPrefix}.install`, { ns: 'plugin' })}
+        <Button variant="primary" className="min-w-18" disabled>
+          {t(($) => $[`${i18nPrefix}.install`], { ns: 'plugin' })}
         </Button>
       </div>
     </>

@@ -1,11 +1,15 @@
 import logging
 
 from flask import request
-from flask_restx import fields, marshal_with
-from pydantic import BaseModel, field_validator
+from pydantic import field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 import services
+from controllers.common.controller_schemas import TextToAudioPayload as TextToAudioPayloadBase
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
+from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -16,30 +20,32 @@ from controllers.web.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
-from libs.helper import uuid_value
-from models.model import App
+from fields.base import ResponseModel
+from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
+from libs.helper import dump_response, uuid_value
+from models.model import App, EndUser
+from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
-from ..common.schema import register_schema_models
+
+class AudioToTextResponse(ResponseModel):
+    text: str
 
 
-class TextToAudioPayload(BaseModel):
-    message_id: str | None = None
-    voice: str | None = None
-    text: str | None = None
-    streaming: bool | None = None
-
+class TextToAudioPayload(TextToAudioPayloadBase):
     @field_validator("message_id")
     @classmethod
     def validate_message_id(cls, value: str | None) -> str | None:
@@ -49,17 +55,25 @@ class TextToAudioPayload(BaseModel):
 
 
 register_schema_models(web_ns, TextToAudioPayload)
+register_response_schema_models(web_ns, AudioToTextResponse)
 
 logger = logging.getLogger(__name__)
 
 
 @web_ns.route("/audio-to-text")
 class AudioApi(WebApiResource):
-    audio_to_text_response_fields = {
-        "text": fields.String,
-    }
-
-    @marshal_with(audio_to_text_response_fields)
+    @error_responses(
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        SpeechToTextDisabledError,
+        UnsupportedAudioTypeError,
+    )
     @web_ns.doc("Audio to Text")
     @web_ns.doc(description="Convert audio file to text using speech-to-text service.")
     @web_ns.doc(
@@ -67,48 +81,63 @@ class AudioApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             413: "Audio file too large",
             415: "Unsupported audio type",
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user):
+    @web_ns.response(200, "Success", web_ns.models[AudioToTextResponse.__name__])
+    @with_session(write=False)
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """Convert audio to text"""
-        file = request.files["file"]
+        file = request.files.get("file")
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user)
+            response = AudioService.transcript_asr(
+                app_model=app_model,
+                file=file,
+                session=session,
+                end_user=end_user.external_user_id,
+            )
 
-            return response
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+            return dump_response(AudioToTextResponse, response)
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
+            raise AppUnavailableError() from caught_error
+        except NoAudioUploadedServiceError as caught_error:
+            raise NoAudioUploadedError() from caught_error
         except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
+            raise AudioTooLargeError(str(e)) from e
+        except UnsupportedAudioTypeServiceError as caught_error:
+            raise UnsupportedAudioTypeError() from caught_error
+        except ProviderNotSupportSpeechToTextServiceError as caught_error:
+            raise ProviderNotSupportSpeechToTextError() from caught_error
+        except SpeechToTextDisabledServiceError as caught_error:
+            raise SpeechToTextDisabledError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
         except Exception as e:
             logger.exception("Failed to handle post request to AudioApi")
-            raise InternalServerError()
+            raise InternalServerError() from e
 
 
 @web_ns.route("/text-to-audio")
 class TextApi(WebApiResource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @web_ns.expect(web_ns.models[TextToAudioPayload.__name__])
     @web_ns.doc("Text to Audio")
     @web_ns.doc(description="Convert text to audio using text-to-speech service.")
@@ -117,44 +146,48 @@ class TextApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user):
+    # response-contract:ignore provider audio bytes; TODO: model binary audio response if shape is standardized.
+    @web_ns.response(200, "Success")
+    @with_session(write=False)
+    @model_validate(TextToAudioPayload)
+    def post(self, payload: TextToAudioPayload, session: Session, app_model: App, end_user: EndUser):
         """Convert text to audio"""
         try:
-            payload = TextToAudioPayload.model_validate(web_ns.payload or {})
-
             message_id = payload.message_id
             text = payload.text
             voice = payload.voice
-            response = AudioService.transcript_tts(
-                app_model=app_model, text=text, voice=voice, end_user=end_user.external_user_id, message_id=message_id
+            message_ref = None
+            if message_id:
+                app_ref = AppRefService.create_app_ref(app_model)
+                message_ref = AppRefService.create_message_ref(
+                    app_ref,
+                    message_id,
+                    end_user_id=end_user.id,
+                )
+            return AudioService.transcript_tts(
+                app_model=app_model,
+                session=session,
+                text=text,
+                voice=voice,
+                end_user=end_user.external_user_id,
+                message_ref=message_ref,
             )
-
-            return response
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
+            raise AppUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
         except Exception as e:
             logger.exception("Failed to handle post request to TextApi")
-            raise InternalServerError()
+            raise InternalServerError() from e

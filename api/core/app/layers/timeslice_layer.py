@@ -1,19 +1,18 @@
 import logging
 import uuid
-from typing import ClassVar
+from typing import ClassVar, override
 
 from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
 
-from core.workflow.graph_engine.entities.commands import CommandType, GraphEngineCommand
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events.base import GraphEngineEvent
+from graphon.engine.command import PauseCommand
+from graphon.engine.layer import Layer
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow.scheduler import CFSPlanScheduler, SchedulerCommand
 
 logger = logging.getLogger(__name__)
 
 
-class TimeSliceLayer(GraphEngineLayer):
+class TimeSliceLayer(Layer):
     """
     CFS plan scheduler to control the timeslice of the workflow.
     """
@@ -51,18 +50,12 @@ class TimeSliceLayer(GraphEngineLayer):
                     return
 
                 # send command to pause the workflow
-                self.command_channel.send_command(
-                    GraphEngineCommand(
-                        command_type=CommandType.PAUSE,
-                        payload={
-                            "reason": SchedulerCommand.RESOURCE_LIMIT_REACHED,
-                        },
-                    )
-                )
+                self.command_channel.send_command(PauseCommand(reason=SchedulerCommand.RESOURCE_LIMIT_REACHED))
 
         except Exception:
             logger.exception("scheduler error during check if the workflow need to be suspended")
 
+    @override
     def on_graph_start(self):
         """
         Start timer to check if the workflow need to be suspended.
@@ -78,9 +71,7 @@ class TimeSliceLayer(GraphEngineLayer):
                 id=self.schedule_id,
             )
 
-    def on_event(self, event: GraphEngineEvent):
-        pass
-
+    @override
     def on_graph_end(self, error: Exception | None) -> None:
         self.stopped = True
         # remove the scheduler

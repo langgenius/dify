@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from typing import Any, override
 
 from obs import ObsClient
 
@@ -20,29 +21,59 @@ class HuaweiObsStorage(BaseStorage):
             path_style=dify_config.HUAWEI_OBS_PATH_STYLE,
         )
 
+    @override
     def save(self, filename, data):
         self.client.putObject(bucketName=self.bucket_name, objectKey=filename, content=data)
 
+    @override
     def load_once(self, filename: str) -> bytes:
-        data: bytes = self.client.getObject(bucketName=self.bucket_name, objectKey=filename)["body"].response.read()
+        # TODO: Huawei SDK lacks proper typing
+        data: bytes = self.client.getObject(bucketName=self.bucket_name, objectKey=filename).body.response.read()  # type: ignore
         return data
 
+    @override
     def load_stream(self, filename: str) -> Generator:
-        response = self.client.getObject(bucketName=self.bucket_name, objectKey=filename)["body"].response
+        # TODO: Huawei SDK lacks proper typing
+        response = self.client.getObject(bucketName=self.bucket_name, objectKey=filename).body.response  # type: ignore
         while chunk := response.read(4096):
             yield chunk
 
+    @override
     def download(self, filename, target_filepath):
         self.client.getObject(bucketName=self.bucket_name, objectKey=filename, downloadPath=target_filepath)
 
+    @override
     def exists(self, filename):
         res = self._get_meta(filename)
-        if res is None:
-            return False
-        return True
+        return res is not None
 
-    def delete(self, filename):
-        self.client.deleteObject(bucketName=self.bucket_name, objectKey=filename)
+    @override
+    def delete(self, filename: str):
+        response: Any = self.client.deleteObject(bucketName=self.bucket_name, objectKey=filename)
+        if response.status == 404 and response.errorCode == "NoSuchKey":
+            raise FileNotFoundError(filename)
+        if response.status >= 300:
+            raise RuntimeError(f"OBS object deletion failed: status={response.status}, code={response.errorCode}")
+
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        keys: list[str] = []
+        marker = ""
+        while True:
+            # The SDK's decorator annotations do not describe its response model.
+            response: Any = self.client.listObjects(
+                bucketName=self.bucket_name, prefix=path, marker=marker, max_keys=1000
+            )
+            if response.status >= 300:
+                raise RuntimeError(f"OBS object listing failed: status={response.status}, code={response.errorCode}")
+            page = response.body
+            keys.extend(obj.key for obj in page.contents or [])
+            if not page.is_truncated:
+                break
+            if not page.next_marker or page.next_marker == marker:
+                raise RuntimeError("OBS object listing did not advance its pagination marker")
+            marker = page.next_marker
+        return self._filter_scan_keys(keys, files, directories)
 
     def _get_meta(self, filename):
         res = self.client.getObjectMetadata(bucketName=self.bucket_name, objectKey=filename)

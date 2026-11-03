@@ -1,0 +1,130 @@
+import type { HumanInputNodeType } from '../types'
+import { render, screen } from '@testing-library/react'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import Node from '../node'
+import { DeliveryMethodType, UserActionButtonType } from '../types'
+
+const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return mockHitlIm.enabled
+  },
+}))
+
+vi.mock('../../_base/components/node-handle', () => ({
+  NodeSourceHandle: (props: { handleId: string }) => <div>{`handle:${props.handleId}`}</div>,
+}))
+
+const createData = (overrides: Partial<HumanInputNodeType> = {}): HumanInputNodeType => ({
+  title: 'Human Input',
+  desc: '',
+  type: BlockEnum.HumanInput,
+  delivery_methods: [
+    {
+      id: 'dm-webapp',
+      type: DeliveryMethodType.WebApp,
+      enabled: true,
+    },
+    {
+      id: 'dm-email',
+      type: DeliveryMethodType.Email,
+      enabled: true,
+    },
+  ],
+  form_content: 'Please review this request',
+  inputs: [
+    {
+      type: InputVarType.paragraph,
+      output_variable_name: 'review_result',
+      default: {
+        selector: [],
+        type: 'constant',
+        value: '',
+      },
+    },
+  ],
+  user_actions: [
+    {
+      id: 'approve',
+      title: 'Approve',
+      button_style: UserActionButtonType.Primary,
+    },
+    {
+      id: 'reject',
+      title: 'Reject',
+      button_style: UserActionButtonType.Default,
+    },
+  ],
+  timeout: 3,
+  timeout_unit: 'day',
+  ...overrides,
+})
+
+describe('human-input/node', () => {
+  beforeEach(() => {
+    mockHitlIm.enabled = true
+  })
+
+  it('renders delivery methods, user action handles, and the timeout handle', () => {
+    render(<Node id="human-input-node" data={createData()} />)
+
+    expect(
+      screen.getByText('workflowHumanInput.nodes.humanInput.deliveryMethod.title'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('webapp')).toBeInTheDocument()
+    expect(screen.getByText('email')).toBeInTheDocument()
+    expect(screen.getByText('approve')).toBeInTheDocument()
+    expect(screen.getByText('reject')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.humanInput.timeout.title')).toBeInTheDocument()
+    expect(screen.getByText('handle:approve')).toBeInTheDocument()
+    expect(screen.getByText('handle:reject')).toBeInTheDocument()
+    expect(screen.getByText('handle:__timeout')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.humanInputMigration.oldVersion')).toBeInTheDocument()
+  })
+
+  it('does not show the old-version badge for exact v2 data', () => {
+    render(
+      <Node
+        id="human-input-node"
+        data={createData({ version: '2' } as unknown as Partial<HumanInputNodeType>)}
+      />,
+    )
+
+    expect(
+      screen.queryByText('workflow.nodes.humanInputMigration.oldVersion'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps the timeout handle when delivery methods and actions are empty', () => {
+    render(
+      <Node
+        id="human-input-node"
+        data={createData({
+          delivery_methods: [],
+          user_actions: [],
+        })}
+      />,
+    )
+
+    expect(
+      screen.queryByText('workflowHumanInput.nodes.humanInput.deliveryMethod.title'),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.humanInput.timeout.title')).toBeInTheDocument()
+    expect(screen.getByText('handle:__timeout')).toBeInTheDocument()
+  })
+})
+
+it('restores the original delivery card without a legacy badge while disabled', () => {
+  mockHitlIm.enabled = false
+  render(<Node id="human-input-node" data={createData()} />)
+
+  expect(screen.getByText('webapp')).toBeInTheDocument()
+  expect(screen.getByText('email')).toBeInTheDocument()
+  expect(screen.getByText('handle:approve')).toBeInTheDocument()
+  expect(screen.getByText('handle:__timeout')).toBeInTheDocument()
+  expect(
+    screen.queryByText('workflow.nodes.humanInputMigration.oldVersion'),
+  ).not.toBeInTheDocument()
+})

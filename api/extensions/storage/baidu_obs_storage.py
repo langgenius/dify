@@ -1,6 +1,7 @@
 import base64
 import hashlib
 from collections.abc import Generator
+from typing import override
 
 from baidubce.auth.bce_credentials import BceCredentials
 from baidubce.bce_client_configuration import BceClientConfiguration
@@ -26,6 +27,7 @@ class BaiduObsStorage(BaseStorage):
 
         self.client = BosClient(config=client_config)
 
+    @override
     def save(self, filename, data):
         md5 = hashlib.md5()
         md5.update(data)
@@ -34,24 +36,41 @@ class BaiduObsStorage(BaseStorage):
             bucket_name=self.bucket_name, key=filename, data=data, content_length=len(data), content_md5=content_md5
         )
 
+    @override
     def load_once(self, filename: str) -> bytes:
         response = self.client.get_object(bucket_name=self.bucket_name, key=filename)
         data: bytes = response.data.read()
         return data
 
+    @override
     def load_stream(self, filename: str) -> Generator:
         response = self.client.get_object(bucket_name=self.bucket_name, key=filename).data
         while chunk := response.read(4096):
             yield chunk
 
+    @override
     def download(self, filename, target_filepath):
         self.client.get_object_to_file(bucket_name=self.bucket_name, key=filename, file_name=target_filepath)
 
+    @override
     def exists(self, filename):
         res = self.client.get_object_meta_data(bucket_name=self.bucket_name, key=filename)
-        if res is None:
-            return False
-        return True
+        return res is not None
 
-    def delete(self, filename):
+    @override
+    def delete(self, filename: str):
         self.client.delete_object(bucket_name=self.bucket_name, key=filename)
+
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        keys: list[str] = []
+        marker = ""
+        while True:
+            page = self.client.list_objects(bucket_name=self.bucket_name, prefix=path, marker=marker, max_keys=1000)
+            keys.extend(obj.key for obj in page.contents)
+            if not page.is_truncated:
+                break
+            if not page.next_marker or page.next_marker == marker:
+                raise RuntimeError("BOS object listing did not advance its pagination marker")
+            marker = page.next_marker
+        return self._filter_scan_keys(keys, files, directories)

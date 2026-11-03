@@ -6,15 +6,12 @@ import contextvars
 import threading
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, final
+from typing import Any, final, override
 
 from flask import Flask, current_app, g
 
-from core.workflow.context import register_context_capturer
-from core.workflow.context.execution_context import (
-    AppContext,
-    IExecutionContext,
-)
+from context.execution_context import AppContext, IExecutionContext, register_context_capturer
+from libs.contextvars import use_contextvars
 
 
 @final
@@ -34,16 +31,19 @@ class FlaskAppContext(AppContext):
         """
         self._flask_app = flask_app
 
+    @override
     def get_config(self, key: str, default: Any = None) -> Any:
         """Get configuration value from Flask app config."""
         return self._flask_app.config.get(key, default)
 
+    @override
     def get_extension(self, name: str) -> Any:
         """Get Flask extension by name."""
         return self._flask_app.extensions.get(name)
 
     @contextmanager
-    def enter(self) -> Generator[None, None, None]:
+    @override
+    def enter(self) -> Generator[None]:
         """Enter Flask app context."""
         with self._flask_app.app_context():
             yield
@@ -97,8 +97,8 @@ class FlaskExecutionContext:
     Flask-specific execution context.
 
     This is a specialized version of ExecutionContext that includes Flask app
-    context. It provides the same interface as ExecutionContext but with
-    Flask-specific implementation.
+    context. It provides the same interface as ExecutionContext and restores
+    the caller's bindings after Flask context cleanup.
     """
 
     def __init__(
@@ -118,7 +118,6 @@ class FlaskExecutionContext:
         self._app_context = FlaskAppContext(flask_app)
         self._context_vars = context_vars
         self._user = user
-        self._flask_app = flask_app
         self._local = threading.local()
 
     @property
@@ -138,37 +137,23 @@ class FlaskExecutionContext:
 
     def __enter__(self) -> "FlaskExecutionContext":
         """Enter the Flask execution context."""
-        # Restore non-Flask context variables to avoid leaking Flask tokens across threads
-        for var, val in self._context_vars.items():
-            var.set(val)
-
-        # Enter Flask app context
-        cm = self._app_context.enter()
-        self._local.cm = cm
+        cm = self.enter()
         cm.__enter__()
-
-        # Restore user in new app context
-        if self._user is not None:
-            g._login_user = self._user
-
+        if not hasattr(self._local, "stack"):
+            self._local.stack = []
+        self._local.stack.append(cm)
         return self
 
     def __exit__(self, *args: Any) -> None:
         """Exit the Flask execution context."""
-        cm = getattr(self._local, "cm", None)
-        if cm is not None:
-            cm.__exit__(*args)
+        stack = getattr(self._local, "stack", None)
+        if stack:
+            stack.pop().__exit__(*args)
 
     @contextmanager
-    def enter(self) -> Generator[None, None, None]:
+    def enter(self) -> Generator[None]:
         """Enter Flask execution context as context manager."""
-        # Restore non-Flask context variables to avoid leaking Flask tokens across threads
-        for var, val in self._context_vars.items():
-            var.set(val)
-
-        # Enter Flask app context
-        with self._flask_app.app_context():
-            # Restore user in new app context
+        with use_contextvars(self._context_vars), self._app_context.enter():
             if self._user is not None:
                 g._login_user = self._user
             yield

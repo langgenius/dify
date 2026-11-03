@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from os import listdir, path
-from typing import Any
+from typing import Any, override
 
 from core.entities.provider_entities import ProviderConfig
 from core.helper.module_import_helper import load_single_subclass_from_source
@@ -21,7 +21,7 @@ from core.tools.errors import (
 from core.tools.utils.yaml_utils import load_yaml_file_cached
 
 
-class BuiltinToolProviderController(ToolProviderController):
+class BuiltinToolProviderController(ToolProviderController[ToolProviderEntity, BuiltinTool | None]):
     tools: list[BuiltinTool]
 
     def __init__(self, **data: Any):
@@ -29,11 +29,11 @@ class BuiltinToolProviderController(ToolProviderController):
 
         # load provider yaml
         provider = self.__class__.__module__.split(".")[-1]
-        yaml_path = path.join(path.dirname(path.realpath(__file__)), "providers", provider, f"{provider}.yaml")
+        yaml_path = path.join(self.provider_directory, f"{provider}.yaml")
         try:
             provider_yaml = load_yaml_file_cached(yaml_path)
         except Exception as e:
-            raise ToolProviderNotFoundError(f"can not load provider yaml for {provider}: {e}")
+            raise ToolProviderNotFoundError(f"can not load provider yaml for {provider}: {e}") from e
 
         if "credentials_for_provider" in provider_yaml and provider_yaml["credentials_for_provider"] is not None:
             # set credentials name
@@ -62,9 +62,18 @@ class BuiltinToolProviderController(ToolProviderController):
 
         self._load_tools()
 
+    @property
+    def provider_directory(self) -> str:
+        """Directory holding the provider yaml, ``_assets`` and ``tools``.
+
+        Providers registered from outside ``core`` override this with their own package directory.
+        """
+        return path.join(path.dirname(path.realpath(__file__)), "providers", self.__class__.__module__.split(".")[-1])
+
     def _load_tools(self):
         provider = self.entity.identity.name
-        tool_path = path.join(path.dirname(path.realpath(__file__)), "providers", provider, "tools")
+        tool_path = path.join(self.provider_directory, "tools")
+        tool_module_prefix = self.__class__.__module__.rsplit(".", 1)[0]
         # get all the yaml files in the tool path
         tool_files = list(filter(lambda x: x.endswith(".yaml") and not x.startswith("__"), listdir(tool_path)))
         tools = []
@@ -75,15 +84,8 @@ class BuiltinToolProviderController(ToolProviderController):
 
             # get tool class, import the module
             assistant_tool_class: type = load_single_subclass_from_source(
-                module_name=f"core.tools.builtin_tool.providers.{provider}.tools.{tool_name}",
-                script_path=path.join(
-                    path.dirname(path.realpath(__file__)),
-                    "builtin_tool",
-                    "providers",
-                    provider,
-                    "tools",
-                    f"{tool_name}.py",
-                ),
+                module_name=f"{tool_module_prefix}.tools.{tool_name}",
+                script_path=path.join(tool_path, f"{tool_name}.py"),
                 parent_type=BuiltinTool,
             )
             tool["identity"]["provider"] = provider
@@ -105,6 +107,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.tools
 
+    @override
     def get_credentials_schema(self) -> list[ProviderConfig]:
         """
         returns the credentials schema of the provider
@@ -113,17 +116,26 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.get_credentials_schema_by_type(CredentialType.API_KEY)
 
-    def get_credentials_schema_by_type(self, credential_type: str) -> list[ProviderConfig]:
+    def get_credentials_schema_by_type(self, credential_type: CredentialType | str) -> list[ProviderConfig]:
         """
         returns the credentials schema of the provider
 
-        :param credential_type: the type of the credential
-        :return: the credentials schema of the provider
+        :param credential_type: the type of the credential, as CredentialType or str; str values
+            are normalized via CredentialType.of and may raise ValueError for invalid values.
+        :return: list[ProviderConfig] for CredentialType.OAUTH2 or CredentialType.API_KEY, an
+            empty list for CredentialType.UNAUTHORIZED or missing schemas.
+
+        Reads from self.entity.oauth_schema and self.entity.credentials_schema.
+        Raises ValueError for invalid credential types.
         """
-        if credential_type == CredentialType.OAUTH2.value:
+        if isinstance(credential_type, str):
+            credential_type = CredentialType.of(credential_type)
+        if credential_type == CredentialType.OAUTH2:
             return self.entity.oauth_schema.credentials_schema.copy() if self.entity.oauth_schema else []
         if credential_type == CredentialType.API_KEY:
             return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []
+        if credential_type == CredentialType.UNAUTHORIZED:
+            return []
         raise ValueError(f"Invalid credential type: {credential_type}")
 
     def get_oauth_client_schema(self) -> list[ProviderConfig]:
@@ -153,7 +165,8 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self._get_builtin_tools()
 
-    def get_tool(self, tool_name: str) -> BuiltinTool | None:  # type: ignore
+    @override
+    def get_tool(self, tool_name: str) -> BuiltinTool | None:
         """
         returns the tool that the provider can provide
         """
@@ -173,6 +186,7 @@ class BuiltinToolProviderController(ToolProviderController):
         )
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         """
         returns the type of the provider

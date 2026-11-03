@@ -1,31 +1,15 @@
 import type { QueryKey } from '@tanstack/react-query'
-import {
+import { useQueryClient } from '@tanstack/react-query'
+import { useCallback } from 'react'
 
-  useQueryClient,
-} from '@tanstack/react-query'
-
+/**
+ * @deprecated Convenience wrapper scheduled for removal.
+ * Prefer binding invalidation in `useMutation` callbacks at the service layer.
+ */
 export const useInvalid = (key?: QueryKey) => {
   const queryClient = useQueryClient()
-  return () => {
-    if (!key)
-      return
-    queryClient.invalidateQueries(
-      {
-        queryKey: key,
-      },
-    )
-  }
-}
-
-export const useReset = (key?: QueryKey) => {
-  const queryClient = useQueryClient()
-  return () => {
-    if (!key)
-      return
-    queryClient.resetQueries(
-      {
-        queryKey: key,
-      },
-    )
-  }
+  return useCallback(() => {
+    if (!key) return
+    queryClient.invalidateQueries({ queryKey: key })
+  }, [queryClient, key])
 }

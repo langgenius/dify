@@ -1,19 +1,17 @@
 'use client'
+import type { ReactElement } from 'react'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo } from 'react'
 import ParamConfigContent from '@/app/components/base/features/new-feature-panel/text-to-speech/param-config-content'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 
 type VoiceSettingsProps = {
   open: boolean
-  onOpen: (state: any) => void
+  onOpen: (state: boolean) => void
   onChange?: OnFeaturesChange
   disabled?: boolean
   children?: React.ReactNode
+  trigger?: ReactElement
   placementLeft?: boolean
 }
 const VoiceSettings = ({
@@ -22,26 +20,32 @@ const VoiceSettings = ({
   onChange,
   disabled,
   children,
+  trigger,
   placementLeft = true,
 }: VoiceSettingsProps) => {
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={onOpen}
-      placement={placementLeft ? 'left' : 'top'}
-      offset={{
-        mainAxis: placementLeft ? 32 : 4,
+      onOpenChange={(nextOpen) => {
+        if (disabled) return
+        onOpen(nextOpen)
       }}
     >
-      <PortalToFollowElemTrigger className="flex" onClick={() => !disabled && onOpen((open: boolean) => !open)}>
-        {children}
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent style={{ zIndex: 50 }}>
-        <div className="w-[360px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-2xl">
+      <PopoverTrigger
+        disabled={disabled}
+        nativeButton={!!trigger}
+        render={trigger ?? <div className="flex">{children}</div>}
+      />
+      <PopoverContent
+        side={placementLeft ? 'left' : 'top'}
+        sideOffset={placementLeft ? 32 : 4}
+        className="border-none bg-transparent shadow-none"
+      >
+        <div className="w-90 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-2xl">
           <ParamConfigContent onClose={() => onOpen(false)} onChange={onChange} />
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 export default memo(VoiceSettings)

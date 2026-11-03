@@ -1,5 +1,4 @@
 from . import (
-    account,
     app,
     app_model_config,
     audio,
@@ -7,13 +6,13 @@ from . import (
     conversation,
     dataset,
     document,
+    enterprise,
     file,
     index,
     message,
 )
 
 __all__ = [
-    "account",
     "app",
     "app_model_config",
     "audio",
@@ -21,6 +20,7 @@ __all__ = [
     "conversation",
     "dataset",
     "document",
+    "enterprise",
     "file",
     "index",
     "message",

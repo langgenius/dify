@@ -1,0 +1,69 @@
+from unittest.mock import create_autospec
+
+from pytest_mock import MockerFixture
+
+from core.rag.extractor.jina_reader_extractor import JinaReaderWebExtractor
+from services.data_source.provider_service import DatasourceProviderService
+from services.data_source.website_service import WebsiteService
+
+
+class TestJinaReaderWebExtractor:
+    def test_extract_crawl_mode_returns_document(self, mocker: MockerFixture) -> None:
+        mocker.patch(
+            "core.rag.extractor.jina_reader_extractor.WebsiteService.get_crawl_url_data",
+            return_value={
+                "content": "markdown-content",
+                "url": "https://example.com",
+                "description": "desc",
+                "title": "title",
+            },
+        )
+
+        extractor = JinaReaderWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="crawl",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
+        docs = extractor.extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == "markdown-content"
+        assert docs[0].metadata == {
+            "source_url": "https://example.com",
+            "description": "desc",
+            "title": "title",
+        }
+
+    def test_extract_crawl_mode_with_missing_data_returns_empty(self, mocker: MockerFixture) -> None:
+        mocker.patch(
+            "core.rag.extractor.jina_reader_extractor.WebsiteService.get_crawl_url_data",
+            return_value=None,
+        )
+
+        extractor = JinaReaderWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="crawl",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
+
+        assert extractor.extract() == []
+
+    def test_extract_non_crawl_mode_returns_empty(self, mocker: MockerFixture) -> None:
+        mock_get_crawl = mocker.patch(
+            "core.rag.extractor.jina_reader_extractor.WebsiteService.get_crawl_url_data",
+            return_value={"content": "unused"},
+        )
+        extractor = JinaReaderWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="scrape",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
+
+        assert extractor.extract() == []
+        mock_get_crawl.assert_not_called()

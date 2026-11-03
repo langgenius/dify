@@ -1,16 +1,62 @@
-from werkzeug.exceptions import HTTPException
+from collections import OrderedDict
+from http import HTTPStatus
+from typing import cast
 
+from flask import current_app, got_request_exception
+
+from core.logging.context import get_request_id
 from libs.exception import BaseHTTPException
+from libs.external_api import ExternalApi
+from services.credentials.refresh import CredentialRefreshUnavailableError
+from services.errors.base import NoPermissionError
 
 
-class FilenameNotExistsError(HTTPException):
+class FilenameNotExistsError(BaseHTTPException):
+    error_code = "filename_not_exists_error"
     code = 400
     description = "The specified filename does not exist."
 
 
-class RemoteFileUploadError(HTTPException):
+class RemoteFileUploadError(BaseHTTPException):
+    error_code = "remote_file_upload_error"
     code = 400
     description = "Error uploading remote file."
+
+
+class RemoteFileInvalidUrlError(BaseHTTPException):
+    error_code = "remote_file_invalid_url"
+    description = "The remote file URL is invalid."
+    code = 400
+
+
+class RemoteFileUrlBlockedError(BaseHTTPException):
+    error_code = "remote_file_url_blocked"
+    description = "The remote file URL is not allowed."
+    code = 400
+
+
+class RemoteFileNotFoundError(BaseHTTPException):
+    error_code = "remote_file_not_found"
+    description = "The remote file could not be found."
+    code = 404
+
+
+class RemoteFileAccessDeniedError(BaseHTTPException):
+    error_code = "remote_file_access_denied"
+    description = "The remote file cannot be accessed without authorization."
+    code = 400
+
+
+class RemoteFileUnavailableError(BaseHTTPException):
+    error_code = "remote_file_unavailable"
+    description = "The remote file is temporarily unavailable."
+    code = 502
+
+
+class RemoteFileInvalidResponseError(BaseHTTPException):
+    error_code = "remote_file_invalid_response"
+    description = "The remote file server returned an invalid response."
+    code = 502
 
 
 class FileTooLargeError(BaseHTTPException):
@@ -41,3 +87,122 @@ class NoFileUploadedError(BaseHTTPException):
     error_code = "no_file_uploaded"
     description = "Please upload your file."
     code = 400
+
+
+class NotFoundError(BaseHTTPException):
+    error_code = "not_found"
+    code = 404
+
+
+class ConversationNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_not_found"
+    description = "The conversation was not found for this user and app."
+    code = HTTPStatus.NOT_FOUND
+
+
+class ConversationCursorNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_cursor_not_found"
+    description = "The conversation cursor is not in the current list. Refresh the list and try again."
+    code = HTTPStatus.NOT_FOUND
+
+
+class ConversationVariableNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_variable_not_found"
+    description = "The conversation variable was not found for this conversation."
+    code = HTTPStatus.NOT_FOUND
+
+
+class ConversationVariableTypeMismatchHTTPError(BaseHTTPException):
+    error_code = "conversation_variable_type_mismatch"
+    description = "The new value does not match the conversation variable's type."
+    code = HTTPStatus.BAD_REQUEST
+
+
+class ConversationFirstMessageNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_first_message_not_found"
+    description = "The conversation has no message from which to generate a name."
+    code = HTTPStatus.NOT_FOUND
+
+
+class MessageFeedbackRatingRequiredError(BaseHTTPException):
+    error_code = "message_feedback_rating_required"
+    description = "A rating is required when there is no existing feedback to remove."
+    code = HTTPStatus.BAD_REQUEST
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.data = {
+            "code": self.error_code,
+            "message": self.description,
+            "status": self.code,
+            "details": {"request_id": get_request_id()},
+        }
+
+
+class UnauthorizedError(BaseHTTPException):
+    error_code = "unauthorized"
+    code = HTTPStatus.UNAUTHORIZED
+    description = "Authentication is required."
+
+
+class ForbiddenError(BaseHTTPException):
+    error_code = "forbidden"
+    code = HTTPStatus.FORBIDDEN
+    description = "You don't have the permission to access the requested resource."
+
+
+class InternalServerError(BaseHTTPException):
+    """Expose a safe response while retaining the original exception in server logs."""
+
+    error_code = "internal_server_error"
+    code = HTTPStatus.INTERNAL_SERVER_ERROR
+    description = (
+        "The server encountered an internal error and was unable to complete your request. "
+        "Either the server is overloaded or there is an error in the application."
+    )
+
+
+class InvalidArgumentError(BaseHTTPException):
+    error_code = "invalid_param"
+    code = 400
+
+
+def register_permission_error_handler(api: ExternalApi) -> None:
+    """Preserve the default permission-error response for Console and Service API."""
+
+    @api.errorhandler(NoPermissionError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
+    def handle_permission_error(error: NoPermissionError) -> tuple[dict[str, str | int], int]:
+        got_request_exception.send(current_app, exception=error)
+        return {
+            "code": InvalidArgumentError.error_code,
+            "message": str(error),
+            "status": HTTPStatus.BAD_REQUEST,
+        }, HTTPStatus.BAD_REQUEST
+
+    # Flask-RESTX picks the first matching handler, including the generic Exception handler.
+    cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(NoPermissionError, last=False)
+    api.document_error_handler(NoPermissionError, status=HTTPStatus.BAD_REQUEST, code=InvalidArgumentError.error_code)
+
+
+def register_credential_refresh_error_handler(api: ExternalApi) -> None:
+    """Give temporary refresh failures the same retryable response on each API surface.
+
+    Preconditions: The API supports exception-specific error registration.
+    Postconditions: Refresh failures return HTTP 503 before the generic handler.
+    Existing exception handlers and public error documentation remain registered.
+    """
+    register_handler = api.errorhandler(CredentialRefreshUnavailableError)
+    assert callable(register_handler)
+
+    @register_handler
+    def handle_refresh_unavailable(error: CredentialRefreshUnavailableError) -> tuple[dict[str, str | int], int]:
+        got_request_exception.send(current_app, exception=error)
+        status = HTTPStatus.SERVICE_UNAVAILABLE
+        return {"code": "service_unavailable", "message": str(error), "status": status.value}, status.value
+
+    handlers: object = api.error_handlers
+    assert isinstance(handlers, OrderedDict)
+    handlers.move_to_end(CredentialRefreshUnavailableError, last=False)
+    api.document_error_handler(
+        CredentialRefreshUnavailableError, status=HTTPStatus.SERVICE_UNAVAILABLE, code="service_unavailable"
+    )

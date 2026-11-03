@@ -1,20 +1,15 @@
-import type { FC } from 'react'
-import {
-  RiArrowGoBackLine,
-  RiArrowGoForwardFill,
-} from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
-import { cn } from '@/utils/classnames'
-import Divider from '../../base/divider'
+import { useWorkflowHistoryStore } from '@/app/components/workflow/workflow-history-store'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 import TipPopup from '../operator/tip-popup'
-import { useWorkflowHistoryStore } from '../workflow-history-store'
 
-export type UndoRedoProps = { handleUndo: () => void, handleRedo: () => void }
-const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
-  const { t } = useTranslation()
+type UndoRedoProps = { handleUndo: () => void; handleRedo: () => void }
+function UndoRedo({ handleUndo, handleRedo }: UndoRedoProps) {
+  const { t } = useTranslation(['workflow'])
   const { store } = useWorkflowHistoryStore()
   const [buttonsDisabled, setButtonsDisabled] = useState({ undo: true, redo: true })
 
@@ -32,31 +27,33 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
 
   return (
     <div className="flex items-center space-x-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-[5px]">
-      <TipPopup title={t('common.undo', { ns: 'workflow' })!} shortcuts={['ctrl', 'z']}>
-        <div
+      <TipPopup title={t(($) => $['common.undo'], { ns: 'workflow' })!} shortcut="workflow.undo">
+        <IconButton
+          size="lg"
+          className="rounded-md"
+          aria-label={t(($) => $['common.undo'], { ns: 'workflow' })!}
           data-tooltip-id="workflow.undo"
-          className={
-            cn('system-sm-medium flex h-8 w-8 cursor-pointer select-none items-center rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.undo)
-            && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
-          }
-          onClick={() => !nodesReadOnly && !buttonsDisabled.undo && handleUndo()}
+          disabled={nodesReadOnly || buttonsDisabled.undo}
+          focusableWhenDisabled
+          onClick={handleUndo}
         >
-          <RiArrowGoBackLine className="h-4 w-4" />
-        </div>
+          <span aria-hidden className="i-ri-arrow-go-back-line size-4" />
+        </IconButton>
       </TipPopup>
-      <TipPopup title={t('common.redo', { ns: 'workflow' })!} shortcuts={['ctrl', 'y']}>
-        <div
+      <TipPopup title={t(($) => $['common.redo'], { ns: 'workflow' })!} shortcut="workflow.redo">
+        <IconButton
+          size="lg"
+          className="rounded-md"
+          aria-label={t(($) => $['common.redo'], { ns: 'workflow' })!}
           data-tooltip-id="workflow.redo"
-          className={
-            cn('system-sm-medium flex h-8 w-8 cursor-pointer select-none items-center rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.redo)
-            && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
-          }
-          onClick={() => !nodesReadOnly && !buttonsDisabled.redo && handleRedo()}
+          disabled={nodesReadOnly || buttonsDisabled.redo}
+          focusableWhenDisabled
+          onClick={handleRedo}
         >
-          <RiArrowGoForwardFill className="h-4 w-4" />
-        </div>
+          <span aria-hidden className="i-ri-arrow-go-forward-fill size-4" />
+        </IconButton>
       </TipPopup>
-      <Divider type="vertical" className="mx-0.5 h-3.5" />
+      <Separator orientation="vertical" className="mx-0.5 h-3.5" />
       <ViewWorkflowHistory />
     </div>
   )

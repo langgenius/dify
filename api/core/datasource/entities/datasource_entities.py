@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import base64
 import enum
+import re
+import string
+from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal, TypedDict, override
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_serializer, field_validator
 from yarl import URL
 
 from configs import dify_config
 from core.entities.provider_entities import ProviderConfig
-from core.plugin.entities.oauth import OAuthSchema
+from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
     PluginParameter,
     PluginParameterOption,
@@ -93,7 +97,7 @@ class DatasourceParameter(PluginParameter):
         :param required: if the parameter is required
         :param options: the options of the parameter
         """
-        # convert options to ToolParameterOption
+        # convert options to PluginParameterOption
         # FIXME fix the type error
         if options:
             option_objs = [
@@ -129,7 +133,7 @@ class DatasourceEntity(BaseModel):
     identity: DatasourceIdentity
     parameters: list[DatasourceParameter] = Field(default_factory=list)
     description: I18nObject = Field(..., description="The label of the datasource")
-    output_schema: dict | None = None
+    output_schema: dict[str, Any] | None = None
 
     @field_validator("parameters", mode="before")
     @classmethod
@@ -149,8 +153,8 @@ class DatasourceProviderIdentity(BaseModel):
     )
 
     def generate_datasource_icon_url(self, tenant_id: str) -> str:
-        HARD_CODED_DATASOURCE_ICONS = ["https://assets.dify.ai/images/File%20Upload.svg"]
-        if self.icon in HARD_CODED_DATASOURCE_ICONS:
+        hard_coded_datasource_icons = ["https://assets.dify.ai/images/File%20Upload.svg"]
+        if self.icon in hard_coded_datasource_icons:
             return self.icon
         return str(
             URL(dify_config.CONSOLE_API_URL or "/")
@@ -179,6 +183,12 @@ class DatasourceProviderEntityWithPlugin(DatasourceProviderEntity):
     datasources: list[DatasourceEntity] = Field(default_factory=list)
 
 
+class DatasourceInvokeMetaDict(TypedDict):
+    time_cost: float
+    error: str | None
+    tool_config: dict[str, Any] | None
+
+
 class DatasourceInvokeMeta(BaseModel):
     """
     Datasource invoke meta
@@ -186,7 +196,7 @@ class DatasourceInvokeMeta(BaseModel):
 
     time_cost: float = Field(..., description="The time cost of the tool invoke")
     error: str | None = None
-    tool_config: dict | None = None
+    tool_config: dict[str, Any] | None = None
 
     @classmethod
     def empty(cls) -> DatasourceInvokeMeta:
@@ -202,12 +212,13 @@ class DatasourceInvokeMeta(BaseModel):
         """
         return cls(time_cost=0.0, error=error, tool_config={})
 
-    def to_dict(self) -> dict:
-        return {
+    def to_dict(self) -> DatasourceInvokeMetaDict:
+        result: DatasourceInvokeMetaDict = {
             "time_cost": self.time_cost,
             "error": self.error,
             "tool_config": self.tool_config,
         }
+        return result
 
 
 class DatasourceLabel(BaseModel):
@@ -235,7 +246,7 @@ class OnlineDocumentPage(BaseModel):
 
     page_id: str = Field(..., description="The page id")
     page_name: str = Field(..., description="The page title")
-    page_icon: dict | None = Field(None, description="The page icon")
+    page_icon: dict[str, Any] | None = Field(None, description="The page icon")
     type: str = Field(..., description="The type of the page")
     last_edited_time: str = Field(..., description="The last edited time")
     parent_id: str | None = Field(None, description="The parent page id")
@@ -294,7 +305,7 @@ class GetWebsiteCrawlRequest(BaseModel):
     Get website crawl request
     """
 
-    crawl_parameters: dict = Field(..., description="The crawl parameters")
+    crawl_parameters: dict[str, Any] = Field(..., description="The crawl parameters")
 
 
 class WebSiteInfoDetail(BaseModel):
@@ -323,24 +334,139 @@ class WebsiteCrawlMessage(BaseModel):
     result: WebSiteInfo = WebSiteInfo(status="", web_info_list=[], total=0, completed=0)
 
 
-class DatasourceMessage(ToolInvokeMessage):
-    pass
-
-
 #########################
 # Online drive file
 #########################
 
 
+class OnlineDriveChecksum(TypedDict):
+    """Optional full-file checksum supplied by an online-drive provider."""
+
+    algorithm: Literal["md5", "sha256"]
+    value: str
+
+
+class OnlineDriveRemoteMetadata(TypedDict, total=False):
+    """Bounded wire metadata used as a hint for online-drive change detection."""
+
+    version_id: str
+    etag: str
+    checksum: OnlineDriveChecksum
+    modified_time: str
+
+
+_ONLINE_DRIVE_TIMESTAMP_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
+
+
+def _online_drive_token(value: Any) -> str | None:
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or len(value) > 1024
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
+    ):
+        return None
+    return value
+
+
+def _online_drive_timestamp(value: Any) -> str | None:
+    if not isinstance(value, str) or len(value) > 64 or not _ONLINE_DRIVE_TIMESTAMP_PATTERN.fullmatch(value):
+        return None
+    try:
+        datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return value
+
+
+def _bounded_online_drive_remote_metadata(value: Any) -> OnlineDriveRemoteMetadata | None:
+    """Keep only the optional, non-secret fields understood by KnowledgeFS."""
+    if not isinstance(value, dict):
+        return None
+
+    result: OnlineDriveRemoteMetadata = {}
+    version_id = _online_drive_token(value.get("version_id"))
+    if version_id and version_id != "null":
+        result["version_id"] = version_id
+    etag = _online_drive_token(value.get("etag"))
+    if etag and not etag.lower().startswith("w/"):
+        result["etag"] = etag
+    modified_time = _online_drive_timestamp(value.get("modified_time"))
+    if modified_time:
+        result["modified_time"] = modified_time
+
+    checksum = value.get("checksum")
+    if isinstance(checksum, dict):
+        algorithm, digest = checksum.get("algorithm"), checksum.get("value")
+        normalized_algorithm: Literal["md5", "sha256"] | None = None
+        if algorithm == "md5":
+            normalized_algorithm = "md5"
+        elif algorithm == "sha256":
+            normalized_algorithm = "sha256"
+        digest_length = 32 if normalized_algorithm == "md5" else 64 if normalized_algorithm == "sha256" else None
+        if (
+            normalized_algorithm is not None
+            and digest_length is not None
+            and isinstance(digest, str)
+            and len(digest) == digest_length
+            and all(character in string.hexdigits for character in digest)
+        ):
+            result["checksum"] = {"algorithm": normalized_algorithm, "value": digest.lower()}
+    return result or None
+
+
+class DatasourceMessage(ToolInvokeMessage):
+    pass
+
+
+class OnlineDriveDownloadMessage(DatasourceMessage):
+    """Datasource invoke message with a bounded online-drive download receipt."""
+
+    @field_validator("meta", mode="before")
+    @classmethod
+    def bounded_remote_metadata(cls, value: Any) -> Any:
+        if not isinstance(value, dict) or "remote_metadata" not in value:
+            return value
+        result = dict(value)
+        remote_metadata = _bounded_online_drive_remote_metadata(value.get("remote_metadata"))
+        if remote_metadata:
+            result["remote_metadata"] = remote_metadata
+        else:
+            result.pop("remote_metadata", None)
+        return result
+
+    @field_serializer("message")
+    @override
+    def serialize_message(self, v: Any) -> Any:
+        """Keep online-drive blob chunks JSON-safe across the Dify inner API bridge."""
+        if isinstance(v, self.BlobChunkMessage):
+            return {
+                "id": v.id,
+                "sequence": v.sequence,
+                "total_length": v.total_length,
+                "blob": base64.b64encode(v.blob).decode("utf-8"),
+                "end": v.end,
+            }
+        return super().serialize_message(v)
+
+
 class OnlineDriveFile(BaseModel):
-    """
-    Online drive file
-    """
+    """Online drive file."""
 
     id: str = Field(..., description="The file ID")
     name: str = Field(..., description="The file name")
     size: int = Field(..., description="The file size")
     type: str = Field(..., description="The file type: folder or file")
+    remote_metadata: OnlineDriveRemoteMetadata | None = Field(
+        None,
+        description="Optional provider version_id, etag, checksum and modified_time; not credentials",
+    )
+
+    @field_validator("remote_metadata", mode="before")
+    @classmethod
+    def bounded_remote_metadata(cls, value: Any) -> OnlineDriveRemoteMetadata | None:
+        """Keep the optional wire extension bounded without rejecting legacy file listings."""
+        return _bounded_online_drive_remote_metadata(value)
 
 
 class OnlineDriveFileBucket(BaseModel):
@@ -351,7 +477,7 @@ class OnlineDriveFileBucket(BaseModel):
     bucket: str | None = Field(None, description="The file bucket")
     files: list[OnlineDriveFile] = Field(..., description="The file list")
     is_truncated: bool = Field(False, description="Whether the result is truncated")
-    next_page_parameters: dict | None = Field(None, description="Parameters for fetching the next page")
+    next_page_parameters: dict[str, Any] | None = Field(None, description="Parameters for fetching the next page")
 
 
 class OnlineDriveBrowseFilesRequest(BaseModel):
@@ -362,7 +488,7 @@ class OnlineDriveBrowseFilesRequest(BaseModel):
     bucket: str | None = Field(None, description="The file bucket")
     prefix: str = Field(..., description="The parent folder ID")
     max_keys: int = Field(20, description="Page size for pagination")
-    next_page_parameters: dict | None = Field(None, description="Parameters for fetching the next page")
+    next_page_parameters: dict[str, Any] | None = Field(None, description="Parameters for fetching the next page")
 
 
 class OnlineDriveBrowseFilesResponse(BaseModel):
@@ -379,4 +505,11 @@ class OnlineDriveDownloadFileRequest(BaseModel):
     """
 
     id: str = Field(..., description="The id of the file")
-    bucket: str | None = Field(None, description="The name of the bucket")
+    bucket: str = Field("", description="The name of the bucket")
+
+    @field_validator("bucket", mode="before")
+    @classmethod
+    def _coerce_bucket(cls, v) -> str:
+        if v is None:
+            return ""
+        return str(v)

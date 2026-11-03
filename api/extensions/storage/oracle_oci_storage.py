@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from typing import override
 
 import boto3
 from botocore.exceptions import ClientError
@@ -22,38 +23,50 @@ class OracleOCIStorage(BaseStorage):
             region_name=dify_config.OCI_REGION,
         )
 
+    @override
     def save(self, filename, data):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
 
+    @override
     def load_once(self, filename: str) -> bytes:
         try:
             data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
-                raise FileNotFoundError("File not found")
+                raise FileNotFoundError("File not found") from ex
             else:
                 raise
         return data
 
+    @override
     def load_stream(self, filename: str) -> Generator:
         try:
             response = self.client.get_object(Bucket=self.bucket_name, Key=filename)
             yield from response["Body"].iter_chunks()
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
-                raise FileNotFoundError("File not found")
+                raise FileNotFoundError("File not found") from ex
             else:
                 raise
 
+    @override
     def download(self, filename, target_filepath):
         self.client.download_file(self.bucket_name, filename, target_filepath)
 
+    @override
     def exists(self, filename):
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=filename)
             return True
-        except:
+        except ClientError:
             return False
 
-    def delete(self, filename):
+    @override
+    def delete(self, filename: str):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)
+
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        pages = self.client.get_paginator("list_objects_v2").paginate(Bucket=self.bucket_name, Prefix=path)
+        keys = (obj["Key"] for page in pages for obj in page.get("Contents", []))
+        return self._filter_scan_keys(keys, files, directories)

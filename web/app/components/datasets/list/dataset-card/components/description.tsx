@@ -1,15 +1,18 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetCardItem } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 type DescriptionProps = {
-  dataset: DataSet
+  dataset: DatasetCardItem
 }
 
 const Description = ({ dataset }: DescriptionProps) => (
   <div
-    className={cn('system-xs-regular line-clamp-2 h-10 px-4 py-1 text-text-tertiary', !dataset.embedding_available && 'opacity-30')}
-    title={dataset.description}
+    className={cn(
+      'line-clamp-2 h-10 px-4 py-1 system-xs-regular text-text-tertiary',
+      !dataset.embedding_available && 'opacity-30',
+    )}
+    title={dataset.description ?? undefined}
   >
     {dataset.description}
   </div>

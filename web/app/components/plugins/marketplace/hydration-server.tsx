@@ -1,45 +1,20 @@
-import type { SearchParams } from 'nuqs'
-import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
-import { createLoader } from 'nuqs/server'
-import { getQueryClientServer } from '@/context/query-client-server'
-import { marketplaceQuery } from '@/service/client'
-import { PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
-import { marketplaceSearchParamsParsers } from './search-params'
-import { getCollectionsParams, getMarketplaceCollectionsAndPlugins } from './utils'
-
-// The server side logic should move to marketplace's codebase so that we can get rid of Next.js
-
-async function getDehydratedState(searchParams?: Promise<SearchParams>) {
-  if (!searchParams) {
-    return
-  }
-  const loadSearchParams = createLoader(marketplaceSearchParamsParsers)
-  const params = await loadSearchParams(searchParams)
-
-  if (!PLUGIN_CATEGORY_WITH_COLLECTIONS.has(params.category)) {
-    return
-  }
-
-  const queryClient = getQueryClientServer()
-
-  await queryClient.prefetchQuery({
-    queryKey: marketplaceQuery.collections.queryKey({ input: { query: getCollectionsParams(params.category) } }),
-    queryFn: () => getMarketplaceCollectionsAndPlugins(getCollectionsParams(params.category)),
-  })
-  return dehydrate(queryClient)
-}
+import type { DehydratedState } from '@tanstack/react-query'
+import type { SearchParams } from 'nuqs/server'
+import { HydrationBoundary } from '@tanstack/react-query'
+import { prefetchMarketplaceDehydratedState } from './prefetch-marketplace-dehydrated-state'
 
 export async function HydrateQueryClient({
   searchParams,
+  prefetchedState,
   children,
 }: {
   searchParams: Promise<SearchParams> | undefined
+  prefetchedState?: DehydratedState
   children: React.ReactNode
 }) {
-  const dehydratedState = await getDehydratedState(searchParams)
-  return (
-    <HydrationBoundary state={dehydratedState}>
-      {children}
-    </HydrationBoundary>
-  )
+  const dehydratedState =
+    prefetchedState === undefined
+      ? await prefetchMarketplaceDehydratedState(searchParams)
+      : prefetchedState
+  return <HydrationBoundary state={dehydratedState}>{children}</HydrationBoundary>
 }

@@ -1,164 +1,541 @@
-## README for docker Deployment
+# Docker deployment
 
-Welcome to the new `docker` directory for deploying Dify using Docker Compose. This README outlines the updates, deployment instructions, and migration details for existing users.
+Run Dify with Docker Compose. For the default deployment, copy `.env.example` to
+`.env`, fill in the required token, and start the services. Defaults for the API,
+workers, and supporting services load automatically; additional files are optional.
 
-### What's Updated
+- [Start Dify](#start-dify)
+- [Configure Dify](#configure-dify)
+- [Troubleshoot setup and configuration](#troubleshoot-setup-and-configuration)
+- [Review configuration after an upgrade](#review-configuration-after-an-upgrade)
+- [Run middleware for development](#run-middleware-for-development)
+- [Configure HTTPS and telemetry](#configure-https-and-telemetry)
+- [Configure worker queues and webhooks](#configure-worker-queues-and-webhooks)
+- [Enable the KnowledgeFS integration](#enable-the-knowledgefs-integration)
+- [Configure client IP and trusted proxies](#client-ip-and-trusted-proxies)
 
-- **Certbot Container**: `docker-compose.yaml` now contains `certbot` for managing SSL certificates. This container automatically renews certificates and ensures secure HTTPS connections.\
-  For more information, refer `docker/certbot/README.md`.
+## Start Dify
 
-- **Persistent Environment Variables**: Environment variables are now managed through a `.env` file, ensuring that your configurations persist across deployments.
+Before you begin, install Docker with a running daemon, Docker Compose **v2.35.0 or
+later**, and OpenSSL to generate the sandbox token. Check your Compose version with
+`docker compose version`. Version 2.35.0 or later is required for root `.env`
+overrides to take precedence when Compose resolves service defaults.
 
-  > What is `.env`? </br> </br>
-  > The `.env` file is a crucial component in Docker and Docker Compose environments, serving as a centralized configuration file where you can define environment variables that are accessible to the containers at runtime. This file simplifies the management of environment settings across different stages of development, testing, and production, providing consistency and ease of configuration to deployments.
+For an existing deployment, edit your current `.env` instead of replacing it.
+For a new deployment, follow these steps:
 
-- **Unified Vector Database Services**: All vector database services are now managed from a single Docker Compose file `docker-compose.yaml`. You can switch between different vector databases by setting the `VECTOR_STORE` environment variable in your `.env` file.
+1. From the repository root, enter the Docker directory and copy the template:
 
-- **Mandatory .env File**: A `.env` file is now required to run `docker compose up`. This file is crucial for configuring your deployment and for any custom settings to persist through upgrades.
+   ```bash
+   cd docker
+   cp .env.example .env
+   ```
 
-### How to Deploy Dify with `docker-compose.yaml`
+   Unless noted otherwise, run commands below from `docker/`.
 
-1. **Prerequisites**: Ensure Docker and Docker Compose are installed on your system.
-1. **Environment Setup**:
-   - Navigate to the `docker` directory.
-   - Copy the `.env.example` file to a new file named `.env` by running `cp .env.example .env`.
-   - Customize the `.env` file as needed. Refer to the `.env.example` file for detailed configuration options.
-   - **Optional (Recommended for upgrades)**:
-     You may use the environment synchronization tool to help keep your `.env` file aligned with the latest `.env.example` updates, while preserving your custom settings.
-     This is especially useful when upgrading Dify or managing a large, customized `.env` file.
-     See the [Environment Variables Synchronization](#environment-variables-synchronization) section below.
-1. **Running the Services**:
-   - Execute `docker compose up` from the `docker` directory to start the services.
-   - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`.
-1. **SSL Certificate Setup**:
-   - Refer `docker/certbot/README.md` to set up SSL certificates using Certbot.
-1. **OpenTelemetry Collector Setup**:
-   - Change `ENABLE_OTEL` to `true` in `.env`.
-   - Configure `OTLP_BASE_ENDPOINT` properly.
+2. Generate a token:
 
-### How to Deploy Middleware for Developing Dify
+   ```bash
+   openssl rand -hex 32
+   ```
 
-1. **Middleware Setup**:
-   - Use the `docker-compose.middleware.yaml` for setting up essential middleware services like databases and caches.
-   - Navigate to the `docker` directory.
-   - Ensure the `middleware.env` file is created by running `cp middleware.env.example middleware.env` (refer to the `middleware.env.example` file).
-1. **Running Middleware Services**:
-   - Navigate to the `docker` directory.
-   - Execute `docker compose --env-file middleware.env -f docker-compose.middleware.yaml -p dify up -d` to start PostgreSQL/MySQL (per `DB_TYPE`) plus the bundled Weaviate instance.
+   Open `.env` and paste the output as the value of
+   `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN`. Keep
+   `COMPOSE_PROFILES=weaviate,postgresql,collaboration` for the default deployment.
+   No other configuration files are required.
 
-> Compose automatically loads `COMPOSE_PROFILES=${DB_TYPE:-postgresql},weaviate` from `middleware.env`, so no extra `--profile` flags are needed. Adjust variables in `middleware.env` if you want a different combination of services.
+3. Start the services and check their status:
 
-### Migration for Existing Users
+   ```bash
+   docker compose up -d
+   docker compose ps --all
+   ```
 
-For users migrating from the `docker-legacy` setup:
+   Wait for the long-running services to start and their health checks to pass.
+   The one-time `init_permissions` service is expected to exit with code `0`.
 
-1. **Review Changes**: Familiarize yourself with the new `.env` configuration and Docker Compose setup.
-1. **Transfer Customizations**:
-   - If you have customized configurations such as `docker-compose.yaml`, `ssrf_proxy/squid.conf`, or `nginx/conf.d/default.conf`, you will need to reflect these changes in the `.env` file you create.
-1. **Data Migration**:
-   - Ensure that data from services like databases and caches is backed up and migrated appropriately to the new structure if necessary.
+4. Open [http://localhost/install](http://localhost/install) and complete the
+   initial setup. If you changed the published HTTP port, use that port in the URL.
 
-### Overview of `.env`
+Before using this deployment in production, replace the bundled credentials using
+[the security template](envs/security.env.example) and the matching service files,
+and configure [HTTPS](#configure-https-and-telemetry) and
+[trusted proxies](#client-ip-and-trusted-proxies).
 
-#### Key Modules and Customization
+## Configure Dify
 
-- **Vector Database Services**: Depending on the type of vector database used (`VECTOR_STORE`), users can set specific endpoints, ports, and authentication details.
-- **Storage Services**: Depending on the storage type (`STORAGE_TYPE`), users can configure specific settings for S3, Azure Blob, Google Storage, etc.
-- **API and Web Services**: Users can define URLs and other settings that affect how the API and web frontend operate.
+### Choose the configuration file
 
-#### Other notable variables
+| File | Purpose | Loaded directly? |
+| --- | --- | --- |
+| `.env.example` | Minimal template for required deployment inputs | No; copy it to `.env` |
+| `.env` | Deployment inputs and explicit overrides, including Compose settings | Yes |
+| `envs/**/*.defaults` | Tracked defaults for the matching services | Yes, automatically |
+| `envs/**/*.env` | Optional service or provider overrides | Yes, when the matching service references the file |
+| `envs/**/*.env.example` | Templates for optional application and provider settings | No; remove only `.example` when copying |
 
-The `.env.example` file provided in the Docker setup is extensive and covers a wide range of configuration options. It is structured into several sections, each pertaining to different aspects of the application and its services. Here are some of the key sections and variables:
+Keep settings with usable defaults out of the root `.env.example`. To customize a
+service, copy its `.defaults` file to the override path named in its comments,
+usually replacing `.defaults` with `.env` in the same directory. Edit the copy,
+or the existing `.env` if one is already present. Uncomment only the optional
+assignments you want to change; leave unused empty values and placeholders
+commented. For an optional `.env.example` template, review its comments and fill
+in the settings before use.
 
-1. **Common Variables**:
+Find settings in:
 
-   - `CONSOLE_API_URL`, `SERVICE_API_URL`: URLs for different API services.
-   - `APP_WEB_URL`: Frontend application URL.
-   - `FILES_URL`: Base URL for file downloads and previews.
+- [Core services](envs/core-services/): API, workers, web, plugin daemon, and
+  sandboxes. [api-worker.defaults](envs/core-services/api-worker.defaults) contains the
+  common API, worker, and Beat settings, grouped by function. API process options
+  live in `api.defaults`; worker autoscaling lives in `worker.defaults`.
+- [Databases](envs/databases/): PostgreSQL, MySQL, and Redis.
+- [Vector stores](envs/vectorstores/): bundled and external vector databases,
+  including their API/worker client settings. Providers without a dedicated
+  template are documented in `api-worker.defaults`.
+- [Infrastructure](envs/infrastructure/): nginx, Certbot, proxies, and supporting services.
 
-1. **Server Configuration**:
+### Change a service setting
 
-   - `LOG_LEVEL`, `DEBUG`, `FLASK_DEBUG`: Logging and debug settings.
-   - `SECRET_KEY`: A key for encrypting session cookies and other sensitive data.
+For example, to set nginx's upload limit to `200M`:
 
-1. **Database Configuration**:
+1. Create the optional override file if it does not already exist:
 
-   - `DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`: PostgreSQL database credentials and connection details.
+   ```bash
+   cp envs/infrastructure/nginx.defaults envs/infrastructure/nginx.env
+   ```
 
-1. **Redis Configuration**:
+2. In `envs/infrastructure/nginx.env`, replace the input setting with:
 
-   - `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`: Redis server connection settings.
+   ```dotenv
+   NGINX_CLIENT_MAX_BODY_SIZE=200M
+   ```
 
-1. **Celery Configuration**:
+   Leave expressions under `Container variable mappings` unchanged. They translate
+   input names such as `SANDBOX_WORKER_TIMEOUT` into the container's `WORKER_TIMEOUT`.
 
-   - `CELERY_BROKER_URL`: Configuration for Celery message broker.
+3. Apply the change and inspect nginx's active configuration:
 
-1. **Storage Configuration**:
+   ```bash
+   docker compose up -d
+   docker compose exec -T nginx nginx -T 2>&1 | grep client_max_body_size
+   ```
 
-   - `STORAGE_TYPE`, `S3_BUCKET_NAME`, `AZURE_BLOB_ACCOUNT_NAME`: Settings for file storage options like local, S3, Azure Blob, etc.
+   The output should contain `client_max_body_size 200M;`.
 
-1. **Vector Database Configuration**:
+Use `docker compose up -d` after editing configuration files. Compose recreates
+containers whose configuration changed. `docker compose restart` does not reload
+environment variables. No extra `--env-file` option is needed for this deployment.
 
-   - `VECTOR_STORE`: Type of vector database (e.g., `weaviate`, `milvus`).
-   - Specific settings for each vector store like `WEAVIATE_ENDPOINT`, `MILVUS_URI`.
+### Change a published port or another Compose setting
 
-1. **CORS Configuration**:
+Put settings consumed by Compose in root `.env`: `COMPOSE_PROFILES`, published
+ports, volume paths, resource limits, and health-check intervals. Service env
+files cannot change those parts of the Compose model.
 
-   - `WEB_API_CORS_ALLOW_ORIGINS`, `CONSOLE_CORS_ALLOW_ORIGINS`: Settings for cross-origin resource sharing.
+For example, add or update this line in `.env` to use HTTP port `8080`:
 
-1. **OpenTelemetry Configuration**:
-
-   - `ENABLE_OTEL`: Enable OpenTelemetry collector in api.
-   - `OTLP_BASE_ENDPOINT`: Endpoint for your OTLP exporter.
-
-1. **Other Service-Specific Environment Variables**:
-
-   - Each service like `nginx`, `redis`, `db`, and vector databases have specific environment variables that are directly referenced in the `docker-compose.yaml`.
-
-### Environment Variables Synchronization
-
-When upgrading Dify or pulling the latest changes, new environment variables may be introduced in `.env.example`.
-
-To help keep your existing `.env` file up to date **without losing your custom values**, an optional environment variables synchronization tool is provided.
-
-> This tool performs a **one-way synchronization** from `.env.example` to `.env`.
-> Existing values in `.env` are never overwritten automatically.
-
-#### `dify-env-sync.sh` (Optional)
-
-This script compares your current `.env` file with the latest `.env.example` template and helps safely apply new or updated environment variables.
-
-**What it does**
-
-- Creates a backup of the current `.env` file before making any changes
-- Synchronizes newly added environment variables from `.env.example`
-- Preserves all existing custom values in `.env`
-- Displays differences and variables removed from `.env.example` for review
-
-**Backup behavior**
-
-Before synchronization, the current `.env` file is saved to the `env-backup/` directory with a timestamped filename
-(e.g. `env-backup/.env.backup_20231218_143022`).
-
-**When to use**
-
-- After upgrading Dify to a newer version
-- When `.env.example` has been updated with new environment variables
-- When managing a large or heavily customized `.env` file
-
-**Usage**
-
-```bash
-# Grant execution permission (first time only)
-chmod +x dify-env-sync.sh
-
-# Run the synchronization
-./dify-env-sync.sh
+```dotenv
+EXPOSE_NGINX_PORT=8080
 ```
 
-### Additional Information
+Run `docker compose up -d`, then open
+[http://localhost:8080/install](http://localhost:8080/install).
+Use root `.env` for values shared with the isolated local Agent sandbox, including
+its authentication token.
 
-- **Continuous Improvement Phase**: We are actively seeking feedback from the community to refine and enhance the deployment process. As more users adopt this new method, we will continue to make improvements based on your experiences and suggestions.
-- **Support**: For detailed configuration options and environment variable settings, refer to the `.env.example` file and the Docker Compose configuration files in the `docker` directory.
+### Change shared plugin credentials
 
-This README aims to guide you through the deployment process using the new Docker Compose setup. For any issues or further assistance, please refer to the official documentation or contact support.
+Set both shared plugin credentials in root `.env`, so every service receives the
+same values:
+
+| Root `.env` setting | Used by |
+| --- | --- |
+| `PLUGIN_DAEMON_KEY` | Plugin daemon authentication and its API, worker, and Agent clients |
+| `PLUGIN_DIFY_INNER_API_KEY` | API inner-endpoint authentication and its plugin daemon, worker, Agent, and KnowledgeFS clients |
+
+Generate a separate value for each key with `openssl rand -hex 32`, then add the two
+assignments to `.env`. If you previously set these keys in a service `.env` file,
+move them to root `.env`. Leave the derived container key expressions unchanged
+when copying service defaults, including the Agent's derived key expressions.
+Editing only `plugin-daemon.env`, `api.env`, or `worker.env` does not update every
+consumer and can cause HTTP 401 responses.
+
+Run `docker compose up -d` to apply the credentials to all affected services.
+These optional overrides do not need to be added to `.env.example`.
+
+### Select a database or vector store
+
+Set `DB_TYPE` or `VECTOR_STORE` and the provider's connection settings in the
+appropriate override file. In root `.env`, update `COMPOSE_PROFILES` to select the
+matching bundled services. Omit a service's profile when that service runs
+externally. Starting a different database does not migrate existing data.
+
+For example, the default deployment selects PostgreSQL and Weaviate with
+`COMPOSE_PROFILES=weaviate,postgresql,collaboration`. The `collaboration` profile
+starts the WebSocket API. See the [database](envs/databases/) and
+[vector store](envs/vectorstores/) files for provider-specific settings.
+
+### Understand which value takes effect
+
+For settings loaded through these env files, precedence is:
+
+1. Root `.env` overrides.
+2. Optional service `.env` overrides.
+3. Tracked `.defaults` values, followed by application defaults for unset settings.
+
+Shell variables take precedence when Compose interpolates `${...}` expressions.
+An explicit Compose `environment` entry also takes precedence over service env
+files; [trusted-proxy settings](#client-ip-and-trusted-proxies) are one example.
+The [KnowledgeFS section](#enable-the-knowledgefs-integration) describes its
+restricted root overrides separately.
+
+The API, workers, and plugin daemon also read the database and Redis override
+files, so shared connection settings reach both the bundled server and its clients.
+Changing a PostgreSQL or MySQL initialization password does not rotate credentials
+in an existing database; use the database's credential-rotation procedure as well.
+
+## Troubleshoot setup and configuration
+
+Validate the Compose configuration and inspect the affected services:
+
+```bash
+docker compose config --quiet
+docker compose ps --all
+docker compose logs --tail=100 api worker nginx
+```
+
+Replace the service names in the logs command with the service you are diagnosing.
+A successful `config --quiet` produces no output; it validates the Compose model,
+not application readiness.
+
+| Symptom | What to check |
+| --- | --- |
+| Editing a template has no effect | Copy `.env.example` to `.env`, or a service template to its documented `.env` path. Templates ending in `.example` are not loaded. |
+| A service still uses its old value | Run `docker compose up -d`. Check for a higher-priority value in root `.env`, the shell, or an explicit Compose `environment` entry. |
+| A port or profile change has no effect | Put the setting in root `.env`; these settings cannot be supplied through a service env file. |
+| Service overrides resolve unexpectedly | Check that Docker Compose is v2.35.0 or later and that container-variable mapping expressions are intact. |
+| Python sandbox code returns `operation not permitted` | Check the network-setting note in [sandbox.defaults](envs/core-services/sandbox.defaults). On sandbox 0.2.15/ARM64, requests with networking disabled can trigger a runtime syscall restriction. |
+
+## Review configuration after an upgrade
+
+Review the new root `.env.example` for required deployment inputs and the matching
+`.defaults` files for changed service defaults. Preserve your existing `.env`
+files; a copied service file can pin values from an older release.
+
+Bundled service templates now use the `.defaults` extension. Existing service
+`.env` paths still work. Root `.env.example` remains the only required starting
+template, and the Compose generator creates only a missing root `.env`.
+
+Common API and worker application settings are documented in
+[api-worker.defaults](envs/core-services/api-worker.defaults). New customizations
+use `envs/core-services/api-worker.env`. Existing `shared.env` files and other
+service override paths remain supported; keep local files and edit them in place.
+If both `shared.env` and `api-worker.env` exist, `api-worker.env` takes precedence
+for matching settings. Root `.env` retains precedence over both files, including
+for settings documented in a provider template.
+
+Review accidental empty assignments left by older template copies. For example,
+`CELERY_WORKER_AMOUNT=` overrides the Docker default of `4` and lets the worker
+entrypoint fall back to `1`. Remove or comment out that assignment to restore
+the Docker default. Likewise, remove accidental empty `SERVER_WORKER_CLASS=`
+or `GUNICORN_TIMEOUT=` entries to restore `gevent` and `360`. Keep intentional
+overrides; the configuration loader does not rewrite or discard them.
+
+To merge new root-template keys into an existing `.env`, optionally run:
+
+```bash
+bash dify-env-sync.sh
+```
+
+The script backs up `.env` to `env-backup/.env.backup_<timestamp>`, adds missing
+keys from `.env.example`, preserves existing values and extra local overrides,
+and reports differences for review. It does not synchronize the files in `envs/`.
+Review the resulting settings before running `docker compose up -d`.
+
+## Run middleware for development
+
+Use `docker-compose.middleware.yaml` when running the application from source and
+you need its supporting services in Docker.
+
+1. Create `middleware.env` if it does not exist:
+
+   ```bash
+   cp envs/middleware.env.example middleware.env
+   ```
+
+2. Edit database and other middleware settings, then start the services:
+
+   ```bash
+   docker compose --env-file middleware.env -f docker-compose.middleware.yaml -p dify up -d
+   ```
+
+This separate workflow requires `--env-file middleware.env`. The template defines
+`COMPOSE_PROFILES=${DB_TYPE:-postgresql},weaviate`, which selects the database and
+Weaviate. Update that value if you need different profiles.
+
+## Configure HTTPS and telemetry
+
+For HTTPS certificates, follow the [Certbot guide](certbot/README.md).
+
+For OpenTelemetry, create `envs/core-services/api-worker.env` from `api-worker.defaults`
+if it does not exist. Uncomment `ENABLE_OTEL` and set it to `true`; uncomment
+`OTLP_BASE_ENDPOINT` and set it to your collector's endpoint, reachable from
+the API and worker containers. The same file documents optional `OTEL_*`
+tuning. Apply the changes with `docker compose up -d`.
+
+## Configure worker queues and webhooks
+
+Custom worker queue lists set through `CELERY_QUEUES` or `CELERY_WORKER_QUEUES` must include
+`human_input_delivery` to process durable Human Input IM inbox events and recover
+unconfirmed Human Input v2 notifications, and
+`human_input_contact_sync` to process manual IM Contact directory synchronization.
+
+Human Input IM channels in `WEBHOOK` mode build their Callback URL from `TRIGGER_URL`.
+Set it to the externally reachable HTTPS origin of the API when configuring a remote
+deployment. A localhost value is only suitable for local development. Reverse proxies
+must forward `/callbacks/human-input/v2/im/` to the API and preserve the request path,
+body, and provider signature headers. Copy the channel's Callback URL into the
+provider's interaction configuration after changing the public origin.
+
+### Ops tracing rolling upgrades
+
+New tracing tasks use `OPS_TRACE_QUEUE=ops_trace_v2` by default. Set it consistently on the API,
+workers, and Beat in `docker/envs/core-services/api-worker.env` (or `docker/.env`). Default worker
+subscriptions follow this value; explicit `CELERY_QUEUES` or `CELERY_WORKER_QUEUES` lists must
+include it and exclude legacy `ops_trace` while old workers are draining.
+
+Keep an old tracing worker pool on `ops_trace` until old producers stop and their queued, active, reserved, scheduled, and
+retry tasks finish. To return to `ops_trace`, first remove old workers, have new workers consume
+both queues, then change `OPS_TRACE_QUEUE` on all new processes and drain `ops_trace_v2` before
+removing its consumers. See the [complete rollout sequence](../api/providers/trace/README.md#rolling-upgrade-from-the-previous-pipeline).
+
+## Enable the KnowledgeFS integration
+
+The optional `knowledge-fs` Compose profile starts the internal KnowledgeFS API service and the
+dedicated Dataset upgrade worker. The API service publishes no host port and has no nginx route.
+Model, datasource, and object-storage calls go through Dify's inner API.
+Dify resolves active Workspace/plugin configuration and remains the only owner of physical
+storage credentials. `KNOWLEDGE_FS_ENABLED` remains `false`, so starting the container does not
+enable product traffic.
+
+Copy the dedicated service template if the local file does not already exist:
+
+```bash
+cp envs/core-services/knowledge-fs.env.example envs/core-services/knowledge-fs.env
+```
+
+Fill in the operator-owned inputs described in `knowledge-fs.env` before starting
+the services. The default image is the CI-published deployment-branch image; set
+`KNOWLEDGE_FS_API_IMAGE` to pin another tag or immutable SHA tag. If the image
+repository is private, authenticate with `docker login` before pulling:
+
+```bash
+docker compose --profile knowledge-fs --profile knowledge-fs-unstructured config --quiet
+docker compose --profile knowledge-fs --profile knowledge-fs-unstructured pull knowledge_fs knowledge_fs_unstructured
+docker compose --profile knowledge-fs --profile knowledge-fs-unstructured up -d
+```
+
+The service env file intentionally contains only operator-owned inputs: the dedicated database,
+durable compilation switch, Capability v2 public verification material, and optional Unstructured
+endpoint. Compose injects the Dify inner API connection and integrated mode. KnowledgeFS stores
+objects below an internal namespace in Dify's configured `STORAGE_TYPE`; do not duplicate Dify's
+bucket, endpoint, or provider credentials in `knowledge-fs.env`. Feature-specific rollout flags
+and capacity tunables should be added only when deliberately overriding their safe runtime
+defaults.
+
+### Configure document parsing
+
+The optional `knowledge-fs-unstructured` profile starts one isolated parser service named
+`knowledge_fs_unstructured` for every KnowledgeFS remote format. Its tracked
+`knowledge-fs-unstructured-service.defaults` additionally enables bounded page parallelism for
+PDFs and a 25-million-pixel pre-allocation limit per page at the pinned 350 DPI; an optional copied
+`knowledge-fs-unstructured.env` can override those service values. Do not raise the DPI or pixel
+limit, or disable the guard: the KnowledgeFS client estimates page rasters at 350 DPI and rejects
+oversized or unverifiable page geometry before sending it to the parser. Oversized pages need
+smaller page dimensions or tiling before import; reducing compressed file size alone does not
+help. Existing installations need the new KnowledgeFS image and a recreated parser service to
+activate both guards. The existing `unstructured` profile remains unchanged for Dify's legacy
+ETL, so KnowledgeFS tuning cannot alter its PDF or Office parsing behavior. The copied
+`knowledge-fs.env` pairs every PDF and structurally/byte-heavy remote document with the longer
+deadline and narrower admission gate; ordinary formats retain two concurrent requests and a
+600-second timeout, while heavy work uses one concurrent request and a 2,400-second timeout. The
+remote input cap defaults to 15 MiB so the parser accepts the complete product upload envelope. The
+legacy `UNSTRUCTURED_PDF_*` names remain lower-precedence compatibility aliases. The isolated
+service is available to KnowledgeFS at `http://knowledge_fs_unstructured:8000`; it does not
+publish a host port.
+
+### Configure PDF image rendering
+
+The KnowledgeFS API image includes Poppler and enables its `pdftoppm` PDF image rasterizer with
+bounded defaults (144 DPI, 48 DPI thumbnails, a 30-second timeout, at most 500 assets per document,
+and two concurrent Poppler page batches per replica). Canonical settings live in the dedicated
+`knowledge-fs.env`; whitelisted `DIFY_ROOT_*_OVERRIDE` proxies let explicitly set values in
+`docker/.env` take precedence without injecting the complete root environment. When a root value
+is unset, the service env or image default remains authoritative. Set
+`KNOWLEDGE_PDF_RASTERIZER=off` in either operator env as an emergency or low-resource kill switch. Existing
+documents whose parse artifacts lack image asset references must be ingested again after rollout.
+
+### Check storage and readiness before enabling traffic
+
+Use a dedicated KnowledgeFS database. Do not point `DATABASE_URL` at Dify's application database,
+reuse Dataset/Document tables, or run a data migration as part of this service. KnowledgeFS
+migrations remain a separate controlled operator step. The selected Dify storage backend must
+support recursive `scan`; the currently verified paths are S3 and OpenDAL/local.
+
+The production entrypoint supports the explicitly selected Capability v2 verifier and accepts only
+public JWKS material. The `knowledge_fs` container can still return `200` from
+`/health` while `/ready` returns `503` when the verifier or another durable dependency is missing;
+this is intentional fail-closed behavior. Do not add a proxy route, set
+`KNOWLEDGE_FS_ENABLED=true`, or send product traffic until readiness returns `200` and the migration
+and per-Workspace cutover gates are complete.
+
+### Run lifecycle and upgrade workers
+
+The standard Dify worker consumes `knowledge_fs_lifecycle` for provisioning, deletion, initial
+source imports, and staged-upload cleanup. Deployments overriding `CELERY_QUEUES` or
+`CELERY_WORKER_QUEUES` must include this queue in a worker pool. Enable the lifecycle rollout gates
+on the API, workers, and Beat before creating spaces.
+
+Classic Dataset upgrades use the separate `worker_knowledge_fs_upgrade` service. It starts with
+the `knowledge-fs` Compose profile, so enable that profile before submitting an upgrade. This
+worker must use `CELERY_WORKER_POOL=prefork`; for local development, run
+`./dev/start-worker --queues knowledge_fs_upgrade --pool prefork` from the repository root.
+Each checkpoint has a 570-second
+soft limit and a 600-second hard limit. Do not override these task limits: recovery relies on the
+child having stopped before reclaiming its execution window. Beat checks for abandoned running
+jobs and publication claims every minute after the lifecycle gates are ready. Claims without
+progress for 11 minutes can be recovered automatically or through the upgrade retry endpoint.
+Stop existing upgrade workers before deploying this recovery change, then recreate the API,
+worker, upgrade worker, and Beat with the new image and pool configuration.
+
+Document reconciliation has its own durable delivery lease after the parent upgrade succeeds.
+Beat also scans successful upgrades with unfinished document checkpoints, so a failed publication
+or interrupted reconciliation is retried without restarting the upgrade. Unclaimed successful jobs
+are eligible immediately; lost deliveries are reclaimed after the 11-minute lease expires, and
+completed attempts with unfinished work become eligible again after one minute. Apply the
+`b9d3f7a5c102` migration before starting the updated processes; existing successful upgrades receive
+NULL leases and are picked up automatically. Reconciliation uses the same prefork pool and
+570/600-second task limits. Keep Beat running with the lifecycle rollout gates enabled.
+
+Upgrade uploads retain their logical document identity before compilation finishes, so pending
+or failed documents can have their legacy disabled state restored without an active revision.
+Reconciliation releases a deleted document's checkpoint only after verifying a completed durable
+deletion receipt for that identity; a missing document or upstream error alone is not sufficient.
+Custom metadata is restored from the snapshot's field definitions, converting Classic UTC epoch
+seconds to ISO timestamps for time fields. Classic built-in fields are omitted because KnowledgeFS
+owns its system metadata. These corrections also apply when retrying existing unfinished
+checkpoints and require no additional migration.
+
+## Client IP and trusted proxies
+
+Dify uses the request's resolved client IP for rate limits and audit records. The
+bundled Nginx overwrites `X-Forwarded-For` with `$remote_addr`, and Compose enables
+`RESPECT_XFORWARD_HEADERS_ENABLED` for the API and WebSocket API services. Dify's
+proxy middleware trusts one forwarded value, so different visitors keep separate
+IP buckets while caller-supplied IP headers cannot override Nginx's address.
+
+The middleware does not authenticate the proxy. Keep the API port private and
+restrict direct API connections to trusted callers. Compose does not publish that
+port, but services on its shared Docker networks can still connect directly,
+including the code sandbox on `ssrf_proxy_network`. Those connections bypass
+Nginx's header replacement. If those workloads are untrusted, enforce network or
+firewall isolation and route their API calls through a sanitizing gateway before
+enabling forwarded-header trust. Merely setting a Docker network to `internal`
+does not isolate containers from each other.
+
+For a directly exposed API, leave `RESPECT_XFORWARD_HEADERS_ENABLED=false`.
+The Python configuration and `api/.env.example` retain that default. To override
+the Compose default, set the variable in `docker/.env`, the shell used by Compose,
+or a Compose override. The API services' explicit `environment` entry takes
+precedence over `envs/core-services/api-worker.env` and legacy `shared.env` files.
+Existing `false` overrides in `docker/.env`, the invoking shell, or a Compose
+override remain in effect during upgrades. Move settings previously supplied only
+by `api-worker.env` or `shared.env` to one of those override locations if you need to preserve them.
+After establishing the trusted ingress boundary, enable the setting to retain
+visitor IPs.
+
+### Cloudflare or another load balancer before Nginx
+
+With an upstream proxy, configure Nginx to resolve the visitor address before
+forwarding it. Otherwise `$remote_addr` is the upstream proxy's address, and its
+visitors share a rate-limit bucket. Add an operator-managed
+`docker/nginx/conf.d/real-ip.conf`; the existing mount and Nginx include load this
+file without changes to the entrypoint.
+
+For a load balancer that supplies a correctly maintained `X-Forwarded-For` chain:
+
+```nginx
+# Replace this documentation address with the actual trusted proxy address/CIDR.
+set_real_ip_from 192.0.2.10/32;
+real_ip_header X-Forwarded-For;
+real_ip_recursive on;
+```
+
+For Cloudflare connecting directly to Nginx, use `real_ip_header CF-Connecting-IP`
+and `set_real_ip_from` entries for Cloudflare's current published IPv4 and IPv6
+ranges. Restrict origin access to the intended Cloudflare path; a Tunnel or
+Authenticated Origin Pulls with your own certificate can authenticate your zone.
+Cloudflare IP ranges alone identify its network, not your zone. If another load
+balancer sits between Cloudflare and Nginx, validate the source and sanitize
+headers at that load balancer too. Do not trust an arbitrary Cloudflare header
+merely because an internal load balancer forwarded it.
+
+Never use `0.0.0.0/0`, `::/0`, or an entire untrusted workload network as the trusted
+proxy range. Reload Nginx after updating its configuration. See the
+[Nginx real-IP module](https://nginx.org/en/docs/http/ngx_http_realip_module.html),
+[Cloudflare IP ranges](https://www.cloudflare.com/ips/), and
+[Cloudflare origin protection](https://developers.cloudflare.com/fundamentals/security/protect-your-origin-server/).
+
+### Kubernetes
+
+Use stable workload selectors to restrict API access; individual ingress pod IPs
+do not need to be configured in Dify. The ingress must resolve and overwrite the
+forwarded client IP as above. Keep the API Service as `ClusterIP`, set
+`RESPECT_XFORWARD_HEADERS_ENABLED=true` on its Deployment, and enforce a
+NetworkPolicy on the API pods. `ClusterIP` alone does not restrict other pods.
+
+This example must be adapted to your namespaces, pod labels, and API port:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-from-ingress
+  namespace: dify
+spec:
+  podSelector:
+    matchLabels:
+      app: dify-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-system
+          podSelector:
+            matchLabels:
+              app: ingress-controller
+      ports:
+        - protocol: TCP
+          port: 5001
+```
+
+Both selectors belong to the same `from` entry, so the namespace **and** pod labels
+must match. Keep that namespace restricted to trusted workloads. Confirm that
+your CNI enforces NetworkPolicy, no other policy broadly allows API access, and
+any `hostNetwork` ingress is covered by your CNI's policy behavior. Allow rules
+from multiple policies are additive. See the
+[Kubernetes NetworkPolicy documentation](https://kubernetes.io/docs/concepts/services-networking/network-policies/).
+
+Inventory internal API callers before applying the policy. Route untrusted
+callers through the same sanitizing ingress; directly allowed callers can supply
+forwarded headers too. Internal requests without a verified visitor address are
+attributed to the calling service, not an end user. Preserve required internal
+service connectivity while enforcing this boundary.
+
+Before rollout, verify that two distinct visitor IPs use different limit buckets,
+changing client-supplied IP headers does not change the resolved address, and an
+untrusted pod cannot connect directly to the API. IP limits still need independent
+account/email limits because NAT can share public addresses and attackers can
+use multiple real addresses.

@@ -1,18 +1,22 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Divider from '@/app/components/base/divider'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import BasicInfoSection from './components/basic-info-section'
 import ExternalKnowledgeSection from './components/external-knowledge-section'
 import IndexingSection from './components/indexing-section'
 import { useFormState } from './hooks/use-form-state'
 
-const Form = () => {
-  const { t } = useTranslation()
+const DatasetSettingsForm = ({
+  currentDataset,
+}: {
+  currentDataset: DatasetDetailWithPartialMembersResponse
+}) => {
+  const { t } = useTranslation(['datasetSettings'])
   const {
-    // Context values
-    currentDataset,
-    isCurrentWorkspaceDatasetOperator,
+    canEditSettings,
 
     // Loading state
     loading,
@@ -25,10 +29,7 @@ const Form = () => {
 
     // Icon
     iconInfo,
-    showAppIconPicker,
-    handleOpenAppIconPicker,
     handleSelectAppIcon,
-    handleCloseAppIconPicker,
 
     // Permission
     permission,
@@ -63,78 +64,82 @@ const Form = () => {
 
     // Actions
     handleSave,
-  } = useFormState()
+  } = useFormState(currentDataset)
 
   const isExternalProvider = currentDataset?.provider === 'external'
+  const readonly = !canEditSettings
 
   return (
-    <div className="flex w-full flex-col gap-y-4 px-20 py-8 sm:w-[960px]">
+    <div className="flex w-full max-w-240 flex-col gap-y-4 px-4 py-8 @3xl/settings:px-20">
       <BasicInfoSection
         currentDataset={currentDataset}
-        isCurrentWorkspaceDatasetOperator={isCurrentWorkspaceDatasetOperator}
         name={name}
         setName={setName}
         description={description}
         setDescription={setDescription}
         iconInfo={iconInfo}
-        showAppIconPicker={showAppIconPicker}
-        handleOpenAppIconPicker={handleOpenAppIconPicker}
         handleSelectAppIcon={handleSelectAppIcon}
-        handleCloseAppIconPicker={handleCloseAppIconPicker}
         permission={permission}
         setPermission={setPermission}
         selectedMemberIDs={selectedMemberIDs}
         setSelectedMemberIDs={setSelectedMemberIDs}
         memberList={memberList}
+        readonly={readonly}
       />
 
-      {isExternalProvider
-        ? (
-            <ExternalKnowledgeSection
-              currentDataset={currentDataset}
-              topK={topK}
-              scoreThreshold={scoreThreshold}
-              scoreThresholdEnabled={scoreThresholdEnabled}
-              handleSettingsChange={handleSettingsChange}
-            />
-          )
-        : (
-            <IndexingSection
-              currentDataset={currentDataset}
-              indexMethod={indexMethod}
-              setIndexMethod={setIndexMethod}
-              keywordNumber={keywordNumber}
-              setKeywordNumber={setKeywordNumber}
-              embeddingModel={embeddingModel}
-              setEmbeddingModel={setEmbeddingModel}
-              embeddingModelList={embeddingModelList}
-              retrievalConfig={retrievalConfig}
-              setRetrievalConfig={setRetrievalConfig}
-              summaryIndexSetting={summaryIndexSetting}
-              handleSummaryIndexSettingChange={handleSummaryIndexSettingChange}
-              showMultiModalTip={showMultiModalTip}
-            />
-          )}
+      {isExternalProvider ? (
+        <ExternalKnowledgeSection
+          currentDataset={currentDataset}
+          topK={topK}
+          scoreThreshold={scoreThreshold}
+          scoreThresholdEnabled={scoreThresholdEnabled}
+          handleSettingsChange={handleSettingsChange}
+          readonly={readonly}
+        />
+      ) : (
+        <IndexingSection
+          currentDataset={currentDataset}
+          indexMethod={indexMethod}
+          setIndexMethod={setIndexMethod}
+          keywordNumber={keywordNumber}
+          setKeywordNumber={setKeywordNumber}
+          embeddingModel={embeddingModel}
+          setEmbeddingModel={setEmbeddingModel}
+          embeddingModelList={embeddingModelList}
+          retrievalConfig={retrievalConfig}
+          setRetrievalConfig={setRetrievalConfig}
+          summaryIndexSetting={summaryIndexSetting}
+          handleSummaryIndexSettingChange={handleSummaryIndexSettingChange}
+          showMultiModalTip={showMultiModalTip}
+          readonly={readonly}
+        />
+      )}
 
-      <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
+      <Separator decorative orientation="horizontal" className="my-1 bg-divider-subtle" />
 
       {/* Save Button */}
       <div className="flex gap-x-1">
-        <div className="flex h-7 w-[180px] shrink-0 items-center pt-1" />
+        <div className="hidden h-7 w-45 shrink-0 items-center pt-1 @3xl/settings:flex" />
         <div className="grow">
           <Button
             className="min-w-24"
             variant="primary"
             loading={loading}
-            disabled={loading}
+            disabled={readonly}
             onClick={handleSave}
           >
-            {t('form.save', { ns: 'datasetSettings' })}
+            {t(($) => $['form.save'], { ns: 'datasetSettings' })}
           </Button>
         </div>
       </div>
     </div>
   )
+}
+
+const Form = () => {
+  const currentDataset = useDatasetDetailContextWithSelector((state) => state.dataset)
+  if (!currentDataset) return null
+  return <DatasetSettingsForm key={currentDataset.id} currentDataset={currentDataset} />
 }
 
 export default Form

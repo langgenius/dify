@@ -1,264 +1,310 @@
-import type { Member } from '@/models/common'
-import { RiArrowDownSLine, RiGroup2Line, RiLock2Line } from '@remixicon/react'
-import { useDebounceFn } from 'ahooks'
-import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Avatar from '@/app/components/base/avatar'
-import Input from '@/app/components/base/input'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { DatasetPermission } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
+import { SearchInput } from '@/app/components/base/search-input'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { PermissionLevel } from '@/models/permission'
+import { getAvatarInitial } from '@/utils/avatar'
 import MemberItem from './member-item'
-import Item from './permission-item'
+import PermissionItem from './permission-item'
 
-export type RoleSelectorProps = {
+type PermissionSelectorProps = {
+  ariaDescribedBy?: string
+  ariaLabelledBy?: string
+  'aria-labelledby'?: string
   disabled?: boolean
-  permission?: DatasetPermission
+  disableWhenRbacEnabled?: boolean
+  invalid?: boolean
+  permissionChangeDisabled?: boolean
+  permission?: PermissionLevel
   value: string[]
-  memberList: Member[]
-  onChange: (permission?: DatasetPermission) => void
-  onMemberSelect: (v: string[]) => void
+  memberList: Pick<AccountWithRoleResponse, 'id' | 'name' | 'email' | 'avatar_url'>[]
+  onChange: (permission?: PermissionLevel) => void
+  onMemberSelect: (value: string[]) => void
 }
 
 const PermissionSelector = ({
+  ariaDescribedBy,
+  ariaLabelledBy,
+  'aria-labelledby': labelledBy,
   disabled,
+  disableWhenRbacEnabled = true,
+  invalid,
+  permissionChangeDisabled = false,
   permission,
   value,
   memberList,
   onChange,
   onMemberSelect,
-}: RoleSelectorProps) => {
-  const { t } = useTranslation()
-  const userProfile = useAppContextWithSelector(state => state.userProfile)
-  const [open, setOpen] = useState(false)
-
+}: PermissionSelectorProps) => {
+  const { t } = useTranslation(['common', 'datasetSettings'])
+  const selectedValueId = useId()
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
+  const { data: isRbacEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ rbac_enabled }) => rbac_enabled,
+  })
   const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
-  const { run: handleSearch } = useDebounceFn(() => {
-    setSearchKeywords(keywords)
-  }, { wait: 500 })
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
+  const debouncedKeywords = useDebouncedValue(keywords, 500)
+  const searchKeywords = keywords ? debouncedKeywords : ''
+  const isDisabledByRbac = disableWhenRbacEnabled && isRbacEnabled
+  const isDisabled = disabled || isDisabledByRbac
+  const selectMember = (member: PermissionSelectorProps['memberList'][number]) => {
+    if (isDisabled) return
+    if (value.includes(member.id)) onMemberSelect(value.filter((id) => id !== member.id))
+    else onMemberSelect([...value, member.id])
   }
-  const selectMember = useCallback((member: Member) => {
-    if (value.includes(member.id))
-      onMemberSelect(value.filter(v => v !== member.id))
-    else
-      onMemberSelect([...value, member.id])
-  }, [value, onMemberSelect])
 
-  const selectedMembers = useMemo(() => {
-    return [
+  const selectedMembers = useMemo(
+    () => [
       userProfile,
-      ...memberList.filter(member => member.id !== userProfile.id).filter(member => value.includes(member.id)),
-    ]
-  }, [userProfile, value, memberList])
+      ...memberList.filter((member) => member.id !== userProfile.id && value.includes(member.id)),
+    ],
+    [memberList, userProfile, value],
+  )
+  const filteredMemberList = useMemo(
+    () =>
+      memberList.filter(
+        (member) =>
+          member.id !== userProfile.id &&
+          (member.name.includes(searchKeywords) || member.email.includes(searchKeywords)),
+      ),
+    [memberList, searchKeywords, userProfile.id],
+  )
 
-  const showMe = useMemo(() => {
-    return userProfile.name.includes(searchKeywords) || userProfile.email.includes(searchKeywords)
-  }, [searchKeywords, userProfile])
-
-  const filteredMemberList = useMemo(() => {
-    return memberList.filter(member => (member.name.includes(searchKeywords) || member.email.includes(searchKeywords)) && member.id !== userProfile.id && ['owner', 'admin', 'editor', 'dataset_operator'].includes(member.role))
-  }, [memberList, searchKeywords, userProfile])
-
-  const onSelectOnlyMe = useCallback(() => {
-    onChange(DatasetPermission.onlyMe)
-    setOpen(false)
-  }, [onChange])
-
-  const onSelectAllMembers = useCallback(() => {
-    onChange(DatasetPermission.allTeamMembers)
-    setOpen(false)
-  }, [onChange])
-
-  const onSelectPartialMembers = useCallback(() => {
-    onChange(DatasetPermission.partialMembers)
-    onMemberSelect([userProfile.id])
-  }, [onChange, onMemberSelect, userProfile])
-
-  const isOnlyMe = permission === DatasetPermission.onlyMe
-  const isAllTeamMembers = permission === DatasetPermission.allTeamMembers
-  const isPartialMembers = permission === DatasetPermission.partialMembers
-  const selectedMemberNames = selectedMembers.map(member => member.name).join(', ')
+  const isOnlyMe = permission === PermissionLevel.onlyMe
+  const isAllTeamMembers = permission === PermissionLevel.allTeamMembers
+  const isPartialMembers = permission === PermissionLevel.partialMembers
+  const showMe =
+    userProfile.name.includes(searchKeywords) || userProfile.email.includes(searchKeywords)
+  const selectedMemberNames = selectedMembers.map((member) => member.name).join(', ')
+  const permissionLabel = t(($) => $['form.permissions'], { ns: 'datasetSettings' })
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
-    >
-      <div className="relative">
-        <PortalToFollowElemTrigger
-          onClick={() => !disabled && setOpen(v => !v)}
-          className="block"
-        >
-          <div className={cn('flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt', disabled && '!cursor-not-allowed !bg-components-input-bg-disabled hover:!bg-components-input-bg-disabled')}>
-            {
-              isOnlyMe && (
-                <>
-                  <div className="flex size-6 shrink-0 items-center justify-center">
-                    <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={20} />
-                  </div>
-                  <div className="system-sm-regular grow p-1 text-components-input-text-filled">
-                    {t('form.permissionsOnlyMe', { ns: 'datasetSettings' })}
-                  </div>
-                </>
-              )
-            }
-            {
-              isAllTeamMembers && (
-                <>
-                  <div className="flex size-6 shrink-0 items-center justify-center">
-                    <RiGroup2Line className="size-4 text-text-secondary" />
-                  </div>
-                  <div className="system-sm-regular grow p-1 text-components-input-text-filled">
-                    {t('form.permissionsAllMember', { ns: 'datasetSettings' })}
-                  </div>
-                </>
-              )
-            }
-            {
-              isPartialMembers && (
-                <>
-                  <div className="relative flex size-6 shrink-0 items-center justify-center">
-                    {
-                      selectedMembers.length === 1 && (
-                        <Avatar
-                          avatar={selectedMembers[0].avatar_url}
-                          name={selectedMembers[0].name}
-                          size={20}
-                        />
-                      )
-                    }
-                    {
-                      selectedMembers.length >= 2 && (
-                        <>
-                          <Avatar
-                            avatar={selectedMembers[0].avatar_url}
-                            name={selectedMembers[0].name}
-                            className="absolute left-0 top-0 z-0"
-                            size={16}
-                          />
-                          <Avatar
-                            avatar={selectedMembers[1].avatar_url}
-                            name={selectedMembers[1].name}
-                            className="absolute bottom-0 right-0 z-10"
-                            size={16}
-                          />
-                        </>
-                      )
-                    }
-                  </div>
-                  <div
-                    title={selectedMemberNames}
-                    className="system-sm-regular grow truncate p-1 text-components-input-text-filled"
-                  >
-                    {selectedMemberNames}
-                  </div>
-                </>
-              )
-            }
-            <RiArrowDownSLine
-              className={cn(
-                'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
-                open && 'text-text-secondary',
-                disabled && '!text-components-input-text-placeholder',
-              )}
-            />
-          </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1002]">
-          <div className="relative w-[480px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
-            <div className="p-1">
-              {/* Only me */}
-              <Item
-                leftIcon={
-                  <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className="shrink-0" size={24} />
-                }
-                text={t('form.permissionsOnlyMe', { ns: 'datasetSettings' })}
-                onClick={onSelectOnlyMe}
-                isSelected={isOnlyMe}
-              />
-              {/* All team members */}
-              <Item
-                leftIcon={(
-                  <div className="flex size-6 shrink-0 items-center justify-center">
-                    <RiGroup2Line className="size-4 text-text-secondary" />
-                  </div>
-                )}
-                text={t('form.permissionsAllMember', { ns: 'datasetSettings' })}
-                onClick={onSelectAllMembers}
-                isSelected={isAllTeamMembers}
-              />
-              {/* Partial members */}
-              <Item
-                leftIcon={(
-                  <div className="flex size-6 shrink-0 items-center justify-center">
-                    <RiLock2Line className="size-4 text-text-secondary" />
-                  </div>
-                )}
-                text={t('form.permissionsInvitedMembers', { ns: 'datasetSettings' })}
-                onClick={onSelectPartialMembers}
-                isSelected={isPartialMembers}
-              />
+    <Popover>
+      <PopoverTrigger
+        aria-describedby={ariaDescribedBy}
+        aria-labelledby={
+          ariaLabelledBy || labelledBy
+            ? `${ariaLabelledBy || labelledBy} ${selectedValueId}`
+            : undefined
+        }
+        aria-invalid={invalid}
+        disabled={isDisabled}
+        className={cn(
+          'group/permission-trigger flex w-full cursor-pointer touch-manipulation items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-start hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
+          'data-disabled:cursor-not-allowed! data-disabled:bg-components-input-bg-disabled! data-disabled:hover:bg-components-input-bg-disabled!',
+          invalid && 'ring-1 ring-text-destructive',
+        )}
+      >
+        {isDisabledByRbac && (
+          <>
+            <div className="flex size-6 shrink-0 items-center justify-center">
+              <span aria-hidden="true" className="i-ri-lock-2-line size-4 text-text-tertiary" />
             </div>
-            {isPartialMembers && (
-              <div className="max-h-[360px] overflow-y-auto border-t-[1px] border-divider-regular pb-1 pl-1 pr-1">
-                <div className="sticky left-0 top-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
-                  <Input
-                    showLeftIcon
-                    showClearIcon
-                    value={keywords}
-                    onChange={e => handleKeywordsChange(e.target.value)}
-                    onClear={() => handleKeywordsChange('')}
+            <div
+              id={selectedValueId}
+              className="grow p-1 system-sm-regular text-components-input-text-placeholder"
+            >
+              {t(($) => $['form.permissionsAccessConfig'], { ns: 'datasetSettings' })}
+            </div>
+          </>
+        )}
+        {!isDisabledByRbac && isOnlyMe && (
+          <>
+            <div className="flex size-6 shrink-0 items-center justify-center">
+              <Avatar size="xs" aria-hidden="true">
+                <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+                <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+              </Avatar>
+            </div>
+            <div
+              id={selectedValueId}
+              className="grow p-1 system-sm-regular text-components-input-text-filled"
+            >
+              {t(($) => $['form.permissionsOnlyMe'], { ns: 'datasetSettings' })}
+            </div>
+          </>
+        )}
+        {!isDisabledByRbac && isAllTeamMembers && (
+          <>
+            <div className="flex size-6 shrink-0 items-center justify-center">
+              <span aria-hidden="true" className="i-ri-group-2-line size-4 text-text-secondary" />
+            </div>
+            <div
+              id={selectedValueId}
+              className="grow p-1 system-sm-regular text-components-input-text-filled"
+            >
+              {t(($) => $['form.permissionsAllMember'], { ns: 'datasetSettings' })}
+            </div>
+          </>
+        )}
+        {!isDisabledByRbac && isPartialMembers && (
+          <>
+            <div className="relative flex size-6 shrink-0 items-center justify-center">
+              {selectedMembers.length === 1 && (
+                <Avatar size="xs" aria-hidden="true">
+                  <AvatarFallback>{getAvatarInitial(selectedMembers[0]!.name)}</AvatarFallback>
+                  <AvatarImage src={selectedMembers[0]!.avatar_url || undefined} alt="" />
+                </Avatar>
+              )}
+              {selectedMembers.length >= 2 && (
+                <>
+                  <Avatar className="absolute inset-s-0 top-0 z-0" size="xxs" aria-hidden="true">
+                    <AvatarFallback>{getAvatarInitial(selectedMembers[0]!.name)}</AvatarFallback>
+                    <AvatarImage src={selectedMembers[0]!.avatar_url || undefined} alt="" />
+                  </Avatar>
+                  <Avatar
+                    className="absolute inset-e-0 bottom-0 z-10"
+                    size="xxs"
+                    aria-hidden="true"
+                  >
+                    <AvatarFallback>{getAvatarInitial(selectedMembers[1]!.name)}</AvatarFallback>
+                    <AvatarImage src={selectedMembers[1]!.avatar_url || undefined} alt="" />
+                  </Avatar>
+                </>
+              )}
+            </div>
+            <div
+              id={selectedValueId}
+              title={selectedMemberNames}
+              className="min-w-0 grow truncate p-1 system-sm-regular text-components-input-text-filled"
+            >
+              {selectedMemberNames}
+            </div>
+          </>
+        )}
+        <span
+          aria-hidden="true"
+          className={cn(
+            'i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary',
+            'group-hover/permission-trigger:text-text-secondary group-data-popup-open/permission-trigger:text-text-secondary',
+            'group-data-disabled/permission-trigger:text-components-input-text-placeholder!',
+          )}
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="max-w-(--available-width) border-none bg-transparent shadow-none"
+      >
+        <PopoverTitle className="sr-only">{permissionLabel}</PopoverTitle>
+        <div className="relative w-120 max-w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
+          <RadioGroup<PermissionLevel>
+            disabled={isDisabled || permissionChangeDisabled}
+            value={permission}
+            onValueChange={(nextPermission) => {
+              if (isDisabled || permissionChangeDisabled) return
+              onChange(nextPermission)
+              if (nextPermission === PermissionLevel.partialMembers)
+                onMemberSelect([userProfile.id])
+            }}
+            aria-label={permissionLabel}
+            className="flex-col items-stretch gap-0 p-1"
+          >
+            <PermissionItem
+              value={PermissionLevel.onlyMe}
+              closeOnSelect
+              leftIcon={
+                <Avatar className="shrink-0" size="sm" aria-hidden="true">
+                  <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+                  <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+                </Avatar>
+              }
+              text={t(($) => $['form.permissionsOnlyMe'], { ns: 'datasetSettings' })}
+              isSelected={isOnlyMe}
+            />
+            <PermissionItem
+              value={PermissionLevel.allTeamMembers}
+              closeOnSelect
+              leftIcon={
+                <div className="flex size-6 shrink-0 items-center justify-center">
+                  <span
+                    aria-hidden="true"
+                    className="i-ri-group-2-line size-4 text-text-secondary"
                   />
                 </div>
-                <div className="flex flex-col p-1">
-                  {showMe && (
-                    <MemberItem
-                      leftIcon={
-                        <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className="shrink-0" size={24} />
-                      }
-                      name={userProfile.name}
-                      email={userProfile.email}
-                      isSelected
-                      isMe
-                    />
-                  )}
-                  {filteredMemberList.map(member => (
-                    <MemberItem
-                      leftIcon={
-                        <Avatar avatar={member.avatar_url} name={member.name} className="shrink-0" size={24} />
-                      }
-                      name={member.name}
-                      email={member.email}
-                      isSelected={value.includes(member.id)}
-                      onClick={selectMember.bind(null, member)}
-                    />
-                  ))}
-                  {
-                    !showMe && filteredMemberList.length === 0 && (
-                      <div className="system-xs-regular flex items-center justify-center whitespace-pre-wrap px-1 py-6 text-center text-text-tertiary">
-                        {t('form.onSearchResults', { ns: 'datasetSettings' })}
-                      </div>
-                    )
-                  }
+              }
+              text={t(($) => $['form.permissionsAllMember'], { ns: 'datasetSettings' })}
+              isSelected={isAllTeamMembers}
+            />
+            <PermissionItem
+              value={PermissionLevel.partialMembers}
+              leftIcon={
+                <div className="flex size-6 shrink-0 items-center justify-center">
+                  <span
+                    aria-hidden="true"
+                    className="i-ri-lock-2-line size-4 text-text-secondary"
+                  />
                 </div>
+              }
+              text={t(($) => $['form.permissionsInvitedMembers'], { ns: 'datasetSettings' })}
+              isSelected={isPartialMembers}
+            />
+          </RadioGroup>
+          {isPartialMembers && (
+            <div className="max-h-90 overflow-y-auto border-t border-divider-regular px-1 pb-1">
+              <div className="sticky inset-s-0 top-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
+                <SearchInput
+                  disabled={isDisabled}
+                  name="member-search"
+                  value={keywords}
+                  placeholder={t(($) => $['operation.search'], { ns: 'common' }) || ''}
+                  onValueChange={setKeywords}
+                />
               </div>
-            )}
-          </div>
-        </PortalToFollowElemContent>
-      </div>
-    </PortalToFollowElem>
+              <div className="flex flex-col p-1">
+                {showMe && (
+                  <MemberItem
+                    leftIcon={
+                      <Avatar className="shrink-0" size="sm" aria-hidden="true">
+                        <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+                        <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+                      </Avatar>
+                    }
+                    name={userProfile.name}
+                    email={userProfile.email}
+                    isSelected
+                    isMe
+                  />
+                )}
+                {filteredMemberList.map((member) => (
+                  <MemberItem
+                    key={member.id}
+                    disabled={isDisabled}
+                    leftIcon={
+                      <Avatar className="shrink-0" size="sm" aria-hidden="true">
+                        <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
+                        <AvatarImage src={member.avatar_url || undefined} alt="" />
+                      </Avatar>
+                    }
+                    name={member.name}
+                    email={member.email}
+                    isSelected={value.includes(member.id)}
+                    onClick={() => selectMember(member)}
+                  />
+                ))}
+                {!showMe && filteredMemberList.length === 0 && (
+                  <div className="flex items-center justify-center px-1 py-6 text-center system-xs-regular whitespace-pre-wrap text-text-tertiary">
+                    {t(($) => $['form.onSearchResults'], { ns: 'datasetSettings' })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 

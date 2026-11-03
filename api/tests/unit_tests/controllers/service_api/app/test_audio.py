@@ -1,0 +1,351 @@
+"""
+Unit tests for Service API Audio controller.
+
+Tests coverage for:
+- TextToAudioPayload Pydantic model validation
+- Error mapping patterns between service and API errors
+- AudioService method interfaces
+"""
+
+import io
+import uuid
+from inspect import unwrap
+from unittest.mock import patch
+
+import pytest
+from flask import Flask, request
+from sqlalchemy.orm import Session
+from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import InternalServerError
+
+from controllers.service_api.app.audio import AudioApi, TextApi, TextToAudioPayload
+from controllers.service_api.app.error import (
+    AppUnavailableError,
+    AudioTooLargeError,
+    CompletionRequestError,
+    NoAudioUploadedError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderNotSupportSpeechToTextError,
+    ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
+    UnsupportedAudioTypeError,
+)
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError
+from models.enums import EndUserType
+from models.model import App, EndUser
+from services.app_ref_service import AppRef, MessageRef
+from services.audio_service import AudioService
+from services.errors.app_model_config import AppModelConfigBrokenError
+from services.errors.audio import (
+    AudioTooLargeServiceError,
+    NoAudioUploadedServiceError,
+    ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
+    UnsupportedAudioTypeServiceError,
+)
+from tests.helpers.unit.model_factories import make_app, make_end_user
+
+
+def _file_data():
+    return FileStorage(stream=io.BytesIO(b"audio"), filename="audio.wav", content_type="audio/wav")
+
+
+def _app(*, app_id: str = "a1", tenant_id: str = "tenant-1") -> App:
+    return make_app(app_id=app_id, tenant_id=tenant_id, name="Audio app", icon_type=None, max_active_requests=0)
+
+
+def _end_user(*, end_user_id: str = "u1", external_user_id: str | None = None) -> EndUser:
+    return make_end_user(
+        end_user_id=end_user_id,
+        app_id="a1",
+        end_user_type=EndUserType.SERVICE_API,
+        external_user_id=external_user_id,
+        name="Audio user",
+        session_id=f"session-{end_user_id}",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Pydantic Model Tests
+# ---------------------------------------------------------------------------
+
+
+class TestTextToAudioPayload:
+    """Test suite for TextToAudioPayload Pydantic model."""
+
+    def test_payload_with_all_fields(self):
+        """Test payload with all fields populated."""
+        payload = TextToAudioPayload(
+            message_id="msg_123",
+            voice="nova",
+            text="Hello, this is a test.",
+            streaming=False,
+        )
+        assert payload.message_id == "msg_123"
+        assert payload.voice == "nova"
+        assert payload.text == "Hello, this is a test."
+        assert payload.streaming is False
+
+    def test_payload_with_defaults(self):
+        """Test payload with default values."""
+        payload = TextToAudioPayload()
+        assert payload.message_id is None
+        assert payload.voice is None
+        assert payload.text is None
+        assert payload.streaming is None
+
+    def test_payload_with_only_text(self):
+        """Test payload with only text field."""
+        payload = TextToAudioPayload(text="Simple text to speech")
+        assert payload.text == "Simple text to speech"
+        assert payload.voice is None
+        assert payload.message_id is None
+
+    def test_payload_with_streaming_true(self):
+        """Test payload with streaming enabled."""
+        payload = TextToAudioPayload(
+            text="Streaming test",
+            streaming=True,
+        )
+        assert payload.streaming is True
+
+
+class TestAudioServiceInterface:
+    """Test suite for AudioService interface methods."""
+
+    def test_transcript_asr_method_exists(self):
+        """Test that AudioService.transcript_asr exists."""
+        assert hasattr(AudioService, "transcript_asr")
+        assert callable(AudioService.transcript_asr)
+
+    def test_transcript_tts_method_exists(self):
+        """Test that AudioService.transcript_tts exists."""
+        assert hasattr(AudioService, "transcript_tts")
+        assert callable(AudioService.transcript_tts)
+
+
+class TestServiceErrorTypes:
+    """Test service error types used by audio controller."""
+
+    def test_no_audio_uploaded_service_error(self):
+        """Test NoAudioUploadedServiceError exists."""
+        error = NoAudioUploadedServiceError()
+        assert error is not None
+
+    def test_audio_too_large_service_error(self):
+        """Test AudioTooLargeServiceError with message."""
+        error = AudioTooLargeServiceError("File too large")
+        assert "File too large" in str(error)
+
+    def test_unsupported_audio_type_service_error(self):
+        """Test UnsupportedAudioTypeServiceError exists."""
+        error = UnsupportedAudioTypeServiceError()
+        assert error is not None
+
+    def test_provider_not_support_speech_to_text_service_error(self):
+        """Test ProviderNotSupportSpeechToTextServiceError exists."""
+        error = ProviderNotSupportSpeechToTextServiceError()
+        assert error is not None
+
+
+# ---------------------------------------------------------------------------
+# Mocked Behavior Tests
+# ---------------------------------------------------------------------------
+
+
+class TestAudioServiceMockedBehavior:
+    """Test AudioService behavior with mocked methods."""
+
+    @pytest.fixture
+    def mock_app(self):
+        """Create an app model."""
+        from models.model import App
+
+        app = App(
+            id=str(uuid.uuid4()),
+        )
+        return app
+
+    @pytest.fixture
+    def mock_file(self):
+        """Create a file upload."""
+        return FileStorage(stream=io.BytesIO(b"audio"), filename="test_audio.mp3", content_type="audio/mpeg")
+
+    @patch.object(AudioService, "transcript_asr")
+    def test_transcript_asr_returns_response(self, mock_asr, mock_app, mock_file, sqlite_session: Session):
+        """Test ASR transcription returns response dict."""
+        mock_response = {"text": "Transcribed text"}
+        mock_asr.return_value = mock_response
+
+        result = AudioService.transcript_asr(
+            app_model=mock_app,
+            file=mock_file,
+            session=sqlite_session,
+            end_user="user_123",
+        )
+
+        assert result["text"] == "Transcribed text"
+
+    @patch.object(AudioService, "transcript_tts")
+    def test_transcript_tts_returns_response(self, mock_tts, mock_app, sqlite_session: Session):
+        """Test TTS transcription returns response."""
+        mock_response = {"audio": "base64_audio_data"}
+        mock_tts.return_value = mock_response
+
+        result = AudioService.transcript_tts(
+            app_model=mock_app,
+            session=sqlite_session,
+            text="Hello world",
+            voice="nova",
+            end_user="user_123",
+        )
+
+        assert result["audio"] == "base64_audio_data"
+        assert mock_tts.call_args.kwargs["session"] is sqlite_session
+
+
+class TestAudioApi:
+    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+        calls: dict[str, object] = {}
+
+        def fake_transcript_asr(**kwargs: object) -> dict[str, str]:
+            calls.update(kwargs)
+            return {"text": "ok"}
+
+        monkeypatch.setattr(AudioService, "transcript_asr", fake_transcript_asr)
+        api = AudioApi()
+        handler = unwrap(api.post)
+        app_model = _app()
+        end_user = _end_user()
+
+        with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
+            response = handler(api, sqlite_session, app_model=app_model, end_user=end_user)
+
+        assert response == {"text": "ok"}
+        assert calls["session"] is sqlite_session
+
+    @pytest.mark.parametrize(
+        ("exc", "expected"),
+        [
+            (AppModelConfigBrokenError(), AppUnavailableError),
+            (NoAudioUploadedServiceError(), NoAudioUploadedError),
+            (AudioTooLargeServiceError("too big"), AudioTooLargeError),
+            (UnsupportedAudioTypeServiceError(), UnsupportedAudioTypeError),
+            (ProviderNotSupportSpeechToTextServiceError(), ProviderNotSupportSpeechToTextError),
+            (SpeechToTextDisabledServiceError(), SpeechToTextDisabledError),
+            (ProviderTokenNotInitError("token"), ProviderNotInitializeError),
+            (QuotaExceededError(), ProviderQuotaExceededError),
+            (ModelCurrentlyNotSupportError(), ProviderModelCurrentlyNotSupportError),
+            (InvokeError("invoke"), CompletionRequestError),
+        ],
+    )
+    def test_error_mapping(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        exc: Exception,
+        expected: type[Exception],
+    ) -> None:
+        monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(exc))
+        api = AudioApi()
+        handler = unwrap(api.post)
+        app_model = _app()
+        end_user = _end_user()
+
+        with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
+            with pytest.raises(expected):
+                handler(api, sqlite_session, app_model=app_model, end_user=end_user)
+
+    def test_unhandled_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+        monkeypatch.setattr(
+            AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("boom"))
+        )
+        api = AudioApi()
+        handler = unwrap(api.post)
+        app_model = _app()
+        end_user = _end_user()
+
+        with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
+            with pytest.raises(InternalServerError):
+                handler(api, sqlite_session, app_model=app_model, end_user=end_user)
+
+
+class TestTextApi:
+    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+        monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: {"audio": "ok"})
+
+        api = TextApi()
+        handler = unwrap(api.post)
+        app_model = _app()
+        end_user = _end_user(end_user_id="end-user-1", external_user_id="ext")
+
+        with app.test_request_context(
+            "/text-to-audio",
+            method="POST",
+            json={"text": "hello", "voice": "v"},
+        ):
+            payload = TextToAudioPayload.model_validate(request.get_json() or {})
+            response = handler(api, payload, sqlite_session, app_model=app_model, end_user=end_user)
+
+        assert response == {"audio": "ok"}
+
+    def test_success_with_message_ref(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        calls = {}
+
+        def fake_transcript_tts(**kwargs):
+            calls.update(kwargs)
+            return {"audio": "ok"}
+
+        monkeypatch.setattr(AudioService, "transcript_tts", fake_transcript_tts)
+
+        api = TextApi()
+        handler = unwrap(api.post)
+        app_model = _app()
+        end_user = _end_user(end_user_id="end-user-1", external_user_id="ext")
+
+        with app.test_request_context(
+            "/text-to-audio",
+            method="POST",
+            json={"text": "hello", "message_id": "message-1"},
+        ):
+            payload = TextToAudioPayload.model_validate(request.get_json() or {})
+            response = handler(api, payload, sqlite_session, app_model=app_model, end_user=end_user)
+
+        assert response == {"audio": "ok"}
+        assert calls["message_ref"] == MessageRef(AppRef("tenant-1", "a1"), "message-1", end_user_id="end-user-1")
+        assert calls["session"] is sqlite_session
+
+    @pytest.mark.parametrize(
+        ("exc", "expected"),
+        [
+            (QuotaExceededError(), ProviderQuotaExceededError),
+            (RuntimeError("internal provider failure"), InternalServerError),
+        ],
+    )
+    def test_error_mapping(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        exc: Exception,
+        expected: type[Exception],
+    ) -> None:
+        def raise_error(**_kwargs: object) -> None:
+            raise exc
+
+        monkeypatch.setattr(AudioService, "transcript_tts", raise_error)
+
+        api = TextApi()
+        handler = unwrap(api.post)
+        app_model = _app()
+        end_user = _end_user(end_user_id="end-user-1", external_user_id="ext")
+
+        with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
+            payload = TextToAudioPayload.model_validate(request.get_json() or {})
+            with pytest.raises(expected):
+                handler(api, payload, sqlite_session, app_model=app_model, end_user=end_user)

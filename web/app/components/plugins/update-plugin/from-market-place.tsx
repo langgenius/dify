@@ -1,187 +1,191 @@
 'use client'
-import type { FC } from 'react'
 import type { UpdateFromMarketPlacePayload } from '../types'
+import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { useIsMutating, useMutation } from '@tanstack/react-query'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import Button from '@/app/components/base/button'
-import Modal from '@/app/components/base/modal'
+import Badge from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
-import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
-import { updateFromMarketPlace } from '@/service/plugins'
-import { useInvalidateReferenceSettings, usePluginTaskList, useRemoveAutoUpgrade } from '@/service/use-plugins'
-import { cn } from '@/utils/classnames'
-import Toast from '../../base/toast'
+import { toast } from '@/app/notifications'
+import { consoleClient } from '@/service/console'
+import { usePluginTaskList, useRemoveAutoUpgrade } from '@/service/use-plugins'
 import useGetIcon from '../install-plugin/base/use-get-icon'
 import { TaskStatus } from '../types'
-import DowngradeWarningModal from './downgrade-warning'
+import DowngradeWarningContent from './downgrade-warning'
 
 const i18nPrefix = 'upgrade'
 
-type Props = {
+type Props = Readonly<{
   payload: UpdateFromMarketPlacePayload
-  pluginId?: string
-  onSave: () => void
-  onCancel: () => void
-  isShowDowngradeWarningModal?: boolean
-}
+  pluginId: string
+  onRefresh: () => void | Promise<void>
+  onSuccess: () => void
+  warnAboutAutoUpdate?: boolean
+}>
 
-enum UploadStep {
-  notStarted = 'notStarted',
-  upgrading = 'upgrading',
-  installed = 'installed',
-}
+const updateMutationKey = (payload: UpdateFromMarketPlacePayload) => [
+  'plugin-marketplace-update',
+  payload.originalPackageInfo.id,
+  payload.targetPackageInfo.id,
+]
 
-const UpdatePluginModal: FC<Props> = ({
+const UpdateFromMarketplaceContent = ({
   payload,
   pluginId,
-  onSave,
-  onCancel,
-  isShowDowngradeWarningModal,
-}) => {
-  const {
-    originalPackageInfo,
-    targetPackageInfo,
-  } = payload
-  const { t } = useTranslation()
+  onRefresh,
+  onSuccess,
+  warnAboutAutoUpdate,
+}: Props) => {
+  const { originalPackageInfo, targetPackageInfo } = payload
+  const { t } = useTranslation(['common', 'plugin'])
+  const upgradeButtonLabelId = React.useId()
   const { getIconUrl } = useGetIcon()
-  const [icon, setIcon] = useState<string>(originalPackageInfo.payload.icon)
-  useEffect(() => {
-    (async () => {
-      const icon = await getIconUrl(originalPackageInfo.payload.icon)
-      setIcon(icon)
-    })()
-  }, [originalPackageInfo, getIconUrl])
-  const {
-    check,
-    stop,
-  } = checkTaskStatus()
-  const handleCancel = () => {
-    stop()
-    onCancel()
-  }
+  const icon = getIconUrl(originalPackageInfo.payload.icon)
 
-  const [uploadStep, setUploadStep] = useState<UploadStep>(UploadStep.notStarted)
-  const { handleRefetch } = usePluginTaskList(payload.category)
-
-  const configBtnText = useMemo(() => {
-    return ({
-      [UploadStep.notStarted]: t(`${i18nPrefix}.upgrade`, { ns: 'plugin' }),
-      [UploadStep.upgrading]: t(`${i18nPrefix}.upgrading`, { ns: 'plugin' }),
-      [UploadStep.installed]: t(`${i18nPrefix}.close`, { ns: 'plugin' }),
-    })[uploadStep]
-  }, [t, uploadStep])
-
-  const handleConfirm = useCallback(async () => {
-    if (uploadStep === UploadStep.notStarted) {
-      setUploadStep(UploadStep.upgrading)
-      try {
-        const {
-          all_installed: isInstalled,
-          task_id: taskId,
-        } = await updateFromMarketPlace({
+  const { handleInstallTaskStart } = usePluginTaskList(payload.category)
+  const exclude = useRemoveAutoUpgrade()
+  const upgrade = useMutation({
+    mutationKey: updateMutationKey(payload),
+    // Keep exclusion and task creation in one submission. The task list owns installation progress.
+    mutationFn: async (excludeFromAutoUpdate: boolean) => {
+      if (excludeFromAutoUpdate)
+        await exclude.mutateAsync({ plugin_id: pluginId, category: payload.category })
+      const response = await consoleClient.workspaces.current.plugin.upgrade.marketplace.post({
+        body: {
           original_plugin_unique_identifier: originalPackageInfo.id,
           new_plugin_unique_identifier: targetPackageInfo.id,
-        })
-
-        if (isInstalled) {
-          onSave()
-          return
-        }
-        handleRefetch()
-        const { status, error } = await check({
-          taskId,
-          pluginUniqueIdentifier: targetPackageInfo.id,
-        })
-        if (status === TaskStatus.failed) {
-          Toast.notify({ type: 'error', message: error! })
-          return
-        }
-        onSave()
-      }
-      // eslint-disable-next-line unused-imports/no-unused-vars
-      catch (e) {
-        setUploadStep(UploadStep.notStarted)
-      }
-      return
-    }
-    if (uploadStep === UploadStep.installed)
-      onSave()
-  }, [onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, targetPackageInfo.id])
-
-  const { mutateAsync } = useRemoveAutoUpgrade()
-  const invalidateReferenceSettings = useInvalidateReferenceSettings()
-  const handleExcludeAndDownload = async () => {
-    if (pluginId) {
-      await mutateAsync({
-        plugin_id: pluginId,
+        },
       })
-    }
-    invalidateReferenceSettings()
-    handleConfirm()
-  }
-  const doShowDowngradeWarningModal = isShowDowngradeWarningModal && uploadStep === UploadStep.notStarted
+      if (response.task?.status === TaskStatus.failed) {
+        const failedPlugin =
+          response.task.plugins?.find(
+            (plugin) => plugin.plugin_unique_identifier === targetPackageInfo.id,
+          ) ?? response.task.plugins?.[0]
+        const message = failedPlugin?.message || t(($) => $.error, { ns: 'common' })
+        toast.error(message)
+        throw new Error(message)
+      }
+      return response
+    },
+    onSuccess: async (response) => {
+      if (response.all_installed) await onRefresh()
+      else handleInstallTaskStart(response)
+    },
+  })
+  const handleConfirm = () => upgrade.mutate(false, { onSuccess })
+  const handleExcludeAndDowngrade = () => upgrade.mutate(true, { onSuccess })
+  const configBtnText = upgrade.isPending
+    ? t(($) => $['upgrade.upgrading'], { ns: 'plugin' })
+    : t(($) => $['upgrade.upgrade'], { ns: 'plugin' })
 
   return (
-    <Modal
-      isShow={true}
-      onClose={onCancel}
-      className={cn('min-w-[560px]', doShowDowngradeWarningModal && 'min-w-[640px]')}
-      closable
-      title={!doShowDowngradeWarningModal && t(`${i18nPrefix}.${uploadStep === UploadStep.installed ? 'successfulTitle' : 'title'}`, { ns: 'plugin' })}
-    >
-      {doShowDowngradeWarningModal && (
-        <DowngradeWarningModal
-          onCancel={onCancel}
+    <>
+      {warnAboutAutoUpdate && (
+        <DowngradeWarningContent
           onJustDowngrade={handleConfirm}
-          onExcludeAndDowngrade={handleExcludeAndDownload}
+          onExcludeAndDowngrade={handleExcludeAndDowngrade}
+          excluding={upgrade.isPending && upgrade.variables === true}
+          downgrading={upgrade.isPending && upgrade.variables === false}
         />
       )}
-      {!doShowDowngradeWarningModal && (
+      {!warnAboutAutoUpdate && (
         <>
-          <div className="system-md-regular mb-2 mt-3 text-text-secondary">
-            {t(`${i18nPrefix}.description`, { ns: 'plugin' })}
-          </div>
-          <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
-            <Card
-              installed={uploadStep === UploadStep.installed}
-              payload={pluginManifestToCardPluginProps({
-                ...originalPackageInfo.payload,
-                icon: icon!,
-              })}
-              className="w-full"
-              titleLeft={(
-                <>
-                  <Badge className="mx-1" size="s" state={BadgeState.Warning}>
-                    {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
-                  </Badge>
-                </>
-              )}
+          <DialogHeader>
+            <DialogTitle>{t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}</DialogTitle>
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             />
-          </div>
-          <div className="flex items-center justify-end gap-2 self-stretch pt-5">
-            {uploadStep === UploadStep.notStarted && (
-              <Button
-                onClick={handleCancel}
-              >
-                {t('operation.cancel', { ns: 'common' })}
-              </Button>
+          </DialogHeader>
+          <DialogBody>
+            <div className="mb-2 system-md-regular text-text-secondary">
+              {t(($) => $[`${i18nPrefix}.description`], { ns: 'plugin' })}
+            </div>
+            <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
+              <Card
+                installed={upgrade.isSuccess}
+                payload={pluginManifestToCardPluginProps({
+                  ...originalPackageInfo.payload,
+                  icon,
+                })}
+                className="w-full"
+                titleLeft={
+                  <>
+                    <Badge className="mx-1" size="s" variant="warning">
+                      {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
+                    </Badge>
+                  </>
+                }
+              />
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            {!upgrade.isPending && (
+              <DialogClose render={<Button />}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </DialogClose>
             )}
             <Button
               variant="primary"
-              loading={uploadStep === UploadStep.upgrading}
+              loading={upgrade.isPending}
               onClick={handleConfirm}
-              disabled={uploadStep === UploadStep.upgrading}
+              aria-labelledby={upgradeButtonLabelId}
             >
-              {configBtnText}
+              <span id={upgradeButtonLabelId}>{configBtnText}</span>
             </Button>
-          </div>
+          </DialogFooter>
         </>
       )}
-
-    </Modal>
+    </>
   )
 }
-export default React.memo(UpdatePluginModal)
+type MarketplaceUpdateDialogProps = Omit<Props, 'onSuccess' | 'warnAboutAutoUpdate'> & {
+  open: boolean
+  onClose: () => void
+  warnAboutAutoUpdate?: boolean
+}
+
+export default function MarketplaceUpdateDialog({
+  open,
+  onClose,
+  warnAboutAutoUpdate = false,
+  ...session
+}: MarketplaceUpdateDialogProps) {
+  const pending = useIsMutating({ mutationKey: updateMutationKey(session.payload) }) > 0
+  return (
+    <>
+      <Dialog
+        open={open && !warnAboutAutoUpdate}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) onClose()
+        }}
+      >
+        <DialogContent className="w-140" backdropProps={{ forceRender: true }}>
+          <UpdateFromMarketplaceContent {...session} onSuccess={onClose} />
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={open && warnAboutAutoUpdate}
+        onOpenChange={(nextOpen, details) => {
+          if (!nextOpen && pending) details.cancel()
+          else if (!nextOpen) onClose()
+        }}
+      >
+        <AlertDialogContent className="w-160" backdropProps={{ forceRender: true }}>
+          <UpdateFromMarketplaceContent {...session} warnAboutAutoUpdate onSuccess={onClose} />
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}

@@ -1,88 +1,129 @@
-from flask import request
-from flask_restx import Resource, fields, marshal_with
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from __future__ import annotations
 
+from datetime import datetime
+from typing import Any
+from uuid import UUID
+
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
+
+from controllers.common.rbac import PlainApp, RBACCheck
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
-from extensions.ext_database import db
-from fields.conversation_variable_fields import (
-    conversation_variable_fields,
-    paginated_conversation_variable_fields,
+from controllers.console.app.error import AppNotFoundError
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import (
+    RBACPermission,
+    validate_request,
 )
-from libs.login import login_required
-from models import ConversationVariable
-from models.model import AppMode
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+from extensions.ext_application_services import application_services
+from fields._value_type_serializer import serialize_value_type
+from fields.base import ResponseModel
+from libs.external_api import error_responses
+from libs.helper import dump_response, to_timestamp
+from machinery.context import RequestContext
+from services.conversation_variable_query import CONVERSATION_VARIABLE_LIMIT, ConversationVariableAppNotFoundError
 
 
 class ConversationVariablesQuery(BaseModel):
     conversation_id: str = Field(..., description="Conversation ID to filter variables")
 
 
-console_ns.schema_model(
-    ConversationVariablesQuery.__name__,
-    ConversationVariablesQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+class ConversationVariableResponse(ResponseModel):
+    id: str
+    name: str
+    value_type: str
+    value: str | None = None
+    description: str | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
 
-# Register models for flask_restx to avoid dict type issues in Swagger
-# Register base model first
-conversation_variable_model = console_ns.model("ConversationVariable", conversation_variable_fields)
+    @field_validator("value_type", mode="before")
+    @classmethod
+    def _normalize_value_type(cls, value: Any) -> str:
+        exposed_type = getattr(value, "exposed_type", None)
+        if callable(exposed_type):
+            return str(exposed_type())
+        if isinstance(value, str):
+            return value
+        try:
+            return serialize_value_type(value)
+        except Exception:
+            return serialize_value_type({"value_type": value})
 
-# For nested models, need to replace nested dict with registered model
-paginated_conversation_variable_fields_copy = paginated_conversation_variable_fields.copy()
-paginated_conversation_variable_fields_copy["data"] = fields.List(
-    fields.Nested(conversation_variable_model), attribute="data"
-)
-paginated_conversation_variable_model = console_ns.model(
-    "PaginatedConversationVariable", paginated_conversation_variable_fields_copy
+    @field_validator("value", mode="before")
+    @classmethod
+    def _normalize_value(cls, value: Any | None) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(value)
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class PaginatedConversationVariableResponse(ResponseModel):
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+    data: list[ConversationVariableResponse]
+
+
+register_schema_models(
+    console_ns,
+    ConversationVariablesQuery,
+    ConversationVariableResponse,
+    PaginatedConversationVariableResponse,
 )
 
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-variables")
 class ConversationVariablesApi(Resource):
+    @error_responses(AppNotFoundError)
     @console_ns.doc("get_conversation_variables")
     @console_ns.doc(description="Get conversation variables for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ConversationVariablesQuery.__name__])
-    @console_ns.response(200, "Conversation variables retrieved successfully", paginated_conversation_variable_model)
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=AppMode.ADVANCED_CHAT)
-    @marshal_with(paginated_conversation_variable_model)
-    def get(self, app_model):
-        args = ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @console_ns.doc(params=query_params_from_model(ConversationVariablesQuery))
+    @console_ns.response(
+        200,
+        "Conversation variables retrieved successfully",
+        console_ns.models[PaginatedConversationVariableResponse.__name__],
+    )
+    @console_account_admission(
+        rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
+    )
+    def get(self, request_context: RequestContext, app_id: UUID):
+        queries = application_services().conversation_variables
+        # Preserve the legacy app-not-found/mode check before query validation.
+        try:
+            queries.require_app(request_context, str(app_id))
+        except ConversationVariableAppNotFoundError as error:
+            raise AppNotFoundError(str(error)) from error
+        req_data = validate_request(ConversationVariablesQuery)
+        rows = queries.list_variables(request_context, str(app_id), req_data.conversation_id)
 
-        stmt = (
-            select(ConversationVariable)
-            .where(ConversationVariable.app_id == app_model.id)
-            .order_by(ConversationVariable.created_at)
+        return dump_response(
+            PaginatedConversationVariableResponse,
+            {
+                "page": 1,
+                "limit": CONVERSATION_VARIABLE_LIMIT,
+                "total": len(rows),
+                "has_more": False,
+                "data": [
+                    ConversationVariableResponse.model_validate(
+                        {
+                            "created_at": row.created_at,
+                            "updated_at": row.updated_at,
+                            **row.variable.model_dump(),
+                            "id": row.id,
+                        }
+                    )
+                    for row in rows
+                ],
+            },
         )
-        stmt = stmt.where(ConversationVariable.conversation_id == args.conversation_id)
-
-        # NOTE: This is a temporary solution to avoid performance issues.
-        page = 1
-        page_size = 100
-        stmt = stmt.limit(page_size).offset((page - 1) * page_size)
-
-        with Session(db.engine) as session:
-            rows = session.scalars(stmt).all()
-
-        return {
-            "page": page,
-            "limit": page_size,
-            "total": len(rows),
-            "has_more": False,
-            "data": [
-                {
-                    "created_at": row.created_at,
-                    "updated_at": row.updated_at,
-                    **row.to_variable().model_dump(),
-                }
-                for row in rows
-            ],
-        }

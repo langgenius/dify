@@ -1,3 +1,7 @@
+from typing import Any, cast
+
+from sqlalchemy.orm import Session
+
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
 from core.app.app_config.easy_ui_based_app.dataset.manager import DatasetConfigManager
@@ -13,7 +17,7 @@ from core.app.app_config.features.suggested_questions_after_answer.manager impor
     SuggestedQuestionsAfterAnswerConfigManager,
 )
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
-from models.model import App, AppMode, AppModelConfig, Conversation
+from models.model import AnnotationReplyConfig, App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
 
 
 class ChatAppConfig(EasyUIBasedAppConfig):
@@ -31,7 +35,9 @@ class ChatAppConfigManager(BaseAppConfigManager):
         app_model: App,
         app_model_config: AppModelConfig,
         conversation: Conversation | None = None,
-        override_config_dict: dict | None = None,
+        override_config_dict: AppModelConfigDict | None = None,
+        *,
+        annotation_reply: AnnotationReplyConfig | None,
     ) -> ChatAppConfig:
         """
         Convert app model config to chat app config
@@ -49,7 +55,9 @@ class ChatAppConfigManager(BaseAppConfigManager):
             config_from = EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
 
         if config_from != EasyUIBasedAppModelConfigFrom.ARGS:
-            app_model_config_dict = app_model_config.to_dict()
+            if annotation_reply is None:
+                raise ValueError("Annotation reply config is required")
+            app_model_config_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
             config_dict = app_model_config_dict.copy()
         else:
             if not override_config_dict:
@@ -64,7 +72,7 @@ class ChatAppConfigManager(BaseAppConfigManager):
             app_mode=app_mode,
             app_model_config_from=config_from,
             app_model_config_id=app_model_config.id,
-            app_model_config_dict=config_dict,
+            app_model_config_dict=cast(dict[str, Any], config_dict),
             model=ModelConfigManager.convert(config=config_dict),
             prompt_template=PromptTemplateConfigManager.convert(config=config_dict),
             sensitive_word_avoidance=SensitiveWordAvoidanceConfigManager.convert(config=config_dict),
@@ -79,7 +87,7 @@ class ChatAppConfigManager(BaseAppConfigManager):
         return app_config
 
     @classmethod
-    def config_validate(cls, tenant_id: str, config: dict):
+    def config_validate(cls, tenant_id: str, config: dict[str, Any], session: Session) -> AppModelConfigDict:
         """
         Validate for chat app model config
 
@@ -108,7 +116,7 @@ class ChatAppConfigManager(BaseAppConfigManager):
 
         # dataset_query_variable
         config, current_related_config_keys = DatasetConfigManager.validate_and_set_defaults(
-            tenant_id, app_mode, config
+            tenant_id, app_mode, config, session=session
         )
         related_config_keys.extend(current_related_config_keys)
 
@@ -145,4 +153,4 @@ class ChatAppConfigManager(BaseAppConfigManager):
         # Filter out extra parameters
         filtered_config = {key: config.get(key) for key in related_config_keys}
 
-        return filtered_config
+        return cast(AppModelConfigDict, filtered_config)

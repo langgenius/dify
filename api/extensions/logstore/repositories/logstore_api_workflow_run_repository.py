@@ -16,19 +16,25 @@ Key Features:
 import logging
 import os
 import time
-from collections.abc import Sequence
-from datetime import datetime
-from typing import Any, cast
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from datetime import UTC, datetime
+from typing import Any, cast, override
 
 from sqlalchemy.orm import sessionmaker
 
+from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPauseReason
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value, escape_sql_string
+from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
+from graphon.enums import WorkflowExecutionStatus
+from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import WorkflowRun
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowRun, WorkflowType
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository, AppWorkflowRunStats
+from repositories.entities.workflow_pause import WorkflowPauseEntity
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.types import (
     AverageInteractionStats,
     DailyRunsStats,
@@ -59,11 +65,37 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     model.tenant_id = data.get("tenant_id") or ""
     model.app_id = data.get("app_id") or ""
     model.workflow_id = data.get("workflow_id") or ""
-    model.type = data.get("type") or ""
-    model.triggered_from = data.get("triggered_from") or ""
+    type_val = data.get("type")
+    try:
+        model.type = WorkflowType(str(type_val)) if type_val else WorkflowType.WORKFLOW
+    except ValueError:
+        logger.warning("Invalid type value: %s, falling back to WORKFLOW", type_val)
+        model.type = WorkflowType.WORKFLOW
+    triggered_from_val = data.get("triggered_from")
+    try:
+        model.triggered_from = (
+            WorkflowRunTriggeredFrom(str(triggered_from_val))
+            if triggered_from_val
+            else WorkflowRunTriggeredFrom.APP_RUN
+        )
+    except ValueError:
+        logger.warning("Invalid triggered_from value: %s, falling back to APP_RUN", triggered_from_val)
+        model.triggered_from = WorkflowRunTriggeredFrom.APP_RUN
     model.version = data.get("version") or ""
-    model.status = data.get("status") or "running"  # Default status if missing
-    model.created_by_role = data.get("created_by_role") or ""
+    status_val = data.get("status")
+    try:
+        model.status = WorkflowExecutionStatus(str(status_val)) if status_val else WorkflowExecutionStatus.RUNNING
+    except ValueError:
+        logger.warning("Invalid status value: %s, falling back to RUNNING", status_val)
+        model.status = WorkflowExecutionStatus.RUNNING
+    created_by_role_val = data.get("created_by_role")
+    try:
+        model.created_by_role = (
+            CreatorUserRole(str(created_by_role_val)) if created_by_role_val else CreatorUserRole.ACCOUNT
+        )
+    except ValueError:
+        logger.warning("Invalid created_by_role value: %s, falling back to ACCOUNT", created_by_role_val)
+        model.created_by_role = CreatorUserRole.ACCOUNT
     model.created_by = data.get("created_by") or ""
 
     model.total_tokens = safe_int(data.get("total_tokens", 0))
@@ -77,30 +109,34 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     model.error = data.get("error_message") or data.get("error")
 
     # Handle datetime fields
+    # Every branch must yield naive UTC, matching what the database path stores.
+    # Mixing naive local time and aware values here breaks the elapsed_time subtraction below.
     started_at = data.get("started_at") or data.get("created_at")
     if started_at:
-        if isinstance(started_at, str):
-            model.created_at = datetime.fromisoformat(started_at)
-        elif isinstance(started_at, (int, float)):
-            model.created_at = datetime.fromtimestamp(started_at)
-        else:
-            model.created_at = started_at
+        match started_at:
+            case str():
+                model.created_at = ensure_naive_utc(datetime.fromisoformat(started_at))
+            case int() | float():
+                model.created_at = datetime.fromtimestamp(started_at, tz=UTC).replace(tzinfo=None)
+            case _:
+                model.created_at = ensure_naive_utc(started_at)
     else:
         # Provide default created_at if missing
-        model.created_at = datetime.now()
+        model.created_at = naive_utc_now()
 
     finished_at = data.get("finished_at")
     if finished_at:
-        if isinstance(finished_at, str):
-            model.finished_at = datetime.fromisoformat(finished_at)
-        elif isinstance(finished_at, (int, float)):
-            model.finished_at = datetime.fromtimestamp(finished_at)
-        else:
-            model.finished_at = finished_at
+        match finished_at:
+            case str():
+                model.finished_at = ensure_naive_utc(datetime.fromisoformat(finished_at))
+            case int() | float():
+                model.finished_at = datetime.fromtimestamp(finished_at, tz=UTC).replace(tzinfo=None)
+            case _:
+                model.finished_at = ensure_naive_utc(finished_at)
 
-    # Compute elapsed_time from started_at and finished_at
-    # LogStore doesn't store elapsed_time, it's computed in WorkflowExecution domain entity
-    if model.finished_at and model.created_at:
+    if data.get("elapsed_time") is not None:
+        model.elapsed_time = safe_float(data["elapsed_time"])
+    elif model.finished_at and model.created_at:
         model.elapsed_time = (model.finished_at - model.created_at).total_seconds()
     else:
         # Use safe conversion to handle 'null' strings and None values
@@ -120,21 +156,85 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     - Proper time range filtering for LogStore queries
     """
 
-    def __init__(self, session_maker: sessionmaker | None = None):
+    def __init__(self, session_maker: sessionmaker):
         """
         Initialize the repository with LogStore client.
 
         Args:
-            session_maker: SQLAlchemy sessionmaker (unused, for compatibility with factory pattern)
+            session_maker: SQLAlchemy sessionmaker for transactional pause and task-control data
         """
         logger.debug("LogstoreAPIWorkflowRunRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
+        self._control_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker)
 
         # Control flag for dual-read (fallback to PostgreSQL when LogStore returns no results)
         # Set to True to enable fallback for safe migration from PostgreSQL to LogStore
         # Set to False for new deployments without legacy data in PostgreSQL
         self._enable_dual_read = os.environ.get("LOGSTORE_DUAL_READ_ENABLED", "true").lower() == "true"
 
+    # Pause state and task ownership are transactional control data, independent
+    # of the append-only backend used for workflow history.
+    @override
+    def create_workflow_pause(
+        self,
+        workflow_run_id: str,
+        state_owner_user_id: str,
+        state: str,
+        pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
+    ) -> WorkflowPauseEntity:
+        return self._control_repository.create_workflow_pause(
+            workflow_run_id, state_owner_user_id, state, pause_reasons
+        )
+
+    @override
+    def bind_workflow_task(self, *, tenant_id: str, app_id: str, workflow_run_id: str, task_id: str) -> None:
+        self._control_repository.bind_workflow_task(
+            tenant_id=tenant_id, app_id=app_id, workflow_run_id=workflow_run_id, task_id=task_id
+        )
+
+    @override
+    def backfill_workflow_pause_task_id(
+        self, *, tenant_id: str, app_id: str, workflow_run_id: str, pause_id: str, task_id: str
+    ) -> bool:
+        return self._control_repository.backfill_workflow_pause_task_id(
+            tenant_id=tenant_id, app_id=app_id, workflow_run_id=workflow_run_id, pause_id=pause_id, task_id=task_id
+        )
+
+    @override
+    def stop_paused_workflow_task(
+        self, *, tenant_id: str, app_id: str, task_id: str, owner: tuple[CreatorUserRole, str] | None
+    ) -> WorkflowRun | None:
+        return self._control_repository.stop_paused_workflow_task(
+            tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner
+        )
+
+    @override
+    def get_workflow_pause(self, workflow_run_id: str) -> WorkflowPauseEntity | None:
+        return self._control_repository.get_workflow_pause(workflow_run_id)
+
+    @override
+    def resume_workflow_pause(
+        self,
+        workflow_run_id: str,
+        pause_entity: WorkflowPauseEntity,
+        *,
+        before_resume: Callable[[], None] | None = None,
+    ) -> WorkflowPauseEntity:
+        return self._control_repository.resume_workflow_pause(
+            workflow_run_id, pause_entity, before_resume=before_resume
+        )
+
+    @override
+    def delete_workflow_pause(self, pause_entity: WorkflowPauseEntity) -> None:
+        self._control_repository.delete_workflow_pause(pause_entity)
+
+    @override
+    def prune_pauses(
+        self, expiration: datetime, resumption_expiration: datetime, limit: int | None = None
+    ) -> Sequence[str]:
+        return self._control_repository.prune_pauses(expiration, resumption_expiration, limit)
+
+    @override
     def get_paginated_workflow_runs(
         self,
         tenant_id: str,
@@ -230,6 +330,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             logger.exception("Failed to get paginated workflow runs from LogStore")
             raise
 
+    @override
     def get_workflow_run_by_id(
         self,
         tenant_id: str,
@@ -244,6 +345,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         """
         logger.debug("get_workflow_run_by_id: tenant_id=%s, app_id=%s, run_id=%s", tenant_id, app_id, run_id)
 
+        control = self._control_repository.get_workflow_run_by_id(tenant_id, app_id, run_id)
+        if control is not None and control.task_id is not None:
+            return control
+
         try:
             # Escape parameters to prevent SQL injection
             escaped_run_id = escape_identifier(run_id)
@@ -255,12 +360,12 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 # Use PG protocol with SQL query (get latest version of record)
                 sql_query = f"""
                     SELECT * FROM (
-                        SELECT *, 
+                        SELECT *,
                             ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
                         FROM "{AliyunLogStore.workflow_execution_logstore}"
-                        WHERE id = '{escaped_run_id}' 
-                          AND tenant_id = '{escaped_tenant_id}' 
-                          AND app_id = '{escaped_app_id}' 
+                        WHERE id = '{escaped_run_id}'
+                          AND tenant_id = '{escaped_tenant_id}'
+                          AND app_id = '{escaped_app_id}'
                           AND __time__ > 0
                     ) AS subquery WHERE rn = 1
                     LIMIT 100
@@ -327,16 +432,17 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     ) -> WorkflowRun | None:
         """Fallback to PostgreSQL query for records not in LogStore (with tenant isolation)."""
         from sqlalchemy import select
-        from sqlalchemy.orm import Session
+        from sqlalchemy.orm import sessionmaker
 
         from extensions.ext_database import db
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             stmt = select(WorkflowRun).where(
                 WorkflowRun.id == run_id, WorkflowRun.tenant_id == tenant_id, WorkflowRun.app_id == app_id
             )
             return session.scalar(stmt)
 
+    @override
     def get_workflow_run_by_id_without_tenant(
         self,
         run_id: str,
@@ -348,6 +454,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         """
         logger.debug("get_workflow_run_by_id_without_tenant: run_id=%s", run_id)
 
+        control = self._control_repository.get_workflow_run_by_id_without_tenant(run_id)
+        if control is not None and control.task_id is not None:
+            return control
+
         try:
             # Escape parameter to prevent SQL injection
             escaped_run_id = escape_identifier(run_id)
@@ -357,7 +467,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 # Use PG protocol with SQL query (get latest version of record)
                 sql_query = f"""
                     SELECT * FROM (
-                        SELECT *, 
+                        SELECT *,
                             ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
                         FROM "{AliyunLogStore.workflow_execution_logstore}"
                         WHERE id = '{escaped_run_id}' AND __time__ > 0
@@ -412,14 +522,15 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     def _fallback_get_workflow_run_by_id(self, run_id: str) -> WorkflowRun | None:
         """Fallback to PostgreSQL query for records not in LogStore."""
         from sqlalchemy import select
-        from sqlalchemy.orm import Session
+        from sqlalchemy.orm import sessionmaker
 
         from extensions.ext_database import db
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             stmt = select(WorkflowRun).where(WorkflowRun.id == run_id)
             return session.scalar(stmt)
 
+    @override
     def get_workflow_runs_count(
         self,
         tenant_id: str,
@@ -567,6 +678,125 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             logger.exception("Failed to get workflow runs count")
             raise
 
+    @override
+    def get_stats_by_app_ids(
+        self,
+        tenant_id_by_app_id: Mapping[str, str],
+        triggered_from: Sequence[WorkflowRunTriggeredFrom],
+        created_since: datetime,
+    ) -> dict[str, AppWorkflowRunStats]:
+        """
+        Combine two queries: the windowed counts need the latest version of each
+        run, while the newest start time does not and spans the whole history.
+        """
+        if not tenant_id_by_app_id:
+            return {}
+        status_counts = self._status_counts_by_app(tenant_id_by_app_id, triggered_from, created_since)
+        return {
+            app_id: AppWorkflowRunStats(status_counts=status_counts.get(app_id, {}), last_created_at=started_at)
+            for app_id, started_at in self._last_started_at_by_app(tenant_id_by_app_id, triggered_from).items()
+        }
+
+    def _status_counts_by_app(
+        self,
+        tenant_id_by_app_id: Mapping[str, str],
+        triggered_from: Sequence[WorkflowRunTriggeredFrom],
+        created_since: datetime,
+    ) -> dict[str, dict[WorkflowExecutionStatus, int]]:
+        """
+        Count runs per app and latest status.
+
+        Every log version of a run carries the run's started_at, and each one is
+        written after the run starts, so __time__ prunes the scan before the
+        window function picks the latest version.
+        """
+        # started_at is stored as naive UTC isoformat, so string comparison orders it chronologically.
+        since = escape_sql_string(created_since.isoformat())
+        since_unix = int(created_since.replace(tzinfo=UTC).timestamp())
+        sql = f"""
+            SELECT tenant_id, app_id, status, COUNT(*) AS count
+            FROM (
+                SELECT tenant_id, app_id, status,
+                    ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
+                FROM {AliyunLogStore.workflow_execution_logstore}
+                WHERE {self._app_run_filter(tenant_id_by_app_id, triggered_from)}
+                  AND __time__ >= {since_unix}
+                  AND started_at >= '{since}'
+            ) t
+            WHERE rn = 1
+            GROUP BY tenant_id, app_id, status
+        """
+        try:
+            results = self.logstore_client.execute_sql(
+                sql=sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore
+            )
+        except Exception:
+            logger.exception("Failed to get workflow run status counts by app")
+            raise
+
+        counts: dict[str, dict[WorkflowExecutionStatus, int]] = {}
+        for row in results:
+            app_id = row.get("app_id")
+            if app_id not in tenant_id_by_app_id or tenant_id_by_app_id[app_id] != row.get("tenant_id"):
+                continue
+            try:
+                status = WorkflowExecutionStatus(str(row.get("status")))
+            except ValueError:
+                logger.warning("Invalid status value: %s, skipping", row.get("status"))
+                continue
+            counts.setdefault(app_id, {})[status] = safe_int(row.get("count", 0))
+        return counts
+
+    def _last_started_at_by_app(
+        self,
+        tenant_id_by_app_id: Mapping[str, str],
+        triggered_from: Sequence[WorkflowRunTriggeredFrom],
+    ) -> dict[str, datetime]:
+        """Every log version of a run carries the same started_at, so no deduplication is needed."""
+        sql = f"""
+            SELECT tenant_id, app_id, MAX(started_at) AS last_started_at
+            FROM {AliyunLogStore.workflow_execution_logstore}
+            WHERE {self._app_run_filter(tenant_id_by_app_id, triggered_from)}
+              AND started_at != ''
+              AND __time__ > 0
+            GROUP BY tenant_id, app_id
+        """
+        try:
+            results = self.logstore_client.execute_sql(
+                sql=sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore
+            )
+        except Exception:
+            logger.exception("Failed to get last workflow run time by app")
+            raise
+
+        last_created_at: dict[str, datetime] = {}
+        for row in results:
+            app_id = row.get("app_id")
+            started_at = row.get("last_started_at")
+            if (
+                app_id in tenant_id_by_app_id
+                and tenant_id_by_app_id[app_id] == row.get("tenant_id")
+                and isinstance(started_at, str)
+                and started_at
+            ):
+                last_created_at[app_id] = ensure_naive_utc(datetime.fromisoformat(started_at))
+        return last_created_at
+
+    @staticmethod
+    def _app_run_filter(
+        tenant_id_by_app_id: Mapping[str, str], triggered_from: Sequence[WorkflowRunTriggeredFrom]
+    ) -> str:
+        def in_list(values: Iterable[str]) -> str:
+            return ", ".join(f"'{escape_identifier(value)}'" for value in values)
+
+        sources = ", ".join(f"'{escape_sql_string(source.value)}'" for source in triggered_from)
+        return (
+            f"tenant_id IN ({in_list(set(tenant_id_by_app_id.values()))})"
+            f" AND app_id IN ({in_list(tenant_id_by_app_id)})"
+            f" AND triggered_from IN ({sources})"
+        )
+
+    @override
     def get_daily_runs_statistics(
         self,
         tenant_id: str,
@@ -625,6 +855,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             logger.exception("Failed to get daily runs statistics")
             raise
 
+    @override
     def get_daily_terminals_statistics(
         self,
         tenant_id: str,
@@ -685,6 +916,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             logger.exception("Failed to get daily terminals statistics")
             raise
 
+    @override
     def get_daily_token_cost_statistics(
         self,
         tenant_id: str,
@@ -745,6 +977,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             logger.exception("Failed to get daily token cost statistics")
             raise
 
+    @override
     def get_average_app_interaction_statistics(
         self,
         tenant_id: str,

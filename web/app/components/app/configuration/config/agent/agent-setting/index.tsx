@@ -1,172 +1,219 @@
 'use client'
-import type { FC } from 'react'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { AgentConfig } from '@/models/debug'
-import { RiCloseLine } from '@remixicon/react'
-import { useClickAway } from 'ahooks'
-import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogClose,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
-import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
-import Slider from '@/app/components/base/slider'
 import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
 import ItemPanel from './item-panel'
 
-type Props = {
+type Props = Readonly<{
   isChatModel: boolean
   payload: AgentConfig
   isFunctionCall: boolean
-  onCancel: () => void
-  onSave: (payload: any) => void
-}
+  disabled?: boolean
+  onSave: (payload: AgentConfig) => void
+}>
 
 const maxIterationsMin = 1
 
-const AgentSetting: FC<Props> = ({
+export function AgentSettingDialog({ disabled, onSave, ...props }: Props) {
+  const { t } = useTranslation(['appDebug'])
+  const actionsRef = useRef<DialogActions>(null)
+
+  return (
+    <Dialog actionsRef={actionsRef}>
+      <DialogTrigger render={<Button className="mr-2 shrink-0" disabled={disabled} />}>
+        <span aria-hidden className="i-ri-settings-2-line size-4 text-text-tertiary" />
+        {t(($) => $['agent.setting.name'])}
+      </DialogTrigger>
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogPopup className="fixed top-2 right-2 bottom-2 flex w-160 max-w-[calc(100vw-1rem)] flex-col overflow-hidden overscroll-contain rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
+          <AgentSettingsForm
+            {...props}
+            onSave={(payload) => {
+              onSave(payload)
+              actionsRef.current?.close()
+            }}
+          />
+        </DialogPopup>
+      </DialogPortal>
+    </Dialog>
+  )
+}
+
+function AgentSettingsForm({
   isChatModel,
   payload,
   isFunctionCall,
-  onCancel,
   onSave,
-}) => {
-  const { t } = useTranslation()
+}: Omit<Props, 'disabled'>) {
+  const { t } = useTranslation(['appDebug', 'common', 'tools'])
   const [tempPayload, setTempPayload] = useState(payload)
-  const ref = useRef(null)
-  const [mounted, setMounted] = useState(false)
-
-  useClickAway(() => {
-    if (mounted)
-      onCancel()
-  }, ref)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const maximumIterationsLabel = t(($) => $['agent.setting.maximumIterations.name'], {
+    ns: 'appDebug',
+  })
+  const sliderValue = Number.isFinite(tempPayload.max_iteration)
+    ? tempPayload.max_iteration
+    : maxIterationsMin
 
   const handleSave = () => {
-    onSave(tempPayload)
+    onSave({
+      ...tempPayload,
+      max_iteration: sliderValue,
+    })
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex justify-end overflow-hidden p-2"
-      style={{
-        backgroundColor: 'rgba(16, 24, 40, 0.20)',
+    <form
+      className="flex min-h-0 flex-1 flex-col"
+      onSubmit={(event) => {
+        event.preventDefault()
+        handleSave()
       }}
     >
-      <div
-        ref={ref}
-        className="flex h-full w-[640px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
-      >
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5">
-          <div className="flex flex-col text-base font-semibold text-text-primary">
-            <div className="leading-6">{t('agent.setting.name', { ns: 'appDebug' })}</div>
-          </div>
-          <div className="flex items-center">
-            <div
-              onClick={onCancel}
-              className="flex h-6 w-6 cursor-pointer items-center justify-center"
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
+        <DialogTitle>{t(($) => $['agent.setting.name'], { ns: 'appDebug' })}</DialogTitle>
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="sm"
+              className="static z-auto size-6 shrink-0 rounded-2xl"
             >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
+      </div>
+      {/* Body */}
+      <div
+        className="grow overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-17"
+        style={{
+          borderBottom: 'rgba(0, 0, 0, 0.05)',
+        }}
+      >
+        {/* Agent Mode */}
+        <ItemPanel
+          className="mb-4"
+          icon={
+            <span
+              aria-hidden
+              className="i-custom-vender-solid-communication-cute-robot size-4 text-indigo-600"
+            />
+          }
+          name={t(($) => $['agent.agentMode'], { ns: 'appDebug' })}
+          description={t(($) => $['agent.agentModeDes'], { ns: 'appDebug' })}
+        >
+          <div className="text-[13px] leading-4.5 font-medium text-text-primary">
+            {isFunctionCall
+              ? t(($) => $['agent.agentModeType.functionCall'], { ns: 'appDebug' })
+              : t(($) => $['agent.agentModeType.ReACT'], { ns: 'appDebug' })}
+          </div>
+        </ItemPanel>
+
+        <ItemPanel
+          className="mb-4"
+          icon={
+            <span
+              aria-hidden
+              className="i-custom-vender-solid-education-unblur h-4 w-4 text-[#FB6514]"
+            />
+          }
+          name={maximumIterationsLabel}
+          description={t(($) => $['agent.setting.maximumIterations.description'], {
+            ns: 'appDebug',
+          })}
+        >
+          <Fieldset className="flex items-center">
+            <FieldsetLegend className="sr-only">{maximumIterationsLabel}</FieldsetLegend>
+            <Slider
+              className="mr-3 w-39"
+              min={maxIterationsMin}
+              max={MAX_ITERATIONS_NUM}
+              value={sliderValue}
+              onValueChange={(value) => {
+                setTempPayload({
+                  ...tempPayload,
+                  max_iteration: value,
+                })
+              }}
+            >
+              <SliderLabel className="sr-only">{maximumIterationsLabel}</SliderLabel>
+              <SliderControl>
+                <SliderTrack>
+                  <SliderIndicator />
+                  <SliderThumb />
+                </SliderTrack>
+              </SliderControl>
+            </Slider>
+
+            <input
+              aria-label={maximumIterationsLabel}
+              type="number"
+              min={maxIterationsMin}
+              max={MAX_ITERATIONS_NUM}
+              step={1}
+              className="block h-7 w-11 rounded-lg border-0 bg-components-input-bg-normal px-1.5 pl-1 leading-7 text-text-primary placeholder:text-text-tertiary focus:inset-ring-1 focus:inset-ring-primary-600"
+              value={Number.isFinite(tempPayload.max_iteration) ? tempPayload.max_iteration : ''}
+              onChange={(e) => {
+                let value = Number.parseInt(e.target.value, 10)
+                if (value < maxIterationsMin) value = maxIterationsMin
+
+                if (value > MAX_ITERATIONS_NUM) value = MAX_ITERATIONS_NUM
+                setTempPayload({
+                  ...tempPayload,
+                  max_iteration: value,
+                })
+              }}
+            />
+          </Fieldset>
+        </ItemPanel>
+
+        {!isFunctionCall && (
+          <div className="rounded-xl bg-background-section-burn py-2 shadow-xs">
+            <div className="flex h-8 items-center px-4 text-sm/6 font-semibold text-text-secondary">
+              {t(($) => $.builtInPromptTitle, { ns: 'tools' })}
+            </div>
+            <div className="h-99 overflow-y-auto px-4 text-sm leading-5 font-normal whitespace-pre-line text-text-secondary">
+              {isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion}
+            </div>
+            <div className="px-4">
+              <div className="inline-flex h-5 items-center rounded-md bg-components-input-bg-normal px-1 text-xs leading-4.5 font-medium text-text-tertiary">
+                {(isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion).length}
+              </div>
             </div>
           </div>
-        </div>
-        {/* Body */}
-        <div
-          className="grow overflow-y-auto border-b p-6 pb-[68px] pt-5"
-          style={{
-            borderBottom: 'rgba(0, 0, 0, 0.05)',
-          }}
-        >
-          {/* Agent Mode */}
-          <ItemPanel
-            className="mb-4"
-            icon={
-              <CuteRobot className="h-4 w-4 text-indigo-600" />
-            }
-            name={t('agent.agentMode', { ns: 'appDebug' })}
-            description={t('agent.agentModeDes', { ns: 'appDebug' })}
-          >
-            <div className="text-[13px] font-medium leading-[18px] text-text-primary">{isFunctionCall ? t('agent.agentModeType.functionCall', { ns: 'appDebug' }) : t('agent.agentModeType.ReACT', { ns: 'appDebug' })}</div>
-          </ItemPanel>
-
-          <ItemPanel
-            className="mb-4"
-            icon={
-              <Unblur className="h-4 w-4 text-[#FB6514]" />
-            }
-            name={t('agent.setting.maximumIterations.name', { ns: 'appDebug' })}
-            description={t('agent.setting.maximumIterations.description', { ns: 'appDebug' })}
-          >
-            <div className="flex items-center">
-              <Slider
-                className="mr-3 w-[156px]"
-                min={maxIterationsMin}
-                max={MAX_ITERATIONS_NUM}
-                value={tempPayload.max_iteration}
-                onChange={(value) => {
-                  setTempPayload({
-                    ...tempPayload,
-                    max_iteration: value,
-                  })
-                }}
-              />
-
-              <input
-                type="number"
-                min={maxIterationsMin}
-                max={MAX_ITERATIONS_NUM}
-                step={1}
-                className="block h-7 w-11 rounded-lg border-0 bg-components-input-bg-normal px-1.5 pl-1 leading-7 text-text-primary placeholder:text-text-tertiary focus:ring-1 focus:ring-inset focus:ring-primary-600"
-                value={tempPayload.max_iteration}
-                onChange={(e) => {
-                  let value = Number.parseInt(e.target.value, 10)
-                  if (value < maxIterationsMin)
-                    value = maxIterationsMin
-
-                  if (value > MAX_ITERATIONS_NUM)
-                    value = MAX_ITERATIONS_NUM
-                  setTempPayload({
-                    ...tempPayload,
-                    max_iteration: value,
-                  })
-                }}
-              />
-            </div>
-          </ItemPanel>
-
-          {!isFunctionCall && (
-            <div className="rounded-xl bg-background-section-burn py-2 shadow-xs">
-              <div className="flex h-8 items-center px-4 text-sm font-semibold leading-6 text-text-secondary">{t('builtInPromptTitle', { ns: 'tools' })}</div>
-              <div className="h-[396px] overflow-y-auto whitespace-pre-line px-4 text-sm font-normal leading-5 text-text-secondary">
-                {isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion}
-              </div>
-              <div className="px-4">
-                <div className="inline-flex h-5 items-center rounded-md bg-components-input-bg-normal px-1 text-xs font-medium leading-[18px] text-text-tertiary">{(isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion).length}</div>
-              </div>
-            </div>
-          )}
-
-        </div>
-        <div
-          className="sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section-burn px-6 py-4"
-        >
-          <Button
-            onClick={onCancel}
-            className="mr-2"
-          >
-            {t('operation.cancel', { ns: 'common' })}
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-          >
-            {t('operation.save', { ns: 'common' })}
-          </Button>
-        </div>
+        )}
       </div>
-    </div>
+      <div className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section-burn px-6 py-4">
+        <DialogClose render={<Button className="mr-2" />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </DialogClose>
+        <Button type="submit" variant="primary">
+          {t(($) => $['operation.save'], { ns: 'common' })}
+        </Button>
+      </div>
+    </form>
   )
 }
-export default React.memo(AgentSetting)

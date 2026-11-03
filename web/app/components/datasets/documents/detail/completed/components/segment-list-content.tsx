@@ -1,22 +1,25 @@
 'use client'
+import type {
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import ChildSegmentList from '../child-segment-list'
 import SegmentCard from '../segment-card'
 import SegmentList from '../segment-list'
 
 type FullDocModeContentProps = {
-  segments: SegmentDetailModel[]
-  childSegments: ChildChunkDetail[]
+  segments: SegmentResponse[]
+  childSegments: ChildChunkResponse[]
   isLoadingSegmentList: boolean
   isLoadingChildSegmentList: boolean
   currSegmentId?: string
-  onClickCard: (detail: SegmentDetailModel, isEditMode?: boolean) => void
+  onClickCard: (detail: SegmentResponse, isEditMode?: boolean) => void
   onDeleteChildChunk: (segmentId: string, childChunkId: string) => Promise<void>
   handleInputChange: (value: string) => void
   handleAddNewChildChunk: (parentChunkId: string) => void
-  onClickSlice: (detail: ChildChunkDetail) => void
+  onClickSlice: (detail: ChildChunkResponse) => void
   archived?: boolean
   childChunkTotal: number
   inputValue: string
@@ -42,14 +45,15 @@ export const FullDocModeContent: FC<FullDocModeContentProps> = ({
   const firstSegment = segments[0]
 
   return (
-    <div className={cn(
-      'flex grow flex-col overflow-x-hidden',
-      (isLoadingSegmentList || isLoadingChildSegmentList) ? 'overflow-y-hidden' : 'overflow-y-auto',
-    )}
+    <div
+      className={cn(
+        'flex grow flex-col overflow-x-hidden',
+        isLoadingSegmentList || isLoadingChildSegmentList ? 'overflow-y-hidden' : 'overflow-y-auto',
+      )}
     >
       <SegmentCard
         detail={firstSegment}
-        onClick={() => onClickCard(firstSegment)}
+        onClick={() => onClickCard(firstSegment!)}
         loading={isLoadingSegmentList}
         focused={{
           segmentIndex: currSegmentId === firstSegment?.id,
@@ -57,7 +61,7 @@ export const FullDocModeContent: FC<FullDocModeContentProps> = ({
         }}
       />
       <ChildSegmentList
-        parentChunkId={firstSegment?.id}
+        parentChunkId={firstSegment?.id!}
         onDelete={onDeleteChildChunk}
         childChunks={childSegments}
         handleInputChange={handleInputChange}
@@ -77,16 +81,14 @@ type GeneralModeContentProps = {
   segmentListRef: React.RefObject<HTMLDivElement | null>
   embeddingAvailable: boolean
   isLoadingSegmentList: boolean
-  segments: SegmentDetailModel[]
-  selectedSegmentIds: string[]
-  onSelected: (segId: string) => void
+  segments: SegmentResponse[]
   onChangeSwitch: (enable: boolean, segId?: string) => Promise<void>
   onDelete: (segId?: string) => Promise<void>
-  onClickCard: (detail: SegmentDetailModel, isEditMode?: boolean) => void
+  onClickCard: (detail: SegmentResponse, isEditMode?: boolean) => void
   archived?: boolean
   onDeleteChildChunk: (segmentId: string, childChunkId: string) => Promise<void>
   handleAddNewChildChunk: (parentChunkId: string) => void
-  onClickSlice: (detail: ChildChunkDetail) => void
+  onClickSlice: (detail: ChildChunkResponse) => void
   onClearFilter: () => void
 }
 
@@ -95,8 +97,6 @@ export const GeneralModeContent: FC<GeneralModeContentProps> = ({
   embeddingAvailable,
   isLoadingSegmentList,
   segments,
-  selectedSegmentIds,
-  onSelected,
   onChangeSwitch,
   onDelete,
   onClickCard,
@@ -112,8 +112,6 @@ export const GeneralModeContent: FC<GeneralModeContentProps> = ({
       embeddingAvailable={embeddingAvailable}
       isLoading={isLoadingSegmentList}
       items={segments}
-      selectedSegmentIds={selectedSegmentIds}
-      onSelected={onSelected}
       onChangeSwitch={onChangeSwitch}
       onDelete={onDelete}
       onClick={onClickCard}

@@ -1,30 +1,45 @@
 import contextvars
-import json
 import logging
 import time
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from itertools import islice
 from typing import Any
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 from flask import current_app, g
-from sqlalchemy.orm import Session, sessionmaker
+from pydantic import TypeAdapter
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
+from core.db.session_factory import get_session_maker
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from core.repositories.factory import DifyCoreRepositoryFactory
+from extensions.application_services.data_sources import build_data_source_credentials
 from extensions.ext_database import db
 from models import Account, Tenant
 from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.file_service import FileService
+from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
+
+# Each entry is validated into RagPipelineInvokeEntity inside the worker.
+_INVOKE_ENTITIES_ADAPTER = TypeAdapter(list[dict[str, Any]])
+
+
+def chunked(iterable: Sequence, size: int):
+    it = iter(iterable)
+    return iter(lambda: list(islice(it, size)), [])
 
 
 @shared_task(queue="pipeline")
@@ -45,7 +60,7 @@ def rag_pipeline_run_task(
         rag_pipeline_invoke_entities_content = FileService(db.engine).get_file_content(
             rag_pipeline_invoke_entities_file_id
         )
-        rag_pipeline_invoke_entities = json.loads(rag_pipeline_invoke_entities_content)
+        rag_pipeline_invoke_entities = _INVOKE_ENTITIES_ADAPTER.validate_json(rag_pipeline_invoke_entities_content)
 
         logger.info("tenant %s received %d rag pipeline invoke entities", tenant_id, len(rag_pipeline_invoke_entities))
 
@@ -83,16 +98,24 @@ def rag_pipeline_run_task(
         logger.info("rag pipeline tenant isolation queue %s next files: %s", tenant_id, next_file_ids)
 
         if next_file_ids:
-            for next_file_id in next_file_ids:
-                # Process the next waiting task
-                # Keep the flag set to indicate a task is running
-                tenant_isolated_task_queue.set_task_waiting_time()
-                rag_pipeline_run_task.delay(  # type: ignore
-                    rag_pipeline_invoke_entities_file_id=next_file_id.decode("utf-8")
-                    if isinstance(next_file_id, bytes)
-                    else next_file_id,
-                    tenant_id=tenant_id,
-                )
+            for batch in chunked(next_file_ids, 100):
+                jobs = []
+                for next_file_id in batch:
+                    tenant_isolated_task_queue.set_task_waiting_time()
+
+                    file_id = (
+                        next_file_id.decode("utf-8") if isinstance(next_file_id, (bytes, bytearray)) else next_file_id
+                    )
+
+                    jobs.append(
+                        rag_pipeline_run_task.s(
+                            rag_pipeline_invoke_entities_file_id=file_id,
+                            tenant_id=tenant_id,
+                        )
+                    )
+
+                for job in jobs:
+                    job.apply_async()
         else:
             # No more waiting tasks, clear the flag
             tenant_isolated_task_queue.delete_task_key()
@@ -116,22 +139,22 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
             workflow_thread_pool_id = rag_pipeline_invoke_entity_model.workflow_thread_pool_id
             application_generate_entity = rag_pipeline_invoke_entity_model.application_generate_entity
 
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                 # Load required entities
-                account = session.query(Account).where(Account.id == user_id).first()
+                account = session.scalar(select(Account).where(Account.id == user_id).limit(1))
                 if not account:
                     raise ValueError(f"Account {user_id} not found")
 
-                tenant = session.query(Tenant).where(Tenant.id == tenant_id).first()
+                tenant = session.scalar(select(Tenant).where(Tenant.id == tenant_id).limit(1))
                 if not tenant:
                     raise ValueError(f"Tenant {tenant_id} not found")
-                account.current_tenant = tenant
+                account.set_current_tenant_with_session(tenant, session=session)
 
-                pipeline = session.query(Pipeline).where(Pipeline.id == pipeline_id).first()
+                pipeline = session.scalar(select(Pipeline).where(Pipeline.id == pipeline_id).limit(1))
                 if not pipeline:
                     raise ValueError(f"Pipeline {pipeline_id} not found")
 
-                workflow = session.query(Workflow).where(Workflow.id == pipeline.workflow_id).first()
+                workflow = session.scalar(select(Workflow).where(Workflow.id == pipeline.workflow_id).limit(1))
                 if not workflow:
                     raise ValueError(f"Workflow {pipeline.workflow_id} not found")
 
@@ -145,6 +168,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
                 workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                     session_factory=session_factory,
+                    tenant_id=pipeline.tenant_id,
                     user=account,
                     app_id=entity.app_config.app_id,
                     triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
@@ -153,6 +177,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 workflow_node_execution_repository = (
                     DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                         session_factory=session_factory,
+                        tenant_id=pipeline.tenant_id,
                         user=account,
                         app_id=entity.app_config.app_id,
                         triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
@@ -167,11 +192,15 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
 
                 # Direct execution without creating another thread
                 # Since we're already in a thread pool, no need for nested threading
-                from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 
-                pipeline_generator = PipelineGenerator()
+                pipeline_generator = PipelineGenerator(
+                    execution_driver=WorkflowRunAgg.run,
+                    documents=SQLAlchemyDocumentRepository(session_factory=session_factory),
+                    datasource_providers=build_data_source_credentials(database_client=get_session_maker()).providers,
+                )
                 # Using protected method intentionally for async execution
                 pipeline_generator._generate(  # type: ignore[attr-defined]
+                    session=session,
                     flask_app=flask_app,
                     context=context,
                     pipeline=pipeline,

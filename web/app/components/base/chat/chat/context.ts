@@ -1,0 +1,33 @@
+'use client'
+
+import type { ChatProps } from './index'
+import { createContext, useContext } from 'use-context-selector'
+
+export type ChatContextValue = Pick<
+  ChatProps,
+  | 'config'
+  | 'isResponding'
+  | 'chatList'
+  | 'onOpenLog'
+  | 'canOpenLog'
+  | 'questionIcon'
+  | 'answerIcon'
+  | 'onSend'
+  | 'onRegenerate'
+  | 'showRegenerate'
+  | 'onAnnotationEdited'
+  | 'onAnnotationAdded'
+  | 'onAnnotationRemoved'
+  | 'disableFeedback'
+  | 'onFeedback'
+  | 'getHumanInputNodeData'
+> & {
+  readonly?: boolean
+}
+
+export const ChatContext = createContext<ChatContextValue>({
+  chatList: [],
+  readonly: false,
+})
+
+export const useChatContext = () => useContext(ChatContext)

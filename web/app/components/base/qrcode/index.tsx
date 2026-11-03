@@ -1,80 +1,77 @@
 'use client'
-import {
-  RiQrCodeLine,
-} from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { QRCodeCanvas as QRCode } from 'qrcode.react'
-import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
 import { downloadUrl } from '@/utils/download'
 
-type Props = {
+type Props = Readonly<{
   content: string
-}
+  downloadLabel?: string
+  scanLabel?: string
+  triggerLabel?: string
+}>
 
 const prefixEmbedded = 'overview.appInfo.qrcode.title'
 
-const ShareQRCode = ({ content }: Props) => {
-  const { t } = useTranslation()
-  const [isShow, setIsShow] = useState<boolean>(false)
+const ShareQRCode = ({ content, downloadLabel, scanLabel, triggerLabel }: Props) => {
+  const { t } = useTranslation(['appOverview'])
   const qrCodeRef = useRef<HTMLDivElement>(null)
-
-  const toggleQRCode = (event: React.MouseEvent) => {
-    event.stopPropagation()
-    setIsShow(prev => !prev)
-  }
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (qrCodeRef.current && !qrCodeRef.current.contains(event.target as Node))
-        setIsShow(false)
-    }
-
-    if (isShow)
-      document.addEventListener('click', handleClickOutside)
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside)
-    }
-  }, [isShow])
 
   const downloadQR = () => {
     const canvas = qrCodeRef.current?.querySelector('canvas')
-    if (!(canvas instanceof HTMLCanvasElement))
-      return
+    if (!(canvas instanceof HTMLCanvasElement)) return
     downloadUrl({ url: canvas.toDataURL(), fileName: 'qrcode.png' })
   }
 
-  const handlePanelClick = (event: React.MouseEvent) => {
-    event.stopPropagation()
-  }
+  const tooltipText = triggerLabel ?? t(($) => $[`${prefixEmbedded}`], { ns: 'appOverview' })
+  /* v8 ignore next -- react-i18next returns a non-empty key/string in configured runtime; empty fallback protects against missing i18n payloads. @preserve */
+  const safeTooltipText = tooltipText || ''
+  const downloadText =
+    downloadLabel ?? t(($) => $['overview.appInfo.qrcode.download'], { ns: 'appOverview' })
 
   return (
-    <Tooltip
-      popupContent={t(`${prefixEmbedded}`, { ns: 'appOverview' }) || ''}
-    >
-      <div className="relative h-6 w-6" onClick={toggleQRCode}>
-        <ActionButton>
-          <RiQrCodeLine className="h-4 w-4" />
-        </ActionButton>
-        {isShow && (
-          <div
-            ref={qrCodeRef}
-            className="absolute -right-8 top-8 z-10 flex w-[232px] flex-col items-center rounded-lg bg-components-panel-bg p-4 shadow-xs"
-            onClick={handlePanelClick}
-          >
-            <QRCode size={160} value={content} className="mb-2" />
-            <div className="system-xs-regular flex items-center">
-              <div className="text-text-tertiary">{t('overview.appInfo.qrcode.scan', { ns: 'appOverview' })}</div>
+    <Popover>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              render={
+                <IconButton aria-label={safeTooltipText}>
+                  <span className="i-ri-qr-code-line size-4" aria-hidden="true" />
+                </IconButton>
+              }
+            />
+          }
+        />
+        <TooltipContent>{safeTooltipText}</TooltipContent>
+      </Tooltip>
+      <PopoverContent
+        ref={qrCodeRef}
+        align="end"
+        className="flex w-58 flex-col items-center rounded-lg p-4 shadow-xs"
+      >
+        <PopoverTitle className="sr-only">{safeTooltipText}</PopoverTitle>
+        <QRCode size={160} value={content} className="mb-2" />
+        <div className="flex items-center system-xs-regular">
+          {scanLabel ? (
+            <>
+              <div className="text-text-tertiary">{scanLabel}</div>
               <div className="text-text-tertiary">·</div>
-              <div className="cursor-pointer text-text-accent-secondary" onClick={downloadQR}>{t('overview.appInfo.qrcode.download', { ns: 'appOverview' })}</div>
-            </div>
-          </div>
-        )}
-      </div>
-    </Tooltip>
+            </>
+          ) : null}
+          <button
+            type="button"
+            className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            onClick={downloadQR}
+          >
+            {downloadText}
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 

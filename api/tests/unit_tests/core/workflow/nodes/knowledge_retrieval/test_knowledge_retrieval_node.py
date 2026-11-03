@@ -3,34 +3,55 @@ import uuid
 from unittest.mock import Mock
 
 import pytest
+from pytest_mock import MockerFixture
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.variables import StringSegment
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.entities import (
+    Condition,
     KnowledgeRetrievalNodeData,
+    MetadataFilteringCondition,
     MultipleRetrievalConfig,
     RerankingModelConfig,
     SingleRetrievalConfig,
 )
 from core.workflow.nodes.knowledge_retrieval.exc import RateLimitExceededError
-from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
-from core.workflow.repositories.rag_retrieval_protocol import RAGRetrievalProtocol, Source
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import (
+    KnowledgeRetrievalNode,
+    _normalize_metadata_filter_scalar,
+    _normalize_metadata_filter_sequence_item,
+)
+from core.workflow.nodes.knowledge_retrieval.retrieval import Source, SourceMetadata
+from core.workflow.system_variables import build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.runtime import RuntimeState, VariablePool
+from graphon.variables import ArrayObjectSegment, StringSegment
+from tests.workflow_test_utils import build_test_graph_init_params
+
+
+def _source() -> Source:
+    return Source(
+        metadata=SourceMetadata(
+            dataset_id="dataset-id",
+            dataset_name="Knowledge",
+            document_id="document-id",
+            document_name="Python",
+            data_source_type="upload_file",
+        ),
+        title="Python",
+        content="Python is a programming language",
+    )
 
 
 @pytest.fixture
 def mock_graph_init_params():
-    """Create mock GraphInitParams."""
-    return GraphInitParams(
-        tenant_id=str(uuid.uuid4()),
-        app_id=str(uuid.uuid4()),
+    """Create mock InitParams."""
+    return build_test_graph_init_params(
         workflow_id=str(uuid.uuid4()),
         graph_config={},
+        tenant_id=str(uuid.uuid4()),
+        app_id=str(uuid.uuid4()),
         user_id=str(uuid.uuid4()),
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -40,22 +61,25 @@ def mock_graph_init_params():
 
 @pytest.fixture
 def mock_graph_runtime_state():
-    """Create mock GraphRuntimeState."""
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id=str(uuid.uuid4()), files=[]),
+    """Create mock RuntimeState."""
+    variable_pool = VariablePool.from_bootstrap(
+        system_variables=build_system_variables(user_id=str(uuid.uuid4()), files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
     )
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
 
 
 @pytest.fixture
-def mock_rag_retrieval():
-    """Create mock RAGRetrievalProtocol."""
-    mock_retrieval = Mock(spec=RAGRetrievalProtocol)
-    mock_retrieval.knowledge_retrieval.return_value = []
-    mock_retrieval.llm_usage = LLMUsage.empty_usage()
+def mock_rag_retrieval(mocker: MockerFixture):
+    """Keep real usage and request metadata while isolating retrieval I/O."""
+    mock_retrieval = DatasetRetrieval()
+    mocker.patch.object(mock_retrieval, "knowledge_retrieval", return_value=[])
+    mocker.patch(
+        "core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node.DatasetRetrieval",
+        return_value=mock_retrieval,
+    )
     return mock_retrieval
 
 
@@ -80,38 +104,16 @@ def sample_node_data():
     )
 
 
+def test_metadata_filter_normalizers_preserve_numeric_scalars_and_stringify_other_values() -> None:
+    assert _normalize_metadata_filter_scalar(3) == 3
+    assert _normalize_metadata_filter_scalar(True) == "True"
+    assert _normalize_metadata_filter_sequence_item(4) == "4"
+
+
 class TestKnowledgeRetrievalNode:
     """
     Test suite for KnowledgeRetrievalNode.
     """
-
-    def test_node_initialization(self, mock_graph_init_params, mock_graph_runtime_state, mock_rag_retrieval):
-        """Test KnowledgeRetrievalNode initialization."""
-        # Arrange
-        node_id = str(uuid.uuid4())
-        config = {
-            "id": node_id,
-            "data": {
-                "title": "Knowledge Retrieval",
-                "type": "knowledge-retrieval",
-                "dataset_ids": [str(uuid.uuid4())],
-                "retrieval_mode": "multiple",
-            },
-        }
-
-        # Act
-        node = KnowledgeRetrievalNode(
-            id=node_id,
-            config=config,
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
-        )
-
-        # Assert
-        assert node.id == node_id
-        assert node._rag_retrieval == mock_rag_retrieval
-        assert node._llm_file_saver is not None
 
     def test_run_with_no_query_or_attachment(
         self,
@@ -132,11 +134,10 @@ class TestKnowledgeRetrievalNode:
         }
 
         node = KnowledgeRetrievalNode(
-            id=node_id,
-            config=config,
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
+            node_id=node_id,
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -155,7 +156,7 @@ class TestKnowledgeRetrievalNode:
     ):
         """Test _run with query variable in single mode."""
         # Arrange
-        from core.workflow.nodes.llm.entities import ModelConfig
+        from graphon.nodes.llm.entities import ModelConfig
 
         query = "What is Python?"
         query_selector = ["start", "query"]
@@ -186,17 +187,14 @@ class TestKnowledgeRetrievalNode:
         }
 
         # Mock retrieval response
-        mock_source = Mock(spec=Source)
-        mock_source.model_dump.return_value = {"content": "Python is a programming language"}
+        mock_source = _source()
         mock_rag_retrieval.knowledge_retrieval.return_value = [mock_source]
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node = KnowledgeRetrievalNode(
-            id=node_id,
-            config=config,
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
+            node_id=node_id,
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -206,6 +204,7 @@ class TestKnowledgeRetrievalNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert "result" in result.outputs
         assert mock_rag_retrieval.knowledge_retrieval.called
+        assert result.outputs["result"] == ArrayObjectSegment(value=[mock_source.model_dump(by_alias=True)])
 
     def test_run_with_query_variable_multiple_mode(
         self,
@@ -230,17 +229,14 @@ class TestKnowledgeRetrievalNode:
         }
 
         # Mock retrieval response
-        mock_source = Mock(spec=Source)
-        mock_source.model_dump.return_value = {"content": "Python is a programming language"}
+        mock_source = _source()
         mock_rag_retrieval.knowledge_retrieval.return_value = [mock_source]
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node = KnowledgeRetrievalNode(
-            id=node_id,
-            config=config,
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
+            node_id=node_id,
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -273,11 +269,10 @@ class TestKnowledgeRetrievalNode:
         }
 
         node = KnowledgeRetrievalNode(
-            id=node_id,
-            config=config,
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
+            node_id=node_id,
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -309,11 +304,10 @@ class TestKnowledgeRetrievalNode:
         }
 
         node = KnowledgeRetrievalNode(
-            id=node_id,
-            config=config,
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
+            node_id=node_id,
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -348,14 +342,12 @@ class TestKnowledgeRetrievalNode:
         mock_rag_retrieval.knowledge_retrieval.side_effect = RateLimitExceededError(
             "knowledge base request rate limit exceeded"
         )
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node = KnowledgeRetrievalNode(
-            id=node_id,
-            config=config,
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
+            node_id=node_id,
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -388,14 +380,12 @@ class TestKnowledgeRetrievalNode:
 
         # Mock retrieval to raise generic exception
         mock_rag_retrieval.knowledge_retrieval.side_effect = Exception("Unexpected error")
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node = KnowledgeRetrievalNode(
-            id=node_id,
-            config=config,
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
+            node_id=node_id,
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -409,14 +399,14 @@ class TestKnowledgeRetrievalNode:
         """Test _extract_variable_selector_to_variable_mapping class method."""
         # Arrange
         node_id = "knowledge_node_1"
-        node_data = {
-            "type": "knowledge-retrieval",
-            "title": "Knowledge Retrieval",
-            "dataset_ids": [str(uuid.uuid4())],
-            "retrieval_mode": "multiple",
-            "query_variable_selector": ["start", "query"],
-            "query_attachment_selector": ["start", "attachments"],
-        }
+        node_data = KnowledgeRetrievalNodeData(
+            type="knowledge-retrieval",
+            title="Knowledge Retrieval",
+            dataset_ids=[str(uuid.uuid4())],
+            retrieval_mode="multiple",
+            query_variable_selector=["start", "query"],
+            query_attachment_selector=["start", "attachments"],
+        )
         graph_config = {}
 
         # Act
@@ -444,7 +434,7 @@ class TestFetchDatasetRetriever:
     ):
         """Test _fetch_dataset_retriever in single mode."""
         # Arrange
-        from core.workflow.nodes.llm.entities import ModelConfig
+        from graphon.nodes.llm.entities import ModelConfig
 
         query = "What is Python?"
         variables = {"query": query}
@@ -465,23 +455,21 @@ class TestFetchDatasetRetriever:
         )
 
         # Mock retrieval response
-        mock_source = Mock(spec=Source)
+        mock_source = _source()
         mock_rag_retrieval.knowledge_retrieval.return_value = [mock_source]
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node_id = str(uuid.uuid4())
         config = {"id": node_id, "data": node_data.model_dump()}
 
         node = KnowledgeRetrievalNode(
-            id=node_id,
-            config=config,
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
+            node_id=node_id,
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
-        results, usage = node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+        results, usage = node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)
 
         # Assert
         assert len(results) == 1
@@ -502,7 +490,6 @@ class TestFetchDatasetRetriever:
 
         # Mock retrieval response
         mock_rag_retrieval.knowledge_retrieval.return_value = []
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node_id = str(uuid.uuid4())
         config = {
@@ -511,15 +498,14 @@ class TestFetchDatasetRetriever:
         }
 
         node = KnowledgeRetrievalNode(
-            id=node_id,
-            config=config,
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
+            node_id=node_id,
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
-        results, usage = node._fetch_dataset_retriever(node_data=sample_node_data, variables=variables)
+        results, usage = node._fetch_dataset_retriever(Mock(), node_data=sample_node_data, variables=variables)
 
         # Assert
         assert isinstance(results, list)
@@ -558,7 +544,6 @@ class TestFetchDatasetRetriever:
 
         # Mock retrieval response
         mock_rag_retrieval.knowledge_retrieval.return_value = []
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node_id = str(uuid.uuid4())
         config = {
@@ -567,15 +552,14 @@ class TestFetchDatasetRetriever:
         }
 
         node = KnowledgeRetrievalNode(
-            id=node_id,
-            config=config,
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-            rag_retrieval=mock_rag_retrieval,
+            node_id=node_id,
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
-        results, usage = node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+        results, usage = node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)
 
         # Assert
         assert isinstance(results, list)
@@ -586,10 +570,102 @@ class TestFetchDatasetRetriever:
         request = call_args[1]["request"]
         assert request.reranking_enable is False
 
-    def test_version_method(self):
-        """Test version class method."""
+    def test_resolve_metadata_filtering_conditions_templates(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_rag_retrieval,
+    ):
+        """_resolve_metadata_filtering_conditions should expand {{#...#}} and keep numbers/None unchanged."""
+        # Arrange
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": {
+                "title": "Knowledge Retrieval",
+                "type": "knowledge-retrieval",
+                "dataset_ids": [str(uuid.uuid4())],
+                "retrieval_mode": "multiple",
+            },
+        }
+        # Variable in pool used by template
+        mock_graph_runtime_state.variable_pool.add(["start", "query"], StringSegment(value="readme"))
+
+        node = KnowledgeRetrievalNode(
+            node_id=node_id,
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
+        )
+
+        conditions = MetadataFilteringCondition(
+            logical_operator="and",
+            conditions=[
+                Condition(name="document_name", comparison_operator="is", value="{{#start.query#}}"),
+                Condition(name="tags", comparison_operator="in", value=["x", "{{#start.query#}}"]),
+                Condition(name="year", comparison_operator="=", value=2025),
+            ],
+        )
+
         # Act
-        version = KnowledgeRetrievalNode.version()
+        resolved = node._resolve_metadata_filtering_conditions(conditions)
 
         # Assert
-        assert version == "1"
+        assert resolved.logical_operator == "and"
+        assert resolved.conditions[0].value == "readme"
+        assert isinstance(resolved.conditions[1].value, list)
+        assert resolved.conditions[1].value[1] == "readme"
+        assert resolved.conditions[2].value == 2025
+
+    def test_fetch_passes_resolved_metadata_conditions(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_rag_retrieval,
+    ):
+        """_fetch_dataset_retriever should pass resolved metadata conditions into request."""
+        # Arrange
+        query = "hi"
+        variables = {"query": query}
+        mock_graph_runtime_state.variable_pool.add(["start", "q"], StringSegment(value="readme"))
+
+        node_data = KnowledgeRetrievalNodeData(
+            title="Knowledge Retrieval",
+            type="knowledge-retrieval",
+            dataset_ids=[str(uuid.uuid4())],
+            retrieval_mode="multiple",
+            multiple_retrieval_config=MultipleRetrievalConfig(
+                top_k=4,
+                score_threshold=0.0,
+                reranking_mode="reranking_model",
+                reranking_enable=True,
+                reranking_model=RerankingModelConfig(provider="cohere", model="rerank-v2"),
+            ),
+            metadata_filtering_mode="manual",
+            metadata_filtering_conditions=MetadataFilteringCondition(
+                logical_operator="and",
+                conditions=[
+                    Condition(name="document_name", comparison_operator="is", value="{{#start.q#}}"),
+                ],
+            ),
+        )
+
+        node_id = str(uuid.uuid4())
+        config = {"id": node_id, "data": node_data.model_dump()}
+        node = KnowledgeRetrievalNode(
+            node_id=node_id,
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
+        )
+
+        mock_rag_retrieval.knowledge_retrieval.return_value = []
+
+        # Act
+        node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)
+
+        # Assert the passed request has resolved value
+        call_args = mock_rag_retrieval.knowledge_retrieval.call_args
+        request = call_args[1]["request"]
+        assert request.metadata_filtering_conditions is not None
+        assert request.metadata_filtering_conditions.conditions[0].value == "readme"

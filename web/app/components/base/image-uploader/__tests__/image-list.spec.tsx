@@ -1,0 +1,249 @@
+import type { ImageFile } from '@/types/app'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createReactI18nextMock } from '@/test/i18n-mock'
+import { TransferMethod } from '@/types/app'
+import ImageList from '../image-list'
+
+vi.mock('react-i18next', () =>
+  createReactI18nextMock({
+    'imageGallery.previewImage': 'Preview image {{index}} of {{total}}',
+  }),
+)
+
+const previewButtonName = 'Preview image 1 of 1'
+
+const createLocalFile = (overrides: Partial<ImageFile> = {}): ImageFile => ({
+  type: TransferMethod.local_file,
+  _id: 'local-file',
+  fileId: 'file-id',
+  progress: 100,
+  url: '',
+  base64Url: 'data:image/png;base64,abc123',
+  ...overrides,
+})
+
+const createRemoteFile = (overrides: Partial<ImageFile> = {}): ImageFile => ({
+  type: TransferMethod.remote_url,
+  _id: 'remote-file',
+  fileId: '',
+  progress: 100,
+  url: 'https://example.com/image.png',
+  ...overrides,
+})
+
+describe('ImageList', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('Rendering', () => {
+    it('should use base64Url as src for local files', () => {
+      const list = [createLocalFile({ _id: 'file-1', base64Url: 'data:image/png;base64,xyz' })]
+      const { container } = render(<ImageList list={list} />)
+
+      expect(container.querySelector('img')).toHaveAttribute('src', 'data:image/png;base64,xyz')
+    })
+
+    it('should use url as src for remote files', () => {
+      const list = [createRemoteFile({ _id: 'file-1', url: 'https://example.com/img.jpg' })]
+      const { container } = render(<ImageList list={list} />)
+
+      expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/img.jpg')
+    })
+
+    it('should use the file name for a non-interactive local thumbnail', () => {
+      const file = new File(['test'], 'my-image.png', { type: 'image/png' })
+      const list = [createLocalFile({ _id: 'file-1', file, progress: 50 })]
+      render(<ImageList list={list} />)
+
+      expect(screen.getByRole('img', { name: 'my-image.png' })).toBeInTheDocument()
+    })
+  })
+
+  describe('Props', () => {
+    it('should not show remove buttons when readonly', () => {
+      const list = [createLocalFile({ _id: 'file-1' })]
+      render(<ImageList list={list} readonly onRemove={vi.fn()} />)
+
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.remove' }),
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Local File Progress', () => {
+    it('should show progress percentage when local file is uploading', () => {
+      const list = [createLocalFile({ _id: 'file-1', progress: 45 })]
+      render(<ImageList list={list} />)
+
+      expect(screen.getByText(/^45\s*%$/)).toBeInTheDocument()
+    })
+
+    it('should show retry icon when local file upload fails (progress -1)', () => {
+      const onReUpload = vi.fn()
+      const list = [createLocalFile({ _id: 'file-1', progress: -1 })]
+      render(<ImageList list={list} onReUpload={onReUpload} readonly />)
+
+      expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
+      expect(within(screen.getByRole('listitem')).getAllByRole('button')).toHaveLength(1)
+      expect(screen.queryByText(/\d+\s*%/)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Remote URL Progress', () => {
+    it('should show loading spinner when remote file is loading (progress 0)', () => {
+      const list = [createRemoteFile({ _id: 'file-1', progress: 0 })]
+      render(<ImageList list={list} />)
+
+      // Loading spinner has animate-spin class
+      expect(screen.getByTestId('image-loader')).toBeInTheDocument()
+    })
+
+    it('should show error indicator when remote file fails (progress -1)', () => {
+      const list = [createRemoteFile({ _id: 'file-1', progress: -1 })]
+      render(<ImageList list={list} />)
+      expect(screen.getByTestId('image-error-container')).toBeInTheDocument()
+    })
+  })
+
+  describe('User Interactions', () => {
+    it('should call onRemove when remove button is clicked', async () => {
+      const user = userEvent.setup()
+      const onRemove = vi.fn()
+      const list = [createLocalFile({ _id: 'file-1' })]
+      render(<ImageList list={list} onRemove={onRemove} />)
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+
+      expect(onRemove).toHaveBeenCalledTimes(1)
+      expect(onRemove).toHaveBeenCalledWith('file-1')
+    })
+
+    it('should call onReUpload when retry icon is clicked on failed local file', async () => {
+      const user = userEvent.setup()
+      const onReUpload = vi.fn()
+      const list = [createLocalFile({ _id: 'file-1', progress: -1 })]
+      render(<ImageList list={list} onReUpload={onReUpload} />)
+      await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+      expect(onReUpload).toHaveBeenCalledWith('file-1')
+    })
+
+    it('should not expose a preview action for an in-progress image', () => {
+      const list = [createLocalFile({ _id: 'file-1', progress: 50 })]
+      render(<ImageList list={list} readonly />)
+
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
+    })
+
+    it('should close image preview when cancel is clicked', async () => {
+      const user = userEvent.setup()
+      const list = [createRemoteFile({ _id: 'file-1', progress: 100 })]
+      render(<ImageList list={list} />)
+
+      // Open preview
+      await user.click(screen.getByRole('button', { name: previewButtonName }))
+      expect(screen.getByTestId('image-preview-image')).toHaveAttribute('src', list[0]!.url)
+
+      // Close preview
+      const closeButton = screen.getByRole('button', { name: 'common.operation.cancel' })
+      await user.click(closeButton)
+      expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
+    })
+
+    it('should open preview with base64Url for completed local file', async () => {
+      const user = userEvent.setup()
+      const list = [
+        createLocalFile({
+          _id: 'file-1',
+          progress: 100,
+          base64Url: 'data:image/png;base64,localdata',
+        }),
+      ]
+      render(<ImageList list={list} />)
+
+      await user.click(screen.getByRole('button', { name: previewButtonName }))
+
+      const previewImage = screen.getByTestId('image-preview-image')
+      expect(previewImage).toBeInTheDocument()
+      expect(previewImage).toHaveAttribute('src', 'data:image/png;base64,localdata')
+    })
+  })
+
+  describe('Image Load Events', () => {
+    it('should call onImageLinkLoadSuccess for remote URL on load when progress is not -1', () => {
+      const onImageLinkLoadSuccess = vi.fn()
+      const list = [createRemoteFile({ _id: 'file-1', progress: 0 })]
+      const { container } = render(
+        <ImageList list={list} onImageLinkLoadSuccess={onImageLinkLoadSuccess} />,
+      )
+
+      const img = container.querySelector('img')!
+      fireEvent.load(img)
+      expect(onImageLinkLoadSuccess).toHaveBeenCalledWith('file-1')
+    })
+
+    it('should not call onImageLinkLoadSuccess for remote URL when progress is -1', () => {
+      const onImageLinkLoadSuccess = vi.fn()
+      const list = [createRemoteFile({ _id: 'file-1', progress: -1 })]
+      const { container } = render(
+        <ImageList list={list} onImageLinkLoadSuccess={onImageLinkLoadSuccess} />,
+      )
+
+      const img = container.querySelector('img')!
+      fireEvent.load(img)
+
+      expect(onImageLinkLoadSuccess).not.toHaveBeenCalled()
+    })
+
+    it('should not call onImageLinkLoadSuccess for local file type', () => {
+      const onImageLinkLoadSuccess = vi.fn()
+      const list = [createLocalFile({ _id: 'file-1', progress: 50 })]
+      const { container } = render(
+        <ImageList list={list} onImageLinkLoadSuccess={onImageLinkLoadSuccess} />,
+      )
+
+      const img = container.querySelector('img')!
+      fireEvent.load(img)
+
+      expect(onImageLinkLoadSuccess).not.toHaveBeenCalled()
+    })
+
+    it('should call onImageLinkLoadError for remote URL on error', () => {
+      const onImageLinkLoadError = vi.fn()
+      const list = [createRemoteFile({ _id: 'file-1', progress: 0 })]
+      const { container } = render(
+        <ImageList list={list} onImageLinkLoadError={onImageLinkLoadError} />,
+      )
+
+      const img = container.querySelector('img')!
+      fireEvent.error(img)
+
+      expect(onImageLinkLoadError).toHaveBeenCalledWith('file-1')
+    })
+
+    it('should not call onImageLinkLoadError for local file type', () => {
+      const onImageLinkLoadError = vi.fn()
+      const list = [createLocalFile({ _id: 'file-1', progress: 50 })]
+      const { container } = render(
+        <ImageList list={list} onImageLinkLoadError={onImageLinkLoadError} />,
+      )
+
+      const img = container.querySelector('img')!
+      fireEvent.error(img)
+
+      expect(onImageLinkLoadError).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Edge Cases', () => {
+    it('should handle list with mixed local and remote files', () => {
+      const list = [createLocalFile({ _id: 'local-1' }), createRemoteFile({ _id: 'remote-1' })]
+      render(<ImageList list={list} />)
+      expect(screen.getAllByRole('listitem')).toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'Preview image 1 of 2' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Preview image 2 of 2' })).toBeInTheDocument()
+    })
+  })
+})

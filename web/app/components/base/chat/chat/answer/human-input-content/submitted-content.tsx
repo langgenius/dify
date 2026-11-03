@@ -5,11 +5,11 @@ type SubmittedContentProps = {
   content: string
 }
 
-const SubmittedContent = ({
-  content,
-}: SubmittedContentProps) => {
+const SubmittedContent = ({ content }: SubmittedContentProps) => {
   return (
-    <Markdown content={content} />
+    <div data-testid="submitted-content">
+      <Markdown content={content} />
+    </div>
   )
 }
 

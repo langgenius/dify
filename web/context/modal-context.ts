@@ -1,0 +1,79 @@
+'use client'
+
+import type { Dispatch, SetStateAction } from 'react'
+import type { OpeningStatement } from '@/app/components/base/features/types'
+import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
+import type {
+  ConfigurationMethodEnum,
+  Credential,
+  CustomConfigurationModelFixedFields,
+  CustomModel,
+  ModelModalModeEnum,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { UpdatePluginPayload } from '@/app/components/plugins/types'
+import type { InputVar } from '@/app/components/workflow/types'
+import type { ExternalDataTool } from '@/models/common'
+import type { ModerationConfig, PromptVariable } from '@/models/debug'
+import { noop } from 'es-toolkit/function'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
+
+export type ModalState<T> = {
+  payload: T
+  onCancelCallback?: () => void
+  onSaveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void | Promise<void>
+  onRemoveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void
+  onEditCallback?: (newPayload: T) => void
+  onValidateBeforeSaveCallback?: (newPayload: T) => boolean
+  isEditMode?: boolean
+  datasetBindings?: { id: string; name: string }[]
+}
+
+export type ModelModalType = {
+  currentProvider: ModelProvider
+  currentConfigurationMethod: ConfigurationMethodEnum
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
+  isModelCredential?: boolean
+  credential?: Credential
+  model?: CustomModel
+  mode?: ModelModalModeEnum
+}
+
+export type ModalContextState = {
+  hasBlockingModalOpen: boolean
+  setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
+  setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
+  setShowAnnotationFullModal: () => void
+  setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
+  setShowExternalKnowledgeAPIModal: Dispatch<
+    SetStateAction<ModalState<CreateExternalAPIReq> | null>
+  >
+  setShowOpeningModal: Dispatch<
+    SetStateAction<ModalState<
+      OpeningStatement & {
+        promptVariables?: PromptVariable[]
+        workflowVariables?: InputVar[]
+        onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
+      }
+    > | null>
+  >
+  setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
+}
+
+export const ModalContext = createContext<ModalContextState>({
+  hasBlockingModalOpen: false,
+  setShowModerationSettingModal: noop,
+  setShowExternalDataToolModal: noop,
+  setShowAnnotationFullModal: noop,
+  setShowModelModal: noop,
+  setShowExternalKnowledgeAPIModal: noop,
+  setShowOpeningModal: noop,
+  setShowUpdatePluginModal: noop,
+})
+
+export const useModalContext = () => useContext(ModalContext)
+
+// Adding a dangling comma to avoid the generic parsing issue in tsx, see:
+// https://github.com/microsoft/TypeScript/issues/15713
+export const useModalContextSelector = <T>(selector: (state: ModalContextState) => T): T =>
+  useContextSelector(ModalContext, selector)

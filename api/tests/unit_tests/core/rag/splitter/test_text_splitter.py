@@ -15,8 +15,8 @@ and semantic meaning.
 2. **TokenTextSplitter**: Splits text based on token count using tiktoken library,
    useful for LLM context window management.
 
-3. **EnhanceRecursiveCharacterTextSplitter**: Enhanced version with custom token
-   counting support via embedding models or GPT2 tokenizer.
+3. **EnhanceRecursiveCharacterTextSplitter**: Factory that uses character counts
+   for chunk limits, with or without an embedding model.
 
 4. **FixedRecursiveCharacterTextSplitter**: Prioritizes a fixed separator before
    falling back to recursive splitting, useful for structured documents.
@@ -125,7 +125,11 @@ Run with coverage:
 - Tests are organized by functionality in classes for better organization
 """
 
+import asyncio
+import logging
 import string
+import sys
+import types
 from unittest.mock import Mock, patch
 
 import pytest
@@ -604,6 +608,51 @@ class TestRecursiveCharacterTextSplitter:
         assert "def hello_world" in combined or "hello_world" in combined
 
 
+class TestTextSplitterBasePaths:
+    """Target uncovered base TextSplitter paths."""
+
+    def test_from_huggingface_tokenizer_success_path(self):
+        """Cover from_huggingface_tokenizer success branch with mocked transformers."""
+
+        class _FakePreTrainedTokenizerBase:
+            pass
+
+        class _FakeTokenizer(_FakePreTrainedTokenizerBase):
+            def encode(self, text: str):
+                return [ord(c) for c in text]
+
+        fake_transformers = types.SimpleNamespace(PreTrainedTokenizerBase=_FakePreTrainedTokenizerBase)
+        with patch.dict(sys.modules, {"transformers": fake_transformers}):
+            splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
+                tokenizer=_FakeTokenizer(),
+                chunk_size=5,
+                chunk_overlap=1,
+            )
+
+        chunks = splitter.split_text("abcdef")
+        assert chunks
+
+    def test_from_huggingface_tokenizer_import_error(self):
+        """Cover from_huggingface_tokenizer import-error branch."""
+        with patch.dict(sys.modules, {"transformers": None}):
+            with pytest.raises(ValueError, match="Could not import transformers"):
+                RecursiveCharacterTextSplitter.from_huggingface_tokenizer(tokenizer=object(), chunk_size=5)
+
+    def test_atransform_documents_raises_not_implemented(self):
+        """Cover atransform_documents NotImplemented branch."""
+        splitter = RecursiveCharacterTextSplitter(chunk_size=20, chunk_overlap=5)
+        with pytest.raises(NotImplementedError):
+            asyncio.run(splitter.atransform_documents([Document(page_content="x", metadata={})]))
+
+    def test_merge_splits_logs_warning_for_oversized_total(self, caplog: pytest.LogCaptureFixture):
+        """Cover logger.warning path in _merge_splits."""
+        splitter = RecursiveCharacterTextSplitter(chunk_size=5, chunk_overlap=1)
+        with caplog.at_level(logging.WARNING, logger="core.rag.splitter.text_splitter"):
+            merged = splitter._merge_splits(["abcdefghij", "b"], "", [10, 1])
+        assert merged
+        assert any(record.levelno == logging.WARNING for record in caplog.records)
+
+
 # ============================================================================
 # Test TokenTextSplitter
 # ============================================================================
@@ -662,6 +711,44 @@ class TestTokenTextSplitter:
         except ImportError:
             pytest.skip("tiktoken not installed")
 
+    def test_initialization_and_split_with_mocked_tiktoken_encoding(self):
+        """Cover TokenTextSplitter __init__ else-path and split_text logic."""
+
+        class _FakeEncoding:
+            def encode(self, text: str, allowed_special=None, disallowed_special=None):
+                return [ord(c) for c in text]
+
+            def decode(self, token_ids: list[int]) -> str:
+                return "".join(chr(i) for i in token_ids)
+
+        fake_tiktoken = types.SimpleNamespace(get_encoding=lambda name: _FakeEncoding())
+        with patch.dict(sys.modules, {"tiktoken": fake_tiktoken}):
+            splitter = TokenTextSplitter(encoding_name="gpt2", chunk_size=4, chunk_overlap=1)
+            result = splitter.split_text("abcdefgh")
+
+        assert result
+        assert all(isinstance(chunk, str) for chunk in result)
+
+    def test_initialization_with_model_name_uses_encoding_for_model(self):
+        """Cover TokenTextSplitter model_name init branch."""
+
+        class _FakeEncoding:
+            def encode(self, text: str, allowed_special=None, disallowed_special=None):
+                return [ord(c) for c in text]
+
+            def decode(self, token_ids: list[int]) -> str:
+                return "".join(chr(i) for i in token_ids)
+
+        fake_encoding = _FakeEncoding()
+        fake_tiktoken = types.SimpleNamespace(
+            encoding_for_model=lambda model_name: fake_encoding,
+            get_encoding=lambda name: _FakeEncoding(),
+        )
+        with patch.dict(sys.modules, {"tiktoken": fake_tiktoken}):
+            splitter = TokenTextSplitter(model_name="gpt-4", chunk_size=5, chunk_overlap=1)
+
+        assert splitter._tokenizer is fake_encoding
+
 
 # ============================================================================
 # Test EnhanceRecursiveCharacterTextSplitter
@@ -715,21 +802,33 @@ class TestEnhanceRecursiveCharacterTextSplitter:
         # Should split into multiple chunks
         assert len(result) >= 2
 
-    def test_with_embedding_model_token_counting(self):
-        """Test token counting with embedding model."""
+    @pytest.mark.parametrize("use_model", [False, True])
+    def test_from_encoder_uses_character_lengths(self, use_model):
+        """Chunk limits count Unicode characters without invoking tokenization."""
         mock_model = Mock()
-        # Mock returns token counts for input texts
-        mock_model.get_text_embedding_num_tokens = Mock(side_effect=lambda texts: [len(t) // 2 for t in texts])
-
         splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
-            embedding_model_instance=mock_model, chunk_size=50, chunk_overlap=5
+            embedding_model_instance=mock_model if use_model else None,
+            chunk_size=4,
+            chunk_overlap=0,
+            separators=[""],
         )
 
-        text = "This is a test text that should be split"
-        result = splitter.split_text(text)
+        assert splitter.split_text("aé中🙂b") == ["aé中🙂", "b"]
+        assert splitter.split_text("") == []
+        mock_model.get_text_embedding_num_tokens.assert_not_called()
 
-        assert len(result) > 0
-        assert all(isinstance(chunk, str) for chunk in result)
+    def test_character_fallback_preserves_single_newlines(self):
+        text = "\n".join(f"SKU{i:04d}" for i in range(20))
+        splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
+            embedding_model_instance=None,
+            separators=["\n\n", "。", ". ", " ", ""],
+            chunk_size=50,
+            chunk_overlap=0,
+        )
+
+        chunks = splitter.split_text(text)
+
+        assert chunks[0] == "SKU0000\nSKU0001\nSKU0002\nSKU0003\nSKU0004\nSKU0005\nSK"
 
 
 # ============================================================================
@@ -820,6 +919,21 @@ class TestFixedRecursiveCharacterTextSplitter:
         assert "word1" in combined
         assert "word2" in combined
 
+    def test_preserves_spaces_when_recursively_splitting_long_paragraph(self):
+        """Ensure recursive space splitting preserves word boundaries."""
+        text = "여름철에는 항상 기상상황에 주목하며 주변 사람들과 함께 정보를 공유합니다."
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="\n\n",
+            chunk_size=20,
+            chunk_overlap=0,
+            keep_separator=True,
+        )
+
+        result = splitter.split_text(text)
+
+        assert len(result) > 1
+        assert " ".join(result) == text
+
     def test_character_level_splitting(self):
         """Test character-level splitting when no separator works."""
         text = "verylongwordwithoutspaces"
@@ -833,6 +947,18 @@ class TestFixedRecursiveCharacterTextSplitter:
         # Verify chunks respect size with overlap
         for chunk in result:
             assert len(chunk) <= 12  # chunk_size + some tolerance for overlap
+
+    def test_character_fallback_preserves_single_newlines(self):
+        text = "\n".join(f"SKU{i:04d}" for i in range(20))
+        splitter = FixedRecursiveCharacterTextSplitter(
+            separators=["\n\n", "。", ". ", " ", ""],
+            chunk_size=50,
+            chunk_overlap=0,
+        )
+
+        chunks = splitter.split_text(text)
+
+        assert chunks[0] == "SKU0000\nSKU0001\nSKU0002\nSKU0003\nSKU0004\nSKU0005\nSK"
 
     def test_overlap_in_character_splitting(self):
         """Test that overlap is correctly applied in character-level splitting."""
@@ -907,6 +1033,57 @@ class TestFixedRecursiveCharacterTextSplitter:
         splitter = FixedRecursiveCharacterTextSplitter(fixed_separator=separator)
         chunks = splitter.split_text(data)
         assert chunks == ["chunk 1\n\nsubchunk 1.\nsubchunk 2.", "chunk 2\n\nsubchunk 1\nsubchunk 2."]
+
+    def test_recursive_split_keep_separator_and_recursive_fallback(self):
+        """Cover keep-separator split branch and recursive _split_text fallback."""
+        text = "short." + ("x" * 60)
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="",
+            separators=[".", " ", ""],
+            chunk_size=10,
+            chunk_overlap=2,
+            keep_separator=True,
+        )
+
+        chunks = splitter.recursive_split_text(text)
+
+        assert chunks
+        assert any("short." in chunk for chunk in chunks)
+        assert any(len(chunk) <= 12 for chunk in chunks)
+
+    def test_recursive_split_newline_separator_filtering(self):
+        """Cover newline-specific empty filtering branch."""
+        text = "line1\n\nline2\n\nline3"
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="",
+            separators=["\n", ""],
+            chunk_size=50,
+            chunk_overlap=5,
+        )
+
+        chunks = splitter.recursive_split_text(text)
+
+        assert chunks
+        assert all(chunk != "" for chunk in chunks)
+        assert chunks == ["line1\n\nline2\n\nline3"]
+        assert "line1" in "".join(chunks)
+        assert "line2" in "".join(chunks)
+        assert "line3" in "".join(chunks)
+
+    def test_recursive_split_without_new_separator_appends_long_chunk(self):
+        """Cover branch where no further separators exist and long split is appended directly."""
+        text = "aa\n" + ("b" * 40)
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="",
+            separators=["\n"],
+            chunk_size=10,
+            chunk_overlap=2,
+        )
+
+        chunks = splitter.recursive_split_text(text)
+
+        assert "aa" in chunks
+        assert any(len(chunk) >= 40 for chunk in chunks)
 
 
 # ============================================================================

@@ -1,10 +1,12 @@
 import math
 from collections import Counter
+from typing import override
 
 import numpy as np
 
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.index_processor.constant.doc_type import DocType
@@ -12,6 +14,7 @@ from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class WeightRerankRunner(BaseRerankRunner):
@@ -19,13 +22,13 @@ class WeightRerankRunner(BaseRerankRunner):
         self.tenant_id = tenant_id
         self.weights = weights
 
+    @override
     def run(
         self,
         query: str,
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """
@@ -34,7 +37,6 @@ class WeightRerankRunner(BaseRerankRunner):
         :param documents: documents for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id if needed
 
         :return:
         """
@@ -60,7 +62,9 @@ class WeightRerankRunner(BaseRerankRunner):
         query_vector_scores = self._calculate_cosine(self.tenant_id, query, documents, self.weights.vector_setting)
 
         rerank_documents = []
-        for document, query_score, query_vector_score in zip(documents, query_scores, query_vector_scores):
+        for document, query_score, query_vector_score in zip(
+            documents, query_scores, query_vector_scores, strict=False
+        ):
             score = (
                 self.weights.vector_setting.vector_weight * query_vector_score
                 + self.weights.keyword_setting.keyword_weight * query_score
@@ -151,33 +155,38 @@ class WeightRerankRunner(BaseRerankRunner):
 
         return similarities
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def _calculate_cosine(
         self, tenant_id: str, query: str, documents: list[Document], vector_setting: VectorSetting
     ) -> list[float]:
         """
-        Calculate Cosine scores
+        Calculate cosine scores, resolving the query vector only for unscored documents.
         :param query: search query
         :param documents: documents for reranking
 
         :return:
         """
         query_vector_scores = []
-
-        model_manager = ModelManager()
-
-        embedding_model = model_manager.get_model_instance(
-            tenant_id=tenant_id,
-            provider=vector_setting.embedding_provider_name,
-            model_type=ModelType.TEXT_EMBEDDING,
-            model=vector_setting.embedding_model_name,
-        )
-        cache_embedding = CacheEmbedding(embedding_model)
-        query_vector = cache_embedding.embed_query(query)
+        query_vector: list[float] | None = None
         for document in documents:
             # calculate cosine similarity
             if document.metadata and "score" in document.metadata:
                 query_vector_scores.append(document.metadata["score"])
             else:
+                if query_vector is None:
+                    query_vector = CacheEmbedding.get_cached_query_embedding(
+                        vector_setting.embedding_provider_name, vector_setting.embedding_model_name, query
+                    )
+                    if query_vector is None:
+                        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+                        embedding_model = model_manager.get_model_instance(
+                            tenant_id=tenant_id,
+                            provider=vector_setting.embedding_provider_name,
+                            model_type=ModelType.TEXT_EMBEDDING,
+                            model=vector_setting.embedding_model_name,
+                        )
+                        query_vector = CacheEmbedding(embedding_model).embed_query(query)
+
                 # transform to NumPy
                 vec1 = np.array(query_vector)
                 vec2 = np.array(document.vector)

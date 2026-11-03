@@ -8,13 +8,84 @@ class EnterpriseFeatureConfig(BaseSettings):
     **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
     """
 
-    ENTERPRISE_ENABLED: bool = Field(
-        description="Enable or disable enterprise-level features."
-        "Before using, please contact business@dify.ai by email to inquire about licensing matters.",
-        default=False,
+    WEBAPP_PUBLIC_ACCESS_ENABLED: bool = Field(
+        description="Whether admins are allowed to set a webapp's access mode to public (anyone with the link, "
+        "no auth). Disable in security-sensitive on-prem deployments.",
+        default=True,
     )
 
     CAN_REPLACE_LOGO: bool = Field(
         description="Allow customization of the enterprise logo.",
         default=False,
+    )
+
+    ENABLE_LICENSE_EXPIRY_NOTICE: bool = Field(
+        description="Show the license expiry countdown badge in the console when the license is expiring. "
+        "Disable to hide the badge; license status and all enforcement remain unaffected.",
+        default=True,
+    )
+
+    ENTERPRISE_REQUEST_TIMEOUT: int = Field(
+        ge=1, description="Maximum timeout in seconds for enterprise requests", default=5
+    )
+
+    ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK: bool = Field(
+        default=False,
+        description="If disabled, credential policy check is only performed when saving workflows."
+        "This helps gain runtime performance by trading off consistency.",
+    )
+
+    RBAC_ENABLED: bool = Field(
+        description="Enable enterprise RBAC APIs. When disabled, compatibility responses fall back to legacy roles.",
+        default=False,
+    )
+
+    ENTERPRISE_RBAC_REQUEST_TIMEOUT: int = Field(
+        ge=1,
+        description="Maximum timeout in seconds for inner RBAC requests.",
+        default=30,
+    )
+
+
+class EnterpriseTelemetryConfig(BaseSettings):
+    """
+    Configuration for enterprise telemetry.
+    """
+
+    ENTERPRISE_TELEMETRY_ENABLED: bool = Field(
+        description="Enable enterprise telemetry collection for enterprise deployments.",
+        default=False,
+    )
+
+    ENTERPRISE_OTLP_ENDPOINT: str = Field(
+        description="Enterprise OTEL collector endpoint.",
+        default="",
+    )
+
+    ENTERPRISE_OTLP_HEADERS: str = Field(
+        description="Auth headers for OTLP export (key=value,key2=value2).",
+        default="",
+    )
+
+    ENTERPRISE_OTLP_PROTOCOL: str = Field(
+        description="OTLP protocol: 'http' or 'grpc' (default: http).",
+        default="http",
+    )
+
+    ENTERPRISE_OTLP_API_KEY: str = Field(
+        description="Bearer token for enterprise OTLP export authentication.",
+        default="",
+    )
+
+    ENTERPRISE_INCLUDE_CONTENT: bool = Field(
+        description="Include input/output content in traces (privacy toggle).",
+        # Setting the default value to False to avoid accidentally log PII data in traces.
+        default=False,
+    )
+
+    ENTERPRISE_OTEL_SAMPLING_RATE: float = Field(
+        description="Sampling rate for enterprise traces (0.0 to 1.0, default 1.0 = 100%).",
+        default=1.0,
+        ge=0.0,
+        le=1.0,
     )

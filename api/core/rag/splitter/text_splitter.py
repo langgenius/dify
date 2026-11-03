@@ -4,20 +4,14 @@ import copy
 import logging
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Collection, Iterable, Sequence, Set
+from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
-from typing import (
-    Any,
-    Literal,
-    TypeVar,
-    Union,
-)
+from typing import Any, Literal, override
 
 from core.rag.models.document import BaseDocumentTransformer, Document
 
 logger = logging.getLogger(__name__)
-
-TS = TypeVar("TS", bound="TextSplitter")
 
 
 def _split_text_with_regex(text: str, separator: str, keep_separator: bool) -> list[str]:
@@ -33,7 +27,7 @@ def _split_text_with_regex(text: str, separator: str, keep_separator: bool) -> l
             splits = re.split(separator, text)
     else:
         splits = list(text)
-    return [s for s in splits if (s not in {"", "\n"})]
+    return [s for s in splits if s != "" and (separator == "" or s != "\n")]
 
 
 class TextSplitter(BaseDocumentTransformer, ABC):
@@ -70,7 +64,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
     def split_text(self, text: str) -> list[str]:
         """Split text into multiple components."""
 
-    def create_documents(self, texts: list[str], metadatas: list[dict] | None = None) -> list[Document]:
+    def create_documents(self, texts: list[str], metadatas: list[dict[str, Any]] | None = None) -> list[Document]:
         """Create documents from a list of texts."""
         _metadatas = metadatas or [{}] * len(texts)
         documents = []
@@ -109,7 +103,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         docs = []
         current_doc: list[str] = []
         total = 0
-        for d, _len in zip(splits, lengths):
+        for d, _len in zip(splits, lengths, strict=False):
             if total + _len + (separator_len if len(current_doc) > 0 else 0) > self._chunk_size:
                 if total > self._chunk_size:
                     logger.warning(
@@ -148,16 +142,18 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             def _huggingface_tokenizer_length(text: str) -> int:
                 return len(tokenizer.encode(text))
 
-        except ImportError:
+        except ImportError as caught_error:
             raise ValueError(
                 "Could not import transformers python package. Please install it with `pip install transformers`."
-            )
+            ) from caught_error
         return cls(length_function=lambda x: [_huggingface_tokenizer_length(text) for text in x], **kwargs)
 
+    @override
     def transform_documents(self, documents: Sequence[Document], **kwargs: Any) -> Sequence[Document]:
         """Transform sequence of documents by splitting them."""
         return self.split_documents(list(documents))
 
+    @override
     async def atransform_documents(self, documents: Sequence[Document], **kwargs: Any) -> Sequence[Document]:
         """Asynchronously transform a sequence of documents by splitting them."""
         raise NotImplementedError
@@ -194,29 +190,30 @@ class TokenTextSplitter(TextSplitter):
         self,
         encoding_name: str = "gpt2",
         model_name: str | None = None,
-        allowed_special: Union[Literal["all"], Set[str]] = set(),
-        disallowed_special: Union[Literal["all"], Collection[str]] = "all",
+        allowed_special: Literal["all"] | AbstractSet[str] = frozenset(),
+        disallowed_special: Literal["all"] | AbstractSet[str] = "all",
         **kwargs: Any,
     ):
         """Create a new TextSplitter."""
         super().__init__(**kwargs)
         try:
             import tiktoken
-        except ImportError:
+        except ImportError as caught_error:
             raise ImportError(
                 "Could not import tiktoken python package. "
                 "This is needed in order to for TokenTextSplitter. "
                 "Please install it with `pip install tiktoken`."
-            )
+            ) from caught_error
 
         if model_name is not None:
             enc = tiktoken.encoding_for_model(model_name)
         else:
             enc = tiktoken.get_encoding(encoding_name)
         self._tokenizer = enc
-        self._allowed_special = allowed_special
-        self._disallowed_special = disallowed_special
+        self._allowed_special: Literal["all"] | AbstractSet[str] = allowed_special
+        self._disallowed_special: Literal["all"] | AbstractSet[str] = disallowed_special
 
+    @override
     def split_text(self, text: str) -> list[str]:
         def _encode(_text: str) -> list[int]:
             return self._tokenizer.encode(
@@ -271,7 +268,7 @@ class RecursiveCharacterTextSplitter(TextSplitter):
         _good_splits_lengths = []  # cache the lengths of the splits
         _separator = "" if self._keep_separator else separator
         s_lens = self._length_function(splits)
-        for s, s_len in zip(splits, s_lens):
+        for s, s_len in zip(splits, s_lens, strict=False):
             if s_len < self._chunk_size:
                 _good_splits.append(s)
                 _good_splits_lengths.append(s_len)
@@ -293,5 +290,6 @@ class RecursiveCharacterTextSplitter(TextSplitter):
 
         return final_chunks
 
+    @override
     def split_text(self, text: str) -> list[str]:
         return self._split_text(text, self._separators)

@@ -1,5 +1,7 @@
 import uuid
-from typing import Literal, cast
+from typing import Any, Literal, cast
+
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -8,13 +10,14 @@ from core.app.app_config.entities import (
     ModelConfig,
 )
 from core.entities.agent_entities import PlanningStrategy
-from models.model import AppMode
-from services.dataset_service import DatasetService
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from models.model import AppMode, AppModelConfigDict
+from services.knowledge.dataset_service import DatasetService
 
 
 class DatasetConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> DatasetEntity | None:
+    def convert(cls, config: AppModelConfigDict) -> DatasetEntity | None:
         """
         Convert model config to model config
 
@@ -25,11 +28,15 @@ class DatasetConfigManager:
             datasets = config.get("dataset_configs", {}).get("datasets", {"strategy": "router", "datasets": []})
 
             for dataset in datasets.get("datasets", []):
+                if not isinstance(dataset, dict):
+                    continue
                 keys = list(dataset.keys())
                 if len(keys) == 0 or keys[0] != "dataset":
                     continue
 
                 dataset = dataset["dataset"]
+                if not isinstance(dataset, dict):
+                    continue
 
                 if "enabled" not in dataset or not dataset["enabled"]:
                     continue
@@ -47,15 +54,14 @@ class DatasetConfigManager:
             agent_dict = config.get("agent_mode", {})
 
             for tool in agent_dict.get("tools", []):
-                keys = tool.keys()
-                if len(keys) == 1:
+                if len(tool) == 1:
                     # old standard
                     key = list(tool.keys())[0]
 
                     if key != "dataset":
                         continue
 
-                    tool_item = tool[key]
+                    tool_item = cast(dict[str, Any], tool)[key]
 
                     if "enabled" not in tool_item or not tool_item["enabled"]:
                         continue
@@ -114,8 +120,10 @@ class DatasetConfigManager:
                     score_threshold=float(score_threshold_val)
                     if dataset_configs.get("score_threshold_enabled", False) and score_threshold_val is not None
                     else None,
-                    reranking_model=reranking_model_val if isinstance(reranking_model_val, dict) else None,
-                    weights=weights_val if isinstance(weights_val, dict) else None,
+                    reranking_model=cast(RerankingModelDict, reranking_model_val)
+                    if isinstance(reranking_model_val, dict)
+                    else None,
+                    weights=cast(WeightsDict, weights_val) if isinstance(weights_val, dict) else None,
                     reranking_enabled=bool(dataset_configs.get("reranking_enabled", True)),
                     rerank_mode=dataset_configs.get("reranking_mode", "reranking_model"),
                     metadata_filtering_mode=cast(
@@ -132,7 +140,9 @@ class DatasetConfigManager:
             )
 
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, app_mode: AppMode, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(
+        cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any], session: Session
+    ) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for dataset feature
 
@@ -141,7 +151,7 @@ class DatasetConfigManager:
         :param config: app model config args
         """
         # Extract dataset config for legacy compatibility
-        config = cls.extract_dataset_config_for_legacy_compatibility(tenant_id, app_mode, config)
+        config = cls.extract_dataset_config_for_legacy_compatibility(tenant_id, app_mode, config, session)
 
         # dataset_configs
         if "dataset_configs" not in config or not config.get("dataset_configs"):
@@ -166,7 +176,9 @@ class DatasetConfigManager:
         return config, ["agent_mode", "dataset_configs", "dataset_query_variable"]
 
     @classmethod
-    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict):
+    def extract_dataset_config_for_legacy_compatibility(
+        cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any], session: Session
+    ):
         """
         Extract dataset config for legacy compatibility
 
@@ -195,6 +207,36 @@ class DatasetConfigManager:
         if not isinstance(config["agent_mode"]["tools"], list):
             raise ValueError("tools in agent_mode must be a list of objects")
 
+        # All app modes persist these tools, including modes that skip the agent validator.
+        for tool in config["agent_mode"]["tools"]:
+            if not isinstance(tool, dict):
+                continue
+            if all(field in tool for field in ("provider_type", "provider_id", "tool_name", "tool_parameters")):
+                tool_config = tool
+            else:
+                tool_name = next(
+                    (
+                        name
+                        for name in (
+                            "dataset",
+                            "google_search",
+                            "web_reader",
+                            "wikipedia",
+                            "current_datetime",
+                            "sensitive-word-avoidance",
+                        )
+                        if name in tool
+                    ),
+                    None,
+                )
+                if tool_name is None:
+                    continue
+                tool_config = tool[tool_name]
+                if not isinstance(tool_config, dict):
+                    continue
+            if "enabled" not in tool_config or tool_config["enabled"] is None:
+                tool_config["enabled"] = False
+
         # strategy
         if "strategy" not in config["agent_mode"] or not config["agent_mode"].get("strategy"):
             config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER
@@ -205,6 +247,11 @@ class DatasetConfigManager:
             PlanningStrategy.REACT_ROUTER,
         }:
             for tool in config.get("agent_mode", {}).get("tools", []):
+                if not tool:
+                    # Skip malformed empty tool entries; list(tool.keys())[0]
+                    # would otherwise raise IndexError. The sibling convert()
+                    # already guards this with `if len(tool) == 1`.
+                    continue
                 key = list(tool.keys())[0]
                 if key == "dataset":
                     # old style, use tool name as key
@@ -221,10 +268,10 @@ class DatasetConfigManager:
 
                     try:
                         uuid.UUID(tool_item["id"])
-                    except ValueError:
-                        raise ValueError("id in dataset must be of UUID type")
+                    except ValueError as caught_error:
+                        raise ValueError("id in dataset must be of UUID type") from caught_error
 
-                    if not cls.is_dataset_exists(tenant_id, tool_item["id"]):
+                    if not cls.is_dataset_exists(tenant_id, tool_item["id"], session):
                         raise ValueError("Dataset ID does not exist, please check your permission.")
 
                     has_datasets = True
@@ -241,14 +288,11 @@ class DatasetConfigManager:
         return config
 
     @classmethod
-    def is_dataset_exists(cls, tenant_id: str, dataset_id: str) -> bool:
+    def is_dataset_exists(cls, tenant_id: str, dataset_id: str, session: Session) -> bool:
         # verify if the dataset ID exists
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id, session)
 
         if not dataset:
             return False
 
-        if dataset.tenant_id != tenant_id:
-            return False
-
-        return True
+        return dataset.tenant_id == tenant_id

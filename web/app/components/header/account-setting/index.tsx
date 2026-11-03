@@ -1,252 +1,366 @@
 'use client'
+
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
-  RiBrain2Fill,
-  RiBrain2Line,
-  RiCloseLine,
-  RiColorFilterFill,
-  RiColorFilterLine,
-  RiDatabase2Fill,
-  RiDatabase2Line,
-  RiGroup2Fill,
-  RiGroup2Line,
-  RiMoneyDollarCircleFill,
-  RiMoneyDollarCircleLine,
-  RiPuzzle2Fill,
-  RiPuzzle2Line,
-  RiTranslate2,
-} from '@remixicon/react'
-import { useEffect, useRef, useState } from 'react'
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { lazy, Suspense, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
-import {
-  ACCOUNT_SETTING_TAB,
-
-} from '@/app/components/header/account-setting/constants'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
-import { useAppContext } from '@/context/app-context'
-import { useProviderContext } from '@/context/provider-context'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { cn } from '@/utils/classnames'
-import Button from '../../base/button'
-import ApiBasedExtensionPage from './api-based-extension-page'
-import DataSourcePage from './data-source-page-new'
-import LanguagePage from './language-page'
+import { useDocLink } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import {
+  currentWorkspaceAtom,
+  isCurrentWorkspaceDatasetOperatorAtom,
+  isCurrentWorkspaceManagerAtom,
+  isCurrentWorkspaceOwnerAtom,
+} from '@/context/workspace-state'
+import { env } from '@/env'
+import { selectIMCentrallyManaged } from '@/features/contacts/im-capability'
+import { isContactsImPlatformEnabled } from '@/features/contacts/im-platform/feature-flag'
+import { canReadNetworkAccessAtom } from '@/features/network-access/permissions'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
+import { hasPermission } from '@/utils/permission'
+import AccessRulesPage from './access-rules-page'
+import IpPoliciesPage from './ip-policies-page'
 import MembersPage from './members-page'
-import ModelProviderPage from './model-provider-page'
+import PermissionsPage from './permissions-page'
+import PreferencePage from './preference-page'
+import ResourceAccessTokenPage from './resource-access-token-page'
+import WorkflowLogArchivesPage from './workflow-log-archives-page'
+
+const ContactsImPlatformAccountSettingPage = lazy(() =>
+  import('@/features/contacts/im-platform/account-setting-page').then((module) => ({
+    default: module.ContactsImPlatformAccountSettingPage,
+  })),
+)
 
 const iconClassName = `
-  w-5 h-5 mr-2
+  size-4 shrink-0 sm:me-2
 `
 
 type IAccountSettingProps = {
-  onCancel: () => void
-  activeTab?: AccountSettingTab
-  onTabChange?: (tab: AccountSettingTab) => void
+  onCancelAction: () => void
+  activeTab: AccountSettingTab
+  onTabChangeAction: (tab: AccountSettingTab) => void
 }
 
 type GroupItem = {
   key: AccountSettingTab
   name: string
+  title?: string
   description?: string
+  docLink?: { href: string; label: string }
   icon: React.JSX.Element
   activeIcon: React.JSX.Element
 }
 
 export default function AccountSetting({
-  onCancel,
-  activeTab = ACCOUNT_SETTING_TAB.MEMBERS,
-  onTabChange,
+  onCancelAction,
+  activeTab,
+  onTabChangeAction,
 }: IAccountSettingProps) {
-  const [activeMenu, setActiveMenu] = useState<AccountSettingTab>(activeTab)
-  useEffect(() => {
-    setActiveMenu(activeTab)
-  }, [activeTab])
-  const { t } = useTranslation()
-  const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
-
-  const workplaceGroupItems: GroupItem[] = (() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return []
-
-    const items: GroupItem[] = [
-      {
-        key: ACCOUNT_SETTING_TAB.PROVIDER,
-        name: t('settings.provider', { ns: 'common' }),
-        icon: <RiBrain2Line className={iconClassName} />,
-        activeIcon: <RiBrain2Fill className={iconClassName} />,
-      },
-      {
-        key: ACCOUNT_SETTING_TAB.MEMBERS,
-        name: t('settings.members', { ns: 'common' }),
-        icon: <RiGroup2Line className={iconClassName} />,
-        activeIcon: <RiGroup2Fill className={iconClassName} />,
-      },
-    ]
-
-    if (enableBilling) {
-      items.push({
-        key: ACCOUNT_SETTING_TAB.BILLING,
-        name: t('settings.billing', { ns: 'common' }),
-        description: t('plansCommon.receiptInfo', { ns: 'billing' }),
-        icon: <RiMoneyDollarCircleLine className={iconClassName} />,
-        activeIcon: <RiMoneyDollarCircleFill className={iconClassName} />,
-      })
-    }
-
-    items.push(
-      {
-        key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-        name: t('settings.dataSource', { ns: 'common' }),
-        icon: <RiDatabase2Line className={iconClassName} />,
-        activeIcon: <RiDatabase2Fill className={iconClassName} />,
-      },
-      {
-        key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
-        name: t('settings.apiBasedExtension', { ns: 'common' }),
-        icon: <RiPuzzle2Line className={iconClassName} />,
-        activeIcon: <RiPuzzle2Fill className={iconClassName} />,
-      },
+  const { t } = useTranslation([
+    'appLog',
+    'billing',
+    'common',
+    'custom',
+    'navigation',
+    'accountSettings',
+    'contacts',
+  ])
+  const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
+  const enableReplaceWebAppLogo = featuresQuery.data?.can_replace_logo
+  const docLink = useDocLink()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
+  const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const canViewAccessTokens = env.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN && isCurrentWorkspaceOwner
+  const canManageWorkspaceRoles =
+    isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
+  const canViewBilling =
+    systemFeatures.deployment_edition === 'CLOUD' && !isCurrentWorkspaceDatasetOperator
+  const canViewWorkflowLogArchives =
+    systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
+  const canViewContactsImPlatform =
+    isCurrentWorkspaceManager &&
+    featuresQuery.isSuccess &&
+    isContactsImPlatformEnabled(selectIMCentrallyManaged(featuresQuery.data))
+  const canViewIpPolicies = useAtomValue(canReadNetworkAccessAtom)
+  const activeMenu = (() => {
+    if (activeTab === ACCOUNT_SETTING_TAB.IP_POLICIES && !canViewIpPolicies)
+      return ACCOUNT_SETTING_TAB.MEMBERS
+    if (activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
+      return ACCOUNT_SETTING_TAB.PREFERENCES
+    if (activeTab === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && !canViewWorkflowLogArchives)
+      return ACCOUNT_SETTING_TAB.MEMBERS
+    if (activeTab === ACCOUNT_SETTING_TAB.IM_PLATFORM && !canViewContactsImPlatform)
+      return ACCOUNT_SETTING_TAB.MEMBERS
+    if (
+      (activeTab === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS ||
+        activeTab === ACCOUNT_SETTING_TAB.PERMISSION_SET) &&
+      !canManageWorkspaceRoles
     )
+      return ACCOUNT_SETTING_TAB.MEMBERS
+    if (activeTab === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && !canViewAccessTokens)
+      return ACCOUNT_SETTING_TAB.MEMBERS
+    return activeTab
+  })()
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
-    if (enableReplaceWebAppLogo || enableBilling) {
-      items.push({
-        key: ACCOUNT_SETTING_TAB.CUSTOM,
-        name: t('custom', { ns: 'custom' }),
-        icon: <RiColorFilterLine className={iconClassName} />,
-        activeIcon: <RiColorFilterFill className={iconClassName} />,
-      })
+  const settingItems: GroupItem[] = [
+    {
+      key: ACCOUNT_SETTING_TAB.MEMBERS,
+      name: t(($) => $['settings.members'], { ns: 'navigation' }),
+      icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.IM_PLATFORM,
+      name: t(($) => $['imPlatform.title'], { ns: 'contacts' }),
+      description: t(($) => $['imPlatform.description'], { ns: 'contacts' }),
+      docLink: {
+        href: docLink('/use-dify/nodes/human-input'),
+        label: t(($) => $['imPlatform.learnMore'], { ns: 'contacts' }),
+      },
+      icon: <span className={cn('i-ri-chat-ai-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-chat-ai-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.IP_POLICIES,
+      name: t(($) => $['settings.ipPolicies'], { ns: 'common' }),
+      icon: <span className={cn('i-ri-shield-keyhole-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-shield-keyhole-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
+      name: t(($) => $['settings.rolesAndPermissions'], { ns: 'navigation' }),
+      icon: <span className={cn('i-ri-shield-user-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-shield-user-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.PERMISSION_SET,
+      name: t(($) => $['settings.permissionSet'], { ns: 'navigation' }),
+      description: t(($) => $['settings.permissionSetDescription'], { ns: 'navigation' }),
+      icon: <span className={cn('i-ri-lock-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-lock-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.ACCESS_TOKEN,
+      name: t(($) => $['settings.accessToken'], { ns: 'navigation' }),
+      description: t(($) => $['settings.accessTokenDescription'], { ns: 'navigation' }),
+      icon: <span className={cn('i-ri-key-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-key-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.BILLING,
+      name: t(($) => $['settings.billing'], { ns: 'navigation' }),
+      description: t(($) => $['plansCommon.receiptInfo'], { ns: 'billing' }),
+      icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES,
+      name: t(($) => $['archives.title'], { ns: 'appLog' }),
+      description: t(($) => $['archives.description'], { ns: 'appLog' }),
+      icon: <span className={cn('i-ri-archive-drawer-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-archive-drawer-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.CUSTOM,
+      name: t(($) => $.custom, { ns: 'custom' }),
+      icon: <span className={cn('i-ri-color-filter-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.PREFERENCES,
+      name: t(($) => $['settings.preferences'], { ns: 'navigation' }),
+      title: t(($) => $['account.general'], { ns: 'accountSettings' }),
+      icon: <span className={cn('i-ri-equalizer-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-equalizer-2-fill', iconClassName)} />,
+    },
+  ]
+  const activeItem = settingItems.find((item) => item.key === activeMenu)
+
+  const visibleSettingItems: GroupItem[] = (() => {
+    const visibleTabs: AccountSettingTab[] = []
+
+    visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
+    if (canViewIpPolicies) visibleTabs.push(ACCOUNT_SETTING_TAB.IP_POLICIES)
+
+    if (canViewContactsImPlatform) visibleTabs.push(ACCOUNT_SETTING_TAB.IM_PLATFORM)
+
+    if (canManageWorkspaceRoles) {
+      visibleTabs.push(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS)
+      visibleTabs.push(ACCOUNT_SETTING_TAB.PERMISSION_SET)
     }
 
-    return items
+    if (canViewAccessTokens) visibleTabs.push(ACCOUNT_SETTING_TAB.ACCESS_TOKEN)
+
+    if (canViewBilling) visibleTabs.push(ACCOUNT_SETTING_TAB.BILLING)
+
+    if (enableReplaceWebAppLogo || systemFeatures.deployment_edition === 'CLOUD')
+      visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
+
+    if (canViewWorkflowLogArchives) visibleTabs.push(ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES)
+
+    return visibleTabs
+      .map((tab) => settingItems.find((item) => item.key === tab))
+      .filter((item): item is GroupItem => Boolean(item))
   })()
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const preferenceItem = settingItems.find((item) => item.key === ACCOUNT_SETTING_TAB.PREFERENCES)
 
   const menuItems = [
     {
       key: 'workspace-group',
-      name: t('settings.workplaceGroup', { ns: 'common' }),
-      items: workplaceGroupItems,
+      name: t(($) => $['settings.workspace'], { ns: 'navigation' }),
+      items: visibleSettingItems,
     },
     {
-      key: 'account-group',
-      name: t('settings.generalGroup', { ns: 'common' }),
-      items: [
-        {
-          key: ACCOUNT_SETTING_TAB.LANGUAGE,
-          name: t('settings.language', { ns: 'common' }),
-          icon: <RiTranslate2 className={iconClassName} />,
-          activeIcon: <RiTranslate2 className={iconClassName} />,
-        },
-      ],
+      key: 'user-group',
+      items: preferenceItem ? [preferenceItem] : [],
     },
   ]
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [scrolled, setScrolled] = useState(false)
-  useEffect(() => {
-    const targetElement = scrollRef.current
-    const scrollHandle = (e: Event) => {
-      const userScrolled = (e.target as HTMLDivElement).scrollTop > 0
-      setScrolled(userScrolled)
-    }
-    targetElement?.addEventListener('scroll', scrollHandle)
-    return () => {
-      targetElement?.removeEventListener('scroll', scrollHandle)
-    }
-  }, [])
-
-  const activeItem = [...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)
-
-  const [searchValue, setSearchValue] = useState<string>('')
 
   return (
     <MenuDialog
-      show
-      onClose={onCancel}
+      title={t(($) => $['settings.settings'], { ns: 'navigation' })}
+      onClose={onCancelAction}
     >
-      <div className="mx-auto flex h-[100vh] max-w-[1048px]">
-        <div className="flex w-[44px] flex-col border-r border-divider-burn pl-4 pr-6 sm:w-[224px]">
-          <div className="title-2xl-semi-bold mb-8 mt-6 px-3 py-2 text-text-primary">{t('userProfile.settings', { ns: 'common' })}</div>
+      <div className="mx-auto flex h-screen w-full max-w-270 px-4">
+        <div className="flex w-11 shrink-0 flex-col pe-2 sm:w-56 sm:ps-4 sm:pe-6">
+          <div className="invisible mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary sm:visible">
+            {t(($) => $['settings.settings'], { ns: 'navigation' })}
+          </div>
           <div className="w-full">
-            {
-              menuItems.map(menuItem => (
-                <div key={menuItem.key} className="mb-2">
-                  {!isCurrentWorkspaceDatasetOperator && (
-                    <div className="system-xs-medium-uppercase mb-0.5 py-2 pb-1 pl-3 text-text-tertiary">{menuItem.name}</div>
-                  )}
-                  <div>
-                    {
-                      menuItem.items.map(item => (
-                        <div
-                          key={item.key}
-                          className={cn(
-                            'mb-0.5 flex h-[37px] cursor-pointer items-center rounded-lg p-1 pl-3 text-sm',
-                            activeMenu === item.key ? 'system-sm-semibold bg-state-base-active text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text',
-                          )}
-                          title={item.name}
-                          onClick={() => {
-                            setActiveMenu(item.key)
-                            onTabChange?.(item.key)
-                          }}
-                        >
-                          {activeMenu === item.key ? item.activeIcon : item.icon}
-                          {!isMobile && <div className="truncate">{item.name}</div>}
-                        </div>
-                      ))
-                    }
+            {menuItems.map((menuItem) => (
+              <div
+                key={menuItem.key}
+                className={cn(menuItem.key === 'workspace-group' ? 'mb-2' : 'mt-2')}
+              >
+                {menuItem.name && (
+                  <div className="hidden h-7 items-center px-3 system-xs-medium-uppercase text-text-tertiary sm:flex">
+                    {menuItem.name}
                   </div>
+                )}
+                <div
+                  className={cn(
+                    menuItem.key === 'user-group' && 'border-t border-divider-subtle pt-3',
+                  )}
+                >
+                  {menuItem.items.map((item) => (
+                    <button
+                      type="button"
+                      key={item.key}
+                      className={cn(
+                        'mb-0.5 flex h-8 w-full items-center justify-center rounded-lg px-2 text-start text-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:justify-start sm:px-3',
+                        activeMenu === item.key
+                          ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active'
+                          : 'system-sm-medium text-components-menu-item-text',
+                      )}
+                      aria-label={item.name}
+                      aria-current={activeMenu === item.key ? 'page' : undefined}
+                      title={item.name}
+                      onClick={() => {
+                        onTabChangeAction(item.key)
+                      }}
+                    >
+                      {activeMenu === item.key ? item.activeIcon : item.icon}
+                      <div className="hidden truncate sm:block">{item.name}</div>
+                    </button>
+                  ))}
                 </div>
-              ))
-            }
+              </div>
+            ))}
           </div>
         </div>
-        <div className="relative flex w-[824px]">
-          <div className="fixed right-6 top-6 z-[9999] flex flex-col items-center">
-            <Button
-              variant="tertiary"
-              size="large"
-              className="px-2"
-              onClick={onCancel}
-            >
-              <RiCloseLine className="h-5 w-5" />
-            </Button>
-            <div className="system-2xs-medium-uppercase mt-1 text-text-tertiary">ESC</div>
-          </div>
-          <div ref={scrollRef} className="w-full overflow-y-auto bg-components-panel-bg pb-4">
-            <div className={cn('sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pb-2 pt-[27px]', scrolled && 'border-b border-divider-regular')}>
-              <div className="title-2xl-semi-bold shrink-0 text-text-primary">
-                {activeItem?.name}
-                {activeItem?.description && (
-                  <div className="system-sm-regular mt-1 text-text-tertiary">{activeItem?.description}</div>
-                )}
-              </div>
-              {activeItem?.key === 'provider' && (
-                <div className="flex grow justify-end">
-                  <Input
-                    showLeftIcon
-                    wrapperClassName="!w-[200px]"
-                    className="!h-8 !text-[13px]"
-                    onChange={e => setSearchValue(e.target.value)}
-                    value={searchValue}
-                  />
+        <div className="relative flex min-h-0 min-w-0 flex-1">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 inset-s-full w-screen bg-components-panel-bg"
+          />
+          <ScrollArea className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-components-panel-bg">
+            {activeMenu !== ACCOUNT_SETTING_TAB.IP_POLICIES && (
+              <div className="mx-4 flex min-h-15 shrink-0 items-end bg-components-panel-bg pe-12 pt-8 pb-2 sm:mx-8">
+                <div className="min-w-0 flex-1">
+                  <h3 className="title-2xl-semi-bold text-text-primary">
+                    {activeItem?.title ?? activeItem?.name}
+                  </h3>
+                  {activeItem?.description && (
+                    <p className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
+                      {activeItem.description}
+                      {activeItem?.docLink && (
+                        <a
+                          href={activeItem.docLink.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ms-0.5 inline-flex items-center text-text-accent focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                        >
+                          {activeItem.docLink.label}
+                          <span aria-hidden className="i-ri-external-link-line size-3" />
+                        </a>
+                      )}
+                    </p>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className="px-4 pt-2 sm:px-8">
-              {activeMenu === 'provider' && <ModelProviderPage searchText={searchValue} />}
-              {activeMenu === 'members' && <MembersPage />}
-              {activeMenu === 'billing' && <BillingPage />}
-              {activeMenu === 'data-source' && <DataSourcePage />}
-              {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
-              {activeMenu === 'custom' && <CustomPage />}
-              {activeMenu === 'language' && <LanguagePage />}
-            </div>
-          </div>
+              </div>
+            )}
+            <ScrollAreaViewport
+              ref={scrollContainerRef}
+              style={{ overflowX: 'hidden' }}
+              className="min-h-0 flex-1 overscroll-contain"
+            >
+              <ScrollAreaContent
+                style={{ minWidth: 0 }}
+                className="min-h-full w-full max-w-full pb-4"
+              >
+                <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
+                  {/* First-use translations and queries must not suspend the dialog shell. */}
+                  <Suspense fallback={<LoadingPlaceholder className="py-10" />}>
+                    {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.IM_PLATFORM && (
+                      <ContactsImPlatformAccountSettingPage
+                        canManage={isCurrentWorkspaceManager}
+                        organizationId={currentWorkspace.id}
+                      />
+                    )}
+                    {activeMenu === ACCOUNT_SETTING_TAB.IP_POLICIES && <IpPoliciesPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && (
+                      <PermissionsPage containerRef={scrollContainerRef} />
+                    )}
+                    {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && <ResourceAccessTokenPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
+                      <WorkflowLogArchivesPage />
+                    )}
+                    {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <PreferencePage />}
+                  </Suspense>
+                </div>
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+          </ScrollArea>
         </div>
       </div>
     </MenuDialog>

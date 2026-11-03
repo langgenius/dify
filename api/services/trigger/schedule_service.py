@@ -1,20 +1,24 @@
 import json
 import logging
-from collections.abc import Mapping
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate, VisualConfig
+from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from core.workflow.nodes.trigger_schedule.entities import (
+    ScheduleConfig,
+    SchedulePlanUpdate,
+    TriggerScheduleNodeData,
+    VisualConfig,
+)
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
+from graphon.entities.graph_config import NodeConfigDict
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
 from models.trigger import WorkflowSchedulePlan
 from models.workflow import Workflow
-from services.errors.account import AccountNotFoundError
+from services.account_errors import AccountNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +26,7 @@ logger = logging.getLogger(__name__)
 class ScheduleService:
     @staticmethod
     def create_schedule(
-        session: Session,
-        tenant_id: str,
-        app_id: str,
-        config: ScheduleConfig,
+        tenant_id: str, app_id: str, config: ScheduleConfig, *, session: Session
     ) -> WorkflowSchedulePlan:
         """
         Create a new schedule with validated configuration.
@@ -59,11 +60,7 @@ class ScheduleService:
         return schedule
 
     @staticmethod
-    def update_schedule(
-        session: Session,
-        schedule_id: str,
-        updates: SchedulePlanUpdate,
-    ) -> WorkflowSchedulePlan:
+    def update_schedule(schedule_id: str, updates: SchedulePlanUpdate, *, session: Session) -> WorkflowSchedulePlan:
         """
         Update an existing schedule with validated configuration.
 
@@ -106,10 +103,7 @@ class ScheduleService:
         return schedule
 
     @staticmethod
-    def delete_schedule(
-        session: Session,
-        schedule_id: str,
-    ) -> None:
+    def delete_schedule(schedule_id: str, *, session: Session) -> None:
         """
         Delete a schedule plan.
 
@@ -125,7 +119,7 @@ class ScheduleService:
         session.flush()
 
     @staticmethod
-    def get_tenant_owner(session: Session, tenant_id: str) -> Account:
+    def get_tenant_owner(tenant_id: str, *, session: Session) -> Account:
         """
         Returns an account to execute scheduled workflows on behalf of the tenant.
         Prioritizes owner over admin to ensure proper authorization hierarchy.
@@ -153,10 +147,7 @@ class ScheduleService:
             raise AccountNotFoundError(f"Account not found for tenant: {tenant_id}")
 
     @staticmethod
-    def update_next_run_at(
-        session: Session,
-        schedule_id: str,
-    ) -> datetime:
+    def update_next_run_at(schedule_id: str, *, session: Session) -> datetime:
         """
         Advances the schedule to its next execution time after a successful trigger.
         Uses current time as base to prevent missing executions during delays.
@@ -176,26 +167,26 @@ class ScheduleService:
         return next_run_at
 
     @staticmethod
-    def to_schedule_config(node_config: Mapping[str, Any]) -> ScheduleConfig:
+    def to_schedule_config(node_config: NodeConfigDict) -> ScheduleConfig:
         """
         Converts user-friendly visual schedule settings to cron expression.
         Maintains consistency with frontend UI expectations while supporting croniter's extended syntax.
         """
-        node_data = node_config.get("data", {})
-        mode = node_data.get("mode", "visual")
-        timezone = node_data.get("timezone", "UTC")
-        node_id = node_config.get("id", "start")
+        node_data = TriggerScheduleNodeData.model_validate(node_config["data"], from_attributes=True)
+        mode = node_data.mode
+        timezone = node_data.timezone
+        node_id = node_config["id"]
 
         cron_expression = None
         if mode == "cron":
-            cron_expression = node_data.get("cron_expression")
+            cron_expression = node_data.cron_expression
             if not cron_expression:
                 raise ScheduleConfigError("Cron expression is required for cron mode")
         elif mode == "visual":
-            frequency = str(node_data.get("frequency"))
+            frequency = str(node_data.frequency or "")
             if not frequency:
                 raise ScheduleConfigError("Frequency is required for visual mode")
-            visual_config = VisualConfig(**node_data.get("visual_config", {}))
+            visual_config = VisualConfig.model_validate(node_data.visual_config or {})
             cron_expression = ScheduleService.visual_to_cron(frequency=frequency, visual_config=visual_config)
             if not cron_expression:
                 raise ScheduleConfigError("Cron expression is required for visual mode")
@@ -227,7 +218,7 @@ class ScheduleService:
         try:
             graph_data = workflow.graph_dict
         except (json.JSONDecodeError, TypeError, AttributeError) as e:
-            raise ScheduleConfigError(f"Failed to parse workflow graph: {e}")
+            raise ScheduleConfigError(f"Failed to parse workflow graph: {e}") from e
 
         if not graph_data:
             raise ScheduleConfigError("Workflow graph is empty")
@@ -236,22 +227,24 @@ class ScheduleService:
         for node in nodes:
             node_data = node.get("data", {})
 
-            if node_data.get("type") != NodeType.TRIGGER_SCHEDULE.value:
+            if node_data.get("type") != TRIGGER_SCHEDULE_NODE_TYPE:
                 continue
 
-            mode = node_data.get("mode", "visual")
-            timezone = node_data.get("timezone", "UTC")
             node_id = node.get("id", "start")
+            trigger_data = TriggerScheduleNodeData.model_validate(node_data)
+            mode = trigger_data.mode
+            timezone = trigger_data.timezone
 
             cron_expression = None
             if mode == "cron":
-                cron_expression = node_data.get("cron_expression")
+                cron_expression = trigger_data.cron_expression
                 if not cron_expression:
                     raise ScheduleConfigError("Cron expression is required for cron mode")
             elif mode == "visual":
-                frequency = node_data.get("frequency")
-                visual_config_dict = node_data.get("visual_config", {})
-                visual_config = VisualConfig(**visual_config_dict)
+                frequency = trigger_data.frequency
+                if not frequency:
+                    raise ScheduleConfigError("Frequency is required for visual mode")
+                visual_config = VisualConfig.model_validate(trigger_data.visual_config or {})
                 cron_expression = ScheduleService.visual_to_cron(frequency, visual_config)
             else:
                 raise ScheduleConfigError(f"Invalid schedule mode: {mode}")

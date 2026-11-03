@@ -7,25 +7,104 @@ improving performance by offloading storage operations to background workers.
 
 import json
 import logging
+from typing import Any
 
 from celery import shared_task
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
 from core.db.session_factory import session_factory
-from core.workflow.entities.workflow_node_execution import (
+from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
+from core.workflow.node_execution_process_data import keep_agent_and_tool_ids
+from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="workflow_storage", bind=True, max_retries=3, default_retry_delay=60)
+def save_workflow_node_executions_task(
+    self,
+    executions_data: list[dict[str, Any]],
+    tenant_id: str,
+    app_id: str,
+    triggered_from: str,
+    creator_user_id: str,
+    creator_user_role: str,
+) -> bool:
+    """Upsert an owner-scoped cleanup batch atomically, including missing start rows."""
+    try:
+        executions = [DifyWorkflowNodeExecution.model_validate(data) for data in executions_data]
+        if not executions:
+            return True
+        with session_factory.create_session() as session, session.begin():
+            for execution in executions:
+                if execution.status in (
+                    WorkflowNodeExecutionStatus.RUNNING,
+                    WorkflowNodeExecutionStatus.PAUSED,
+                    WorkflowNodeExecutionStatus.RETRY,
+                ):
+                    apply_workflow_stop_to_node(
+                        execution,
+                        get_stopped_workflow_run(
+                            session, tenant_id=tenant_id, workflow_run_id=execution.workflow_execution_id, lock=True
+                        ),
+                    )
+            query = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel)).where(
+                WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_id,
+                WorkflowNodeExecutionModel.triggered_from == triggered_from,
+                or_(
+                    *(
+                        and_(
+                            WorkflowNodeExecutionModel.id == execution.id,
+                            WorkflowNodeExecutionModel.workflow_id == execution.workflow_id,
+                            WorkflowNodeExecutionModel.workflow_run_id == execution.workflow_execution_id,
+                        )
+                        for execution in executions
+                    )
+                ),
+            )
+            existing_models = {model.id: model for model in session.scalars(query)}
+            for execution in executions:
+                existing = existing_models.get(execution.id)
+                if existing is None:
+                    session.add(
+                        _create_node_execution_from_domain(
+                            execution,
+                            tenant_id,
+                            app_id,
+                            WorkflowNodeExecutionTriggeredFrom(triggered_from),
+                            creator_user_id,
+                            CreatorUserRole(creator_user_role),
+                        )
+                    )
+                    continue
+                inputs, process_data, outputs = existing.inputs, existing.process_data, existing.outputs
+                _update_node_execution_from_domain(existing, execution)
+                if existing.inputs_truncated:
+                    existing.inputs = inputs
+                if existing.process_data_truncated:
+                    existing.process_data = process_data
+                if existing.outputs_truncated:
+                    existing.outputs = outputs
+        return True
+    except Exception as error:
+        logger.exception(
+            "Failed to save workflow node execution batch: %s", [data.get("id") for data in executions_data]
+        )
+        raise self.retry(exc=error, countdown=60 * (2**self.request.retries)) from error
+
+
+@shared_task(queue="workflow_storage", bind=True, max_retries=3, default_retry_delay=60)
 def save_workflow_node_execution_task(
     self,
-    execution_data: dict,
+    execution_data: dict[str, Any],
     tenant_id: str,
     app_id: str,
     triggered_from: str,
@@ -49,11 +128,28 @@ def save_workflow_node_execution_task(
     try:
         with session_factory.create_session() as session:
             # Deserialize execution data
-            execution = WorkflowNodeExecution.model_validate(execution_data)
+            execution = DifyWorkflowNodeExecution.model_validate(execution_data)
+
+            if execution.status in (
+                WorkflowNodeExecutionStatus.RUNNING,
+                WorkflowNodeExecutionStatus.PAUSED,
+                WorkflowNodeExecutionStatus.RETRY,
+            ):
+                apply_workflow_stop_to_node(
+                    execution,
+                    get_stopped_workflow_run(
+                        session, tenant_id=tenant_id, workflow_run_id=execution.workflow_execution_id, lock=True
+                    ),
+                )
 
             # Check if node execution already exists
             existing_execution = session.scalar(
-                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == execution.id)
+                select(WorkflowNodeExecutionModel).where(
+                    WorkflowNodeExecutionModel.id == execution.id,
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.app_id == app_id,
+                    WorkflowNodeExecutionModel.workflow_id == execution.workflow_id,
+                )
             )
 
             if existing_execution:
@@ -79,7 +175,7 @@ def save_workflow_node_execution_task(
     except Exception as e:
         logger.exception("Failed to save workflow node execution %s", execution_data.get("id", "unknown"))
         # Retry the task with exponential backoff
-        raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+        raise self.retry(exc=e, countdown=60 * (2**self.request.retries)) from e
 
 
 def _create_node_execution_from_domain(
@@ -98,12 +194,15 @@ def _create_node_execution_from_domain(
     node_execution.tenant_id = tenant_id
     node_execution.app_id = app_id
     node_execution.workflow_id = execution.workflow_id
-    node_execution.triggered_from = triggered_from.value
+    if isinstance(execution, DifyWorkflowNodeExecution):
+        node_execution.triggered_from_workflow_id = execution.triggered_from_workflow_id
+        node_execution.triggered_from_node_execution_id = execution.triggered_from_node_execution_id
+    node_execution.triggered_from = triggered_from
     node_execution.workflow_run_id = execution.workflow_execution_id
     node_execution.index = execution.index
     node_execution.predecessor_node_id = execution.predecessor_node_id
     node_execution.node_id = execution.node_id
-    node_execution.node_type = execution.node_type.value
+    node_execution.node_type = execution.node_type
     node_execution.title = execution.title
     node_execution.node_execution_id = execution.node_execution_id
 
@@ -125,10 +224,10 @@ def _create_node_execution_from_domain(
     else:
         node_execution.execution_metadata = "{}"
 
-    node_execution.status = execution.status.value
+    node_execution.status = execution.status
     node_execution.error = execution.error
     node_execution.elapsed_time = execution.elapsed_time
-    node_execution.created_by_role = creator_user_role.value
+    node_execution.created_by_role = creator_user_role
     node_execution.created_by = creator_user_id
     node_execution.created_at = execution.created_at
     node_execution.finished_at = execution.finished_at
@@ -140,11 +239,30 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
     """
     Update a WorkflowNodeExecutionModel database model from a WorkflowNodeExecution domain entity.
     """
+    # Cleanup can insert the terminal row before its queued start is delivered.
+    if (
+        node_execution.status == WorkflowNodeExecutionStatus.FAILED
+        and node_execution.finished_at is not None
+        and execution.status
+        in (
+            WorkflowNodeExecutionStatus.RUNNING,
+            WorkflowNodeExecutionStatus.PAUSED,
+            WorkflowNodeExecutionStatus.RETRY,
+        )
+    ):
+        return
+    if isinstance(execution, DifyWorkflowNodeExecution):
+        if execution.triggered_from_workflow_id is not None:
+            node_execution.triggered_from_workflow_id = execution.triggered_from_workflow_id
+        if execution.triggered_from_node_execution_id is not None:
+            node_execution.triggered_from_node_execution_id = execution.triggered_from_node_execution_id
+
     # Update serialized data
     json_converter = WorkflowRuntimeTypeConverter()
     node_execution.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
+    process_data = keep_agent_and_tool_ids(node_execution.process_data_dict, execution.process_data)
     node_execution.process_data = (
-        json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else "{}"
+        json.dumps(json_converter.to_json_encodable(process_data)) if process_data is not None else "{}"
     )
     node_execution.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
@@ -159,7 +277,7 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
         node_execution.execution_metadata = "{}"
 
     # Update other fields
-    node_execution.status = execution.status.value
+    node_execution.status = execution.status
     node_execution.error = execution.error
     node_execution.elapsed_time = execution.elapsed_time
     node_execution.finished_at = execution.finished_at

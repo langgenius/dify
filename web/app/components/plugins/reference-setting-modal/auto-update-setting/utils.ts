@@ -13,26 +13,25 @@ export const timeOfDayToDayjs = (timeOfDay: number): Dayjs => {
   return res
 }
 
-export const convertLocalSecondsToUTCDaySeconds = (secondsInDay: number, localTimezone: string): number => {
-  const localDayStart = dayjs().tz(localTimezone).startOf('day')
-  const localTargetTime = localDayStart.add(secondsInDay, 'second')
-  const utcTargetTime = localTargetTime.utc()
-  const utcDayStart = utcTargetTime.startOf('day')
-  const secondsFromUTCMidnight = utcTargetTime.diff(utcDayStart, 'second')
-  return secondsFromUTCMidnight
+export const convertLocalSecondsToUTCDaySeconds = (
+  secondsInDay: number,
+  localTimezone: string,
+): number => {
+  // The API stores a daily UTC clock, not a date. Use the same current offset in both directions.
+  const offset = dayjs().tz(localTimezone).utcOffset()
+  const utcTargetTime = dayjs
+    .utc()
+    .startOf('day')
+    .add(secondsInDay - offset * 60, 'second')
+  return utcTargetTime.hour() * 3600 + utcTargetTime.minute() * 60 + utcTargetTime.second()
 }
 
-export const dayjsToTimeOfDay = (date?: Dayjs): number => {
-  if (!date)
-    return 0
-  return date.hour() * 3600 + date.minute() * 60
-}
-
-export const convertUTCDaySecondsToLocalSeconds = (utcDaySeconds: number, localTimezone: string): number => {
+export const convertUTCDaySecondsToLocalSeconds = (
+  utcDaySeconds: number,
+  localTimezone: string,
+): number => {
   const utcDayStart = dayjs().utc().startOf('day')
   const utcTargetTime = utcDayStart.add(utcDaySeconds, 'second')
-  const localTargetTime = utcTargetTime.tz(localTimezone)
-  const localDayStart = localTargetTime.startOf('day')
-  const secondsInLocalDay = localTargetTime.diff(localDayStart, 'second')
-  return secondsInLocalDay
+  const localTargetTime = utcTargetTime.utcOffset(dayjs().tz(localTimezone).utcOffset())
+  return localTargetTime.hour() * 3600 + localTargetTime.minute() * 60 + localTargetTime.second()
 }

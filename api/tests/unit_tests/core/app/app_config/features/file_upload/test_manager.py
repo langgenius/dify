@@ -1,9 +1,9 @@
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
-from core.workflow.file.models import FileTransferMethod, FileUploadConfig, ImageConfig
+from graphon.file import FileTransferMethod, FileUploadConfig, ImageConfig
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 
 
-def test_convert_with_vision():
+def test_convert_with_vision() -> None:
     config = {
         "file_upload": {
             "enabled": True,
@@ -25,7 +25,7 @@ def test_convert_with_vision():
     assert result == expected
 
 
-def test_convert_without_vision():
+def test_convert_without_vision() -> None:
     config = {
         "file_upload": {
             "enabled": True,
@@ -42,14 +42,14 @@ def test_convert_without_vision():
     assert result == expected
 
 
-def test_validate_and_set_defaults():
+def test_validate_and_set_defaults() -> None:
     config = {}
     result, keys = FileUploadConfigManager.validate_and_set_defaults(config)
     assert "file_upload" in result
     assert keys == ["file_upload"]
 
 
-def test_validate_and_set_defaults_with_existing_config():
+def test_validate_and_set_defaults_with_existing_config() -> None:
     config = {
         "file_upload": {
             "enabled": True,

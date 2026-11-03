@@ -1,12 +1,20 @@
 'use client'
-import { useRouter } from 'next/navigation'
-import { useCallback, useState } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import CustomDialog from '@/app/components/base/dialog'
-import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
-import { useAppContext } from '@/context/app-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useLogout } from '@/service/use-common'
 import { useDeleteAccountFeedback } from '../state'
 
@@ -15,58 +23,88 @@ type DeleteAccountProps = {
   onConfirm: () => void
 }
 
+type FeedbackFormValues = {
+  feedback: string
+}
+
 export default function FeedBack(props: DeleteAccountProps) {
-  const { t } = useTranslation()
-  const { userProfile } = useAppContext()
-  const router = useRouter()
-  const [userFeedback, setUserFeedback] = useState('')
+  const { t } = useTranslation(['common', 'accountSettings'])
+  const { data: userProfileEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const { isPending, mutateAsync: sendFeedback } = useDeleteAccountFeedback()
 
-  const { mutateAsync: logout } = useLogout()
+  const { mutateAsync: logout } = useLogout({ redirectTo: '/signin?account_deleted=true' })
   const handleSuccess = useCallback(async () => {
     try {
       await logout()
-      // Tokens are now stored in cookies and cleared by backend
-      router.push('/signin')
-      Toast.notify({ type: 'info', message: t('account.deleteSuccessTip', { ns: 'common' }) })
+    } catch (error) {
+      console.error(error)
     }
-    catch (error) { console.error(error) }
-  }, [router, t])
+  }, [logout])
 
-  const handleSubmit = useCallback(async () => {
-    try {
-      await sendFeedback({ feedback: userFeedback, email: userProfile.email })
-      props.onConfirm()
-      await handleSuccess()
-    }
-    catch (error) { console.error(error) }
-  }, [handleSuccess, userFeedback, sendFeedback, userProfile, props])
+  const handleSubmit = useCallback(
+    async (feedback: string) => {
+      try {
+        await sendFeedback({ feedback, email: userProfileEmail })
+        props.onConfirm()
+        await handleSuccess()
+      } catch (error) {
+        console.error(error)
+      }
+    },
+    [handleSuccess, sendFeedback, userProfileEmail, props],
+  )
 
   const handleSkip = useCallback(() => {
     props.onCancel()
     handleSuccess()
   }, [handleSuccess, props])
   return (
-    <CustomDialog
-      show={true}
-      onClose={props.onCancel}
-      title={t('account.feedbackTitle', { ns: 'common' })}
-      className="max-w-[480px]"
-      footer={false}
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) props.onCancel()
+      }}
     >
-      <label className="system-sm-semibold mb-1 mt-3 flex items-center text-text-secondary">{t('account.feedbackLabel', { ns: 'common' })}</label>
-      <Textarea
-        rows={6}
-        value={userFeedback}
-        placeholder={t('account.feedbackPlaceholder', { ns: 'common' }) as string}
-        onChange={(e) => {
-          setUserFeedback(e.target.value)
-        }}
-      />
-      <div className="mt-3 flex w-full flex-col gap-2">
-        <Button className="w-full" loading={isPending} variant="primary" onClick={handleSubmit}>{t('operation.submit', { ns: 'common' })}</Button>
-        <Button className="w-full" onClick={handleSkip}>{t('operation.skip', { ns: 'common' })}</Button>
-      </div>
-    </CustomDialog>
+      <DialogContent
+        backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
+      >
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $['account.feedbackTitle'], { ns: 'accountSettings' })}
+          </DialogTitle>
+        </DialogHeader>
+        <Form<FeedbackFormValues>
+          className="contents"
+          onFormSubmit={({ feedback }) => {
+            void handleSubmit(feedback)
+          }}
+        >
+          <DialogBody>
+            <Field name="feedback" className="gap-0">
+              <FieldLabel className="system-sm-semibold">
+                {t(($) => $['account.feedbackLabel'], { ns: 'accountSettings' })}
+              </FieldLabel>
+              <Textarea
+                rows={6}
+                placeholder={
+                  t(($) => $['account.feedbackPlaceholder'], { ns: 'accountSettings' }) as string
+                }
+              />
+            </Field>
+          </DialogBody>
+          <DialogFooter className="flex-col items-stretch">
+            <Button type="submit" loading={isPending} variant="primary">
+              {t(($) => $['operation.submit'], { ns: 'common' })}
+            </Button>
+            <Button type="button" onClick={handleSkip}>
+              {t(($) => $['operation.skip'], { ns: 'common' })}
+            </Button>
+          </DialogFooter>
+        </Form>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -3,7 +3,7 @@ from typing import Any
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin, DatasourceProviderType
-from core.entities.provider_entities import ProviderConfig
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.errors import ToolProviderCredentialValidationError
 
@@ -11,6 +11,7 @@ from core.tools.errors import ToolProviderCredentialValidationError
 class DatasourcePluginProviderController(ABC):
     entity: DatasourceProviderEntityWithPlugin
     tenant_id: str
+    plugin_unique_identifier: str
 
     def __init__(self, entity: DatasourceProviderEntityWithPlugin, tenant_id: str) -> None:
         self.entity = entity
@@ -29,7 +30,7 @@ class DatasourcePluginProviderController(ABC):
         """
         validate the credentials of the provider
         """
-        manager = PluginToolManager()
+        manager = PluginToolManager(plugin_unique_identifier=self.plugin_unique_identifier)
         if not manager.validate_datasource_credentials(
             tenant_id=self.tenant_id,
             user_id=user_id,
@@ -37,6 +38,11 @@ class DatasourcePluginProviderController(ABC):
             credentials=credentials,
         ):
             raise ToolProviderCredentialValidationError("Invalid credentials")
+
+    def validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
+        """Validate credential shape and value against this installed provider declaration."""
+        self.validate_credentials_format(credentials)
+        self._validate_credentials(user_id, credentials)
 
     @property
     def provider_type(self) -> DatasourceProviderType:
@@ -59,8 +65,6 @@ class DatasourcePluginProviderController(ABC):
         :param credentials: the credentials of the tool
         """
         credentials_schema = dict[str, ProviderConfig]()
-        if credentials_schema is None:
-            return
 
         for credential in self.entity.credentials_schema:
             credentials_schema[credential.name] = credential
@@ -80,11 +84,11 @@ class DatasourcePluginProviderController(ABC):
             if not credential_schema.required and credentials[credential_name] is None:
                 continue
 
-            if credential_schema.type in {ProviderConfig.Type.SECRET_INPUT, ProviderConfig.Type.TEXT_INPUT}:
+            if credential_schema.type in {ProviderConfigType.SECRET_INPUT, ProviderConfigType.TEXT_INPUT}:
                 if not isinstance(credentials[credential_name], str):
                     raise ToolProviderCredentialValidationError(f"credential {credential_name} should be string")
 
-            elif credential_schema.type == ProviderConfig.Type.SELECT:
+            elif credential_schema.type == ProviderConfigType.SELECT:
                 if not isinstance(credentials[credential_name], str):
                     raise ToolProviderCredentialValidationError(f"credential {credential_name} should be string")
 
@@ -109,9 +113,9 @@ class DatasourcePluginProviderController(ABC):
                 default_value = credential_schema.default
                 # parse default value into the correct type
                 if credential_schema.type in {
-                    ProviderConfig.Type.SECRET_INPUT,
-                    ProviderConfig.Type.TEXT_INPUT,
-                    ProviderConfig.Type.SELECT,
+                    ProviderConfigType.SECRET_INPUT,
+                    ProviderConfigType.TEXT_INPUT,
+                    ProviderConfigType.SELECT,
                 }:
                     default_value = str(default_value)
 

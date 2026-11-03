@@ -4,12 +4,12 @@ Parser for tool nodes that captures tool-specific metadata.
 
 from opentelemetry.trace import Span
 
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey
-from core.workflow.graph_events import GraphNodeEventBase
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.tool.entities import ToolNodeData
 from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
 from extensions.otel.semconv.gen_ai import ToolAttributes
+from graphon.engine_events import NodeEvent
+from graphon.enums import WorkflowNodeExecutionMetadataKey
+from graphon.nodes.base.node import Node
+from graphon.nodes.tool.entities import ToolNodeData
 
 
 class ToolNodeOTelParser:
@@ -19,7 +19,7 @@ class ToolNodeOTelParser:
         self._delegate = DefaultNodeOTelParser()
 
     def parse(
-        self, *, node: Node, span: "Span", error: Exception | None, result_event: GraphNodeEventBase | None = None
+        self, *, node: Node, span: "Span", error: Exception | None, result_event: NodeEvent | None = None
     ) -> None:
         self._delegate.parse(node=node, span=span, error=error, result_event=result_event)
 

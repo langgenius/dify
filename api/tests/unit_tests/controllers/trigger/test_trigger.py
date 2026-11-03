@@ -1,0 +1,81 @@
+import logging
+from unittest.mock import patch
+
+import pytest
+
+import controllers.trigger.trigger as module
+
+
+@pytest.fixture(autouse=True)
+def mock_request():
+    module.request = object()
+
+
+@pytest.fixture(autouse=True)
+def mock_jsonify():
+    module.jsonify = lambda payload: payload
+
+
+VALID_UUID = "123e4567-e89b-42d3-a456-426614174000"
+INVALID_UUID = "not-a-uuid"
+
+
+class TestTriggerEndpoint:
+    def test_invalid_uuid(self):
+        response = module.trigger_endpoint(INVALID_UUID)
+        assert response.status_code == 404
+        assert response.data == b'{"error":"Endpoint not found"}'
+
+    @patch.object(module.TriggerService, "process_endpoint")
+    @patch.object(module.TriggerSubscriptionBuilderService, "process_builder_validation_endpoint")
+    def test_first_handler_returns_response(self, mock_builder, mock_trigger):
+        mock_trigger.return_value = ("ok", 200)
+        mock_builder.return_value = None
+
+        response = module.trigger_endpoint(VALID_UUID)
+
+        assert response == ("ok", 200)
+        mock_builder.assert_not_called()
+
+    @patch.object(module.TriggerService, "process_endpoint")
+    @patch.object(module.TriggerSubscriptionBuilderService, "process_builder_validation_endpoint")
+    def test_second_handler_returns_response(self, mock_builder, mock_trigger):
+        mock_trigger.return_value = None
+        mock_builder.return_value = ("ok", 200)
+
+        response = module.trigger_endpoint(VALID_UUID)
+
+        assert response == ("ok", 200)
+
+    @patch.object(module.TriggerService, "process_endpoint")
+    @patch.object(module.TriggerSubscriptionBuilderService, "process_builder_validation_endpoint")
+    def test_no_handler_returns_response(self, mock_builder, mock_trigger):
+        mock_trigger.return_value = None
+        mock_builder.return_value = None
+
+        response = module.trigger_endpoint(VALID_UUID)
+        assert response.status_code == 404
+        assert response.data == b'{"error":"Endpoint not found"}'
+
+    @patch.object(module.TriggerService, "process_endpoint", side_effect=ValueError("bad input"))
+    def test_value_error(self, mock_trigger):
+        response, status = module.trigger_endpoint(VALID_UUID)
+
+        assert status == 400
+        assert response["error"] == "Endpoint processing failed"
+        assert response["message"] == "bad input"
+
+    @patch.object(module.TriggerService, "process_endpoint", side_effect=Exception("boom"))
+    def test_unexpected_exception(self, mock_trigger):
+        response, status = module.trigger_endpoint(VALID_UUID)
+
+        assert status == 500
+        assert response["error"] == "Internal server error"
+
+    @patch.object(module.TriggerService, "process_endpoint", side_effect=Exception("boom"))
+    def test_unexpected_exception_logs_endpoint_id(self, mock_trigger, caplog):
+        with caplog.at_level(logging.ERROR, logger=module.logger.name):
+            module.trigger_endpoint(VALID_UUID)
+
+        assert VALID_UUID in caplog.text
+        assert "{endpoint_id}" not in caplog.text

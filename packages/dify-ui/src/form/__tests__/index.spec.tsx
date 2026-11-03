@@ -1,0 +1,41 @@
+import { render } from 'vitest-browser-react'
+import { Field, FieldLabel } from '../../field'
+import { Input } from '../../input'
+import { Form } from '../index'
+
+describe('Form primitive', () => {
+  it('should call onFormSubmit with submitted values', async () => {
+    const onFormSubmit = vi.fn()
+    const screen = await render(
+      <Form aria-label="api form" onFormSubmit={onFormSubmit}>
+        <Field name="endpoint">
+          <FieldLabel>Endpoint</FieldLabel>
+          <Input defaultValue="https://api.example.com" />
+        </Field>
+        <button type="submit">Save</button>
+      </Form>,
+    )
+
+    await screen.getByRole('button', { name: 'Save' }).click()
+
+    expect(onFormSubmit).toHaveBeenCalledTimes(1)
+    expect(onFormSubmit.mock.calls[0]?.[0]).toMatchObject({
+      endpoint: 'https://api.example.com',
+    })
+  })
+
+  it('should expose externally supplied errors through FieldError consumers', async () => {
+    const screen = await render(
+      <Form aria-label="server form" errors={{ token: 'Token has expired.' }}>
+        <Field name="token">
+          <FieldLabel>Token</FieldLabel>
+          <Input defaultValue="expired" />
+        </Field>
+      </Form>,
+    )
+
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Token' }))
+      .toHaveAttribute('aria-invalid', 'true')
+  })
+})

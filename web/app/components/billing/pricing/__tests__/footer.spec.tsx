@@ -1,46 +1,24 @@
+import type { Locale } from '@/i18n/locale'
 import { render, screen } from '@testing-library/react'
-import * as React from 'react'
-import { CategoryEnum } from '..'
-import Footer from '../footer'
+import { PricingFooter } from '../footer'
 
-vi.mock('next/link', () => ({
-  default: ({ children, href, className, target }: { children: React.ReactNode, href: string, className?: string, target?: string }) => (
-    <a href={href} className={className} target={target} data-testid="pricing-link">
-      {children}
-    </a>
-  ),
+let locale: Locale = 'en-US'
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => locale,
 }))
 
-describe('Footer', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render tax tips and comparison link when in cloud category', () => {
-      render(<Footer pricingPageURL="https://dify.ai/pricing#plans-and-features" currentCategory={CategoryEnum.CLOUD} />)
-
-      expect(screen.getByText('billing.plansCommon.taxTip')).toBeInTheDocument()
-      expect(screen.getByText('billing.plansCommon.taxTipSecond')).toBeInTheDocument()
-      expect(screen.getByTestId('pricing-link')).toHaveAttribute('href', 'https://dify.ai/pricing#plans-and-features')
-      expect(screen.getByText('billing.plansCommon.comparePlanAndFeatures')).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should hide tax tips when category is self-hosted', () => {
-      render(<Footer pricingPageURL="https://dify.ai/pricing#plans-and-features" currentCategory={CategoryEnum.SELF} />)
-
-      expect(screen.queryByText('billing.plansCommon.taxTip')).not.toBeInTheDocument()
-      expect(screen.queryByText('billing.plansCommon.taxTipSecond')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should render link even when pricing URL is empty', () => {
-      render(<Footer pricingPageURL="" currentCategory={CategoryEnum.CLOUD} />)
-
-      expect(screen.getByTestId('pricing-link')).toHaveAttribute('href', '')
-    })
-  })
+it.each<[Locale, string]>([
+  ['en-US', ''],
+  ['zh-Hans', '/zh'],
+  ['ja-JP', '/ja'],
+  ['ko-KR', '/ko'],
+  ['de-DE', ''],
+])('links to the current website comparison pages for %s', (language, prefix) => {
+  locale = language
+  const { rerender } = render(<PricingFooter category="cloud" />)
+  const link = screen.getByRole('link', { name: 'billing.plansCommon.comparePlanAndFeatures' })
+  expect(link).toHaveAttribute('href', `https://dify.ai${prefix}/pricing/dify-cloud#compare`)
+  rerender(<PricingFooter category="self-hosted" />)
+  expect(link).toHaveAttribute('href', `https://dify.ai${prefix}/pricing/dify-enterprise#compare`)
 })
