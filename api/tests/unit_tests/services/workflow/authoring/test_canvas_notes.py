@@ -112,6 +112,12 @@ def test_each_note_frames_the_nodes_it_covers() -> None:
         assert note["data"]["covers"] == list(covered)
 
 
+def test_a_filled_note_dumps_as_plain_yaml() -> None:
+    nodes = _filled(_note("intake", "start", "first", text="a"))
+
+    assert yaml.safe_load(yaml.dump(nodes["intake"])) == nodes["intake"]
+
+
 def test_measured_node_sizes_are_used() -> None:
     nodes = _chain(_note("intake", "first"))
     nodes[1].update(width=300, height=150)

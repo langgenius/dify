@@ -201,7 +201,7 @@ def _fill_size(note: dict[str, Any], size: NoteSize, framed: float) -> None:
     value = next((value for value in (note.get(size), data.get(size)) if value is not None), framed)
     for target in (note, data):
         if target.get(size) is None:
-            target[size] = value
+            target[size.value] = value
 
 
 def _covered_boxes(covers: object, coverable: Mapping[str, Mapping[str, Any]]) -> list[_Box] | None:
