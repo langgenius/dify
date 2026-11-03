@@ -6,6 +6,7 @@ import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
 import type { Model, ModelModeType } from '@/types/app'
 import { ssePost } from './base'
 import { consoleClient } from './console'
+import { normalizeRuleGenerateModelConfig } from './rule-generate'
 
 export type GenRes = {
   modified: string
@@ -114,12 +115,22 @@ type InstructionGenerateRequest = Omit<
 }
 
 export const generateBasicAppFirstTimeRule = (body: RuleGenerateRequest) => {
-  return consoleClient.ruleGenerate.post({ body: body as PostRuleGenerateData['body'] })
+  return consoleClient.ruleGenerate.post({
+    body: {
+      ...body,
+      model_config: normalizeRuleGenerateModelConfig(body.model_config),
+    } as PostRuleGenerateData['body'],
+  })
 }
 
 export const generateRule = (body: InstructionGenerateRequest) => {
   return consoleClient.instructionGenerate
-    .post({ body: body as PostInstructionGenerateData['body'] })
+    .post({
+      body: {
+        ...body,
+        model_config: normalizeRuleGenerateModelConfig(body.model_config),
+      } as PostInstructionGenerateData['body'],
+    })
     .then(toGenRes)
 }
 
