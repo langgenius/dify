@@ -24,6 +24,11 @@ if TYPE_CHECKING:
     from .node_runtime import DifyToolNodeRuntime
 
 
+def reads_tool_inputs(*, version: str, tool_node_version: str | None) -> bool:
+    """Whether a tool node reads its stored values as `{type, value}` tool inputs rather than legacy plain values."""
+    return version != "1" or tool_node_version is not None
+
+
 class DifyWorkflowToolNode(ToolNode):
     """Run a Workflow Tool as an Engine-managed child graph."""
 
@@ -43,7 +48,7 @@ class DifyWorkflowToolNode(ToolNode):
         tool_info = self._tool_info()
         try:
             variable_pool = None
-            if self.node_data.version != "1" or self.node_data.tool_node_version is not None:
+            if reads_tool_inputs(version=self.node_data.version, tool_node_version=self.node_data.tool_node_version):
                 variable_pool = self.runtime_state.variable_pool
             tool_runtime = self._get_tool_runtime(
                 variable_pool=variable_pool,

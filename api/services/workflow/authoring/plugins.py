@@ -80,7 +80,10 @@ def references_for(data_model: type) -> type[PluginReference] | None:
 
 
 def plugin_reference_for[R: type[PluginReference]](data_model: type) -> Callable[[R], R]:
-    """Register the decorated reference class for `data_model` and its subclasses."""
+    """Register the decorated reference class for `data_model` and its subclasses.
+
+    A kind defined in its own module registers only once that module is imported in `authoring/__init__.py`.
+    """
 
     def register(reference: R) -> R:
         _reference_class.register(data_model, lambda _data_model: reference)
@@ -117,15 +120,18 @@ class DatasourceReference(_DeferredReference):
     """Datasource parameters; nothing reads them at run time and the web writes none for a new node."""
 
 
+def node_version(raw: Mapping[str, Any]) -> str:
+    """The version a raw node runs as: its own, or the data model's default when it has none."""
+    return str(raw.get("version", _RUNTIME_DEFAULT_VERSION))
+
+
 def node_references(raw: Mapping[str, Any]) -> list[PluginReference]:
     """The plugins a raw node uses; a node of an unknown type or of no plugin kind uses none."""
     node_type = raw.get("type")
     if not isinstance(node_type, str):
         return []
     try:
-        node_class = resolve_workflow_node_class(
-            node_type=node_type, node_version=str(raw.get("version", _RUNTIME_DEFAULT_VERSION)), node_data=raw
-        )
+        node_class = resolve_workflow_node_class(node_type=node_type, node_version=node_version(raw), node_data=raw)
     except ValueError:
         return []
     reference = references_for(node_data_model(node_class))
