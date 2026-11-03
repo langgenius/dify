@@ -196,7 +196,7 @@ class TestOptionalTimestampField:
 
         assert field.format(value) == 1704164645
 
-    def test_format_converts_aware_datetime_to_utc_epoch(self):
+    def test_format_converts_aware_datetime_to_utc_epoch(self) -> None:
         field = OptionalTimestampField()
         value = datetime(2024, 1, 2, 11, 4, 5, tzinfo=timezone(timedelta(hours=8)))
 
@@ -204,7 +204,7 @@ class TestOptionalTimestampField:
 
 
 class TestTimestampField:
-    def test_format_treats_naive_datetime_as_utc(self):
+    def test_format_treats_naive_datetime_as_utc(self) -> None:
         field = TimestampField()
         value = datetime(2024, 1, 2, 3, 4, 5)
 
@@ -212,18 +212,18 @@ class TestTimestampField:
 
 
 class TestToTimestamp:
-    def test_treats_naive_datetime_as_utc(self):
+    def test_treats_naive_datetime_as_utc(self) -> None:
         assert to_timestamp(datetime(2024, 1, 2, 3, 4, 5)) == 1704164645
 
-    def test_converts_aware_datetime_to_utc_epoch(self):
+    def test_converts_aware_datetime_to_utc_epoch(self) -> None:
         value = datetime(2024, 1, 2, 11, 4, 5, tzinfo=timezone(timedelta(hours=8)))
 
         assert to_timestamp(value) == 1704164645
 
-    def test_passes_int_through(self):
+    def test_passes_int_through(self) -> None:
         assert to_timestamp(1234567890) == 1234567890
 
-    def test_passes_none_through(self):
+    def test_passes_none_through(self) -> None:
         assert to_timestamp(None) is None
 
 
