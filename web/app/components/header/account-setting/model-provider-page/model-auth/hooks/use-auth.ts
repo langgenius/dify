@@ -67,11 +67,12 @@ export const useAuth = (
     (model?: CustomModel | null): CustomModel | undefined => {
       if (model) return model
 
-      if (!currentCustomConfigurationModelFixedFields) return undefined
+      const fixed = currentCustomConfigurationModelFixedFields
+      if (!fixed?.__model_name || !fixed.__model_type) return undefined
 
       return {
-        model: currentCustomConfigurationModelFixedFields.__model_name,
-        model_type: currentCustomConfigurationModelFixedFields.__model_type,
+        model: fixed.__model_name,
+        model_type: fixed.__model_type,
       }
     },
     [currentCustomConfigurationModelFixedFields],
@@ -133,17 +134,28 @@ export const useAuth = (
       if (pendingOperationCredentialId.current) {
         if (isModelCredential) {
           const modelContext = resolveModelContext(pendingOperationModel.current)
-          if (!modelContext) return
-
-          payload = {
-            credential_id: pendingOperationCredentialId.current,
-            model: modelContext.model,
-            model_type: modelContext.model_type,
+          if (modelContext?.model && modelContext.model_type) {
+            payload = {
+              credential_id: pendingOperationCredentialId.current,
+              model: modelContext.model,
+              model_type: modelContext.model_type,
+            }
+            const deleteModelCredential = getDeleteCredentialService(true) as (
+              payload: ModelCredentialOperationPayload,
+            ) => Promise<unknown>
+            await deleteModelCredential(payload)
+          } else {
+            // A model credential without a model context cannot be addressed by
+            // the model-scoped endpoint; delete the provider credential instead
+            // of sending a body that the API rejects (#42230).
+            payload = {
+              credential_id: pendingOperationCredentialId.current,
+            }
+            const deleteProviderCredential = getDeleteCredentialService(false) as (
+              payload: ProviderCredentialOperationPayload,
+            ) => Promise<unknown>
+            await deleteProviderCredential(payload)
           }
-          const deleteModelCredential = getDeleteCredentialService(true) as (
-            payload: ModelCredentialOperationPayload,
-          ) => Promise<unknown>
-          await deleteModelCredential(payload)
         } else {
           payload = {
             credential_id: pendingOperationCredentialId.current,

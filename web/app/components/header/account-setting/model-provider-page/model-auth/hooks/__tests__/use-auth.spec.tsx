@@ -168,6 +168,30 @@ describe('useAuth', () => {
     expect(onRemove).toHaveBeenCalledWith('')
   })
 
+  it('should fall back to the provider credential when a model context is missing', async () => {
+    const { result } = renderHook(
+      () =>
+        useAuth(provider, ConfigurationMethodEnum.customizableModel, undefined, {
+          isModelCredential: true,
+        }),
+      { wrapper: createWrapper },
+    )
+
+    act(() => {
+      result.current.openConfirmDelete(credential, undefined)
+    })
+
+    await act(async () => {
+      await result.current.handleConfirmDelete()
+    })
+
+    expect(mockDeleteProviderCredential).toHaveBeenCalledWith({
+      params: { provider: 'openai' },
+      body: { credential_id: 'cred-1' },
+    })
+    expect(mockDeleteModelService).not.toHaveBeenCalled()
+  })
+
   it('should add or edit credentials and refresh on successful save', async () => {
     const { result } = renderHook(
       () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
