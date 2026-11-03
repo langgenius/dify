@@ -1,13 +1,11 @@
 """Metadata uses native App/draft representations and preserves user content."""
 
 import json
-from typing import cast
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from core.dify_builder.models import Graph
 from models.base import Base
 from models.model import App, AppMode
 from services.dify_builder.agent.graph_translate import to_intents
@@ -16,6 +14,7 @@ from services.dify_builder.preflight import preflight_errors, vet_intents
 from services.dify_builder.revision import executable_graph_revision
 from services.workflow_generation.runner import WorkflowGenerator
 from tests.helpers.unit.model_factories import make_app
+from tests.unit_tests.services.dify_builder.typed_fixtures import dictionary
 
 
 def test_description_from_approved_plan_preserves_user_name_and_existing_description() -> None:
@@ -93,7 +92,7 @@ def test_planned_canvas_note_survives_generator_translation_and_native_candidate
         existing_by_id={},
     )
     generated = WorkflowGenerator._postprocess_graph(graph=generated, mode="workflow")
-    intents = to_intents(cast(Graph, generated))
+    intents = to_intents(dictionary(generated))
     candidate = vet_intents({"nodes": [], "edges": []}, intents, {"start", "code", "end"})
     assert candidate.rejections == []
     assert len(candidate.applicable) == 6
@@ -122,6 +121,6 @@ def test_generator_does_not_treat_note_like_executable_types_as_canvas_annotatio
         existing_by_id={},
     )
     generated = WorkflowGenerator._postprocess_graph(graph=generated, mode="workflow")
-    candidate = vet_intents({"nodes": [], "edges": []}, to_intents(cast(Graph, generated)), {"start", "code", "end"})
+    candidate = vet_intents({"nodes": [], "edges": []}, to_intents(dictionary(generated)), {"start", "code", "end"})
     assert candidate.applicable == []
     assert any("node_type not allowed" in reason for reason in candidate.rejections)

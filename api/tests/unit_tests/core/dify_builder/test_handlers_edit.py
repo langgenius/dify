@@ -234,7 +234,7 @@ def test_sufficient_goal_reaches_plan_gate_or_actionable_retry_with_monotonic_pr
         assert not any(item.kind == "form" for item in items)
 
 
-def test_edit_capability_check_renders_agent_fields() -> None:
+def test_edit_capability_check_renders_agent_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     # PlaceholderAgent.analyze_impact returns dynamic fields/values/targets;
     # the form card and fc.form_fields/edit_rules/edit_target_node_ids must
     # reflect them (not the old hardcoded _EDIT_RULE_FIELDS constant).
@@ -250,7 +250,7 @@ def test_edit_capability_check_renders_agent_fields() -> None:
             "target_node_ids": ["llm"],
         }
 
-    env.agent.analyze_impact = analyze_impact
+    monkeypatch.setattr(env.agent, "analyze_impact", analyze_impact)
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_CAPABILITY_CHECK)
     fc = DifyBuilderContext(goal_text="make it formal")
     result = handle_capability_check(
@@ -462,7 +462,9 @@ def test_edit_test_fail_routes_to_await_repair() -> None:
         ("", False),
     ],
 )
-def test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate(reason: str, expected_reason: bool) -> None:
+def test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate(
+    monkeypatch: pytest.MonkeyPatch, reason: str, expected_reason: bool
+) -> None:
     """When propose_repair finds no safe fix (empty intents), the fail path
     must still route to the gate, but WITHOUT a change_set card, and with the
     "no safe automatic fix" reply_text variant -- the `if intents` branch the
@@ -479,7 +481,7 @@ def test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate(reason: str
         _ = diagnosis, graph
         return ([], Risk(level="high", reason=reason, has_external_side_effect=False))
 
-    env.agent.propose_repair = propose_repair
+    monkeypatch.setattr(env.agent, "propose_repair", propose_repair)
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
     fc = DifyBuilderContext(edit_target_node_ids=["llm"])
     result = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
@@ -517,14 +519,14 @@ def test_edit_test_reuses_persisted_inputs_on_retest() -> None:
     assert fc.test_input_ref == ref  # reused, not regenerated
 
 
-def test_edit_test_run_draft_raises_routes_to_await_repair_failed() -> None:
+def test_edit_test_run_draft_raises_routes_to_await_repair_failed(monkeypatch: pytest.MonkeyPatch) -> None:
     """run_draft raising must not crash the advance -- the try/except degrade
     path converts the exception into a failed run and still routes to the
     edit.await_repair gate."""
     from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env()
-    env.fake_dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom"))
+    monkeypatch.setattr(env.fake_dify, "run_draft", lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom")))
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
     fc = DifyBuilderContext(edit_target_node_ids=["llm"])
 
@@ -535,13 +537,15 @@ def test_edit_test_run_draft_raises_routes_to_await_repair_failed() -> None:
     assert result.run.status == "failed"
 
 
-def test_edit_test_run_draft_raises_captures_error_on_run() -> None:
+def test_edit_test_run_draft_raises_captures_error_on_run(monkeypatch: pytest.MonkeyPatch) -> None:
     """Regression: a launch-time exception must be captured on run.error, not
     silently discarded. A non-input error still routes to the config-repair gate."""
     from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env()
-    env.fake_dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("kaboom-provider"))
+    monkeypatch.setattr(
+        env.fake_dify, "run_draft", lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("kaboom-provider"))
+    )
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
     fc = DifyBuilderContext(edit_target_node_ids=["llm"])
 
@@ -552,13 +556,17 @@ def test_edit_test_run_draft_raises_captures_error_on_run() -> None:
     assert "kaboom-provider" in (result.run.error or "")
 
 
-def test_edit_launch_input_error_without_proof_stops_at_review() -> None:
+def test_edit_launch_input_error_without_proof_stops_at_review(monkeypatch: pytest.MonkeyPatch) -> None:
     """Unproven launch errors retain inputs for review without diagnosis."""
     from core.dify_builder.models import TestInput
     from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env()
-    env.fake_dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(ValueError("query is required in input form"))
+    monkeypatch.setattr(
+        env.fake_dify,
+        "run_draft",
+        lambda *_a, **_k: (_ for _ in ()).throw(ValueError("query is required in input form")),
+    )
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
     env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
     fc = DifyBuilderContext(edit_target_node_ids=["llm"], test_input_ref="ti-1")
@@ -864,7 +872,9 @@ def test_edit_await_repair_refuses_to_apply_an_empty_staged_repair() -> None:
     assert "No fix is staged" in english_text(result.items[0].payload["reply_text"])
 
 
-def test_edit_await_repair_surfaces_a_stale_intent_instead_of_failing_the_session() -> None:
+def test_edit_await_repair_surfaces_a_stale_intent_instead_of_failing_the_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A stale staged intent degrades to assistant text, not an exception."""
     from services.dify_builder.application.handlers_edit import handle_await_repair
 
@@ -873,7 +883,7 @@ def test_edit_await_repair_surfaces_a_stale_intent_instead_of_failing_the_sessio
     def _stale(*_args: object, **_kwargs: object) -> NoReturn:
         raise ValueError("node not found: llm")
 
-    env.fake_dify.apply_repair = _stale  # type: ignore[method-assign]
+    monkeypatch.setattr(env.fake_dify, "apply_repair", _stale)
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
     fc = DifyBuilderContext(
         staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "code", "value": ""})],
@@ -890,7 +900,7 @@ def test_edit_await_repair_surfaces_a_stale_intent_instead_of_failing_the_sessio
     assert result.context.staged_repair == []
 
 
-def test_edit_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix() -> None:
+def test_edit_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix(monkeypatch: pytest.MonkeyPatch) -> None:
     """A fix the preflight rejected applied fine; it would leave a draft that
     fails at Graph.init. Same recovery as a stale intent, true reason."""
     from core.dify_builder.errors import DraftWouldNotStartError
@@ -901,7 +911,7 @@ def test_edit_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix() 
     def _would_not_start(*_args: object, **_kwargs: object) -> NoReturn:
         raise DraftWouldNotStartError("the draft would not start: node 'llm' (llm): 1 validation error")
 
-    env.fake_dify.apply_repair = _would_not_start  # type: ignore[method-assign]
+    monkeypatch.setattr(env.fake_dify, "apply_repair", _would_not_start)
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
     fc = DifyBuilderContext(
         staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "code", "value": ""})],
@@ -1128,7 +1138,7 @@ def test_run_affected_tests_routes_to_testdata_gate_when_no_input() -> None:
     assert any(i.kind == "form" and i.payload["variant"] == "testdata" for i in result.items)
 
 
-def test_edit_await_testdata_mock_prepares_and_advances() -> None:
+def test_edit_await_testdata_mock_prepares_and_advances(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.application.handlers_edit import handle_await_testdata
 
     env, _ = _new_env()
@@ -1138,7 +1148,7 @@ def test_edit_await_testdata_mock_prepares_and_advances() -> None:
         _ = schema, prior_failed
         return {"q": "x"}
 
-    env.agent.generate_mock_inputs = generate_mock_inputs
+    monkeypatch.setattr(env.agent, "generate_mock_inputs", generate_mock_inputs)
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_TESTDATA)
     result = handle_await_testdata(
         env,
@@ -1182,7 +1192,7 @@ def _mock_with_an_invented_endpoint(
     return {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}
 
 
-def test_edit_await_testdata_mock_leaves_the_endpoint_for_the_form() -> None:
+def test_edit_await_testdata_mock_leaves_the_endpoint_for_the_form(monkeypatch: pytest.MonkeyPatch) -> None:
     """A mocked endpoint URL is accepted at launch and fails on connection -- a
     config failure that feeds the repair loop (ESQ1-302). Left out, the missing
     required key fails the launch as an input the form then asks for."""
@@ -1190,7 +1200,7 @@ def test_edit_await_testdata_mock_leaves_the_endpoint_for_the_form() -> None:
 
     env, _ = _new_env()
     env.fake_dify.graph = _endpoint_graph()
-    env.agent.generate_mock_inputs = _mock_with_an_invented_endpoint
+    monkeypatch.setattr(env.agent, "generate_mock_inputs", _mock_with_an_invented_endpoint)
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_TESTDATA)
 
     result = handle_await_testdata(
@@ -1205,12 +1215,14 @@ def test_edit_await_testdata_mock_leaves_the_endpoint_for_the_form() -> None:
     assert env.repo.get_test_input(result.context.test_input_ref).inputs == {"topic": "quarterly report"}
 
 
-def test_edit_test_affected_paths_defensive_mock_leaves_the_endpoint_for_the_form() -> None:
+def test_edit_test_affected_paths_defensive_mock_leaves_the_endpoint_for_the_form(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
     env, _ = _new_env()
     env.fake_dify.graph = _endpoint_graph()
-    env.agent.generate_mock_inputs = _mock_with_an_invented_endpoint
+    monkeypatch.setattr(env.agent, "generate_mock_inputs", _mock_with_an_invented_endpoint)
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
 
     result = handle_test_affected_paths(
@@ -1262,7 +1274,7 @@ def test_revert_then_retry_after_revert_reapprove_is_idempotent() -> None:
     assert len(dify.graph["nodes"]) == 4
 
 
-def test_edit_launch_error_is_preserved_at_unknown_review_gate() -> None:
+def test_edit_launch_error_is_preserved_at_unknown_review_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     """Launch errors retain their text but lack execution proof for diagnosis."""
     from core.dify_builder.models import Run, TestInput
     from services.dify_builder.application.handlers_edit import handle_test_affected_paths
@@ -1273,7 +1285,7 @@ def test_edit_launch_error_is_preserved_at_unknown_review_gate() -> None:
         return Run(kind="verify", immutable=True, dify_run_id="", status="failed", per_node=[], error=launch_error)
 
     env, repo = _new_env(agent=StubAgent())
-    env.fake_dify.run_draft = launch_failed
+    monkeypatch.setattr(env.fake_dify, "run_draft", launch_failed)
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
     repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
 
@@ -1286,7 +1298,9 @@ def test_edit_launch_error_is_preserved_at_unknown_review_gate() -> None:
     assert "notice" not in [i.kind for i in res.items]
 
 
-def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing() -> None:
+def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Same preflight rejection as Build's: ``apply_repair`` raises a
     ``DraftWouldNotStartError`` for an edit whose result would fail at
     Graph.init. The edit session must survive it with a reply and stay at the
@@ -1299,7 +1313,7 @@ def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing
     def would_not_start(*_a: object, **_k: object) -> NoReturn:
         raise DraftWouldNotStartError("the draft would not start: node 'llm' (llm): 1 validation error for LLMNodeData")
 
-    dify.apply_repair = would_not_start
+    monkeypatch.setattr(dify, "apply_repair", would_not_start)
     env, repo = _new_env(dify=dify)
     s = _seed_edit_session(
         repo,
@@ -1319,7 +1333,9 @@ def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing
     assert "Continue adjusting" in english_text(assistant.payload["reply_text"])
 
 
-def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot_start() -> None:
+def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot_start(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A graph_ops rejection ("node not found") never reached the startability
     check -- the edit intents just did not apply. Same recovery as the
     preflight reply (nothing written, plan still approvable), honest reason."""
@@ -1330,7 +1346,7 @@ def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot
     def does_not_apply(*_a: object, **_k: object) -> NoReturn:
         raise ValueError("node not found: x")
 
-    dify.apply_repair = does_not_apply
+    monkeypatch.setattr(dify, "apply_repair", does_not_apply)
     env, repo = _new_env(dify=dify)
     s = _seed_edit_session(
         repo,
@@ -1353,7 +1369,7 @@ def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot
     assert "Continue adjusting" in english_text(assistant.payload["reply_text"])
 
 
-def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass() -> None:
+def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.dify_builder.models import NodeOutput, Run, TestInput
     from services.dify_builder.application.handlers_edit import handle_test_affected_paths
 
@@ -1372,13 +1388,17 @@ def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass() -> No
             {"source": "node2", "target": "node6", "sourceHandle": "billing"},
         ],
     }
-    dify.run_draft = lambda *_a, **_k: Run(
-        kind="verify",
-        immutable=True,
-        dify_run_id="run-e",
-        verification=successful_verification(dify, no_output=True),
-        status="succeeded",
-        per_node=[NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")],
+    monkeypatch.setattr(
+        dify,
+        "run_draft",
+        lambda *_a, **_k: Run(
+            kind="verify",
+            immutable=True,
+            dify_run_id="run-e",
+            verification=successful_verification(dify, no_output=True),
+            status="succeeded",
+            per_node=[NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")],
+        ),
     )
     env, repo = _new_env(dify=dify)
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
@@ -1396,14 +1416,18 @@ def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass() -> No
     assert res.run.culprit_node_id == "node2"
 
 
-def test_each_unknown_outcome_stops_at_the_edit_gate() -> None:
+def test_each_unknown_outcome_stops_at_the_edit_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.dify_builder.models import Diagnosis, Run, TestInput
     from services.dify_builder.application.handlers_edit import handle_test_affected_paths
     from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
 
     env, repo = _new_env()
-    env.fake_dify.run_draft = lambda *_a, **_k: Run(
-        kind="verify", immutable=True, status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+    monkeypatch.setattr(
+        env.fake_dify,
+        "run_draft",
+        lambda *_a, **_k: Run(
+            kind="verify", immutable=True, status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+        ),
     )
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
     repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
@@ -1556,7 +1580,7 @@ class _RejectionRecordingAgent(PlaceholderAgent):
         )
 
 
-def _refusing_port(*errors: Exception) -> FakeEditDifyPort:
+def _refusing_port(monkeypatch: pytest.MonkeyPatch, *errors: Exception) -> FakeEditDifyPort:
     """A ``FakeEditDifyPort`` whose ``apply_repair`` raises ``errors`` in turn."""
     dify = FakeEditDifyPort()
     remaining = list(errors)
@@ -1564,7 +1588,7 @@ def _refusing_port(*errors: Exception) -> FakeEditDifyPort:
     def refuse(*_a: object, **_k: object) -> NoReturn:
         raise remaining.pop(0)
 
-    dify.apply_repair = refuse
+    monkeypatch.setattr(dify, "apply_repair", refuse)
     return dify
 
 
@@ -1575,10 +1599,10 @@ def _approve(env: Env, session: Session, fc: DifyBuilderContext) -> StepResult:
     return handle_plan_approval(env, turn, session, fc)
 
 
-def test_a_refused_edit_remembers_the_engines_own_reason() -> None:
+def test_a_refused_edit_remembers_the_engines_own_reason(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.dify_builder.errors import DraftWouldNotStartError
 
-    env, repo = _new_env(dify=_refusing_port(DraftWouldNotStartError(_KLINGON)))
+    env, repo = _new_env(dify=_refusing_port(monkeypatch, DraftWouldNotStartError(_KLINGON)))
     s = _seed_edit_session(
         repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
     )
@@ -1591,10 +1615,10 @@ def test_a_refused_edit_remembers_the_engines_own_reason() -> None:
     assert res.context.last_edit_rejection == _KLINGON
 
 
-def test_an_edit_that_simply_did_not_apply_is_remembered_too() -> None:
+def test_an_edit_that_simply_did_not_apply_is_remembered_too(monkeypatch: pytest.MonkeyPatch) -> None:
     """A ``graph_ops`` refusal never reached the startability check, but it is
     just as blind on re-approval, so it is carried forward the same way."""
-    env, repo = _new_env(dify=_refusing_port(ValueError("node not found: x")))
+    env, repo = _new_env(dify=_refusing_port(monkeypatch, ValueError("node not found: x")))
     s = _seed_edit_session(
         repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
     )
@@ -1633,7 +1657,7 @@ def test_a_first_approval_passes_no_rejection_at_all() -> None:
     assert agent.rejections == [None]  # "" would read as a refusal with no text
 
 
-def test_a_second_refusal_at_the_same_location_replaces_the_first() -> None:
+def test_a_second_refusal_at_the_same_location_replaces_the_first(monkeypatch: pytest.MonkeyPatch) -> None:
     """The case the dry run's own key cannot cover.
 
     ``preflight.new_preflight_problems`` is keyed on pydantic error LOCATIONS,
@@ -1648,7 +1672,8 @@ def test_a_second_refusal_at_the_same_location_replaces_the_first() -> None:
 
     agent = _RejectionRecordingAgent()
     env, repo = _new_env(
-        dify=_refusing_port(DraftWouldNotStartError(_KLINGON), DraftWouldNotStartError(_MARTIAN)), agent=agent
+        dify=_refusing_port(monkeypatch, DraftWouldNotStartError(_KLINGON), DraftWouldNotStartError(_MARTIAN)),
+        agent=agent,
     )
     s = _seed_edit_session(
         repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
@@ -1711,13 +1736,13 @@ def test_a_recovery_reset_forgets_the_refusal_of_a_batch_that_is_gone() -> None:
     assert fc.last_edit_rejection == ""
 
 
-def test_a_huge_refusal_is_capped_before_it_is_persisted_and_re_prompted() -> None:
+def test_a_huge_refusal_is_capped_before_it_is_persisted_and_re_prompted(monkeypatch: pytest.MonkeyPatch) -> None:
     """A batch refusal concatenates one message per node, and this text is both
     stored in the session context blob and prepended to the next prompt."""
     from core.dify_builder.errors import DraftWouldNotStartError
     from services.dify_builder.application.handlers_edit import _MAX_REJECTION_CHARS, _REJECTION_TRUNCATED_MARKER
 
-    env, repo = _new_env(dify=_refusing_port(DraftWouldNotStartError("x" * (_MAX_REJECTION_CHARS + 500))))
+    env, repo = _new_env(dify=_refusing_port(monkeypatch, DraftWouldNotStartError("x" * (_MAX_REJECTION_CHARS + 500))))
     s = _seed_edit_session(
         repo, PcState.EDIT_PLAN_APPROVAL, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["node2"]
     )
@@ -1735,14 +1760,14 @@ def _gate_turn(kind: str) -> Turn:
     return Turn(action=Action(kind=kind, base_version=1), actor=_actor())
 
 
-def test_a_refused_edit_can_be_adjusted_instead_of_only_re_approved() -> None:
+def test_a_refused_edit_can_be_adjusted_instead_of_only_re_approved(monkeypatch: pytest.MonkeyPatch) -> None:
     """The dead end this closes: a refused approval left the user at the gate
     with ``approve_plan`` as the only move, while the card told them to adjust
     (triage edit-branch-failure-2026-09-22)."""
     from core.dify_builder.errors import DraftWouldNotStartError
     from services.dify_builder.application.handlers_edit import handle_plan_approval
 
-    env, repo = _new_env(dify=_refusing_port(DraftWouldNotStartError(_KLINGON)))
+    env, repo = _new_env(dify=_refusing_port(monkeypatch, DraftWouldNotStartError(_KLINGON)))
     s = _seed_edit_session(
         repo,
         PcState.EDIT_PLAN_APPROVAL,
@@ -1802,7 +1827,7 @@ def test_routing_back_to_the_form_does_not_forget_the_refusal() -> None:
     assert from_review.context.last_edit_rejection == _KLINGON
 
 
-def _refuse_once_then_apply(error: Exception) -> FakeEditDifyPort:
+def _refuse_once_then_apply(monkeypatch: pytest.MonkeyPatch, error: Exception) -> FakeEditDifyPort:
     """A ``FakeEditDifyPort`` that refuses the first ``apply_repair`` and then
     behaves normally -- the shape of the loop these sequences live in."""
     dify = FakeEditDifyPort()
@@ -1838,16 +1863,18 @@ def _refuse_once_then_apply(error: Exception) -> FakeEditDifyPort:
             expected_node_resources=expected_node_resources,
         )
 
-    dify.apply_repair = apply
+    monkeypatch.setattr(dify, "apply_repair", apply)
     return dify
 
 
-def _refused_at_the_gate(agent: DifyBuilderAgent) -> tuple[Runner, InMemoryRepository, Session, Session]:
+def _refused_at_the_gate(
+    monkeypatch: pytest.MonkeyPatch, agent: DifyBuilderAgent
+) -> tuple[Runner, InMemoryRepository, Session, Session]:
     """Drive a real Edit session to a refused approval parked at the gate."""
     from core.dify_builder.errors import DraftWouldNotStartError
     from services.dify_builder.application.handlers_edit import edit_registry
 
-    env, repo = _new_env(dify=_refuse_once_then_apply(DraftWouldNotStartError(_KLINGON)), agent=agent)
+    env, repo = _new_env(dify=_refuse_once_then_apply(monkeypatch, DraftWouldNotStartError(_KLINGON)), agent=agent)
     s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
     runner = Runner(env, edit_registry())
     out = runner.advance(
@@ -1867,14 +1894,14 @@ def _submit(runner: Runner, s: Session, out: Session, kind: str, payload: dict[s
     )
 
 
-def test_a_gate_revert_keeps_the_refusal_its_retry_still_needs() -> None:
+def test_a_gate_revert_keeps_the_refusal_its_retry_still_needs(monkeypatch: pytest.MonkeyPatch) -> None:
     """The ONE path that reaches edit.reverted carrying a refusal. A revert
     taken at the plan gate wrote nothing, so the restored draft IS the refused
     draft and the rules are unchanged -- and edit.reverted offers only Retry,
     which re-proposes the identical plan. Clearing here would guarantee the
     identical refusal and throw away the whole point of remembering it."""
     agent = _RejectionRecordingAgent()
-    runner, repo, s, out = _refused_at_the_gate(agent)
+    runner, repo, s, out = _refused_at_the_gate(monkeypatch, agent)
 
     out = _submit(runner, s, out, "undo")
     assert out.current_state == PcState.EDIT_REVERTED
@@ -1888,11 +1915,11 @@ def test_a_gate_revert_keeps_the_refusal_its_retry_still_needs() -> None:
     assert agent.rejections == [None, _KLINGON]  # the retry was told what the engine said
 
 
-def test_changing_the_rules_forgets_the_refusal_the_old_ones_earned() -> None:
+def test_changing_the_rules_forgets_the_refusal_the_old_ones_earned(monkeypatch: pytest.MonkeyPatch) -> None:
     """The mirror case: once the rules the engine refused are gone, its
     complaint describes nothing the next approval will try."""
     agent = _RejectionRecordingAgent()
-    runner, repo, s, out = _refused_at_the_gate(agent)
+    runner, repo, s, out = _refused_at_the_gate(monkeypatch, agent)
 
     out = _submit(runner, s, out, "re_fix")  # continue adjusting
     assert out.current_state == PcState.EDIT_IMPACT_ANALYSIS
@@ -1911,11 +1938,11 @@ def test_changing_the_rules_forgets_the_refusal_the_old_ones_earned() -> None:
     assert agent.rejections == [None, None]  # nothing stale quoted at the new rules
 
 
-def test_resubmitting_the_very_same_rules_keeps_the_refusal() -> None:
+def test_resubmitting_the_very_same_rules_keeps_the_refusal(monkeypatch: pytest.MonkeyPatch) -> None:
     """Reaching the form and pressing submit without editing anything leaves
     the inputs byte-identical, so the refusal still describes them."""
     agent = _RejectionRecordingAgent()
-    runner, repo, s, out = _refused_at_the_gate(agent)
+    runner, repo, s, out = _refused_at_the_gate(monkeypatch, agent)
 
     out = _submit(runner, s, out, "re_fix")
     out = _submit(runner, s, out, "submit_edit_rules", {"risk_threshold": "medium"})
@@ -2267,7 +2294,7 @@ def test_approved_edit_uses_the_presented_plan_snapshot_for_generation() -> None
     assert result.next == PcState.EDIT_PLAN_APPROVAL
 
 
-def test_disconnected_tool_failure_surfaces_current_checklist_and_bounded_exit() -> None:
+def test_disconnected_tool_failure_surfaces_current_checklist_and_bounded_exit(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.dify_builder.models import Run, TestInput
     from services.dify_builder.application.handlers_edit import handle_test_affected_paths
     from services.dify_builder.application.handlers_fix import MAX_REPEATED_REPAIRS
@@ -2278,12 +2305,16 @@ def test_disconnected_tool_failure_surfaces_current_checklist_and_bounded_exit()
     dify.graph["nodes"].append(
         {"id": "tool-draft", "data": {"type": "tool", "title": "Unbound action", "provider_id": "", "tool_name": ""}}
     )
-    dify.run_draft = lambda *_a, **_k: Run(
-        kind="verify",
-        immutable=True,
-        status="failed",
-        error="node tool-draft is unconnected",
-        verification=successful_verification(dify),
+    monkeypatch.setattr(
+        dify,
+        "run_draft",
+        lambda *_a, **_k: Run(
+            kind="verify",
+            immutable=True,
+            status="failed",
+            error="node tool-draft is unconnected",
+            verification=successful_verification(dify),
+        ),
     )
     env, repo = _new_env(dify=dify, agent=StubAgent())
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)

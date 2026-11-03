@@ -1,7 +1,5 @@
 """Policy forwarding preserves trusted generator budgets and administrator caps."""
 
-from typing import cast
-
 import pytest
 
 from extensions.application_services.dify_builder_cognition_policy import _ConfiguredInvocation
@@ -14,6 +12,7 @@ from services.workflow_generation.runner import (
     _clamp_for_tool_router,
 )
 from tests.helpers.unit.core.model_fixtures import make_model_instance
+from tests.unit_tests.services.dify_builder.typed_fixtures import dictionary
 
 
 def _invoke_planner(model: PolicyModelInstance, parameters: dict[str, object]) -> None:
@@ -42,7 +41,7 @@ def test_actual_planner_budget_survives_inherited_empty_policy(monkeypatch: pyte
     _invoke_planner(proxy, {})
     expected = _clamp_for_planner({})
     assert requests[0]["model_parameters"] == expected
-    budget = cast(dict[str, object], requests[0]["model_parameters"])["max_tokens"]
+    budget = dictionary(requests[0]["model_parameters"])["max_tokens"]
     assert isinstance(budget, int)
     assert budget > 4096
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
     pass
@@ -237,7 +237,9 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "f9a3c62de418"
-    current_head = "6c84f1d90235"
+    current_head = "7d95a2e61346"
+    main_head = "53c10126d551"
+    fix_intents_head = "6c84f1d90235"
     writer_head = "5b73e0c8f124"
     material_head = "4a62d9b7e013"
     coordination_head = "e832a94f210b"
@@ -256,7 +258,10 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     config.set_main_option("script_location", str(Path(__file__).parents[5] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    fix_intents_revision = scripts.get_revision(current_head)
+    main_merge = scripts.get_revision(current_head)
+    assert main_merge is not None
+    assert main_merge.down_revision == (fix_intents_head, main_head)
+    fix_intents_revision = scripts.get_revision(fix_intents_head)
     assert fix_intents_revision is not None
     assert fix_intents_revision.down_revision == writer_head
     writer_revision = scripts.get_revision(writer_head)
@@ -353,12 +358,11 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
                     return [
                         RevisionStep.downgrade_from_script(scripts.revision_map, revision) for revision in to_revert
                     ]
-                # Alembic passes head tuples here; its upgrade planner annotation declares a scalar.
-                planner = cast(
-                    Callable[[str, tuple[str, ...]], list[RevisionStep]],
-                    scripts._upgrade_revs,
-                )
-                return planner(target, current)
+                planned = scripts.iterate_revisions(target, current, implicit_base=True)
+                return [
+                    RevisionStep.upgrade_from_script(scripts.revision_map, revision)
+                    for revision in reversed(list(planned))
+                ]
 
             # Main builds its task index concurrently; let Alembic own each transaction
             # and keep the isolated schema in the session search path across commits.
@@ -675,8 +679,8 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         # run provenance without altering historical values or constraints.
         parents = MigrationContext.configure(connection, opts={"version_table_schema": schema})
         parents.stamp(scripts, coordination_head)
-        parents.stamp(scripts, knowledge_fs_head)
-        assert set(parents.get_current_heads()) == {coordination_head, knowledge_fs_head}
+        parents.stamp(scripts, main_head)
+        assert set(parents.get_current_heads()) == {coordination_head, main_head}
         assert migrate("head") == (current_head,)
         assert native_ledger_witness() == ledger_before
         assert archive_witness() == archive_before

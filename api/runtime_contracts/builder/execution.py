@@ -57,7 +57,7 @@ def canonical_json(value: Any) -> bytes:
         _finite_json(value)
         encoded = json.dumps(value, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":"))
         return encoded.encode("utf-8")
-    except (ValueError, TypeError, UnicodeError, RecursionError):
+    except (ValueError, TypeError, RecursionError):
         raise BuilderExecutionPolicyError("invalid_canonical_json") from None
 
 
@@ -112,7 +112,7 @@ class HttpResponseFixtureV1(_TrustedModel):
         if self.content_type == "application/json":
             try:
                 _finite_json(json.loads(self.body))
-            except (ValueError, TypeError, UnicodeError, RecursionError):
+            except (ValueError, TypeError, RecursionError):
                 raise ValueError("invalid finite JSON fixture") from None
         return self
 
@@ -148,7 +148,7 @@ def decode_http_fixture_submission(raw: Any) -> tuple[HttpResponseFixtureV1, ...
         if len({f.node_id for f in fixtures}) != len(fixtures):
             raise ValueError("duplicate fixture")
         return tuple(sorted(fixtures, key=lambda f: f.node_id))
-    except (ValidationError, ValueError, TypeError, UnicodeError):
+    except (ValidationError, ValueError, TypeError):
         raise BuilderExecutionPolicyError("invalid_http_fixtures") from None
 
 
@@ -158,7 +158,7 @@ def decode_http_fixture_set(raw: Any) -> HttpFixtureSetV1 | None:
         return None
     try:
         return HttpFixtureSetV1.model_validate(raw)
-    except (ValidationError, ValueError, TypeError, UnicodeError):
+    except (ValidationError, ValueError, TypeError):
         raise BuilderExecutionPolicyError("invalid_http_fixture_envelope") from None
 
 
@@ -294,7 +294,7 @@ def validate_execution_context(
         raw = {**raw, "policy_version": "builder-restricted-v1"}
     try:
         context = _CONTEXT_VALUE_ADAPTER.validate_python(raw)
-    except (ValidationError, ValueError, TypeError, UnicodeError):
+    except (ValidationError, ValueError, TypeError):
         raise BuilderExecutionPolicyError("invalid_execution_context") from None
     if context.context_digest != context_digest(context):
         raise BuilderExecutionPolicyError("context_digest_mismatch")

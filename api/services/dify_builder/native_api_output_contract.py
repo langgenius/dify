@@ -8,7 +8,6 @@ existing dynamic-output handling; this owner performs no metadata/runtime lookup
 
 from collections.abc import Mapping, Sequence
 from re import Pattern
-from typing import cast
 from uuid import UUID
 
 _NATIVE_OUTPUTS = frozenset({"text", "json", "files"})
@@ -98,7 +97,7 @@ def collect_native_api_selector_refs(
         node_id = node.get("id")
         data = node.get("data")
         if isinstance(node_id, str) and isinstance(data, Mapping):
-            if is_native_api_tool(cast(Mapping[str, object], data)):
+            if is_native_api_tool(data):
                 known_ids.add(node_id)
     refs: set[tuple[str, str]] = set()
 
@@ -107,7 +106,7 @@ def collect_native_api_selector_refs(
             return
         if not all(isinstance(part, str) for part in value):
             return
-        selector = [part.strip() for part in cast(list[str], value)]
+        selector = [part.strip() for part in value if isinstance(part, str)]
         if selector[0] in known_ids and all(selector):
             refs.add((selector[0], ".".join(selector[1:])))
 
@@ -118,7 +117,7 @@ def collect_native_api_selector_refs(
                 if node_id in known_ids and variable:
                     refs.add((node_id, variable))
         elif isinstance(value, Mapping):
-            fields = cast(Mapping[str, object], value)
+            fields = value
             if fields.get("type") == "constant":
                 return
             for name in _SELECTOR_FIELDS:
@@ -174,7 +173,7 @@ def collect_native_api_selector_refs(
     def mapping_items(value: object) -> list[Mapping[str, object]]:
         if not isinstance(value, list):
             return []
-        return [cast(Mapping[str, object], item) for item in value if isinstance(item, Mapping)]
+        return [item for item in value if isinstance(item, Mapping)]
 
     def collect_selector_list(value: object) -> None:
         if isinstance(value, list):
@@ -248,6 +247,6 @@ def collect_native_api_selector_refs(
     for node in nodes:
         data = node.get("data")
         if isinstance(data, Mapping):
-            collect_runtime_fields(cast(Mapping[str, object], data))
+            collect_runtime_fields(data)
             walk(data)
     return refs

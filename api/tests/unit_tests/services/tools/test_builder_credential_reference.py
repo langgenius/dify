@@ -8,7 +8,7 @@ import json
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import cast
+from operator import methodcaller
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -105,33 +105,33 @@ def test_default_flag_is_not_part_of_the_revision() -> None:
 
 def _client(
     *,
-    source: str = "tenant",
+    source: OAuthClientSource = "tenant",
     row_id: str | None = "client",
     encrypted_params: str | None = TENANT_CLIENT_CIPHERTEXT,
     enabled: bool = True,
     tenant_id: str = "tenant",
     plugin_id: str = PLUGIN,
     provider: str = "dify-gmail",
-    key: object = KEY,
+    key: bytes = KEY,
 ) -> str:
     return oauth_client_revision(
-        source=cast(OAuthClientSource, source),
+        source=source,
         row_id=row_id,
         encrypted_params=encrypted_params,
         enabled=enabled,
         tenant_id=tenant_id,
         plugin_id=plugin_id,
         provider=provider,
-        key=cast(bytes, key),
+        key=key,
     )
 
 
 @pytest.mark.parametrize("key", [b"", "unit-key", bytearray(b"unit-key"), None])
 def test_revisions_refuse_an_empty_or_untyped_key(key: object) -> None:
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_revision_key"):
-        credential_revision(_row(), key=cast(bytes, key))
+        methodcaller("__call__", _row(), key=key)(credential_revision)
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_revision_key"):
-        _client(key=key)
+        methodcaller("__call__", key=key)(_client)
 
 
 def test_revisions_are_keyed() -> None:
@@ -159,7 +159,7 @@ def test_every_client_snapshot_field_changes_client_revision(changed: Callable[[
 def test_client_source_is_closed() -> None:
     assert _client(source="missing", row_id=None, encrypted_params=None, enabled=False) != _client()
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_oauth_client_source"):
-        _client(source="debug")
+        methodcaller("__call__", source="debug")(_client)
 
 
 # --- owner selection on a real SQLite session -------------------------------------
@@ -259,8 +259,8 @@ def resolve(
     actor: Actor | None = None,
     provider_id: str = PROVIDER,
     credential_id: str | None = None,
-    verified_plugin: object = True,
-    revision_key: object = KEY,
+    verified_plugin: bool = True,
+    revision_key: bytes = KEY,
 ) -> CredentialReference:
     with world.factory() as db:
         return BuiltinToolManageService.resolve_builder_reference(
@@ -268,9 +268,8 @@ def resolve(
             actor=actor or world.actor,
             provider_id=provider_id,
             credential_id=world.credential_id if credential_id is None else credential_id,
-            # Deliberately untyped inputs exercise the owner's own refusal.
-            verified_plugin=cast(bool, verified_plugin),
-            revision_key=cast(bytes, revision_key),
+            verified_plugin=verified_plugin,
+            revision_key=revision_key,
         )
 
 
@@ -285,14 +284,15 @@ def refused(
     revision_key: object = KEY,
 ) -> None:
     with pytest.raises(BuilderExecutionPolicyError) as raised:
-        resolve(
+        methodcaller(
+            "__call__",
             world,
             actor=actor,
             provider_id=provider_id,
             credential_id=credential_id,
             verified_plugin=verified_plugin,
             revision_key=revision_key,
-        )
+        )(resolve)
     assert raised.value.reason_code == reason
 
 

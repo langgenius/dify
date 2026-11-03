@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import cache
 from sys import exc_info
-from typing import Any, Literal, Protocol, cast, runtime_checkable
+from typing import Any, ClassVar, Literal, Protocol, runtime_checkable
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -186,16 +186,10 @@ class BoundaryOwnerState:
 NativeEventStream = Generator[NodeEvent | ContainerAwaitRequest]
 
 
-class _NativeNodeDelegate(Protocol):
-    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
-
-    def run(self) -> NativeEventStream: ...
-
-    def resume_container(self, *, result: ContainerRunResult, started_at: datetime) -> NativeEventStream: ...
-
-
 class _NativeControlBoundary:
     """Mixin selected only by marked composition, never by registry replacement."""
+
+    _native_control_node_class: ClassVar[type[Node]]
 
     def __init__(
         self,
@@ -205,19 +199,21 @@ class _NativeControlBoundary:
         **kwargs: Any,
     ) -> None:
         if (
-            type(native_control_owner) is not BoundaryOwnerState
+            not isinstance(self, Node)
+            or type(native_control_owner) is not BoundaryOwnerState
             or not isinstance(native_control_sink, NativeControlSink)
             or not callable(native_control_sink.record_control)
         ):
             raise ValueError("native_control_owner_and_sink_required")
         self._native_control_owner = native_control_owner
         self._native_control_sink = native_control_sink
-        cast(_NativeNodeDelegate, super()).__init__(*args, **kwargs)
+        self._native_control_node = self
+        self._native_control_node_class.__init__(self._native_control_node, *args, **kwargs)
 
     def _abort_control(self, reason_code: str) -> None:
         """Contain only public abort-call failure; never relabel node failures."""
         try:
-            cast(Node, self).runtime_state.graph_execution.abort(reason_code)
+            self._native_control_node.runtime_state.graph_execution.abort(reason_code)
         except BaseException:
             # No callback/host failure may escape a native worker. Native
             # settlement is unqualified if this public abort itself fails.
@@ -225,7 +221,7 @@ class _NativeControlBoundary:
 
     def _control_execution_id(self) -> str | None:
         try:
-            execution_id = cast(Node, self).execution_id
+            execution_id = self._native_control_node.execution_id
         except RuntimeError:
             execution_id = ""
         if not execution_id:
@@ -235,7 +231,7 @@ class _NativeControlBoundary:
         return execution_id
 
     def _record_control(self, control: NativeApprovalWait | NativePolicyStop, execution_id: str) -> NativeEventStream:
-        node = cast(Node, self)
+        node = self._native_control_node
         owner = self._native_control_owner
         record = NativeControlRecord(
             control=control, node_id=node.id, native_execution_id=execution_id, carrier_ref=uuid4().hex
@@ -282,7 +278,7 @@ class _NativeControlBoundary:
             yield True
             return
         try:
-            scope = ownership.node_scope(node=cast(Node, self), phase=phase)
+            scope = ownership.node_scope(node=self._native_control_node, phase=phase)
             scope.__enter__()
         except BaseException:
             self._native_control_owner._unknown("native_control_observation_failed")
@@ -308,7 +304,7 @@ class _NativeControlBoundary:
             if not entered:
                 return
             try:
-                yield from cast(_NativeNodeDelegate, super()).run()
+                yield from self._native_control_node_class.run(self._native_control_node)
             except (NativeApprovalWait, NativePolicyStop) as control:
                 yield from self._record_control(control, execution_id)
 
@@ -320,7 +316,9 @@ class _NativeControlBoundary:
             if not entered:
                 return
             try:
-                yield from cast(_NativeNodeDelegate, super()).resume_container(result=result, started_at=started_at)
+                yield from self._native_control_node_class.resume_container(
+                    self._native_control_node, result=result, started_at=started_at
+                )
             except (NativeApprovalWait, NativePolicyStop) as control:
                 yield from self._record_control(control, execution_id)
 
@@ -330,10 +328,13 @@ def _adapt_concrete_node(node_class: type[Node]) -> type[Node]:
     # Cache concrete classes only: no host/ref/sink/runtime captured in closure.
     # Native subclass registration increments the public registry version, so
     # downstream mapping caches must honor Graphon's version invalidation.
-    return cast(
-        type[Node],
-        type(f"NativeControl{node_class.__name__}", (_NativeControlBoundary, node_class), {"__module__": __name__}),
+    adapted = type(
+        f"NativeControl{node_class.__name__}",
+        (_NativeControlBoundary, node_class),
+        {"__module__": __name__, "_native_control_node_class": node_class},
     )
+    assert issubclass(adapted, Node)
+    return adapted
 
 
 def marked_native_node_class(node_class: type[Node], *, marked: bool) -> type[Node]:

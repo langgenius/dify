@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Callable
 from copy import deepcopy
-from typing import Never, TypedDict, cast
+from operator import methodcaller
+from typing import Never, TypedDict
 
 import pytest
+from pydantic import TypeAdapter
 
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.http import HttpClientProtocol
@@ -20,15 +21,15 @@ from services.dify_builder.application.execution_policy import (
     admitted_node_bindings,
 )
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, snapshot
-from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import (
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
+from tests.unit_tests.services.workflow_runtime.test_node_factory import (
     forbid_live as forbid_live,  # noqa: PLC0414
 )
-from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import (
+from tests.unit_tests.services.workflow_runtime.test_node_factory import (
     prepare_native,
     receipts,
 )
-from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
-from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 
 
 class RawNode(TypedDict):
@@ -114,7 +115,7 @@ def test_runtime_kwargs_deny_before_fixture_return_and_append_receipt(owned: Own
     assert isinstance(node, HttpRequestNode)
     client = node.http_client
     with pytest.raises(PolicyTransportError, match="execution_policy: http_request_arguments"):
-        cast(Callable[..., object], client.get)("https://sample.invalid/private", **kwargs)
+        methodcaller("get", "https://sample.invalid/private", **kwargs)(client)
     assert receipts(owned)[0]["kind"] == "effect_blocked"
     assert "private" not in json.dumps(receipts(owned))
 
@@ -273,14 +274,14 @@ def test_with_runtime_state_keeps_exact_policy_recorder_and_private_key(owned: O
     ],
 )
 def test_http_defaults_stay_bounded_scalar_and_known_keys(bad: dict[str, object]) -> None:
-    value = cast(RawGraph, graph(http=True))
+    value = TypeAdapter(RawGraph).validate_python(graph(http=True))
     value["nodes"][1]["data"]["default_value"] = [bad]
     with pytest.raises(BuilderExecutionPolicyError):
         admitted_node_bindings(snapshot(value))
 
 
 def test_fixed_utf8_header_and_scalar_defaults_are_admitted() -> None:
-    value = cast(RawGraph, graph(http=True))
+    value = TypeAdapter(RawGraph).validate_python(graph(http=True))
     value["nodes"][1]["data"].update(
         headers="Content-Type: application/json; charset=utf-8",
         default_value=[
@@ -299,9 +300,9 @@ def test_reserved_sandbox_fixtures_are_unavailable_before_sandbox_owner(owned: O
     if name == "template_greeting.yml":
         import yaml
 
-        from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import FIXTURES
+        from tests.unit_tests.services.workflow_runtime.test_node_factory import RESTRICTED_FIXTURES
 
-        raw_graph = yaml.safe_load((FIXTURES / name).read_text())
+        raw_graph = yaml.safe_load((RESTRICTED_FIXTURES / name).read_text())
         raw_graph["nodes"][1]["data"]["template"] = "{{ name.__class__ }}"
         reason = "unsupported_template_syntax"
     else:
@@ -349,7 +350,7 @@ def test_response_file_or_unknown_fixture_payload_is_rejected(raw: dict[str, obj
     "mutation", ["defaults_alias", "duplicate_defaults", "header_variable", "header_charset", "hidden_auth", "options"]
 )
 def test_unreviewed_raw_http_shapes_remain_unavailable(mutation: str) -> None:
-    value = cast(RawGraph, graph(http=True))
+    value = TypeAdapter(RawGraph).validate_python(graph(http=True))
     data = value["nodes"][1]["data"]
     if mutation == "defaults_alias":
         data["default_values"] = [{"key": "body", "type": "string", "value": "x"}]
@@ -360,7 +361,9 @@ def test_unreviewed_raw_http_shapes_remain_unavailable(mutation: str) -> None:
     elif mutation == "header_charset":
         data["headers"] = "Content-Type: text/plain; charset=latin-1"
     elif mutation == "hidden_auth":
-        cast(dict[str, object], data["authorization"])["config"] = {"type": "bearer", "api_key": "private"}
+        authorization = data["authorization"]
+        assert isinstance(authorization, dict)
+        authorization["config"] = {"type": "bearer", "api_key": "private"}
     else:
         data["method"] = "OPTIONS"
     with pytest.raises(BuilderExecutionPolicyError):

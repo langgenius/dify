@@ -7,7 +7,7 @@ from sqlalchemy import select
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from runtime_contracts.builder.execution import canonical_digest
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
-from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+from runtime_contracts.builder.native.runtime_contracts import NativeStatePort, ResolvedNativeTestContext
 from services.dify_builder.native_testing.context_binding import NativeRuntimeProfile
 from services.dify_builder.native_testing.http_binding import _current_metadata
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
@@ -115,7 +115,7 @@ def _stored_profile(
 
 
 def create_http_observation_guard(
-    *, state: NativeExecutionStateStore, context: ResolvedNativeTestContext, on_failure: Callable[[], None]
+    *, state: NativeStatePort | None, context: ResolvedNativeTestContext, on_failure: Callable[[], None]
 ) -> NativeObservationGuard:
     """Qualify only the current protected root HTTP profile; no substitute inputs.
 

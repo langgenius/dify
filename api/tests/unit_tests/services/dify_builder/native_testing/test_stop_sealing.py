@@ -6,11 +6,12 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Literal, cast
+from typing import Literal
 
 import pytest
 from sqlalchemy import Select, inspect
 from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
 
 from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderExecutionRequest
@@ -202,19 +203,26 @@ def case(monkeypatch: pytest.MonkeyPatch) -> StopSealCase:
     return StopSealCase(sql=sql, loader=loader, lifecycle=lifecycle)
 
 
-def seal(case: StopSealCase, **changes: object) -> None:
-    values: dict[str, object] = {
-        "ref": REF,
-        "expected_generation": 3,
-        "dispatch_id": "dispatch",
-        "reason_code": "effect_denied",
-    }
-    values.update(changes)
+class SealArguments(TypedDict, total=False, closed=True):
+    ref: NativeTestContextRef
+    expected_generation: int
+    dispatch_id: str
+    reason_code: str
+
+
+def seal(
+    case: StopSealCase,
+    *,
+    ref: NativeTestContextRef = REF,
+    expected_generation: int = 3,
+    dispatch_id: str = "dispatch",
+    reason_code: str = "effect_denied",
+) -> None:
     return case.lifecycle.seal_stop(
-        ref=cast(NativeTestContextRef, values["ref"]),
-        expected_generation=cast(int, values["expected_generation"]),
-        dispatch_id=cast(str, values["dispatch_id"]),
-        reason_code=cast(str, values["reason_code"]),
+        ref=ref,
+        expected_generation=expected_generation,
+        dispatch_id=dispatch_id,
+        reason_code=reason_code,
     )
 
 
@@ -241,9 +249,7 @@ def test_stop_seals_authority_after_commit_without_claiming_physical_cleanup(cas
         {"reason_code": "raw\nsecret"},
     ],
 )
-def test_stop_rejects_foreign_or_malformed_control_without_mutation(
-    case: StopSealCase, change: dict[str, object]
-) -> None:
+def test_stop_rejects_foreign_or_malformed_control_without_mutation(case: StopSealCase, change: SealArguments) -> None:
     with pytest.raises(BuilderExecutionPolicyError):
         seal(case, **change)
     assert case.sql.request.state == "running"
@@ -317,9 +323,9 @@ def test_sealed_request_cannot_be_finalized_as_completed_or_resumable_wait(
         native_status="succeeded" if status == "completed" else None,
         output_result_ref=None,
     )
-    with pytest.raises(BuilderExecutionPolicyError, match="native_request_sealed"):
+    with Session() as session, pytest.raises(BuilderExecutionPolicyError, match="native_request_sealed"):
         case.lifecycle.finalize_dispatch_locked(
-            session=cast(Session, case.sql),
+            session=session,
             owned=owned,
             scope=case.loader.scope,
             dispatch_id="dispatch",

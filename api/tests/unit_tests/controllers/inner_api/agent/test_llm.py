@@ -5,15 +5,14 @@ import warnings
 from collections.abc import Generator
 from contextlib import contextmanager
 from copy import deepcopy
-from typing import cast, override
+from typing import override
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from flask import Flask, Request, g
-from flask import request as flask_request
+from flask import Flask, g
+from flask.globals import request_ctx
 from pydantic import JsonValue
-from werkzeug.local import LocalProxy
 
 from controllers.inner_api import bp as inner_api_bp
 from core.errors.error import QuotaExceededError
@@ -360,7 +359,7 @@ def test_native_stream_error_is_bounded_even_if_provider_raises_private_text(
     def admitted_transport() -> None:
         # This test exercises the emitter after the independently tested runtime admission guard.
         g.agent_runtime_admitted = True
-        g.agent_runtime_request = cast(LocalProxy[Request], flask_request)._get_current_object()
+        g.agent_runtime_request = request_ctx.request
 
     with (
         _agent_inner_auth(),
@@ -500,7 +499,7 @@ def test_native_model_failure_stage_survives_real_gateway_without_private_text(
     @app.before_request
     def admitted_transport() -> None:
         g.agent_runtime_admitted = True
-        g.agent_runtime_request = cast(LocalProxy[Request], flask_request)._get_current_object()
+        g.agent_runtime_request = request_ctx.request
 
     with _agent_inner_auth():
         response = app.test_client().post("/inner/api/agent/llm/invoke", json=request.model_dump(mode="json"))

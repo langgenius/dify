@@ -8,7 +8,7 @@ never admits another parent or child execution.
 import logging
 from collections.abc import Callable
 from datetime import UTC
-from typing import Literal, cast
+from typing import Literal
 
 from celery.exceptions import SoftTimeLimitExceeded
 from dify_agent.protocol.execution_binding import KeepAliveExecutionBindingRequest, KeepAliveExecutionBindingResponse
@@ -1340,8 +1340,8 @@ class ConfirmedAgentCommands:
                     "wait_reason": waiting.wait_reason,
                 },
             )
-        elif status in {"succeeded", "failed", "partial-succeeded", "stopped"}:
-            native_status = cast(Literal["succeeded", "failed", "partial-succeeded", "stopped"], status)
+        elif status in ("succeeded", "failed", "partial-succeeded", "stopped"):
+            native_status: Literal["succeeded", "failed", "partial-succeeded", "stopped"] = status
             outcome = NativeWorkflowOutcome(status="completed", **{**values, "native_status": native_status})
         else:
             outcome = NativeWorkflowOutcome(status="unknown", **{**values, "reason_code": "native_resume_unknown"})
@@ -1554,7 +1554,7 @@ class ProfiledNativeTestCommands:
         return self.confirmed_factory() if confirmed else self.legacy_factory()
 
     def reconcile_pending(
-        self, *, actor, session_id, request_id: str, publish: Callable[..., None], limit: int = 100
+        self, *, actor, session_id, request_id: str, publish: Callable[..., object], limit: int = 100
     ) -> int:
         service = self._service(actor=actor, session_id=session_id, request_id=request_id)
         lifecycle = service.api.lifecycle if isinstance(service, ConfirmedAgentCommands) else service.lifecycle

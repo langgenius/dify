@@ -12,11 +12,10 @@ from collections.abc import Generator, Mapping
 from inspect import GEN_SUSPENDED, getgeneratorstate
 from threading import Event, Thread, current_thread
 from time import monotonic
-from typing import Self, cast
+from typing import Self
 
 import pytest
 from sqlalchemy import Select
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.models import Actor
 from graphon.enums import WorkflowExecutionStatus
@@ -38,6 +37,7 @@ from services.dify_builder.native_testing.repository import OwnedNativeTestLoade
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from services.dify_builder.native_testing.stream_runtime import DifyNativeStreamOwner
 from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase, native_entry
+from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import sql_session_factory
 
 
 def stream_class() -> type[DifyNativeStreamOwner]:
@@ -78,7 +78,10 @@ class StreamCase:
         self.source_release.set()
         self.source_closed = []
         self.source_finished = Event()
-        self.checkpoint_error = self.cleanup_error = self.read_error = self.source_error = None
+        self.checkpoint_error: Exception | None = None
+        self.cleanup_error: Exception | None = None
+        self.read_error: Exception | None = None
+        self.source_error: Exception | None = None
         self.saved: NativeCheckpointPayload | None = None
         if waiting:
             decision = ApprovalWait(pending_operation_id="pending", wait_reason="approval")
@@ -140,13 +143,17 @@ class StreamCase:
 
             scalar = staticmethod(read)
 
-        self.sessions = SessionPort
+        self.sessions = sql_session_factory(
+            monkeypatch, SessionPort, methods=lambda boundary: {"scalar": boundary.scalar}
+        )
         loader = OwnedNativeTestLoader(
-            cast(sessionmaker[Session], self.sessions),
+            self.sessions,
             actor=Actor(tenant_id=context.tenant_id, account_id=context.actor_id),
             resolver=NativeHttpBindingResolver(),
         )
-        lifecycle = NativeTestLifecycleService(loader, state_store=cast(NativeExecutionStateStore, case.state))
+        state = NativeExecutionStateStore(loader)
+        monkeypatch.setattr(state, "load_context", case.state.load_context)
+        lifecycle = NativeTestLifecycleService(loader, state_store=state)
         monkeypatch.setattr(lifecycle, "pause", self.pause)
         monkeypatch.setattr(lifecycle, "_mark_unknown", lambda **_kwargs: self.events.append("quarantine"))
         self.capacity = NativeHostCapacity(lifecycle, cleanup_verifier=case.lifetime)
@@ -223,7 +230,7 @@ class StreamCase:
         return stream_class()(
             host=self.case.host,
             capacity=self.capacity,
-            session_factory=cast(sessionmaker[Session], self.sessions),
+            session_factory=self.sessions,
             state=self.case.state,
             authorization=self.case.authorization,
             journal=self.case.journal,
