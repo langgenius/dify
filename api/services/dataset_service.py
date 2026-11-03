@@ -1458,8 +1458,9 @@ class DocumentService:
 
     @staticmethod
     def get_document_download_url(document: Document) -> str:
-        """
-        Return a signed download URL for an upload-file document.
+        """Return a signed URL for a tenant-owned uploaded or pipeline local file.
+
+        A missing, unsupported, or cross-tenant file reference raises 404.
         """
         upload_file = DocumentService._get_upload_file_for_upload_file_document(document)
         return file_helpers.get_signed_file_url(upload_file_id=upload_file.id, as_attachment=True)
@@ -1550,14 +1551,24 @@ class DocumentService:
         invalid_source_message: str,
         missing_file_message: str,
     ) -> str:
-        """
-        Normalize and validate `Document -> UploadFile` linkage for download flows.
-        """
-        if document.data_source_type != DataSourceType.UPLOAD_FILE:
-            raise NotFound(invalid_source_message)
+        """Resolve an uploaded or pipeline local-file document's UploadFile id.
 
+        Local files retain the upload as ``real_file_id`` after conversion or use
+        ``related_id``/``reference`` when created by a pipeline. Other sources and
+        absent references raise 404; callers must still load the file by tenant.
+        """
         data_source_info: dict[str, Any] = document.data_source_info_dict or {}
-        upload_file_id: str | None = data_source_info.get("upload_file_id")
+        if document.data_source_type == DataSourceType.UPLOAD_FILE:
+            upload_file_id = data_source_info.get("upload_file_id")
+        elif document.data_source_type == DataSourceType.LOCAL_FILE:
+            file_reference = (
+                data_source_info.get("real_file_id")
+                or data_source_info.get("related_id")
+                or data_source_info.get("reference")
+            )
+            upload_file_id = file_reference if isinstance(file_reference, str) else None
+        else:
+            raise NotFound(invalid_source_message)
         if not upload_file_id:
             raise NotFound(missing_file_message)
 
@@ -1565,9 +1576,7 @@ class DocumentService:
 
     @staticmethod
     def _get_upload_file_for_upload_file_document(document: Document) -> UploadFile:
-        """
-        Load the `UploadFile` row for an upload-file document.
-        """
+        """Load the referenced UploadFile within the document's tenant or raise 404."""
         upload_file_id = DocumentService._get_upload_file_id_for_upload_file_document(
             document,
             invalid_source_message="Document does not have an uploaded file to download.",
@@ -1586,8 +1595,10 @@ class DocumentService:
         document_ids: Sequence[str],
         tenant_id: str,
     ) -> dict[str, UploadFile]:
-        """
-        Batch load upload files keyed by document id for ZIP downloads.
+        """Load tenant-owned UploadFiles for file-backed documents keyed by document id.
+
+        Every document must belong to the given dataset and tenant and resolve to an
+        existing file; unsupported or missing references raise 404.
         """
         document_id_list: list[str] = [str(document_id) for document_id in document_ids]
 
