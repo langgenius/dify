@@ -47,6 +47,7 @@
   "endUser.all": "Tất cả",
   "endUser.apiKey": "Khóa API",
   "endUser.appActions": "Thao tác khác cho {{name}}",
+  "endUser.buildYourOwnApp": "Tạo ứng dụng của riêng bạn",
   "endUser.connection": "Kết nối",
   "endUser.connectionActions": "Thao tác",
   "endUser.connectionType": "Loại",

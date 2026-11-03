@@ -587,6 +587,7 @@ export default interface Resources {
     'endUser.all': 'All'
     'endUser.apiKey': 'API Key'
     'endUser.appActions': 'More actions for {{name}}'
+    'endUser.buildYourOwnApp': 'Build your own app'
     'endUser.connection': 'Connection'
     'endUser.connectionActions': 'Actions'
     'endUser.connectionType': 'Type'

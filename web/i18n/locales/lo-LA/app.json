@@ -47,6 +47,7 @@
   "endUser.all": "ທັງໝົດ",
   "endUser.apiKey": "ກະແຈ API",
   "endUser.appActions": "ການດຳເນີນການເພີ່ມເຕີມສຳລັບ {{name}}",
+  "endUser.buildYourOwnApp": "ສ້າງແອັບຂອງທ່ານເອງ",
   "endUser.connection": "ການເຊື່ອມຕໍ່",
   "endUser.connectionActions": "ການດຳເນີນການ",
   "endUser.connectionType": "ປະເພດ",

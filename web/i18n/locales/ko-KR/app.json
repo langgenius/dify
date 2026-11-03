@@ -47,6 +47,7 @@
   "endUser.all": "전체",
   "endUser.apiKey": "API 키",
   "endUser.appActions": "{{name}}의 추가 작업",
+  "endUser.buildYourOwnApp": "나만의 앱 만들기",
   "endUser.connection": "연결",
   "endUser.connectionActions": "작업",
   "endUser.connectionType": "유형",

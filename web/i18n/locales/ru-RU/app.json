@@ -47,6 +47,7 @@
   "endUser.all": "Все",
   "endUser.apiKey": "Ключ API",
   "endUser.appActions": "Другие действия для {{name}}",
+  "endUser.buildYourOwnApp": "Создать своё приложение",
   "endUser.connection": "Подключение",
   "endUser.connectionActions": "Действия",
   "endUser.connectionType": "Тип",

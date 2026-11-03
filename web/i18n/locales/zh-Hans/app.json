@@ -47,6 +47,7 @@
   "endUser.all": "全部",
   "endUser.apiKey": "API 密钥",
   "endUser.appActions": "{{name}} 的更多操作",
+  "endUser.buildYourOwnApp": "创建自己的应用",
   "endUser.connection": "连接",
   "endUser.connectionActions": "操作",
   "endUser.connectionType": "类型",

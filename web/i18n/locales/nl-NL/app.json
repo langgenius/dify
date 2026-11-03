@@ -47,6 +47,7 @@
   "endUser.all": "Alle",
   "endUser.apiKey": "API-sleutel",
   "endUser.appActions": "Meer acties voor {{name}}",
+  "endUser.buildYourOwnApp": "Bouw je eigen app",
   "endUser.connection": "Verbinding",
   "endUser.connectionActions": "Acties",
   "endUser.connectionType": "Type",

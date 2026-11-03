@@ -47,6 +47,7 @@
   "endUser.all": "Wszystkie",
   "endUser.apiKey": "Klucz API",
   "endUser.appActions": "Więcej działań dla {{name}}",
+  "endUser.buildYourOwnApp": "Stwórz własną aplikację",
   "endUser.connection": "Połączenie",
   "endUser.connectionActions": "Działania",
   "endUser.connectionType": "Typ",

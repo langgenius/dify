@@ -58,8 +58,22 @@ export default function Sidebar() {
           />
         ))}
       </nav>
-      <div className="flex items-center gap-2 md:mt-auto md:px-2 md:py-3">
-        <AccountMenu />
+      <div className="md:mt-auto">
+        <div className="px-2 pb-1">
+          <Link
+            href="/create-workspace"
+            className="flex min-h-9 items-center gap-2 rounded-lg px-3 py-2 system-md-medium text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
+            <span className="min-w-0 flex-1 wrap-anywhere">
+              {t(($) => $['endUser.buildYourOwnApp'], { ns: 'app' })}
+            </span>
+            <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
+          </Link>
+        </div>
+        <div className="flex items-center gap-2 md:px-2 md:py-3">
+          <AccountMenu />
+        </div>
       </div>
     </div>
   )
