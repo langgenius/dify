@@ -59,6 +59,7 @@ _FIXTURES = Path(__file__).parents[3] / "fixtures" / "workflow"
 _APP = "app.yaml"
 _MANIFEST = "manifest.yaml"
 _LLM_WITHOUT_MODEL = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM}}
+_EXTRACTOR_WITHOUT_PARAMETERS = {"id": "extractor", "data": {"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR}}
 # What the built-in time/current_time tool declares for its two form parameters.
 _CURRENT_TIME_DEFAULTS = {"format": "%Y-%m-%d %H:%M:%S", "timezone": "UTC"}
 
@@ -184,29 +185,29 @@ def test_fill_names_a_package_without_a_readable_app_name_app_ifpkg(app: Flask, 
     assert "filename=app.ifpkg" in response.headers["Content-Disposition"]
 
 
-def test_check_reports_an_llm_without_a_model_with_a_hint_and_a_spec_per_node(app: Flask) -> None:
-    response, status = _check(app, _folder({_APP: _chain_dsl(_start(), _LLM_WITHOUT_MODEL, _end())}))
+def test_check_reports_a_missing_field_with_a_hint_and_a_spec_per_node(app: Flask) -> None:
+    response, status = _check(app, _folder({_APP: _chain_dsl(_start(), _EXTRACTOR_WITHOUT_PARAMETERS, _end())}))
 
     assert (status, response.valid) == (200, False)
-    [model] = [issue for issue in response.issues if issue.loc == ["nodes", "llm", "data", "model"]]
-    assert (model.severity, model.refuses_import, model.node_id) == ("error", True, "llm")
-    assert model.hint is not None
-    assert (model.hint.loc, model.hint.required) == (["model"], True)
-    assert {spec.node_id for spec in response.node_specs} == {"start", "llm", "end"}
-    [llm] = [spec for spec in response.node_specs if spec.node_id == "llm"]
-    assert (llm.type, llm.version) == (BuiltinNodeTypes.LLM, "1")
-    assert llm.schema_["properties"]
+    [parameters] = [issue for issue in response.issues if issue.loc == ["nodes", "extractor", "data", "parameters"]]
+    assert (parameters.severity, parameters.refuses_import, parameters.node_id) == ("error", True, "extractor")
+    assert parameters.hint is not None
+    assert (parameters.hint.loc, parameters.hint.required) == (["parameters"], True)
+    assert {spec.node_id for spec in response.node_specs} == {"start", "extractor", "end"}
+    [extractor] = [spec for spec in response.node_specs if spec.node_id == "extractor"]
+    assert (extractor.type, extractor.version) == (BuiltinNodeTypes.PARAMETER_EXTRACTOR, "1")
+    assert extractor.schema_["properties"]
 
 
 def test_check_serializes_the_schema_under_its_name_and_leaves_out_absent_defaults(app: Flask) -> None:
-    response, _status = _check(app, _folder({_APP: _chain_dsl(_start(), _LLM_WITHOUT_MODEL, _end())}))
+    response, _status = _check(app, _folder({_APP: _chain_dsl(_start(), _EXTRACTOR_WITHOUT_PARAMETERS, _end())}))
 
     body = response.model_dump(mode="json", by_alias=True)
-    [llm] = [spec for spec in body["node_specs"] if spec["node_id"] == "llm"]
-    assert "schema" in llm
-    assert "schema_" not in llm
-    [model] = [field for field in llm["open_fields"] if field["loc"] == ["model"]]
-    assert "default" not in model
+    [extractor] = [spec for spec in body["node_specs"] if spec["node_id"] == "extractor"]
+    assert "schema" in extractor
+    assert "schema_" not in extractor
+    [parameters] = [field for field in extractor["open_fields"] if field["loc"] == ["parameters"]]
+    assert "default" not in parameters
     issue = next(issue for issue in body["issues"] if issue["hint"] is not None)
     assert set(issue) == {"code", "severity", "refuses_import", "message", "node_id", "loc", "hint"}
 

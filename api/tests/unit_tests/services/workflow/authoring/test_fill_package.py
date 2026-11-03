@@ -25,6 +25,7 @@ from services.agent.errors import RosterAgentPackageTooLargeError
 from services.app_package_service import AppPackageService
 from services.entities.dsl_entities import AppImportParams, ImportStatus
 from services.workflow.authoring import FillContext, fill_package
+from services.workflow.authoring.canvas_defaults import with_canvas_defaults
 from services.workflow.authoring.fill import FilledPackage, FilledRoot, SubmittedRoot, fill_graph_document
 from services.workflow.authoring.package_io import PackageUnreadableError, read_package_entries
 from services.workflow.graph_check import CANVAS_NOTE_TYPE, IssueCode, check_graph
@@ -128,8 +129,15 @@ def _without_layout(app: bytes) -> object:
     return document
 
 
+def _with_canvas_defaults(app: object) -> object:
+    assert isinstance(app, dict)
+    for node in app["workflow"]["graph"]["nodes"]:
+        node["data"] = with_canvas_defaults(node["data"])
+    return app
+
+
 @pytest.mark.parametrize("fixture", CONSOLE_EXPORTS)
-def test_a_console_export_changes_only_in_layout_and_fills_to_the_same_bytes_again(
+def test_a_console_export_changes_only_in_canvas_defaults_and_layout_and_fills_to_the_same_bytes_again(
     fixture: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(PluginToolManager, "fetch_tool_provider", lambda _self, _tenant_id, _provider: None)
@@ -137,7 +145,8 @@ def test_a_console_export_changes_only_in_layout_and_fills_to_the_same_bytes_aga
 
     filled = _fill(exported)
 
-    assert _without_layout(_members(filled)[APP]) == _without_layout(_members(exported)[APP])
+    expected = _with_canvas_defaults(_without_layout(_members(exported)[APP]))
+    assert _without_layout(_members(filled)[APP]) == expected
     assert _members(_fill(filled)) == _members(filled)
 
 

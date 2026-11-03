@@ -134,20 +134,22 @@ def _tool(tool_name: str, **data: object) -> dict[str, object]:
     }
 
 
-def test_an_llm_node_without_a_model_gets_hinted_missing_field_issues(dsl: DslCheckRequest) -> None:
-    check = _chain(dsl, START, LLM_WITHOUT_MODEL, END)
+def test_a_node_without_a_required_field_the_canvas_gives_no_default_gets_a_hinted_issue(
+    dsl: DslCheckRequest,
+) -> None:
+    extractor = {"id": "extractor", "data": {"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR}}
+    check = _chain(dsl, START, extractor, END)
 
-    issues = _issues_of(check, "llm")
+    issues = _issues_of(check, "extractor")
     missing = [issue for issue in issues if issue.code == IssueCode.NODE_DATA_INVALID]
     assert missing
-    assert {issue.code for issue in issues} == {IssueCode.NODE_DATA_INVALID, IssueCode.RESOURCE_UNAVAILABLE}
     assert all(issue.hint is not None and issue.hint.required for issue in missing)
-    [model] = [issue for issue in missing if issue.loc == ("nodes", "llm", "data", "model")]
-    assert model.hint is not None
-    assert model.hint.loc == ("model",)
-    assert model.hint.type
-    assert model.severity == IssueSeverity.ERROR
-    assert model.refuses_import is True
+    [parameters] = [issue for issue in missing if issue.loc == ("nodes", "extractor", "data", "parameters")]
+    assert parameters.hint is not None
+    assert parameters.hint.loc == ("parameters",)
+    assert parameters.hint.type
+    assert parameters.severity == IssueSeverity.ERROR
+    assert parameters.refuses_import is True
     assert check.valid is False
 
 

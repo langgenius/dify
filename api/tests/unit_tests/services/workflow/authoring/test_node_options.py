@@ -12,6 +12,7 @@ from graphon.nodes.tool.entities import ToolNodeData
 from models import AppMode
 from services.tools.tool_sources import ToolSource, resolve_tool
 from services.workflow.authoring import FillContext
+from services.workflow.authoring.canvas_defaults import canvas_node
 from services.workflow.authoring.node_options import (
     AgentInviteOptions,
     NodeOption,
@@ -146,13 +147,22 @@ def test_advanced_chat_blocks_have_answer_and_no_end_or_triggers() -> None:
     assert not {"end", "trigger-schedule", "trigger-webhook", "trigger-plugin"} & blocks
 
 
-def test_a_block_offers_its_latest_version_with_a_minimal_seed() -> None:
+def test_a_block_offers_its_latest_version() -> None:
     by_type = {o.type: o for o in _options(kind=NodeOptionKind.BLOCK, roster=_NoRoster())}
 
     llm = by_type["llm"]
     assert (llm.kind, llm.version, llm.label, llm.description) == (NodeOptionKind.BLOCK, "1", "llm", None)
-    assert llm.seed == {"type": "llm", "version": "1", "title": "llm"}
     assert by_type["human-input"].version == "2"
+
+
+def test_a_block_seed_is_the_canvas_node() -> None:
+    options = _options(kind=NodeOptionKind.BLOCK, roster=_NoRoster())
+
+    assert options
+    for option in options:
+        node = canvas_node(option.type)
+        assert node is not None, option.type
+        assert option.seed == {"type": option.type, "version": option.version, "title": option.label, **node.data}
 
 
 def test_tool_rows_include_builtin_current_time(tools: list[ToolSource]) -> None:
