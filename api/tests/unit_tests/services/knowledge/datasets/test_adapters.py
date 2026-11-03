@@ -94,7 +94,10 @@ def test_model_availability_uses_active_workspace_models(
         configurations.get_models.assert_called_once_with(model_type=model_type, only_active=True)
 
 
-@pytest.mark.parametrize(("provider", "expected"), [("jina", "langgenius/jina/jina"), ("bad/provider", "bad/provider")])
+@pytest.mark.parametrize(
+    ("provider", "expected"),
+    [("jina", "langgenius/jina/jina"), ("bad/provider", "bad/provider"), ("", "")],
+)
 def test_dataset_reads_normalize_reranking_provider_without_changing_storage(
     operations: SQLAlchemyDatasetOperations,
     sqlite_session_factory: sessionmaker[Session],
@@ -207,6 +210,37 @@ def test_listing_materializes_page_and_owner_scoped_partial_members(
     assert response["has_more"] is False
     assert response["data"][0]["partial_member_list"] == ["member"]
     assert response["data"][0]["retrieval_model_dict"]["top_k"] == 2
+
+
+def test_listing_serializes_legacy_retrieval_settings_without_rewriting_rows(
+    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    stored = {
+        "search_method": "",
+        "reranking_enable": "",
+        "reranking_model": None,
+        "score_threshold_enabled": "false",
+        "top_k": 4,
+    }
+    with sqlite_session_factory.begin() as session:
+        row = session.get(Dataset, "dataset")
+        assert row is not None
+        row.retrieval_model = stored
+
+    result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset", "foreign"]), None)
+    response = DatasetListResponse.model_validate(result).model_dump(mode="json")
+
+    assert response["total"] == 1
+    assert response["data"][0]["id"] == "dataset"
+    retrieval = response["data"][0]["retrieval_model_dict"]
+    assert retrieval["search_method"] == "semantic_search"
+    assert retrieval["reranking_enable"] is False
+    assert retrieval["score_threshold_enabled"] is False
+    assert retrieval["top_k"] == 4
+    with sqlite_session_factory() as session:
+        row = session.get(Dataset, "dataset")
+        assert row is not None
+        assert row.retrieval_model == stored
 
 
 @pytest.mark.parametrize(

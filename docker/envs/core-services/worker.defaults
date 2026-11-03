@@ -1,0 +1,29 @@
+# Defaults for worker. Copy this file to worker.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+# MODE is selected by the Compose service.
+# CELERY_WORKER_CLASS=gevent
+API_SENTRY_DSN=${API_SENTRY_DSN:-}
+API_SENTRY_TRACES_SAMPLE_RATE=${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+API_SENTRY_PROFILES_SAMPLE_RATE=${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+PLUGIN_MAX_PACKAGE_SIZE=${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+# Set PLUGIN_DIFY_INNER_API_KEY in docker/.env; all callers must share the API's inner credential.
+# Set COMPOSE_WORKER_HEALTHCHECK_DISABLED in docker/.env; Compose needs it before loading service files.
+# Set COMPOSE_WORKER_HEALTHCHECK_INTERVAL in docker/.env; Compose needs it before loading service files.
+# Set COMPOSE_WORKER_HEALTHCHECK_TIMEOUT in docker/.env; Compose needs it before loading service files.
+DIFY_AGENT_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
+AGENT_BACKEND_BASE_URL=${AGENT_BACKEND_BASE_URL:-http://agent_backend:5050}
+CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:${REDIS_PASSWORD:-difyai123456}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1}
+
+# Worker autoscaling
+# CELERY_AUTO_SCALE=false
+# CELERY_MAX_WORKERS=
+# CELERY_MIN_WORKERS=
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+AGENT_BACKEND_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
+INNER_API_KEY_FOR_PLUGIN=${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+SENTRY_DSN=${API_SENTRY_DSN:-}
+SENTRY_PROFILES_SAMPLE_RATE=${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+SENTRY_TRACES_SAMPLE_RATE=${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}

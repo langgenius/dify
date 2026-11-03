@@ -108,6 +108,40 @@ describe('UnsubmittedHumanInputContent Integration', () => {
   })
 
   describe('Interactions', () => {
+    it.each([
+      { error: new Error('Approval expired'), message: 'Approval expired' },
+      { error: new Response(null, { status: 410 }), message: 'common.api.actionFailed' },
+    ])(
+      'keeps legacy transport errors out of the form and allows retry ($message)',
+      async ({ error }) => {
+        const user = userEvent.setup()
+        const handleSubmit = vi.fn().mockRejectedValueOnce(error).mockResolvedValueOnce(undefined)
+
+        render(
+          <UnsubmittedHumanInputContent formData={createMockFormData()} onSubmit={handleSubmit} />,
+        )
+
+        const input = screen.getByRole('textbox')
+        await user.clear(input)
+        await user.type(input, 'Preserved value')
+        const submitButton = screen.getByRole('button', { name: 'Submit' })
+        await user.click(submitButton)
+
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+        await waitFor(() => expect(submitButton).toBeEnabled())
+        expect(input).toHaveValue('Preserved value')
+        await user.click(submitButton)
+
+        await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+
+        expect(handleSubmit).toHaveBeenCalledTimes(2)
+        expect(handleSubmit).toHaveBeenLastCalledWith('token_123', {
+          action: 'btn_1',
+          inputs: { user_name: 'Preserved value' },
+        })
+      },
+    )
+
     it('should update input values and call onSubmit', async () => {
       const user = userEvent.setup()
       const handleSubmit = vi.fn().mockImplementation(() => Promise.resolve())

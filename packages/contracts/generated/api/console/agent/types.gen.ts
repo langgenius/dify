@@ -342,6 +342,15 @@ export type AgentConfigFileUploadResponse = {
   file: AgentConfigFileItemResponse
 }
 
+export type AgentConfigFilesUploadPayload = {
+  upload_file_ids: Array<string>
+}
+
+export type AgentConfigFilesUploadResponse = {
+  config_version: AgentConfigVersionResponse
+  files: Array<AgentConfigFileItemResponse>
+}
+
 export type AgentConfigDeleteResponse = {
   removed_names?: Array<string>
   result: 'success'
@@ -642,6 +651,7 @@ export type AppNotFoundError = ErrorResponse & {
 
 export type TraceAppConfigResponse = {
   app_id?: string | null
+  configured_secrets?: Array<string> | null
   created_at?: string | null
   error?: string | null
   has_not_configured?: boolean | null
@@ -1813,6 +1823,7 @@ export type HumanInputFormDefinition = {
   form_content: string
   form_id: string
   form_token?: string | null
+  form_version?: '1' | '2'
   inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
@@ -3376,6 +3387,33 @@ export type PostAgentByAgentIdConfigFilesResponses = {
 export type PostAgentByAgentIdConfigFilesResponse =
   PostAgentByAgentIdConfigFilesResponses[keyof PostAgentByAgentIdConfigFilesResponses]
 
+export type PostAgentByAgentIdConfigFilesBatchData = {
+  body: AgentConfigFilesUploadPayload
+  path: {
+    agent_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/files/batch'
+}
+
+export type PostAgentByAgentIdConfigFilesBatchErrors = {
+  404: AgentNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdConfigFilesBatchError =
+  PostAgentByAgentIdConfigFilesBatchErrors[keyof PostAgentByAgentIdConfigFilesBatchErrors]
+
+export type PostAgentByAgentIdConfigFilesBatchResponses = {
+  201: AgentConfigFilesUploadResponse
+}
+
+export type PostAgentByAgentIdConfigFilesBatchResponse =
+  PostAgentByAgentIdConfigFilesBatchResponses[keyof PostAgentByAgentIdConfigFilesBatchResponses]
+
 export type DeleteAgentByAgentIdConfigFilesByNameData = {
   body?: never
   path: {
@@ -4263,7 +4301,7 @@ export type GetAgentByAgentIdTraceCapabilitiesData = {
 }
 
 export type GetAgentByAgentIdTraceCapabilitiesErrors = {
-  400: UnsupportedTracingProviderError | ErrorResponse
+  400: TracingProviderUnavailableError | UnsupportedTracingProviderError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -7,13 +7,15 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import ChildDocument
 from core.rag.models.document import Document as IndexDocument
-from models.dataset import ChildChunk, DatasetProcessRule, Document, DocumentSegment
+from models.dataset import ChildChunk, DatasetProcessRule, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError
 from services.knowledge.indexing.execution import IndexingDocument
 from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.segments.application import SegmentListFilter
+from tests.unit_tests.repositories.knowledge.test_dataset_read_repository import _queries, _upload
 from tests.unit_tests.repositories.knowledge.test_document_repository import _dataset, _document
 
 IndexingRows = tuple[SQLAlchemySegmentRepository, IndexingDocument, list[IndexDocument]]
@@ -117,3 +119,71 @@ def test_segment_mutations_reject_foreign_tenant(indexing_rows: IndexingRows) ->
     ]:
         with pytest.raises(DocumentIsDeletedPausedError):
             operation()
+
+
+def test_list_segments_query_count_is_bounded_for_hierarchical_documents(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        document = _document("document-1")
+        document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+        rule = DatasetProcessRule(
+            dataset_id="dataset-1",
+            mode=ProcessRuleMode.HIERARCHICAL,
+            rules='{"parent_mode": "paragraph"}',
+            created_by="account-1",
+        )
+        rule.id = "rule-1"
+        document.dataset_process_rule_id = rule.id
+        session.add_all([_dataset("dataset-1", "workspace-1"), document, rule])
+
+        rows = [
+            DocumentSegment(
+                tenant_id="workspace-1",
+                dataset_id="dataset-1",
+                document_id="document-1",
+                position=index,
+                content=f"segment {index}",
+                word_count=1,
+                tokens=1,
+                created_by="account-1",
+            )
+            for index in range(1, 21)
+        ]
+        uploads = [_upload("workspace-1") for _ in rows]
+        session.add_all([*rows, *uploads])
+        session.flush()
+
+        for row, upload in zip(rows, uploads, strict=True):
+            session.add_all(
+                [
+                    ChildChunk(
+                        tenant_id="workspace-1",
+                        dataset_id="dataset-1",
+                        document_id="document-1",
+                        segment_id=row.id,
+                        position=1,
+                        content="child",
+                        word_count=1,
+                        created_by="account-1",
+                    ),
+                    SegmentAttachmentBinding(
+                        tenant_id="workspace-1",
+                        dataset_id="dataset-1",
+                        document_id="document-1",
+                        segment_id=row.id,
+                        attachment_id=upload.id,
+                    ),
+                ]
+            )
+
+    segments = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    document_ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+    with sqlite_session_factory() as session, _queries(session) as single_queries:
+        segments.list_segments(document_ref, SegmentListFilter(limit=1))
+    with sqlite_session_factory() as session, _queries(session) as page_queries:
+        full_page = segments.list_segments(document_ref, SegmentListFilter(limit=20))
+
+    assert len(page_queries) == len(single_queries)
+    assert len(full_page.items) == 20
+    assert all(len(item.child_chunks) == 1 and len(item.attachments) == 1 for item in full_page.items)

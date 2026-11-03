@@ -377,14 +377,16 @@ it.each([
   )
 })
 
-it('passes the category marketplace path to the settings host from the install menu', async () => {
+it('opens the category marketplace path from the install menu', async () => {
   const user = userEvent.setup()
-  const onSwitchToMarketplace = vi.fn()
-  renderPage({ props: { section: 'trigger', onSwitchToMarketplace } })
+  renderPage({ props: { section: 'trigger' } })
   await user.click(await screen.findByRole('button', { name: 'plugin.installAction' }))
   await user.click(screen.getByRole('menuitem', { name: 'plugin.source.marketplace' }))
-  expect(onSwitchToMarketplace).toHaveBeenCalledExactlyOnceWith('/plugins/trigger')
-  expect(window.open).not.toHaveBeenCalled()
+  expect(window.open).toHaveBeenCalledExactlyOnceWith(
+    expect.stringContaining('/plugins/trigger?source='),
+    '_blank',
+    'noopener,noreferrer',
+  )
 })
 
 it('saves category-specific automatic update settings from the toolbar', async () => {

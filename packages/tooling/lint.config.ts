@@ -116,6 +116,16 @@ const webRestrictedImports = [
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
 
+const marketplaceBoundaryFiles = [
+  'web/env.ts',
+  'web/proxy.ts',
+  'web/service/**',
+  'web/features/marketplace/**',
+  'web/app/components/plugins/marketplace/**',
+  'web/app/components/plugins/plugin-page/nav-operations.tsx',
+  'web/app/components/workflow/block-selector/marketplace-plugin/**',
+]
+
 const serviceRestrictedImports = [
   'error',
   {
@@ -303,6 +313,24 @@ export const stylingContractRules = {
           allow: ['w-*', 'max-w-*', 'whitespace-pre-wrap'],
           message:
             '"{{className}}" is outside the InfotipContent styling contract. Use the default hint surface, spacing, typography, and wrapping from packages/dify-ui/src/infotip/index.tsx; callers may constrain width or preserve content line breaks.',
+        },
+        {
+          pattern: '^Alert$',
+          allow: ['layout'],
+          message:
+            '"{{className}}" is outside the Alert styling contract. The alert owns its surface, spacing, icon and typography; callers may only place and size it.',
+        },
+        {
+          pattern: '^(AlertTitle|AlertDescription)$',
+          allow: ['whitespace-pre-line'],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. Use its default typography and colour; callers may keep line breaks in the message.',
+        },
+        {
+          pattern: '^(AlertActions|AlertClose)$',
+          allow: [],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. The part owns its spacing and position.',
         },
         {
           pattern: '^(Dialog|AlertDialog)Content$',
@@ -1769,6 +1797,13 @@ export const lintConfig = {
             patterns: [...serviceRestrictedImports[1].patterns, rawHttpImports],
           },
         ],
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      excludeFiles: [...handwrittenApiScope.excludeFiles, ...marketplaceBoundaryFiles],
+      rules: {
+        'dify/marketplace-boundary': 'error',
       },
     },
   ],

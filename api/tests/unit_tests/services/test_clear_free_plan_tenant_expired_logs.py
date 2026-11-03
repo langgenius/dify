@@ -11,7 +11,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from enums import CloudPlan, DeploymentEdition
+from enums import DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
 from models.account import Tenant
@@ -45,7 +45,9 @@ from models.workflow import (
     WorkflowType,
 )
 from services import clear_free_plan_tenant_expired_logs as service_module
+from services.billing_client import billing
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
+from tests.helpers import billing_builders as builders
 
 
 @pytest.fixture(autouse=True)
@@ -545,12 +547,12 @@ def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(
     _configure_process_boundaries(monkeypatch, sqlite_engine)
     monkeypatch.setattr(service_module.click, "echo", MagicMock())
 
-    def fake_get_info(tenant_id: str) -> dict[str, dict[str, str]]:
+    def fake_get_info(tenant_id: str) -> billing.GetSubscriptionInfoReply:
         if tenant_id == "tenant-sandbox":
-            return {"subscription": {"plan": CloudPlan.SANDBOX}}
+            return builders.subscription_info("sandbox")
         if tenant_id == "tenant-fail":
             raise RuntimeError("billing failure")
-        return {"subscription": {"plan": "team"}}
+        return builders.subscription_info("team")
 
     monkeypatch.setattr(service_module.BillingService, "get_info", staticmethod(fake_get_info))
     process_tenant = MagicMock(side_effect=RuntimeError("cleanup failure"))

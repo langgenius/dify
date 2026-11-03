@@ -22,4 +22,17 @@ describe('KnowledgeViewSwitcher', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
+
+  it('leaves focus alone when the guide opens itself and focuses Got it when reopened', async () => {
+    const user = userEvent.setup()
+    render(<KnowledgeViewSwitcher value="classic" onChange={vi.fn()} />)
+
+    expect(guide()).not.toContainElement(document.activeElement as HTMLElement)
+    await user.click(within(guide()).getByRole('button', { name: 'knowledgeSpace.gotIt' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.guideTitle' }))
+
+    expect(
+      await within(guide()).findByRole('button', { name: 'knowledgeSpace.gotIt' }),
+    ).toHaveFocus()
+  })
 })

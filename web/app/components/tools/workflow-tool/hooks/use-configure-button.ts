@@ -192,7 +192,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   const handleCreate = async (data: WorkflowToolProviderRequest & { workflow_app_id: string }) => {
     try {
       await handlePublish()
-      await createWorkflowToolProvider(data)
+      await createWorkflowToolProvider(data, { silent: true })
       invalidateAllWorkflowTools()
       onRefreshData?.()
       invalidateDetail()
@@ -212,7 +212,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   ) => {
     try {
       await handlePublish()
-      await saveWorkflowToolProvider(data)
+      await saveWorkflowToolProvider(data, { silent: true })
       onRefreshData?.()
       invalidateAllWorkflowTools()
       invalidateDetail()

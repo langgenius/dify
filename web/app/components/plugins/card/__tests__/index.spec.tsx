@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import Card from '../index'
 

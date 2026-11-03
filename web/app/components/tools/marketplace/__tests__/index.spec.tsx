@@ -3,6 +3,7 @@ import type { ComponentProps } from 'react'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { marketplaceLinks } from '@/features/marketplace/links'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
@@ -55,6 +56,7 @@ const context = (
 function renderMarketplace(props: Partial<Props> = {}, canInstall = true) {
   return render(
     <Marketplace
+      marketplace={marketplaceLinks}
       searchPluginText=""
       filterPluginTags={[]}
       isMarketplaceArrowVisible={false}
@@ -95,6 +97,7 @@ it('opens the caller panel and exposes a marketplace link with the current filte
       <>
         {open && <section aria-label="Marketplace panel">Expanded marketplace</section>}
         <Marketplace
+          marketplace={marketplaceLinks}
           searchPluginText="vector"
           filterPluginTags={['tag-a', 'tag-b']}
           isMarketplaceArrowVisible

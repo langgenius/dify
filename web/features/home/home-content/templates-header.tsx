@@ -1,10 +1,9 @@
 'use client'
 
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import Category from '@/app/components/explore/category'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 
 export function HomeTemplatesHeader({
   allCategoriesEn,
@@ -22,10 +21,7 @@ export function HomeTemplatesHeader({
   onKeywordsChange: (keywords: string) => void
 }) {
   const { t } = useTranslation(['explore', 'app'])
-  const { data: enableMarketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: ({ enable_marketplace }) => enable_marketplace,
-  })
+  const marketplace = useMarketplace()
 
   return (
     <div className="sticky top-0 z-10 bg-background-body">
@@ -36,9 +32,9 @@ export function HomeTemplatesHeader({
         >
           {t(($) => $['apps.title'], { ns: 'explore' })}
         </h2>
-        {enableMarketplace && (
+        {marketplace && (
           <a
-            href="https://marketplace.dify.ai/templates"
+            href={marketplace.page('/templates')}
             target="_blank"
             rel="noopener noreferrer"
             className="-my-1 -me-1 flex min-h-6 shrink-0 touch-manipulation items-center gap-1 rounded-md p-1 system-xs-medium text-text-tertiary outline-hidden transition-colors hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
