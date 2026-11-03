@@ -40,9 +40,7 @@ def is_credential_exists(credential_id: str, credential_type: "PluginCredentialT
         return False
 
 
-def runtime_check_credential_policy_compliance(
-    *args, **kwargs
-) -> None:
+def runtime_check_credential_policy_compliance(*args, **kwargs) -> None:
     if dify_config.ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK:
         return
     check_credential_policy_compliance(*args, **kwargs)

@@ -310,9 +310,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._workflow_run_id = run_id
 
         with self._database_session() as session:
-            session.execute(
-                update(Message).where(Message.id == self._message_id).values(workflow_run_id=run_id)
-            )
+            session.execute(update(Message).where(Message.id == self._message_id).values(workflow_run_id=run_id))
 
         workflow_start_resp = self._workflow_response_converter.workflow_start_to_stream_response(
             task_id=self._application_generate_entity.task_id,
