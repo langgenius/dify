@@ -460,12 +460,14 @@ OPENDAL_FS_ROOT=${OPENDAL_FS_ROOT-storage}
 # ------------------------------
 # Vector store selection and Docker connection defaults
 # ------------------------------
-# Provider client options live in ../vectorstores/{weaviate,qdrant,oceanbase,pgvector}.defaults
-# and ../vectorstores/milvus.env.example. Their .env overrides reach API, workers and Beat.
+# Set VECTOR_STORE and COMPOSE_PROFILES in docker/.env to select a bundled provider.
+# Compose loads that provider's ../vectorstores/<VECTOR_STORE>.defaults automatically.
+# Provider .env overrides reach API, workers and Beat; existing shared.env overrides still work.
 # KnowledgeFS uses the API vector bridge, not its own vector provider connection.
 VECTOR_STORE=${VECTOR_STORE-weaviate}
 # Prefix used to create collection names in the vector database.
 # VECTOR_INDEX_NAME_PREFIX=Vector_index
+# Keep legacy Weaviate connections for existing datasets after changing VECTOR_STORE.
 WEAVIATE_ENDPOINT=${WEAVIATE_ENDPOINT-http://weaviate:8080}
 WEAVIATE_API_KEY=${WEAVIATE_API_KEY-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
 WEAVIATE_GRPC_ENDPOINT=${WEAVIATE_GRPC_ENDPOINT-grpc://weaviate:50051}
