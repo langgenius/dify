@@ -264,11 +264,13 @@ export const difyBuilderCanAddMaterialAtom = atom((get) => {
     !runtime?.enabled ||
     !runtime.canEdit ||
     view?.conversation_cleared ||
+    view?.run_status === 'paused' ||
+    view?.task_status === 'abandoned' ||
     view?.recovery ||
     view?.pending_fix_context ||
     get(difyBuilderLifecycleControlAtom) ||
     get(difyBuilderTaskControlAtom) ||
-    (material && material.phase !== 'accepted')
+    material
   )
     return false
   return get(difyBuilderSessionIdAtom) !== null || get(difyBuilderCanComposeAtom)
@@ -427,10 +429,11 @@ export const difyBuilderSendDraftAtom = atom(
 
     const view = get(difyBuilderSessionViewAtom)
     const isNewSession = !view
+    const sessionId = get(difyBuilderSessionIdAtom)
     if (options?.text === undefined) set(difyBuilderDraftAtom, '')
     const runtime = get(difyBuilderRuntimeAtom)
     const started =
-      attachments.length && get(difyBuilderSessionIdAtom) && runtime
+      attachments.length && sessionId && runtime
         ? await runtime.session.sendMessage(prompt, undefined, attachments)
         : await set(startDifyBuilderPromptAtom, {
             model,
@@ -441,6 +444,8 @@ export const difyBuilderSendDraftAtom = atom(
       !started &&
       (isNewSession || attachments.length) &&
       options?.text === undefined &&
+      (!sessionId || get(difyBuilderSessionIdAtom) === sessionId) &&
+      !get(difyBuilderSessionViewAtom)?.conversation_cleared &&
       !get(difyBuilderDraftAtom)
     )
       set(difyBuilderDraftAtom, draft)
