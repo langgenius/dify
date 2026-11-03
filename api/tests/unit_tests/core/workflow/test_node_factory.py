@@ -52,6 +52,11 @@ from tests.helpers.unit.core.model_fixtures import make_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
+@dataclass
+class _WorkflowRuntimeStub:
+    history: object = None
+
+
 class DummyNode:
     def __init__(
         self,
@@ -408,7 +413,7 @@ class TestNodeFactoryCasesWorkflow:
 
     class TestFetchMemory:
         def test_returns_none_when_conversation_is_missing(self) -> None:
-            runtime = MagicMock(spec=WorkflowRuntime)
+            runtime = _WorkflowRuntimeStub()
             support = AgentRuntimeSupport(workflow_runtime=runtime)
             variables = VariablePool.from_bootstrap(system_variables=build_system_variables(conversation_id=None))
 
@@ -435,8 +440,7 @@ class TestNodeFactoryCasesWorkflow:
                 )
 
         def test_builds_node_memory_with_injected_history(self) -> None:
-            runtime = MagicMock(spec=WorkflowRuntime)
-            runtime.history = sentinel.history
+            runtime = _WorkflowRuntimeStub(history=sentinel.history)
             variables = VariablePool.from_bootstrap(
                 system_variables=build_system_variables(conversation_id="conversation-id")
             )
@@ -460,8 +464,7 @@ class TestNodeFactoryCasesWorkflow:
             prepared.get_prompt_messages.return_value = [sentinel.message]
             history = MagicMock()
             history.history.return_value = prepared
-            runtime = MagicMock(spec=WorkflowRuntime)
-            runtime.history = history
+            runtime = _WorkflowRuntimeStub(history=history)
             variables = VariablePool.from_bootstrap(
                 system_variables=build_system_variables(conversation_id="conversation-id")
             )
