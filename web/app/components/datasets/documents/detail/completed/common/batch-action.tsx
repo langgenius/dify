@@ -1,3 +1,4 @@
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { FC } from 'react'
 import {
   AlertDialog,
@@ -8,6 +9,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -22,7 +24,6 @@ import {
   RiRefreshLine,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -63,16 +64,21 @@ const BatchAction: FC<IBatchActionProps> = ({
     select: ({ deployment_edition }) => deployment_edition,
   })
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
-  const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
-    useBoolean(false)
-  const [isDeleting, { setTrue: setIsDeleting }] = useBoolean(false)
+  const deleteActionsRef = React.useRef<AlertDialogActions>(null)
+  const [isDeleting, setIsDeleting] = React.useState(false)
 
   const handleBatchDelete = async () => {
-    if (!onBatchDelete) return
+    if (!onBatchDelete || disabled || isDeleting) return
 
-    setIsDeleting()
-    await onBatchDelete()
-    hideDeleteConfirm()
+    setIsDeleting(true)
+    try {
+      await onBatchDelete()
+      deleteActionsRef.current?.close()
+    } catch {
+      // The action owner reports the error; keep the selection available for retry.
+    } finally {
+      setIsDeleting(false)
+    }
   }
   return (
     <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
@@ -129,15 +135,43 @@ const BatchAction: FC<IBatchActionProps> = ({
           </Button>
         )}
         {onBatchDelete && (
-          <Button
-            variant="ghost"
-            tone="destructive"
-            disabled={disabled}
-            onClick={showDeleteConfirm}
+          <AlertDialog
+            actionsRef={deleteActionsRef}
+            onOpenChange={(open, details) => {
+              if (!open && isDeleting && details.reason !== 'imperative-action') details.cancel()
+            }}
           >
-            <RiDeleteBinLine className="size-4" />
-            <span>{t(($) => $[`${i18nPrefix}.delete`], { ns: 'dataset' })}</span>
-          </Button>
+            <AlertDialogTrigger
+              render={
+                <Button variant="ghost" tone="destructive" disabled={disabled}>
+                  <RiDeleteBinLine className="size-4" />
+                  <span>{t(($) => $[`${i18nPrefix}.delete`], { ns: 'dataset' })}</span>
+                </Button>
+              }
+            />
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t(($) => $['list.delete.content'], { ns: 'datasetDocuments' })}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancelButton disabled={isDeleting}>
+                  {t(($) => $['operation.cancel'], { ns: 'common' })}
+                </AlertDialogCancelButton>
+                <AlertDialogConfirmButton
+                  disabled={disabled}
+                  loading={isDeleting}
+                  onClick={handleBatchDelete}
+                >
+                  {t(($) => $['operation.sure'], { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
 
         <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
@@ -145,35 +179,6 @@ const BatchAction: FC<IBatchActionProps> = ({
           <span>{t(($) => $[`${i18nPrefix}.cancel`], { ns: 'dataset' })}</span>
         </Button>
       </div>
-      {onBatchDelete && (
-        <AlertDialog
-          open={isShowDeleteConfirm}
-          onOpenChange={(open) => !open && hideDeleteConfirm()}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t(($) => $['list.delete.content'], { ns: 'datasetDocuments' })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancelButton>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                disabled={disabled}
-                loading={isDeleting}
-                onClick={handleBatchDelete}
-              >
-                {t(($) => $['operation.sure'], { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
     </div>
   )
 }

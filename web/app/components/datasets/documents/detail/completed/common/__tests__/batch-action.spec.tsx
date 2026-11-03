@@ -80,7 +80,47 @@ describe('BatchAction', () => {
     expect(onDelete).toHaveBeenCalledOnce()
     expect(dialog).toBeInTheDocument()
     expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    const cancel = within(dialog).getByRole('button', { name: 'common.operation.cancel' })
+    expect(cancel).toBeDisabled()
+    await user.click(cancel)
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    await user.click(confirm)
+    expect(onDelete).toHaveBeenCalledOnce()
     await act(async () => resolveDelete())
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'dataset.batchAction.delete' }))
+    dialog = await screen.findByRole('alertdialog')
+    expect(
+      within(dialog).getByRole('button', { name: 'common.operation.sure' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('keeps the confirmation available for retry after deletion fails', async () => {
+    const user = userEvent.setup()
+    const onDelete = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Deletion failed'))
+      .mockResolvedValueOnce(undefined)
+    render(
+      <BatchAction selectedIds={['doc-1', 'doc-2']} onBatchDelete={onDelete} onCancel={vi.fn()} />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'dataset.batchAction.delete' })
+    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
+    await user.click(trigger)
+    const dialog = await screen.findByRole('alertdialog')
+    const confirm = within(dialog).getByRole('button', { name: 'common.operation.sure' })
+    await user.click(confirm)
+
+    await waitFor(() => expect(confirm).not.toHaveAttribute('aria-disabled', 'true'))
+    expect(screen.getByRole('alertdialog')).toBe(dialog)
+    expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeEnabled()
+    expect(onDelete).toHaveBeenCalledOnce()
+
+    await user.click(confirm)
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(onDelete).toHaveBeenCalledTimes(2)
   })
 })
