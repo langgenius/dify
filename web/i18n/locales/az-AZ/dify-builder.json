@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "Növbəti tapşırığı faylsız başladın. Başladıqdan sonra fayllar əlavə edə bilərsiniz.",
   "attachments.consumed": "Kontekstə əlavə edildi",
+  "attachments.paused": "Faylları göndərməzdən əvvəl tapşırığı davam etdirin.",
   "attachments.pending": "Növbədə",
   "attachments.rejected": "İstifadə edilmədi",
   "attachments.superseded": "Artıq istifadə edilmir",

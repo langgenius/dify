@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "ເລີ່ມໜ້າວຽກຖັດໄປໂດຍບໍ່ມີໄຟລ໌. ທ່ານສາມາດເພີ່ມໄຟລ໌ໄດ້ຫຼັງຈາກເລີ່ມໜ້າວຽກແລ້ວ.",
   "attachments.consumed": "ເພີ່ມໃນບໍລິບົດແລ້ວ",
+  "attachments.paused": "ກະລຸນາດຳເນີນໜ້າວຽກຕໍ່ກ່ອນສົ່ງໄຟລ໌.",
   "attachments.pending": "ກຳລັງລໍຖ້າ",
   "attachments.rejected": "ບໍ່ໄດ້ໃຊ້",
   "attachments.superseded": "ບໍ່ໃຊ້ອີກແລ້ວ",

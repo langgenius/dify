@@ -2974,7 +2974,9 @@ export default interface Resources {
     tryAgain: '← Try again'
   }
   difyBuilder: {
+    'attachments.abandoned': 'Start the next task without files. You can add files after it starts.'
     'attachments.consumed': 'Added to context'
+    'attachments.paused': 'Resume the task before sending files.'
     'attachments.pending': 'Queued'
     'attachments.rejected': 'Not used'
     'attachments.superseded': 'No longer used'

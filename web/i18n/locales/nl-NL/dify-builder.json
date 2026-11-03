@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "Start de volgende taak zonder bestanden. Je kunt bestanden toevoegen nadat de taak is gestart.",
   "attachments.consumed": "Aan context toegevoegd",
+  "attachments.paused": "Hervat de taak voordat je bestanden verstuurt.",
   "attachments.pending": "In wachtrij",
   "attachments.rejected": "Niet gebruikt",
   "attachments.superseded": "Niet meer gebruikt",

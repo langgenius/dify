@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "Naslednjo nalogo začnite brez datotek. Dodate jih lahko po začetku naloge.",
   "attachments.consumed": "Dodano v kontekst",
+  "attachments.paused": "Pred pošiljanjem datotek nadaljujte nalogo.",
   "attachments.pending": "V čakalni vrsti",
   "attachments.rejected": "Ni uporabljeno",
   "attachments.superseded": "Ni več uporabljeno",

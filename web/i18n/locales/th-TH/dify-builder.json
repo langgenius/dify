@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "เริ่มงานถัดไปโดยไม่แนบไฟล์ คุณสามารถเพิ่มไฟล์ได้หลังจากงานเริ่มแล้ว",
   "attachments.consumed": "เพิ่มในบริบทแล้ว",
+  "attachments.paused": "ดำเนินงานต่อก่อนส่งไฟล์",
   "attachments.pending": "อยู่ในคิว",
   "attachments.rejected": "ไม่ได้ใช้",
   "attachments.superseded": "ไม่ใช้แล้ว",
