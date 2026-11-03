@@ -1,7 +1,11 @@
+from collections.abc import Callable
+from typing import NoReturn
+
 import pytest
 from pydantic import ValidationError
 
 from core.plugin.impl.tool import PluginToolManager
+from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from services.tools import tool_sources
@@ -53,10 +57,10 @@ def test_unlistable_node_provider_types_have_no_source(provider_type: str) -> No
 
 
 def test_each_source_lists_through_its_own_service(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[tuple[str, tuple]] = []
+    calls: list[tuple[str, tuple[object, ...]]] = []
 
-    def recorder(name: str):
-        def record(*args: str) -> list:
+    def recorder(name: str) -> Callable[..., list[ToolProviderApiEntity]]:
+        def record(*args: str) -> list[ToolProviderApiEntity]:
             calls.append((name, args))
             return []
 
@@ -66,7 +70,9 @@ def test_each_source_lists_through_its_own_service(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(WorkflowToolManageService, "list_tenant_workflow_tools", recorder("workflow"))
     monkeypatch.setattr(ApiToolManageService, "list_api_tools", recorder("api"))
 
-    def list_mcp(_self: MCPToolManageService, *, tenant_id: str, include_sensitive: bool) -> list:
+    def list_mcp(
+        _self: MCPToolManageService, *, tenant_id: str, include_sensitive: bool
+    ) -> list[ToolProviderApiEntity]:
         calls.append(("mcp", (tenant_id, include_sensitive)))
         return []
 
@@ -108,7 +114,7 @@ def test_resolve_an_unknown_provider_is_none(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_resolve_a_missing_api_provider_is_none(monkeypatch: pytest.MonkeyPatch) -> None:
-    def not_found(_tenant_id: str, provider_id: str):
+    def not_found(_tenant_id: str, provider_id: str) -> NoReturn:
         raise tool_sources.ToolProviderNotFoundError(provider_id)
 
     monkeypatch.setattr(ToolManager, "get_api_provider_controller", not_found)
@@ -121,7 +127,7 @@ def test_resolve_an_unlistable_provider_type_is_none() -> None:
 
 
 def test_resolve_never_builds_a_tool_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
-    def forbidden(*_args: object, **_kwargs: object):
+    def forbidden(*_args: object, **_kwargs: object) -> NoReturn:
         raise AssertionError("get_tool_runtime decrypts credentials")
 
     monkeypatch.setattr(ToolManager, "get_tool_runtime", forbidden)
@@ -130,7 +136,7 @@ def test_resolve_never_builds_a_tool_runtime(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_a_malformed_provider_is_not_reported_as_an_unknown_tool(monkeypatch: pytest.MonkeyPatch) -> None:
-    def broken(_tenant_id: str, _provider_id: str):
+    def broken(_tenant_id: str, _provider_id: str) -> NoReturn:
         raise ValidationError.from_exception_data("Provider", [])
 
     monkeypatch.setattr(ToolManager, "get_mcp_provider_controller", broken)
