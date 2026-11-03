@@ -16,7 +16,6 @@ from controllers.openapi._i18n import localized
 from controllers.openapi._upload import UploadPart, UploadParts
 from core.plugin.entities.plugin import PluginCategory
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
-from core.tools.entities.tool_entities import ToolProviderType
 from enums import DeploymentEdition, WebAppAccessMode
 from fields.workflow_run_fields import WorkflowRunPaginationResponse
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
@@ -28,6 +27,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
+from services.tools.tool_sources import ToolSource
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
@@ -1300,15 +1300,6 @@ class ToolCredentialUpdatePayload(BaseModel):
 
     credentials: dict[str, Any] = Field(description=_CREDENTIALS_UPDATE_DESCRIPTION)
     name: str | None = Field(None, max_length=30)
-
-
-class ToolSource(StrEnum):
-    """Tool provider types a workflow tool node can call; values match the node's provider_type."""
-
-    BUILTIN = ToolProviderType.BUILT_IN.value
-    WORKFLOW = ToolProviderType.WORKFLOW.value
-    API = ToolProviderType.API.value
-    MCP = ToolProviderType.MCP.value
 
 
 class ToolListQuery(PageQuery):
