@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "次のタスクはファイルなしで開始してください。開始後にファイルを追加できます。",
   "attachments.consumed": "コンテキストに追加済み",
+  "attachments.paused": "ファイルを送信する前にタスクを再開してください。",
   "attachments.pending": "待機中",
   "attachments.rejected": "未使用",
   "attachments.superseded": "使用終了",

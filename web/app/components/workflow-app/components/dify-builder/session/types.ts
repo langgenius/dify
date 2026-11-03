@@ -1,4 +1,5 @@
 import type {
+  DifyBuilderAttachmentPayload,
   DifyBuilderStreamEventResponse,
   DifyBuilderWorkflowEventData,
   RunStatus,
@@ -6,6 +7,8 @@ import type {
 import type { CanvasEventData, ConversationItem, SessionView } from '../types'
 
 export type SessionRunEvents = {
+  onAttachmentsAccepted?: (attachments: DifyBuilderAttachmentPayload[], text?: string) => void
+  clearAttachmentDraft?: () => void
   onCommandStarted?: () => void
   onSessionStateChanged?: (state: Pick<SessionView, 'phase' | 'run_status'>) => void
   onWorkflowEvent: (event: DifyBuilderWorkflowEventData) => void
@@ -23,6 +26,7 @@ export type SessionCommandOptions = {
   expectTerminalEvent: boolean
   startsSession?: boolean
   prepareDraft?: boolean
+  initialAttachments?: DifyBuilderAttachmentPayload[]
   trace?: { kind: string; payload: unknown }
 }
 

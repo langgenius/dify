@@ -216,7 +216,6 @@ it('consumes an actual material command without the draft-save barrier and resol
   )
   expect(prepare).not.toHaveBeenCalled()
   expect(store.get(difyBuilderSessionViewAtom)?.attachments?.[0]?.status).toBe('consumed')
-  act(() => store.set(difyBuilderMaterialControlAtom, null))
   api.message.mockRejectedValueOnce(new TypeError('Network lost'))
   await act(async () =>
     expect(await result.current.sendMessage('More context', undefined, attachments)).toBe(false),
@@ -228,5 +227,5 @@ it('consumes an actual material command without the draft-save barrier and resol
   await act(async () => expect(await result.current.refresh()).toBe(true))
   expect(api.get).toHaveBeenCalledOnce()
   expect(api.message).toHaveBeenCalledTimes(2)
-  expect(store.get(difyBuilderMaterialControlAtom)?.phase).toBe('accepted')
+  expect(store.get(difyBuilderMaterialControlAtom)).toBeNull()
 })

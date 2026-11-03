@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "Avvia l’attività successiva senza file. Potrai aggiungerli dopo l’avvio.",
   "attachments.consumed": "Aggiunto al contesto",
+  "attachments.paused": "Riprendi l’attività prima di inviare file.",
   "attachments.pending": "In coda",
   "attachments.rejected": "Non utilizzato",
   "attachments.superseded": "Non più utilizzato",

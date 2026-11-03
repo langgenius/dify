@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "다음 작업은 파일 없이 시작하세요. 시작한 후 파일을 추가할 수 있습니다.",
   "attachments.consumed": "컨텍스트에 추가됨",
+  "attachments.paused": "파일을 보내기 전에 작업을 재개하세요.",
   "attachments.pending": "대기 중",
   "attachments.rejected": "사용되지 않음",
   "attachments.superseded": "더 이상 사용되지 않음",
