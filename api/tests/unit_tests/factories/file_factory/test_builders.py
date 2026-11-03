@@ -6,8 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import Response
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import (
@@ -92,16 +91,8 @@ class FileRecords:
 
 # Fixtures
 @pytest.fixture(autouse=True)
-def file_records(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Iterator[FileRecords]:
-    """Persist authorized file rows and bind builder-owned sessions to SQLite."""
-    UploadFile.metadata.create_all(
-        sqlite_engine,
-        # pyrefly: ignore[bad-argument-type] -- SQLAlchemy stubs type __table__ as FromClause
-        tables=[UploadFile.__table__, ToolFile.__table__],
-    )
-    sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr("core.db.session_factory._session_maker", sqlite_session_maker)
-
+def file_records(sqlite_session: Session) -> FileRecords:
+    """Persist authorized file rows through the shared SQLite session."""
     upload_file = UploadFile(
         tenant_id=TEST_TENANT_ID,
         storage_type=StorageType.LOCAL,
@@ -129,10 +120,9 @@ def file_records(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Iter
     )
     tool_file.id = TEST_TOOL_FILE_ID
 
-    with sqlite_session_maker() as session:
-        session.add_all([upload_file, tool_file])
-        session.commit()
-        yield FileRecords(session=session, upload_file=upload_file, tool_file=tool_file)
+    sqlite_session.add_all([upload_file, tool_file])
+    sqlite_session.commit()
+    return FileRecords(session=sqlite_session, upload_file=upload_file, tool_file=tool_file)
 
 
 @pytest.fixture
