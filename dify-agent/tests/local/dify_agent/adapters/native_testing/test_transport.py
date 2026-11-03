@@ -43,7 +43,11 @@ def selection(request):
     return json.loads(base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)))
 
 
-def test_request_stream_and_prebuilt_send_ignore_all_body_markers():
+@pytest.mark.parametrize(
+    "api_url",
+    ["http://api:5001", "http://api:5001/dify", "http://api:5001/v1.2/dify/", "http://api:5001/private%20mount"],
+)
+def test_request_stream_and_prebuilt_send_ignore_all_body_markers(api_url):
     async def exercise():
         m = api()
         seen = []
@@ -53,9 +57,12 @@ def test_request_stream_and_prebuilt_send_ignore_all_body_markers():
             return httpx.Response(200, content=b"data: one\n\ndata: two\n\n")
 
         async with m.AgentRuntimeHTTPClient(
-            api_url="http://api:5001", api_token="backend", transport=httpx.MockTransport(receive)
+            api_url=api_url, api_token="backend", transport=httpx.MockTransport(receive)
         ) as client:
-            original = httpx.Request("POST", "http://api:5001/inner/api/agent/runtime/llm/invoke", json={})
+            url, headers = m.agent_api_endpoint(
+                client, base_url=api_url, legacy_path="agent/llm/invoke", runtime_path="llm/invoke", api_key=""
+            )
+            original = httpx.Request("POST", url, headers=headers, json={})
             with m.bind_runtime_identity(identity(native=True, generation=3)):
                 await client.post(str(original.url), json={})
                 async with client.stream("POST", str(original.url), json={}) as response:
@@ -71,6 +78,55 @@ def test_request_stream_and_prebuilt_send_ignore_all_body_markers():
             assert selected["agent_generation"] == 3
             assert selected["parent_node"]["input_result_ref"] == "input"
             assert body == {}
+
+    asyncio.run(exercise())
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/inner/api/agent/runtime/tools/invoke",
+        "/dify-other/inner/api/agent/runtime/tools/invoke",
+        "/dif%79/inner/api/agent/runtime/tools/invoke",
+        "/dify/%2e%2e/inner/api/agent/runtime/tools/invoke",
+        "/dify/inner/api/agent/runtime/tools%2finvoke",
+        "/dify/inner/api/agent/tools/invoke",
+    ],
+)
+def test_prefixed_deployment_refuses_paths_outside_its_exact_runtime_mount(path: str) -> None:
+    async def exercise() -> None:
+        m = api()
+        seen: list[httpx.Request] = []
+        async with m.AgentRuntimeHTTPClient(
+            api_url="http://api:5001/dify",
+            api_token="backend",
+            transport=httpx.MockTransport(lambda request: seen.append(request) or httpx.Response(200)),
+        ) as client:
+            with m.bind_runtime_identity(identity(native=True)):
+                with pytest.raises(m.AgentRuntimeTransportError, match="agent_runtime_destination_or_headers_invalid"):
+                    await client.post(f"http://api:5001{path}", json={})
+        assert seen == []
+
+    asyncio.run(exercise())
+
+
+def test_prefixed_config_reads_keep_their_query_allowlist() -> None:
+    async def exercise() -> None:
+        m = api()
+        seen: list[httpx.Request] = []
+        async with m.AgentRuntimeHTTPClient(
+            api_url="http://api:5001/gateway/dify",
+            api_token="backend",
+            transport=httpx.MockTransport(lambda request: seen.append(request) or httpx.Response(200)),
+        ) as client:
+            url = "http://api:5001/gateway/dify/inner/api/agent/runtime/config/agent/manifest"
+            params = {"tenant_id": "tenant", "config_version_id": "version", "config_version_kind": "draft"}
+            with m.bind_runtime_identity(identity()):
+                assert (await client.get(url, params=params)).status_code == 200
+                with pytest.raises(m.AgentRuntimeTransportError, match="agent_runtime_destination_or_headers_invalid"):
+                    await client.get(url, params=params | {"untrusted": "value"})
+        assert len(seen) == 1
+        assert seen[0].headers["Authorization"] == "Bearer backend"
 
     asyncio.run(exercise())
 
@@ -289,14 +345,15 @@ def test_inherited_send_waiting_for_body_cannot_dispatch_after_owner_exit():
     asyncio.run(exercise())
 
 
-def test_native_transport_timing_contains_only_route_identity_and_safe_outcome(caplog):
+@pytest.mark.parametrize("mount", ["", "/private-mount"])
+def test_native_transport_timing_contains_only_route_identity_and_safe_outcome(caplog, mount):
     import logging
 
     async def exercise():
         m = api()
         caplog.set_level(logging.INFO, logger=m.__name__)
         async with m.AgentRuntimeHTTPClient(
-            api_url="http://api:5001",
+            api_url=f"http://api:5001{mount}",
             api_token="private-bearer",
             transport=httpx.MockTransport(
                 lambda request: httpx.Response(200, json={"private-response": "private-value"})
@@ -304,7 +361,7 @@ def test_native_transport_timing_contains_only_route_identity_and_safe_outcome(c
         ) as client:
             with m.bind_runtime_identity(identity(native=True, generation=3)):
                 await client.post(
-                    "http://api:5001/inner/api/agent/runtime/native-testing/before-call",
+                    f"http://api:5001{mount}/inner/api/agent/runtime/native-testing/before-call",
                     json={"private-payload": "private-value"},
                 )
         records = [record for record in caplog.records if record.name == m.__name__]
@@ -316,7 +373,8 @@ def test_native_transport_timing_contains_only_route_identity_and_safe_outcome(c
         assert "duration_seconds=" in message
         assert "http_status=200" in message
         assert all(
-            secret not in message for secret in ("private-bearer", "private-payload", "private-value", "http://")
+            secret not in message
+            for secret in ("private-bearer", "private-payload", "private-value", "private-mount", "http://")
         )
 
     asyncio.run(exercise())
