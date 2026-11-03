@@ -41,7 +41,7 @@ const InstallForm = () => {
   const { t, i18n } = useTranslation(['login'])
   const pageTitle = t(($) => $.setAdminAccount, { ns: 'login' })
   useDocumentTitle(pageTitle)
-  const { push, replace } = useRouter()
+  const { replace } = useRouter()
   const queryClient = useQueryClient()
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const setupStatus = useQuery(
@@ -102,16 +102,16 @@ const InstallForm = () => {
   useEffect(() => {
     if (!setupStatus.isSuccess || setupStatus.isFetching) return
     if (setupStatus.data.step === 'finished') {
-      push('/signin')
+      replace('/signin')
     } else if (
       initStatus.isSuccess &&
       !initStatus.isFetching &&
       initStatus.data.status === 'not_started'
     ) {
-      push('/init')
+      replace('/init')
     }
   }, [
-    push,
+    replace,
     setupStatus.isSuccess,
     setupStatus.isFetching,
     setupStatus.data,
@@ -129,7 +129,7 @@ const InstallForm = () => {
     initStatus.data.status !== 'not_started'
 
   return !canSetup ? (
-    <LoadingPlaceholder />
+    <LoadingPlaceholder className="grow" />
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
