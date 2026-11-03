@@ -232,7 +232,7 @@ const InputField: React.FC<InputFieldProps> = ({
   return (
     <div
       ref={rootRef}
-      className="flex max-h-(--shortcut-popup-max-height,80dvh) w-93 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+      className="flex max-h-(--shortcut-popup-max-height,80dvh) w-93 max-w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
     >
       <div className="shrink-0 p-3 pb-2">
         <div className="system-md-semibold text-text-primary">
@@ -310,7 +310,7 @@ const InputField: React.FC<InputFieldProps> = ({
                   filterVar={(varPayload) => varPayload.type === VarType.arrayString}
                 />
                 <TypeSwitch
-                  className="absolute bottom-1 left-1.5"
+                  className="absolute inset-s-1.5 bottom-1"
                   isVariable
                   onIsVariableChange={handleSelectOptionSourceTypeChange}
                 />

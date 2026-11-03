@@ -1710,11 +1710,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/prompt-editor/plugins/hitl-input-block/input-field.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/hitl-input-block/pre-populate.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2

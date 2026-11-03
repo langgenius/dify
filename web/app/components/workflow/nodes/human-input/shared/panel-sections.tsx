@@ -130,6 +130,8 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
                 formInputs={inputs.inputs}
                 userActions={inputs.user_actions}
                 nodeId={isHumanInputV2NodeData(inputs) ? id : undefined}
+                availableVars={availableVars}
+                availableNodes={availableNodes}
               />
               <div className="mx-2 h-3 w-px bg-divider-regular" />
               <div className="flex items-center space-x-1">
