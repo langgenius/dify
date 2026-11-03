@@ -8,35 +8,9 @@ from werkzeug.test import TestResponse
 
 from controllers.common.agent_access import AgentAccessFilter
 from controllers.openapi import node_options as node_options_controller
-from core.tools.entities.api_entities import ToolProviderApiEntity
-from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderType
 from models import Account
 from services.agent.roster_service import AgentRosterService
-from services.tools.tool_sources import ToolSource, resolve_tool
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
-
-
-@pytest.fixture
-def time_tool(admitted_bearer: AdmittedWorld, monkeypatch: pytest.MonkeyPatch) -> None:
-    tool = resolve_tool(tenant_id="tenant", provider_type="builtin", provider_id="time", tool_name="current_time")
-    assert tool is not None
-    provider = ToolProviderApiEntity(
-        id="time",
-        author="langgenius",
-        name="time",
-        description=I18nObject(en_US="time"),
-        icon="",
-        label=I18nObject(en_US="CurrentTime"),
-        type=ToolProviderType.BUILT_IN,
-        tools=[tool],
-    )
-
-    def list_providers(self: ToolSource, *, tenant_id: str, **_ids: str) -> list[ToolProviderApiEntity]:
-        assert tenant_id == admitted_bearer.workspace_id
-        return [provider] if self is ToolSource.BUILTIN else []
-
-    monkeypatch.setattr(ToolSource, "list_providers", list_providers)
 
 
 def _get(world: AdmittedWorld, query: str) -> TestResponse:
