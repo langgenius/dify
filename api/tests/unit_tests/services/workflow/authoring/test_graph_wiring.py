@@ -218,11 +218,24 @@ def test_edge_from_a_missing_node_gets_no_source_handle() -> None:
 
     fill_graph_wiring(graph)
 
-    edge = _at(graph, "edges", 0)
-    assert isinstance(edge, dict)
-    assert "sourceHandle" not in edge
-    assert "id" not in edge
-    assert edge["targetHandle"] == "target"
+    assert _at(graph, "edges", 0) == {"source": "ghost", "target": "end", "targetHandle": "target"}
+
+
+def test_edge_to_a_missing_node_gets_no_edge_data() -> None:
+    graph = {
+        "nodes": [_node("start", BuiltinNodeTypes.START)],
+        "edges": [{"source": "start", "target": "ghost"}],
+    }
+
+    fill_graph_wiring(graph)
+
+    assert _at(graph, "edges", 0) == {
+        "source": "start",
+        "sourceHandle": "source",
+        "target": "ghost",
+        "targetHandle": "target",
+        "id": "start-source-ghost-target",
+    }
 
 
 def test_edge_that_cannot_be_read_is_left_as_written() -> None:
