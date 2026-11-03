@@ -69,14 +69,19 @@ def _fill_title(node: Mapping[str, Any]) -> None:
 
 
 def _fill_edge(edge: dict[str, Any], *, nodes_by_id: Mapping[str, Mapping[str, Any]]) -> None:
-    source = nodes_by_id.get(edge.get("source", ""), {})
-    handles = branch_handles(source.get("data", {}))
-    if handles is None or SOURCE_HANDLE in handles:
-        edge.setdefault("sourceHandle", SOURCE_HANDLE)
+    source = nodes_by_id.get(edge.get("source", ""))
+    if source is not None:
+        _fill_source_handle(edge, source["data"])
     edge.setdefault("targetHandle", TARGET_HANDLE)
     if _has_id_parts(edge):
         edge.setdefault("id", editor_edge_id(edge))
     editor_edge_data(edge, nodes_by_id=nodes_by_id)
+
+
+def _fill_source_handle(edge: dict[str, Any], source_data: Mapping[str, Any]) -> None:
+    handles = branch_handles(source_data)
+    if handles is None or SOURCE_HANDLE in handles:
+        edge.setdefault("sourceHandle", SOURCE_HANDLE)
 
 
 def _has_id_parts(edge: Mapping[str, Any]) -> bool:

@@ -204,6 +204,25 @@ def test_node_without_readable_data_is_left_as_written() -> None:
 
     assert broken == {"id": "broken", "data": None}
     assert _at(graph, "edges", 0, "id") == "start-source-broken-target"
+    unreadable_source = _at(graph, "edges", 1)
+    assert isinstance(unreadable_source, dict)
+    assert "sourceHandle" not in unreadable_source
+    assert "id" not in unreadable_source
+
+
+def test_edge_from_a_missing_node_gets_no_source_handle() -> None:
+    graph = {
+        "nodes": [_node("end", BuiltinNodeTypes.END)],
+        "edges": [{"source": "ghost", "target": "end"}],
+    }
+
+    fill_graph_wiring(graph)
+
+    edge = _at(graph, "edges", 0)
+    assert isinstance(edge, dict)
+    assert "sourceHandle" not in edge
+    assert "id" not in edge
+    assert edge["targetHandle"] == "target"
 
 
 def test_edge_that_cannot_be_read_is_left_as_written() -> None:
@@ -229,6 +248,9 @@ def test_node_with_unreadable_parent_id_is_left_as_written() -> None:
     fill_graph_wiring(graph)
 
     assert odd == expected
+    edge = _at(graph, "edges", 0)
+    assert isinstance(edge, dict)
+    assert "sourceHandle" not in edge
 
 
 def test_nodes_and_edges_that_are_not_lists_are_left_alone() -> None:
