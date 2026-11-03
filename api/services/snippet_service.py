@@ -323,6 +323,14 @@ class SnippetService:
         with self._session_scope() as session:
             session.add(snippet)
             self._commit_if_owned(session)
+            # ``is_published``, ``version`` and ``use_count`` only have server-side
+            # defaults, so they stay ``None`` until the row is written. A borrowed
+            # session (the console controller passes one in) is neither committed nor
+            # flushed here, and callers serialize the returned object right away --
+            # which used to fail response validation. Flush and read the row back so
+            # the object always reflects persisted state.
+            session.flush()
+            session.refresh(snippet)
 
         return snippet
 

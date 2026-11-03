@@ -104,6 +104,31 @@ def test_create_snippet_allows_duplicate_names(
     assert {item.id for item in stored} == {existing.id, snippet.id}
 
 
+def test_create_snippet_populates_server_defaults_before_return(sqlite_session: Session) -> None:
+    """The returned snippet must already carry its database-assigned defaults.
+
+    ``is_published``, ``version`` and ``use_count`` are only backed by server-side
+    defaults, so a caller that serializes the returned object before the row is
+    written sees ``None`` and fails response validation. Creating through a borrowed
+    session (what the console controller does) used to trigger exactly that.
+    """
+    service = SnippetService(session=sqlite_session)
+
+    snippet = service.create_snippet(
+        tenant_id="tenant-1",
+        name="snippet-with-defaults",
+        description=None,
+        snippet_type=SnippetType.NODE,
+        icon_info=None,
+        input_fields=None,
+        account=_account(),
+    )
+
+    assert snippet.version == 1
+    assert snippet.use_count == 0
+    assert snippet.is_published is False
+
+
 def test_validate_snippet_graph_forbidden_nodes_ignores_malformed_nodes() -> None:
     SnippetService.validate_snippet_graph_forbidden_nodes(
         {
