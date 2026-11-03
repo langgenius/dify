@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
@@ -1380,7 +1380,11 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
 def test_workflow_composer_get_put_validate_candidates_impact_and_save(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
 ) -> None:
-    monkeypatch.setattr(composer_controller, "application_services", lambda: Mock(workflow_variables=Mock()))
+    @dataclass
+    class _AppServices:
+        workflow_variables: object = field(default_factory=object)
+
+    monkeypatch.setattr(composer_controller, "application_services", _AppServices)
     app_model = _app_detail_obj(id="app-1")
     payload = {
         "variant": ComposerVariant.WORKFLOW.value,
@@ -2158,8 +2162,10 @@ def test_agent_chat_helper_maps_generation_errors(
     unbound_session: Session,
 ) -> None:
     app_model = _app_detail_obj(id="app-1", mode=AppMode.CHAT)
-    generate = Mock(side_effect=error)
-    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
+    def fail_generate(*args: object, **kwargs: object) -> None:
+        raise error
+
+    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", fail_generate)
     with app.test_request_context(json={"inputs": {}, "query": "hello"}):
         with pytest.raises(expected):
             completion_controller._create_chat_message(
