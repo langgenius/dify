@@ -2,7 +2,6 @@ import logging
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
-from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
@@ -42,9 +41,6 @@ from services.workflow.execution.adapters.node_factory import get_default_root_n
 from services.workflow.execution.adapters.node_runtime import (
     DifyHumanInputNodeRuntime,
     resolve_dify_run_context,
-)
-from services.workflow.execution.adapters.pipeline.pipeline_config_manager import (
-    PipelineConfig,
 )
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.contracts import PreparedWorkflowRun, WorkflowRunEntry
@@ -101,7 +97,6 @@ class PipelineRunner:
     def prepare(self) -> PreparedWorkflowRun:
         """Prepare graph execution and passive application observers."""
         app_config = self.application_generate_entity.app_config
-        app_config = cast(PipelineConfig, app_config)
         invoke_from = self.application_generate_entity.invoke_from
 
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:

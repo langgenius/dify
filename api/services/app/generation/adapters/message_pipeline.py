@@ -3,7 +3,7 @@ import logging
 import time
 from collections.abc import Generator
 from threading import Thread
-from typing import Any, cast
+from typing import Any
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
@@ -229,7 +229,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         tenant_id = self._application_generate_entity.app_config.tenant_id
         task_id = self._application_generate_entity.task_id
         publisher = None
-        text_to_speech_dict = cast(dict[str, Any], self._app_config.app_model_config_dict.get("text_to_speech"))
+        raw_text_to_speech = self._app_config.app_model_config_dict.get("text_to_speech")
+        text_to_speech_dict = raw_text_to_speech if isinstance(raw_text_to_speech, dict) else None
         if (
             self.stream
             and text_to_speech_dict
@@ -369,7 +370,12 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     if should_direct_answer:
                         continue
 
-                    current_content = cast(str, self._task_state.llm_result.message.content)
+                    existing_content = self._task_state.llm_result.message.content
+                    current_content = (
+                        existing_content
+                        if isinstance(existing_content, str)
+                        else self._task_state.llm_result.message.get_text_content()
+                    )
                     current_content += delta_text
                     self._task_state.llm_result.message.content = current_content
 
@@ -402,7 +408,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
         delta_text = ""
         # EasyUI streams text only; structured multimodal chunks contribute their text parts.
-        for content in cast(list[object], delta_content):
+        delta_items: list[object] = [*delta_content]
+        for content in delta_items:
             logger.debug("The content type %s in LLM chunk delta message content.: %r", type(content), content)
             match content:
                 case TextPromptMessageContent():
@@ -486,7 +493,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
         # transform usage
         model_type_instance = model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
+        if not isinstance(model_type_instance, LargeLanguageModel):
+            raise TypeError(f"Expected LargeLanguageModel, got {type(model_type_instance).__name__}")
         self._task_state.llm_result.usage = model_type_instance.calc_response_usage(
             model, credentials, prompt_tokens, completion_tokens
         )

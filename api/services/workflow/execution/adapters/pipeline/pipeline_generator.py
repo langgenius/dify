@@ -8,7 +8,7 @@ import threading
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping
-from typing import TYPE_CHECKING, Any, Literal, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, Protocol, overload, runtime_checkable
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -28,8 +28,8 @@ from core.app.entities.task_entities import (
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     OnlineDriveBrowseFilesRequest,
+    OnlineDriveBrowseFilesResponse,
 )
-from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from core.repositories.factory import (
     WorkflowExecutionRepository,
@@ -62,6 +62,18 @@ if TYPE_CHECKING:
     from services.workflow.execution.contracts import WorkflowRunDriver
 
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class _OnlineDriveBrowseRuntime(Protocol):
+    def datasource_provider_type(self) -> str: ...
+
+    def online_drive_browse_files(
+        self,
+        user_id: str,
+        request: OnlineDriveBrowseFilesRequest,
+        provider_type: str,
+    ) -> Generator[OnlineDriveBrowseFilesResponse]: ...
 
 
 class PipelineGenerator(AppInputAdapter):
@@ -708,7 +720,6 @@ class PipelineGenerator(AppInputAdapter):
             )
             if credentials:
                 datasource_runtime.runtime.credentials = credentials
-            datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
 
             for datasource_info in datasource_info_list:
                 if datasource_info.get("id") and datasource_info.get("type") == "folder":
@@ -736,7 +747,7 @@ class PipelineGenerator(AppInputAdapter):
 
     def _get_files_in_folder(
         self,
-        datasource_runtime: OnlineDriveDatasourcePlugin,
+        datasource_runtime: object,
         prefix: str,
         bucket: str | None,
         user_id: str,
@@ -753,6 +764,8 @@ class PipelineGenerator(AppInputAdapter):
         self-referencing folder (where the API returns the folder as its own
         child) cannot cause infinite recursion.
         """
+        if not isinstance(datasource_runtime, _OnlineDriveBrowseRuntime):
+            raise TypeError(f"Expected _OnlineDriveBrowseRuntime, got {type(datasource_runtime).__name__}")
         if _visited_folder_ids is None:
             _visited_folder_ids = set()
 
