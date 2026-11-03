@@ -30,7 +30,9 @@ wrappers around it without changing call sites.
   available while the input is read-only.
 - `disabled` on `PasswordField` applies to the input and the toggle; a disabled `Field` reaches
   only the input. Wrap the field in `Field` for the label, validation, and errors.
-- Other masked values use `Input` with `type="password"`.
+- Other masked values, such as tokens, use `Input` with `type="password"`, `autoComplete="off"`,
+  and spell checking, autocapitalization, and autocorrection off. `new-password` would make
+  browsers offer to generate and save a password for them.
 
 [Base UI Password Field]: https://github.com/mui/base-ui/pull/5114
 [Input Group]: ../input-group/README.md

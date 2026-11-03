@@ -363,7 +363,10 @@ export function ContactImBindingContent({
                 </div>
                 <Input
                   ref={index === 0 ? firstCredentialRef : undefined}
-                  autoComplete={isSecret ? 'new-password' : 'off'}
+                  autoComplete="off"
+                  spellCheck={isSecret ? false : undefined}
+                  autoCapitalize={isSecret ? 'off' : undefined}
+                  autoCorrect={isSecret ? 'off' : undefined}
                   disabled={credentialsDisabled || clearedFields.includes(field)}
                   placeholder={
                     isSecret && canRetainField(field) && !clearedFields.includes(field)

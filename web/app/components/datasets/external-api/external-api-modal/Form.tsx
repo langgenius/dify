@@ -87,6 +87,8 @@ const ExternalAPIForm: FC<ExternalAPIFormProps> = React.memo(
             inputMode={variable === 'endpoint' ? 'url' : undefined}
             placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
             spellCheck={variable === 'endpoint' || type === 'secret' ? false : undefined}
+            autoCapitalize={type === 'secret' ? 'off' : undefined}
+            autoCorrect={type === 'secret' ? 'off' : undefined}
             id={variable}
             value={fieldValue}
             onChange={(val) => handleFormChange(variable, val.target.value)}
