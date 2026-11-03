@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "作成日時",
   "agentDetail.logs.table.endUser": "エンドユーザー",
   "agentDetail.logs.table.messageCount": "メッセージ数",
-  "agentDetail.logs.table.operationRate": "操作率",
+  "agentDetail.logs.table.operationRate": "管理者評価",
   "agentDetail.logs.table.source": "ソース",
   "agentDetail.logs.table.title": "タイトル",
   "agentDetail.logs.table.unread": "未読",

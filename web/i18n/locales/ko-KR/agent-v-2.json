@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "생성 시간",
   "agentDetail.logs.table.endUser": "최종 사용자",
   "agentDetail.logs.table.messageCount": "메시지 수",
-  "agentDetail.logs.table.operationRate": "작업률",
+  "agentDetail.logs.table.operationRate": "관리자 평점",
   "agentDetail.logs.table.source": "소스",
   "agentDetail.logs.table.title": "제목",
   "agentDetail.logs.table.unread": "읽지 않음",

@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "Thời gian tạo",
   "agentDetail.logs.table.endUser": "Người dùng cuối",
   "agentDetail.logs.table.messageCount": "Số tin nhắn",
-  "agentDetail.logs.table.operationRate": "Tỷ lệ thao tác",
+  "agentDetail.logs.table.operationRate": "Tỷ lệ quản trị viên",
   "agentDetail.logs.table.source": "Nguồn",
   "agentDetail.logs.table.title": "Tiêu đề",
   "agentDetail.logs.table.unread": "Chưa đọc",

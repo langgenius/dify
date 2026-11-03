@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "ເວລາສ້າງ",
   "agentDetail.logs.table.endUser": "ຜູ້ໃຊ້ປາຍທາງ",
   "agentDetail.logs.table.messageCount": "ຈຳນວນຂໍ້ຄວາມ",
-  "agentDetail.logs.table.operationRate": "ອັດຕາການດຳເນີນການ",
+  "agentDetail.logs.table.operationRate": "ຄະແນນຈາກຜູ້ດູແລ",
   "agentDetail.logs.table.source": "ແຫຼ່ງທີ່ມາ",
   "agentDetail.logs.table.title": "ຫົວຂໍ້",
   "agentDetail.logs.table.unread": "ຍັງບໍ່ໄດ້ອ່ານ",

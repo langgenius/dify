@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "Время создания",
   "agentDetail.logs.table.endUser": "Конечный пользователь",
   "agentDetail.logs.table.messageCount": "Кол-во сообщений",
-  "agentDetail.logs.table.operationRate": "Уровень операций",
+  "agentDetail.logs.table.operationRate": "Оценка администратора",
   "agentDetail.logs.table.source": "Источник",
   "agentDetail.logs.table.title": "Заголовок",
   "agentDetail.logs.table.unread": "Непрочитанные",

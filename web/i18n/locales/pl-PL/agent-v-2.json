@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "Czas utworzenia",
   "agentDetail.logs.table.endUser": "Użytkownik końcowy",
   "agentDetail.logs.table.messageCount": "Liczba wiad.",
-  "agentDetail.logs.table.operationRate": "Współczynnik operacji",
+  "agentDetail.logs.table.operationRate": "Ocena operatora",
   "agentDetail.logs.table.source": "Źródło",
   "agentDetail.logs.table.title": "Tytuł",
   "agentDetail.logs.table.unread": "Nieprzeczytane",

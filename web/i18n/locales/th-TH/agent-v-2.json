@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "เวลาที่สร้าง",
   "agentDetail.logs.table.endUser": "ผู้ใช้ปลายทาง",
   "agentDetail.logs.table.messageCount": "จำนวนข้อความ",
-  "agentDetail.logs.table.operationRate": "อัตราการดำเนินการ",
+  "agentDetail.logs.table.operationRate": "อัตราผู้ดูแล",
   "agentDetail.logs.table.source": "แหล่งที่มา",
   "agentDetail.logs.table.title": "ชื่อเรื่อง",
   "agentDetail.logs.table.unread": "ยังไม่ได้อ่าน",

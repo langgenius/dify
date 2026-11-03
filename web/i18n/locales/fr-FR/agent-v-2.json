@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "Date de création",
   "agentDetail.logs.table.endUser": "Utilisateur final",
   "agentDetail.logs.table.messageCount": "Nb. msg.",
-  "agentDetail.logs.table.operationRate": "Taux d’op.",
+  "agentDetail.logs.table.operationRate": "Note de l’administrateur",
   "agentDetail.logs.table.source": "Source",
   "agentDetail.logs.table.title": "Titre",
   "agentDetail.logs.table.unread": "Non lu",

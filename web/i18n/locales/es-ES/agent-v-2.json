@@ -317,7 +317,7 @@
   "agentDetail.logs.table.createdTime": "Fecha de creación",
   "agentDetail.logs.table.endUser": "Usuario final",
   "agentDetail.logs.table.messageCount": "Cant. mens.",
-  "agentDetail.logs.table.operationRate": "Tasa op.",
+  "agentDetail.logs.table.operationRate": "Valoración del administrador",
   "agentDetail.logs.table.source": "Fuente",
   "agentDetail.logs.table.title": "Título",
   "agentDetail.logs.table.unread": "Sin leer",
