@@ -1,6 +1,7 @@
 import type { FC, ReactNode } from 'react'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -369,15 +370,14 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
               {!isLoading &&
                 !isOpenAIProviderConfigured &&
                 localeData.type === 'openai_moderation' && (
-                  <div className="mt-2 flex items-center rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 py-2">
-                    <span className="mr-1 i-custom-vender-line-general-info-circle h-4 w-4 text-[#F79009]" />
-                    <div className="flex items-center text-xs font-medium text-gray-700">
+                  <Alert type="warning" className="mt-2">
+                    <AlertTitle>
                       {t(($) => $['feature.moderation.modal.openaiNotConfig.before'], {
                         ns: 'appDebug',
                       })}
                       <button
                         type="button"
-                        className="cursor-pointer text-primary-600"
+                        className="cursor-pointer text-text-accent"
                         onClick={handleOpenSettingsModal}
                       >
                         &nbsp;
@@ -387,8 +387,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
                       {t(($) => $['feature.moderation.modal.openaiNotConfig.after'], {
                         ns: 'appDebug',
                       })}
-                    </div>
-                  </div>
+                    </AlertTitle>
+                  </Alert>
                 )}
             </div>
             {localeData.type === 'keywords' && (
