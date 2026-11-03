@@ -1,6 +1,6 @@
 import copy
 
-from core.workflow.editor_graph import EDITOR_CUSTOM_TYPE, layout_top_level_nodes
+from core.workflow.editor_graph import EDITOR_CUSTOM_TYPE
 from graphon.enums import BuiltinNodeTypes
 from services.workflow.authoring.graph_wiring import fill_graph_wiring
 from services.workflow_variable_reference_validator import SOURCE_HANDLE
@@ -37,7 +37,7 @@ def _skeleton() -> dict[str, list[dict[str, object]]]:
     }
 
 
-def test_skeleton_gets_wrappers_edges_and_layout() -> None:
+def test_skeleton_gets_wrappers_and_edges() -> None:
     graph = _skeleton()
 
     fill_graph_wiring(graph)
@@ -47,8 +47,6 @@ def test_skeleton_gets_wrappers_edges_and_layout() -> None:
         assert _at(node, "data", "title") == _at(node, "data", "type")
         assert node["targetPosition"] == "left"
         assert node["sourcePosition"] == "right"
-    positions = {(_at(n, "position", "x"), _at(n, "position", "y")) for n in graph["nodes"]}
-    assert len(positions) == 4
     assert [e["id"] for e in graph["edges"]] == [
         "start-source-scrape-target",
         "scrape-source-llm-target",
@@ -163,37 +161,6 @@ def test_unknown_node_type_gets_only_the_wrapper() -> None:
     assert node["type"] == EDITOR_CUSTOM_TYPE
     assert _at(node, "data", "flag") is True
     assert graph["edges"][0]["sourceHandle"] == SOURCE_HANDLE
-
-
-def test_existing_positions_are_kept() -> None:
-    graph = _skeleton()
-    graph["nodes"][0]["position"] = {"x": 1, "y": 2}
-
-    fill_graph_wiring(graph)
-
-    assert graph["nodes"][0]["position"] == {"x": 1, "y": 2}
-    assert "position" in graph["nodes"][1]
-
-
-def test_a_node_added_to_a_laid_out_graph_gets_a_position_and_the_others_stay() -> None:
-    graph = _skeleton()
-    fill_graph_wiring(graph)
-    for index, node in enumerate(graph["nodes"]):
-        node["position"] = {"x": 1000 + index, "y": 2000 + index}
-    laid_out = copy.deepcopy(graph["nodes"])
-    graph["nodes"].append(_node("answer", BuiltinNodeTypes.ANSWER))
-    graph["edges"].append({"source": "llm", "target": "answer"})
-
-    formula = copy.deepcopy(graph)
-    layout_top_level_nodes(nodes=formula["nodes"], edges=formula["edges"])
-
-    fill_graph_wiring(graph)
-
-    assert graph["nodes"][:4] == laid_out
-    assert graph["nodes"][4]["position"] == formula["nodes"][4]["position"]
-    once = copy.deepcopy(graph)
-    fill_graph_wiring(graph)
-    assert graph == once
 
 
 def test_second_call_changes_nothing() -> None:
@@ -313,27 +280,6 @@ def test_edge_between_iteration_children_gets_iteration_fields_and_children_stay
     assert _at(edge, "data", "iteration_id") == "iter"
     assert _at(edge, "data", "isInIteration") is True
     assert edge["id"] == "a-source-b-target"
-
-
-def test_null_position_counts_as_no_position() -> None:
-    graph = _skeleton()
-    graph["nodes"][0]["position"] = None
-
-    fill_graph_wiring(graph)
-
-    assert _at(graph, "nodes", 0, "position", "x") is not None
-    assert _at(graph, "nodes", 1, "position", "x") is not None
-
-
-def test_child_position_does_not_suppress_top_level_layout() -> None:
-    child = {"id": "inner", "parentId": "iter", "type": "custom", "position": {"x": 5, "y": 6}, "data": {"type": "llm"}}
-    no_edges: list[dict[str, object]] = []
-    graph = {"nodes": [_node("iter", BuiltinNodeTypes.ITERATION), child], "edges": no_edges}
-
-    fill_graph_wiring(graph)
-
-    assert "position" in graph["nodes"][0]
-    assert child["position"] == {"x": 5, "y": 6}
 
 
 def test_null_handles_count_as_no_handles() -> None:

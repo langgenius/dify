@@ -27,7 +27,7 @@ from services.entities.dsl_entities import AppImportParams, ImportStatus
 from services.workflow.authoring import FillContext, fill_package
 from services.workflow.authoring.fill import FilledPackage, FilledRoot, SubmittedRoot, fill_graph_document
 from services.workflow.authoring.package_io import PackageUnreadableError, read_package_entries
-from services.workflow.graph_check import IssueCode, check_graph
+from services.workflow.graph_check import CANVAS_NOTE_TYPE, IssueCode, check_graph
 from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
 from tests.unit_tests.services.test_app_package_service import (
     _bundle_any_app,
@@ -109,12 +109,36 @@ def _skeleton_dsl(mode: AppMode = AppMode.WORKFLOW) -> str:
     )
 
 
+_LAYOUT_KEYS = ("position", "positionAbsolute")
+_NOTE_LAYOUT_KEYS = (*_LAYOUT_KEYS, "width", "height")
+
+
+def _without_layout(app: bytes) -> object:
+    """The app with the top-level layout fill rewrites taken out: node places, and note sizes and covers."""
+    document = yaml.safe_load(app)
+    for node in document["workflow"]["graph"]["nodes"]:
+        if node.get("parentId"):
+            continue
+        is_note = node.get("type") == CANVAS_NOTE_TYPE
+        for key in _NOTE_LAYOUT_KEYS if is_note else _LAYOUT_KEYS:
+            node.pop(key, None)
+        if is_note:
+            for key in ("width", "height", "covers"):
+                node["data"].pop(key, None)
+    return document
+
+
 @pytest.mark.parametrize("fixture", CONSOLE_EXPORTS)
-def test_a_console_export_goes_through_fill_unchanged(fixture: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_console_export_changes_only_in_layout_and_fills_to_the_same_bytes_again(
+    fixture: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(PluginToolManager, "fetch_tool_provider", lambda _self, _tenant_id, _provider: None)
     exported = _exported((FIXTURES / fixture).read_text())
 
-    assert _members(_fill(exported)) == _members(exported)
+    filled = _fill(exported)
+
+    assert _without_layout(_members(filled)[APP]) == _without_layout(_members(exported)[APP])
+    assert _members(_fill(filled)) == _members(filled)
 
 
 def _null_paths(value: object, path: str = "") -> set[str]:
@@ -263,7 +287,7 @@ def test_filling_a_resource_package_twice_gives_the_same_members(
 
 
 def test_an_edited_app_yaml_gets_a_manifest_that_matches_it() -> None:
-    exported = _members(_exported((FIXTURES / "simple_passthrough_workflow.yml").read_text()))
+    exported = _members(_fill(_exported((FIXTURES / "simple_passthrough_workflow.yml").read_text())))
     edited = exported[APP].replace(b"name: echo", b"name: echo edited by the agent", 1)
     assert edited != exported[APP]
 

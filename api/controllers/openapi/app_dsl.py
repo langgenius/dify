@@ -379,7 +379,8 @@ class AppPackageImportApi(Resource):
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/packages:fill")
 class AppPackageFillApi(Resource):
     """Fill an agent-built package and download it: what the console editor writes for a node or edge left
-    unset is written, and every value the package already has is kept.
+    unset is written, and every value the package already has is kept except the layout. Every top-level node is
+    placed again as the canvas's Organize does, and each note is framed around the nodes it covers.
 
     Nothing is saved. Filling a filled package changes nothing. Returns 400 ``app_package_invalid`` for a
     package that cannot be read and 413 for one over this server's limits. A package already at the entry

@@ -10,6 +10,7 @@ import pytest
 from services.workflow_variable_reference_validator import (
     branch_handles,
     format_variable_reference_errors,
+    source_handle_order,
     validate_variable_references,
 )
 
@@ -508,6 +509,29 @@ class TestBranchHandles:
     )
     def test_malformed_items_are_skipped(self, data: dict[str, object], expected: set[str]) -> None:
         assert branch_handles(data) == expected
+
+    @pytest.mark.parametrize(
+        ("data", "expected"),
+        [
+            ({"type": "if-else", "cases": [{"case_id": "b"}, {"case_id": "a"}]}, ("b", "a", "false")),
+            ({"type": "if-else"}, ("true", "false")),
+            ({"type": "question-classifier", "classes": [{"id": "2"}, {"id": "1"}, {"id": "2"}]}, ("2", "1")),
+            ({"type": "question-classifier", "classes": []}, ()),
+            ({"type": "human-input", "user_actions": [{"id": "z"}, {"id": "a"}]}, ("z", "a", "__timeout")),
+            (_routed_agent("yes", "no"), ("yes", "no")),
+            ({"type": "tool"}, ("source",)),
+            (
+                {"type": "if-else", "cases": [{"case_id": "a"}], "error_strategy": "fail-branch"},
+                ("a", "false", "fail-branch"),
+            ),
+            ({"type": "llm", "error_strategy": "fail-branch"}, ("source", "fail-branch")),
+            ({}, ("source",)),
+        ],
+    )
+    def test_source_handles_come_in_the_order_the_canvas_draws_them(
+        self, data: dict[str, object], expected: tuple[str, ...]
+    ) -> None:
+        assert source_handle_order(data) == expected
 
 
 class TestAgentOutputRoutes:

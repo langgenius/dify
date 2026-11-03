@@ -1,6 +1,5 @@
-"""Add what the console editor adds to a skeleton graph: node wrappers, titles, edge handles, ids and layout."""
+"""Add what the console editor adds to a skeleton graph: node wrappers, titles, edge handles and ids."""
 
-import copy
 from collections.abc import Mapping
 from typing import Any, Final, TypeGuard
 
@@ -9,7 +8,6 @@ from core.workflow.editor_graph import (
     editor_edge_data,
     editor_edge_id,
     editor_node_wrapper,
-    layout_top_level_nodes,
 )
 from services.workflow_variable_reference_validator import SOURCE_HANDLE, branch_handles
 
@@ -26,7 +24,6 @@ def fill_graph_wiring(graph: dict[str, Any]) -> None:
     for node in editable:
         editor_node_wrapper(node, position=None)
         _fill_title(node)
-    _fill_positions(editable, edges=edges)
 
     nodes_by_id = {node["id"]: node for node in nodes if isinstance(node.get("id"), str)}
     for edge in edges:
@@ -58,18 +55,6 @@ def _is_editable(node: Mapping[str, Any]) -> bool:
     if node.get("parentId"):
         return False
     return node.get("type", EDITOR_CUSTOM_TYPE) == EDITOR_CUSTOM_TYPE
-
-
-def _fill_positions(nodes: list[dict[str, Any]], *, edges: list[dict[str, Any]]) -> None:
-    """Give each node without a position the one the editor's layout gives it; a set position never moves."""
-    laid_out = copy.deepcopy(nodes)
-    layout_top_level_nodes(nodes=laid_out, edges=edges)
-    for node, formula in zip(nodes, laid_out, strict=True):
-        if node.get("position") is not None:
-            continue
-        if "position" not in formula:
-            continue
-        node["position"] = formula["position"]
 
 
 def _fill_title(node: Mapping[str, Any]) -> None:
