@@ -20753,6 +20753,7 @@ Visibility and lifecycle scope of an Agent record.
 | opening_statement | string |  | No |
 | retriever_resource | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | sensitive_word_avoidance | [AgentSensitiveWordAvoidanceFeatureConfig](#agentsensitivewordavoidancefeatureconfig) |  | No |
+| show_thoughts | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | speech_to_text | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | suggested_questions | [ string ] |  | No |
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) |  | No |
@@ -32215,6 +32216,7 @@ Enum class for parameter type.
 | opening_statement |  |  | No |
 | retriever_resource | { **"enabled"**: boolean } |  | Yes |
 | sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| show_thoughts | { **"enabled"**: boolean } |  | No |
 | speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
 | suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
