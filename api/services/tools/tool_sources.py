@@ -5,10 +5,15 @@ from typing import Self
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
+from core.tools.builtin_tool.provider import BuiltinToolProviderController
+from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ToolProviderNotFoundError
+from core.tools.mcp_tool.provider import MCPToolProviderController
+from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
+from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from models.tools import WorkflowToolProvider
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -17,6 +22,14 @@ from services.tools.tools_transform_service import ToolTransformService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 type ProviderLister = Callable[[str, str], list[ToolProviderApiEntity]]
+type ToolController = (
+    BuiltinToolProviderController
+    | PluginToolProviderController
+    | ApiToolProviderController
+    | MCPToolProviderController
+    | WorkflowToolProviderController
+)
+type ControllerLoader = Callable[[str, str], ToolController]
 
 
 def _list_builtin(tenant_id: str, user_id: str) -> list[ToolProviderApiEntity]:
@@ -36,21 +49,48 @@ def _list_mcp(tenant_id: str, user_id: str) -> list[ToolProviderApiEntity]:
         return MCPToolManageService(session=session).list_providers(tenant_id=tenant_id, include_sensitive=False)
 
 
+def _load_builtin(tenant_id: str, provider_id: str) -> ToolController:
+    return ToolManager.get_builtin_provider(provider_id, tenant_id)
+
+
+def _load_workflow(tenant_id: str, provider_id: str) -> ToolController:
+    with session_factory.create_session() as session:
+        provider = session.scalar(
+            select(WorkflowToolProvider).where(
+                WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id
+            )
+        )
+    if provider is None:
+        raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
+    return ToolTransformService.workflow_provider_to_controller(provider)
+
+
+def _load_api(tenant_id: str, provider_id: str) -> ToolController:
+    controller, _credentials = ToolManager.get_api_provider_controller(tenant_id, provider_id)
+    return controller
+
+
+def _load_mcp(tenant_id: str, provider_id: str) -> ToolController:
+    return ToolManager.get_mcp_provider_controller(tenant_id, provider_id)
+
+
 class ToolSource(StrEnum):
     """Tool provider types a workflow tool node can call; values match the node's provider_type."""
 
     lister: ProviderLister
+    controller: ControllerLoader
 
-    def __new__(cls, value: str, lister: ProviderLister) -> Self:
+    def __new__(cls, value: str, lister: ProviderLister, controller: ControllerLoader) -> Self:
         member = str.__new__(cls, value)
         member._value_ = value
         member.lister = lister
+        member.controller = controller
         return member
 
-    BUILTIN = (ToolProviderType.BUILT_IN.value, _list_builtin)
-    WORKFLOW = (ToolProviderType.WORKFLOW.value, _list_workflow)
-    API = (ToolProviderType.API.value, _list_api)
-    MCP = (ToolProviderType.MCP.value, _list_mcp)
+    BUILTIN = (ToolProviderType.BUILT_IN.value, _list_builtin, _load_builtin)
+    WORKFLOW = (ToolProviderType.WORKFLOW.value, _list_workflow, _load_workflow)
+    API = (ToolProviderType.API.value, _list_api, _load_api)
+    MCP = (ToolProviderType.MCP.value, _list_mcp, _load_mcp)
 
     def list_providers(self, *, tenant_id: str, user_id: str) -> list[ToolProviderApiEntity]:
         return self.lister(tenant_id, user_id)
@@ -66,41 +106,18 @@ class ToolSource(StrEnum):
             return None
 
 
-def _workflow_controller(tenant_id: str, provider_id: str):
-    with session_factory.create_session() as session:
-        provider = session.scalar(
-            select(WorkflowToolProvider).where(
-                WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id
-            )
-        )
-    if provider is None:
-        raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
-    controller = ToolTransformService.workflow_provider_to_controller(provider)
-    controller.get_tools(tenant_id=tenant_id)
-    return controller
-
-
-def _controller(source: ToolSource, tenant_id: str, provider_id: str):
-    match source:
-        case ToolSource.BUILTIN:
-            return ToolManager.get_builtin_provider(provider_id, tenant_id)
-        case ToolSource.API:
-            controller, _credentials = ToolManager.get_api_provider_controller(tenant_id, provider_id)
-            return controller
-        case ToolSource.MCP:
-            return ToolManager.get_mcp_provider_controller(tenant_id, provider_id)
-        case ToolSource.WORKFLOW:
-            return _workflow_controller(tenant_id, provider_id)
-
-
 def resolve_tool(*, tenant_id: str, provider_type: str, provider_id: str, tool_name: str) -> ToolApiEntity | None:
     """One tool's declaration, read from its provider controller without building a runtime or touching credentials."""
     source = ToolSource.of_node(provider_type)
     if source is None:
         return None
     try:
-        tool = _controller(source, tenant_id, provider_id).get_tool(tool_name)
-    except (ToolProviderNotFoundError, ValueError):
+        controller = source.controller(tenant_id, provider_id)
+    except ToolProviderNotFoundError:
+        return None
+    try:
+        tool = controller.get_tool(tool_name)
+    except ValueError:
         return None
     if tool is None:
         return None
