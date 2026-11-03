@@ -20,6 +20,65 @@ async function connectServices(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('ConnectionAuth', () => {
+  it.each([
+    { linkState: 'expired' as const, title: 'share.connections.headless.expiredTitle' },
+    {
+      linkState: 'configuration-changed' as const,
+      title: 'share.connections.headless.configurationChangedTitle',
+    },
+  ])('stops connection setup for a $linkState request', ({ linkState, title }) => {
+    render(<ConnectionAuth appId="sales-assistant" linkState={linkState} />)
+
+    const issue = screen.getByRole('alert')
+    expect(within(issue).getByRole('heading', { name: title })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Sales Follow-up Assistant' })).toBeInTheDocument()
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/share\.connections\.headless\.requestedFrom/),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/share\.connections\.headless\.signedInAs/)).not.toBeInTheDocument()
+  })
+
+  it.each([
+    {
+      linkState: 'expired' as const,
+      description: /share\.connections\.headless\.apiExpiredDescription/,
+    },
+    {
+      linkState: 'configuration-changed' as const,
+      description: /share\.connections\.headless\.apiConfigurationChangedDescription/,
+    },
+  ])(
+    'identifies the API requester in recovery instructions for $linkState',
+    ({ linkState, description }) => {
+      render(<ConnectionAuth appId="sales-assistant" source="api" linkState={linkState} />)
+
+      expect(within(screen.getByRole('alert')).getByText(description)).toHaveTextContent(
+        'Acme Assistant',
+      )
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    },
+  )
+
+  it('starts a fresh setup after an invalidated request replaces an in-progress session', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<ConnectionAuth appId="sales-assistant" />)
+    await user.click(within(serviceRow('Gmail')).getByRole('button', { name: connectLabel }))
+    expect(progress()).toHaveTextContent('"connected":1')
+
+    rerender(<ConnectionAuth appId="sales-assistant" linkState="expired" />)
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+
+    rerender(<ConnectionAuth appId="sales-assistant" linkState="setup" />)
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(progress()).toHaveTextContent('"connected":0')
+    expect(within(serviceRow('Gmail')).getByRole('button', { name: connectLabel })).toBeEnabled()
+    expect(screen.getByRole('button', { name: finishLabel })).toBeDisabled()
+  })
+
   it('offers public connection setup without a sign-in step and requires every service', () => {
     render(<ConnectionAuth appId="sales-assistant" />)
 

@@ -1,6 +1,6 @@
 'use client'
 
-import type { ConnectionAuthSource } from './mock-data'
+import type { ConnectionAuthSource, ConnectionAuthState } from './mock-data'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useState } from 'react'
@@ -11,11 +11,18 @@ import { MAIN_CONTENT_ID, SkipLink } from '@/app/components/main-nav/skip-link'
 import useDocumentTitle from '@/hooks/use-document-title'
 import RequiredServices from '../connections/required-services'
 import ConnectionAuthCompletion from './completion'
+import ConnectionAuthIssue from './issue'
 import { mockRequest } from './mock-data'
 import RequestContextItem from './request-context-item'
 import useMockConnections from './use-mock-connections'
 
-function ConnectionAuthSession({ source }: { source: ConnectionAuthSource }) {
+function ConnectionAuthSession({
+  source,
+  linkState,
+}: {
+  source: ConnectionAuthSource
+  linkState: ConnectionAuthState
+}) {
   const { t } = useTranslation(['share', 'common'])
   const titleId = useId()
   const { services, connectedCount, ready, ...actions } = useMockConnections()
@@ -66,7 +73,9 @@ function ConnectionAuthSession({ source }: { source: ConnectionAuthSource }) {
               </p>
             </div>
           </div>
-          {finished ? (
+          {linkState !== 'setup' ? (
+            <ConnectionAuthIssue state={linkState} source={source} requester={requester} />
+          ) : finished ? (
             <ConnectionAuthCompletion services={services} source={source} requester={requester} />
           ) : (
             <>
@@ -139,9 +148,17 @@ function ConnectionAuthSession({ source }: { source: ConnectionAuthSource }) {
 export default function ConnectionAuth({
   appId,
   source = 'cli',
+  linkState = 'setup',
 }: {
   appId: string
   source?: ConnectionAuthSource
+  linkState?: ConnectionAuthState
 }) {
-  return <ConnectionAuthSession key={`${appId}:${source}`} source={source} />
+  return (
+    <ConnectionAuthSession
+      key={`${appId}:${source}:${linkState}`}
+      source={source}
+      linkState={linkState}
+    />
+  )
 }

@@ -12,6 +12,39 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 
 describe('app connection authorization route', () => {
   it.each([
+    { state: 'expired', title: 'share.connections.headless.expiredTitle' },
+    {
+      state: 'configuration-changed',
+      title: 'share.connections.headless.configurationChangedTitle',
+    },
+  ])('renders the $state preview from the request URL', async ({ state, title }) => {
+    const page = await AppConnectionAuthPage({
+      params: Promise.resolve({ source: 'cli', appId: 'sales-assistant' }),
+      searchParams: Promise.resolve({ state }),
+    })
+    renderWithConsoleQuery(page, { accountProfile: null, currentWorkspace: null })
+
+    expect(screen.getByRole('heading', { name: title })).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it.each([{ state: 'unrecognized' }, { state: ['expired', 'configuration-changed'] }])(
+    'ignores unsupported or ambiguous preview values: $state',
+    async ({ state }) => {
+      const page = await AppConnectionAuthPage({
+        params: Promise.resolve({ source: 'cli', appId: 'sales-assistant' }),
+        searchParams: Promise.resolve({ state }),
+      })
+      renderWithConsoleQuery(page, { accountProfile: null, currentWorkspace: null })
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'share.connections.headless.finishSetup' }),
+      ).toBeDisabled()
+    },
+  )
+
+  it.each([
     { source: 'cli', requester: 'Dify CLI', identity: 'al••••@northstar.io' },
     { source: 'api', requester: 'Acme Assistant', identity: 'Feishu user •••1234' },
   ])(
@@ -19,6 +52,7 @@ describe('app connection authorization route', () => {
     async ({ source, requester, identity }) => {
       const page = await AppConnectionAuthPage({
         params: Promise.resolve({ source, appId: 'sales-assistant' }),
+        searchParams: Promise.resolve({}),
       })
       renderWithConsoleQuery(page, { accountProfile: null, currentWorkspace: null })
 
@@ -39,6 +73,7 @@ describe('app connection authorization route', () => {
     await expect(
       AppConnectionAuthPage({
         params: Promise.resolve({ source: 'service-api', appId: 'sales-assistant' }),
+        searchParams: Promise.resolve({}),
       }),
     ).rejects.toThrow('not-found')
 

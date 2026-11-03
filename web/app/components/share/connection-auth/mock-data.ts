@@ -1,6 +1,7 @@
 import type { RequiredConnectionService } from '../connections/required-services'
 
 export type ConnectionAuthSource = 'cli' | 'api'
+export type ConnectionAuthState = 'setup' | 'expired' | 'configuration-changed'
 
 export const mockRequest = {
   app: {
