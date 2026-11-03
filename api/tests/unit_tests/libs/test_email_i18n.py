@@ -5,10 +5,12 @@ Tests the email internationalization service with mocked dependencies
 following Domain-Driven Design principles.
 """
 
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from flask import Flask
 
 from libs.email_i18n import (
     EmailI18nConfig,
@@ -572,3 +574,30 @@ class TestEmailI18nIntegration:
         finally:
             # Restore original mail
             libs.email_i18n.mail = original_mail
+
+
+@pytest.mark.parametrize("branding_enabled", [False, True])
+def test_account_deletion_success_email_renders_chinese_template(branding_enabled: bool):
+    app = Flask(__name__, template_folder=str(Path(__file__).resolve().parents[3] / "templates"))
+    sender = MockEmailSender()
+    service = EmailI18nService(
+        config=create_default_email_config(),
+        renderer=FlaskEmailRenderer(),
+        branding_service=MockBrandingService(enabled=branding_enabled),
+        sender=sender,
+    )
+
+    with app.app_context():
+        service.send_email(
+            email_type=EmailType.ACCOUNT_DELETION_SUCCESS,
+            language_code="zh-Hans",
+            to="recipient@example.com",
+            template_context={"to": "recipient@example.com", "email": "recipient@example.com"},
+        )
+
+    assert len(sender.sent_emails) == 1
+    sent_email = sender.sent_emails[0]
+    assert sent_email["to"] == "recipient@example.com"
+    assert sent_email["subject"] == "您的 Dify.AI 账户已成功删除"
+    assert "您的 Dify.AI 账户已成功删除" in sent_email["html_content"]
+    assert "30 天后" in sent_email["html_content"]

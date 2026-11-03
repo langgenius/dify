@@ -947,6 +947,69 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByRole('article').querySelector('br')).toBeNull()
   })
 
+  it('renders the returned document summary when its source chunks have no section paths', async () => {
+    chunksQuery.data = {
+      pages: [
+        {
+          items: [
+            chunk({
+              id: 'source-1',
+              ordinal: 0,
+              sectionPath: [],
+              text: 'Knowledge sources ground agents.',
+            }),
+            chunk({
+              id: 'source-2',
+              ordinal: 1,
+              sectionPath: [],
+              text: 'Generative orchestration filters sources.',
+            }),
+          ],
+        },
+      ],
+    }
+    outlineQuery.data = {
+      artifact_hash: 'artifact-hash',
+      created_at: '2026-10-30T09:30:00Z',
+      document_asset_id: 'asset-1',
+      id: 'outline-1',
+      knowledge_space_id: 'space-1',
+      metadata: {},
+      nodes: [
+        {
+          children: [],
+          id: 'document-outline',
+          level: 1,
+          metadata: {},
+          section_path: ['Document'],
+          source_node_ids: ['source-1', 'source-2'],
+          summary: 'Agents use knowledge sources and filter them during orchestration.',
+          title: 'Document',
+          toc_source: 'fallback',
+        },
+      ],
+      outline_version: 'document-outline-v1',
+      parse_artifact_id: 'parse-artifact-1',
+      version: 1,
+    }
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(
+      await screen.findByText('Agents use knowledge sources and filter them during orchestration.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', { name: 'knowledgeDocuments.documentSummary' }),
+    ).toHaveLength(1)
+    expect(within(screen.getByRole('tree')).getAllByRole('treeitem')).toHaveLength(1)
+    expect(
+      within(screen.getByRole('tree')).getByRole('treeitem', { name: 'Document' }),
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { name: 'Document' })).toHaveLength(1)
+    expect(screen.getByText('Knowledge sources ground agents.')).toBeInTheDocument()
+    expect(screen.getByText('Generative orchestration filters sources.')).toBeInTheDocument()
+  })
+
   it('renders collapsible outline summaries and semantic heading levels', async () => {
     const user = userEvent.setup()
     chunksQuery.data = {
@@ -1460,10 +1523,13 @@ describe('DocumentDetailPage', () => {
     await user.type(valueInput, 'security')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(patchDocumentMetadata).toHaveBeenCalledWith({
-      body: { expectedRowVersion: 2, patch: { category: 'security' } },
-      params: { control_space_id: 'space-1', document_id: 'document-1' },
-    })
+    expect(patchDocumentMetadata).toHaveBeenCalledWith(
+      {
+        body: { expectedRowVersion: 2, patch: { category: 'security' } },
+        params: { control_space_id: 'space-1', document_id: 'document-1' },
+      },
+      { context: { silent: true } },
+    )
     await waitFor(() => expect(toastState.success).toHaveBeenCalledWith('common.api.actionSuccess'))
     await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
     expect(queryClient.getQueryState(documentsListKey)?.isInvalidated).toBe(true)
@@ -1527,10 +1593,13 @@ describe('DocumentDetailPage', () => {
     await user.type(valueInput, '42')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(patchDocumentMetadata).toHaveBeenCalledWith({
-      body: { expectedRowVersion: 2, patch: { priority: 42 } },
-      params: { control_space_id: 'space-1', document_id: 'document-1' },
-    })
+    expect(patchDocumentMetadata).toHaveBeenCalledWith(
+      {
+        body: { expectedRowVersion: 2, patch: { priority: 42 } },
+        params: { control_space_id: 'space-1', document_id: 'document-1' },
+      },
+      { context: { silent: true } },
+    )
   })
 
   it('keeps selected number and time metadata empty until the user enters a value', async () => {
@@ -1602,10 +1671,13 @@ describe('DocumentDetailPage', () => {
     expect(metadataFieldsQuery.refetch).toHaveBeenCalledOnce()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(patchDocumentMetadata).toHaveBeenCalledWith({
-      body: { expectedRowVersion: 2, patch: { category: 'product' } },
-      params: { control_space_id: 'space-1', document_id: 'document-1' },
-    })
+    expect(patchDocumentMetadata).toHaveBeenCalledWith(
+      {
+        body: { expectedRowVersion: 2, patch: { category: 'product' } },
+        params: { control_space_id: 'space-1', document_id: 'document-1' },
+      },
+      { context: { silent: true } },
+    )
   })
 
   it('converts UTC metadata timestamps to local datetime input values', async () => {
@@ -1645,14 +1717,20 @@ describe('DocumentDetailPage', () => {
     )
     await user.keyboard('{Enter}')
 
-    expect(createMetadataField).toHaveBeenCalledWith({
-      body: { name: 'priority', type: 'number' },
-      params: { control_space_id: 'space-1' },
-    })
-    expect(patchDocumentMetadata).toHaveBeenCalledWith({
-      body: { expectedRowVersion: 2, patch: { priority: 0 } },
-      params: { control_space_id: 'space-1', document_id: 'document-1' },
-    })
+    expect(createMetadataField).toHaveBeenCalledWith(
+      {
+        body: { name: 'priority', type: 'number' },
+        params: { control_space_id: 'space-1' },
+      },
+      { context: { silent: true } },
+    )
+    expect(patchDocumentMetadata).toHaveBeenCalledWith(
+      {
+        body: { expectedRowVersion: 2, patch: { priority: 0 } },
+        params: { control_space_id: 'space-1', document_id: 'document-1' },
+      },
+      { context: { silent: true } },
+    )
     expect(patchDocumentMetadata).toHaveBeenCalledOnce()
     expect(listLogicalDocuments).not.toHaveBeenCalled()
   })
@@ -1743,9 +1821,7 @@ describe('DocumentDetailPage', () => {
 
     expect(nameInput).toHaveValue('category')
     expect(nameInput).toBeInTheDocument()
-    await waitFor(() =>
-      expect(toastState.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
-    )
+    await waitFor(() => expect(toastState.error).toHaveBeenCalledWith('metadata update failed'))
   })
 
   it('validates a new metadata name before submitting it', async () => {
@@ -3089,10 +3165,13 @@ describe('DocumentDetailPage', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       await waitFor(() =>
-        expect(patchDocumentMetadata).toHaveBeenCalledWith({
-          body: { expectedRowVersion: 2, patch: { category: 'security' } },
-          params: { control_space_id: 'space-1', document_id: 'document-1' },
-        }),
+        expect(patchDocumentMetadata).toHaveBeenCalledWith(
+          {
+            body: { expectedRowVersion: 2, patch: { category: 'security' } },
+            params: { control_space_id: 'space-1', document_id: 'document-1' },
+          },
+          { context: { silent: true } },
+        ),
       )
     })
 
@@ -3142,9 +3221,7 @@ describe('DocumentDetailPage', () => {
 
       const nameInput = await openCreateForm(user)
       await user.type(nameInput, 'priority{Enter}')
-      await waitFor(() =>
-        expect(toastState.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
-      )
+      await waitFor(() => expect(toastState.error).toHaveBeenCalledWith('create failed'))
       expect(patchDocumentMetadata).not.toHaveBeenCalled()
 
       await user.click(
@@ -3162,9 +3239,7 @@ describe('DocumentDetailPage', () => {
 
       const nameInput = await openCreateForm(user)
       await user.type(nameInput, 'priority{Enter}')
-      await waitFor(() =>
-        expect(toastState.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
-      )
+      await waitFor(() => expect(toastState.error).toHaveBeenCalledWith('update failed'))
       metadataFieldsQuery.data = [metadataField({ name: 'priority' })]
 
       await user.click(

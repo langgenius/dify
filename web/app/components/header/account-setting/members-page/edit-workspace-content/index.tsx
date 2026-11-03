@@ -1,7 +1,6 @@
 'use client'
 import type { Ref } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DialogBody,
   DialogClose,
@@ -10,6 +9,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { consoleClient } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type IEditWorkspaceContentProps = {
   inputRef: Ref<HTMLInputElement>
@@ -28,7 +29,6 @@ const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) => {
   const [name, setName] = useState<string>(currentWorkspace.name)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const inputId = useId()
-  const errorId = useId()
   const saveButtonLabelId = useId()
   const normalizedName = name.trim()
   const hasChanges = normalizedName !== currentWorkspace.name
@@ -45,14 +45,19 @@ const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) => {
     if (isSubmitting || isSaveUnavailable) return
     setIsSubmitting(true)
     try {
-      await consoleClient.workspaces.info.post({
-        body: {
-          name: normalizedName,
+      await consoleClient.workspaces.info.post(
+        {
+          body: {
+            name: normalizedName,
+          },
         },
-      })
+        { context: { silent: true } },
+      )
       location.assign(`${location.origin}`)
-    } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -72,34 +77,26 @@ const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) => {
         <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
       </DialogHeader>
 
-      <DialogBody className="space-y-2">
-        <label htmlFor={inputId} className="block text-sm font-medium text-text-primary">
-          {t(($) => $['account.workspaceName'], { ns: 'accountSettings' })}
-        </label>
-        <Input
-          ref={inputRef}
-          id={inputId}
-          value={name}
-          placeholder={t(($) => $['account.workspaceNamePlaceholder'], {
-            ns: 'accountSettings',
-          })}
-          onChange={(e) => {
-            setName(e.target.value)
-          }}
-          aria-invalid={hasError}
-          aria-describedby={hasError ? errorId : undefined}
-          className={cn(
-            hasError &&
-              'border-components-input-border-destructive bg-components-input-bg-destructive hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive focus:border-components-input-border-destructive focus:bg-components-input-bg-destructive',
-          )}
-        />
-        <div className="min-h-6">
-          {hasError && (
-            <p id={errorId} className="system-xs-regular text-text-destructive" role="alert">
-              {nameErrorMessage}
-            </p>
-          )}
-        </div>
+      <DialogBody>
+        <Field invalid={hasError} className="gap-2">
+          <label htmlFor={inputId} className="block text-sm font-medium text-text-primary">
+            {t(($) => $['account.workspaceName'], { ns: 'accountSettings' })}
+          </label>
+          <Input
+            ref={inputRef}
+            id={inputId}
+            value={name}
+            placeholder={t(($) => $['account.workspaceNamePlaceholder'], {
+              ns: 'accountSettings',
+            })}
+            onChange={(e) => {
+              setName(e.target.value)
+            }}
+          />
+          <div className="min-h-6">
+            <FieldError match={hasError}>{nameErrorMessage}</FieldError>
+          </div>
+        </Field>
       </DialogBody>
 
       <DialogFooter>

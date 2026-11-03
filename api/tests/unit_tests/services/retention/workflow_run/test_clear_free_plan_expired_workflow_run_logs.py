@@ -6,11 +6,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy.orm import Session
 
-from enums import CloudPlan, DeploymentEdition
+from enums import DeploymentEdition
 from repositories.api_workflow_run_repository import WorkflowRunCleanupRef
-from services.billing_service import SubscriptionPlan
+from services.billing_client.billing import SubscriptionPlanItem
 from services.retention.workflow_run import clear_free_plan_expired_workflow_run_logs as cleanup_module
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
+from tests.helpers import billing_builders as builders
 
 """
 Unit tests for WorkflowRunCleanup service.
@@ -172,25 +173,25 @@ class TestClearFreePlanExpiredWorkflowRunLogsCases:
     class TestIsWithinGracePeriod:
         def test_zero_grace_period_returns_false(self, cleanup):
             cleanup.free_plan_grace_period_days = 0
-            assert cleanup._is_within_grace_period("t1", {"expiration_date": 9999999999}) is False
+            assert cleanup._is_within_grace_period("t1", builders.plan_item(expiration_date=9999999999)) is False
 
         def test_within_grace_period(self, cleanup):
             cleanup.free_plan_grace_period_days = 30
             # expired just 1 day ago
             expired = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=1)
             ts = int(expired.timestamp())
-            assert cleanup._is_within_grace_period("t1", {"expiration_date": ts}) is True
+            assert cleanup._is_within_grace_period("t1", builders.plan_item(expiration_date=ts)) is True
 
         def test_outside_grace_period(self, cleanup):
             cleanup.free_plan_grace_period_days = 5
             # expired 100 days ago
             expired = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=100)
             ts = int(expired.timestamp())
-            assert cleanup._is_within_grace_period("t1", {"expiration_date": ts}) is False
+            assert cleanup._is_within_grace_period("t1", builders.plan_item(expiration_date=ts)) is False
 
         def test_missing_expiration_date_returns_false(self, cleanup):
             cleanup.free_plan_grace_period_days = 30
-            assert cleanup._is_within_grace_period("t1", {"expiration_date": -1}) is False
+            assert cleanup._is_within_grace_period("t1", builders.plan_item(expiration_date=-1)) is False
 
     # ---------------------------------------------------------------------------
     # _get_cleanup_whitelist
@@ -249,8 +250,8 @@ class TestClearFreePlanExpiredWorkflowRunLogsCases:
                 "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
             ) as bs:
                 bs.get_plan_bulk_with_cache.return_value = {
-                    "t1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
-                    "t2": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                    "t1": builders.plan_item("sandbox", -1),
+                    "t2": builders.plan_item("sandbox", -1),
                 }
                 result = c._filter_free_tenants(["t1", "t2"])
             assert "t1" not in result
@@ -264,7 +265,7 @@ class TestClearFreePlanExpiredWorkflowRunLogsCases:
                 "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.BillingService"
             ) as bs:
                 bs.get_plan_bulk_with_cache.return_value = {
-                    "t1": {"plan": "professional", "expiration_date": -1},
+                    "t1": builders.plan_item("professional", -1),
                 }
                 result = c._filter_free_tenants(["t1"])
             assert result == set()
@@ -545,8 +546,8 @@ class FakeRepo:
         return result
 
 
-def plan_info(plan: str, expiration: int) -> SubscriptionPlan:
-    return SubscriptionPlan(plan=plan, expiration_date=expiration)
+def plan_info(plan: str, expiration: int) -> SubscriptionPlanItem:
+    return builders.plan_item(plan, expiration)
 
 
 def create_cleanup(
@@ -577,7 +578,7 @@ class TestClearFreePlanExpiredWorkflowRunLogsCasesServices:
     def test_filter_free_tenants_outside_cloud_edition(monkeypatch: pytest.MonkeyPatch) -> None:
         cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
-        def fail_bulk(_: list[str]) -> dict[str, SubscriptionPlan]:
+        def fail_bulk(_: list[str]) -> dict[str, SubscriptionPlanItem]:
             raise RuntimeError("should not call")
 
         monkeypatch.setattr(cleanup_module.BillingService, "get_plan_bulk_with_cache", staticmethod(fail_bulk))
@@ -623,7 +624,7 @@ class TestClearFreePlanExpiredWorkflowRunLogsCasesServices:
         within_grace_ts = int((now - datetime.timedelta(days=10)).timestamp())
         outside_grace_ts = int((now - datetime.timedelta(days=90)).timestamp())
 
-        def fake_bulk(_: list[str]) -> dict[str, SubscriptionPlan]:
+        def fake_bulk(_: list[str]) -> dict[str, SubscriptionPlanItem]:
             return {
                 "recently_downgraded": plan_info("sandbox", within_grace_ts),
                 "long_sandbox": plan_info("sandbox", outside_grace_ts),
@@ -731,7 +732,7 @@ class TestClearFreePlanExpiredWorkflowRunLogsCasesServices:
 
         billing_calls: list[list[str]] = []
 
-        def fake_bulk(tenant_ids: list[str]) -> dict[str, SubscriptionPlan]:
+        def fake_bulk(tenant_ids: list[str]) -> dict[str, SubscriptionPlanItem]:
             billing_calls.append(tenant_ids)
             return {
                 "t_free": plan_info("sandbox", -1),
