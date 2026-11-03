@@ -577,6 +577,8 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         transaction (see ``invoke``). Ordinary node factories supply their
         actual workflow ID for Tool-time draft setup checks; confirmed factories
         never use it, and published child versions retain native delegation.
+        Only contexts without Builder execution markers may reuse the explicit
+        credential already bound to a saved workflow node.
         """
         if confirmed_guard is not None and confirmed_guard_factory is not None:
             raise BuilderExecutionPolicyError("invalid_confirmed_configuration")
@@ -636,6 +638,14 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                     draft_options["builder_credential_refreshed"] = self._credential_refresh_recorder(node_id)
                 if self._workflow_id is not None:
                     draft_options["draft_tool_workflow_id"] = self._workflow_id
+                    draft_options["allow_draft_credential_delegation"] = (
+                        bindings is None
+                        and self._run_context.builder_execution is None
+                        and self._run_context.builder_agent_execution is None
+                        and not self._run_context.builder_mocked_node_ids
+                        and self._run_context.native_test_ref is None
+                        and not self._run_context.native_test_required
+                    )
                 tool_runtime = ToolManager.get_workflow_tool_runtime(
                     self._run_context.tenant_id,
                     self._run_context.app_id,

@@ -406,7 +406,7 @@ def test_native_default_hidden_credential_is_not_replaced_by_some_visible_creden
     assert native_draft.tools.forbidden == []
 
 
-@pytest.mark.parametrize("selection", ["hidden", "foreign", "wrong-provider", "deleted", "revoked-grant", "malformed"])
+@pytest.mark.parametrize("selection", ["foreign", "wrong-provider", "deleted", "malformed"])
 @pytest.mark.parametrize("operation", ["workflow-full", "node", "publish"])
 def test_exact_selected_credential_requires_the_complete_actor_provider_tenant_chain(
     native_draft: NativeDraftCase,
@@ -874,7 +874,7 @@ def test_native_tool_rechecks_selection_after_run_admission(
         credential.provider = FREE_PROVIDER
     sqlite_session.commit()
     monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
-    node, pool = native_tool_node(native_draft)
+    node, pool = native_tool_node(native_draft, credential_bindings={})
     revoked_between_reads: list[bool] = []
 
     def revoke_before_native_value_read(state: ORMExecuteState) -> None:

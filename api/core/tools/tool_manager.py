@@ -104,15 +104,17 @@ class WorkflowToolRuntimeSpec(Protocol):
 
 
 class WorkflowToolRuntimeKwargs(TypedDict, total=False):
-    """Internal optional native draft bindings; ordinary callers omit them."""
+    """Internal draft scope and authorization mode supplied by the native factory."""
 
     draft_tool_workflow_id: str
+    allow_draft_credential_delegation: bool
     builder_expected_credential_fingerprint: str
     builder_credential_refreshed: Callable[[str], None] | None
 
 
 class _DraftToolRuntimeKwargs(WorkflowToolRuntimeKwargs, total=False):
     draft_tool_app_id: str
+    draft_tool_node_id: str
 
 
 class ToolCredentialResolver(Protocol):
@@ -237,6 +239,8 @@ class ToolManager:
         *,
         confirmed_guard: ConfirmedToolGuard | None = None,
         draft_tool_workflow_id: str | None = None,
+        draft_tool_node_id: str | None = None,
+        allow_draft_credential_delegation: bool = False,
         builder_expected_credential_fingerprint: str | None = None,
         builder_credential_refreshed: Callable[[str], None] | None = None,
         draft_tool_app_id: str | None = None,
@@ -262,6 +266,10 @@ class ToolManager:
             ordinary debugger drafts recheck setup at Tool resolution. Published
             children keep delegation even if debugger invocation is inherited.
         :param draft_tool_app_id: actual native app owner for that workflow scope
+        :param draft_tool_node_id: actual node whose persisted credential binding is checked
+        :param allow_draft_credential_delegation: only ordinary native workflows may
+            reuse an explicit credential bound to this saved node; direct and Builder
+            callers retain actor-visible selection by default
         :param json_provider_validator: trusted JSON service callback checking the
             actual native controller and tool before any credential branch
 
@@ -271,6 +279,8 @@ class ToolManager:
             confirmed_guard is not None
             or draft_tool_workflow_id is not None
             or draft_tool_app_id is not None
+            or draft_tool_node_id is not None
+            or allow_draft_credential_delegation
             or credential_id is not None
             or provider_type != ToolProviderType.BUILT_IN
         ):
@@ -301,6 +311,8 @@ class ToolManager:
                 provider=provider_id,
                 action=tool_name,
                 credential_id=credential_id,
+                node_id=draft_tool_node_id,
+                allow_workflow_delegation=allow_draft_credential_delegation,
                 expected_credential_fingerprint=builder_expected_credential_fingerprint,
                 on_credential_refreshed=builder_credential_refreshed,
             )
@@ -705,6 +717,7 @@ class ToolManager:
         *,
         confirmed_guard: ConfirmedToolGuard | None = None,
         draft_tool_workflow_id: str | None = None,
+        allow_draft_credential_delegation: bool = False,
         builder_expected_credential_fingerprint: str | None = None,
         builder_credential_refreshed: Callable[[str], None] | None = None,
         execution_driver: "WorkflowRunDriver | None" = None,
@@ -719,6 +732,8 @@ class ToolManager:
         guard checks the complete final envelope. ``draft_tool_workflow_id``
         comes only from the ordinary native node factory; it never changes the
         confirmed early branch or grants authority from graph/client markers.
+        Delegation is opt-in for ordinary native workflows and remains restricted
+        to the explicit credential on this exact persisted node.
         """
         if confirmed_guard is not None:
             return cls.get_tool_runtime(
@@ -740,6 +755,8 @@ class ToolManager:
         if draft_tool_workflow_id is not None:
             draft_options["draft_tool_workflow_id"] = draft_tool_workflow_id
             draft_options["draft_tool_app_id"] = app_id
+            draft_options["draft_tool_node_id"] = node_id
+            draft_options["allow_draft_credential_delegation"] = allow_draft_credential_delegation
 
         if workflow_tool_definition is None:
             tool_runtime = cls.get_tool_runtime(

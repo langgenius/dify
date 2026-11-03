@@ -69,7 +69,7 @@ def resolve_ordinary_tool_credentials(
 
         with Session(db.engine) as session:
             builtin_provider = session.scalar(
-                constrain_draft_tool_credential_read(select(BuiltinToolProvider), draft_selection)
+                constrain_draft_tool_credential_read(select(BuiltinToolProvider), draft_selection, session=session)
             )
         if builtin_provider is None:
             raise ToolProviderCredentialValidationError(

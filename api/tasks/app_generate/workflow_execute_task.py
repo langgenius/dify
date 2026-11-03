@@ -43,6 +43,7 @@ from services.dify_builder.application.execution_policy import BuilderExecutionC
 from services.dify_builder.native_testing.native_execution import dispatch_native_worker
 from services.tools.draft_tool_setup import admit_draft_tool_setup, admit_resumed_draft_tool_setup
 from services.workflow_execution_identity import build_workflow_execution_identity
+from services.workflow_ref_service import WorkflowRef
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_runtime.chatflow_generator import AdvancedChatAppGenerator
 from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
@@ -232,7 +233,12 @@ class _AppRunner:
             # Request-time admission can go stale in a queue. Closed read
             # sessions above supplied the current draft/user; no writes or
             # native effects precede this fresh worker metadata check.
-            admit_draft_tool_setup(tenant_id=app.tenant_id, graph=workflow.graph_dict, actor_id=user.id)
+            admit_draft_tool_setup(
+                tenant_id=app.tenant_id,
+                graph=workflow.graph_dict,
+                actor_id=user.id,
+                workflow_ref=WorkflowRef(app.tenant_id, app.id, workflow.id),
+            )
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                 app_model=app,

@@ -100,6 +100,7 @@ from services.system_feature_service import SystemFeatureService
 from services.tools.draft_tool_setup import (
     DraftToolDeclarations,
     admit_draft_tool_setup,
+    draft_tool_execution_graph,
     prepare_tool_declarations,
     validate_tool_setup,
 )
@@ -820,6 +821,9 @@ class WorkflowService:
             graph=draft_workflow.graph_dict,
             actor_id=account.id,
             declarations=declarations,
+            workflow_ref=WorkflowRef(app_model.tenant_id, app_model.id, draft_workflow.id)
+            if expected_draft_id is None
+            else None,
         )
 
         # Preserve Enterprise credential policy in addition to actor/setup admission.
@@ -1296,8 +1300,9 @@ class WorkflowService:
             raise ValueError("Draft workflow does not belong to this app.")
         admit_draft_tool_setup(
             tenant_id=app_model.tenant_id,
-            graph=draft_workflow.graph_dict,
+            graph=draft_tool_execution_graph(draft_workflow.graph_dict, node_id),
             actor_id=account.id,
+            workflow_ref=WorkflowRef(app_model.tenant_id, app_model.id, draft_workflow.id),
         )
         files = files or []
         node_config = draft_workflow.get_node_config_by_id(node_id)

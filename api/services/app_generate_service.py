@@ -39,8 +39,9 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
-from services.tools.draft_tool_setup import admit_draft_tool_setup
+from services.tools.draft_tool_setup import admit_draft_tool_setup, draft_tool_execution_graph
 from services.workflow_execution_identity import build_workflow_execution_identity
+from services.workflow_ref_service import WorkflowRef
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_runtime.chatflow_generator import AdvancedChatAppGenerator
 from services.workflow_runtime.workflow_generator import BuilderExecutionAdmission, WorkflowAppGenerator
@@ -443,7 +444,13 @@ class AppGenerateService:
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
                 if builder_execution is None:
                     cls._admit_normal_draft_tools(
-                        app_model=app_model, workflow=workflow, user=user, invoke_from=invoke_from
+                        app_model=app_model,
+                        workflow=workflow,
+                        user=user,
+                        invoke_from=invoke_from,
+                        allow_workflow_delegation=builder_tool_credential_bindings is None
+                        and builder_expected_revision is None
+                        and not builder_mocked_node_ids,
                     )
 
                 if streaming and workflow_execution_mode == "celery":
@@ -518,7 +525,14 @@ class AppGenerateService:
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
                 if builder_execution is None:
                     cls._admit_normal_draft_tools(
-                        app_model=app_model, workflow=workflow, user=user, invoke_from=invoke_from
+                        app_model=app_model,
+                        workflow=workflow,
+                        user=user,
+                        invoke_from=invoke_from,
+                        allow_workflow_delegation=builder_tool_credential_bindings is None
+                        and builder_agent_execution is None
+                        and builder_expected_revision is None
+                        and not builder_mocked_node_ids,
                     )
                 if builder_execution is not None:
                     restricted_admission_snapshot(workflow, app_model)
@@ -598,13 +612,25 @@ class AppGenerateService:
         workflow: Workflow,
         user: Account | EndUser,
         invoke_from: InvokeFrom,
+        node_id: str | None = None,
+        allow_workflow_delegation: bool = True,
     ) -> None:
         """Ordinary draft metadata gate; published delegation and Builder grants stay separate."""
         if invoke_from != InvokeFrom.DEBUGGER or workflow.version != Workflow.VERSION_DRAFT:
             return
         if not isinstance(user, Account):
             raise ValueError("Draft execution requires the acting workspace member.")
-        admit_draft_tool_setup(tenant_id=app_model.tenant_id, graph=workflow.graph_dict, actor_id=user.id)
+        graph = workflow.graph_dict
+        if node_id is not None:
+            graph = draft_tool_execution_graph(graph, node_id)
+        admit_draft_tool_setup(
+            tenant_id=app_model.tenant_id,
+            graph=graph,
+            actor_id=user.id,
+            workflow_ref=WorkflowRef(app_model.tenant_id, app_model.id, workflow.id)
+            if allow_workflow_delegation
+            else None,
+        )
 
     @staticmethod
     def _ensure_workflow_service_mode_available(*, workflow: Workflow, invoke_from: InvokeFrom) -> None:
@@ -653,6 +679,7 @@ class AppGenerateService:
                     workflow=workflow,
                     user=user,
                     invoke_from=InvokeFrom.DEBUGGER,
+                    node_id=node_id,
                 )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
@@ -672,6 +699,7 @@ class AppGenerateService:
                     workflow=workflow,
                     user=user,
                     invoke_from=InvokeFrom.DEBUGGER,
+                    node_id=node_id,
                 )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
@@ -711,6 +739,7 @@ class AppGenerateService:
                     workflow=workflow,
                     user=user,
                     invoke_from=InvokeFrom.DEBUGGER,
+                    node_id=node_id,
                 )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
@@ -730,6 +759,7 @@ class AppGenerateService:
                     workflow=workflow,
                     user=user,
                     invoke_from=InvokeFrom.DEBUGGER,
+                    node_id=node_id,
                 )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
