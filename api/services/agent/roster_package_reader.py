@@ -349,14 +349,14 @@ class RosterAgentPackageReader:
             raise InvalidRosterAgentPackageError(f"Roster Agent package {path} failed integrity checks")
         try:
             # The custom SafeLoader also rejects duplicate keys and aliases.
-            return yaml.load(payload, Loader=_PackageYamlLoader), size  # noqa: S506
+            return yaml.load(payload, Loader=PackageYamlLoader), size  # noqa: S506
         except (UnicodeDecodeError, yaml.YAMLError, ValueError, RecursionError) as exc:
             raise InvalidRosterAgentPackageError(
                 f"Roster Agent package {path.removesuffix('.yaml')} is invalid"
             ) from exc
 
 
-class _PackageYamlLoader(yaml.SafeLoader):
+class PackageYamlLoader(yaml.SafeLoader):
     """Reject ambiguous mappings and aliases in untrusted package documents."""
 
     @override
@@ -378,4 +378,4 @@ class _PackageYamlLoader(yaml.SafeLoader):
         return result
 
 
-__all__ = ["RosterAgentPackageReader"]
+__all__ = ["PackageYamlLoader", "RosterAgentPackageReader"]
