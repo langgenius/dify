@@ -21,6 +21,7 @@ PGVECTOR_DATABASE=${PGVECTOR_DATABASE-${PGVECTOR_POSTGRES_DB:-dify}}
 # Container variable mappings; keep these expressions unchanged in the copy.
 PGDATA=${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
 PGUSER=${PGVECTOR_PGUSER:-postgres}
+POSTGRES_USER=${PGVECTOR_PGUSER:-postgres}
 PG_BIGM=${PGVECTOR_PG_BIGM:-false}
 PG_BIGM_VERSION=${PGVECTOR_PG_BIGM_VERSION:-1.2-20240606}
 POSTGRES_DB=${PGVECTOR_POSTGRES_DB:-dify}

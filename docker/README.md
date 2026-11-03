@@ -181,8 +181,8 @@ overrides remain supported. Keep `VECTOR_STORE` in root `.env`, since Compose
 selects the defaults file before reading service files.
 
 For an external vector store, omit its bundled profile and provide its connection
-settings and credentials. The bundled defaults describe the bundled server;
-changing client credentials does not change an existing database user's password.
+settings and credentials. For databases with stored user passwords, change the
+password in the database before updating the corresponding client setting.
 Starting a different database or vector store does not migrate existing data.
 
 For example, the default deployment selects PostgreSQL and Weaviate with

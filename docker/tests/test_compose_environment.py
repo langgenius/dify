@@ -336,6 +336,11 @@ class ComposeEnvironmentTests(unittest.TestCase):
         root = self.project / ".env"
         original = root.read_text()
         cases = (
+            ("qdrant", "QDRANT_API_KEY", "QDRANT_API_KEY", "qdrant", "QDRANT__SERVICE__API_KEY"),
+            ("pgvector", "PGVECTOR_PGUSER", "PGVECTOR_USER", "pgvector", "POSTGRES_USER"),
+            ("pgvector", "PGVECTOR_POSTGRES_DB", "PGVECTOR_DATABASE", "pgvector", "POSTGRES_DB"),
+            ("pgvecto-rs", "PGVECTOR_PGUSER", "PGVECTO_RS_USER", "pgvecto-rs", "POSTGRES_USER"),
+            ("pgvecto-rs", "PGVECTOR_POSTGRES_DB", "PGVECTO_RS_DATABASE", "pgvecto-rs", "POSTGRES_DB"),
             (
                 "pgvector",
                 "PGVECTOR_POSTGRES_PASSWORD",

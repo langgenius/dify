@@ -17,5 +17,6 @@ PGVECTO_RS_DATABASE=${PGVECTO_RS_DATABASE-${PGVECTOR_POSTGRES_DB:-dify}}
 # Container variable mappings; keep these expressions unchanged in the copy.
 PGDATA=${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
 PGUSER=${PGVECTOR_PGUSER:-postgres}
+POSTGRES_USER=${PGVECTOR_PGUSER:-postgres}
 POSTGRES_DB=${PGVECTOR_POSTGRES_DB:-dify}
 POSTGRES_PASSWORD=${PGVECTOR_POSTGRES_PASSWORD:-difyai123456}

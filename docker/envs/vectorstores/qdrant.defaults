@@ -14,3 +14,6 @@ QDRANT_URL=${QDRANT_URL-http://qdrant:6333}
 # QDRANT_GRPC_ENABLED=false
 # QDRANT_GRPC_PORT=6334
 # QDRANT_REPLICATION_FACTOR=1
+
+# Container variable mapping; keep this expression unchanged in the copy.
+QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY-difyai123456}
