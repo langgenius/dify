@@ -14,7 +14,8 @@ from configs import dify_config
 from libs.archive_writer import ArchiveEntry, ArchiveLimits
 from models.model import AppMode
 from services.dsl_content import DSL_MAX_SIZE
-from services.workflow.authoring.canvas_notes import fill_canvas_notes
+from services.workflow.authoring.canvas_layout import lay_out_nodes
+from services.workflow.authoring.canvas_notes import fill_canvas_notes, fill_note_covers
 from services.workflow.authoring.graph_wiring import fill_graph_wiring
 from services.workflow.authoring.package_io import (
     APP_PATH,
@@ -145,7 +146,8 @@ def fill_graph_document(document: dict[str, Any], ctx: FillContext) -> None:
     for node in nodes if isinstance(nodes, list) else []:
         _fill_node(node, ctx)
     fill_graph_wiring(graph)
-    fill_canvas_notes(graph)
+    fill_note_covers(graph)
+    fill_canvas_notes(graph, moves=lay_out_nodes(graph))
 
 
 def _fill_node(node: object, ctx: FillContext) -> None:

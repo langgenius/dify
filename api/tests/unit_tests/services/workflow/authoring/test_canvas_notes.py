@@ -1,6 +1,7 @@
 import copy
 import itertools
 import json
+import math
 from pathlib import Path
 from typing import TypedDict
 
@@ -138,16 +139,43 @@ def test_a_note_is_never_smaller_than_the_resizer_allows() -> None:
     assert note["height"] == max(1 + 2 * NOTE_PADDING + NOTE_TEXT_ROOM, NoteSize.HEIGHT.minimum)
 
 
-def test_a_size_or_position_the_caller_wrote_is_kept() -> None:
-    placed = _note("intake", "start", "first", width=500)
-    placed["position"] = {"x": 1.0, "y": 2.0}
+def test_a_note_is_framed_again_wherever_it_was_and_whatever_its_size() -> None:
+    stale = _note("intake", "start", "first", width=500, height=20)
+    stale.update(position={"x": 1.0, "y": 2.0}, width=500, height=20)
 
-    note = _filled(placed)["intake"]
+    nodes = _filled(stale)
 
-    assert note["position"] == {"x": 1.0, "y": 2.0}
-    assert note["width"] == 500
-    assert note["data"]["width"] == 500
-    assert note["height"] == note["data"]["height"]
+    note = nodes["intake"]
+    assert _placed(note) == _frame(nodes["start"], nodes["first"])
+    assert (note["data"]["width"], note["data"]["height"]) == (note["width"], note["height"])
+
+
+def test_a_note_drawn_over_nodes_gets_them_as_covers_and_frames_them() -> None:
+    chain = _chain()
+    first = _fill(chain)["first"]["position"]
+    over = _note("over")
+    del over["data"]["covers"]
+    over.update(position={"x": first["x"] - 10, "y": first["y"] - 10}, width=NODE_WIDTH + 20, height=NODE_HEIGHT + 20)
+
+    nodes = _fill([*chain, over])
+
+    assert nodes["over"]["data"]["covers"] == ["first"]
+    assert _placed(nodes["over"]) == _frame(nodes["first"])
+
+
+def test_a_note_beside_the_nodes_moves_as_far_as_the_nearest_node() -> None:
+    beside = _note("beside")
+    del beside["data"]["covers"]
+    beside.update(position={"x": 30.0, "y": 600.0}, width=240, height=88)
+    chain = _chain(beside)
+    for index, node in enumerate(chain[: len(CHAIN)]):
+        node["position"] = {"x": 30.0 + 300 * index, "y": 300.0}
+
+    nodes = _fill(chain)
+
+    start = nodes["start"]["position"]
+    assert "covers" not in nodes["beside"]["data"]
+    assert nodes["beside"]["position"] == {"x": start["x"], "y": 600.0 + start["y"] - 300.0}
 
 
 @pytest.mark.parametrize(
@@ -206,15 +234,31 @@ def test_filling_twice_gives_the_same_graph() -> None:
     assert twice == once
 
 
-def test_console_notes_are_unchanged() -> None:
+def _centre(node: _Node) -> tuple[float, float]:
+    width, height = node.get("width", NODE_WIDTH), node.get("height", NODE_HEIGHT)
+    return node["position"]["x"] + width / 2, node["position"]["y"] + height / 2
+
+
+def _offset(note: _Node, node: _Node) -> tuple[float, float]:
+    return note["position"]["x"] - node["position"]["x"], note["position"]["y"] - node["position"]["y"]
+
+
+def test_console_notes_keep_their_text_and_size_and_their_place_beside_the_nearest_node() -> None:
     document = yaml.safe_load((FIXTURES / NOTES_EXPORT).read_text())
-    notes = [node for node in document["workflow"]["graph"]["nodes"] if node.get("type") == CANVAS_NOTE_TYPE]
-    expected = copy.deepcopy(notes)
+    graph = document["workflow"]["graph"]
+    notes = [node for node in graph["nodes"] if node.get("type") == CANVAS_NOTE_TYPE]
+    top_level = [node for node in graph["nodes"] if node.get("type") != CANVAS_NOTE_TYPE and not node.get("parentId")]
+    before = copy.deepcopy(notes)
+    nearest = [min(top_level, key=lambda node, note=note: math.dist(_centre(node), _centre(note))) for note in notes]
+    offsets = list(itertools.starmap(_offset, zip(notes, nearest, strict=True)))
 
     fill_graph_document(document, CTX)
 
     assert notes
-    assert notes == expected
+    for note, old, node, offset in zip(notes, before, nearest, offsets, strict=True):
+        assert note["data"] == old["data"]
+        assert (note["width"], note["height"]) == (old["width"], old["height"])
+        assert _offset(note, node) == pytest.approx(offset)
 
 
 def test_lexical_text_matches_the_console_note_of_the_same_text() -> None:

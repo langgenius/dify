@@ -22,6 +22,7 @@ from services.app.console_service import ConsoleAppNotFoundError
 from services.tools.tool_sources import resolve_tool
 from services.workflow.authoring import FillContext, PackageCheck, check_package, fill_package, tool_reference
 from services.workflow.authoring.checks import _CHECKS, AuthoringIssue, AuthoringIssueCode, Check, DslCheckRequest
+from services.workflow.authoring.fill import fill_graph_document
 from services.workflow.authoring.package_io import PackageUnreadableError, new_manifest, read_package_entries
 from services.workflow.dsl_import import DslImportService, DslNotCheckableError
 from services.workflow.graph_check import CANVAS_NOTE_TYPE, IssueCode, IssueSeverity, check_graph
@@ -503,7 +504,9 @@ def test_check_refuses_environment_variables_the_dsl_check_cannot_read(dsl: DslC
 
 
 def test_an_app_yaml_fill_leaves_as_utf_16_is_refused(dsl: DslCheckRequest) -> None:
-    app_yaml = (FIXTURES / "simple_passthrough_workflow.yml").read_text().encode("utf-16")
+    document = yaml.safe_load((FIXTURES / "simple_passthrough_workflow.yml").read_text())
+    fill_graph_document(document, CTX)
+    app_yaml = yaml.dump(document, allow_unicode=True).encode("utf-16")
     archive = io.BytesIO()
     with zipfile.ZipFile(archive, "w") as package:
         package.writestr(APP, app_yaml)
@@ -621,7 +624,8 @@ def test_a_note_without_covers_is_valid(dsl: DslCheckRequest) -> None:
 
 
 def test_a_note_below_the_resizer_minimum_is_a_warning(dsl: DslCheckRequest) -> None:
-    check = _check(dsl, [START, END, _note(width=100, height=40)], [{"source": "start", "target": "end"}])
+    small = {**_note(width=100, height=40, covers=[]), "position": {"x": 0, "y": 0}}
+    check = _check(dsl, [START, END, small], [{"source": "start", "target": "end"}])
     issues = [issue for issue in check.issues if issue.code in NOTE_CODES]
 
     assert _note_locs(issues) == {

@@ -34,33 +34,34 @@ _MAX_REPORTED_ISSUES = 10
 logger = logging.getLogger(__name__)
 
 
-def _ids(items: object, key: str) -> frozenset[str]:
+def _ids(items: object, key: str) -> tuple[str, ...]:
     if not isinstance(items, list):
-        return frozenset()
-    return frozenset(str(item[key]) for item in items if isinstance(item, Mapping) and item.get(key) is not None)
+        return ()
+    ids = (str(item[key]) for item in items if isinstance(item, Mapping) and item.get(key) is not None)
+    return tuple(dict.fromkeys(ids))
 
 
-def _if_else_handles(data: Mapping[str, Any]) -> frozenset[str]:
+def _if_else_handles(data: Mapping[str, Any]) -> tuple[str, ...]:
     cases = data.get("cases")
-    return (_ids(cases, "case_id") if isinstance(cases, list) else frozenset({_LEGACY_IF_HANDLE})) | {_ELSE_HANDLE}
+    return (*(_ids(cases, "case_id") if isinstance(cases, list) else (_LEGACY_IF_HANDLE,)), _ELSE_HANDLE)
 
 
-def _question_classifier_handles(data: Mapping[str, Any]) -> frozenset[str]:
+def _question_classifier_handles(data: Mapping[str, Any]) -> tuple[str, ...]:
     return _ids(data.get("classes"), "id")
 
 
-def _human_input_handles(data: Mapping[str, Any]) -> frozenset[str]:
-    return _ids(data.get("user_actions"), "id") | {TIMEOUT_HANDLE}
+def _human_input_handles(data: Mapping[str, Any]) -> tuple[str, ...]:
+    return (*_ids(data.get("user_actions"), "id"), TIMEOUT_HANDLE)
 
 
-def _agent_route_handles(data: Mapping[str, Any]) -> frozenset[str] | None:
+def _agent_route_handles(data: Mapping[str, Any]) -> tuple[str, ...] | None:
     routes = data.get("agent_output_routes")
     if not isinstance(routes, Mapping) or routes.get("enabled") is not True:
         return None
     return _ids(routes.get("routes"), "id")
 
 
-_BRANCH_HANDLES: Final[Mapping[str, Callable[[Mapping[str, Any]], frozenset[str] | None]]] = {
+_BRANCH_HANDLES: Final[Mapping[str, Callable[[Mapping[str, Any]], tuple[str, ...] | None]]] = {
     BuiltinNodeTypes.IF_ELSE: _if_else_handles,
     BuiltinNodeTypes.QUESTION_CLASSIFIER: _question_classifier_handles,
     BuiltinNodeTypes.HUMAN_INPUT: _human_input_handles,
@@ -74,11 +75,23 @@ def branch_handles(data: Mapping[str, Any]) -> frozenset[str] | None:
     A fail-branch node can also leave by ``fail-branch``: a branch node beside its own handles, any other node
     beside ``source``.
     """
-    read = _BRANCH_HANDLES.get(str(data.get("type")))
-    handles = read(data) if read else None
+    if _own_handles(data) is None and data.get("error_strategy") != ErrorStrategy.FAIL_BRANCH:
+        return None
+    return frozenset(source_handle_order(data))
+
+
+def source_handle_order(data: Mapping[str, Any]) -> tuple[str, ...]:
+    """Every source handle the node has, in the order the canvas draws them, top first."""
+    own = _own_handles(data)
+    handles = own if own is not None else (SOURCE_HANDLE,)
     if data.get("error_strategy") != ErrorStrategy.FAIL_BRANCH:
         return handles
-    return (handles if handles is not None else frozenset({SOURCE_HANDLE})) | {_FAIL_BRANCH_HANDLE}
+    return (*handles, _FAIL_BRANCH_HANDLE)
+
+
+def _own_handles(data: Mapping[str, Any]) -> tuple[str, ...] | None:
+    read = _BRANCH_HANDLES.get(str(data.get("type")))
+    return read(data) if read else None
 
 
 @dataclass(frozen=True)

@@ -1,4 +1,4 @@
-"""Canvas notes an agent writes: plain text becomes the editor's text, and a note sits under the nodes it covers."""
+"""Canvas notes: plain text becomes the editor's text, and a note sits under the nodes it covers."""
 
 import json
 from collections.abc import Callable, Mapping, Sequence
@@ -11,6 +11,7 @@ from services.workflow.graph_check import CANVAS_NOTE_TYPE
 COVERS_KEY: Final = "covers"
 TEXT_KEY: Final = "text"
 POSITION_KEY: Final = "position"
+POSITION_ABSOLUTE_KEY: Final = "positionAbsolute"
 _PARENT_KEY: Final = "parentId"
 # The data type the canvas writes for a note: a note runs nothing, so it names no node type.
 NOTE_DATA_TYPE: Final = ""
@@ -100,6 +101,8 @@ class _Extent:
 
 
 type _Box = Mapping[NoteSize, _Extent]
+# How far each node moved, by id, on each axis ("x", "y").
+type Moves = Mapping[str, Mapping[str, float]]
 
 
 def is_note(node: object) -> TypeGuard[dict[str, Any]]:
@@ -123,9 +126,10 @@ def coverable_nodes(nodes: Sequence[object]) -> dict[str, Mapping[str, Any]]:
     }
 
 
-def fill_canvas_notes(graph: dict[str, Any]) -> None:
+def fill_canvas_notes(graph: dict[str, Any], *, moves: Moves) -> None:
     """Fill each note in place: plain text becomes the editor's text, and a note whose `covers` all name nodes with
-    a position gets the size and position that frame them. A value already set is kept.
+    a position is framed around them, replacing any size and position it had. Any other note moves as far as the
+    node nearest it did, by `moves`.
     """
     nodes = graph.get("nodes")
     if not isinstance(nodes, list):
@@ -134,7 +138,36 @@ def fill_canvas_notes(graph: dict[str, Any]) -> None:
     for note in nodes:
         if is_note(note):
             _fill_text(note["data"])
-            _fill_frame(note, coverable)
+            if not _fill_frame(note, coverable):
+                _follow_nearest(note, coverable, moves)
+
+
+def fill_note_covers(graph: dict[str, Any]) -> None:
+    """Give each note without `covers` the top-level nodes whose centre it is drawn over, so it can follow them when
+    the nodes move. A note over no node is left as it is.
+    """
+    nodes = graph.get("nodes")
+    if not isinstance(nodes, list):
+        return
+    coverable = coverable_nodes(nodes)
+    for note in nodes:
+        if is_note(note) and COVERS_KEY not in note["data"]:
+            covered = _nodes_under(note, coverable)
+            if covered:
+                note["data"][COVERS_KEY] = covered
+
+
+def _nodes_under(note: Mapping[str, Any], coverable: Mapping[str, Mapping[str, Any]]) -> list[str]:
+    frame = _box(note, sizes=(note, note["data"]))
+    if frame is None:
+        return []
+    return [node_id for node_id, node in coverable.items() if _centre_inside(_box(node), frame)]
+
+
+def _centre_inside(box: _Box | None, frame: _Box) -> bool:
+    if box is None:
+        return False
+    return all(frame[size].start <= _centre(box[size]) <= frame[size].start + frame[size].length for size in NoteSize)
 
 
 class _LexicalType(StrEnum):
@@ -229,27 +262,52 @@ def _fill_text(data: dict[str, Any]) -> None:
     data[TEXT_KEY] = lexical_text(text)
 
 
-def _fill_frame(note: dict[str, Any], coverable: Mapping[str, Mapping[str, Any]]) -> None:
+def _fill_frame(note: dict[str, Any], coverable: Mapping[str, Mapping[str, Any]]) -> bool:
     boxes = _covered_boxes(note["data"].get(COVERS_KEY), coverable)
     if not boxes:
-        return
+        return False
     position: dict[str, float] = {}
     for size in NoteSize:
         start = min(box[size].start for box in boxes) - size.leading
         end = max(box[size].start + box[size].length for box in boxes) + NOTE_PADDING
         position[size.axis] = start
-        _fill_size(note, size, max(end - start, size.minimum))
-    if note.get(POSITION_KEY) is None:
-        note[POSITION_KEY] = position
+        # The canvas reads the size from the data and the wrapper, so both get it.
+        note[size.value] = note["data"][size.value] = max(end - start, size.minimum)
+    place(note, position)
+    return True
 
 
-def _fill_size(note: dict[str, Any], size: NoteSize, framed: float) -> None:
-    """The canvas reads the size from the data and the wrapper, so both get the one the caller set, else `framed`."""
-    data = note["data"]
-    value = next((value for value in (note.get(size), data.get(size)) if value is not None), framed)
-    for target in (note, data):
-        if target.get(size) is None:
-            target[size.value] = value
+def _follow_nearest(note: dict[str, Any], coverable: Mapping[str, Mapping[str, Any]], moves: Moves) -> None:
+    """Keep a note beside the node it was nearest before the nodes moved."""
+    frame = _box(note, sizes=(note, note["data"]))
+    if frame is None:
+        return
+    distances = {
+        node_id: _distance(frame, box, moves[node_id])
+        for node_id, node in coverable.items()
+        if node_id in moves
+        if (box := _box(node)) is not None
+    }
+    if not distances:
+        return
+    move = moves[min(distances, key=distances.__getitem__)]
+    place(note, {size.axis: frame[size].start + move[size.axis] for size in NoteSize})
+
+
+def _distance(frame: _Box, box: _Box, move: Mapping[str, float]) -> float:
+    """From the note's centre to the node's centre where the node was before it moved."""
+    return sum((_centre(frame[size]) - (_centre(box[size]) - move[size.axis])) ** 2 for size in NoteSize)
+
+
+def _centre(extent: _Extent) -> float:
+    return extent.start + extent.length / 2
+
+
+def place(node: dict[str, Any], position: Mapping[str, float]) -> None:
+    """Move a top-level node, and the absolute position the canvas saves beside it when the node has one."""
+    node[POSITION_KEY] = dict(position)
+    if POSITION_ABSOLUTE_KEY in node:
+        node[POSITION_ABSOLUTE_KEY] = dict(position)
 
 
 def _covered_boxes(covers: object, coverable: Mapping[str, Mapping[str, Any]]) -> list[_Box] | None:
@@ -270,7 +328,8 @@ def _covered_boxes(covers: object, coverable: Mapping[str, Mapping[str, Any]]) -
     return boxes
 
 
-def _box(node: Mapping[str, Any]) -> _Box | None:
+def _box(node: Mapping[str, Any], *, sizes: Sequence[Mapping[str, Any]] | None = None) -> _Box | None:
+    """The node's extent on each axis; its size is read from the first of `sizes` that has one, default the node."""
     position = node.get(POSITION_KEY)
     if not isinstance(position, Mapping):
         return None
@@ -279,9 +338,13 @@ def _box(node: Mapping[str, Any]) -> _Box | None:
         start = position.get(size.axis)
         if not is_number(start):
             return None
-        length = node.get(size)
-        box[size] = _Extent(start, length if is_number(length) else size.node_default)
+        box[size] = _Extent(start, node_length(*(sizes or (node,)), size=size))
     return box
+
+
+def node_length(*sources: Mapping[str, Any], size: NoteSize) -> float:
+    """The first measured length of `size` among `sources`, else the one the canvas gives an unmeasured node."""
+    return next((length for source in sources if is_number(length := source.get(size.value))), size.node_default)
 
 
 def is_number(value: object) -> TypeGuard[float]:
