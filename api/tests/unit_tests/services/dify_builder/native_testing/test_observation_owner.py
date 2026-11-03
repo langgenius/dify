@@ -8,11 +8,11 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import NoReturn, Protocol, cast
+from operator import methodcaller
+from typing import NoReturn, Protocol
 
 import pytest
 from sqlalchemy import inspect
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.models import Actor
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
@@ -44,6 +44,7 @@ from tests.unit_tests.services.dify_builder.native_testing.test_observation_priv
     graph_data,
 )
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context as sample_context
+from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import sql_session_factory
 
 
 @dataclass
@@ -269,7 +270,8 @@ def case(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> Obs
     def forbidden(*_: object, **__: object) -> NoReturn:
         raise AssertionError("writer/provider/credential I/O forbidden")
 
-    monkeypatch.setattr(factory, "begin", forbidden, raising=False)
+    sessions = sql_session_factory(monkeypatch, factory, methods=SQL.sql_methods)
+    monkeypatch.setattr(sessions, "begin", forbidden)
     # Protected C03 object readback is the labeled boundary below. Any extra
     # decryption/storage access or real HTTP transport must remain unreachable.
     for path in (
@@ -284,7 +286,7 @@ def case(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> Obs
         assert depth == 0
         assert actor == Actor(tenant_id="tenant", account_id="actor")
         assert app_id == "app"
-        assert sessions is factory
+        assert sessions is loader.session_factory
         events.append("permission")
 
     for path in [
@@ -294,7 +296,7 @@ def case(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> Obs
     ]:
         monkeypatch.setattr(path, permission)
     loader = OwnedNativeTestLoader(
-        cast(sessionmaker[Session], factory),
+        sessions,
         actor=Actor(tenant_id="tenant", account_id="actor"),
         resolver=NativeHttpBindingResolver(),
     )
@@ -351,11 +353,7 @@ def _refuses(c: ObservationOwnerCase, **overrides: object) -> None:
     }
     kwargs.update(overrides)
     with pytest.raises(NativeObservationError) as error:
-        owner()(
-            state=cast(NativeExecutionStateStore, kwargs["state"]),
-            context=cast(ResolvedNativeTestContext, kwargs["context"]),
-            on_failure=cast(Callable[[], None], kwargs["on_failure"]),
-        )
+        methodcaller("__call__", **kwargs)(owner())
     assert str(error.value) == "native_observation_failed"
     assert c.notices == []
 
@@ -395,13 +393,15 @@ def test_caller_context_cannot_replace_actual_protected_snapshot(
     "fault",
     ["fake_state", "fake_loader", "missing_context", "membership", "input_owner", "revision", "local_generation"],
 )
-def test_actual_c03_full_current_owner_chain_is_required(case: ObservationOwnerCase, fault: str) -> None:
+def test_actual_c03_full_current_owner_chain_is_required(
+    case: ObservationOwnerCase, fault: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     c = case
     if fault == "fake_state":
         _refuses(c, state=PretendExecutionState(c.loader, c.context))
         return
     if fault == "fake_loader":
-        c.store.loader = cast(OwnedNativeTestLoader, object())
+        monkeypatch.setattr(c.store, "loader", object())
     elif fault == "missing_context":
         c.rows[NativePayloadObject] = []
     elif fault == "membership":
@@ -520,7 +520,9 @@ def test_initial_current_profile_keeps_owner_active_and_descriptor_guards(
     _refuses(c)
 
 
-def test_code_stored_profile_requires_current_exact_qualification_owner(case: ObservationOwnerCase) -> None:
+def test_code_stored_profile_requires_current_exact_qualification_owner(
+    case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.native_testing.sandbox.qualification import (
         NativeCodeBindingResolver,
         describe_code_resource,
@@ -564,5 +566,5 @@ def test_code_stored_profile_requires_current_exact_qualification_owner(case: Ob
     c.loader.resolver = NativeCodeBindingResolver(qualification=q)
     guard = owner()(state=c.store, context=c.context, on_failure=lambda: None)
     assert "CANARY" not in json.dumps(guard.graph(graph))
-    q.owner.validate = lambda **_kw: (_ for _ in ()).throw(ValueError("revoked private reason"))
+    monkeypatch.setattr(q.owner, "validate", lambda **_kw: (_ for _ in ()).throw(ValueError("revoked private reason")))
     _refuses(c)

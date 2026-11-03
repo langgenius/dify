@@ -9,9 +9,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from re import fullmatch
-from typing import TYPE_CHECKING, Literal, Protocol, Self, cast
+from typing import TYPE_CHECKING, Literal, Protocol, Self
 
-from pydantic import StrictBool, model_validator
+from pydantic import StrictBool, TypeAdapter, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -68,6 +68,8 @@ from services.dify_builder.native_testing.transitions import (
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
+
+_OUTCOME = TypeAdapter(Outcome)
 
 
 def revoke_request_authority(session, *, request_id: str, tenant_id: str, cancellation_key: str) -> tuple[str, ...]:
@@ -493,9 +495,8 @@ class NativeTestLifecycleService:
             ):
                 raise BuilderExecutionPolicyError("native_wait_conflict")
             reasons = {row.category for row in rows}
-            reason = cast(
-                WaitReason, next(reason for reason in ("configuration", "interaction", "approval") if reason in reasons)
-            )
+            priority: tuple[WaitReason, ...] = ("configuration", "interaction", "approval")
+            reason = next(reason for reason in priority if reason in reasons)
             state.state, state.checkpoint_id = "waiting", checkpoint.checkpoint_id
             state.pending_ids, state.wait_reason = list(pending_operation_ids), reason
             self._request_row(session, ref.request_id).state = "waiting"
@@ -838,7 +839,9 @@ class NativeTestLifecycleService:
             request_id=dispatch.request_id, generation=dispatch.generation, dispatch_id=dispatch.id, status=status
         )
 
-    def publish_pending(self, *, publish: Callable[..., None], limit: int = 100, request_id: str | None = None) -> int:
+    def publish_pending(
+        self, *, publish: Callable[..., object], limit: int = 100, request_id: str | None = None
+    ) -> int:
         """Every unclaimed outbox remains retryable, including lost broker acknowledgements."""
         with self.loader.session_factory() as session:
             query = (
@@ -1596,8 +1599,7 @@ class NativeTestLifecycleService:
         ):
             if operation.invocation_id not in by_id:
                 raise BuilderExecutionPolicyError("native_owner_mismatch")
-            operation_states[operation.id] = cast(
-                Outcome,
+            operation_states[operation.id] = _OUTCOME.validate_python(
                 "unknown"
                 if operation.state in {"claimed", "unknown"}
                 else "not_dispatched"

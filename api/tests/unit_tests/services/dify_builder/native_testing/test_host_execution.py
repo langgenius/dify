@@ -7,9 +7,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from operator import methodcaller
 from threading import Barrier, Event, Thread, current_thread
 from time import monotonic, sleep
-from typing import TYPE_CHECKING, Protocol, cast, override
+from typing import TYPE_CHECKING, Protocol, override
 from weakref import ReferenceType
 
 import pytest
@@ -56,7 +57,6 @@ from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter imp
 )
 from tests.unit_tests.services.dify_builder.native_testing.test_control import (
     Factory,
-    Observations,
     bound_guard,
     make_native,
     observed_iteration_config,
@@ -65,13 +65,6 @@ from tests.unit_tests.services.dify_builder.native_testing.test_control import (
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.host_execution import DurableNativeStopSealer
-    from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
-    from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
-    from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
-
-
-class MutableTerminal(Protocol):
-    terminal: str
 
 
 class NoCheckpointLifecycle:
@@ -94,7 +87,6 @@ class DurablePorts:
     fences: list[tuple[NativeTestContextRef, tuple[str, ...], int]] = field(default_factory=list)
     stops: list[tuple[NativeTestContextRef, int, str, str]] = field(default_factory=list)
     error: BaseException | None = None
-    result: object = None
     entered: Event | None = None
     release: Event | None = None
     on_fence: Callable[[], None] | None = None
@@ -111,7 +103,6 @@ class DurablePorts:
             self.release.wait(2)
         if self.error is not None:
             raise self.error
-        return cast(None, self.result)
 
     def seal_stop(
         self, *, ref: NativeTestContextRef, expected_generation: int, dispatch_id: str, reason_code: str
@@ -119,7 +110,6 @@ class DurablePorts:
         self.stops.append((ref, expected_generation, dispatch_id, reason_code))
         if self.error is not None:
             raise self.error
-        return cast(None, self.result)
 
 
 class LaunchCase:
@@ -183,18 +173,17 @@ class LaunchCase:
         )
 
     def own_node(self) -> Node[BaseNodeData]:
-        from dataclasses import replace
+        from tests.unit_tests.services.dify_builder.native_testing.test_control import Effects
 
-        from tests.unit_tests.services.dify_builder.native_testing.test_control import Effects, Sink
-
-        _, factory = make_native(decision=permit(), ownership=cast(Observations, self.host))
-        factory = replace(
-            factory,
+        _, factory = make_native(decision=permit(), ownership=self.host)
+        bound_factory = Factory(
+            config=factory.config,
+            runtime=factory.runtime,
             owner=self.host.boundary_owner,
-            sink=cast(Sink, self.host.control_sink),
+            sink=self.host.control_sink,
             effects=Effects(self.host.boundary_owner, permit()),
         )
-        node = bound_guard(factory)
+        node = bound_guard(bound_factory)
         self.host.bind_node_runtime(node=node)
         return node
 
@@ -248,7 +237,7 @@ def test_scalar_completion_replays_real_journal_without_extra_claim_or_key() -> 
 )
 def test_nonfinite_or_nonpositive_http_baseline_is_refused(timeout: tuple[object, ...]) -> None:
     with pytest.raises(ValueError, match="^native_host_http_timeout_unqualified$"):
-        LaunchCase(baseline=cast(tuple[float, float, float], timeout))
+        methodcaller("__call__", baseline=timeout)(LaunchCase)
 
 
 def test_actual_prepared_timeout_snapshot_contributes_to_max_sum_and_fixed_deadline() -> None:
@@ -304,9 +293,15 @@ def test_typed_control_is_accepted_only_after_exact_durable_port_ack(stop: bool)
 
 
 @pytest.mark.parametrize("failure", ["non-none", "lost-ack"])
-def test_ambiguous_fence_never_retries_or_accepts(failure: str) -> None:
+def test_ambiguous_fence_never_retries_or_accepts(failure: str, monkeypatch: pytest.MonkeyPatch) -> None:
     case = LaunchCase()
-    case.ports.result = False if failure == "non-none" else None
+    if failure == "non-none":
+
+        def malformed_fence(**kwargs: object) -> bool:
+            methodcaller("fence_pending", **kwargs)(case.ports)
+            return False
+
+        monkeypatch.setattr(case.host, "_fence_pending", malformed_fence)
     case.ports.error = RuntimeError("lost acknowledgement") if failure == "lost-ack" else None
     node = case.own_node()
     with case.host.node_scope(node=node, phase="run"):
@@ -369,7 +364,7 @@ def generation_objects(
 
     from core.app.app_config.entities import WorkflowUIBasedAppConfig
     from core.app.apps import base_app_queue_manager
-    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
     from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
     from core.repositories.sqlalchemy_workflow_node_execution_repository import (
         SQLAlchemyWorkflowNodeExecutionRepository,
@@ -395,6 +390,7 @@ def generation_objects(
         inputs=INPUT,
         files=[],
         user_id=context.actor_id,
+        user_from=UserFrom.ACCOUNT,
         stream=True,
         invoke_from=InvokeFrom.DEBUGGER,
         workflow_execution_id=context.native_run_id,
@@ -546,7 +542,7 @@ def native_entry(
     from graphon.graph import Graph
     from graphon.runtime import RuntimeState, VariablePool
     from services.workflow_runtime.entry import WorkflowEntry
-    from tests.unit_tests.services.dify_builder.native_testing.test_control import Effects, Factory, Sink, basic
+    from tests.unit_tests.services.dify_builder.native_testing.test_control import Effects, Factory, basic
     from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import (
         bind_component_observation,
     )
@@ -563,7 +559,7 @@ def native_entry(
         config=config,
         runtime=runtime,
         owner=case.host.boundary_owner,
-        sink=cast(Sink, case.host.control_sink),
+        sink=case.host.control_sink,
         effects=Effects(case.host.boundary_owner, permit()),
     )
     graph = Graph.init(graph_config=config, node_factory=factory, root_node_id="start")
@@ -621,7 +617,7 @@ def test_root_observation_retains_actual_business_terminal_without_payload(monke
     assert not observed.error
     assert not hasattr(observed, "outputs")
     with pytest.raises(FrozenInstanceError):
-        cast(MutableTerminal, observed).terminal = "failed"
+        methodcaller("__setattr__", "terminal", "failed")(observed)
 
 
 def _run_observed(case: LaunchCase, entry: WorkflowEntry) -> None:
@@ -866,7 +862,7 @@ def test_launch_identity_is_not_replaceable_and_retirement_requires_real_cleanup
 
 def test_foreign_boundary_owner_node_cannot_be_adopted_by_launch() -> None:
     case = LaunchCase()
-    _, factory = make_native(decision=permit(), ownership=cast(Observations, case.host))
+    _, factory = make_native(decision=permit(), ownership=case.host)
     foreign = bound_guard(factory)
     with pytest.raises(ValueError, match="^native_host_node_required$"):
         case.host.bind_node_runtime(node=foreign)
@@ -1062,10 +1058,19 @@ def test_real_producer_registration_retains_exact_instance_without_fabricating_p
 
     case = LaunchCase()
     node = case.own_node()
-    # Structural registration only: these labeled unused loader/bridge/store
-    # values never run resolution, SQL, preparation or proposal production.
+    from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
+    from tests.unit_tests.services.dify_builder.native_testing.test_runtime_bridge import _api
+
+    api = _api()
+    bridge = NativeRuntimeBridge(
+        state=api.store,
+        collaborators=lambda **_: pytest.fail("registration must not resolve collaborators"),
+        node_arguments=lambda **_: pytest.fail("registration must not prepare arguments"),
+        boundary_owner=case.host.boundary_owner,
+        control_sink=case.host.control_sink,
+    )
     association = NativeNodePreparation(
-        bridge=cast("NativeRuntimeBridge", object()),
+        bridge=bridge,
         ref=REF,
         node_id=node.id,
         node_class=type(node),
@@ -1073,8 +1078,8 @@ def test_real_producer_registration_retains_exact_instance_without_fabricating_p
     )
     producer = NativeHttpBindingProducer(
         association=association,
-        loader=cast("OwnedNativeTestLoader", object()),
-        state_store=cast("NativeExecutionStateStore", case.state),
+        loader=api.loader,
+        state_store=api.store,
         journal=case.journal,
     )
     case.host.register_proposals(producer=producer)
@@ -1154,7 +1159,7 @@ def test_mandatory_stop_owner_and_exact_resolved_context_are_required() -> None:
 
     # Explicit invalid port, not a production fallback/default.
     with pytest.raises(ValueError, match="native_host_explicit_owners_required"):
-        construct(context=case.state.context, stop_sealer=cast("DurableNativeStopSealer", None))
+        methodcaller("__call__", context=case.state.context, stop_sealer=None)(construct)
     with pytest.raises(ValueError, match="native_host_explicit_owners_required"):
         construct(context=case.state.context.model_copy(), stop_sealer=case.ports)
 

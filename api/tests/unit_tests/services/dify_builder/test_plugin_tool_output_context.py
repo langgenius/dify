@@ -2,7 +2,6 @@
 
 import json
 from copy import deepcopy
-from typing import cast
 
 import pytest
 
@@ -16,21 +15,18 @@ from services.workflow_generation.runner import WorkflowGenerator
 
 
 def _entry(schema: dict[str, object]) -> ToolCatalogueEntry:
-    return cast(
-        ToolCatalogueEntry,
-        {
-            "provider_name": "fixture/decoder/decoder",
-            "provider_type": "builtin",
-            "plugin_id": "fixture/decoder",
-            "plugin_unique_identifier": "fixture/decoder:1.0.0@pinned",
-            "tool_name": "decode",
-            "tool_label": "Decode document",
-            "description": "Extract JSON content",
-            "needs_credentials": False,
-            "parameters": [],
-            "output_schema": schema,
-        },
-    )
+    return {
+        "provider_name": "fixture/decoder/decoder",
+        "provider_type": "builtin",
+        "plugin_id": "fixture/decoder",
+        "plugin_unique_identifier": "fixture/decoder:1.0.0@pinned",
+        "tool_name": "decode",
+        "tool_label": "Decode document",
+        "description": "Extract JSON content",
+        "needs_credentials": False,
+        "parameters": [],
+        "output_schema": schema,
+    }
 
 
 def _plan() -> dict[str, object]:

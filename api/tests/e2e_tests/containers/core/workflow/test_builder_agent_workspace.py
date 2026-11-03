@@ -7,7 +7,7 @@ protected context storage, and materialized binding/workspace rows are real.
 from __future__ import annotations
 
 from collections.abc import Callable, Generator
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from dify_agent.protocol.execution_binding import CreateExecutionBindingRequest, DestroyExecutionBindingRequest
 from flask import Flask
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 from typing import TYPE_CHECKING
 
 from runtime_contracts.builder.native.agent_contracts import AgentTestWorkspaceRef
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -35,19 +35,19 @@ if TYPE_CHECKING:
 
     from core.dify_builder.models import Actor
     from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
-    from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
         AgentWorkspaceCase,
     )
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+    from tests.e2e_tests.containers.core.workflow import test_builder_restricted_native as _fixture_types_0
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+    from tests.e2e_tests.containers.core.workflow import test_builder_restricted_native as _fixture_types_0
 
 
 import json
@@ -79,21 +79,21 @@ from services.agent.workspace_service import AgentWorkspaceService
 from services.dify_builder.native_testing.agent_workspace import AgentTestWorkspaceService
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     AgentWorkspaceCase,
     require_present,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414 - shared pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     migrated_native_tables as migrated_native_tables,  # noqa: PLC0414 - shared pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import no_live as no_live  # noqa: PLC0414 - shared pytest fixture
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import no_live as no_live  # noqa: PLC0414 - shared pytest fixture
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     raw_ledger_case,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
+from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import (
     native_owner as _base_native_owner_fixture,
 )
 
@@ -309,7 +309,10 @@ def test_postgres_concurrent_prepare_reserves_one_identity(workspace_case: Agent
     from flask import current_app
 
     c = workspace_case
-    app = cast("LocalProxy[Flask]", current_app)._get_current_object()
+    proxy: object = current_app
+    assert isinstance(proxy, LocalProxy)
+    app = proxy._get_current_object()
+    assert isinstance(app, Flask)
 
     def run_prepare() -> AgentTestWorkspaceRef:
         with app.app_context():

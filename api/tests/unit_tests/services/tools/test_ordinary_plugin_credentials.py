@@ -4,7 +4,7 @@ from collections.abc import Callable, Generator
 from contextlib import _GeneratorContextManager, contextmanager
 from dataclasses import dataclass
 from types import ModuleType
-from typing import Never, cast, override
+from typing import Never, override
 from unittest.mock import Mock
 
 import pytest
@@ -554,8 +554,9 @@ class _RefreshSessionFactory(sessionmaker[Session]):
     @override
     @contextmanager
     def begin(self) -> Generator[Session]:
-        with self._writer.begin():
-            yield cast(Session, self._writer)
+        with Session(self._engine) as session, self._writer.begin():
+            self._writer.monkeypatch.setattr(session, "execute", self._writer.execute)
+            yield session
 
 
 @pytest.mark.parametrize("backend", ["postgresql", "mysql", "oceanbase", "seekdb"])

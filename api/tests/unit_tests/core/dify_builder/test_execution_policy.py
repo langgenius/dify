@@ -3,7 +3,7 @@
 import importlib
 from collections.abc import Mapping
 from types import ModuleType
-from typing import TYPE_CHECKING, NoReturn, cast
+from typing import TYPE_CHECKING, NoReturn
 
 import pytest
 from pydantic import ValidationError
@@ -236,7 +236,8 @@ def test_http_default_large_integer_refused_before_native_validation(
 
     p = policy()
     raw_graph = graph(http=True)
-    data = cast(dict[str, object], raw_graph["nodes"][1]["data"])
+    data = raw_graph["nodes"][1]["data"]
+    assert isinstance(data, dict)
     data["default_value"] = [{"type": "number", "key": "status_code", "value": value}]
     assert p.canonical_digest(raw_graph)
 
@@ -256,7 +257,8 @@ def test_http_default_large_integer_refused_before_native_validation(
 def test_http_default_finite_number_preserves_raw_binding(value: int | float) -> None:
     p = policy()
     raw_graph = graph(http=True)
-    data = cast(dict[str, object], raw_graph["nodes"][1]["data"])
+    data = raw_graph["nodes"][1]["data"]
+    assert isinstance(data, dict)
     data["default_value"] = [{"type": "number", "key": "status_code", "value": value}]
     bindings = p.admitted_node_bindings(snapshot(raw_graph))
     assert bindings[1].normalized_config_digest == p.canonical_digest({**data, "version": "1"})
