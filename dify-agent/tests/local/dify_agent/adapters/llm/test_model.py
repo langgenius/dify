@@ -608,7 +608,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.parts[0].part_kind, "text")
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
 
-    async def test_request_collapses_text_only_assistant_history_parts_to_string_content(self) -> None:
+    async def test_request_drops_reasoning_and_collapses_assistant_history_to_string_content(self) -> None:
         messages = [
             ModelRequest(parts=[UserPromptPart("initial request")]),
             ModelResponse(
@@ -625,7 +625,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             prompt_messages = payload["target"]["prompt_messages"]
 
             self.assertEqual([message["role"] for message in prompt_messages], ["user", "assistant", "user"])
-            self.assertEqual(prompt_messages[1]["content"], "<think>\nplan\n</think>answer")
+            self.assertEqual(prompt_messages[1]["content"], "answer")
 
             return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
 
@@ -768,6 +768,46 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cast(TextPart, response.parts[0]).content, "before")
         self.assertEqual(cast(ThinkingPart, response.parts[1]).content, "reasoning continues")
         self.assertEqual(cast(TextPart, response.parts[2]).content, "after")
+
+    async def test_request_stream_swallows_stray_close_think_tag(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content="answer</think>", tool_calls=[]),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(content="", tool_calls=[]),
+                        usage=make_usage(prompt_tokens=6, completion_tokens=4),
+                        finish_reason="stop",
+                    ),
+                ),
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                events = [event async for event in stream]
+                response = stream.get()
+
+        self.assertTrue(events)
+        self.assertEqual([part.part_kind for part in response.parts], ["text"])
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "answer")
 
     async def test_request_stream_yields_response_parts_and_usage(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:

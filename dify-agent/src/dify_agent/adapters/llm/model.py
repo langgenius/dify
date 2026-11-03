@@ -77,8 +77,6 @@ from pydantic_ai.usage import RequestUsage
 
 from .provider import DifyLLMClient
 
-_THINK_START = "<think>\n"
-_THINK_END = "\n</think>"
 _THINK_OPEN_TAG = "<think>"
 _THINK_CLOSE_TAG = "</think>"
 _THINK_TAG_PATTERN = re.compile(r"<think>(.*?)</think>", re.DOTALL)
@@ -481,8 +479,12 @@ def _map_model_response_to_prompt_message(
             if part.content:
                 content_parts.append(TextPromptMessageContent(data=part.content))
         elif isinstance(part, ThinkingPart):
-            if part.content:
-                content_parts.append(TextPromptMessageContent(data=f"{_THINK_START}{part.content}{_THINK_END}"))
+            # Reasoning from earlier rounds is intentionally dropped from replayed
+            # history: the daemon message contract has no reasoning channel, and
+            # re-injecting it as literal <think>…</think> text makes reasoning models
+            # imitate the tags and hallucinate tool calls
+            # (https://github.com/langgenius/dify/issues/44964).
+            continue
         elif isinstance(part, FilePart):
             content_parts.append(_map_binary_content_to_prompt_content(part.content))
         elif isinstance(part, ToolCallPart):
@@ -844,21 +846,39 @@ class _EmbeddedThinkingParser:
                     )
                 break
 
-            start_index = buffer.find(_THINK_OPEN_TAG)
-            if start_index >= 0:
-                if start_index > 0:
+            open_index = buffer.find(_THINK_OPEN_TAG)
+            close_index = buffer.find(_THINK_CLOSE_TAG)
+
+            # Outside a thinking block, a closing tag with no matching opener is a
+            # control artifact and must not surface as answer text; swallow it.
+            if open_index >= 0 and (close_index < 0 or open_index < close_index):
+                if open_index > 0:
                     events.extend(
                         parts_manager.handle_text_delta(
                             vendor_part_id=None,
-                            content=buffer[:start_index],
+                            content=buffer[:open_index],
                             provider_name=provider_name,
                         )
                     )
-                buffer = buffer[start_index + len(_THINK_OPEN_TAG) :]
+                buffer = buffer[open_index + len(_THINK_OPEN_TAG) :]
                 self._inside_thinking = True
                 continue
 
+            if close_index >= 0:
+                if close_index > 0:
+                    events.extend(
+                        parts_manager.handle_text_delta(
+                            vendor_part_id=None,
+                            content=buffer[:close_index],
+                            provider_name=provider_name,
+                        )
+                    )
+                buffer = buffer[close_index + len(_THINK_CLOSE_TAG) :]
+                continue
+
             safe_content, self._pending = _split_incomplete_tag_suffix(buffer, _THINK_OPEN_TAG)
+            if not self._pending:
+                safe_content, self._pending = _split_incomplete_tag_suffix(buffer, _THINK_CLOSE_TAG)
             if safe_content:
                 events.extend(
                     parts_manager.handle_text_delta(
