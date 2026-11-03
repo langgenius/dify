@@ -1,6 +1,5 @@
 import ast
 import inspect
-from contextlib import nullcontext
 from dataclasses import dataclass, field
 
 import pytest
@@ -21,7 +20,7 @@ class _StubSession:
     def __init__(self, items: list[object]) -> None:
         self._items = iter(items)
 
-    def scalar(self, *args: object, **kwargs: object) -> object:
+    def scalar(self, *_args: object, **_kwargs: object) -> object:
         return next(self._items)
 
     def commit(self) -> None:
@@ -41,13 +40,13 @@ class _SessionContext:
     def __enter__(self) -> object:
         return self.session
 
-    def __exit__(self, *args: object) -> None:
+    def __exit__(self, *_args: object) -> None:
         pass
 
 
+@dataclass
 class _CallArgs:
-    def __init__(self, kwargs: dict[str, object]) -> None:
-        self.kwargs = kwargs
+    kwargs: dict[str, object]
 
 
 class _TrackedGeneratorMethod:
@@ -187,12 +186,12 @@ def test_execute_workflow_projects_the_persisted_workflow_before_generation(
     monkeypatch.setattr(
         async_workflow_tasks,
         "SQLAlchemyWorkflowTriggerLogRepository",
-        lambda *args, **kwargs: trigger_log_repository,
+        lambda *_args, **_kwargs: trigger_log_repository,
     )
-    monkeypatch.setattr(async_workflow_tasks, "_get_user", lambda *args, **kwargs: user)
-    monkeypatch.setattr(async_workflow_tasks, "build_workflow_execution_dependencies", lambda *args, **kwargs: None)
-    monkeypatch.setattr(async_workflow_tasks, "WorkflowAppGenerator", lambda *args, **kwargs: generator)
-    monkeypatch.setattr(async_workflow_tasks, "TriggerPostLayer", lambda *args, **kwargs: object())
+    monkeypatch.setattr(async_workflow_tasks, "_get_user", lambda *_args, **_kwargs: user)
+    monkeypatch.setattr(async_workflow_tasks, "build_workflow_execution_dependencies", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(async_workflow_tasks, "WorkflowAppGenerator", lambda *_args, **_kwargs: generator)
+    monkeypatch.setattr(async_workflow_tasks, "TriggerPostLayer", lambda *_args, **_kwargs: object())
 
     async_workflow_tasks._execute_workflow_common(
         WorkflowTaskData(workflow_trigger_log_id=trigger_log.id),
@@ -248,36 +247,40 @@ def test_resume_workflow_projects_the_persisted_workflow_before_resuming(
     node_execution_repository = object()
 
     monkeypatch.setattr(async_workflow_tasks, "db", _Db())
-    monkeypatch.setattr(async_workflow_tasks, "sessionmaker", lambda *args, **kwargs: resumed_session_factory.create_session)
+    monkeypatch.setattr(
+        async_workflow_tasks, "sessionmaker", lambda *_args, **_kwargs: resumed_session_factory.create_session
+    )
     monkeypatch.setattr(
         async_workflow_tasks.DifyAPIRepositoryFactory,
         "create_api_workflow_run_repository",
-        lambda *args, **kwargs: workflow_run_repository,
+        lambda *_args, **_kwargs: workflow_run_repository,
     )
     monkeypatch.setattr(
         async_workflow_tasks.WorkflowResumptionContext,
         "loads",
-        lambda *args, **kwargs: resumption_context,
+        lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
         async_workflow_tasks.RuntimeState,
         "from_snapshot",
-        lambda *args, **kwargs: graph_runtime_state,
+        lambda *_args, **_kwargs: graph_runtime_state,
     )
-    monkeypatch.setattr(async_workflow_tasks, "_get_user", lambda *args, **kwargs: user)
+    monkeypatch.setattr(async_workflow_tasks, "_get_user", lambda *_args, **_kwargs: user)
     monkeypatch.setattr(
         async_workflow_tasks.DifyCoreRepositoryFactory,
         "create_workflow_execution_repository",
-        lambda *args, **kwargs: execution_repository,
+        lambda *_args, **_kwargs: execution_repository,
     )
     monkeypatch.setattr(
         async_workflow_tasks.DifyCoreRepositoryFactory,
         "create_workflow_node_execution_repository",
-        lambda *args, **kwargs: node_execution_repository,
+        lambda *_args, **_kwargs: node_execution_repository,
     )
-    monkeypatch.setattr(async_workflow_tasks, "build_workflow_execution_dependencies", lambda *args, **kwargs: None)
-    monkeypatch.setattr(async_workflow_tasks, "WorkflowAppGenerator", lambda *args, **kwargs: generator)
-    monkeypatch.setattr(async_workflow_tasks, "_query_trigger_log_info", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        async_workflow_tasks, "build_workflow_execution_dependencies", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(async_workflow_tasks, "WorkflowAppGenerator", lambda *_args, **_kwargs: generator)
+    monkeypatch.setattr(async_workflow_tasks, "_query_trigger_log_info", lambda *_args, **_kwargs: None)
 
     async_workflow_tasks.resume_workflow_execution.run({"workflow_run_id": workflow_run.id})
 

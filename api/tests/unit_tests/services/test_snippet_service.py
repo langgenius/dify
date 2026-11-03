@@ -1006,7 +1006,8 @@ def test_snippet_publication_rolls_back_version_and_pointer_on_binding_write_fai
 
     with sqlite_session_factory.begin() as session:
         session.add_all([_snippet(), _create_workflow(workflow_id="draft", version="draft", graph={}, features={})])
-    def fail_copy(*args, **kwargs):  # noqa: ARG001
+
+    def fail_copy(*args, **kwargs):
         raise ValueError("binding write failed")
 
     monkeypatch.setattr(

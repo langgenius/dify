@@ -6,11 +6,11 @@ import uuid
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any
-from unittest.mock import Mock, create_autospec, patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine, Table, inspect, select
+from sqlalchemy import Engine, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
@@ -183,7 +183,7 @@ def _build_tool(
     )
     runtime = ToolRuntime(tenant_id=tenant_id, invoke_from=InvokeFrom.EXPLORE)
     return WorkflowTool(
-        draft_variable_saver=lambda *args, **kwargs: create_autospec(  # noqa: ARG005
+        draft_variable_saver=lambda *args, **kwargs: create_autospec(
             DraftVariableSaverFactory, instance=True, spec_set=True
         ),
         workflow_app_id=workflow_app_id,
@@ -1131,7 +1131,7 @@ def test_composed_tool_fork_runs_real_generator_with_injected_draft_saver(
     monkeypatch.setattr(
         generator_module,
         "TraceQueueManager",
-        lambda *args, **kwargs: create_autospec(TraceQueueManager, instance=True, spec_set=True),  # noqa: ARG005
+        lambda *args, **kwargs: create_autospec(TraceQueueManager, instance=True, spec_set=True),
     )
     monkeypatch.setattr(WorkflowAppGenerator, "_generate_worker", staticmethod(lambda **_kwargs: None))
     outputs = {"result": "nested result"}

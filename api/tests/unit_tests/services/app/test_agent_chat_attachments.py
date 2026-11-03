@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine, Table, create_engine
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
@@ -21,7 +21,6 @@ from core.app.entities.app_invoke_entities import (
     ModelConfigWithCredentialsEntity,
 )
 from core.db import session_factory
-from core.model_manager import ModelInstance
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolInvokeMeta
@@ -39,7 +38,7 @@ from services.app.generation.adapters import agent_chat as worker_module
 from services.app.generation.adapters.agent_chat import AgentChatAppGenerator
 from services.app.generation.ports import AgentMessageRecords
 from services.knowledge.retrieval.adapters.resource_events import DatasetIndexToolCallbackHandler
-from services.tools.dataset.tool import DatasetRetrieverTool, DatasetToolRetrieval
+from services.tools.dataset.tool import DatasetRetrieverTool
 from services.tools.tool_engine import ToolEngine
 from tests.helpers.unit.model_factories import make_app, make_upload_file
 from tests.unit_tests.core.agent.test_base_agent_runner import (

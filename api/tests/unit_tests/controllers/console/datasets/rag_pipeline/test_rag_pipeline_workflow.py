@@ -7,7 +7,7 @@ from datetime import datetime
 from inspect import unwrap
 from inspect import unwrap as unwrap_all
 from typing import TypedDict, Unpack
-from unittest.mock import MagicMock, Mock, create_autospec, patch
+from unittest.mock import MagicMock, create_autospec, patch
 from uuid import UUID, uuid4
 
 import pytest

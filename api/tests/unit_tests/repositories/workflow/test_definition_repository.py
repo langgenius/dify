@@ -3,7 +3,6 @@
 import json
 from collections.abc import Callable
 from dataclasses import replace
-from typing import cast
 from unittest.mock import Mock, create_autospec, patch
 from uuid import uuid4
 

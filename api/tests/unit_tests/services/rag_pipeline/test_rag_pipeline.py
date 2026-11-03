@@ -1016,8 +1016,9 @@ class TestRagPipelineServiceCases:
         mock_db_exec = mocker.Mock()
         mock_db_exec.node_id = "node-1"
         mock_db_exec.node_type = "datasource"
+
         class _NodeExecRepo:
-            def get_execution_by_id(self, *args, **kwargs):
+            def get_execution_by_id(self, *_args: object, **_kwargs: object) -> object:
                 return mock_db_exec
 
         rag_pipeline_service.execution._node_execution_service_repo = _NodeExecRepo()

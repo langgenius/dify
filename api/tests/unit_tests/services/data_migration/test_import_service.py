@@ -300,7 +300,9 @@ def test_options_override_replaces_package_defaults(database: Database, *, workf
 
 
 def test_only_preserve_id_strategy_reuses_source_app_id(*, workflow_tools):
-    service = MigrationImportService(app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools)
+    service = MigrationImportService(
+        app_dsl=_app_dsl_importer, workflows=_workflow_publisher(), workflow_tools=workflow_tools
+    )
 
     assert service._should_preserve_source_app_id(ImportOptions(id_strategy=IdStrategy.PRESERVE_ID)) is True
     assert service._should_preserve_source_app_id(ImportOptions(id_strategy=IdStrategy.GENERATE_NEW_ID)) is False

@@ -1,7 +1,7 @@
 """Generation must release request reads before waiting for a worker's response."""
 
 import json
-from unittest.mock import Mock, create_autospec
+from unittest.mock import create_autospec
 
 import pytest
 from flask import Flask

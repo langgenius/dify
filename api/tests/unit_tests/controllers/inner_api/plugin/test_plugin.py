@@ -9,7 +9,7 @@ handler tests use inspect.unwrap() to bypass them.
 
 import inspect
 import json
-from unittest.mock import MagicMock, Mock, create_autospec, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from flask import Flask

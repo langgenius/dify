@@ -66,10 +66,10 @@ from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 from services.workflow.variable_service import WorkflowVariableService
 from services.workflow_service import WorkflowService
+from tasks.collect_agent_resources_task import collect_agent_resources
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
 from tests.unit_tests.workflow_execution import debug_lease, set_debug_deadline
-from tasks.collect_agent_resources_task import collect_agent_resources
 
 CONTEXT = RequestContext("request", None, "account-1", "tenant-1")
 

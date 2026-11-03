@@ -75,9 +75,9 @@ def _account(account_id: str = "user-1") -> Account:
     return make_account(account_id=account_id, name="Test User", email=f"{account_id}@example.com")
 
 
+@dataclass
 class _CallArgs:
-    def __init__(self, kwargs: dict[str, object]) -> None:
-        self.kwargs = kwargs
+    kwargs: dict[str, object]
 
 
 class _TrackedMethod:
@@ -414,7 +414,7 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(
     expected_workflow = workflow_snapshot(workflow)
     ensure_start_node = _TrackedMethod(return_value=expected_workflow)
     monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
-    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", lambda *args, **kwargs: generator)
+    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", lambda *_args, **_kwargs: generator)
 
     result = generation.generate(
         snippet=snippet,
@@ -520,7 +520,7 @@ def test_generate_single_iteration_delegates_to_workflow_generator(
     response = iter(["event"])
     generator = _WorkflowGeneratorStub(single_iteration_generate=_TrackedMethod(return_value=response))
     snippet_reader.workflow = workflow
-    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", lambda *args, **kwargs: generator)
+    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", lambda *_args, **_kwargs: generator)
 
     result = generation.generate_single_iteration(
         snippet=snippet,
@@ -567,7 +567,7 @@ def test_generate_single_loop_delegates_to_workflow_generator(
     response = iter(["event"])
     generator = _WorkflowGeneratorStub(single_loop_generate=_TrackedMethod(return_value=response))
     snippet_reader.workflow = workflow
-    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", lambda *args, **kwargs: generator)
+    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", lambda *_args, **_kwargs: generator)
 
     result = generation.generate_single_loop(
         snippet=snippet,

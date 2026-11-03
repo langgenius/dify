@@ -3,7 +3,6 @@
 import json
 from collections.abc import Iterator
 from datetime import timedelta
-from typing import Any
 
 import pytest
 from sqlalchemy import Table, create_engine, event, select
@@ -16,7 +15,6 @@ from core.workflow.system_variables import build_system_variables
 from enums.human_input import HumanInputFormStatus, RecipientType
 from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.application_services.workflow_variables import build_workflow_variable_service
-from graphon.engine import Engine
 from graphon.engine_events import EngineEvent, NodeRunSucceededEvent
 from graphon.file.protocols import WorkflowFileRuntimeProtocol
 from graphon.node_events import PauseRequestedEvent, StreamCompletedEvent
@@ -198,7 +196,7 @@ def test_created_form_timeout_reaches_event_stream_in_same_database(form_databas
                 assert isinstance(run_event, EngineEvent)
                 yield run_event
 
-    engine: Any = NodeEvents(Graph(root_node=node), node.runtime_state)
+    engine: object = NodeEvents(Graph(root_node=node), node.runtime_state)
     events = list(
         iter_dify_graph_engine_events(
             engine,

@@ -23,7 +23,6 @@ from models.model import AppModelConfig, AppModelConfigDict, IconType, Site
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage
 from services.agent.roster_package_entities import PackageIcon
-from services.agent.workflow_contracts import WorkflowAgentBindingStore
 from services.app_dsl_service import AppDslService, PendingData
 from services.app_package_service import PreparedAppPackage
 from services.entities.dsl_entities import AppDslOverwriteStore, AppDslOverwriteTarget, ImportStatus

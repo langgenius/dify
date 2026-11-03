@@ -143,7 +143,7 @@ def test_draft_workflow_get_serializes_materialized_record(
     monkeypatch.setattr(
         snippet_workflow_module.SnippetService,
         "get_draft_workflow_record",
-        lambda *args, **kwargs: workflow_record(workflow, sqlite_session),
+        lambda *_args, **_kwargs: workflow_record(workflow, sqlite_session),
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowApi()
@@ -212,7 +212,7 @@ def test_published_workflow_get_serializes_materialized_record(
     monkeypatch.setattr(
         snippet_workflow_module.SnippetService,
         "get_published_workflow_record",
-        lambda *args, **kwargs: workflow_record(workflow, sqlite_session),
+        lambda *_args, **_kwargs: workflow_record(workflow, sqlite_session),
     )
 
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()
@@ -315,7 +315,7 @@ def test_list_published_snippet_workflows_includes_input_fields(
     monkeypatch.setattr(
         snippet_workflow_module.SnippetService,
         "get_all_published_workflows",
-        lambda *args, **kwargs: ([workflow_record(workflow, sqlite_session)], False),
+        lambda *_args, **_kwargs: ([workflow_record(workflow, sqlite_session)], False),
     )
 
     api = snippet_workflow_module.SnippetPublishedAllWorkflowApi()
@@ -340,7 +340,7 @@ def test_restore_published_snippet_workflow_to_draft_success(
     snippet = _snippet()
 
     monkeypatch.setattr(
-        workflow_application.workflow_drafts, "restore", lambda *args, **kwargs: workflow_snapshot(workflow)
+        workflow_application.workflow_drafts, "restore", lambda *_args, **_kwargs: workflow_snapshot(workflow)
     )
 
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()

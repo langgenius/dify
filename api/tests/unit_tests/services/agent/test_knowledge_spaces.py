@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -31,7 +31,7 @@ class _StubSessionMaker:
 
 
 class _FakeSession:
-    def __init__(self, *, scalar_value: Any = None, on_flush: Any = None) -> None:
+    def __init__(self, *, scalar_value: object = None, on_flush: Callable[[], None] | None = None) -> None:
         self._scalar_value = scalar_value
         self._on_flush = on_flush
         self.scalar_called = 0
@@ -40,7 +40,7 @@ class _FakeSession:
         if self._on_flush:
             self._on_flush()
 
-    def scalar(self, *args: Any, **kwargs: Any) -> Any:
+    def scalar(self, *_args: object, **_kwargs: object) -> object:
         self.scalar_called += 1
         return self._scalar_value
 
@@ -141,7 +141,7 @@ def test_sync_workflow_bindings_skips_empty_graph_without_stale_grants(monkeypat
     session = _FakeSession(scalar_value=None)
     session_maker = _StubSessionMaker()
 
-    def _fail_get_runtime(_maker: Any) -> None:
+    def _fail_get_runtime(_maker: object) -> None:
         raise AssertionError("runtime must not be constructed for a no-op")
 
     monkeypatch.setattr(

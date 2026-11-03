@@ -859,6 +859,7 @@ def test_post_encrypts_agent_tool_parameters(
             },
         },
     )
+
     @dataclass
     class _ToolServices:
         tool_providers: object = field(default_factory=object)

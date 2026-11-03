@@ -6,7 +6,7 @@ from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, Table, create_engine, event
+from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
