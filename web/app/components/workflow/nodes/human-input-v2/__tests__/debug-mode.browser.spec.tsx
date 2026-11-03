@@ -98,6 +98,7 @@ it('explains the final channel guard and keeps its selection after pointer and k
     .toHaveAccessibleDescription('workflow.nodes.humanInputV2.debug.keepOneChannel')
   // Its label is clickable and the checkbox intentionally remains focusable to explain the guard.
   await page.getByRole('dialog').getByText(label('email'), { exact: true }).click()
+  await expect.element(channel('email')).toBeChecked()
   await expect.element(channel('email')).toHaveFocus()
   await userEvent.keyboard(' ')
   await expect.element(channel('email')).toBeChecked()
