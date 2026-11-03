@@ -186,6 +186,36 @@ def test_convert_tool_response_to_str_and_extract_binary_messages():
         )
 
 
+def test_extract_binary_messages_treats_none_mime_type_as_absent():
+    tool = _build_tool()
+    messages = [
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.IMAGE,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/a.png"),
+            meta={"mime_type": None},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/blob.bin"),
+            meta={"mime_type": None},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/file.pdf"),
+            meta={"mime_type": None},
+        ),
+    ]
+
+    binaries = list(ToolEngine._extract_tool_response_binary_and_text(messages))
+
+    # A present-but-None meta value must fall back, not reach the pydantic model.
+    assert [b.mimetype for b in binaries] == [
+        "image/png",
+        "application/octet-stream",
+        "application/octet-stream",
+    ]
+
+
 @pytest.mark.parametrize("json_first", [True, False])
 @pytest.mark.parametrize(
     ("text", "json_object"),
