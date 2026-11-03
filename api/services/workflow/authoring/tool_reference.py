@@ -246,3 +246,6 @@ class ToolReference(PluginReference):
             return
         for parameter in declaration.parameters:
             _store_default(raw, parameter)
+
+    def value_loc(self, parameter: DeclaredParameter) -> tuple[str, ...]:
+        return _ToolValueSlot.of(parameter.form).value, parameter.name

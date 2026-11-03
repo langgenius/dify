@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from core.workflow.node_factory import node_data_model, resolve_workflow_node_class
 from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.base.node import Node
 
 # Only empty containers: values the editor reads without a guard and that mean "none yet".
 EDITOR_EMPTY: Final[Mapping[str, Mapping[str, object]]] = {
@@ -94,6 +95,11 @@ def complete_sub_models(model: type[BaseModel], data: Mapping[str, Any]) -> dict
             item_model = models.item
             completed[key] = [_fill(item_model, item) if isinstance(item, Mapping) else item for item in value]
     return completed
+
+
+def node_data_schema(node_class: type[Node]) -> dict[str, Any]:
+    """The JSON schema of a node class's data, as describe.node_type serves it."""
+    return node_data_model(node_class).model_json_schema()
 
 
 def editor_defaults(data: Mapping[str, Any]) -> dict[str, Any]:

@@ -64,6 +64,8 @@ class GraphIssue:
     message: str
     node_id: str | None = None
     loc: tuple[str | int, ...] = field(default_factory=tuple)
+    # The pydantic error type of a node data problem, such as "missing".
+    error_type: str | None = None
 
 
 ResourceCheck = Callable[[Mapping[str, Any]], str | None]
@@ -132,7 +134,8 @@ def _read_known_node(node_id: str, raw_data: Mapping[str, Any], node_class: type
     except ValidationError as error:
         problems = error.errors(include_url=False, include_input=False, include_context=False)
         issues = tuple(
-            GraphIssue(IssueCode.NODE_DATA_INVALID, p["msg"], node_id, _data_loc(node_id, *p["loc"])) for p in problems
+            GraphIssue(IssueCode.NODE_DATA_INVALID, p["msg"], node_id, _data_loc(node_id, *p["loc"]), p["type"])
+            for p in problems
         )
         return _Node(node_id, data, issues)
     return _Node(node_id, complete_sub_models(model, data), references=_references(node_class, config))

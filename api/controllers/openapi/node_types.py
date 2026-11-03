@@ -15,7 +15,7 @@ from controllers.openapi._errors import NodeTypeNotFound
 from controllers.openapi._models import NodeTypeDetailResponse, NodeTypeListResponse, NodeTypeRow
 from controllers.openapi.auth.context import Context
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping, node_data_model
-from services.workflow.node_defaults import complete_sub_models
+from services.workflow.node_defaults import complete_sub_models, node_data_schema
 from services.workflow_service import WorkflowService
 
 
@@ -62,6 +62,6 @@ class NodeTypeDetailApi(Resource):
         return NodeTypeDetailResponse(
             type=node_type,
             version=node_class.version(),
-            schema=model.model_json_schema(),
+            schema=node_data_schema(node_class),
             default_config=_complete_default_config(model, WorkflowService().get_default_block_config(node_type)),
         )
