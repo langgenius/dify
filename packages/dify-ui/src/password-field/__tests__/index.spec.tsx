@@ -48,6 +48,33 @@ describe('PasswordField', () => {
     await expect.element(input).toHaveFocus()
   })
 
+  it('should keep the selection in the input across pointer toggles', async () => {
+    const screen = await render(
+      <PasswordField>
+        <PasswordFieldInput
+          aria-label="Password"
+          autoComplete="current-password"
+          defaultValue="hunter2"
+        />
+        <PasswordFieldToggle aria-label="Show password" />
+      </PasswordField>,
+    )
+    const input = screen.getByLabelText('Password').element() as HTMLInputElement
+    const toggle = screen.getByRole('button', { name: 'Show password' })
+
+    input.focus()
+    input.setSelectionRange(2, 4)
+    await toggle.click()
+    await expect
+      .poll(() => [input.type, input.selectionStart, input.selectionEnd])
+      .toEqual(['text', 2, 4])
+
+    await toggle.click()
+    await expect
+      .poll(() => [input.type, input.selectionStart, input.selectionEnd])
+      .toEqual(['password', 2, 4])
+  })
+
   it('should reach the toggle after the input with the keyboard', async () => {
     const screen = await render(
       <PasswordField>

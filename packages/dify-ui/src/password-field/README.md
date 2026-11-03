@@ -26,8 +26,8 @@ wrappers around it without changing call sites.
 - `PasswordFieldInput` owns `type`. `autoComplete` is required: `current-password` for an
   existing password, `new-password` for a password being set.
 - `PasswordFieldToggle` is optional. Its `aria-label` stays constant; `aria-pressed` reports
-  whether the value is revealed. Pressing it with a pointer keeps focus in the input. It stays
-  available while the input is read-only.
+  whether the value is revealed. Pressing it with a pointer keeps focus and the caret in the
+  input. It stays available while the input is read-only.
 - `disabled` on `PasswordField` applies to the input and the toggle; a disabled `Field` reaches
   only the input. Wrap the field in `Field` for the label, validation, and errors.
 - Other masked values, such as tokens, use `Input` with `type="password"` and `autoComplete="off"`.

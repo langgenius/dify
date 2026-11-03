@@ -8,11 +8,13 @@ import { IconButton } from '../icon-button'
 import { InputGroup, InputGroupAddon } from '../input-group'
 import { textControlGroupInputClassName } from '../internal/form-control'
 import { resolveClassName } from '../internal/resolve-class-name'
+import { useMergedRefs } from '../use-merged-refs'
 
 type PasswordFieldContextValue = {
   visible: boolean
   setVisible: React.Dispatch<React.SetStateAction<boolean>>
   disabled: boolean
+  inputRef: React.RefObject<HTMLInputElement | null>
 }
 
 const PasswordFieldContext = React.createContext<PasswordFieldContextValue | null>(null)
@@ -29,7 +31,11 @@ type PasswordFieldProps = InputGroupProps & {
 
 function PasswordField({ disabled = false, ...props }: PasswordFieldProps) {
   const [visible, setVisible] = React.useState(false)
-  const contextValue = React.useMemo(() => ({ visible, setVisible, disabled }), [visible, disabled])
+  const inputRef = React.useRef<HTMLInputElement>(null)
+  const contextValue = React.useMemo(
+    () => ({ visible, setVisible, disabled, inputRef }),
+    [visible, disabled],
+  )
 
   return (
     <PasswordFieldContext.Provider value={contextValue}>
@@ -45,8 +51,9 @@ type PasswordFieldInputProps = Omit<
   autoComplete: 'current-password' | 'new-password'
 }
 
-function PasswordFieldInput({ className, disabled, ...props }: PasswordFieldInputProps) {
-  const { visible, disabled: rootDisabled } = usePasswordFieldContext()
+function PasswordFieldInput({ className, disabled, ref, ...props }: PasswordFieldInputProps) {
+  const { visible, disabled: rootDisabled, inputRef } = usePasswordFieldContext()
+  const mergedRef = useMergedRefs(ref, inputRef)
 
   return (
     <BaseInput
@@ -54,6 +61,7 @@ function PasswordFieldInput({ className, disabled, ...props }: PasswordFieldInpu
       autoCapitalize="off"
       autoCorrect="off"
       {...props}
+      ref={mergedRef}
       type={visible ? 'text' : 'password'}
       disabled={rootDisabled || disabled}
       className={(state) =>
@@ -69,7 +77,7 @@ type PasswordFieldToggleProps = {
 }
 
 function PasswordFieldToggle({ disabled, ...props }: PasswordFieldToggleProps) {
-  const { visible, setVisible, disabled: rootDisabled } = usePasswordFieldContext()
+  const { visible, setVisible, disabled: rootDisabled, inputRef } = usePasswordFieldContext()
 
   return (
     <InputGroupAddon align="inline-end">
@@ -80,7 +88,18 @@ function PasswordFieldToggle({ disabled, ...props }: PasswordFieldToggleProps) {
         onMouseDown={(event) => {
           if (event.button === 0) event.preventDefault()
         }}
-        onClick={() => setVisible((current) => !current)}
+        onClick={() => {
+          const input = inputRef.current
+          if (input && input === input.ownerDocument.activeElement) {
+            const { selectionStart, selectionEnd, selectionDirection } = input
+            // Chromium moves the caret to the start after a pointer press changes the input type.
+            setTimeout(() => {
+              if (input !== input.ownerDocument.activeElement) return
+              input.setSelectionRange(selectionStart, selectionEnd, selectionDirection ?? undefined)
+            })
+          }
+          setVisible((current) => !current)
+        }}
       >
         <span
           aria-hidden="true"
