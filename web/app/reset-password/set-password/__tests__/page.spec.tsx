@@ -91,10 +91,11 @@ describe('Reset Password Set Password Page', () => {
     expect(confirmPasswordInput).toHaveAttribute('autocomplete', 'new-password')
 
     await user.type(passwordInput, 'ValidPass123!')
-    await user.click(screen.getAllByRole('button', { name: 'login.showPassword' })[0]!)
+    const [showPasswordButton] = screen.getAllByRole('button', { name: 'login.showPassword' })
+    await user.click(showPasswordButton!)
 
     expect(passwordInput).toHaveAttribute('type', 'text')
-    expect(screen.getByRole('button', { name: 'login.hidePassword' })).toBeInTheDocument()
+    expect(showPasswordButton).toHaveAttribute('aria-pressed', 'true')
 
     await user.type(confirmPasswordInput, 'ValidPass123!{Enter}')
 

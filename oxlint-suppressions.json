@@ -6731,11 +6731,6 @@
       "count": 2
     }
   },
-  "web/features/new-rag/upgrade/knowledge-upgrade-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/features/new-rag/upload/file-list.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
