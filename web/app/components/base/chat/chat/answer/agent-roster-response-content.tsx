@@ -395,14 +395,12 @@ export function AgentRosterResponseContent({
     >
       {hasActivity && (
         <AgentActivityDisclosure
-          key={showThoughts ? 'thoughts' : hasLiveResponseParts ? 'live' : 'history'}
+          key={hasLiveResponseParts ? 'live' : 'history'}
           item={item}
           entries={entries}
           responding={responding}
           showThoughts={showThoughts}
-          defaultOpen={
-            showThoughts || (hasLiveResponseParts && (!!responding || entries.length > 0))
-          }
+          defaultOpen={hasLiveResponseParts && (!!responding || entries.length > 0)}
         />
       )}
       {standaloneMessages.map((message) => (

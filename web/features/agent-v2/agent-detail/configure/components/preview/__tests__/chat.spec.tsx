@@ -299,7 +299,8 @@ describe('Agent conversation history', () => {
       const toggle = await screen.findByRole('button', {
         name: new RegExp(`${prefix}.answer.thinking`),
       })
-      expect(toggle).toHaveAttribute('aria-expanded', String(enabled))
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await userEvent.setup().click(toggle)
       if (enabled) expect(await screen.findByText('Model reasoning from history')).toBeVisible()
       else expect(screen.queryByText('Model reasoning from history')).not.toBeInTheDocument()
     },
