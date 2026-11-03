@@ -8,6 +8,7 @@ from dify_agent.layers.config import DifyConfigLayerConfig, DifyConfigSkillConfi
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.prompt import Config as PromptConfig
+from dify_agent.layers.user_prompt import DifyUserPromptLayerConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.snapshot import SessionSnapshot
 from flask import Flask
@@ -17,6 +18,7 @@ from clients.agent_backend import (
     DIFY_CORE_TOOLS_LAYER_ID,
     DIFY_EXECUTION_CONTEXT_LAYER_ID,
     DIFY_PLUGIN_TOOLS_LAYER_ID,
+    WORKFLOW_USER_PROMPT_LAYER_ID,
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
@@ -31,6 +33,7 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
 )
 from extensions.tracing import bind_tracing
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import (
     Agent,
@@ -280,7 +283,7 @@ def _workflow_user_prompt(result) -> str:
     from clients.agent_backend import WORKFLOW_USER_PROMPT_LAYER_ID
 
     layer = _request_layers(result)[WORKFLOW_USER_PROMPT_LAYER_ID]
-    return cast(str, layer["config"]["user"])
+    return cast(str, layer["config"]["text"])
 
 
 def _previous_node_prompt_payload(result, selector: str) -> object:
@@ -317,9 +320,9 @@ def test_builds_create_run_request_from_agent_soul_and_node_job(
     assert dumped["idempotency_key"] == "run-1:node-exec-1"
     assert dumped["composition"]["layers"][0]["config"]["prefix"] == "You are careful."
     assert dumped["composition"]["layers"][1]["config"]["user"] == "Use the previous output."
-    assert "Agent task for this workflow run:" not in dumped["composition"]["layers"][2]["config"]["user"]
-    assert "User query: Summarize the report." in dumped["composition"]["layers"][2]["config"]["user"]
-    assert "Previous node outputs:" not in dumped["composition"]["layers"][2]["config"]["user"]
+    assert "Agent task for this workflow run:" not in dumped["composition"]["layers"][2]["config"]["text"]
+    assert "User query: Summarize the report." in dumped["composition"]["layers"][2]["config"]["text"]
+    assert "Previous node outputs:" not in dumped["composition"]["layers"][2]["config"]["text"]
     assert dumped["composition"]["layers"][-1]["config"]["json_schema"]["properties"]["summary"]["type"] == "string"
     assert DIFY_AGENT_HISTORY_LAYER_ID in layers
     assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["model_provider"] == "openai"
@@ -1454,6 +1457,81 @@ def test_uploaded_workflow_files_are_included_without_prompt_marker():
         }
     ]
     assert "Previous node outputs:" not in user_prompt
+
+
+def _uploaded_images_variable_pool(file_reference: str) -> FakeVariablePool:
+    class UploadedImagesVariablePool(FakeVariablePool):
+        def get(self, selector):
+            if list(selector) == ["sys", "files"]:
+                return ArrayFileSegment(
+                    value=[
+                        File(
+                            type=FileType.IMAGE,
+                            transfer_method=FileTransferMethod.LOCAL_FILE,
+                            reference=file_reference,
+                            remote_url=None,
+                            filename="earth.png",
+                            extension=".png",
+                            mime_type="image/png",
+                            size=12,
+                        )
+                    ]
+                )
+            return super().get(selector)
+
+    return UploadedImagesVariablePool()
+
+
+def test_workflow_agent_node_sends_uploaded_images_as_multimodal_when_vision_supported(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_supports_vision",
+        lambda **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.file_manager.to_prompt_message_content",
+        lambda *_args, **_kwargs: ImagePromptMessageContent(
+            format="png",
+            url="https://files.example.com/earth.png?sign=secret",
+            mime_type="image/png",
+            filename="earth.png",
+            detail=ImagePromptMessageContent.DETAIL.LOW,
+        ),
+    )
+    file_reference = build_file_reference(record_id="upload-file-1")
+    context = replace(_context(), variable_pool=_uploaded_images_variable_pool(file_reference))
+
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
+
+    config = DifyUserPromptLayerConfig.model_validate(_request_layers(result)[WORKFLOW_USER_PROMPT_LAYER_ID]["config"])
+    assert len(config.files) == 1
+    image = config.files[0]
+    assert image.delivery == "multimodal"
+    assert image.type == "image"
+    assert image.url == "https://files.example.com/earth.png?sign=secret"
+
+
+def test_workflow_agent_node_keeps_image_locator_for_non_vision_model(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_supports_vision",
+        lambda **_kwargs: False,
+    )
+    file_reference = build_file_reference(record_id="upload-file-1")
+    context = replace(_context(), variable_pool=_uploaded_images_variable_pool(file_reference))
+
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
+
+    config = DifyUserPromptLayerConfig.model_validate(_request_layers(result)[WORKFLOW_USER_PROMPT_LAYER_ID]["config"])
+    assert [file.model_dump(exclude_none=True) for file in config.files] == [
+        {
+            "delivery": "download",
+            "type": "image",
+            "filename": "earth.png",
+            "transfer_method": "local_file",
+            "reference": file_reference,
+        }
+    ]
 
 
 def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_context():

@@ -33,7 +33,7 @@ from dify_agent.runtime.context import Deps, LayerData, Services
 REGISTRY: dict[str, ModuleType] = {
     "agent_soul_prompt": prompt,
     "workflow_node_job_prompt": prompt,
-    "workflow_user_prompt": prompt,
+    "workflow_user_prompt": user_prompt,
     "agent_app_user_prompt": user_prompt,
     "prompt": prompt,
     "user_prompt": user_prompt,

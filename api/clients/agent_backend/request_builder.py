@@ -195,6 +195,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     backend_binding_ref: str = Field(min_length=1)
     workflow_node_job_prompt: str
     user_prompt: str
+    user_files: list[DifyUserPromptFileConfig] = Field(default_factory=list)
     agent_soul_prompt: str | None = None
     agent_config_version_kind: AgentConfigVersionKind = "snapshot"
     idempotency_key: str | None = None
@@ -429,7 +430,9 @@ class AgentBackendRunRequestBuilder:
                 ),
                 RunLayerSpec(
                     name=WORKFLOW_USER_PROMPT_LAYER_ID,
-                    config=(PromptConfig(user=run_input.user_prompt)).model_dump(mode="json"),
+                    config=(
+                        DifyUserPromptLayerConfig(text=run_input.user_prompt, files=run_input.user_files)
+                    ).model_dump(mode="json"),
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,

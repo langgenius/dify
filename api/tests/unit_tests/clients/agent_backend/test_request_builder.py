@@ -104,7 +104,7 @@ def test_request_builder_separates_agent_soul_and_workflow_job_prompt() -> None:
     workflow_job_config = dumped["composition"]["layers"][1]["config"]
     assert workflow_job_config["user"] == "Review the previous node output."
     assert not workflow_job_config.get("prefix")
-    assert dumped["composition"]["layers"][2]["config"]["user"] == "Summarize the report."
+    assert dumped["composition"]["layers"][2]["config"]["text"] == "Summarize the report."
 
 
 def test_request_builder_forwards_plugin_specific_model_settings_via_extra_body() -> None:

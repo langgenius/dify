@@ -33,6 +33,12 @@ from dify_agent.layers.shell import (
     DifyShellLayerConfig,
     DifyShellSecretRefConfig,
 )
+from dify_agent.layers.user_prompt import (
+    DifyUserPromptDownloadConfig,
+    DifyUserPromptFileConfig,
+    DifyUserPromptFileType,
+    DifyUserPromptImageConfig,
+)
 from dify_agent.protocol import CreateRunRequest
 from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 from dify_agent.protocol.snapshot import SessionSnapshot
@@ -48,11 +54,13 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
-from core.app.llm.model_access import resolve_model_context_window
+from core.app.llm.model_access import resolve_model_context_window, resolve_model_supports_vision
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
+from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from extensions.tracing import application_tracing_hooks
-from graphon.file import File, FileTransferMethod
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.variables.segments import Segment
 from graphon.variables.template_resolution import convert_template
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -109,6 +117,62 @@ _AGENT_STUB_FILE_TRANSFER_METHODS: Mapping[FileTransferMethod, AgentStubFileTran
     FileTransferMethod.REMOTE_URL: "remote_url",
 }
 _CANONICAL_DIFY_FILE_REFERENCE_PATTERN = r"^dify-file-ref:eyJyZWNvcmRfaWQiOi[A-Za-z0-9_-]+={0,2}$"
+
+
+type _ReferenceFileTransferMethod = Literal["local_file", "tool_file", "datasource_file"]
+
+
+def _build_user_image(file: File) -> DifyUserPromptImageConfig:
+    content = file_manager.to_prompt_message_content(file)
+    if not isinstance(content, ImagePromptMessageContent):
+        raise WorkflowAgentRuntimeRequestBuildError(
+            "agent_user_file_unsupported",
+            f"Workflow Agent node cannot send file '{file.filename or 'image'}' as vision content.",
+        )
+    detail = content.detail.value
+    return DifyUserPromptImageConfig(
+        filename=content.filename or file.filename or f"image.{content.format}",
+        mime_type=content.mime_type,
+        format=content.format,
+        url=content.url or None,
+        base64_data=content.base64_data or None,
+        detail=detail if detail in {"low", "high"} else None,
+    )
+
+
+def _build_user_download(file: File) -> DifyUserPromptDownloadConfig:
+    file_type = cast(DifyUserPromptFileType, file.type.value)
+    if file.transfer_method == FileTransferMethod.REMOTE_URL:
+        if file.remote_url is None:
+            raise WorkflowAgentRuntimeRequestBuildError(
+                "agent_user_file_invalid", "Remote user file is missing its URL."
+            )
+        return DifyUserPromptDownloadConfig(
+            type=file_type, filename=file.filename or None, transfer_method="remote_url", url=file.remote_url
+        )
+    if file.reference is None:
+        raise WorkflowAgentRuntimeRequestBuildError("agent_user_file_invalid", "User file is missing its reference.")
+    reference = file.reference
+    if not reference.startswith("dify-file-ref:"):
+        reference = build_file_reference(record_id=reference)
+    elif not is_canonical_file_reference(reference):
+        raise WorkflowAgentRuntimeRequestBuildError("agent_user_file_invalid", "User file reference is invalid.")
+    transfer_method: _ReferenceFileTransferMethod
+    match file.transfer_method:
+        case FileTransferMethod.LOCAL_FILE:
+            transfer_method = "local_file"
+        case FileTransferMethod.TOOL_FILE:
+            transfer_method = "tool_file"
+        case FileTransferMethod.DATASOURCE_FILE:
+            transfer_method = "datasource_file"
+        case _:
+            raise WorkflowAgentRuntimeRequestBuildError(
+                "agent_user_file_invalid",
+                f"User file transfer method '{file.transfer_method.value}' is unsupported.",
+            )
+    return DifyUserPromptDownloadConfig(
+        type=file_type, filename=file.filename or None, transfer_method=transfer_method, reference=reference
+    )
 
 
 class WorkflowAgentRuntimeRequestBuildError(ValueError):
@@ -236,6 +300,14 @@ class WorkflowAgentRuntimeRequestBuilder:
         )
 
         tracing_hooks = application_tracing_hooks()
+        files = get_system_value(context.variable_pool, SystemVariableKey.FILES)
+        user_files = self._build_user_files(
+            files=cast(Sequence[File], files) if isinstance(files, (list, tuple)) else (),
+            run_context=context.dify_context,
+            provider_name=agent_soul.model.model_provider,
+            model_name=agent_soul.model.model,
+            include_image_references=knowledge_fs_config is not None,
+        )
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
@@ -279,6 +351,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
+                user_files=user_files,
                 output=self._build_output_config(
                     node_job.declared_outputs, node_job.output_routes, context.variable_pool
                 ),
@@ -398,6 +471,29 @@ class WorkflowAgentRuntimeRequestBuilder:
         if isinstance(files, list | tuple) and not files:
             return None
         return self._summarize_value(files)
+
+    @staticmethod
+    def _build_user_files(
+        *,
+        files: Sequence[File],
+        run_context: DifyRunContext,
+        provider_name: str,
+        model_name: str,
+        include_image_references: bool,
+    ) -> list[DifyUserPromptFileConfig]:
+        supports_vision = any(file.type == FileType.IMAGE for file in files) and resolve_model_supports_vision(
+            run_context=run_context,
+            provider_name=provider_name,
+            model_name=model_name,
+        )
+        user_files: list[DifyUserPromptFileConfig] = []
+        for file in files:
+            if supports_vision and file.type == FileType.IMAGE:
+                user_files.append(_build_user_image(file))
+                if not include_image_references or file.transfer_method != FileTransferMethod.LOCAL_FILE:
+                    continue
+            user_files.append(_build_user_download(file))
+        return user_files
 
     def _build_workflow_task_prompt(
         self,
