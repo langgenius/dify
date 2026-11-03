@@ -4,6 +4,10 @@
 
 QDRANT_API_KEY=${QDRANT_API_KEY:-difyai123456}
 
+# Container file descriptor limits default to 524288 (soft and hard).
+# Set QDRANT_NOFILE_SOFT and QDRANT_NOFILE_HARD in docker/.env to override them;
+# Compose needs these settings before loading service env files.
+
 # Dify vector client settings (API, workers and Beat)
 # QDRANT_URL=http://qdrant:6333
 # QDRANT_CLIENT_TIMEOUT=20

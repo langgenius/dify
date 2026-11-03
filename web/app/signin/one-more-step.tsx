@@ -162,7 +162,7 @@ const OneMoreStep = () => {
             <Input
               value={state.invitation_code}
               type="text"
-              placeholder={t(($) => $.invitationCodePlaceholder, { ns: 'login' }) || ''}
+              placeholder={t(($) => $.invitationCodePlaceholder, { ns: 'login' })}
               onValueChange={(value) => dispatch({ type: 'invitation_code', value })}
             />
           </Field>

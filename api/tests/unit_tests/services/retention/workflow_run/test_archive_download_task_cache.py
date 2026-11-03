@@ -1,5 +1,5 @@
 import datetime
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 
 import pytest
 
@@ -46,7 +46,7 @@ class FakeRedis:
         name: str,
         timeout: float | None = None,
         blocking_timeout: float | None = None,
-    ):
+    ) -> AbstractContextManager[None]:
         self.lock_calls.append((name, timeout, blocking_timeout))
         return nullcontext()
 
@@ -121,7 +121,8 @@ def test_build_archive_download_id_rejects_empty_bundle_refs() -> None:
 
 def test_archive_download_task_cache_round_trips_with_ttl() -> None:
     redis = FakeRedis()
-    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)
+    # FakeRedis implements the subset of RedisClientWrapper that the cache uses.
+    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)  # pyrefly: ignore[bad-argument-type]
     task = build_pending_archive_download_task(
         tenant_id="tenant-1",
         requested_by="account-1",
@@ -144,7 +145,8 @@ def test_archive_download_task_cache_round_trips_with_ttl() -> None:
 
 def test_archive_download_task_cache_uses_per_download_lock() -> None:
     redis = FakeRedis()
-    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)
+    # FakeRedis implements the subset of RedisClientWrapper that the cache uses.
+    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)  # pyrefly: ignore[bad-argument-type]
 
     with cache.lock(tenant_id="tenant-1", download_id="download-1"):
         pass
@@ -160,7 +162,8 @@ def test_archive_download_task_cache_uses_per_download_lock() -> None:
 
 def test_archive_download_task_cache_delete_removes_entry() -> None:
     redis = FakeRedis()
-    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)
+    # FakeRedis implements the subset of RedisClientWrapper that the cache uses.
+    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)  # pyrefly: ignore[bad-argument-type]
     task = WorkflowRunArchiveDownloadTask(
         download_id="download-1",
         tenant_id="tenant-1",
@@ -185,7 +188,8 @@ def test_archive_download_task_cache_delete_removes_entry() -> None:
 
 def test_archive_download_task_cache_ignores_malformed_json() -> None:
     redis = FakeRedis()
-    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)
+    # FakeRedis implements the subset of RedisClientWrapper that the cache uses.
+    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)  # pyrefly: ignore[bad-argument-type]
     redis.setex("workflow_run_archive_download:tenant-1:download-1", 3600, "{")
 
     assert cache.get(tenant_id="tenant-1", download_id="download-1") is None
