@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 
 import pytest
 
@@ -8,7 +8,6 @@ from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.trigger_manager import TriggerManager
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models.workflow import WorkflowNodeExecutionModel
-from services.tools.provider_queries import ToolProviderIcons
 from services.tools.tool_manager import ToolManager
 from services.workflow.node_execution_extras import node_execution_extras
 
@@ -16,6 +15,7 @@ from services.workflow.node_execution_extras import node_execution_extras
 @dataclass
 class _ToolProviderIconsStub:
     def icon(self, *, tenant_id: str, provider_type: ToolProviderType, provider_id: str) -> str | None:
+        del tenant_id, provider_type, provider_id
         return None
 
 

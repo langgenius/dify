@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, override
+from typing import override
 from uuid import uuid4
 
 from sqlalchemy import Engine, delete
@@ -27,7 +27,8 @@ from services.workflow_event_snapshot_service import _build_paused_snapshot_even
 
 @dataclass
 class _ToolProvidersStub:
-    def icon(self, *args: Any, **kwargs: Any) -> str | None:
+    def icon(self, *args: object, **kwargs: object) -> str | None:
+        del args, kwargs
         return None
 
 

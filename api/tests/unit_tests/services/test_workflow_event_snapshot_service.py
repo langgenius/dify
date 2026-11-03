@@ -64,6 +64,7 @@ from services.workflow_event_snapshot_service import (
     _build_paused_snapshot_events as _build_checkpoint_snapshot_events,
 )
 
+
 @dataclass
 class _CallArgs:
     args: tuple[object, ...]
@@ -94,6 +95,7 @@ class _CallSpy:
 @dataclass
 class _TestToolProviders:
     def icon(self, *args: object, **kwargs: object) -> str | None:
+        del args, kwargs
         return None
 
 

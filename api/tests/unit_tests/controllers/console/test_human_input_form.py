@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
@@ -48,7 +48,7 @@ class _ToolProvidersStub:
 
 @dataclass
 class _ToolsServiceStub:
-    tool_providers: Any
+    tool_providers: object
 
 
 @dataclass

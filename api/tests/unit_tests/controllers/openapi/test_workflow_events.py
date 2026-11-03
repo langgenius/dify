@@ -10,9 +10,9 @@ runs, and the allow/deny answers live in `test_auth_matrix.py`.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import sys
 from collections.abc import Iterator
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -27,6 +27,7 @@ from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
+
 
 @dataclass
 class _ToolProvidersStub:
