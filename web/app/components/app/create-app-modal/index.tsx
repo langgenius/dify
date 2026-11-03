@@ -322,7 +322,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                       aria-label={t(($) => $['newApp.name'], { ns: 'app' })}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
+                      placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' })}
                     />
                   </Field>
                 </div>
@@ -351,7 +351,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                 <Textarea
                   id={descriptionInputId}
                   className="resize-none"
-                  placeholder={t(($) => $['newApp.appDescriptionPlaceholder'], { ns: 'app' }) || ''}
+                  placeholder={t(($) => $['newApp.appDescriptionPlaceholder'], { ns: 'app' })}
                   value={description}
                   onValueChange={(value) => setDescription(value)}
                 />

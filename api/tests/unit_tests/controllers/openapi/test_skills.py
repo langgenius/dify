@@ -103,7 +103,7 @@ def _skill(**extra: object) -> Record:
         "tags": ["ops"],
         "latest_published_version_id": "ver-2",
         "updated_at": UPDATED_AT,
-        "files": [{"path": "SKILL.md"}],
+        "files": [{"path": "SKILL.md", "kind": "file"}],
         **extra,
     }
 
@@ -308,7 +308,11 @@ def test_publish_passes_name_and_note(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_import_folder_creates_skill(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen = _record(monkeypatch, "import_skill", _skill(files=[{"path": "SKILL.md"}, {"path": "scripts/run.py"}]))
+    seen = _record(
+        monkeypatch,
+        "import_skill",
+        _skill(files=[{"path": "SKILL.md", "kind": "file"}, {"path": "scripts/run.py", "kind": "file"}]),
+    )
     response, status = _import({"SKILL.md": b"---\nname: expense-sop\n---\n", "scripts/run.py": b"x"})
     assert status == 201
     [sent] = seen
@@ -330,6 +334,25 @@ def test_import_with_skill_id_overwrites(monkeypatch: pytest.MonkeyPatch) -> Non
     assert sent["skill_id"] == SKILL_ID
     assert cast(SkillOverwritePayload, sent["payload"]).expected_updated_at == 1761200000
     assert response.hints[0].op == "publish.skill"
+
+
+@pytest.mark.parametrize("overwrite", [False, True], ids=["create", "overwrite"])
+@pytest.mark.parametrize("script_path", ["check.py", "scripts/check.py", "scripts/tools/check.py"])
+def test_import_file_count_excludes_directories(overwrite: bool, script_path: str) -> None:
+    """Importing a valid folder returns its file count, including when replacing a draft."""
+    files = {
+        "SKILL.md": b"---\nname: file-count-repro\ndescription: Count only files\n---\n# File count\n",
+        script_path: b"print('check')\n",
+    }
+    fields: dict[str, str] = {}
+    if overwrite:
+        initial, _ = _import({"SKILL.md": files["SKILL.md"]})
+        fields = {"skill_id": initial.id, "draft_hash": initial.draft_hash}
+
+    response, status = _import(files, **fields)
+
+    assert status == (200 if overwrite else 201)
+    assert response.file_count == 2
 
 
 @pytest.mark.parametrize(

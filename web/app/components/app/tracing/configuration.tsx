@@ -65,7 +65,7 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
       const response = configQueries[index]?.data
       return [
         provider,
-        response?.has_not_configured ? null : (response?.tracing_config ?? null),
+        response && !response.has_not_configured && response.tracing_config ? response : null,
       ] as const
     }),
   )
@@ -187,7 +187,7 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
               {' · '}
             </span>
             {inUseProviderIconClassName && (
-              <span aria-hidden className="flex items-center pr-2 pl-1">
+              <span aria-hidden className="flex items-center ps-1 pe-2">
                 <span className={cn(inUseProviderIconClassName, 'h-5')} />
               </span>
             )}
@@ -204,7 +204,7 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
                 {t(($) => $[`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`], { ns: 'app' })}
               </span>
             </span>
-            <Separator decorative orientation="vertical" className="ml-1 h-3.5" />
+            <Separator decorative orientation="vertical" className="ms-1 h-3.5" />
             <span aria-hidden className="flex size-6 items-center justify-center rounded-md">
               <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
             </span>

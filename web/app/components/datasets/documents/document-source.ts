@@ -1,4 +1,6 @@
 import type { DataSourceNotionPage } from '@/models/common'
+import { DataSourceType } from '@/models/datasets'
+import { DatasourceType } from '@/models/pipeline'
 
 // data_source_info is written by the data source that imported the document, so its keys are
 // read defensively for each source type.
@@ -10,6 +12,21 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const getString = (record: Record<string, unknown> | undefined, key: string) => {
   const value = record?.[key]
   return typeof value === 'string' ? value : undefined
+}
+
+/** Whether a document source has a file reference supported by the download API. */
+export const isDownloadableFileDocument = (
+  sourceType: string | null | undefined,
+  info: DocumentSourceInfo,
+) => {
+  if (sourceType === DataSourceType.FILE) return true
+  if (sourceType !== DatasourceType.localFile) return false
+
+  return Boolean(
+    getString(info ?? undefined, 'real_file_id') ||
+    getString(info ?? undefined, 'related_id') ||
+    getString(info ?? undefined, 'reference'),
+  )
 }
 
 const isNotionPageIcon = (

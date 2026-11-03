@@ -9,7 +9,7 @@ import { UserActionButtonType } from '@/app/components/workflow/nodes/human-inpu
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 // oxlint-disable-next-line no-restricted-imports -- Exercise the existing chat SSE transport at its network boundary.
 import { sseGet } from '@/service/base'
-import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
+import { submitHumanInputForm as submitWebAppHumanInputForm } from '@/service/share'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createChatConfigFixture } from '@/test/fixtures/chat'
 import {
@@ -38,8 +38,9 @@ vi.mock('@/service/base', async (importOriginal) => ({
   sseGet: vi.fn(),
   ssePost: vi.fn(),
 }))
-vi.mock('@/service/webapp-human-input', () => ({
-  submitWebAppHumanInputForm: vi.fn().mockResolvedValue(undefined),
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  submitHumanInputForm: vi.fn().mockResolvedValue(undefined),
 }))
 
 const createForm = (formVersion: HumanInputFormData['form_version']): HumanInputFormData =>

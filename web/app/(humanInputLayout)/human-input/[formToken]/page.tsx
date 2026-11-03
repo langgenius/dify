@@ -9,7 +9,7 @@ export default async function Page({ params }: { params: Promise<{ formToken: st
 
   return (
     <CommonLayoutHydrationBoundary>
-      <main className="h-full min-w-75 bg-chatbot-bg pb-[env(safe-area-inset-bottom)]">
+      <main className="h-dvh min-w-75 bg-chatbot-bg pb-[env(safe-area-inset-bottom)]">
         <ConsoleHumanInputForm key={formToken} formToken={formToken} />
       </main>
     </CommonLayoutHydrationBoundary>
