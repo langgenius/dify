@@ -59,7 +59,7 @@ const ForgotPasswordForm = () => {
   }, [])
 
   return loading ? (
-    <LoadingPlaceholder />
+    <LoadingPlaceholder className="grow" />
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
