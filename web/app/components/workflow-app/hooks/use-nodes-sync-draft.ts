@@ -4,7 +4,9 @@ import type {
   SyncDraftOptions,
   SyncDraftResult,
 } from '@/app/components/workflow/hooks-store'
-import { safe } from '@orpc/client'
+import type { WorkflowDraftSave } from '@/app/components/workflow/store/workflow/workflow-draft-slice'
+import type { EnvironmentVariablePatch } from '@/service/workflow'
+import { ORPCError, safe } from '@orpc/client'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
@@ -46,6 +48,17 @@ const shouldSkipDraftSync = (
 
 const isEmptyGraph = (graph: { nodes: unknown[]; edges: unknown[] }) =>
   graph.nodes.length === 0 && graph.edges.length === 0
+
+const toEnvironmentVariablePatchPayload = (patch: EnvironmentVariablePatch) => ({
+  environment_variables: patch.environmentVariables,
+  deleted_environment_variable_ids: patch.deletedEnvironmentVariableIds,
+})
+
+type LocalDraftSyncOptions = {
+  preparingBuilder?: boolean
+  force?: boolean
+  keepalive?: boolean
+}
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const { t } = useTranslation(['workflow'] as const)
@@ -98,6 +111,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const {
       conversationVariables,
       syncWorkflowDraftHash,
+      syncWorkflowDraftSaveId,
       isWorkflowDataLoaded,
       isSyncingWorkflowDraft,
       hasWorkflowDraftConflict,
@@ -161,6 +175,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         allNodes.length === 1 &&
         allNodes[0]?.data?.type === BlockEnum.StartPlaceholder &&
         edges.length === 0,
+      baseClientSaveId: syncWorkflowDraftSaveId,
       url: `/apps/${appId}/workflows/draft`,
       params: {
         graph: {
@@ -183,13 +198,9 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const performLocalSync = useCallback(
     async (
       baseParams: NonNullable<ReturnType<typeof getPostParams>>,
+      save: WorkflowDraftSave,
       callback?: SyncDraftCallback,
-      options?: SyncDraftOptions,
-      {
-        preparingBuilder = false,
-        force = false,
-        keepalive = false,
-      }: { preparingBuilder?: boolean; force?: boolean; keepalive?: boolean } = {},
+      { preparingBuilder = false, force = false, keepalive = false }: LocalDraftSyncOptions = {},
     ): Promise<SyncDraftResult | null> => {
       if (
         !preparingBuilder &&
@@ -201,6 +212,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const isCurrent = () => {
         const state = workflowStore.getState()
         return (
+          save.isCurrent() &&
           state.appId === baseParams.appId &&
           state.workflowDraftGeneration === baseParams.generation &&
           !shouldSkipDraftSync(
@@ -227,6 +239,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return null
       }
 
+      let expectedSaveId = baseParams.baseClientSaveId
       const emptyGraph = isEmptyGraph(baseParams.params.graph)
       const canSaveEmptyGraph = () => {
         const currentParams = getPostParams()
@@ -245,7 +258,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
       if (emptyGraph && isCollaborationEnabled) {
         // CRDT updates do not carry the persisted revision from another collaborator's save.
-        const hashBeforeRefresh = workflowStore.getState().syncWorkflowDraftHash
+        const {
+          syncWorkflowDraftHash: hashBeforeRefresh,
+          syncWorkflowDraftSaveId: saveIdBeforeRefresh,
+        } = workflowStore.getState()
         const [error, draft] = await safe(
           consoleClient.apps.byAppId.workflows.draft.get(
             { params: { app_id: baseParams.appId } },
@@ -262,13 +278,21 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           return null
         }
 
-        const { syncWorkflowDraftHash, setSyncWorkflowDraftHash } = workflowStore.getState()
+        const { syncWorkflowDraftHash, syncWorkflowDraftSaveId, setSyncWorkflowDraftHash } =
+          workflowStore.getState()
         // Another hook may have saved a newer revision while this request was in flight.
-        if (syncWorkflowDraftHash === hashBeforeRefresh)
-          setSyncWorkflowDraftHash(draft.hash, {
-            nodes: draft.graph.nodes,
-            edges: draft.graph.edges,
-          })
+        if (
+          syncWorkflowDraftHash === hashBeforeRefresh &&
+          syncWorkflowDraftSaveId === saveIdBeforeRefresh
+        ) {
+          expectedHash = draft.hash
+          expectedSaveId = draft.client_save_id ?? null
+          setSyncWorkflowDraftHash(
+            draft.hash,
+            { nodes: draft.graph.nodes, edges: draft.graph.edges },
+            draft.client_save_id,
+          )
+        }
       }
 
       // Check after queued saves finish so a newly persisted nonempty draft is protected too.
@@ -306,28 +330,49 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
 
       try {
-        const currentHash = workflowStore.getState().syncWorkflowDraftHash
+        const { syncWorkflowDraftHash: currentHash, syncWorkflowDraftSaveId: currentSaveId } =
+          workflowStore.getState()
         const lastSave = workflowStore.getState().lastSavedWorkflowDraft
-        // Only a successful save from this queue may advance a captured graph's
+        // Only a successful save from this editor may advance a captured graph's
         // hash. A server refresh must never lend its hash to an older graph.
         const canUseLastSave =
           lastSave !== null &&
           lastSave.appId === baseParams.appId &&
           lastSave.generation === baseParams.generation &&
-          lastSave.hash === currentHash
+          lastSave.hash === currentHash &&
+          lastSave.clientSaveId === currentSaveId
         if (currentHash !== baseParams.params.hash && !canUseLastSave) return null
 
+        const submission = save.start()
+        if (!submission) return null
+
+        const baseClientSaveId = canUseLastSave ? lastSave.clientSaveId : expectedSaveId
         const body = {
           ...baseParams.params,
-            hash: (canUseLastSave ? lastSave.hash : baseParams.params.hash) || null,
+          hash: (canUseLastSave ? lastSave.hash : expectedHash) || null,
           ...(emptyGraph ? { force: true } : {}),
-          ...(options?.environmentVariablePatch
+          client_save_id: submission.clientSaveId,
+          ...(baseClientSaveId ? { base_client_save_id: baseClientSaveId } : {}),
+          ...(submission.predecessorSaves.length > 0
             ? {
-                environment_variable_patch: {
-                  environment_variables: options.environmentVariablePatch.environmentVariables,
-                  deleted_environment_variable_ids:
-                    options.environmentVariablePatch.deletedEnvironmentVariableIds,
-                },
+                predecessor_saves: submission.predecessorSaves.map((predecessor) => ({
+                  client_save_id: predecessor.clientSaveId,
+                  ...(predecessor.environmentVariablePatch
+                    ? {
+                        environment_variable_patch: toEnvironmentVariablePatchPayload(
+                          predecessor.environmentVariablePatch,
+                        ),
+                      }
+                    : {}),
+                })),
+              }
+            : {}),
+          ...(force ? { force: true } : {}),
+          ...(submission.environmentVariablePatch
+            ? {
+                environment_variable_patch: toEnvironmentVariablePatchPayload(
+                  submission.environmentVariablePatch,
+                ),
               }
             : {}),
         }
@@ -342,24 +387,37 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           const { isWorkflowDataLoaded } = workflowStore.getState()
           if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
+          if (
+            error instanceof ORPCError &&
+            error.status >= 400 &&
+            error.status < 500 &&
+            error.status !== 408 &&
+            error.status !== 429
+          )
+            save.reject()
           if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
             handleRefreshWorkflowDraft(true)
           callback?.onError?.()
           return null
         }
-
-        if (!isCurrent() || workflowStore.getState().syncWorkflowDraftHash !== currentHash)
+        if (
+          !isCurrent() ||
+          workflowStore.getState().syncWorkflowDraftHash !== currentHash ||
+          workflowStore.getState().syncWorkflowDraftSaveId !== currentSaveId
+        )
           return null
+        save.acknowledge()
         workflowStore.getState().setLastSavedWorkflowDraft({
           appId: baseParams.appId,
           generation: baseParams.generation,
           hash: res.hash,
+          clientSaveId: res.client_save_id ?? null,
         })
-        setSyncWorkflowDraftHash(res.hash, baseParams.params.graph)
+        setSyncWorkflowDraftHash(res.hash, baseParams.params.graph, res.client_save_id)
         setDraftUpdatedAt(res.updated_at)
         workflowStore.getState().markWorkflowDraftSaved(baseParams.localRevision)
         callback?.onSuccess?.()
-        return { hash: res.hash, updatedAt: res.updated_at }
+        return { hash: res.hash, updatedAt: res.updated_at, clientSaveId: res.client_save_id }
       } finally {
         callback?.onSettled?.()
       }
@@ -376,13 +434,27 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   )
 
   const doSyncWorkflowDraftLocally = useCallback(
-    (...args: Parameters<typeof performLocalSync>) =>
-      workflowStore.getState().enqueueWorkflowDraftOperation(() => {
-        // Saves accepted before the barrier must finish, including variable
-        // patches that cannot be reconstructed from the final canvas snapshot.
-        const drainingForBuilder = workflowStore.getState().workflowDraftSyncPhase !== 'idle'
-        return performLocalSync(args[0], args[1], args[2], args[3] || drainingForBuilder)
-      }),
+    (
+      baseParams: NonNullable<ReturnType<typeof getPostParams>>,
+      callback?: SyncDraftCallback,
+      options?: SyncDraftOptions,
+      syncOptions: LocalDraftSyncOptions = {},
+    ) =>
+      workflowStore.getState().runWorkflowDraftSave(
+        {
+          appId: baseParams.appId,
+          generation: baseParams.generation,
+          keepalive: syncOptions.keepalive === true,
+          environmentVariablePatch: options?.environmentVariablePatch,
+        },
+        (save) => {
+          const drainingForBuilder = workflowStore.getState().workflowDraftSyncPhase !== 'idle'
+          return performLocalSync(baseParams, save, callback, {
+            ...syncOptions,
+            preparingBuilder: syncOptions.preparingBuilder || drainingForBuilder,
+          })
+        },
+      ),
     [performLocalSync, workflowStore],
   )
 
@@ -396,10 +468,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     if (!canPersist) return
 
     const snapshot = getPostParams()
-    // Keep unload requests in the same queue so a returning tab and Builder
-    // observe their acknowledged hash. Empty-canvas saves still need consent.
+    // Dispatch before teardown; queued reads and Builder still await this save.
     if (snapshot && !isEmptyGraph(snapshot.params.graph))
-      void doSyncWorkflowDraftLocally(snapshot, undefined, undefined, { keepalive: true })
+      void doSyncWorkflowDraftLocally(snapshot, undefined, undefined, { keepalive: true }).catch(
+        () => undefined,
+      )
   }, [
     doSyncWorkflowDraftLocally,
     getNodesReadOnly,
@@ -490,7 +563,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         )
           return null
         const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
-        setSyncWorkflowDraftHash(result.hash, baseParams.params.graph)
+        setSyncWorkflowDraftHash(result.hash, baseParams.params.graph, result.clientSaveId)
         setDraftUpdatedAt(result.updatedAt)
         workflowStore.getState().markWorkflowDraftSaved(workflowDraftLocalRevision)
         callback?.onSuccess?.()
@@ -552,9 +625,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       try {
         let saved: SyncDraftResult | null = null
         if (shouldSave && !requestLeader) {
-          saved = await state.enqueueWorkflowDraftOperation(async () =>
-            snapshot ? performLocalSync(snapshot, undefined, undefined, true) : null,
-          )
+          saved = snapshot
+            ? await doSyncWorkflowDraftLocally(snapshot, undefined, undefined, {
+                preparingBuilder: true,
+              })
+            : await state.enqueueWorkflowDraftOperation(async () => null)
         } else {
           await state.enqueueWorkflowDraftOperation(async () => undefined)
           signal.throwIfAborted()
@@ -569,7 +644,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
               workflowStore.getState().workflowDraftGeneration !== generation
             )
               throw new Error(t(($) => $['common.draftSaveFailed']))
-            state.setSyncWorkflowDraftHash(saved.hash)
+            state.setSyncWorkflowDraftHash(saved.hash, undefined, saved.clientSaveId)
             state.setDraftUpdatedAt(saved.updatedAt)
           }
         }
@@ -592,7 +667,16 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         throw error
       }
     },
-    [getNodesReadOnly, getPostParams, isCollaborationEnabled, performLocalSync, t, workflowStore],
+    [
+      appId,
+      atomStore,
+      doSyncWorkflowDraftLocally,
+      getNodesReadOnly,
+      getPostParams,
+      isCollaborationEnabled,
+      t,
+      workflowStore,
+    ],
   )
 
   return {

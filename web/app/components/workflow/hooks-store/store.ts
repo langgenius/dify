@@ -1,3 +1,4 @@
+import type { SyncDraftWorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { FileUpload } from '../../base/features/types'
 import type {
@@ -29,6 +30,7 @@ export type SyncDraftCallback = {
 export type SyncDraftResult = {
   hash: string
   updatedAt: number
+  clientSaveId?: SyncDraftWorkflowResponse['client_save_id']
 }
 
 export type SyncDraftOptions = {

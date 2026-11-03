@@ -1,4 +1,5 @@
 import json
+from uuid import uuid4
 
 import pytest
 import pytest_mock
@@ -20,6 +21,7 @@ def test_graphs_stay_opaque_to_lua_and_round_trip_without_changing_values(
     change = ServerDraftChange(
         revision="revision-1",
         hash="hash-1",
+        client_save_id=str(uuid4()),
         updated_at=1,
         graph={"nodes": [{"id": "node", "data": {"items": [], "seed": 9007199254740993}}], "edges": []},
         previous_graph=previous,
@@ -31,6 +33,7 @@ def test_graphs_stay_opaque_to_lua_and_round_trip_without_changing_values(
     assert key_count == 1
     assert key == "prefix:workflow_server_draft:{app}"
     encoded = json.loads(payload)
+    assert encoded["client_save_id"] == change.client_save_id
     assert isinstance(encoded["graph"], str)
     assert encoded["previous_graph"] is None or isinstance(encoded["previous_graph"], str)
     _installed_spy_1 = installed_mock(redis.get)

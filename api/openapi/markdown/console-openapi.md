@@ -35476,6 +35476,19 @@ Verification of the plugin.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| PreProcessingRuleKey | string |  |  |
+
+#### PredecessorDraftSavePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_save_id | string (uuid) |  | Yes |
+| environment_variable_patch | [SyncEnvironmentVariablePatchPayload](#syncenvironmentvariablepatchpayload) |  | No |
+
+#### PreflightContextCard
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
 | issue_count | integer |  | Yes |
 | issues | [ [PreflightIssue](#preflightissue) ] |  | No |
 | node_count | integer |  | Yes |
@@ -37607,6 +37620,7 @@ Query parameters for listing snippet published workflows.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| client_save_id | string |  | No |
 | conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
 | created_at | integer |  | Yes |
 | created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
@@ -37817,17 +37831,21 @@ The subscription constructor of the trigger provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | _is_collaborative | boolean |  | No |
+| base_client_save_id | string | Receipt ID returned with the editor's base draft. | No |
+| client_save_id | string | Unique ID for this editor save attempt. | No |
 | conversation_variables | [ object ] |  | No |
 | environment_variable_patch | [SyncEnvironmentVariablePatchPayload](#syncenvironmentvariablepatchpayload) |  | No |
 | features | object |  | Yes |
 | force | boolean | Explicitly confirm saving an empty workflow graph. | No |
 | graph | object |  | Yes |
 | hash | string |  | No |
+| predecessor_saves | [ [PredecessorDraftSavePayload](#predecessordraftsavepayload) ] | Pending saves in editor order, including inherited patches; requires client_save_id. | No |
 
 #### SyncDraftWorkflowResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| client_save_id | string |  | No |
 | hash | string |  | Yes |
 | result | string |  | Yes |
 | updated_at | integer |  | Yes |
@@ -40223,6 +40241,7 @@ Enabled routes require at least two exits; drafts may omit conditions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| client_save_id | string |  | No |
 | conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
 | created_at | integer |  | Yes |
 | created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |

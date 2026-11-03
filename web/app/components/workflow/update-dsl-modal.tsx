@@ -63,8 +63,14 @@ function UpdateDSLModal({
 
   const handleWorkflowUpdate = useCallback(
     async (app_id: string) => {
-      const { graph, features, hash, conversation_variables, environment_variables } =
-        await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
+      const {
+        graph,
+        features,
+        hash,
+        client_save_id,
+        conversation_variables,
+        environment_variables,
+      } = await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
 
       const { nodes, edges, viewport } = graph
       const importedNodes = initialNodes(nodes, edges)
@@ -83,6 +89,7 @@ function UpdateDSLModal({
           viewport,
           features: normalizeWorkflowFeatures(features),
           hash,
+          client_save_id,
           conversation_variables: conversation_variables || [],
           environment_variables: environment_variables || [],
         },
