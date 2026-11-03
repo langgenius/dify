@@ -3,7 +3,7 @@
 import json
 from collections.abc import Iterator
 from datetime import timedelta
-from typing import cast
+from typing import Any
 
 import pytest
 from sqlalchemy import Table, create_engine, event, select
@@ -198,9 +198,10 @@ def test_created_form_timeout_reaches_event_stream_in_same_database(form_databas
                 assert isinstance(run_event, EngineEvent)
                 yield run_event
 
+    engine: Any = NodeEvents(Graph(root_node=node), node.runtime_state)
     events = list(
         iter_dify_graph_engine_events(
-            cast(Engine, NodeEvents(Graph(root_node=node), node.runtime_state)),
+            engine,
             human_form_reader=runtime.human_form_reader,
         )
     )

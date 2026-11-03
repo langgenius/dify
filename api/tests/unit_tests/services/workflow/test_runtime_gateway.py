@@ -3,7 +3,7 @@
 import json
 from collections.abc import Callable, Generator, Iterable
 from dataclasses import replace
-from typing import Literal, NoReturn, Self, cast, override
+from typing import Literal, NoReturn, Self, override
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -97,9 +97,8 @@ def runtime_gateway(
             ]
         )
     sessions: list[RecordingSession] = []
-    factory = cast(
-        sessionmaker[Session],
-        sessionmaker(bind=sqlite_session_factory.kw["bind"], class_=RecordingSession, expire_on_commit=False),
+    factory: sessionmaker[Session] = sessionmaker(  # type: ignore[assignment]
+        bind=sqlite_session_factory.kw["bind"], class_=RecordingSession, expire_on_commit=False
     )
 
     def opened(session: Session, _transaction: object, _connection: object) -> None:

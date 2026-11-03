@@ -1928,40 +1928,38 @@ class TestHumanInputDebugServiceRegression:
         self,
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
+        node_config: Any = {
+            "id": "human",
+            "data": {
+                "type": "human-input",
+                "title": "Human",
+                "form_content": "Hello {{#source.object.name#}}",
+                "inputs": [
+                    {
+                        "type": "paragraph",
+                        "output_variable_name": "comment",
+                        "default": {
+                            "type": "variable",
+                            "selector": ["source", "object", "default"],
+                        },
+                    },
+                ],
+                "delivery_methods": [
+                    {
+                        "type": "email",
+                        "enabled": True,
+                        "config": {
+                            "recipients": {"items": []},
+                            "subject": "Review",
+                            "body": "{{#email.missing#}} {{#url#}}",
+                        },
+                    },
+                ],
+            },
+        }
         definitions = MagicMock()
         definitions.debug_node.return_value = WorkflowDebugNode(
-            config=cast(
-                Any,
-                {
-                    "id": "human",
-                    "data": {
-                        "type": "human-input",
-                        "title": "Human",
-                        "form_content": "Hello {{#source.object.name#}}",
-                        "inputs": [
-                            {
-                                "type": "paragraph",
-                                "output_variable_name": "comment",
-                                "default": {
-                                    "type": "variable",
-                                    "selector": ["source", "object", "default"],
-                                },
-                            },
-                        ],
-                        "delivery_methods": [
-                            {
-                                "type": "email",
-                                "enabled": True,
-                                "config": {
-                                    "recipients": {"items": []},
-                                    "subject": "Review",
-                                    "body": "{{#email.missing#}} {{#url#}}",
-                                },
-                            },
-                        ],
-                    },
-                },
-            ),
+            config=node_config,
             environment_variables="{}",
             conversation_variables=[],
             enclosing_node_id=None,
