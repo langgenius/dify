@@ -298,7 +298,7 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
         cancellation=cancellation,
         runtime=workflow_runtime,
     )
-    monkeypatch.setattr(runner._graphs, "build", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runner._graphs, "build", lambda *_args, **_kwargs: None)
 
     def lose_lease_before_engine_starts(**_kwargs: object) -> None:
         cancellation.cancel()
