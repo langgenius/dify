@@ -1,5 +1,5 @@
 import json
-from typing import cast
+from typing import override
 from unittest.mock import Mock
 
 import pytest
@@ -288,14 +288,16 @@ def test_online_users_batches_existing_hashes_and_ignores_corrupt_values() -> No
                 {b"good": b'{"user_id":"u","username":"User"}', b"corrupt": b"bad", b"array": b"[]"} for _ in self.keys
             ]
 
-    class Redis:
-        def pipeline(self, *, transaction: bool) -> Pipeline:
+    class Redis(RedisClientWrapper):
+        @override
+        def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> Pipeline:
             assert transaction is False
+            assert shard_hint is None
             pipe = Pipeline()
             pipelines.append(pipe)
             return pipe
 
-    repository = WorkflowCollaborationRepository(redis=cast(RedisClientWrapper, Redis()))
+    repository = WorkflowCollaborationRepository(redis=Redis())
     app_ids = [str(index) for index in range(51)]
     result = repository.online_users(app_ids)
     assert [len(pipe.keys) for pipe in pipelines] == [50, 1]

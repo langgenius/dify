@@ -5,7 +5,7 @@ from copy import copy
 from dataclasses import dataclass
 from functools import lru_cache
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, cast, final, override
+from typing import TYPE_CHECKING, Any, final, override
 
 from configs import dify_config
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
@@ -502,7 +502,9 @@ class DifyNodeFactory(NodeFactory):
         node_data = typed_node_config["data"]
         node_type = node_data.type
         if node_type == BuiltinNodeTypes.LLM:
-            resolved_node_data = self._resolve_llm_model_reference(cast(LLMNodeData, resolved_node_data))
+            if not isinstance(resolved_node_data, LLMNodeData):
+                raise TypeError(f"Expected LLMNodeData for LLM node, got {type(resolved_node_data).__name__}")
+            resolved_node_data = self._resolve_llm_model_reference(resolved_node_data)
         node: Node | None = None
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
             BuiltinNodeTypes.DATASOURCE: lambda: {
@@ -766,7 +768,9 @@ class DifyNodeFactory(NodeFactory):
         include_retriever_attachment_loader: bool,
         include_jinja2_template_renderer: bool,
     ) -> dict[str, object]:
-        validated_node_data = cast(LLMCompatibleNodeData, node_data)
+        if not isinstance(node_data, (LLMNodeData, QuestionClassifierNodeData, ParameterExtractorNodeData)):
+            raise TypeError(f"Unsupported LLM-compatible node data: {type(node_data).__name__}")
+        validated_node_data: LLMCompatibleNodeData = node_data
         model_instance = self._build_model_instance_for_llm_node(validated_node_data)
         request_metadata: dict[str, object] = {"app_id": self._dify_context.app_id}
         app_type = self._dify_context.app_type
@@ -804,14 +808,18 @@ class DifyNodeFactory(NodeFactory):
         if include_prompt_message_serializer:
             node_init_kwargs["prompt_message_serializer"] = self._prompt_message_serializer
         if include_retriever_attachment_loader:
+            if not isinstance(validated_node_data, LLMNodeData):
+                raise TypeError(f"Expected LLMNodeData, got {type(validated_node_data).__name__}")
             node_init_kwargs["retriever_attachment_loader"] = self._build_retriever_attachment_loader(
-                cast(LLMNodeData, validated_node_data)
+                validated_node_data
             )
         if include_jinja2_template_renderer:
             node_init_kwargs["jinja2_template_renderer"] = self._jinja2_template_renderer
         if validated_node_data.type == BuiltinNodeTypes.LLM:
+            if not isinstance(node_model_instance, DifyPreparedLLM):
+                raise TypeError(f"Expected DifyPreparedLLM, got {type(node_model_instance).__name__}")
             node_init_kwargs["default_query_selector"] = system_variable_selector(SystemVariableKey.QUERY)
-            node_init_kwargs["polling_finalizer"] = cast(DifyPreparedLLM, node_model_instance).finalize_llm_polling
+            node_init_kwargs["polling_finalizer"] = node_model_instance.finalize_llm_polling
         return node_init_kwargs
 
     @staticmethod
@@ -882,7 +890,8 @@ class DifyNodeFactory(NodeFactory):
             credentials_provider=self._llm_credentials_provider,
             model_factory=self._llm_model_factory,
         )
-        model_instance.model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
+        if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
+            raise TypeError(f"Expected LargeLanguageModel, got {type(model_instance.model_type_instance).__name__}")
         return model_instance
 
     def _build_memory_for_llm_node(

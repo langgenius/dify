@@ -153,6 +153,11 @@ def _make_message(
     return message
 
 
+class _DummyNamespace:
+    def __init__(self, **kwargs: object) -> None:
+        self.__dict__.update(kwargs)
+
+
 class TestAdvancedChatAppGeneratorValidation:
     def test_generate_requires_query(self, unbound_session: Session, *, workflow_runtime: WorkflowRuntime):
         generator = AdvancedChatAppGenerator(
@@ -532,13 +537,17 @@ class TestAdvancedChatAppGeneratorInternals:
         captured: dict[str, object] = {}
         thread_data: dict[str, object] = {}
         init_records = MagicMock(return_value=(conversation, message))
-        get_thread_messages_length = MagicMock(return_value=3)
+        thread_messages_calls: list[object] = []
+
+        def get_thread_messages_length(conv_id: object) -> int:
+            thread_messages_calls.append(conv_id)
+            return 3
 
         monkeypatch.setattr(generator._runtime.chat_records, "initialize", init_records)
         monkeypatch.setattr(generator._runtime.chat_records, "dialogue_count", get_thread_messages_length)
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.MessageBasedAppQueueManager",
-            lambda **kwargs: SimpleNamespace(**kwargs),
+            lambda **kwargs: _DummyNamespace(**kwargs),
         )
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.current_app",
@@ -596,7 +605,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert thread_data["join_timeout"] == 300
         assert thread_data["kwargs"]["pause_state_config"] is pause_state_config
         assert generator._dialogue_count == 3
-        get_thread_messages_length.assert_called_once_with(conversation.id)
+        assert thread_messages_calls == [conversation.id]
         assert commit_count == 0
         assert init_records.call_args.kwargs["seed"].conversation["override_model_configs"] == workflow.features
         assert captured["draft_var_saver_factory"] == "draft-factory"
@@ -659,14 +668,18 @@ class TestAdvancedChatAppGeneratorInternals:
 
         sqlalchemy_event.listen(sqlite_session, "after_commit", _record_commit)
         init_records = MagicMock()
-        get_thread_messages_length = MagicMock(return_value=0)
+        thread_messages_calls: list[object] = []
+
+        def get_thread_messages_length(conv_id: object) -> int:
+            thread_messages_calls.append(conv_id)
+            return 0
         thread_data: dict[str, object] = {}
 
         monkeypatch.setattr(generator._runtime.chat_records, "initialize", init_records)
         monkeypatch.setattr(generator._runtime.chat_records, "dialogue_count", get_thread_messages_length)
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.MessageBasedAppQueueManager",
-            lambda **kwargs: SimpleNamespace(**kwargs),
+            lambda **kwargs: _DummyNamespace(**kwargs),
         )
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.current_app",
@@ -717,7 +730,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         assert response == {"raw": True}
         init_records.assert_not_called()
-        get_thread_messages_length.assert_called_once_with(conversation.id)
+        assert thread_messages_calls == [conversation.id]
         assert thread_data["started"] is True
         assert thread_data["joined"] is True
         assert thread_data["join_timeout"] == 300
@@ -775,7 +788,7 @@ class TestAdvancedChatAppGeneratorInternals:
         queue = MagicMock()
         generator._generate_worker(
             system_user_id="session-id",
-            flask_app=SimpleNamespace(),
+            flask_app=_DummyNamespace(),
             application_generate_entity=application_generate_entity,
             queue_manager=queue,
             conversation_id="conv",
@@ -831,7 +844,7 @@ class TestAdvancedChatAppGeneratorInternals:
         queue = MagicMock()
         generator._generate_worker(
             system_user_id="session-id",
-            flask_app=SimpleNamespace(),
+            flask_app=_DummyNamespace(),
             application_generate_entity=application_generate_entity,
             queue_manager=queue,
             conversation_id="conv",
@@ -903,12 +916,17 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.AdvancedChatAppRunner", _Runner
         )
-        restore_workflow_run_graph = MagicMock(side_effect=lambda workflow, _run_id: workflow)
+        restore_calls: list[tuple[object, object]] = []
+
+        def restore_workflow_run_graph(workflow: object, _run_id: object) -> object:
+            restore_calls.append((workflow, _run_id))
+            return workflow
+
         monkeypatch.setattr(generator._runtime.contexts, "restore_graph", restore_workflow_run_graph)
 
         generator._generate_worker(
             system_user_id="session-id",
-            flask_app=SimpleNamespace(),
+            flask_app=_DummyNamespace(),
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             conversation_id="conv",
@@ -922,8 +940,8 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         queue_manager.publish_error.assert_not_called()
-        assert restore_workflow_run_graph.call_args.args[0].id == "workflow-id"
-        assert restore_workflow_run_graph.call_args.args[1] == "run-id"
+        assert restore_calls[0][0].id == "workflow-id"
+        assert restore_calls[0][1] == "run-id"
 
     def test_generate_worker_handles_validation_error(
         self,
@@ -995,7 +1013,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         generator._generate_worker(
             system_user_id="session-id",
-            flask_app=SimpleNamespace(),
+            flask_app=_DummyNamespace(),
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             conversation_id="conv",
@@ -1271,7 +1289,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         generator._generate_worker(
             system_user_id="session-id",
-            flask_app=SimpleNamespace(),
+            flask_app=_DummyNamespace(),
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             conversation_id="conv",

@@ -162,6 +162,11 @@ def _make_request_context() -> RequestContext:
     )
 
 
+@dataclass(frozen=True)
+class _DraftVariableServices:
+    console_workflow_variables: object
+
+
 class TestAppApisCases:
     @staticmethod
     @pytest.fixture
@@ -556,7 +561,7 @@ class TestAppApisCases:
             monkeypatch.setattr(
                 workflow_draft_variable_module,
                 "application_services",
-                lambda: SimpleNamespace(console_workflow_variables=workflow_variables),
+                lambda: _DraftVariableServices(console_workflow_variables=workflow_variables),
             )
             request_context = _make_request_context()
 
@@ -610,7 +615,7 @@ class TestAppApisCases:
             monkeypatch.setattr(
                 workflow_draft_variable_module,
                 "application_services",
-                lambda: SimpleNamespace(console_workflow_variables=workflow_variables),
+                lambda: _DraftVariableServices(console_workflow_variables=workflow_variables),
             )
             request_context = _make_request_context()
 

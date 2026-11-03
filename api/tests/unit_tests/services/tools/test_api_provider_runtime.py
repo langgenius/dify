@@ -2,7 +2,6 @@
 
 import json
 from collections.abc import Iterator
-from typing import cast
 
 import httpx
 import pytest
@@ -119,7 +118,8 @@ def test_api_tool_provider_read_finishes_before_decryption_and_http(
     def http_get(url: str, **kwargs: object) -> httpx.Response:
         released()
         assert url == "https://api.example.com/search"
-        headers = cast(dict[str, str], kwargs["headers"])
+        headers = kwargs["headers"]
+        assert isinstance(headers, dict)
         assert headers["Authorization"] == "clear-secret"
         calls.append("http")
         if http_failure:

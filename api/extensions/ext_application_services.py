@@ -563,12 +563,14 @@ def build_application_services(
         configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
         provider=OpsTraceManagerGateway(),
     )
+    workflow_tools = tools.workflow_queries
+    assert isinstance(workflow_tools, WorkflowToolStore)
     apps = build_app_services(
         database_client=database_client,
         oauth=oauth_server,
         recommended_packages=recommended_app_packages,
         tool_providers=tools.tool_providers,
-        workflow_tools=cast(WorkflowToolStore, tools.workflow_queries),
+        workflow_tools=workflow_tools,
         workflow_publisher=console_workflows,
         repository=console_apps,
         rbac_members=rbac.members,

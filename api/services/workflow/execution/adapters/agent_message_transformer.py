@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Generator, Mapping
-from typing import Any, cast
+from typing import Any
 
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -28,6 +29,7 @@ from graphon.variables.segments import ArrayFileSegment
 from models import ToolFile
 
 _file_access_controller = DatabaseFileAccessController()
+_LLM_USAGE_METADATA_ADAPTER: TypeAdapter[LLMUsageMetadata] = TypeAdapter(LLMUsageMetadata)
 
 
 class AgentMessageTransformer:
@@ -141,7 +143,7 @@ class AgentMessageTransformer:
                 if node_type == BuiltinNodeTypes.AGENT:
                     if isinstance(message.message.json_object, dict):
                         msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
-                        llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
+                        llm_usage = LLMUsage.from_metadata(_LLM_USAGE_METADATA_ADAPTER.validate_python(msg_metadata))
                         agent_execution_metadata = {
                             WorkflowNodeExecutionMetadataKey(key): value
                             for key, value in msg_metadata.items()

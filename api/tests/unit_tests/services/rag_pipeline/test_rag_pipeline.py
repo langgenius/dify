@@ -12,6 +12,7 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.repositories.factory import DifyCoreRepositoryFactory
@@ -1015,13 +1016,16 @@ class TestRagPipelineServiceCases:
         mock_db_exec = mocker.Mock()
         mock_db_exec.node_id = "node-1"
         mock_db_exec.node_type = "datasource"
-        rag_pipeline_service.execution._node_execution_service_repo = mocker.Mock(
-            get_execution_by_id=mocker.Mock(return_value=mock_db_exec)
-        )
+
+        class _NodeExecRepo:
+            def get_execution_by_id(self, *_args: object, **_kwargs: object) -> object:
+                return mock_db_exec
+
+        rag_pipeline_service.execution._node_execution_service_repo = _NodeExecRepo()
 
         # Inject through the variable service used by the pipeline.
         mock_saver_instance = mocker.Mock()
-        saver_factory = mocker.Mock(return_value=mock_saver_instance)
+        saver_factory = create_autospec(DraftVariableSaverFactory, return_value=mock_saver_instance)
         factory_provider = mocker.patch.object(
             rag_pipeline_service.execution._variables, "saver_factory", return_value=saver_factory
         )
@@ -1185,7 +1189,7 @@ class TestRagPipelineServiceCases:
             get_execution_by_id=mocker.Mock(return_value="db")
         )
         saver = mocker.Mock()
-        saver_factory = mocker.Mock(return_value=saver)
+        saver_factory = create_autospec(DraftVariableSaverFactory, return_value=saver)
         factory_provider = mocker.patch.object(
             rag_pipeline_service.execution._variables, "saver_factory", return_value=saver_factory
         )
@@ -1255,7 +1259,7 @@ class TestRagPipelineServiceCases:
             get_execution_by_id=mocker.Mock(return_value="db")
         )
         saver = mocker.Mock()
-        saver_factory = mocker.Mock(return_value=saver)
+        saver_factory = create_autospec(DraftVariableSaverFactory, return_value=saver)
         factory_provider = mocker.patch.object(
             rag_pipeline_service.execution._variables, "saver_factory", return_value=saver_factory
         )
@@ -2668,7 +2672,7 @@ class TestRagPipelineServiceCases:
             value = variable_loader.load_variables([["previous", "text"]])[0].value
             assert isinstance(value, str)
             loaded.append(value)
-            return mocker.Mock(), (event for event in ())
+            return object(), (event for event in ())
 
         def result(getter: Callable[[], object], **_kwargs: object) -> WorkflowNodeExecution:
             getter()
@@ -2716,7 +2720,7 @@ class TestRagPipelineServiceCases:
         writer_factory = partial(
             CeleryWorkflowNodeExecutionRepository, session_factory=rag_pipeline_service.session_maker
         )
-        queued = mock.Mock()
+        queued = create_autospec(save_workflow_node_execution_task.delay)
         monkeypatch.setattr(save_workflow_node_execution_task, "delay", queued)
         writer_factory(
             tenant_id=pipeline.tenant_id,
@@ -2737,7 +2741,13 @@ class TestRagPipelineServiceCases:
         queued.assert_called_once()
         assert executions.get_execution_by_id("queued-only", tenant_id=pipeline.tenant_id) is None
 
-        node = mock.Mock(workflow_id=workflow.id, node_type="code", title="Code")
+        @dataclass
+        class _MockNode:
+            workflow_id: str
+            node_type: str
+            title: str
+
+        node = _MockNode(workflow_id=workflow.id, node_type="code", title="Code")
         result = NodeRunSucceededEvent(
             id="event",
             start_at=time.time(),

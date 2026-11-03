@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import contextlib
 import inspect
+from dataclasses import dataclass, field
 from decimal import Decimal
-from types import SimpleNamespace
 from unittest.mock import create_autospec
 
 import pytest
@@ -57,6 +57,12 @@ def _app(*, app_model_config_id: str | None = None) -> App:
         api_rpm=0,
         api_rph=0,
     )
+
+
+@dataclass(frozen=True)
+class _AppConfig:
+    app_id: str
+    tenant_id: str
 
 
 def _agent(*, agent_id: str = "agent1") -> Agent:
@@ -131,6 +137,45 @@ def _bind_real_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch)
 def _session() -> Session:
     assert _CURRENT_SESSION is not None
     return _CURRENT_SESSION
+
+
+@dataclass
+class _AppConfigStub:
+    variables: list[object] = field(default_factory=list)
+    tenant_id: str = "tenant"
+    app_id: str = "app1"
+
+
+@dataclass
+class _ModelConfigStub:
+    model: str = "gpt-4o-mini"
+
+
+class _TrackedCalls:
+    def __init__(self) -> None:
+        self.calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+
+    def __call__(self, *args: object, **kwargs: object) -> None:
+        self.calls.append((args, kwargs))
+
+    def assert_not_called(self) -> None:
+        assert len(self.calls) == 0
+
+    def assert_called_once(self) -> None:
+        assert len(self.calls) == 1
+
+    def assert_called_once_with(self, *args: object, **kwargs: object) -> None:
+        assert self.calls == [(args, kwargs)]
+
+
+class _QueueManagerStub:
+    def __init__(self) -> None:
+        self.publish_error = _TrackedCalls()
+
+
+class _HooksStub:
+    def __init__(self) -> None:
+        self.capture_agent_app_terminal = _TrackedCalls()
 
 
 @pytest.fixture
@@ -285,13 +330,16 @@ class TestGenerateSuccess:
     def test_record_initialization_failure_does_not_capture_a_worker_terminal(
         self, generator: AgentAppGenerator, mocker: MockerFixture
     ) -> None:
-        generator._prepare_user_inputs = mocker.MagicMock(return_value={})
-        generator._init_generate_records = mocker.MagicMock(side_effect=ValueError("record initialization failed"))
+        def fail_records(*args, **kwargs):
+            raise ValueError("record initialization failed")
+
+        generator._prepare_user_inputs = lambda *args, **kwargs: {}
+        generator._init_generate_records = fail_records
         mocker.patch(
             f"{MODULE}.AgentAppConfigManager.get_app_config",
-            return_value=mocker.MagicMock(variables=[], tenant_id="tenant", app_id="app1"),
+            return_value=_AppConfigStub(),
         )
-        mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
+        mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=_ModelConfigStub())
         mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock())
         thread_constructor = mocker.patch(f"{MODULE}.threading.Thread")
@@ -314,15 +362,15 @@ class TestGenerateSuccess:
         app_model = _app()
         user = _account()
 
-        generator._prepare_user_inputs = mocker.MagicMock(return_value={})
-        generator._init_generate_records = mocker.MagicMock(return_value=(_conversation(), _message()))
-        generator._handle_response = mocker.MagicMock(return_value="raw-response")
+        generator._prepare_user_inputs = lambda *args, **kwargs: {}
+        generator._init_generate_records = lambda *args, **kwargs: (_conversation(), _message())
+        generator._handle_response = lambda *args, **kwargs: "raw-response"
 
         mocker.patch(
             f"{MODULE}.AgentAppConfigManager.get_app_config",
-            return_value=mocker.MagicMock(variables=[], tenant_id="tenant", app_id="app1"),
+            return_value=_AppConfigStub(),
         )
-        mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
+        mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=_ModelConfigStub())
         mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
         generate_entity = mocker.patch(
             f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
@@ -388,16 +436,26 @@ class TestGenerateWorker:
         files=(),
         file_upload_config=None,
     ):
+        class _GenerateEntity:
+            user_id = "user-1"
+            invoke_from = InvokeFrom.WEB_APP
+
+            def __init__(self, **kwargs: object) -> None:
+                self.__dict__.update(kwargs)
+
+        class _ModelConf:
+            model = "m"
+
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
             context=mocker.MagicMock(),
-            application_generate_entity=mocker.MagicMock(
-                app_config=SimpleNamespace(app_id="app1", tenant_id="tenant"),
+            application_generate_entity=_GenerateEntity(
+                app_config=_AppConfig(app_id="app1", tenant_id="tenant"),
                 agent_id="a",
                 agent_config_snapshot_id="s",
                 agent_config_version_kind="snapshot",
                 agent_session_scope_config_version_id=session_scope_config_version_id,
-                model_conf=mocker.MagicMock(model="m"),
+                model_conf=_ModelConf(),
                 query=query,
                 files=files,
                 file_upload_config=file_upload_config,
@@ -489,7 +547,7 @@ class TestGenerateWorker:
             "core.ops.base_trace_instance.application_tracing_hooks",
             side_effect=AssertionError("stop intent must not invent a tracing terminal"),
         )
-        queue_manager = mocker.MagicMock()
+        queue_manager = _QueueManagerStub()
         self._call(generator, mocker, queue_manager)
         queue_manager.publish_error.assert_not_called()
 
@@ -500,9 +558,9 @@ class TestGenerateWorker:
         self._wire(generator, mocker, run_side_effect=ValueError("boom") if failure_stage == "runner" else None)
         if failure_stage == "record_load":
             generator._records.load.side_effect = ValueError("boom")
-        hooks = mocker.MagicMock()
+        hooks = _HooksStub()
         mocker.patch("core.ops.base_trace_instance.application_tracing_hooks", return_value=hooks)
-        queue_manager = mocker.MagicMock()
+        queue_manager = _QueueManagerStub()
         self._call(generator, mocker, queue_manager)
         hooks.capture_agent_app_terminal.assert_called_once_with(
             tenant_id="tenant",

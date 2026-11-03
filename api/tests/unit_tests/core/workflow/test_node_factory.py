@@ -1,5 +1,6 @@
 import types
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, sentinel
 
@@ -1299,6 +1300,10 @@ class TestNodeFactoryCasesWorkflow:
         ):
             created_node = object()
             constructor = _node_constructor(return_value=created_node)
+            if node_type == BuiltinNodeTypes.LLM:
+                constructor.validate_node_data.side_effect = lambda _node_data: LLMNodeData.model_construct(
+                    type=BuiltinNodeTypes.LLM,
+                )
             constructor._mock_name = constructor_name
             monkeypatch.setattr(
                 factory,
@@ -1482,7 +1487,7 @@ class TestNodeFactoryCasesWorkflow:
                 completion_params={"temperature": 0.3, "stop": ["Human:"]},
             )
             node_data = SimpleNamespace(model=node_data_model)
-            model_type_instance = MagicMock()
+            model_type_instance = _ModelTypeInstanceStub(model_runtime=sentinel.model_runtime)
             model_instance = SimpleNamespace(
                 model_type_instance=model_type_instance,
                 parameters={"temperature": 0.3},
@@ -1511,17 +1516,26 @@ class TestNodeFactoryCasesWorkflow:
                 factory._build_model_instance_for_llm_node(SimpleNamespace(model=sentinel.node_data_model))
 
     class TestDifyNodeFactoryMemory:
+        @dataclass
+        class _DifyContext:
+            tenant_id: str
+            app_id: str
+
+        @dataclass
+        class _MemoryNodeData:
+            memory: object = None
+
         @pytest.fixture
         def factory(self, workflow_runtime):
             factory = object.__new__(node_factory.DifyNodeFactory)
-            factory._dify_context = SimpleNamespace(tenant_id="tenant-id", app_id="app-id")
+            factory._dify_context = self._DifyContext(tenant_id="tenant-id", app_id="app-id")
             factory._workflow_runtime = workflow_runtime
             factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
             return factory
 
         def test_returns_none_when_memory_is_not_configured(self, factory):
             result = factory._build_memory_for_llm_node(
-                node_data=SimpleNamespace(memory=None),
+                node_data=self._MemoryNodeData(memory=None),
                 model_instance=sentinel.model_instance,
             )
 
@@ -1532,7 +1546,7 @@ class TestNodeFactoryCasesWorkflow:
             factory.runtime_state.variable_pool.get.return_value = StringSegment(value="conversation-id")
 
             result = factory._build_memory_for_llm_node(
-                node_data=SimpleNamespace(memory=sentinel.memory_config),
+                node_data=self._MemoryNodeData(memory=sentinel.memory_config),
                 model_instance=sentinel.model_instance,
             )
 
@@ -1547,7 +1561,7 @@ class TestNodeFactoryCasesWorkflow:
         def test_ignores_non_string_segment_conversation_ids(self, factory):
             factory.runtime_state.variable_pool.get.return_value = sentinel.segment
             result = factory._build_memory_for_llm_node(
-                node_data=SimpleNamespace(memory=sentinel.memory_config),
+                node_data=self._MemoryNodeData(memory=sentinel.memory_config),
                 model_instance=sentinel.model_instance,
             )
             assert result is None

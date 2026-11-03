@@ -3,7 +3,6 @@
 import logging
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import cast
 
 from pydantic import JsonValue, ValidationError
 
@@ -27,7 +26,10 @@ def mask_agent_tool_parameters(
 ) -> dict[str, JsonValue]:
     """Return a response copy, exposing parameters only after masking succeeds."""
     result = deepcopy(dict(agent_mode))
-    for tool in cast(list[JsonValue], result.get("tools") or []):
+    tools = result.get("tools")
+    if not isinstance(tools, list):
+        return result
+    for tool in tools:
         if not isinstance(tool, dict):
             continue
         unmasked_tool = dict(tool)
