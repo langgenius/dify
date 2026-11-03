@@ -1,6 +1,5 @@
 """Plugin upgrades invalidate client authorization contracts without republishing."""
 
-import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import cast
@@ -16,7 +15,7 @@ from models.workflow import Workflow
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
 from services.end_user_connection_revision_adapters import PluginConnectionRevisions
-from services.end_user_connections.errors import ConnectionConfigurationError, ConnectionRevisionChangedError
+from services.end_user_connections.errors import ConnectionRevisionChangedError
 from services.end_user_connections.preflight import ConnectionPreflightInput, ConnectionPreflightService
 from services.end_user_connections.revision import ConnectionProviderMetadata
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
@@ -103,28 +102,25 @@ def preflight(harness: OAuthHarness) -> ConnectionPreflightService:
     )
 
 
-def test_preflight_rejects_old_contract_before_credentials_are_checked(harness: OAuthHarness) -> None:
+@pytest.mark.parametrize("entry", ["preflight", "api_key", "oauth"])
+def test_old_contract_is_rejected_before_credentials_are_checked(harness: OAuthHarness, entry: str) -> None:
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     harness.base.auth.calls.clear()
     harness.providers.controller.plugin_unique_identifier = "vendor/calendar:2.0@upgraded"
     command = {"connection_revision": harness.base.connection_revision, "connections": {"tool-1": connection.id}}
 
+    def invoke() -> None:
+        if entry == "preflight":
+            preflight(harness).check(harness.base.context, ConnectionPreflightInput.model_validate(command))
+        elif entry == "api_key":
+            harness.base.service.create_api_key(harness.base.context, harness.base.command())
+        else:
+            harness.start()
+
     with pytest.raises(ConnectionRevisionChangedError):
-        preflight(harness).check(harness.base.context, ConnectionPreflightInput.model_validate(command))
+        invoke()
     assert harness.base.auth.calls == []
     assert harness.handler.exchanges == 0
-
-
-@pytest.mark.parametrize("entry", ["api_key", "oauth"])
-def test_management_resolves_the_current_provider_at_operation_start(harness: OAuthHarness, entry: str) -> None:
-    artifact = "vendor/calendar:2.0@upgraded"
-    harness.providers.controller.plugin_unique_identifier = artifact
-    if entry == "api_key":
-        harness.base.service.create_api_key(harness.base.context, harness.base.command())
-        assert harness.base.auth.check_artifacts == [artifact]
-    else:
-        harness.start()
-        assert harness.handler.requested_artifacts == [artifact]
 
 
 @pytest.mark.parametrize("entry", ["preflight", "api_key"])
@@ -149,24 +145,6 @@ def test_upgrade_during_credential_check_rejects_the_operation(harness: OAuthHar
         invoke()
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 1
-
-
-def test_api_key_creation_rechecks_node_authentication_after_plugin_check(harness: OAuthHarness) -> None:
-    def change_authentication() -> None:
-        with harness.base.sessions.begin() as session:
-            workflow = session.get(Workflow, harness.base.workflow_id)
-            assert workflow is not None
-            graph = workflow.graph_dict
-            graph["nodes"][0]["data"]["end_user_auth"]["allowed_credential_types"] = ["oauth2"]
-            workflow.graph = json.dumps(graph)
-
-    harness.base.auth.on_check = change_authentication
-    with pytest.raises(ConnectionConfigurationError):
-        harness.base.service.create_api_key(harness.base.context, harness.base.command())
-    assert len(harness.base.auth.calls) == 1
-    assert harness.base.cipher.values == {}
-    with harness.base.sessions() as session:
-        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 0
 
 
 @pytest.mark.parametrize("phase", ["redirect", "exchange"])
@@ -442,18 +420,14 @@ def test_unverified_replacement_does_not_approve_the_submitted_app_revision(harn
 def test_credential_replacement_records_provider_inheritance_without_approving_the_app(harness: OAuthHarness) -> None:
     from constants.end_user_connections import ConnectionRevisionAcceptanceReason
     from models.end_user_connection import EndUserConnectionRevisionAcceptance
-    from services.end_user_connection_revision_adapters import PluginConnectionProviderRevisions
     from services.end_user_connections.contracts import UpdateConnectionInput
 
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
-    revisions = PluginConnectionProviderRevisions(providers=harness.providers, snapshots=harness.base.repository)
-    source = revisions.resolve(harness.base.context, connection.provider)
-    original_artifact = harness.providers.controller.plugin_unique_identifier
+    source = harness.base.service.get_connection_revision(harness.base.context, connection.id).connection_revision
     artifact = "vendor/calendar:2.0.0@" + "b" * 64
     harness.providers.controller.plugin_unique_identifier = artifact
     harness.providers.trusted_artifacts.add(artifact)
-    current = revisions.resolve(harness.base.context, connection.provider)
-    harness.providers.controller.plugin_unique_identifier = original_artifact
+    current = harness.base.service.get_connection_revision(harness.base.context, connection.id).connection_revision
     harness.base.service.update_connection(harness.base.context, connection.id, UpdateConnectionInput(name="Renamed"))
     with harness.base.sessions() as session:
         assert (
@@ -464,11 +438,10 @@ def test_credential_replacement_records_provider_inheritance_without_approving_t
             )
             is None
         )
-    harness.base.auth.on_check = lambda: setattr(harness.providers.controller, "plugin_unique_identifier", artifact)
     harness.base.service.update_connection(
         harness.base.context,
         connection.id,
-        UpdateConnectionInput(credentials={"api_key": "replacement"}),
+        UpdateConnectionInput(credentials={"api_key": "replacement"}, connection_revision=source),
     )
     with harness.base.sessions() as session:
         acceptance = session.scalar(
@@ -491,16 +464,15 @@ def test_credential_replacement_records_provider_inheritance_without_approving_t
 
 def test_failed_credential_replacement_does_not_record_the_new_revision(harness: OAuthHarness) -> None:
     from models.end_user_connection import EndUserConnectionRevisionAcceptance
-    from services.end_user_connection_revision_adapters import PluginConnectionProviderRevisions
     from services.end_user_connections.contracts import UpdateConnectionInput
     from services.end_user_connections.errors import ConnectionConflictError
 
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    source = harness.base.service.get_connection_revision(harness.base.context, connection.id).connection_revision
     artifact = "vendor/calendar:2.0.0@" + "b" * 64
     harness.providers.controller.plugin_unique_identifier = artifact
     harness.providers.trusted_artifacts.add(artifact)
-    revisions = PluginConnectionProviderRevisions(providers=harness.providers, snapshots=harness.base.repository)
-    current = revisions.resolve(harness.base.context, connection.provider)
+    current = harness.base.service.get_connection_revision(harness.base.context, connection.id).connection_revision
 
     def concurrent_update() -> None:
         with harness.base.sessions.begin() as session:
@@ -515,7 +487,7 @@ def test_failed_credential_replacement_does_not_record_the_new_revision(harness:
         harness.base.service.update_connection(
             harness.base.context,
             connection.id,
-            UpdateConnectionInput(credentials={"api_key": "replacement"}),
+            UpdateConnectionInput(credentials={"api_key": "replacement"}, connection_revision=source),
         )
     with harness.base.sessions() as session:
         assert (

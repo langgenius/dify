@@ -15,7 +15,7 @@ from configs import dify_config
 from controllers.common.end_user_connections import (
     ConnectionConflictHTTPError,
     ConnectionNotFoundHTTPError,
-    raise_connection_management_error,
+    raise_connection_error,
 )
 from controllers.common.schema import query_params_from_model, register_response_schema_models
 from controllers.web import web_ns
@@ -79,7 +79,7 @@ def _errors() -> Generator[None]:
     except WebAppAccessUnavailableError:
         raise ServiceUnavailable("App access is temporarily unavailable.") from None
     except ConnectionError as error:
-        raise_connection_management_error(error)
+        raise_connection_error(error)
 
 
 class ConsumerAppResponse(ConsumerApp, ResponseModel):

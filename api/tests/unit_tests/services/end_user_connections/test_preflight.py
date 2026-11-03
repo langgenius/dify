@@ -242,7 +242,9 @@ def test_same_provider_nodes_resolve_clients_independently_and_reuse_inherits_se
     default = harness.finish(
         harness.service.start_oauth(
             harness.base.context,
-            StartConnectionOAuthInput(node_id="reuse", name="Default"),
+            StartConnectionOAuthInput(
+                connection_revision=harness.command().connection_revision, node_id="reuse", name="Default"
+            ),
             callback_url="http://web-api.example/api/connections/oauth",
         )
     )

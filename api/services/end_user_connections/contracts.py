@@ -31,13 +31,14 @@ class ConnectionInput(BaseModel):
 class ConnectionContractInput(ConnectionInput):
     connection_revision: ConnectionRevision = Field(
         description=(
-            "Opaque App authorization revision issued by App parameters for selection, preflight, and execution."
+            "Opaque revision issued for the current Web App. Use App parameters for tool-node operations "
+            "or the owned Connection revision endpoint for Provider management."
         ),
     )
 
 
-class ConnectionTargetInput(ConnectionInput):
-    """Node references resolved against the current published graph."""
+class ConnectionTargetInput(ConnectionContractInput):
+    """Client connection contract references, checked against the current published graph."""
 
     node_id: str = Field(min_length=1, max_length=255)
 
@@ -57,10 +58,13 @@ class UpdateConnectionInput(ConnectionInput):
     placeholders. OAuth credentials can change only through the OAuth lifecycle.
     """
 
+    connection_revision: ConnectionRevision | None = Field(
+        default=None, description="Provider revision required when replacing credentials."
+    )
     name: str | None = Field(default=None, min_length=1, max_length=100)
     credentials: dict[str, JsonValue] | None = Field(default=None, min_length=1, repr=False)
 
-    @field_validator("name", "credentials", mode="before")
+    @field_validator("name", "credentials", "connection_revision", mode="before")
     @classmethod
     def reject_explicit_null(cls, value: Any) -> Any:
         if value is None:
@@ -71,7 +75,17 @@ class UpdateConnectionInput(ConnectionInput):
     def require_change(self) -> Self:
         if not self.model_fields_set.intersection({"name", "credentials"}):
             raise ValueError("At least one change is required.")
+        if self.credentials is not None and self.connection_revision is None:
+            raise ValueError("Connection revision is required when replacing credentials.")
         return self
+
+
+class ConnectionRevisionView(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    connection_revision: ConnectionRevision = Field(
+        description="Provider revision scoped to this Web App, for operations on the owned Connection."
+    )
 
 
 class StartConnectionOAuthInput(ConnectionTargetInput):
@@ -209,6 +223,8 @@ class ConnectionManagement(Protocol):
 
     def get_connection(self, context: WebConnectionContext, connection_id: str) -> ConnectionSummary: ...
 
+    def get_connection_revision(self, context: WebConnectionContext, connection_id: str) -> ConnectionRevisionView: ...
+
     def get_api_key_schema(
         self, context: WebConnectionContext, reference: ConnectionTargetInput
     ) -> tuple[ProviderConfig, ...]: ...
@@ -258,7 +274,9 @@ class ConnectionManagement(Protocol):
         """Use the resolved workspace/platform Client and existing short-lived context."""
         ...
 
-    def reauthorize_oauth(self, context: WebConnectionContext, connection_id: str) -> ConnectionOAuthStart:
+    def reauthorize_oauth(
+        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
+    ) -> ConnectionOAuthStart:
         """Keep the Connection ID; pin owner/revision/Provider/Client in server context.
 
         A callback revalidates these references before writing. Failed authorization

@@ -113,11 +113,7 @@ class ConnectionSelectionRevisions(Protocol):
 
 class ConnectionProviderRevisions(Protocol):
     def resolve(
-        self,
-        context: WebConnectionContext,
-        provider: str,
-        *,
-        oauth_client_source: OAuthClientSource | None = None,
+        self, context: WebConnectionContext, provider: str, *, oauth_client_source: OAuthClientSource | None = None
     ) -> str: ...
 
     def require(

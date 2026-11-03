@@ -23,12 +23,9 @@ from core.tools.errors import ToolProviderCredentialValidationError, ToolProvide
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from models.provider_ids import ToolProviderID
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.contracts import ConnectionTargetInput
-from services.end_user_connections.entities import (
-    ConnectionManagementContext,
-    ToolConnectionTarget,
-    WebConnectionContext,
-)
+from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
@@ -36,7 +33,7 @@ from services.end_user_connections.errors import (
     ConnectionRevisionChangedError,
     ConnectionSecretUnavailableError,
 )
-from services.end_user_connections.revision import ConnectionProviderMetadata
+from services.end_user_connections.revision import ConnectionProviderMetadata, ConnectionRevisionSnapshots
 from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig, check_tool_credentials
 
 
@@ -171,7 +168,7 @@ class PluginApiKeyCredentialGateway:
 
     def check(
         self,
-        context: ConnectionManagementContext,
+        context: WebConnectionContext,
         provider: str,
         credentials: Mapping[str, Any],
         *,
@@ -184,7 +181,7 @@ class PluginApiKeyCredentialGateway:
         try:
             return self._auth.check_provider_credentials(
                 tenant_id=context.tenant_id,
-                user_id=context.actor_id,
+                user_id=context.end_user_id,
                 provider=canonical,
                 credentials=credentials,
                 credential_type=CredentialType.API_KEY,
@@ -209,12 +206,15 @@ class PublishedConnectionTargetResolver:
         *,
         workflows: ConnectionWorkflowQuery,
         providers: PluginApiKeyCredentialGateway,
+        snapshots: ConnectionRevisionSnapshots,
     ) -> None:
         self._workflows = workflows
         self._providers = providers
+        self._revisions = PluginConnectionRevisions(providers=providers, snapshots=snapshots)
 
     def resolve(self, context: WebConnectionContext, reference: ConnectionTargetInput) -> ToolConnectionTarget:
         workflow_id, graph = self._workflows.published_graph(context)
+        self._revisions.require(context.tenant_id, context.app_id, graph, reference.connection_revision)
         try:
             if check_tool_credentials(graph, complete=True):
                 raise ConnectionConfigurationError()

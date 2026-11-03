@@ -191,6 +191,7 @@ class ConnectionHarness:
     def command(self, secret: str = "original-secret") -> CreateApiKeyConnectionInput:
         return CreateApiKeyConnectionInput.model_validate(
             {
+                "connection_revision": self.connection_revision,
                 "node_id": "tool-1",
                 "name": "My calendar",
                 "credentials": {"api_key": secret},
@@ -265,7 +266,7 @@ def make_harness(sessions: sessionmaker[Session]) -> ConnectionHarness:
     service = ConnectionService(
         revisions=PluginConnectionProviderRevisions(providers=gateway, snapshots=repository),
         store=repository,
-        targets=PublishedConnectionTargetResolver(workflows=repository, providers=gateway),
+        targets=PublishedConnectionTargetResolver(workflows=repository, snapshots=repository, providers=gateway),
         credentials=gateway,
         cipher=cipher,
         oauth=OAuthConnectionLifecycleService(

@@ -17,6 +17,7 @@ from services.end_user_connections.contracts import (
 
 def create_payload() -> dict[str, object]:
     return {
+        "connection_revision": "00000000-0000-7000-8000-000000000002",
         "node_id": "1730000000000",
         "name": "My calendar",
         "credentials": {"api_key": "secret-sentinel"},
@@ -34,7 +35,6 @@ def create_payload() -> dict[str, object]:
         "provider",
         "oauth_client",
         "revision",
-        "connection_revision",
         "workflow_id",
     ],
 )
@@ -45,7 +45,7 @@ def test_create_input_cannot_supply_authority_or_provider_configuration(field: s
 
 def test_create_input_keeps_credentials_out_of_repr_and_validation_messages() -> None:
     command = CreateApiKeyConnectionInput.model_validate(create_payload())
-    assert "connection_revision" not in command.model_dump()
+    assert command.connection_revision == "00000000-0000-7000-8000-000000000002"
     assert "workflow_id" not in command.model_dump()
     assert command.credentials == {"api_key": "secret-sentinel"}
     assert "secret-sentinel" not in repr(command)
@@ -72,18 +72,30 @@ def test_create_name_respects_storage_limits(name: object) -> None:
 
 
 def test_oauth_name_can_be_omitted() -> None:
-    assert StartConnectionOAuthInput.model_validate({"node_id": "tool-1"}).name is None
+    assert (
+        StartConnectionOAuthInput.model_validate(
+            {"connection_revision": create_payload()["connection_revision"], "node_id": "tool-1"}
+        ).name
+        is None
+    )
 
 
 @pytest.mark.parametrize("name", [None, "", "Personal account"])
 def test_oauth_name_can_be_empty_or_explicit(name: str | None) -> None:
-    assert StartConnectionOAuthInput.model_validate({"node_id": "tool-1", "name": name}).name == name
+    assert (
+        StartConnectionOAuthInput.model_validate(
+            {"connection_revision": create_payload()["connection_revision"], "node_id": "tool-1", "name": name}
+        ).name
+        == name
+    )
 
 
 @pytest.mark.parametrize("name", ["n" * 101, 42])
 def test_oauth_name_respects_storage_limits(name: object) -> None:
     with pytest.raises(ValidationError):
-        StartConnectionOAuthInput.model_validate({"node_id": "tool-1", "name": name})
+        StartConnectionOAuthInput.model_validate(
+            {"connection_revision": create_payload()["connection_revision"], "node_id": "tool-1", "name": name}
+        )
 
 
 @pytest.mark.parametrize("node_id", ["", "n" * 256])
@@ -107,9 +119,11 @@ def test_update_distinguishes_omission_and_full_replacement() -> None:
     rename = UpdateConnectionInput(name="Renamed")
     assert rename.credentials is None
     assert rename.model_fields_set == {"name"}
-    replacement = UpdateConnectionInput(credentials={"api_key": "secret-sentinel"})
+    replacement = UpdateConnectionInput(
+        credentials={"api_key": "secret-sentinel"}, connection_revision="00000000-0000-7000-8000-000000000002"
+    )
     assert replacement.name is None
-    assert replacement.model_fields_set == {"credentials"}
+    assert replacement.model_fields_set == {"credentials", "connection_revision"}
     assert "secret-sentinel" not in repr(replacement)
 
 
@@ -120,18 +134,11 @@ def test_list_limit_is_bounded_and_strict(limit: object) -> None:
 
 
 def test_oauth_start_does_not_accept_browser_supplied_tokens_or_client() -> None:
-    for field in (
-        "credentials",
-        "oauth_client",
-        "client_id",
-        "client_secret",
-        "redirect_uri",
-        "context_id",
-        "connection_revision",
-    ):
+    for field in ("credentials", "oauth_client", "client_id", "client_secret", "redirect_uri", "context_id"):
         with pytest.raises(ValidationError):
             StartConnectionOAuthInput.model_validate(
                 {
+                    "connection_revision": "00000000-0000-7000-8000-000000000002",
                     "node_id": "node",
                     "name": "My account",
                     field: "secret-sentinel",

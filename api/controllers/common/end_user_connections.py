@@ -1,13 +1,11 @@
 """HTTP failures shared by personal Connection management and the OAuth callback."""
 
-from typing import Any, NoReturn
+from typing import NoReturn
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
-from pydantic.json_schema import SkipJsonSchema
+from pydantic import BaseModel
 from werkzeug.exceptions import Unauthorized
 
 from libs.exception import BaseHTTPException
-from services.end_user_connections.contracts import UpdateConnectionInput
 from services.end_user_connections.errors import (
     ConnectionAccountRequiredError,
     ConnectionCheckUnavailableError,
@@ -24,26 +22,6 @@ from services.end_user_connections.errors import (
     ConnectionSecretUnavailableError,
 )
 from services.end_user_connections.revision import ConnectionRevision
-
-
-def _omit_schema_default(schema: dict[str, Any]) -> None:
-    schema.pop("default", None)
-
-
-class ConnectionUpdatePayload(UpdateConnectionInput):
-    model_config = ConfigDict(json_schema_extra={"minProperties": 1})
-    name: str | SkipJsonSchema[None] = Field(
-        default=None,
-        min_length=1,
-        max_length=100,
-        json_schema_extra=_omit_schema_default,
-    )
-    credentials: dict[str, JsonValue] | SkipJsonSchema[None] = Field(
-        default=None,
-        min_length=1,
-        repr=False,
-        json_schema_extra=_omit_schema_default,
-    )
 
 
 class ConnectionLoginRequiredError(BaseHTTPException):
@@ -115,14 +93,6 @@ class ConnectionReauthorizationHTTPError(BaseHTTPException):
     code = 409
     error_code = "connection_reauthorization_required"
     description = "The OAuth client changed or is unavailable. Start authorization again."
-
-
-def raise_connection_management_error(error: ConnectionError) -> NoReturn:
-    if isinstance(error, ConnectionRevisionChangedError):
-        raise ConnectionConflictHTTPError(
-            "Provider configuration changed during the operation. Retry the operation."
-        ) from None
-    raise_connection_error(error)
 
 
 def raise_connection_error(error: ConnectionError) -> NoReturn:

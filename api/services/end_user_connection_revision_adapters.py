@@ -136,15 +136,10 @@ class PluginConnectionProviderRevisions:
         )
 
     def resolve(
-        self,
-        context: WebConnectionContext,
-        provider: str,
-        *,
-        oauth_client_source: OAuthClientSource | None = None,
+        self, context: WebConnectionContext, provider: str, *, oauth_client_source: OAuthClientSource | None = None
     ) -> str:
         sources = {oauth_client_source} if oauth_client_source is not None else set()
-        current = self._current(context, provider, sources)
-        return self._snapshots.save_revision(self._snapshot(context, current))
+        return self._snapshots.save_revision(self._snapshot(context, self._current(context, provider, sources)))
 
     def _reference(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
         snapshot = self._snapshots.get_revision(context.tenant_id, context.app_id, revision)

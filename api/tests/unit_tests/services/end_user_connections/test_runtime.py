@@ -124,7 +124,9 @@ def test_personal_tool_injects_selected_current_credentials_without_workspace_fa
     harness.base.service.update_connection(
         harness.base.context,
         selected.id,
-        UpdateConnectionInput(credentials={"api_key": "replacement-secret"}),
+        UpdateConnectionInput(
+            credentials={"api_key": "replacement-secret"}, connection_revision=harness.base.connection_revision
+        ),
     )
     second = loader.get_runtime(
         node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None

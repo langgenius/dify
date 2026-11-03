@@ -172,6 +172,7 @@ def test_oauth_does_not_depend_on_site_after_authenticated_start(
             harness.base.context,
             original.id,
             callback_url="http://web-api.example/api/connections/oauth",
+            connection_revision=harness.base.connection_revision,
         )
         if original is not None
         else harness.start()
@@ -225,6 +226,7 @@ def test_reauthorization_preserves_id_and_name_and_replaces_grant(harness: OAuth
         harness.base.context,
         connection.id,
         callback_url="http://web-api.example/api/connections/oauth",
+        connection_revision=harness.base.connection_revision,
     )
     harness.handler.result = harness.handler.result.model_copy(
         update={"credentials": {"access_token": "new-secret"}, "metadata": {"name": "xy"}, "expires_at": -1}
@@ -250,6 +252,7 @@ def test_reauthorization_never_overwrites_concurrent_changes(harness: OAuthHarne
         harness.base.context,
         connection.id,
         callback_url="http://web-api.example/api/connections/oauth",
+        connection_revision=harness.base.connection_revision,
     )
 
     def mutate() -> None:
@@ -279,6 +282,7 @@ def test_failed_reauthorization_keeps_working_credentials(harness: OAuthHarness)
         harness.base.context,
         connection.id,
         callback_url="http://web-api.example/api/connections/oauth",
+        connection_revision=harness.base.connection_revision,
     )
     harness.handler.result = harness.handler.result.model_copy(update={"credentials": {}})
     with pytest.raises(ConnectionOAuthError):
@@ -336,6 +340,7 @@ def test_platform_client_requires_verified_provider_and_tracks_source(
         harness.base.context,
         connection.id,
         callback_url="http://web-api.example/api/connections/oauth",
+        connection_revision=harness.base.connection_revision,
     )
     assert harness.finish(started).id == connection.id
     stored = harness.base.repository.find(harness.base.context, connection.id)
@@ -352,6 +357,7 @@ def test_foreign_owner_cannot_reauthorize(harness: OAuthHarness) -> None:
             foreign,
             connection.id,
             callback_url="http://web-api.example/api/connections/oauth",
+            connection_revision=harness.base.connection_revision,
         )
 
 
@@ -479,9 +485,11 @@ def test_reauthorization_callback_rechecks_the_provider_revision(harness: OAuthH
     connection = harness.finish(harness.start())
     original = harness.base.repository.find(harness.base.context, connection.id)
     assert original is not None
+    revision = harness.base.service.get_connection_revision(harness.base.context, connection.id).connection_revision
     started = harness.service.reauthorize_oauth(
         harness.base.context,
         connection.id,
+        connection_revision=revision,
         callback_url="https://web-api.example/api/connections/oauth",
     )
 

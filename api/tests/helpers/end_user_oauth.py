@@ -143,7 +143,9 @@ class OAuthHarness:
     providers: TestProviders
 
     def command(self) -> StartConnectionOAuthInput:
-        return StartConnectionOAuthInput(node_id="tool-1", name="My calendar")
+        return StartConnectionOAuthInput(
+            connection_revision=self.base.command().connection_revision, node_id="tool-1", name="My calendar"
+        )
 
     def start(self) -> ConnectionOAuthStart:
         return self.service.start_oauth(
@@ -267,7 +269,9 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
     service = OAuthConnectionService(
         revisions=PluginConnectionProviderRevisions(providers=providers, snapshots=base.repository),
         store=base.repository,
-        targets=PublishedConnectionTargetResolver(workflows=base.repository, providers=providers),
+        targets=PublishedConnectionTargetResolver(
+            workflows=base.repository, snapshots=base.repository, providers=providers
+        ),
         gateway=gateway,
         attempts=attempts,
         cipher=base.cipher,
@@ -275,7 +279,9 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
     base.service = ConnectionService(
         revisions=PluginConnectionProviderRevisions(providers=providers, snapshots=base.repository),
         store=base.repository,
-        targets=PublishedConnectionTargetResolver(workflows=base.repository, providers=providers),
+        targets=PublishedConnectionTargetResolver(
+            workflows=base.repository, snapshots=base.repository, providers=providers
+        ),
         credentials=providers,
         cipher=base.cipher,
         oauth=OAuthConnectionLifecycleService(

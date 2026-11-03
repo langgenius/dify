@@ -82,7 +82,7 @@ def test_http_api_key_management_round_trip(
     assert page == {"data": [data], "has_more": False, "next_cursor": None}
     changed = client.patch(
         f"/api/connections/{connection_id}",
-        json={"credentials": {"api_key": "replacement-secret"}},
+        json={"credentials": {"api_key": "replacement-secret"}, "connection_revision": harness.connection_revision},
     )
     assert changed.status_code == 200
     assert "replacement-secret" not in changed.get_data(as_text=True)
@@ -153,7 +153,7 @@ def test_disabling_anonymous_connections_blocks_existing_guest_management(
         (
             "PATCH",
             f"/api/connections/{connection_id}",
-            {"credentials": {"api_key": "replacement"}},
+            {"credentials": {"api_key": "replacement"}, "connection_revision": harness.connection_revision},
         ),
         ("DELETE", f"/api/connections/{connection_id}", None),
     ]:
@@ -165,7 +165,7 @@ def test_disabling_anonymous_connections_blocks_existing_guest_management(
     assert client.get(f"/api/connections/{connection_id}").status_code == 200
 
 
-def test_client_supplied_revision_is_rejected_before_plugin_calls(
+def test_stale_workflow_request_is_rejected_before_plugin_calls(
     client: FlaskClient, harness: ConnectionHarness
 ) -> None:
     payload = {
@@ -173,8 +173,8 @@ def test_client_supplied_revision_is_rejected_before_plugin_calls(
         "connection_revision": "00000000-0000-7000-8000-000000000001",
     }
     response = client.post("/api/connections", json=payload)
-    assert response.status_code == 400
-    assert response.get_json()["code"] == "invalid_param"
+    assert response.status_code == 409
+    assert response.get_json()["code"] == "connection_revision_changed"
     assert harness.auth.calls == []
 
 
@@ -188,7 +188,7 @@ def test_lost_update_race_returns_conflict(client: FlaskClient, harness: Connect
     harness.auth.on_check = change
     response = client.patch(
         f"/api/connections/{created.id}",
-        json={"credentials": {"api_key": "replacement"}},
+        json={"credentials": {"api_key": "replacement"}, "connection_revision": harness.connection_revision},
     )
     assert response.status_code == 409
     assert response.get_json()["code"] == "connection_conflict"
@@ -219,9 +219,6 @@ def test_public_schemas_match_patch_and_timestamp_semantics() -> None:
     assert payload["minProperties"] == 1
     assert payload["properties"]["name"]["type"] == "string"
     assert payload["properties"]["credentials"]["type"] == "object"
-    assert "connection_revision" not in payload["properties"]
-    assert "connection_revision" not in create["properties"]
-    assert "dependentRequired" not in payload
     assert "default" not in payload["properties"]["name"]
     assert "default" not in payload["properties"]["credentials"]
     response = connections.EndUserConnectionResponse.model_json_schema(mode="serialization")
@@ -235,7 +232,37 @@ def test_standalone_check_route_is_removed(client: FlaskClient, harness: Connect
     assert harness.auth.calls == []
 
 
-def test_credentials_can_be_replaced_after_the_authorization_node_is_removed(
+def test_connection_write_revision_is_independent_of_authorization_contract(
+    client: FlaskClient, harness: ConnectionHarness
+) -> None:
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    path = f"/api/connections/{connection.id}"
+    app_revision = harness.connection_revision
+    contract_revision = client.get(path + "/revision").get_json()["connection_revision"]
+    before = harness.repository.find(harness.context, connection.id)
+    assert before is not None
+    assert before.access.revision == 1
+
+    assert client.patch(path, json={"name": "Renamed"}).status_code == 200
+    renamed = harness.repository.find(harness.context, connection.id)
+    assert renamed is not None
+    assert renamed.access.revision == 2
+    assert harness.connection_revision == app_revision
+    assert client.get(path + "/revision").get_json()["connection_revision"] == contract_revision
+
+    replaced = client.patch(
+        path,
+        json={"credentials": {"api_key": "replacement"}, "connection_revision": contract_revision},
+    )
+    assert replaced.status_code == 200
+    current = harness.repository.find(harness.context, connection.id)
+    assert current is not None
+    assert current.access.revision == 3
+    assert harness.connection_revision == app_revision
+    assert client.get(path + "/revision").get_json()["connection_revision"] == contract_revision
+
+
+def test_provider_revision_is_available_after_the_authorization_node_is_removed(
     client: FlaskClient, harness: ConnectionHarness
 ) -> None:
     from models.workflow import Workflow
@@ -246,32 +273,49 @@ def test_credentials_can_be_replaced_after_the_authorization_node_is_removed(
         assert workflow is not None
         workflow.graph = '{"nodes":[]}'
     response = client.get(f"/api/connections/{connection.id}/revision")
-    assert response.status_code == 404
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    snapshot = harness.repository.get_revision(
+        harness.context.tenant_id, harness.context.app_id, response.get_json()["connection_revision"]
+    )
+    assert snapshot is not None
+    assert snapshot.app_id == harness.context.app_id
+    assert snapshot.tenant_id == harness.context.tenant_id
+    assert snapshot.requirements == ()
+    assert snapshot.providers[0].provider == connection.provider
     changed = client.patch(
         f"/api/connections/{connection.id}",
         json={
             "credentials": {"api_key": "replacement"},
+            "connection_revision": response.get_json()["connection_revision"],
         },
     )
     assert changed.status_code == 200
 
 
-def test_credential_patch_uses_current_provider_configuration(client: FlaskClient, harness: ConnectionHarness) -> None:
+@pytest.mark.parametrize("revision", [None, "stale", "forged"])
+def test_credential_patch_requires_confirmed_revision_before_sending_credentials(
+    client: FlaskClient, harness: ConnectionHarness, revision: str | None
+) -> None:
     from tests.helpers.end_user_api_key import TestProviders
 
     connection = harness.service.create_api_key(harness.context, harness.command())
     original = harness.repository.find(harness.context, connection.id)
     assert original is not None
     payload: dict[str, object] = {"credentials": {"api_key": "private-replacement"}}
+    if revision is not None:
+        payload["connection_revision"] = (
+            harness.connection_revision if revision == "stale" else "00000000-0000-7000-8000-000000000001"
+        )
     assert isinstance(harness.service._credentials, TestProviders)
     harness.service._credentials.controller.plugin_unique_identifier = "vendor/calendar:2.0.0@" + "b" * 64
     harness.auth.calls.clear()
     response = client.patch(f"/api/connections/{connection.id}", json=payload)
-    assert response.status_code == 200
-    assert harness.auth.calls[-1][3] == {"api_key": "private-replacement"}
+    assert response.status_code == (400 if revision is None else 409)
+    assert harness.auth.calls == []
     latest = harness.repository.find(harness.context, connection.id)
     assert latest is not None
-    assert latest.encrypted_credentials != original.encrypted_credentials
+    assert latest.encrypted_credentials == original.encrypted_credentials
     assert "private-replacement" not in response.get_data(as_text=True)
 
 
@@ -281,16 +325,15 @@ def test_credential_patch_revalidates_after_the_plugin_check(client: FlaskClient
     connection = harness.service.create_api_key(harness.context, harness.command())
     original = harness.repository.find(harness.context, connection.id)
     assert original is not None
+    revision = client.get(f"/api/connections/{connection.id}/revision").get_json()["connection_revision"]
     assert isinstance(harness.service._credentials, TestProviders)
     controller = harness.service._credentials.controller
     harness.auth.on_check = lambda: setattr(controller, "plugin_unique_identifier", "vendor/calendar:2.0.0@" + "b" * 64)
     response = client.patch(
         f"/api/connections/{connection.id}",
-        json={"credentials": {"api_key": "replacement"}},
+        json={"credentials": {"api_key": "replacement"}, "connection_revision": revision},
     )
     assert response.status_code == 409
-    assert response.get_json()["code"] == "connection_conflict"
-    assert "connection_revision" not in response.get_data(as_text=True)
     latest = harness.repository.find(harness.context, connection.id)
     assert latest is not None
     assert latest.encrypted_credentials == original.encrypted_credentials
@@ -334,7 +377,10 @@ def test_credential_schema_preserves_provider_fields_and_drives_creation(
             options=[ProviderConfig.Option(value="us", label=I18nObject(en_US="US"))],
         ),
     ]
-    response = client.get("/api/connections/credential-schema", query_string={"node_id": "tool-1"})
+    revision = harness.connection_revision
+    response = client.get(
+        "/api/connections/credential-schema", query_string={"node_id": "tool-1", "connection_revision": revision}
+    )
     assert response.status_code == 200
     assert response.headers["Cache-Control"] == "no-store"
     fields = response.get_json()
@@ -354,6 +400,7 @@ def test_credential_schema_preserves_provider_fields_and_drives_creation(
     assert harness.cipher.values == {}
     payload = {
         "node_id": "tool-1",
+        "connection_revision": revision,
         "name": "Personal token",
         "credentials": {fields[0]["name"]: "submitted-token"},
     }
@@ -368,13 +415,15 @@ def test_credential_schema_preserves_provider_fields_and_drives_creation(
         ({}, 400, "invalid_param"),
         ({"provider": "foreign/provider"}, 400, "invalid_param"),
         ({"node_id": "missing"}, 400, "connection_configuration_invalid"),
-        ({"connection_revision": "00000000-0000-7000-8000-000000000001"}, 400, "invalid_param"),
+        ({"connection_revision": "00000000-0000-7000-8000-000000000001"}, 409, "connection_revision_changed"),
     ],
 )
 def test_credential_schema_rejects_invalid_targets(
     client: FlaskClient, harness: ConnectionHarness, query: dict[str, str], status: int, code: str
 ) -> None:
-    params: dict[str, str] = {"node_id": "tool-1", **query} if query else {}
+    params: dict[str, str] = (
+        {"node_id": "tool-1", "connection_revision": harness.connection_revision, **query} if query else {}
+    )
     response = client.get("/api/connections/credential-schema", query_string=params)
     assert response.status_code == status
     assert response.get_json()["code"] == code
@@ -388,7 +437,7 @@ def test_schema_queries_follow_anonymous_connection_policy(
     config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
     with harness.sessions.begin() as session:
         session.execute(sa.update(EndUser).where(EndUser.id == harness.context.end_user_id).values(account_id=None))
-    query = {"node_id": "tool-1"}
+    query = {"connection_revision": harness.connection_revision, "node_id": "tool-1"}
     response = client.get("/api/connections/credential-schema", query_string=query)
     assert response.status_code == 401
     assert response.get_json()["code"] == "end_user_login_required"
