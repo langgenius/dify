@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
 MESSAGE_MODES: Final = frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION})
 CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP})
-_CANVAS_NOTE_TYPE: Final = "custom-note"
+CANVAS_NOTE_TYPE: Final = "custom-note"
 
 
 class IssueSeverity(StrEnum):
@@ -317,7 +317,7 @@ def check_graph(graph: Mapping[str, Any], *, mode: AppMode, resources: ResourceC
     shape_issues = _shape_issues(graph)
     if shape_issues:
         return shape_issues
-    raw_nodes = {str(n["id"]): n for n in graph["nodes"] if n.get("type") != _CANVAS_NOTE_TYPE}
+    raw_nodes = {str(n["id"]): n for n in graph["nodes"] if n.get("type") != CANVAS_NOTE_TYPE}
     view = _Graph(
         nodes={node_id: _read_node(node_id, raw) for node_id, raw in raw_nodes.items()},
         edges=graph.get("edges") or [],
