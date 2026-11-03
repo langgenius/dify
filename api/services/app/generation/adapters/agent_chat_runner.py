@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Callable
-from typing import cast
 
 from core.agent.entities import AgentEntity
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
@@ -64,7 +63,8 @@ class AgentChatAppRunner(AppRunner):
         :return:
         """
         app_config = application_generate_entity.app_config
-        app_config = cast(AgentChatAppConfig, app_config)
+        if not isinstance(app_config, AgentChatAppConfig):
+            raise TypeError(f"Expected AgentChatAppConfig, got {type(app_config).__name__}")
         inputs = application_generate_entity.inputs
         query = application_generate_entity.query
         files = application_generate_entity.files
@@ -194,7 +194,9 @@ class AgentChatAppRunner(AppRunner):
         )
 
         # change function call strategy based on LLM model
-        llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
+        if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
+            raise TypeError(f"Expected LargeLanguageModel, got {type(model_instance.model_type_instance).__name__}")
+        llm_model = model_instance.model_type_instance
         model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
         if not model_schema:
             raise ValueError("Model schema not found")
