@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime
-from types import SimpleNamespace
+import time
+from collections.abc import Iterator
+from datetime import UTC, datetime
+from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -19,6 +21,19 @@ from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 TENANT_ID = "tenant-1"
 OTHER_TENANT_ID = "tenant-2"
+
+
+@pytest.fixture
+def non_utc_host_timezone(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    if not hasattr(time, "tzset"):
+        pytest.skip("tzset is only available on POSIX platforms")
+    monkeypatch.setenv("TZ", "Asia/Tokyo")
+    time.tzset()
+    try:
+        yield
+    finally:
+        monkeypatch.undo()
+        time.tzset()
 
 
 @pytest.fixture(autouse=True)
@@ -151,6 +166,22 @@ def _graph(session: Session) -> tuple[Dataset, Document, DocumentSegment]:
     document = _persist_document(session, dataset)
     segment = _persist_segment(session, dataset, document)
     return dataset, document, segment
+
+
+class _SegmentQuery:
+    """Stand-in for SegmentService on the summary-status read path."""
+
+    def __init__(self, segments: list[DocumentSegment]) -> None:
+        self._segments = segments
+
+    def get_segments_by_document_and_dataset(self, **_kwargs: object) -> list[DocumentSegment]:
+        return self._segments
+
+
+def _install_segment_service(monkeypatch: pytest.MonkeyPatch, segments: list[DocumentSegment]) -> None:
+    module = ModuleType("services.knowledge.dataset_service")
+    module.SegmentService = _SegmentQuery(segments)  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "services.knowledge.dataset_service", module)
 
 
 def _usage(*, total: int = 10) -> MagicMock:
@@ -903,6 +934,28 @@ class TestReadModels:
             == {}
         )
 
+    @pytest.mark.usefixtures("non_utc_host_timezone")
+    def test_status_detail_reads_naive_timestamps_as_utc(
+        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        dataset, document, first = _graph(sqlite_session)
+        created_at = datetime(2026, 1, 1)
+        _persist_summary(
+            sqlite_session,
+            dataset,
+            document,
+            first,
+            status=SummaryStatus.COMPLETED,
+            created_at=created_at,
+        )
+        _install_segment_service(monkeypatch, [first])
+
+        detail = SummaryIndexAdapter.get_document_summary_status_detail(
+            document.id, dataset.id, sqlite_session, tenant_id=dataset.tenant_id
+        )
+
+        assert detail["summaries"][0]["created_at"] == int(datetime(2026, 1, 1, tzinfo=UTC).timestamp())
+
     def test_status_detail_counts_and_previews(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
         dataset, document, first = _graph(sqlite_session)
         second = _persist_segment(sqlite_session, dataset, document, segment_id="seg-2", position=2)
@@ -916,10 +969,7 @@ class TestReadModels:
             status=SummaryStatus.COMPLETED,
             created_at=created_at,
         )
-        segment_service = SimpleNamespace(get_segments_by_document_and_dataset=MagicMock(return_value=[first, second]))
-        monkeypatch.setitem(
-            sys.modules, "services.knowledge.dataset_service", SimpleNamespace(SegmentService=segment_service)
-        )
+        _install_segment_service(monkeypatch, [first, second])
 
         detail = SummaryIndexAdapter.get_document_summary_status_detail(
             document.id, dataset.id, sqlite_session, tenant_id=dataset.tenant_id
@@ -929,5 +979,5 @@ class TestReadModels:
         assert detail["summary_status"]["completed"] == 1
         assert detail["summary_status"]["not_started"] == 1
         assert detail["summaries"][0]["summary_preview"] == "x" * 100 + "..."
-        assert detail["summaries"][0]["created_at"] == int(created_at.timestamp())
+        assert detail["summaries"][0]["created_at"] == int(datetime(2026, 1, 1, tzinfo=UTC).timestamp())
         assert detail["summaries"][1]["status"] == SummaryStatus.NOT_STARTED

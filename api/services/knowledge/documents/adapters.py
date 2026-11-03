@@ -20,6 +20,7 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from libs.datetime_utils import to_utc_timestamp
 from libs.pagination import paginate_query
 from machinery.context import RequestContext
 from models import Account, Dataset, Document, DocumentSegment, UploadFile
@@ -249,10 +250,10 @@ class SQLAlchemyDocumentOperations:
             )
             result.update(
                 {
-                    "created_at": int(document.created_at.timestamp()) if document.created_at else None,
-                    "completed_at": int(document.completed_at.timestamp()) if document.completed_at else None,
-                    "updated_at": int(document.updated_at.timestamp()) if document.updated_at else None,
-                    "disabled_at": int(document.disabled_at.timestamp()) if document.disabled_at else None,
+                    "created_at": to_utc_timestamp(document.created_at) if document.created_at else None,
+                    "completed_at": to_utc_timestamp(document.completed_at) if document.completed_at else None,
+                    "updated_at": to_utc_timestamp(document.updated_at) if document.updated_at else None,
+                    "disabled_at": to_utc_timestamp(document.disabled_at) if document.disabled_at else None,
                 }
             )
             result.update(

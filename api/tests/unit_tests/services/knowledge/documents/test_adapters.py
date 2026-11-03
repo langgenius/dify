@@ -1,7 +1,8 @@
 import json
+import time
 from collections.abc import Callable, Generator, Iterator
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 import pytest
@@ -233,13 +234,33 @@ class TestDocumentAdaptersCases:
         assert result["rules"] == rules
 
     @staticmethod
+    @pytest.fixture
+    def non_utc_host_timezone(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+        if not hasattr(time, "tzset"):
+            pytest.skip("tzset is only available on POSIX platforms")
+        monkeypatch.setenv("TZ", "Asia/Tokyo")
+        time.tzset()
+        try:
+            yield
+        finally:
+            monkeypatch.undo()
+            time.tzset()
+
+    @staticmethod
+    @pytest.mark.usefixtures("non_utc_host_timezone")
+    def test_detail_reads_naive_timestamps_as_utc(operations: SQLAlchemyDocumentOperations) -> None:
+        result = operations.get_detail(_DOCUMENT_ADAPTERS_REF.document("document-1"), metadata_only=False)
+
+        assert result["created_at"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
+
+    @staticmethod
     def test_detail_is_serializable_after_session_closes(operations: SQLAlchemyDocumentOperations) -> None:
         result = operations.get_detail(_DOCUMENT_ADAPTERS_REF.document("document-1"), metadata_only=False)
         response = DocumentDetailResponse.model_validate(result).model_dump(mode="json")
         assert response["id"] == "document-1"
         assert response["data_source_info"] == {"file_path": "/path/to/file"}
         assert response["data_source_detail_dict"] == {}
-        assert response["created_at"] == int(datetime(2024, 1, 1).timestamp())
+        assert response["created_at"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
 
     @staticmethod
     def test_metadata_only_avoids_loading_full_details(operations: SQLAlchemyDocumentOperations) -> None:

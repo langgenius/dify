@@ -22,6 +22,7 @@ from core.rag.models.document import Document
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
+from libs.datetime_utils import to_utc_timestamp
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
 from models.enums import SummaryStatus
@@ -1179,8 +1180,8 @@ class SummaryIndexAdapter:
                             else summary.summary_content
                         ),
                         "error": summary.error,
-                        "created_at": int(summary.created_at.timestamp()) if summary.created_at else None,
-                        "updated_at": int(summary.updated_at.timestamp()) if summary.updated_at else None,
+                        "created_at": to_utc_timestamp(summary.created_at) if summary.created_at else None,
+                        "updated_at": to_utc_timestamp(summary.updated_at) if summary.updated_at else None,
                     }
                 )
             else:
