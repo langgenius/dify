@@ -42,6 +42,54 @@ const thinkingOnlyItem = {
 } satisfies ChatItem
 
 describe('AgentRosterResponseContent', () => {
+  it('shows trimmed plain-text thoughts and opens activity only when enabled', () => {
+    const thought = {
+      ...thinkingOnlyItem.agent_response_parts[0]!.thought,
+      thought: ' \n<think>First</think>\n**Second** &amp;\n ',
+    }
+    const item: ChatItem = {
+      ...thinkingOnlyItem,
+      agent_response_parts: undefined,
+      agent_thoughts: [thought],
+    }
+    const { rerender } = render(<AgentRosterResponseContent item={item} />)
+    expect(screen.queryByRole('button', { name: 'Thinking' })).not.toBeInTheDocument()
+
+    rerender(<AgentRosterResponseContent item={item} showThoughts />)
+    expect(screen.getByRole('button', { name: 'Thinking' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    const text = screen.getByText('<think>First</think> **Second** &amp;')
+    expect(text.textContent).toBe('<think>First</think>\n**Second** &amp;')
+    expect(text.children).toHaveLength(0)
+  })
+
+  it('preserves manual collapse when enabled live thoughts become history', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <AgentRosterResponseContent item={thinkingOnlyItem} responding showThoughts />,
+    )
+    expect(screen.getByText('internal thought should not render')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: /Thinking/ }))
+    rerender(
+      <AgentRosterResponseContent
+        item={{
+          ...thinkingOnlyItem,
+          agent_response_parts: undefined,
+          agent_thoughts: [thinkingOnlyItem.agent_response_parts[0]!.thought],
+        }}
+        showThoughts
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Thinking' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    await user.click(screen.getByRole('button', { name: 'Thinking' }))
+    expect(await screen.findByText('internal thought should not render')).toBeVisible()
+  })
+
   it('renders a verified receipt as a working in-answer link, but not a forged receipt', async () => {
     const user = userEvent.setup()
     const receiptId = `kfs_${'a'.repeat(32)}`
