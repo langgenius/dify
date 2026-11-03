@@ -1,6 +1,7 @@
 import type { CustomActionsProps } from '../actions'
-import { act, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { useAppForm } from '../../..'
 
 const TestForm = ({
@@ -26,33 +27,31 @@ const TestForm = ({
 
 describe('Actions', () => {
   it('disables submission when the form is invalid', async () => {
-    render(<TestForm invalid />)
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'common.operation.submit' })).toBeDisabled(),
-    )
+    await render(<TestForm invalid />)
+    await expect
+      .element(page.getByRole('button', { name: 'common.operation.submit' }))
+      .toBeDisabled()
   })
 
   it('keeps the pending button focusable and prevents duplicate submissions', async () => {
-    const user = userEvent.setup()
     let finishSubmit!: () => void
     const pending = new Promise<void>((resolve) => {
       finishSubmit = resolve
     })
     const onSubmit = vi.fn(() => pending)
-    render(<TestForm onSubmit={onSubmit} />)
-    const button = screen.getByRole('button', { name: 'common.operation.submit' })
-    await user.click(button)
-    await waitFor(() => expect(button).toHaveAttribute('aria-disabled', 'true'))
-    expect(button).not.toBeDisabled()
-    expect(button).toHaveFocus()
-    await user.click(button)
+    await render(<TestForm onSubmit={onSubmit} />)
+    const button = page.getByRole('button', { name: 'common.operation.submit' })
+    await button.click()
+    await expect.element(button).toHaveAttribute('aria-disabled', 'true')
+    await expect.element(button).not.toHaveAttribute('disabled')
+    await expect.element(button).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
     expect(onSubmit).toHaveBeenCalledOnce()
-    await act(async () => finishSubmit())
-    await waitFor(() => expect(button).not.toHaveAttribute('aria-disabled', 'true'))
+    finishSubmit()
+    await expect.element(button).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('lets custom actions submit the form and observe pending state', async () => {
-    const user = userEvent.setup()
     let finish!: () => void
     const onSubmit = vi.fn(
       () =>
@@ -60,7 +59,7 @@ describe('Actions', () => {
           finish = resolve
         }),
     )
-    render(
+    await render(
       <TestForm
         onSubmit={onSubmit}
         CustomActions={({ form, isSubmitting, canSubmit }) => (
@@ -75,10 +74,15 @@ describe('Actions', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-    expect(await screen.findByRole('button', { name: 'Saving' })).toBeDisabled()
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect.element(page.getByRole('button', { name: 'Saving' })).toBeDisabled()
     expect(onSubmit).toHaveBeenCalledOnce()
-    await act(async () => finish())
-    expect(await screen.findByRole('button', { name: 'Save' })).toBeEnabled()
+    finish()
+    await expect.element(page.getByRole('button', { name: 'Save' })).toBeEnabled()
   })
+})
+
+beforeEach(async () => {
+  await page.viewport(1280, 900)
+  onTestFinished(guardUnexpectedFetch())
 })

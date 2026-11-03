@@ -1,7 +1,8 @@
 import type { InputFieldConfiguration } from '../types'
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { useMemo } from 'react'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { useAppForm } from '../../..'
 import InputField from '../field'
 import { InputFieldType } from '../types'
@@ -51,16 +52,29 @@ it('notifies a field listener with the edited value and reveals dependent config
       </>
     )
   }
-  const user = userEvent.setup()
-  render(<Form />)
-  await user.type(screen.getByRole('textbox', { name: /Name/ }), 'Input name')
+
+  await render(<Form />)
+  await page.getByRole('textbox', { name: /Name/ }).fill('Input name')
   expect(onChange).toHaveBeenLastCalledWith('Input name')
-  expect(screen.getByRole('status', { name: 'Form values' })).toHaveTextContent(
-    '"name":"Input name"',
-  )
-  expect(screen.queryByRole('textbox', { name: 'Description' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('checkbox', { name: 'Enable description' }))
-  expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue('Saved description')
-  await user.click(screen.getByRole('checkbox', { name: 'Enable description' }))
-  expect(screen.queryByRole('textbox', { name: 'Description' })).not.toBeInTheDocument()
+  await expect
+    .element(page.getByRole('status', { name: 'Form values' }))
+    .toHaveTextContent('{"name":"Input name","enabled":false,"description":"Saved description"}')
+  await expect.element(page.getByRole('textbox', { name: 'Description' })).not.toBeInTheDocument()
+  await userEvent.tab()
+  await expect.element(page.getByRole('checkbox', { name: 'Enable description' })).toHaveFocus()
+  await userEvent.keyboard(' ')
+  await expect
+    .element(page.getByRole('textbox', { name: 'Description' }))
+    .toHaveValue('Saved description')
+  await userEvent.tab()
+  await expect.element(page.getByRole('textbox', { name: 'Description' })).toHaveFocus()
+  await userEvent.tab({ shift: true })
+  await expect.element(page.getByRole('checkbox', { name: 'Enable description' })).toHaveFocus()
+  await userEvent.keyboard(' ')
+  await expect.element(page.getByRole('textbox', { name: 'Description' })).not.toBeInTheDocument()
+})
+
+beforeEach(async () => {
+  await page.viewport(1280, 900)
+  onTestFinished(guardUnexpectedFetch())
 })

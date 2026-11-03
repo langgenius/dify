@@ -1,9 +1,10 @@
 import type { AnyFieldApi } from '@tanstack/react-form'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { useForm } from '@tanstack/react-form'
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import BaseField from '../base-field'
 
 const mockDynamicOptions = vi.fn()
@@ -54,7 +55,7 @@ const renderBaseField = ({
         </form.Field>
         {showCurrentValue && (
           <form.Subscribe selector={(state) => state.values[formSchema.name]}>
-            {(value) => <div data-testid="field-value">{String(value)}</div>}
+            {(value) => <output aria-label="Field value">{String(value)}</output>}
           </form.Subscribe>
         )}
       </>
@@ -66,7 +67,6 @@ const renderBaseField = ({
 
 describe('BaseField', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockDynamicOptions.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -80,29 +80,27 @@ describe('BaseField', () => {
   ])(
     'copies the $type field value through its keyboard-accessible action',
     async ({ type, value, copied }) => {
-      const user = userEvent.setup()
-      renderBaseField({
+      await renderBaseField({
         formSchema: { type, name: 'value', label: 'Value', required: false, showCopy: true },
         defaultValues: { value },
       })
 
-      await user.click(screen.getByLabelText('Value'))
-      await user.tab()
-      const copyButton = screen.getByRole('button', { name: 'common.operation.copy' })
-      expect(copyButton).toHaveFocus()
-      await user.keyboard('{Enter}')
+      await page.getByLabelText('Value').click()
+      await userEvent.tab()
+      const copyButton = page.getByRole('button', { name: 'common.operation.copy' })
+      await expect.element(copyButton).toHaveFocus()
+      await userEvent.keyboard('{Enter}')
 
       expect(mockCopy).toHaveBeenCalledWith(copied)
-      expect(copyButton).toHaveFocus()
-      expect(screen.getByLabelText('Value')).toHaveValue(String(value))
+      await expect.element(copyButton).toHaveFocus()
+      await expect.element(page.getByLabelText('Value')).toHaveValue(String(value))
     },
   )
 
   it.each([FormTypeEnum.textInput, FormTypeEnum.secretInput, FormTypeEnum.textNumber])(
     'associates the visible label, description and required state for %s',
     async (type) => {
-      const user = userEvent.setup()
-      renderBaseField({
+      await renderBaseField({
         formSchema: {
           type,
           name: 'credential',
@@ -112,12 +110,12 @@ describe('BaseField', () => {
           options: [{ label: 'Primary', value: 'primary' }],
         },
       })
-      const control = screen.getByLabelText('Credential')
-      expect(control).toHaveAccessibleName('Credential')
-      expect(control).toHaveAccessibleDescription('Use the workspace credential')
-      expect(control).toBeRequired()
-      await user.click(screen.getByText('Credential'))
-      expect(control).toHaveFocus()
+      const control = page.getByLabelText('Credential')
+      await expect.element(control).toHaveAccessibleName('Credential')
+      await expect.element(control).toHaveAccessibleDescription('Use the workspace credential')
+      await expect.element(control).toBeRequired()
+      await page.getByText('Credential').click()
+      await expect.element(control).toHaveFocus()
     },
   )
 
@@ -129,14 +127,13 @@ describe('BaseField', () => {
   ])(
     'focuses the $type trigger from its label and supports keyboard selection (multiple: $multiple)',
     async ({ type, multiple }) => {
-      const user = userEvent.setup()
       const options = [{ label: 'Primary', value: 'primary' }]
       mockDynamicOptions.mockReturnValue({
         data: { options },
         isLoading: false,
         error: null,
       })
-      renderBaseField({
+      await renderBaseField({
         formSchema: {
           type,
           multiple,
@@ -155,30 +152,31 @@ describe('BaseField', () => {
         showCurrentValue: true,
       })
 
-      const control = screen.getByRole('combobox', { name: 'Credential' })
-      expect(control).toHaveAccessibleDescription(
-        'Use the workspace credential Choose a credential',
-      )
-      expect(control).toBeInvalid()
-      expect(control).toBeRequired()
-      expect(screen.getByRole('button', { name: 'Credential' })).toBeInTheDocument()
-      await user.click(screen.getByText('Credential'))
-      expect(control).toHaveFocus()
-      expect(control).toHaveAttribute('aria-expanded', 'false')
-      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+      const control = page.getByRole('combobox', { name: 'Credential' })
+      await expect
+        .element(control)
+        .toHaveAccessibleDescription('Use the workspace credential Choose a credential')
+      await expect.element(control).toBeInvalid()
+      await expect.element(control).toBeRequired()
+      await expect.element(page.getByRole('button', { name: 'Credential' })).toBeVisible()
+      await page.getByText('Credential').click()
+      await expect.element(control).toHaveFocus()
+      await expect.element(control).toHaveAttribute('aria-expanded', 'false')
+      await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
 
-      await user.keyboard('{ArrowDown}')
-      expect(control).toHaveAttribute('aria-expanded', 'true')
-      expect(screen.getByRole('option', { name: 'Primary' })).toHaveFocus()
-      await user.keyboard('{Enter}')
-      expect(screen.getByTestId('field-value')).toHaveTextContent('primary')
+      await userEvent.keyboard('{ArrowDown}')
+      await expect.element(control).toHaveAttribute('aria-expanded', 'true')
+      await expect.element(page.getByRole('option', { name: 'Primary' })).toHaveFocus()
+      await userEvent.keyboard('{Enter}')
+      await expect
+        .element(page.getByRole('status', { name: 'Field value' }))
+        .toHaveTextContent('primary')
     },
   )
 
   it('should render text input and propagate changes', async () => {
-    const user = userEvent.setup()
     const onChange = vi.fn()
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.textInput,
         name: 'title',
@@ -189,18 +187,17 @@ describe('BaseField', () => {
       onChange,
     })
 
-    const input = screen.getByDisplayValue('Hello')
-    expect(input).toHaveValue('Hello')
+    const input = page.getByRole('textbox', { name: 'Title' })
+    await expect.element(input).toHaveValue('Hello')
 
-    await user.clear(input)
-    await user.type(input, 'Updated')
+    await input.fill('')
+    await input.fill('Updated')
     expect(onChange).toHaveBeenCalledWith('title', 'Updated')
-    expect(input).toHaveValue('Updated')
+    await expect.element(input).toHaveValue('Updated')
   })
 
   it('should render only options that satisfy show_on conditions', async () => {
-    const user = userEvent.setup()
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.select,
         name: 'mode',
@@ -214,12 +211,13 @@ describe('BaseField', () => {
       defaultValues: { mode: 'alpha', enabled: 'no' },
     })
 
-    await user.click(screen.getByText('Alpha'))
-    expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+    await page.getByRole('combobox', { name: 'Mode' }).click()
+    await expect.element(page.getByRole('option', { name: 'Alpha' })).toBeVisible()
+    await expect.element(page.getByText('Beta')).not.toBeInTheDocument()
   })
 
-  it('should not render current select value when it is filtered out by show_on conditions', () => {
-    renderBaseField({
+  it('should not render current select value when it is filtered out by show_on conditions', async () => {
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.select,
         name: 'mode',
@@ -233,20 +231,20 @@ describe('BaseField', () => {
       defaultValues: { mode: 'beta', enabled: 'no' },
     })
 
-    expect(screen.getByRole('combobox', { name: 'Mode' })).not.toHaveTextContent('beta')
-    expect(screen.getByRole('combobox', { name: 'Mode' })).toHaveTextContent(
-      'common.placeholder.input',
-    )
+    await expect.element(page.getByRole('combobox', { name: 'Mode' })).not.toHaveTextContent('beta')
+    await expect
+      .element(page.getByRole('combobox', { name: 'Mode' }))
+      .toHaveTextContent('common.placeholder.input')
   })
 
-  it('should render dynamic select loading state', () => {
+  it('should render dynamic select loading state', async () => {
     mockDynamicOptions.mockReturnValue({
       data: undefined,
       isLoading: true,
       error: null,
     })
 
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
         name: 'plugin',
@@ -256,13 +254,12 @@ describe('BaseField', () => {
       defaultValues: { plugin: '' },
     })
 
-    expect(screen.getByText('common.dynamicSelect.loading')).toBeInTheDocument()
+    await expect.element(page.getByText('common.dynamicSelect.loading')).toBeVisible()
   })
 
   it('should update value when users click a radio option', async () => {
-    const user = userEvent.setup()
     const onChange = vi.fn()
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.radio,
         name: 'visibility',
@@ -277,38 +274,43 @@ describe('BaseField', () => {
       onChange,
     })
 
-    await user.click(screen.getByText('Private'))
+    await page.getByText('Private').click()
     expect(onChange).toHaveBeenCalledWith('visibility', 'private')
-    expect(screen.getByRole('radio', { name: 'Private' })).toBeChecked()
+    await expect.element(page.getByRole('radio', { name: 'Private' })).toBeChecked()
   })
 
   it.each([
     { type: FormTypeEnum.select, role: 'combobox' },
     { type: FormTypeEnum.radio, role: 'radiogroup' },
     { type: FormTypeEnum.checkbox, role: 'group' },
-  ])('associates $type validation and description with the named control', ({ type, role }) => {
-    renderBaseField({
-      formSchema: {
-        type,
-        name: 'access',
-        label: 'Access level',
-        description: 'Choose an access level',
-        required: true,
-        options: [{ label: 'Public', value: 'public' }],
-      },
-      defaultValues: { access: type === FormTypeEnum.checkbox ? [] : '' },
-      fieldState: {
-        validateStatus: FormItemValidateStatusEnum.Error,
-        errors: ['Choose an option'],
-      },
-    })
-    const control = screen.getByRole(role, { name: 'Access level' })
-    expect(control).toHaveAttribute('aria-invalid', 'true')
-    expect(control).toHaveAccessibleDescription('Choose an access level Choose an option')
-  })
+  ])(
+    'associates $type validation and description with the named control',
+    async ({ type, role }) => {
+      await renderBaseField({
+        formSchema: {
+          type,
+          name: 'access',
+          label: 'Access level',
+          description: 'Choose an access level',
+          required: true,
+          options: [{ label: 'Public', value: 'public' }],
+        },
+        defaultValues: { access: type === FormTypeEnum.checkbox ? [] : '' },
+        fieldState: {
+          validateStatus: FormItemValidateStatusEnum.Error,
+          errors: ['Choose an option'],
+        },
+      })
+      const control = page.getByRole(role, { name: 'Access level' })
+      await expect.element(control).toHaveAttribute('aria-invalid', 'true')
+      await expect
+        .element(control)
+        .toHaveAccessibleDescription('Choose an access level Choose an option')
+    },
+  )
 
-  it('should show validation message when field state has an error', () => {
-    renderBaseField({
+  it('should show validation message when field state has an error', async () => {
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.textInput,
         name: 'name',
@@ -321,13 +323,13 @@ describe('BaseField', () => {
       },
     })
 
-    const input = screen.getByRole('textbox', { name: 'Name' })
-    expect(input).toBeInvalid()
-    expect(input).toHaveAccessibleDescription('Name is required')
+    const input = page.getByRole('textbox', { name: 'Name' })
+    await expect.element(input).toBeInvalid()
+    await expect.element(input).toHaveAccessibleDescription('Name is required')
   })
 
-  it('should render description and help link when provided', () => {
-    renderBaseField({
+  it('should render description and help link when provided', async () => {
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.textInput,
         name: 'doc',
@@ -340,15 +342,14 @@ describe('BaseField', () => {
       defaultValues: { doc: '' },
     })
 
-    expect(screen.getByText('Read the description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Open help docs' })).toHaveAttribute(
-      'href',
-      'https://example.com/help',
-    )
+    await expect.element(page.getByText('Read the description')).toBeVisible()
+    await expect
+      .element(page.getByRole('link', { name: 'Open help docs' }))
+      .toHaveAttribute('href', 'https://example.com/help')
   })
 
-  it('should render secret input with password type', () => {
-    renderBaseField({
+  it('should render secret input with password type', async () => {
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.secretInput,
         name: 'token',
@@ -358,13 +359,12 @@ describe('BaseField', () => {
       defaultValues: { token: 'abc' },
     })
 
-    expect(screen.getByDisplayValue('abc')).toHaveAttribute('type', 'password')
+    await expect.element(page.getByLabelText('Token')).toHaveAttribute('type', 'password')
   })
 
   it('keeps numeric edits, zero and an empty value distinct at the form boundary', async () => {
-    const user = userEvent.setup()
     const onChange = vi.fn()
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.textNumber,
         name: 'count',
@@ -375,23 +375,23 @@ describe('BaseField', () => {
       onChange,
     })
 
-    const input = screen.getByRole('textbox', { name: 'Count' })
-    expect(input).toHaveValue('7')
-    await user.clear(input)
-    await user.type(input, '3.5')
-    await user.tab()
+    const input = page.getByRole('textbox', { name: 'Count' })
+    await expect.element(input).toHaveValue('7')
+    await input.fill('')
+    await input.fill('3.5')
+    await userEvent.tab()
     expect(onChange).toHaveBeenLastCalledWith('count', 3.5)
-    await user.clear(input)
-    await user.type(input, '0')
-    await user.tab()
+    await input.fill('')
+    await input.fill('0')
+    await userEvent.tab()
     expect(onChange).toHaveBeenLastCalledWith('count', 0)
-    await user.clear(input)
-    await user.tab()
+    await input.fill('')
+    await userEvent.tab()
     expect(onChange).toHaveBeenLastCalledWith('count', null)
   })
 
-  it('should render translated object label content', () => {
-    renderBaseField({
+  it('should render translated object label content', async () => {
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.textInput,
         name: 'title_i18n',
@@ -401,11 +401,10 @@ describe('BaseField', () => {
       defaultValues: { title_i18n: '' },
     })
 
-    expect(screen.getByText('Localized title')).toBeInTheDocument()
+    await expect.element(page.getByText('Localized title')).toBeVisible()
   })
 
   it('should render dynamic options and allow selecting one', async () => {
-    const user = userEvent.setup()
     mockDynamicOptions.mockReturnValue({
       data: {
         options: [{ label: { en_US: 'Option A', zh_Hans: '选项A' }, value: 'a' }],
@@ -414,7 +413,7 @@ describe('BaseField', () => {
       error: null,
     })
 
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
         name: 'plugin_option',
@@ -424,13 +423,14 @@ describe('BaseField', () => {
       defaultValues: { plugin_option: '' },
     })
 
-    await user.click(screen.getByRole('combobox', { name: 'Plugin option' }))
-    await user.click(screen.getByRole('option', { name: 'Option A' }))
-    expect(screen.getByRole('combobox', { name: 'Plugin option' })).toHaveTextContent('Option A')
+    await page.getByRole('combobox', { name: 'Plugin option' }).click()
+    await page.getByRole('option', { name: 'Option A' }).click()
+    await expect
+      .element(page.getByRole('combobox', { name: 'Plugin option' }))
+      .toHaveTextContent('Option A')
   })
 
   it('should preserve multiple dynamic select values', async () => {
-    const user = userEvent.setup()
     mockDynamicOptions.mockReturnValue({
       data: {
         options: [
@@ -442,7 +442,7 @@ describe('BaseField', () => {
       error: null,
     })
 
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
         name: 'plugin_options',
@@ -454,19 +454,18 @@ describe('BaseField', () => {
       showCurrentValue: true,
     })
 
-    expect(screen.getByRole('combobox', { name: 'Plugin options' })).toHaveTextContent(
-      'common.dynamicSelect.selected',
-    )
+    await expect
+      .element(page.getByRole('combobox', { name: 'Plugin options' }))
+      .toHaveTextContent('common.dynamicSelect.selected:{"count":1}')
 
-    await user.click(screen.getByRole('combobox', { name: 'Plugin options' }))
-    await user.click(screen.getByRole('option', { name: 'Option B' }))
+    await page.getByRole('combobox', { name: 'Plugin options' }).click()
+    await page.getByRole('option', { name: 'Option B' }).click()
 
-    expect(screen.getByTestId('field-value')).toHaveTextContent('a,b')
+    await expect.element(page.getByRole('status', { name: 'Field value' })).toHaveTextContent('a,b')
   })
 
   it('should update boolean field when users choose false', async () => {
-    const user = userEvent.setup()
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.boolean,
         name: 'enabled',
@@ -477,13 +476,17 @@ describe('BaseField', () => {
       showCurrentValue: true,
     })
 
-    expect(screen.getByTestId('field-value')).toHaveTextContent('true')
-    await user.click(screen.getByText('False'))
-    expect(screen.getByTestId('field-value')).toHaveTextContent('false')
+    await expect
+      .element(page.getByRole('status', { name: 'Field value' }))
+      .toHaveTextContent('true')
+    await page.getByText('False').click()
+    await expect
+      .element(page.getByRole('status', { name: 'Field value' }))
+      .toHaveTextContent('false')
   })
 
-  it('should render warning message when field state has a warning', () => {
-    renderBaseField({
+  it('should render warning message when field state has a warning', async () => {
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.textInput,
         name: 'warning_field',
@@ -496,13 +499,11 @@ describe('BaseField', () => {
       },
     })
 
-    expect(screen.getByText('This is a warning')).toBeInTheDocument()
+    await expect.element(page.getByText('This is a warning')).toBeVisible()
   })
 
   it('should render infotip when tooltip content is provided', async () => {
-    const user = userEvent.setup()
-
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.textInput,
         name: 'info',
@@ -512,16 +513,15 @@ describe('BaseField', () => {
       },
     })
 
-    expect(screen.getByText('Info')).toBeInTheDocument()
+    await expect.element(page.getByText('Info')).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: 'Info' }))
+    await page.getByRole('button', { name: 'Info' }).click()
 
-    expect(screen.getByText('Extra info')).toBeInTheDocument()
+    await expect.element(page.getByText('Extra info')).toBeVisible()
   })
 
   it('should render checkbox list and handle changes', async () => {
-    const user = userEvent.setup()
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.checkbox,
         name: 'features',
@@ -535,22 +535,21 @@ describe('BaseField', () => {
       defaultValues: { features: ['a'] },
     })
 
-    expect(screen.getByText('Feature A')).toBeInTheDocument()
-    expect(screen.getByText('Feature B')).toBeInTheDocument()
-    await user.click(screen.getByText('Feature B'))
+    await expect.element(page.getByText('Feature A')).toBeVisible()
+    await expect.element(page.getByText('Feature B')).toBeVisible()
+    await page.getByText('Feature B').click()
 
-    const checkboxB = screen.getByRole('checkbox', { name: 'Feature B' })
-    expect(checkboxB).toHaveAttribute('aria-checked', 'true')
+    const checkboxB = page.getByRole('checkbox', { name: 'Feature B' })
+    await expect.element(checkboxB).toHaveAttribute('aria-checked', 'true')
   })
 
   it('should handle dynamic select error state', async () => {
-    const user = userEvent.setup()
     mockDynamicOptions.mockReturnValue({
       data: undefined,
       isLoading: false,
       error: new Error('Failed'),
     })
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
         name: 'ds_error',
@@ -558,19 +557,18 @@ describe('BaseField', () => {
         required: false,
       },
     })
-    await user.click(screen.getByRole('combobox', { name: 'DS Error' }))
-    expect(screen.getByText('common.dynamicSelect.error')).toBeInTheDocument()
-    expect(screen.queryByRole('option')).not.toBeInTheDocument()
+    await page.getByRole('combobox', { name: 'DS Error' }).click()
+    await expect.element(page.getByText('common.dynamicSelect.error')).toBeVisible()
+    await expect.element(page.getByRole('option')).not.toBeInTheDocument()
   })
 
   it('should handle dynamic select no data state', async () => {
-    const user = userEvent.setup()
     mockDynamicOptions.mockReturnValue({
       data: { options: [] },
       isLoading: false,
       error: null,
     })
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
         name: 'ds_empty',
@@ -578,17 +576,16 @@ describe('BaseField', () => {
         required: false,
       },
     })
-    await user.click(screen.getByRole('combobox', { name: 'DS Empty' }))
-    expect(screen.getByText('common.dynamicSelect.noData')).toBeInTheDocument()
-    expect(screen.queryByRole('option')).not.toBeInTheDocument()
+    await page.getByRole('combobox', { name: 'DS Empty' }).click()
+    await expect.element(page.getByText('common.dynamicSelect.noData')).toBeVisible()
+    await expect.element(page.getByRole('option')).not.toBeInTheDocument()
   })
 
   it.each([
     { type: FormTypeEnum.boolean, role: 'radio', label: 'False', value: true },
     { type: FormTypeEnum.checkbox, role: 'checkbox', label: 'Choice', value: [] },
   ])('keeps disabled $type values unchanged', async ({ type, role, label, value }) => {
-    const user = userEvent.setup()
-    renderBaseField({
+    await renderBaseField({
       formSchema: {
         type,
         name: 'locked',
@@ -600,9 +597,16 @@ describe('BaseField', () => {
       defaultValues: { locked: value },
       showCurrentValue: true,
     })
-    const control = screen.getByRole(role, { name: label })
-    await user.click(control)
-    expect(control).not.toBeChecked()
-    expect(screen.getByTestId('field-value').textContent).toBe(String(value))
+    const control = page.getByRole(role, { name: label })
+    await expect.element(control).toBeDisabled()
+    await expect.element(control).not.toBeChecked()
+    await expect
+      .element(page.getByRole('status', { name: 'Field value' }))
+      .toHaveTextContent(String(value))
   })
+})
+
+beforeEach(async () => {
+  await page.viewport(1280, 900)
+  onTestFinished(guardUnexpectedFetch())
 })

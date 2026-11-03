@@ -1,5 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { useAppForm } from '../index'
 
 const FormHarness = ({ onSubmit }: { onSubmit: (value: Record<string, unknown>) => void }) => {
@@ -26,16 +27,19 @@ const FormHarness = ({ onSubmit }: { onSubmit: (value: Record<string, unknown>) 
 describe('app form field integration', () => {
   it('should submit values through the generated app form', async () => {
     const onSubmit = vi.fn()
-    const user = userEvent.setup()
-    render(<FormHarness onSubmit={onSubmit} />)
 
-    const input = screen.getByRole('textbox', { name: 'Title' })
-    await user.clear(input)
-    await user.type(input, 'Updated title')
-    await user.click(screen.getByRole('button', { name: /submit/i }))
+    await render(<FormHarness onSubmit={onSubmit} />)
 
-    await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({ title: 'Updated title' })
-    })
+    const input = page.getByRole('textbox', { name: 'Title' })
+    await input.fill('')
+    await input.fill('Updated title')
+    await userEvent.keyboard('{Enter}')
+
+    await expect.poll(() => onSubmit.mock.calls).toEqual([[{ title: 'Updated title' }]])
   })
+})
+
+beforeEach(async () => {
+  await page.viewport(1280, 900)
+  onTestFinished(guardUnexpectedFetch())
 })
