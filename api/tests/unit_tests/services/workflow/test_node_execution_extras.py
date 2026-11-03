@@ -1,5 +1,5 @@
+from dataclasses import dataclass
 import json
-from typing import cast
 
 import pytest
 
@@ -11,6 +11,12 @@ from models.workflow import WorkflowNodeExecutionModel
 from services.tools.provider_queries import ToolProviderIcons
 from services.tools.tool_manager import ToolManager
 from services.workflow.node_execution_extras import node_execution_extras
+
+
+@dataclass
+class _ToolProviderIconsStub:
+    def icon(self, *, tenant_id: str, provider_type: ToolProviderType, provider_id: str) -> str | None:
+        return None
 
 
 def _execution(*, node_type: str, metadata: dict[str, object]) -> WorkflowNodeExecutionModel:
@@ -33,7 +39,7 @@ def test_tool_extras_use_injected_provider_icons(
     provider_type: ToolProviderType,
     expected: dict[str, object],
 ) -> None:
-    tool_providers = cast(ToolProviderIcons, object())
+    tool_providers = _ToolProviderIconsStub()
     execution = _execution(
         node_type=BuiltinNodeTypes.TOOL,
         metadata={"tool_info": {"provider_type": provider_type, "provider_id": "provider-1"}},
@@ -59,7 +65,7 @@ def test_datasource_extras_preserve_persisted_icon() -> None:
         metadata={"datasource_info": {"icon": "datasource-icon"}},
     )
 
-    assert node_execution_extras(execution, tool_providers=cast(ToolProviderIcons, object())) == {
+    assert node_execution_extras(execution, tool_providers=_ToolProviderIconsStub()) == {
         "icon": "datasource-icon"
     }
 
@@ -76,7 +82,7 @@ def test_trigger_extras_resolve_plugin_icon(monkeypatch: pytest.MonkeyPatch) -> 
 
     monkeypatch.setattr(TriggerManager, "get_trigger_plugin_icon", get_trigger_plugin_icon)
 
-    assert node_execution_extras(execution, tool_providers=cast(ToolProviderIcons, object())) == {
+    assert node_execution_extras(execution, tool_providers=_ToolProviderIconsStub()) == {
         "icon": "trigger-icon"
     }
 
@@ -84,4 +90,4 @@ def test_trigger_extras_resolve_plugin_icon(monkeypatch: pytest.MonkeyPatch) -> 
 def test_extras_are_empty_without_supported_metadata() -> None:
     execution = _execution(node_type=BuiltinNodeTypes.TOOL, metadata={})
 
-    assert node_execution_extras(execution, tool_providers=cast(ToolProviderIcons, object())) == {}
+    assert node_execution_extras(execution, tool_providers=_ToolProviderIconsStub()) == {}
