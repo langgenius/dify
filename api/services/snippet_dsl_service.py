@@ -630,12 +630,16 @@ class SnippetDslService:
             if data_type == BuiltinNodeTypes.TOOL:
                 tool_config = node_data.get("tool_configurations") or {}
                 provider_type = node_data.get("provider_type") or tool_config.get("provider_type")
-                if provider_type in ("builtin", "plugin"):
+                if provider_type in ("builtin", "plugin", "langgenius"):
                     provider_id = (
                         node_data.get("plugin_id") or node_data.get("provider_id") or tool_config.get("provider")
                     )
                     if isinstance(provider_id, str) and provider_id:
                         dependencies.append(DependenciesAnalysisService.analyze_tool_provider_reference(provider_id))
+            elif data_type == BuiltinNodeTypes.AGENT:
+                provider = node_data.get("provider")
+                if isinstance(provider, str) and provider:
+                    dependencies.append(DependenciesAnalysisService.analyze_model_provider_dependency(provider))
             elif data_type in (
                 BuiltinNodeTypes.LLM,
                 BuiltinNodeTypes.QUESTION_CLASSIFIER,

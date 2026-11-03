@@ -919,6 +919,32 @@ def test_append_workflow_export_data_filters_credentials_and_extracts_dependenci
 
 
 @pytest.mark.usefixtures("plugin_catalog")
+def test_extract_dependencies_uses_plugin_organization(service: SnippetDslService):
+    graph = {
+        "nodes": [
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.TOOL,
+                    "provider_type": "langgenius",
+                    "provider": "google",
+                }
+            },
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.AGENT,
+                    "provider": "openai",
+                }
+            },
+        ]
+    }
+
+    assert service._extract_dependencies_from_workflow_graph(graph) == [
+        "langgenius/google",
+        "langgenius/openai",
+    ]
+
+
+@pytest.mark.usefixtures("plugin_catalog")
 def test_append_workflow_export_data_rewrites_knowledge_dataset_ids(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
 ):
