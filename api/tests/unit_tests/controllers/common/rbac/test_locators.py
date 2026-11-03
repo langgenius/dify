@@ -1,5 +1,6 @@
 """Agent creator ownership stays within the active agent's workspace."""
 
+from collections.abc import Callable
 from unittest.mock import MagicMock
 
 import pytest
@@ -7,7 +8,6 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
-from configs import dify_config
 from controllers.common.rbac import locators
 from controllers.common.rbac.checks import RBACCheck, enforce_rbac_checks
 from core.rbac import RBACPermission, RBACResourceScope
@@ -51,12 +51,13 @@ def test_agent_creator_bypasses_rbac_only_in_own_workspace(
     app: Flask,
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     workspace_id: str,
     account_id: str,
     is_owner: bool,
     permission: RBACPermission,
 ) -> None:
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    config_overrides(RBAC_ENABLED=True)
     check_access = MagicMock(return_value=False)
     monkeypatch.setattr(RBACService.CheckAccess, "check", check_access)
     with sqlite_session.begin():
