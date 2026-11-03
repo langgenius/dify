@@ -211,7 +211,7 @@ describe('Popup', () => {
   })
 
   it('should show matching models when searching by model name', () => {
-    renderPopup(
+    render(
       <Popup
         modelList={[
           makeModel({
@@ -241,7 +241,7 @@ describe('Popup', () => {
   })
 
   it('should show empty search placeholder when no provider or model name matches', () => {
-    renderPopup(
+    render(
       <Popup
         modelList={[
           makeModel({
@@ -267,7 +267,7 @@ describe('Popup', () => {
   })
 
   it('should show all models of a provider when searching by provider label', () => {
-    renderPopup(
+    render(
       <Popup
         modelList={[
           makeModel({
@@ -304,7 +304,7 @@ describe('Popup', () => {
   })
 
   it('should match by model provider key when model label does not contain the search text', () => {
-    renderPopup(
+    render(
       <Popup
         modelList={[
           makeModel({
@@ -332,7 +332,7 @@ describe('Popup', () => {
   it('should still apply scope features when matching by provider label', () => {
     mockSupportFunctionCall.mockReturnValue(false)
 
-    renderPopup(
+    render(
       <Popup
         modelList={[
           makeModel({
