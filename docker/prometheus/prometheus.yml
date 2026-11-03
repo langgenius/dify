@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: redis
+    static_configs:
+      - targets:
+          - redis_exporter:9121

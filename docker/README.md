@@ -271,6 +271,24 @@ This separate workflow requires `--env-file middleware.env`. The template define
 `COMPOSE_PROFILES=${DB_TYPE:-postgresql},weaviate`, which selects the database and
 Weaviate. Update that value if you need different profiles.
 
+## Monitor Redis and Celery queues
+
+The optional `monitoring` profile adds `redis_exporter` and Prometheus without
+changing the default stack. Start it alongside the normal Compose file:
+
+```bash
+docker compose -f docker-compose.yaml -f docker-compose.monitoring.yaml \
+  --profile monitoring up -d
+```
+
+Prometheus listens on `EXPOSE_PROMETHEUS_PORT` (default `9090`) and scrapes
+`redis_exporter` on `EXPOSE_REDIS_EXPORTER_PORT` (default `9121`). The exporter
+reports per-database keyspace metrics and the length of `celery*` keys, so
+queue depth and cache pressure are visible before they stall a worker. Set
+`REDIS_PASSWORD` in `docker/.env` if the bundled Redis uses a non-default
+password. Remove the overlay and the `monitoring` profile to stop both
+services; the Prometheus volume is named `prometheus_data`.
+
 ## Configure HTTPS and telemetry
 
 For HTTPS certificates, follow the [Certbot guide](certbot/README.md).

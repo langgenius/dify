@@ -1,0 +1,42 @@
+# Optional Redis/Valkey observability overlay.
+#
+#   docker compose -f docker-compose.yaml -f docker-compose.monitoring.yaml \
+#     --profile monitoring up -d
+#
+# The default stack is unchanged: both services only start when the
+# `monitoring` profile is selected. Prometheus scrapes redis_exporter, which
+# exposes per-database keyspace metrics and the size of Celery queues.
+services:
+  redis_exporter:
+    image: oliver006/redis_exporter:v1.67.0
+    restart: always
+    profiles:
+      - monitoring
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
+      # Celery stores queue lists under these keys; exporting their length is
+      # the queue-depth signal the issue asks for.
+      REDIS_EXPORTER_CHECK_KEYS: celery,celery@*
+    ports:
+      - "${EXPOSE_REDIS_EXPORTER_PORT:-9121}:9121"
+    depends_on:
+      redis:
+        condition: service_started
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    restart: always
+    profiles:
+      - monitoring
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${EXPOSE_PROMETHEUS_PORT:-9090}:9090"
+    depends_on:
+      redis_exporter:
+        condition: service_started
+
+volumes:
+  prometheus_data:
