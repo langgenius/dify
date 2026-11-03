@@ -56,6 +56,7 @@ return 0
 class ServerDraftChange(BaseModel):
     revision: str
     hash: str
+    client_save_id: str | None = None
     updated_at: int
     graph: dict[str, object]
     previous_graph: dict[str, object] | None = None

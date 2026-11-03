@@ -23,7 +23,9 @@ from repositories.workflow_draft_sync_repository import ServerDraftChange, Workf
 def test_only_the_current_lease_can_accept_one_update_for_the_current_revision() -> None:
     repository = WorkflowDraftSyncRepository()
     app_id = uuid.uuid4().hex
-    first = ServerDraftChange(revision="1", hash="h1", updated_at=1, graph={"nodes": [], "edges": []})
+    first = ServerDraftChange(
+        revision="1", hash="h1", client_save_id=str(uuid.uuid4()), updated_at=1, graph={"nodes": [], "edges": []}
+    )
     assert repository.announce(app_id, first)
     assert repository.claim(app_id, "old")
     assert not repository.claim(app_id, "new")
@@ -34,7 +36,9 @@ def test_only_the_current_lease_can_accept_one_update_for_the_current_revision()
     assert not repository.claim(app_id, "third")
     assert not repository.accept(app_id, "old", "1", "b2xk")
 
-    second = first.model_copy(update={"revision": "2", "hash": "h2", "updated_at": 2})
+    second = first.model_copy(
+        update={"revision": "2", "hash": "h2", "updated_at": 2, "client_save_id": str(uuid.uuid4())}
+    )
     assert repository.announce(app_id, second)
     assert not repository.accept(app_id, "new", "1", "b2xk")
     assert repository.accept(app_id, "new", "2", "bmV3")
@@ -43,6 +47,7 @@ def test_only_the_current_lease_can_accept_one_update_for_the_current_revision()
     stored = repository.get(app_id)
     assert stored is not None
     assert stored.revision == "2"
+    assert stored.client_save_id == second.client_save_id
     assert stored.update == "bmV3"
     assert stored.graph == {"nodes": [], "edges": []}
 
@@ -116,7 +121,9 @@ def test_cloud_draft_sync_accepts_and_clears_updates_on_cluster_with_builder_dis
     monkeypatch.setattr(repo_module, "redis_client", redis)
     repository = WorkflowDraftSyncRepository()
     app_id = str(uuid.uuid4())
-    change = ServerDraftChange(revision="1", hash="h1", updated_at=1, graph={"nodes": [], "edges": []})
+    change = ServerDraftChange(
+        revision="1", hash="h1", client_save_id=str(uuid.uuid4()), updated_at=1, graph={"nodes": [], "edges": []}
+    )
 
     try:
         assert repository.announce(app_id, change)

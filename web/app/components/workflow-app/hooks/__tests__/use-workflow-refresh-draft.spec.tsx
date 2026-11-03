@@ -81,9 +81,11 @@ const savedNodes = [
 ]
 const savedEdges = [createEdge({ id: 'saved-edge', source: 'saved-start', target: 'saved-code' })]
 const savedViewport = { x: 10, y: 20, zoom: 1.2 }
+const localClientSaveId = '00000000-0000-4000-8000-000000000001'
 const draftResponse: FetchWorkflowDraftResponse = {
   id: 'draft-1',
   hash: 'server-hash',
+  client_save_id: '00000000-0000-4000-8000-000000000002',
   graph: { nodes: savedNodes, edges: savedEdges, viewport: savedViewport },
   created_at: 1,
   created_by: { id: 'user-1', name: 'User', email: 'user@example.com' },
@@ -142,6 +144,7 @@ function setup(mode: AppMode = 'advanced-chat') {
         nodes: localNodes,
         isWorkflowDataLoaded: true,
         syncWorkflowDraftHash: 'local-hash',
+        syncWorkflowDraftSaveId: localClientSaveId,
         syncWorkflowDraftIsEmpty: false,
       },
     },
@@ -199,6 +202,7 @@ describe('useWorkflowRefreshDraft', () => {
       )
       expect(store.getState()).toMatchObject({
         syncWorkflowDraftHash: 'server-hash',
+        syncWorkflowDraftSaveId: notUpdateCanvas ? localClientSaveId : draftResponse.client_save_id,
         syncWorkflowDraftIsEmpty: false,
         isSyncingWorkflowDraft: false,
         isWorkflowDataLoaded: true,
@@ -227,6 +231,7 @@ describe('useWorkflowRefreshDraft', () => {
     await expectGraph(flow, ['local-start', 'local-code'], ['local-edge'], localViewport)
     expect(store.getState()).toMatchObject({
       syncWorkflowDraftHash: 'local-hash',
+      syncWorkflowDraftSaveId: localClientSaveId,
       syncWorkflowDraftIsEmpty: false,
       environmentVariables: [],
       conversationVariables: [],
@@ -301,6 +306,7 @@ describe('useWorkflowRefreshDraft', () => {
     ] satisfies NonNullable<FetchWorkflowDraftResponse['conversation_variables']>
     fetchDraft.mockResolvedValue({
       ...draftResponse,
+      client_save_id: null,
       graph: { nodes: savedNodes, edges: savedEdges },
       environment_variables: [
         {
@@ -334,6 +340,7 @@ describe('useWorkflowRefreshDraft', () => {
       zoom: 1,
     })
     expect(store.getState()).toMatchObject({
+      syncWorkflowDraftSaveId: null,
       envSecrets: { 'env-secret': 'top-secret' },
       environmentVariables: [
         {
@@ -408,6 +415,7 @@ describe('useWorkflowRefreshDraft', () => {
       isWorkflowDataLoaded: true,
       isSyncingWorkflowDraft: false,
       syncWorkflowDraftHash: 'local-hash',
+      syncWorkflowDraftSaveId: localClientSaveId,
       syncWorkflowDraftIsEmpty: false,
     })
     await expectGraph(flow, ['local-start', 'local-code'], ['local-edge'], localViewport)
