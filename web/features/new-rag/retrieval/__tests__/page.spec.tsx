@@ -444,6 +444,32 @@ describe('RetrievalTestPage', () => {
     revokeObjectUrl.mockRestore()
   })
 
+  it('runs a retrieval query without crypto.randomUUID on a non-secure page', async () => {
+    vi.stubGlobal('crypto', {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+    })
+    try {
+      const user = userEvent.setup()
+      await renderPage()
+
+      await user.type(
+        screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
+        'Who can change permissions?',
+      )
+      await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
+
+      await waitFor(() =>
+        expect(apiMock.queryAdmission).toHaveBeenCalledWith(
+          expect.objectContaining({
+            body: expect.objectContaining({ mode: 'fast', query: 'Who can change permissions?' }),
+          }),
+        ),
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it.each([
     { capability: 'query', mode: 'fast' },
     { capability: 'deep', mode: 'deep' },

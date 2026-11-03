@@ -1,6 +1,7 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import { useInfiniteQuery } from '@tanstack/react-query'
+import { v4 as uuid4 } from 'uuid'
 import { getMultipleRetrievalConfig } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { DATASET_DEFAULT } from '@/config'
 import { consoleQuery } from '@/service/console'
@@ -76,7 +77,7 @@ export function useClassicKnowledgeCatalog({
     while (current.some((item) => item.name?.toLocaleLowerCase() === name.toLocaleLowerCase()))
       name = `${dataset.name} (${suffix++})`
     return {
-      id: crypto.randomUUID(),
+      id: uuid4(),
       name,
       description: dataset.description ?? '',
       selectedDatasets: [dataset],
