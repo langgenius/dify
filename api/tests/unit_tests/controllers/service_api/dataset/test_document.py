@@ -17,6 +17,7 @@ Focus on:
 
 import inspect
 import json
+import time
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
@@ -795,6 +796,62 @@ class TestDocumentApiGet:
             "need_summary": False,
         }
         assert response["summary_index_status"] is None
+
+    @patch("controllers.service_api.dataset.document.DatasetService")
+    @patch("controllers.service_api.dataset.document.DocumentService")
+    def test_get_document_reads_naive_timestamps_as_utc(
+        self,
+        mock_doc_svc: Mock,
+        mock_dataset_svc: Mock,
+        app: Flask,
+        mock_tenant: str,
+        mock_doc_detail: Document,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Stored timestamps are naive UTC, so the host timezone must not shift them."""
+        if not hasattr(time, "tzset"):
+            pytest.skip("tzset is only available on POSIX platforms")
+
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant, summary_index_setting=None)
+        stored_at = datetime(2024, 1, 1, 12, 0, 0)
+        mock_doc_detail.created_at = stored_at
+        mock_doc_detail.completed_at = stored_at
+        mock_doc_detail.updated_at = stored_at
+
+        mock_doc_svc.get_document.return_value = mock_doc_detail
+        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
+        mock_dataset_svc.get_process_rules.return_value = {"mode": "automatic", "rules": {}}
+        _persist_segments(sqlite_session, mock_doc_detail)
+
+        monkeypatch.setenv("TZ", "Asia/Shanghai")
+        time.tzset()
+        try:
+            # Act
+            with app.test_request_context(
+                f"/datasets/{dataset_id}/documents/{mock_doc_detail.id}?metadata=all",
+                method="GET",
+            ):
+                api = DocumentApi()
+                with patch.object(api, "get_dataset", return_value=mock_dataset):
+                    response = inspect.unwrap(type(api).get)(
+                        api,
+                        sqlite_session,
+                        tenant_id=mock_tenant,
+                        dataset_id=dataset_id,
+                        document_id=mock_doc_detail.id,
+                    )
+        finally:
+            monkeypatch.undo()
+            time.tzset()
+
+        # Assert
+        expected = int(stored_at.replace(tzinfo=UTC).timestamp())
+        assert response["created_at"] == expected
+        assert response["completed_at"] == expected
+        assert response["updated_at"] == expected
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     def test_get_document_not_found(
