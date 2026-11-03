@@ -1,7 +1,6 @@
 import json
 from datetime import datetime
 from decimal import Decimal
-from typing import ParamSpec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -46,8 +45,6 @@ from models.model import AppMode, AppModelConfig, Conversation, Message, Message
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.tool_fixtures import make_runtime_tool
-
-_P = ParamSpec("_P")
 
 
 def _message(
@@ -421,7 +418,7 @@ def test_save_agent_thought_serialization_fallbacks(
     tool_meta = {"c": 3}
     real_dumps = json.dumps
 
-    def dumps_side_effect(value: object, *args: _P.args, **kwargs: _P.kwargs) -> str:
+    def dumps_side_effect[**P](value: object, *args: P.args, **kwargs: P.kwargs) -> str:
         if value in (tool_input, observation, tool_meta) and kwargs.get("ensure_ascii") is False:
             raise TypeError("fail")
         return real_dumps(value, *args, **kwargs)
