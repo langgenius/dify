@@ -15,6 +15,7 @@ const useNodeCrud = <T>(id: string, data: CommonNodeType<T>) => {
       updateRef.current({
         id,
         data: newInputs,
+        replace: true,
       })
     },
     [id],

@@ -8,6 +8,7 @@ import { useNodesReadOnly } from './use-workflow'
 type NodeDataUpdatePayload = {
   id: string
   data: Record<string, unknown>
+  replace?: boolean
 }
 
 export const useNodeDataUpdate = () => {
@@ -16,12 +17,12 @@ export const useNodeDataUpdate = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const handleNodeDataUpdate = useCallback(
-    ({ id, data }: NodeDataUpdatePayload) => {
+    ({ id, data, replace = false }: NodeDataUpdatePayload) => {
       const { nodes, setNodes } = collaborativeWorkflow.getState()
       const newNodes = produce(nodes, (draft) => {
         const currentNode = draft.find((node) => node.id === id)!
 
-        if (currentNode) currentNode.data = { ...currentNode.data, ...data }
+        if (currentNode) currentNode.data = replace ? data : { ...currentNode.data, ...data }
       })
       setNodes(newNodes)
     },
