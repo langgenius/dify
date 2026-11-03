@@ -291,6 +291,16 @@ class OpikProvider(TraceProvider[OpikConfig]):
     @staticmethod
     def _trace(trace: Trace, trace_id: str, project: str) -> dict[str, object]:
         root = trace.root
+        metadata = {**root.attributes, "dify_trace_id": trace.trace_id, "user_id": trace.user_id}
+        # `generate_name` is an internal title-generation call, not a user turn.
+        # Opik keeps it in the thread for token attribution but hides it when
+        # this flag is set (#44441).
+        if root.name == "generate_name":
+            existing = metadata.get("_opik")
+            metadata["_opik"] = {
+                **(existing if isinstance(existing, dict) else {}),
+                "is_internal": True,
+            }
         return _without_none(
             {
                 "id": trace_id,
@@ -300,7 +310,7 @@ class OpikProvider(TraceProvider[OpikConfig]):
                 "end_time": _iso(root.end_time),
                 "input": _content(root.inputs),
                 "output": _content(root.outputs),
-                "metadata": {**root.attributes, "dify_trace_id": trace.trace_id, "user_id": trace.user_id},
+                "metadata": metadata,
                 "error_info": _error_info(root),
                 "thread_id": trace.session_id,
             }

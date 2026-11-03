@@ -269,6 +269,19 @@ def test_message_trace_creates_the_trace_then_its_spans() -> None:
     }
 
 
+def test_generate_name_trace_is_marked_internal_for_opik_threads() -> None:
+    provider, egress = _provider(CREATED, NO_CONTENT)
+    trace = message_trace()
+    root = trace.root.model_copy(update={"name": "generate_name"})
+    trace = trace.model_copy(update={"spans": (root, *trace.spans[1:])})
+
+    provider.send(CONFIG, trace)
+
+    create_trace = _json(egress.requests[0])
+    assert create_trace["metadata"]["_opik"] == {"is_internal": True}
+    assert create_trace["thread_id"] == trace.session_id
+
+
 def test_workflow_trace_keeps_hierarchy_errors_and_usage() -> None:
     provider, egress = _provider(CREATED, NO_CONTENT)
     trace = workflow_trace()
