@@ -135,13 +135,19 @@ FILES += [
 ]
 FILES += [
     path
-    for path in ["api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_completion.py"]
+    for path in [
+        "api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_completion.py"
+    ]
     if path not in FILES
 ]
-FILES += ["api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_terminal_scan.py"]
+FILES += [
+    "api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_terminal_scan.py"
+]
 FILES += [
     path
-    for path in ["api/tests/unit_tests/services/dify_builder/test_agent_model_result_canonical.py"]
+    for path in [
+        "api/tests/unit_tests/services/dify_builder/test_agent_model_result_canonical.py"
+    ]
     if path not in FILES
 ]
 FILES += ["api/tests/unit_tests/services/dify_builder/test_test_actions.py"]
@@ -230,7 +236,10 @@ code = pytest.main(
 )
 # Full module identity avoids silently merging same-basename owners.
 module_paths = [*FILES, *(selection.split("::", 1)[0] for selection in SELECTED_GUARDS)]
-modules = {Path(path).with_suffix("").as_posix().removeprefix("api/").replace("/", "."): 0 for path in module_paths}
+modules = {
+    Path(path).with_suffix("").as_posix().removeprefix("api/").replace("/", "."): 0
+    for path in module_paths
+}
 identities = set()
 problems = []
 if not Path(JUNIT).is_file():
@@ -239,7 +248,11 @@ else:
     for case in ElementTree.parse(JUNIT).getroot().iter("testcase"):
         classname, name = case.get("classname") or "", case.get("name") or ""
         normalized = classname.removeprefix("api.")
-        matching = [module for module in modules if normalized == module or normalized.startswith(module + ".")]
+        matching = [
+            module
+            for module in modules
+            if normalized == module or normalized.startswith(module + ".")
+        ]
         if len(matching) != 1:
             problems.append(f"unexpected unit case {classname}::{name}")
             continue
@@ -473,7 +486,7 @@ a4_expected.update(
     {
         "tests.unit_tests.services.test_agent_tool_inner_service": {
             "test_actual_plugin_cast_frontend_and_converter_preserve_file_wire": 5,
-            "test_api_multiple_metadata_exposes_existing_agent_select_wire_gap": 2,
+            "test_api_select_list_repr_is_not_decoded_as_an_array": 2,
             "test_api_output_observation_and_file_messages_use_existing_owners": 7,
             "test_invoke_maps_runtime_lookup_errors_to_service_error_codes": 3,
             "test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper": 1,
@@ -482,7 +495,7 @@ a4_expected.update(
             "test_invoke_raises_app_tenant_mismatch_when_app_belongs_to_other_tenant": 1,
             "test_invoke_uses_agent_tool_runtime_and_returns_observation": 2,
             "test_non_plugin_runtime_keeps_existing_configured_precedence": 4,
-            "test_ordinary_plugin_service_multiple_select_uses_actual_full_declaration": 1,
+            "test_ordinary_plugin_service_multiple_select_uses_actual_full_declaration": 3,
             "test_ordinary_plugin_service_preserves_prepared_live_values_and_cached_runtime": 2,
         }
     }
@@ -789,8 +802,12 @@ for module, functions in {
 }.items():
     a4_expected.setdefault(module, {}).update(functions)
 # Candidate 3: frozen exact collection; retain every previously required function.
-a4_expected.setdefault("tests.unit_tests.services.dify_builder.test_agent_model_result_canonical", {}).update(
-    {"test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_accepting_replacement": 2}
+a4_expected.setdefault(
+    "tests.unit_tests.services.dify_builder.test_agent_model_result_canonical", {}
+).update(
+    {
+        "test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_accepting_replacement": 2
+    }
 )
 a4_expected.setdefault(
     "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion",
@@ -912,7 +929,9 @@ a4_expected["tests.unit_tests.core.dify_builder.test_ports"] = {
     "test_mutation_intent_defaults_and_args_not_shared": 1,
 }
 # Exact collected Code failure-policy regression inventories (Local JUnit/AST checked).
-a4_expected["tests.unit_tests.services.dify_builder.test_bound_resource_plan_reconciliation"] = {
+a4_expected[
+    "tests.unit_tests.services.dify_builder.test_bound_resource_plan_reconciliation"
+] = {
     "test_confirmed_resource_reconciles_fallback_and_overview_before_approval": 1,
     "test_unusable_reconciliation_keeps_resource_gate_and_does_not_offer_approval": 3,
     "test_reconciliation_rereads_selected_facts_and_uses_one_model_reply": 1,
@@ -923,7 +942,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_bound_resource_plan_rec
     "test_failed_reconciliation_keeps_live_resource_card_and_accepts_a_new_selection": 1,
     "test_snapshot_drift_requires_explicit_rediscovery_and_new_snapshot_confirmation": 2,
     "test_missing_resource_id_correction_is_actionable_and_bounded": 2,
-    "test_missing_id_diagnostic_does_not_mask_other_binding_guards": 8
+    "test_missing_id_diagnostic_does_not_mask_other_binding_guards": 8,
 }
 a4_expected["tests.unit_tests.services.dify_builder.test_trace_diagnostics"] = {
     "test_provider_failure_is_scoped_safe_and_recoverable": 1,
@@ -951,7 +970,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_trace_diagnostics"] = {
     "test_current_native_diagnostic_merge_is_bounded_and_deduplicated": 1,
     "test_native_model_projection_keeps_allowlisted_stage_and_category": 10,
     "test_native_model_projection_rejects_malformed_classification": 4,
-    "test_resource_plan_missing_id_code_survives_projection_report_and_history": 1
+    "test_resource_plan_missing_id_code_survives_projection_report_and_history": 1,
 }
 a4_expected["tests.unit_tests.services.workflow_generation.test_runner"] = {
     "test_a_dotted_reference_to_a_scalar_start_variable_is_repaired_to_its_root": 1,
@@ -2079,7 +2098,9 @@ a4_expected["tests.unit_tests.services.dify_builder.test_test_actions"] = {
     "test_standard_choice_envelope_can_submit_native_control": 1,
     "test_earlier_action_identity_cannot_be_reused_after_another_command": 1,
 }
-a4_expected["tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion"].update(
+a4_expected[
+    "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion"
+].update(
     {
         "test_native_control_only_commits_do_not_strand_successful_builder_run": 1,
         "test_terminal_projection_crash_is_recovered_without_get_or_dispatch": 1,
@@ -2093,13 +2114,17 @@ a4_expected.setdefault(
     "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion",
     {},
 ).update({"test_expired_terminal_context_requires_actual_owned_terminal_workflow": 7})
-a4_expected.setdefault("tests.unit_tests.services.dify_builder.test_agent_operation_owner", {}).update(
+a4_expected.setdefault(
+    "tests.unit_tests.services.dify_builder.test_agent_operation_owner", {}
+).update(
     {"test_expired_completed_receipt_requires_exact_original_permit_and_result": 1}
 )
-a4_expected["tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_terminal_scan"] = {
-    "test_terminal_scan_compares_input_ids_as_strings": 2
-}
-a4_expected["tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion"].update(
+a4_expected[
+    "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_terminal_scan"
+] = {"test_terminal_scan_compares_input_ids_as_strings": 2}
+a4_expected[
+    "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion"
+].update(
     {
         "test_cancel_after_completed_effects_closes_original_parent": 2,
         "test_resumed_saved_cancellation_projects_only_unchanged_terminal_proof": 17,
@@ -2161,12 +2186,15 @@ task_control_transport_expected = {
 }
 for function, count in task_control_transport_expected.items():
     actual = sum(
-        classname.removeprefix("api.") == "tests.unit_tests.controllers.console.test_dify_builder_routes"
+        classname.removeprefix("api.")
+        == "tests.unit_tests.controllers.console.test_dify_builder_routes"
         and name.split("[", 1)[0] == function
         for classname, name in identities
     )
     if actual != count:
-        problems.append(f"Task control transport inventory mismatch {function}: {actual} != {count}")
+        problems.append(
+            f"Task control transport inventory mismatch {function}: {actual} != {count}"
+        )
 # Current priority closeout: exact Local-collected regression inventory.
 a4_expected["tests.unit_tests.core.dify_builder.test_handlers_build"] = {
     "test_a_determinate_outcome_resets_the_unknown_outcome_count": 1,
@@ -2621,7 +2649,9 @@ a4_expected["tests.unit_tests.services.dify_builder.test_agent_operation_owner"]
         "test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth": 8,
     }
 )
-a4_expected["tests.unit_tests.services.dify_builder.native_testing.test_agent_risk_assessor"].update(
+a4_expected[
+    "tests.unit_tests.services.dify_builder.native_testing.test_agent_risk_assessor"
+].update(
     {
         "test_risk_rubric_separates_observed_destruction_from_uncertain_side_effects": 1,
     }
@@ -2670,7 +2700,7 @@ a4_expected.update(
             "test_native_legacy_role_visibility_is_retained": 2,
             "test_banned_account_cannot_discover_metadata": 1,
             "test_indexed_and_failed_document_metadata_remains_discovery_only": 2,
-            "test_tags_are_authorized_tenant_metadata_only": 1
+            "test_tags_are_authorized_tenant_metadata_only": 1,
         },
         "tests.unit_tests.services.dify_builder.test_knowledge_discovery": {
             "test_only_dataset_is_recommended_as_nonexecuting_preference": 1,
@@ -2702,7 +2732,7 @@ a4_expected.update(
             "test_full_captured_bare_resource_exclusion_reaches_plan_without_a_knowledge_waiver": 1,
             "test_captured_meeting_model_only_confirmation_preserves_goal_without_a_knowledge_waiver": 1,
             "test_nonbare_knowledge_item_keeps_handler_clarification_with_false_model_hint": 6,
-            "test_shared_source_predicate_keeps_handler_clarification_with_false_model_hint": 5
+            "test_shared_source_predicate_keeps_handler_clarification_with_false_model_hint": 5,
         },
         "tests.unit_tests.services.dify_builder.test_requirement_provenance": {
             "test_actual_fresh_analysis_ignores_only_unconfirmed_derived_source_summary": 1,
@@ -2750,7 +2780,7 @@ a4_expected.update(
             "test_english_compound_source_subject_requires_complete_exclusion_framing": 6,
             "test_complete_known_suffix_lists_remain_explicit_exclusions": 8,
             "test_new_resource_prefix_does_not_waive_ambiguous_postcomma_prose": 3,
-            "test_legacy_independent_postcomma_clause_preserves_explicit_exclusion": 2
+            "test_legacy_independent_postcomma_clause_preserves_explicit_exclusion": 2,
         },
         "tests.unit_tests.services.dify_builder.test_resources": {
             "test_list_tenant_resources_normalizes_all_three_kinds": 1,
@@ -2771,8 +2801,8 @@ a4_expected.update(
             "test_other_tenants_rows_and_installs_never_leak": 1,
             "test_an_unverifiable_credential_lookup_reports_not_ready_with_a_reason": 1,
             "test_a_plugin_daemon_outage_keeps_hardcoded_tools_in_the_inventory": 1,
-            "test_models_keep_semantics_and_knowledge_inventory_receives_actor": 1
-        }
+            "test_models_keep_semantics_and_knowledge_inventory_receives_actor": 1,
+        },
     }
 )
 for module, expected in {**a3_expected, **a4_expected}.items():
@@ -2784,7 +2814,9 @@ for module, expected in {**a3_expected, **a4_expected}.items():
             actual[function] = actual.get(function, 0) + 1
     if actual != expected:
         problems.append(f"A3 function inventory mismatch {module}: {actual}")
-json_admission_module = "tests.unit_tests.services.dify_builder.test_json_tool_execution_admission"
+json_admission_module = (
+    "tests.unit_tests.services.dify_builder.test_json_tool_execution_admission"
+)
 expected_json_admission = {
     f"test_owned_json_parse_prepare_persists_restricted_request[{variant}]"
     for variant in ("raw-true", "raw-false", "constant-true", "constant-false")
@@ -2796,10 +2828,14 @@ expected_json_admission.update(
     }
 )
 actual_json_admission = {
-    name for classname, name in identities if classname.removeprefix("api.") == json_admission_module
+    name
+    for classname, name in identities
+    if classname.removeprefix("api.") == json_admission_module
 }
 if actual_json_admission != expected_json_admission:
-    problems.append("JSON admission case identities differ from the reviewed prepare variants and owner checks")
+    problems.append(
+        "JSON admission case identities differ from the reviewed prepare variants and owner checks"
+    )
 json_policy_module = "tests.unit_tests.services.dify_builder.test_json_tool_execution"
 json_policy_expected = {
     "test_reviewed_pure_mixed_graph_admits_exact_native_chain": 1,
@@ -2993,7 +3029,9 @@ for module, expected in {
     for function, expected_count in expected.items():
         if actual.get(function, 0) != expected_count:
             problems.append(f"JSON case inventory mismatch {module}::{function}")
-    if (module == json_policy_module or module in json_runtime_expected) and set(actual) != set(expected):
+    if (module == json_policy_module or module in json_runtime_expected) and set(
+        actual
+    ) != set(expected):
         problems.append(f"unexpected JSON test functions {module}")
 print(f"COLLECTED total: {len(identities)} unit cases", flush=True)
 for problem in problems:
