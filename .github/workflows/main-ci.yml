@@ -2,9 +2,9 @@ name: Main CI Pipeline
 
 on:
   pull_request:
-    branches: ['main']
+    branches: ['main', 'lts/**']
   merge_group:
-    branches: ['main']
+    branches: ['main', 'lts/**']
     types: [checks_requested]
 
 permissions:
