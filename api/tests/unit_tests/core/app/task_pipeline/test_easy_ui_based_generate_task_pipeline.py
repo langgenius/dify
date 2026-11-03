@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 import uuid
 from collections.abc import Generator, Iterator, Sequence
 from contextlib import contextmanager
@@ -2575,3 +2576,30 @@ class TestEasyUiMessageEndFilesCases:
             assert len(result.files) == 1
             assert result.files[0]["url"].startswith("https://example.com/fallback-url")
             get_signed_url.assert_called_once_with(upload_file_id=str(message_file_local.upload_file_id))
+
+
+def test_message_created_at_reads_a_naive_timestamp_as_utc(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Persisted messages are naive UTC, so the host timezone must not shift created_at."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("tzset is only available on POSIX platforms")
+
+    recorded_at = datetime(2024, 5, 1)
+    message = _make_message()
+    message.created_at = recorded_at
+
+    monkeypatch.setenv("TZ", "Asia/Shanghai")
+    time.tzset()
+    try:
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            queue_manager=_FakeQueueManager(),
+            conversation=_make_conversation(AppMode.CHAT),
+            message=message,
+            stream=True,
+        )
+        responses = list(pipeline._to_stream_response(iter([PingStreamResponse(task_id="task")])))
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+
+    assert responses[0].created_at == int(recorded_at.replace(tzinfo=UTC).timestamp())

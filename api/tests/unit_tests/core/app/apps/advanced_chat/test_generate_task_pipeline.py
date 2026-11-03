@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import time
 from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
-from datetime import datetime
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest import mock
 
@@ -455,7 +456,7 @@ def _recording_commits(timeline: list[str]) -> Generator[None]:
         sqlalchemy_event.remove(Session, "after_commit", record_commit)
 
 
-def _make_pipeline():
+def _make_pipeline(*, created_at: datetime | None = None):
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant",
         app_id="app",
@@ -481,7 +482,7 @@ def _make_pipeline():
     message = MessageSnapshot(
         id="message-id",
         query="hello",
-        created_at=naive_utc_now(),
+        created_at=created_at if created_at is not None else naive_utc_now(),
         status=MessageStatus.NORMAL,
         answer="",
     )
@@ -1182,3 +1183,21 @@ class TestAdvancedChatGenerateTaskPipeline:
         )
 
         assert list(pipeline._dispatch_event(event)) == ["failed"]
+
+
+def test_message_created_at_reads_a_naive_timestamp_as_utc(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Persisted messages are naive UTC, so the host timezone must not shift created_at."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("tzset is only available on POSIX platforms")
+
+    recorded_at = datetime(2024, 5, 1)
+    monkeypatch.setenv("TZ", "Asia/Shanghai")
+    time.tzset()
+    try:
+        pipeline = _make_pipeline(created_at=recorded_at)
+        responses = list(pipeline._to_stream_response(iter([PingStreamResponse(task_id="task")])))
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+
+    assert responses[0].created_at == int(recorded_at.replace(tzinfo=UTC).timestamp())

@@ -60,7 +60,7 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
 )
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         self._conversation_mode = conversation.mode
 
         self._message_id = message.id
-        self._message_created_at = int(message.created_at.timestamp())
+        self._message_created_at = to_utc_timestamp(message.created_at)
 
         self._task_state = EasyUITaskState(
             llm_result=LLMResult(
