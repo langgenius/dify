@@ -3,7 +3,7 @@
 import json
 from collections.abc import Callable
 from dataclasses import replace
-from unittest.mock import Mock, create_autospec, patch
+from unittest.mock import Mock, NonCallableMock, create_autospec, patch
 from uuid import uuid4
 
 import pytest
@@ -558,7 +558,7 @@ def test_workflow_and_bindings_delete_atomically_before_agent_retirement(
             assert session.scalar(select(func.count()).select_from(WorkflowAgentNodeBinding)) == 0
         retired.append(agent_ids)
 
-    assert isinstance(service._runtime, Mock)
+    assert isinstance(service._runtime, NonCallableMock)
     service._runtime.retire_agents.side_effect = retire
 
     def fail_commit(_session: Session) -> None:
@@ -875,7 +875,7 @@ def test_use_case_notifies_only_after_real_transaction_commits(
             assert session.get(WorkflowAgentNodeBinding, "removed-binding") is None
         steps.append("retire")
 
-    assert isinstance(service._drafts._retirement, Mock)
+    assert isinstance(service._drafts._retirement, NonCallableMock)
     service._drafts._retirement.retire_unowned.side_effect = lambda **kwargs: retire(
         CONTEXT, kwargs["agent_ids"]
     )
