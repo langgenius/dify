@@ -1,8 +1,9 @@
 """Metadata-only admission for installed Tools in normal application drafts.
 
 An installed declaration permits draft binding, never credential use. Every
-run/publish rechecks the declaration and the actual native credential selection
-as the explicit acting account. This policy never loads/decrypts credential
+run/publish rechecks the declaration and actual native credential selection.
+Builder requires actor visibility; ordinary execution may retain an exact
+explicit credential binding already saved on its workflow node. This policy never loads/decrypts credential
 values, refreshes OAuth, calls providers or reads canvas notes as authority.
 Published Service API/WebApp delegation and Builder consent/restricted execution
 retain their existing owners.
@@ -25,7 +26,8 @@ from uuid import UUID
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.workflow.generator.tool_catalogue import build_tool_catalogue
 from models.provider_ids import ToolProviderID
-from services.credentials.query import CredentialQuery, ToolCredentialMetadata
+from services.credentials.query import CredentialQuery, ToolCredentialMetadata, WorkflowToolCredentialMetadata
+from services.workflow_ref_service import WorkflowRef
 
 if TYPE_CHECKING:
     from sqlalchemy import Select
@@ -107,6 +109,42 @@ def tool_key(data: Mapping[str, Any]) -> tuple[str, str]:
     return str(data.get("provider_id") or data.get("provider_name") or ""), str(data.get("tool_name") or "")
 
 
+def _find_tool_declaration(tools: tuple[ToolDeclaration, ...], provider: str, action: str) -> ToolDeclaration | None:
+    """Resolve native plugin aliases without changing exact hardcoded identities."""
+    exact = next((tool for tool in tools if (tool.provider, tool.action) == (provider, action)), None)
+    if exact is not None or not provider:
+        return exact
+    try:
+        canonical = str(ToolProviderID(provider))
+    except ValueError:
+        return None
+    return next(
+        (tool for tool in tools if tool.is_plugin and (tool.provider, tool.action) == (canonical, action)), None
+    )
+
+
+def draft_tool_execution_graph(graph: Mapping[str, Any], node_id: str) -> Mapping[str, Any]:
+    """Select one node and its nested container children using native ownership.
+
+    The stored graph is unchanged. Unrelated siblings cannot prevent isolated
+    debugging; the requested node and every nested child retain admission.
+    """
+    from graphon.graph.scoping import resolve_container_id
+
+    nodes = graph.get("nodes", [])
+    by_id = {node["id"]: node for node in nodes}
+    if node_id not in by_id:
+        raise ValueError(f"Node {node_id} not found in workflow")
+    selected = {node_id}
+    if by_id[node_id]["data"].get("type") in {"iteration", "loop"}:
+        owners = {key: resolve_container_id(node, nodes_by_id=by_id) for key, node in by_id.items()}
+        children = {key for key, owner in owners.items() if owner in selected} - selected
+        while children:
+            selected.update(children)
+            children = {key for key, owner in owners.items() if owner in selected} - selected
+    return {**graph, "nodes": [node for node in nodes if node["id"] in selected]}
+
+
 def prepare_tool_declarations(*, tenant_id: str, graph: Mapping[str, Any]) -> DraftToolDeclarations:
     """Fresh verified public metadata, with no SQL write session held by the caller."""
     requested = {tool_key(node["data"]) for node in inventory_tool_nodes(graph)}
@@ -118,19 +156,23 @@ def prepare_tool_declarations(*, tenant_id: str, graph: Mapping[str, Any]) -> Dr
     except Exception:
         entries = []
         failures.append("catalogue")
+    installed = tuple(
+        ToolDeclaration(
+            provider=entry["provider_name"],
+            action=entry["tool_name"],
+            label=entry["tool_label"] or entry["tool_name"],
+            needs_credentials=entry["needs_credentials"],
+            is_plugin=bool(entry.get("plugin_id")),
+        )
+        for entry in entries
+    )
     return DraftToolDeclarations(
         tenant_id=tenant_id,
         source_unavailable=bool(failures),
         tools=tuple(
-            ToolDeclaration(
-                provider=entry["provider_name"],
-                action=entry["tool_name"],
-                label=entry["tool_label"] or entry["tool_name"],
-                needs_credentials=entry["needs_credentials"],
-                is_plugin=bool(entry.get("plugin_id")),
-            )
-            for entry in entries
-            if (entry["provider_name"], entry["tool_name"]) in requested
+            tool
+            for provider, action in sorted(requested)
+            if (tool := _find_tool_declaration(installed, provider, action)) is not None
         ),
     )
 
@@ -155,6 +197,8 @@ def _selected_credential_metadata(
     actor_id: str | None,
     declaration: ToolDeclaration,
     credential_id: object,
+    workflow_ref: WorkflowRef | None = None,
+    node_id: str | None = None,
 ) -> ToolCredentialMetadata | None:
     """Exact native selection and canonical provider chain; query failures propagate.
 
@@ -173,14 +217,30 @@ def _selected_credential_metadata(
         except ValueError:
             return None
         selected_id = credential_id
-    legacy_provider = ToolProviderID(declaration.provider).provider_name if declaration.is_plugin else None
-    metadata = query.resolve_tool_credential_metadata(
-        workspace_id=tenant_id,
-        provider=declaration.provider,
-        legacy_provider=legacy_provider,
-        actor_id=actor_id,
-        credential_id=selected_id,
-    )
+    metadata = None
+    if (
+        selected_id is not None
+        and declaration.is_plugin
+        and workflow_ref is not None
+        and workflow_ref.tenant_id == tenant_id
+        and node_id is not None
+    ):
+        metadata = query.resolve_workflow_tool_credential_metadata(
+            workflow_ref=workflow_ref,
+            node_id=node_id,
+            provider=declaration.provider,
+            action=declaration.action,
+            credential_id=selected_id,
+        )
+    if metadata is None:
+        legacy_provider = ToolProviderID(declaration.provider).provider_name if declaration.is_plugin else None
+        metadata = query.resolve_tool_credential_metadata(
+            workspace_id=tenant_id,
+            provider=declaration.provider,
+            legacy_provider=legacy_provider,
+            actor_id=actor_id,
+            credential_id=selected_id,
+        )
     if not isinstance(metadata, ToolCredentialMetadata):
         return None
     if selected_id is not None and metadata.id != selected_id:
@@ -204,6 +264,8 @@ def selected_credential_is_available(
     actor_id: str | None,
     declaration: ToolDeclaration,
     credential_id: object,
+    workflow_ref: WorkflowRef | None = None,
+    node_id: str | None = None,
 ) -> bool:
     return (
         not declaration.needs_credentials
@@ -213,6 +275,8 @@ def selected_credential_is_available(
             actor_id=actor_id,
             declaration=declaration,
             credential_id=credential_id,
+            workflow_ref=workflow_ref,
+            node_id=node_id,
         )
         is not None
     )
@@ -224,6 +288,7 @@ def validate_tool_setup(
     graph: Mapping[str, Any],
     actor_id: str,
     declarations: DraftToolDeclarations,
+    workflow_ref: WorkflowRef | None = None,
 ) -> None:
     """Refuse uncertainty before native dispatch or any publication writes."""
     nodes = inventory_tool_nodes(graph)
@@ -231,13 +296,16 @@ def validate_tool_setup(
         return
     if declarations.tenant_id != tenant_id or not actor_id:
         raise ToolProviderCredentialValidationError("Tool setup requires the acting workspace member.")
-    by_key = {(tool.provider, tool.action): tool for tool in declarations.tools}
     for node in nodes:
         from services.dify_builder.native_launch_observation import observe_resource
 
         with observe_resource("tool", *tool_key(node["data"]), node_id=node.get("id")):
             _validate_tool_node(
-                tenant_id=tenant_id, actor_id=actor_id, declarations=declarations, by_key=by_key, node=node
+                tenant_id=tenant_id,
+                actor_id=actor_id,
+                declarations=declarations,
+                node=node,
+                workflow_ref=workflow_ref,
             )
 
 
@@ -246,10 +314,10 @@ def _validate_tool_node(
     tenant_id: str,
     actor_id: str,
     declarations: DraftToolDeclarations,
-    by_key: Mapping[tuple[str, str], ToolDeclaration],
     node: dict[str, Any],
+    workflow_ref: WorkflowRef | None,
 ) -> None:
-    declaration = by_key.get(tool_key(node["data"]))
+    declaration = _find_tool_declaration(declarations.tools, *tool_key(node["data"]))
     if declaration is None:
         _refuse_missing_declaration(declarations, *tool_key(node["data"]))
     if not declaration.needs_credentials:
@@ -265,6 +333,8 @@ def _validate_tool_node(
             actor_id=actor_id,
             declaration=declaration,
             credential_id=node["data"].get("credential_id"),
+            workflow_ref=workflow_ref,
+            node_id=node.get("id"),
         )
     except Exception:
         raise DraftToolSetupError(
@@ -281,13 +351,24 @@ def _validate_tool_node(
         )
 
 
-def admit_draft_tool_setup(*, tenant_id: str, graph: Mapping[str, Any], actor_id: str) -> None:
-    """Fresh declaration and scalar selection check for normal draft execution."""
+def admit_draft_tool_setup(
+    *,
+    tenant_id: str,
+    graph: Mapping[str, Any],
+    actor_id: str,
+    workflow_ref: WorkflowRef | None = None,
+) -> None:
+    """Check fresh setup; only ordinary saved workflow callers supply delegation scope.
+
+    A scope permits repository verification of an exact explicit personal
+    credential binding. Builder and discovery callers omit it and stay actor-scoped.
+    """
     validate_tool_setup(
         tenant_id=tenant_id,
         graph=graph,
         actor_id=actor_id,
         declarations=prepare_tool_declarations(tenant_id=tenant_id, graph=graph),
+        workflow_ref=workflow_ref,
     )
 
 
@@ -371,7 +452,24 @@ def admit_resumed_draft_tool_setup(
         )
     ):
         raise ToolProviderCredentialValidationError("Saved draft execution graph could not be verified.")
-    admit_draft_tool_setup(tenant_id=app.tenant_id, graph=graph, actor_id=user.id)
+    isolated = generate_entity.single_iteration_run or generate_entity.single_loop_run
+    if isolated is not None:
+        graph = draft_tool_execution_graph(graph, isolated.node_id)
+    ordinary = (
+        generate_entity.builder_execution is None
+        and generate_entity.builder_agent_execution is None
+        and generate_entity.builder_tool_credential_bindings is None
+        and generate_entity.builder_expected_revision is None
+        and not generate_entity.builder_mocked_node_ids
+        and not generate_entity.native_test_required
+        and generate_entity.native_test_ref is None
+    )
+    admit_draft_tool_setup(
+        tenant_id=app.tenant_id,
+        graph=graph,
+        actor_id=user.id,
+        workflow_ref=WorkflowRef(app.tenant_id, app.id, workflow.id) if ordinary else None,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -398,6 +496,8 @@ def prepare_draft_tool_runtime_selection(
     credential_id: object,
     expected_credential_fingerprint: str | None = None,
     on_credential_refreshed: Callable[[str], None] | None = None,
+    node_id: str | None = None,
+    allow_workflow_delegation: bool = False,
 ) -> DraftToolRuntimeSelection | None:
     """Recheck at the actual Tool boundary; published/subworkflow delegation stays native.
 
@@ -441,9 +541,7 @@ def prepare_draft_tool_runtime_selection(
         ]
     }
     declarations = prepare_tool_declarations(tenant_id=tenant_id, graph=graph)
-    declaration = next(
-        (tool for tool in declarations.tools if (tool.provider, tool.action) == (provider, action)), None
-    )
+    declaration = _find_tool_declaration(declarations.tools, provider, action)
     if declaration is None:
         _refuse_missing_declaration(declarations, provider, action)
     if not declaration.needs_credentials:
@@ -457,6 +555,8 @@ def prepare_draft_tool_runtime_selection(
             actor_id=actor_id,
             declaration=declaration,
             credential_id=credential_id,
+            workflow_ref=WorkflowRef(tenant_id, app_id, workflow_id) if allow_workflow_delegation else None,
+            node_id=node_id,
         )
     except Exception:
         raise ToolProviderCredentialValidationError("Tool credential setup could not be verified.") from None
@@ -470,6 +570,8 @@ def prepare_draft_tool_runtime_selection(
 def constrain_draft_tool_credential_read(
     query: Select[tuple[BuiltinToolProvider]],
     selection: DraftToolRuntimeSelection,
+    *,
+    session: Session,
 ) -> Select[tuple[BuiltinToolProvider]]:
     """Constrain the native value read itself, closing a revoke race after metadata.
 
@@ -488,6 +590,10 @@ def constrain_draft_tool_credential_read(
         BuiltinToolProvider.tenant_id == selection.tenant_id,
         BuiltinToolProvider.provider == credential.provider,
     )
+    if isinstance(credential, WorkflowToolCredentialMetadata):
+        from repositories.credentials.query_repository import workflow_tool_credential_binding_condition
+
+        return query.where(workflow_tool_credential_binding_condition(session, credential))
     return apply_credential_visibility_filter_for_actor(
         query,
         tenant_id=selection.tenant_id,
