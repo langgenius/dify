@@ -410,9 +410,7 @@ export function WorkflowToolDrawer({
                 {t(($) => $['createTool.description'], { ns: 'tools' })}
               </FieldLabel>
               <Textarea
-                placeholder={
-                  t(($) => $['createTool.descriptionPlaceholder'], { ns: 'tools' }) || ''
-                }
+                placeholder={t(($) => $['createTool.descriptionPlaceholder'], { ns: 'tools' })}
                 value={description}
                 onValueChange={(value) => setDescription(value)}
               />
@@ -571,9 +569,7 @@ export function WorkflowToolDrawer({
                 className="h-10"
                 value={privacyPolicy}
                 onValueChange={(value) => setPrivacyPolicy(value)}
-                placeholder={
-                  t(($) => $['createTool.privacyPolicyPlaceholder'], { ns: 'tools' }) || ''
-                }
+                placeholder={t(($) => $['createTool.privacyPolicyPlaceholder'], { ns: 'tools' })}
               />
             </Field>
           </div>

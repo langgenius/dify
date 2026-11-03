@@ -7,6 +7,8 @@ import {
   canInsertHumanInputNodes,
   classifyHumanInputVersion,
   getHumanInputCreationPolicy,
+  getHumanInputInsertionBlocker,
+  getHumanInputNodesInsertionBlocker,
   HumanInputVersionKind,
   isLegacyHumanInputNodeData,
 } from '../policy'
@@ -146,4 +148,18 @@ describe('Human Input migration policy', () => {
     expect(getHumanInputCreationPolicy([legacy], true).canAddLegacyHumanInput).toBe(false)
     expect(canInsertHumanInput([legacy], BlockEnum.HumanInput)).toBe(false)
   })
+})
+
+it('distinguishes unsupported versions, migration requirements and incompatible version mixes', () => {
+  expect(getHumanInputInsertionBlocker([node()], BlockEnum.HumanInputV2)).toBe('migration-required')
+  expect(getHumanInputInsertionBlocker([node('2')], BlockEnum.HumanInput)).toBe(
+    'incompatible-versions',
+  )
+  expect(getHumanInputInsertionBlocker([], BlockEnum.HumanInput, data('3'))).toBe(
+    'unsupported-version',
+  )
+  expect(getHumanInputNodesInsertionBlocker([], [node(), node('2')])).toBe('incompatible-versions')
+  releaseGate.enabled = false
+  expect(getHumanInputInsertionBlocker([], BlockEnum.HumanInputV2)).toBe('disabled')
+  expect(getHumanInputInsertionBlocker([], BlockEnum.Code)).toBeUndefined()
 })

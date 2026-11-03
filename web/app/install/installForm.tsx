@@ -9,9 +9,12 @@ import {
   FieldValidity,
 } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect } from 'react'
@@ -38,9 +41,8 @@ const InstallForm = () => {
   const { t, i18n } = useTranslation(['login'])
   const pageTitle = t(($) => $.setAdminAccount, { ns: 'login' })
   useDocumentTitle(pageTitle)
-  const { push, replace } = useRouter()
+  const { replace } = useRouter()
   const queryClient = useQueryClient()
-  const [showPassword, setShowPassword] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const setupStatus = useQuery(
     consoleQuery.setup.get.queryOptions({
@@ -100,16 +102,16 @@ const InstallForm = () => {
   useEffect(() => {
     if (!setupStatus.isSuccess || setupStatus.isFetching) return
     if (setupStatus.data.step === 'finished') {
-      push('/signin')
+      replace('/signin')
     } else if (
       initStatus.isSuccess &&
       !initStatus.isFetching &&
       initStatus.data.status === 'not_started'
     ) {
-      push('/init')
+      replace('/init')
     }
   }, [
-    push,
+    replace,
     setupStatus.isSuccess,
     setupStatus.isFetching,
     setupStatus.data,
@@ -127,7 +129,7 @@ const InstallForm = () => {
     initStatus.data.status !== 'not_started'
 
   return !canSetup ? (
-    <LoadingPlaceholder />
+    <LoadingPlaceholder className="grow" />
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -154,7 +156,7 @@ const InstallForm = () => {
                 autoComplete="email"
                 spellCheck={false}
                 required
-                placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+                placeholder={t(($) => $.emailPlaceholder, { ns: 'login' })}
               />
               <FieldError>{t(($) => $['error.emailInValid'], { ns: 'login' })}</FieldError>
             </Field>
@@ -173,7 +175,7 @@ const InstallForm = () => {
                 autoComplete="name"
                 required
                 maxLength={30}
-                placeholder={t(($) => $.namePlaceholder, { ns: 'login' }) || ''}
+                placeholder={t(($) => $.namePlaceholder, { ns: 'login' })}
               />
               <FieldError>{t(($) => $['error.nameEmpty'], { ns: 'login' })}</FieldError>
             </Field>
@@ -188,29 +190,15 @@ const InstallForm = () => {
               className="mb-5"
             >
               <FieldLabel>{t(($) => $.password, { ns: 'login' })}</FieldLabel>
-              <InputGroup>
-                <InputGroupInput
-                  type={showPassword ? 'text' : 'password'}
+              <PasswordField>
+                <PasswordFieldInput
                   autoComplete="new-password"
-                  spellCheck={false}
                   required
                   minLength={8}
-                  placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
+                  placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
                 />
-                <InputGroupAddon align="inline-end">
-                  <IconButton
-                    aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
-                      ns: 'login',
-                    })}
-                    onClick={() => setShowPassword((visible) => !visible)}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={showPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'}
-                    />
-                  </IconButton>
-                </InputGroupAddon>
-              </InputGroup>
+                <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+              </PasswordField>
               <FieldValidity>
                 {({ validity }) =>
                   validity.valid === false ? null : (

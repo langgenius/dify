@@ -10,11 +10,10 @@ import InstallForm from './installForm'
 
 const render = (ui: ReactElement) => renderWithConsoleQuery(ui)
 
-const mockPush = vi.fn()
 const mockReplace = vi.fn()
 
 vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace }),
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
@@ -101,9 +100,8 @@ describe('InstallForm', () => {
 
     render(<InstallForm />)
 
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/init'))
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/init'))
     expect(screen.queryByLabelText('login.email')).not.toBeInTheDocument()
-    expect(mockReplace).not.toHaveBeenCalled()
   })
 
   it('revalidates cached bootstrap state before displaying or redirecting', async () => {
@@ -118,18 +116,18 @@ describe('InstallForm', () => {
 
     renderWithConsoleQuery(<InstallForm />, { queryClient })
 
-    expect(mockPush).not.toHaveBeenCalled()
+    expect(mockReplace).not.toHaveBeenCalled()
     expect(mockFetchInitValidateStatus).not.toHaveBeenCalled()
     expect(screen.queryByLabelText('login.email')).not.toBeInTheDocument()
 
     await act(async () => setupStatus.resolve({ step: 'not_started' }))
     await waitFor(() => expect(mockFetchInitValidateStatus).toHaveBeenCalledTimes(1))
-    expect(mockPush).not.toHaveBeenCalled()
+    expect(mockReplace).not.toHaveBeenCalled()
     expect(screen.queryByLabelText('login.email')).not.toBeInTheDocument()
 
     await act(async () => initStatus.resolve({ status: 'finished' }))
     expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
-    expect(mockPush).not.toHaveBeenCalled()
+    expect(mockReplace).not.toHaveBeenCalled()
     expect(queryClient.getQueryData(consoleQuery.setup.get.queryKey())).toEqual({
       step: 'not_started',
     })
@@ -154,7 +152,7 @@ describe('InstallForm', () => {
 
         expect(await screen.findByRole('alert')).toHaveTextContent('Bootstrap unavailable')
         expect(screen.queryByLabelText('login.email')).not.toBeInTheDocument()
-        expect(mockPush).not.toHaveBeenCalled()
+        expect(mockReplace).not.toHaveBeenCalled()
         expect(failedCheck).toHaveBeenCalledTimes(1)
         if (stage === 'setup') expect(mockFetchInitValidateStatus).not.toHaveBeenCalled()
       } finally {
@@ -172,7 +170,7 @@ describe('InstallForm', () => {
     await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
     expect(passwordInput).toHaveAttribute('type', 'text')
 
-    await user.click(screen.getByRole('button', { name: 'login.hidePassword' }))
+    await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
     expect(passwordInput).toHaveAttribute('type', 'password')
   })
 
@@ -339,7 +337,7 @@ describe('InstallForm', () => {
     render(<InstallForm />)
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/signin')
+      expect(mockReplace).toHaveBeenCalledWith('/signin')
     })
     expect(mockFetchInitValidateStatus).not.toHaveBeenCalled()
     expect(screen.queryByLabelText('login.email')).not.toBeInTheDocument()

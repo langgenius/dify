@@ -2,87 +2,95 @@ import pytest
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
 from pydantic import ValidationError
 
-
-class TestArizeConfig:
-    """Test cases for ArizeConfig"""
-
-    def test_valid_config(self):
-        """Test valid Arize configuration"""
-        config = ArizeConfig(
-            api_key="test_key", space_id="test_space", project="test_project", endpoint="https://custom.arize.com"
-        )
-        assert config.api_key == "test_key"
-        assert config.space_id == "test_space"
-        assert config.project == "test_project"
-        assert config.endpoint == "https://custom.arize.com"
-
-    def test_default_values(self):
-        """Test default values are set correctly"""
-        config = ArizeConfig()
-        assert config.api_key is None
-        assert config.space_id is None
-        assert config.project is None
-        assert config.endpoint == "https://otlp.arize.com"
-
-    def test_project_validation_empty(self):
-        """Test project validation with empty value"""
-        config = ArizeConfig(project="")
-        assert config.project == "default"
-
-    def test_project_validation_none(self):
-        """Test project validation with None value"""
-        config = ArizeConfig(project=None)
-        assert config.project == "default"
-
-    def test_endpoint_validation_empty(self):
-        """Test endpoint validation with empty value"""
-        config = ArizeConfig(endpoint="")
-        assert config.endpoint == "https://otlp.arize.com"
-
-    def test_endpoint_validation_with_path(self):
-        """Test endpoint validation normalizes URL by removing path"""
-        config = ArizeConfig(endpoint="https://custom.arize.com/api/v1")
-        assert config.endpoint == "https://custom.arize.com"
-
-    def test_endpoint_validation_invalid_scheme(self):
-        """Test endpoint validation rejects invalid schemes"""
-        with pytest.raises(ValidationError, match="URL scheme must be one of"):
-            ArizeConfig(endpoint="ftp://invalid.com")
-
-    def test_endpoint_validation_no_scheme(self):
-        """Test endpoint validation rejects URLs without scheme"""
-        with pytest.raises(ValidationError, match="URL scheme must be one of"):
-            ArizeConfig(endpoint="invalid.com")
+SPACE = "U3BhY2U6dGVzdA=="
 
 
-class TestPhoenixConfig:
-    """Test cases for PhoenixConfig"""
+def test_phoenix_key_is_an_optional_secret() -> None:
+    assert PhoenixConfig.secret_fields() == {"api_key"}
+    assert PhoenixConfig.derived_fields() == set()
+    assert [(field.name, field.secret, field.required) for field in PhoenixConfig.form_fields()] == [
+        ("api_key", True, False),
+        ("project", False, False),
+        ("endpoint", False, False),
+    ]
+    config = PhoenixConfig()
+    assert (config.api_key, config.project, config.endpoint) == (None, "default", "https://app.phoenix.arize.com")
 
-    def test_valid_config(self):
-        """Test valid Phoenix configuration"""
-        config = PhoenixConfig(api_key="test_key", project="test_project", endpoint="https://custom.phoenix.com")
-        assert config.api_key == "test_key"
-        assert config.project == "test_project"
-        assert config.endpoint == "https://custom.phoenix.com"
 
-    def test_default_values(self):
-        """Test default values are set correctly"""
-        config = PhoenixConfig()
-        assert config.api_key is None
-        assert config.project is None
-        assert config.endpoint == "https://app.phoenix.arize.com"
+def test_arize_credentials_are_required_secrets_and_the_destination_is_derived() -> None:
+    assert ArizeConfig.secret_fields() == {"api_key", "space_id"}
+    assert ArizeConfig.derived_fields() == {"arize_project_destination"}
+    assert [(field.name, field.secret, field.required) for field in ArizeConfig.form_fields()] == [
+        ("api_key", True, True),
+        ("space_id", True, True),
+        ("project", False, False),
+        ("endpoint", False, False),
+    ]
+    config = ArizeConfig(api_key="key", space_id=SPACE)
+    assert (config.project, config.endpoint, config.arize_project_destination) == (
+        "default",
+        "https://otlp.arize.com",
+        None,
+    )
+    with pytest.raises(ValidationError):
+        ArizeConfig.model_validate({"api_key": "key"})
 
-    def test_project_validation_empty(self):
-        """Test project validation with empty value"""
-        config = PhoenixConfig(project="")
-        assert config.project == "default"
 
-    def test_endpoint_validation_with_path(self):
-        """Test endpoint validation with path"""
-        config = PhoenixConfig(endpoint="https://app.phoenix.arize.com/s/dify-integration")
-        assert config.endpoint == "https://app.phoenix.arize.com/s/dify-integration"
+@pytest.mark.parametrize(("project", "expected"), [(None, "default"), ("", "default"), ("  ", "default"), (" p ", "p")])
+def test_empty_projects_fall_back_to_default(project: str | None, expected: str) -> None:
+    assert PhoenixConfig.model_validate({"project": project}).project == expected
+    assert ArizeConfig.model_validate({"api_key": "key", "space_id": SPACE, "project": project}).project == expected
 
-    def test_endpoint_validation_without_path(self):
-        """Test endpoint validation without path"""
-        config = PhoenixConfig(endpoint="https://app.phoenix.arize.com")
-        assert config.endpoint == "https://app.phoenix.arize.com"
+
+def test_phoenix_endpoint_keeps_its_path() -> None:
+    assert PhoenixConfig(endpoint=" https://phoenix.example.com/s/space/ ").endpoint == (
+        "https://phoenix.example.com/s/space/"
+    )
+    assert PhoenixConfig(endpoint=" ").endpoint == "https://app.phoenix.arize.com"
+
+
+def test_arize_endpoint_is_reduced_to_the_collector_origin() -> None:
+    def endpoint(value: str) -> str:
+        return ArizeConfig(api_key="key", space_id=SPACE, endpoint=value).endpoint
+
+    assert endpoint("https://otlp.eu-west-1a.arize.com/v1/") == "https://otlp.eu-west-1a.arize.com"
+    assert endpoint("http://collector.internal:4317") == "http://collector.internal:4317"
+    assert endpoint("") == "https://otlp.arize.com"
+
+
+@pytest.mark.parametrize(
+    "endpoint", ["ftp://collector.example.com", "collector.example.com", "https://user:hunter2@collector.example.com"]
+)
+def test_invalid_endpoints_are_rejected_without_echoing_them(endpoint: str) -> None:
+    for model, values in ((PhoenixConfig, {}), (ArizeConfig, {"api_key": "key", "space_id": SPACE})):
+        with pytest.raises(ValidationError) as caught:
+            model.model_validate({**values, "endpoint": endpoint})
+        assert "hunter2" not in str(caught.value)
+
+
+def test_stored_rows_still_load() -> None:
+    phoenix = PhoenixConfig.model_validate(
+        {"api_key": None, "project": None, "endpoint": "https://app.phoenix.arize.com", "project_url": "https://x"}
+    )
+    assert (phoenix.project, phoenix.endpoint) == ("default", "https://app.phoenix.arize.com")
+
+    destination = {
+        "endpoint": "https://otlp.arize.com",
+        "space_id": SPACE,
+        "project": "exact",
+        "organization_id": "T3JnOnRlc3Q=",
+        "project_id": "UHJvamVjdDovKz0=",
+        "source_digest": "0" * 64,
+    }
+    arize = ArizeConfig.model_validate(
+        {
+            "api_key": "key",
+            "space_id": SPACE,
+            "project": "exact",
+            "endpoint": "https://otlp.arize.com",
+            "arize_project_destination": destination,
+            "project_url": "https://app.arize.com/organizations/forged",
+        }
+    )
+    assert arize.arize_project_destination == destination
+    assert "project_url" not in arize.model_dump()
