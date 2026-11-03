@@ -42,19 +42,29 @@ class SubmittedRoot:
 
 
 @dataclass(frozen=True)
+class FilledRoot:
+    """The root app as the filled archive holds it, and as the caller sent it."""
+
+    app: bytes
+    # None when `app` is not a YAML mapping.
+    document: dict[str, Any] | None
+    submitted: SubmittedRoot
+
+
+@dataclass(frozen=True)
 class FilledPackage:
     archive: bytes
-    # The root app's document as `archive` holds it; None when there is no `app.yaml` or it is not a YAML mapping.
-    document: dict[str, Any] | None
     # None when there is no `app.yaml`.
-    submitted: SubmittedRoot | None
+    root: FilledRoot | None
 
     @property
     def app_name(self) -> str | None:
         """The root app's name; None when the document has none that is text."""
-        if self.document is None:
+        if self.root is None:
             return None
-        app = self.document.get("app")
+        if self.root.document is None:
+            return None
+        app = self.root.document.get("app")
         if not isinstance(app, dict):
             return None
         name = app.get("name")
@@ -84,7 +94,7 @@ def filled_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits:
     """`fill_package`'s archive, with the root app's document it holds; raises what `fill_package` raises."""
     by_path = {entry.path: entry for entry in entries}
     if APP_PATH not in by_path:
-        return FilledPackage(write_package(entries, limits=limits), None, None)
+        return FilledPackage(write_package(entries, limits=limits), None)
     submitted_app = _read_app(read_member(by_path[APP_PATH], max_bytes=DSL_MAX_SIZE))
     submitted_manifest = None
     if MANIFEST_PATH in by_path:
@@ -95,8 +105,7 @@ def filled_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits:
     kept = [entry for entry in entries if entry.path not in replaced]
     return FilledPackage(
         write_package([*kept, *starmap(bytes_entry, replaced.items())], limits=limits),
-        app.document,
-        SubmittedRoot(submitted_app.content, submitted_manifest),
+        FilledRoot(app.content, app.document, SubmittedRoot(submitted_app.content, submitted_manifest)),
     )
 
 

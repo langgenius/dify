@@ -3,7 +3,9 @@ import itertools
 import json
 import zipfile
 from collections.abc import Callable, Mapping, Sequence
+from pathlib import Path
 from typing import Protocol, runtime_checkable
+from uuid import uuid4
 
 import pytest
 import yaml
@@ -23,6 +25,7 @@ from controllers.openapi._errors import (
     OpenApiErrorFormatter,
 )
 from controllers.openapi._models import (
+    AppPackageCheckPayload,
     AppPackageFillPayload,
     DeclaredParameterRow,
     FieldHintRow,
@@ -35,7 +38,7 @@ from extensions.ext_application_services import ApplicationServices
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolNodeData
 from machinery.context import RequestContext
-from models.model import AppMode
+from models.model import App, AppMode
 from models.workflow import Workflow
 from services.app_package_service import AppPackageService
 from services.entities.dsl_entities import ImportStatus
@@ -43,12 +46,16 @@ from services.workflow.authoring.checks import AuthoringIssueCode
 from services.workflow.authoring.node_spec import FieldHint
 from services.workflow.authoring.package_io import new_manifest
 from services.workflow.authoring.plugins import NO_DEFAULT, DeclaredParameter
+from services.workflow.graph_check import IssueCode
 from tests.helpers.unit.model_factories import make_workflow
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.services.test_app_package_service import _package_storage
 from tests.unit_tests.services.workflow.authoring.test_fill_package import _skeleton_dsl
 
+pytestmark = pytest.mark.usefixtures("bare_workspace_credentials")
+
 _CONTEXT = RequestContext("request-1", None, "account-1", "workspace-1")
+_FIXTURES = Path(__file__).parents[3] / "fixtures" / "workflow"
 _APP = "app.yaml"
 _MANIFEST = "manifest.yaml"
 _LLM_WITHOUT_MODEL = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM}}
@@ -124,8 +131,13 @@ def _check(app: Flask, package: FileStorage | UploadParts) -> tuple[PackageCheck
     assert isinstance(view, _CheckView)
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/packages:check", method="POST"):
         return view.__handler__(
-            AppPackageCheckApi(), _CONTEXT, workspace_id="workspace-1", body=AppPackageFillPayload(package=package)
+            AppPackageCheckApi(), _CONTEXT, workspace_id="workspace-1", body=AppPackageCheckPayload(package=package)
         )
+
+
+@pytest.fixture(autouse=True)
+def _dsl_check(monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices) -> None:
+    monkeypatch.setattr(app_dsl, "application_services", lambda: account_application_services)
 
 
 @pytest.mark.parametrize(
@@ -372,14 +384,12 @@ def _check_over_the_wire(world: AdmittedWorld, package: Mapping[str, bytes]) -> 
 @pytest.mark.usefixtures("time_tool")
 def test_an_agent_builds_an_app_from_node_options_through_fill_check_and_import(
     admitted_bearer: AdmittedWorld,
-    account_application_services: ApplicationServices,
     sqlite_session: Session,
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     world = admitted_bearer
     _package_storage(monkeypatch, sqlite_engine)
-    monkeypatch.setattr(app_dsl, "application_services", lambda: account_application_services)
     sqlite_session.add(make_workflow(tenant_id=world.workspace_id, app_id=world.app_id, created_by=world.member_id))
     sqlite_session.commit()
     nodes = [
@@ -438,3 +448,75 @@ def test_an_agent_builds_an_app_from_node_options_through_fill_check_and_import(
     inputs = {name: ToolNodeData.ToolInput.model_validate(value) for name, value in tool_configurations.items()}
     assert {name: tool_input.value for name, tool_input in inputs.items()} == _CURRENT_TIME_DEFAULTS
     assert _node_data(draft.graph_dict, "end")["outputs"] == end_outputs
+
+
+def _with_manifest(app_yaml: bytes) -> dict[str, bytes]:
+    return {_APP: app_yaml, _MANIFEST: new_manifest(app_yaml)}
+
+
+def _app_of(world: AdmittedWorld, sqlite_session: Session, mode: AppMode) -> str:
+    app = App(id=str(uuid4()), tenant_id=world.workspace_id, name="a", mode=mode, enable_site=True, enable_api=True)
+    sqlite_session.add(app)
+    sqlite_session.commit()
+    return app.id
+
+
+def _dsl_check_over_the_wire(world: AdmittedWorld, app_yaml: bytes, app_id: str) -> set[tuple[str, str]]:
+    response = world.client.post(
+        f"/openapi/v1/workspaces/{world.workspace_id}/apps/imports:check",
+        json={"yaml_content": app_yaml.decode(), "app_id": app_id},
+        headers=world.headers,
+    )
+    assert response.status_code == 200, response.get_json()
+    return {(issue["code"], issue["node_id"]) for issue in response.get_json()["issues"]}
+
+
+def test_check_reports_the_mode_mismatch_the_dsl_check_reports_for_the_app_id(
+    admitted_bearer: AdmittedWorld, sqlite_session: Session
+) -> None:
+    world = admitted_bearer
+    chatflow_id = _app_of(world, sqlite_session, AppMode.ADVANCED_CHAT)
+    package = _with_manifest(_chain_dsl(_start(), _end()))
+    filled = _members(_post(world, "packages:fill", package).get_data())
+
+    response = _post(world, "packages:check", package, fields={"app_id": chatflow_id})
+
+    assert response.status_code == 200, response.get_json()
+    body = response.get_json()
+    assert body["valid"] is False
+    issues = {(issue["code"], issue["node_id"]) for issue in body["issues"]}
+    assert (IssueCode.MODE_INCOMPATIBLE, "end") in issues
+    assert _dsl_check_over_the_wire(world, filled[_APP], chatflow_id) <= issues
+
+
+def test_check_answers_404_for_an_app_id_outside_the_workspace(admitted_bearer: AdmittedWorld) -> None:
+    package = _with_manifest(_chain_dsl(_start(), _end()))
+
+    response = _post(admitted_bearer, "packages:check", package, fields={"app_id": str(uuid4())})
+
+    assert response.status_code == 404, response.get_json()
+
+
+def test_check_answers_400_for_environment_variables_the_dsl_check_cannot_read(
+    admitted_bearer: AdmittedWorld,
+) -> None:
+    document = yaml.safe_load(_chain_dsl(_start(), _end()))
+    document["workflow"]["environment_variables"] = "KEY"
+
+    response = _post(admitted_bearer, "packages:check", _with_manifest(yaml.safe_dump(document).encode()))
+
+    assert response.status_code == 400, response.get_json()
+    assert "environment_variables" in str(response.get_json())
+
+
+def test_check_warns_of_a_model_the_workspace_lacks_and_stays_valid(admitted_bearer: AdmittedWorld) -> None:
+    app_yaml = (_FIXTURES / "basic_llm_chat_workflow.yml").read_bytes()
+
+    response = _post(admitted_bearer, "packages:check", _with_manifest(app_yaml))
+
+    assert response.status_code == 200, response.get_json()
+    body = PackageCheckResponse.model_validate(response.get_json())
+    assert body.valid is True
+    [warning] = body.issues
+    assert (warning.code, warning.severity) == (IssueCode.RESOURCE_UNAVAILABLE, "warning")
+    assert warning.refuses_import is False

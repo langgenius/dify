@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, Self
 
 from graphon.enums import NodeExecutionType
 from libs.archive_writer import ArchiveEntry, ArchiveLimits
+from machinery.context import RequestContext
 from services.workflow.authoring.fill import SubmittedRoot, document_graph, filled_package, graph_mode
 from services.workflow.authoring.node_spec import (
     FieldHint,
@@ -24,7 +25,8 @@ from services.workflow.authoring.node_spec import (
 )
 from services.workflow.authoring.package_io import APP_PATH, MANIFEST_PATH, PackageUnreadableError, manifest_is_stale
 from services.workflow.authoring.plugins import NO_DEFAULT, DeclarationStatus, DeclaredParameter, PluginReference
-from services.workflow.graph_check import GraphIssue, IssueCode, IssueSeverity, check_graph, data_loc
+from services.workflow.dsl_import import DslImportService
+from services.workflow.graph_check import GraphIssue, IssueCode, IssueSeverity, data_loc
 
 if TYPE_CHECKING:
     from services.workflow.authoring import FillContext
@@ -69,7 +71,7 @@ class AuthoringIssue:
 
     @classmethod
     def of(cls, graph_issue: GraphIssue, hint: FieldHint | None) -> Self:
-        """A `check_graph` issue: an error there is one the import refuses."""
+        """A DSL check issue: an error there is one the import refuses."""
         severity = graph_issue.code.severity
         return cls(
             code=graph_issue.code,
@@ -90,14 +92,48 @@ class PackageCheck:
 
 
 @dataclass(frozen=True)
+class DslCheckRequest:
+    """`check.console_app.dsl` as the caller would run it. The package check runs it on the filled `app.yaml`, so
+    the package check reports every issue the DSL check reports.
+    """
+
+    service: DslImportService
+    context: RequestContext
+    # The app whose mode the graph must fit; None for the mode the package's `app.yaml` gives.
+    app_id: str | None
+
+    def issues(self, app: bytes, document: Mapping[str, Any]) -> tuple[GraphIssue, ...]:
+        """Raises what `DslImportService.check` raises, and `PackageUnreadableError` for an `app` that is not UTF-8."""
+        if not self._checks(document):
+            return ()
+        return tuple(self.service.check(self.context, _utf8(app), self.app_id))
+
+    def _checks(self, document: Mapping[str, Any]) -> bool:
+        """The DSL check refuses an app that is not a workflow or chatflow unless `app_id` gives the mode, while a
+        package of any app can be checked, so that app is left out.
+        """
+        if self.app_id is not None:
+            return True
+        return graph_mode(document) is not None
+
+
+def _utf8(app: bytes) -> str:
+    try:
+        return app.decode()
+    except UnicodeDecodeError as error:
+        raise PackageUnreadableError(f"{APP_PATH} is not UTF-8 text") from error
+
+
+@dataclass(frozen=True)
 class CheckTarget:
-    """What every check reads: the filled root document, its graph nodes of a known type, each read once, and the
-    root members as sent.
+    """What every check reads: the filled root document, its graph nodes of a known type, each read once, the
+    root members as sent, and what `check.console_app.dsl` reports on the filled `app.yaml`.
     """
 
     document: Mapping[str, Any]
     nodes: tuple[NodeTarget, ...]
     submitted: SubmittedRoot
+    dsl_issues: tuple[GraphIssue, ...]
 
 
 _CHECKS: list[Check] = []
@@ -143,26 +179,20 @@ def _graph_nodes(document: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     return [node for node in nodes if isinstance(node, Mapping)]
 
 
-def _target(document: Mapping[str, Any], submitted: SubmittedRoot, ctx: FillContext) -> CheckTarget:
-    """Read each node once; a node `read_node` cannot read is left to `check_graph`, which reports it."""
+def _read_nodes(document: Mapping[str, Any], ctx: FillContext) -> tuple[NodeTarget, ...]:
+    """Read each node once; a node `read_node` cannot read is left to the DSL check, which reports it."""
     nodes = (read_node(node, ctx) for node in _graph_nodes(document))
-    return CheckTarget(document=document, nodes=tuple(node for node in nodes if node is not None), submitted=submitted)
+    return tuple(node for node in nodes if node is not None)
 
 
-class GraphChecks(Check):
-    """Today's `check_graph`, with a hint on each required field the data lacks."""
+class DslChecks(Check):
+    """`check.console_app.dsl` on the filled `app.yaml`, with a hint on each required field the data lacks."""
 
     code = None
 
     def run(self, target: CheckTarget) -> Iterable[AuthoringIssue]:
-        mode = graph_mode(target.document)
-        graph = document_graph(target.document)
-        if mode is None:
-            return []
-        if graph is None:
-            return []
         nodes = {node.id: node for node in target.nodes}
-        return [AuthoringIssue.of(issue, _missing_field_hint(issue, nodes)) for issue in check_graph(graph, mode=mode)]
+        return [AuthoringIssue.of(issue, _missing_field_hint(issue, nodes)) for issue in target.dsl_issues]
 
 
 def _missing_field_hint(issue: GraphIssue, nodes: Mapping[str, NodeTarget]) -> FieldHint | None:
@@ -292,18 +322,27 @@ def _value_at(data: Mapping[str, Any], loc: Sequence[str]) -> object:
     return value
 
 
-def check_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits: ArchiveLimits) -> PackageCheck:
-    """Fill the package, then run every check on its root app.
+def check_package(
+    entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits: ArchiveLimits, dsl: DslCheckRequest
+) -> PackageCheck:
+    """Fill the package, run `check.console_app.dsl` on the filled `app.yaml`, then run every check on its root app.
 
     Each plugin reference is looked up once here, and every check and node spec reads that one lookup. Raises what
-    `fill_package` raises, and `PackageUnreadableError` when there is no `app.yaml` that is a YAML mapping.
+    `fill_package` raises, `PackageUnreadableError` when there is no `app.yaml` that is a YAML mapping, and what
+    `DslCheckRequest.issues` raises.
     """
-    filled = filled_package(entries, ctx, limits=limits)
-    if filled.document is None:
+    root = filled_package(entries, ctx, limits=limits).root
+    if root is None:
         raise PackageUnreadableError(_NO_APP_MAPPING)
-    if filled.submitted is None:
+    document = root.document
+    if document is None:
         raise PackageUnreadableError(_NO_APP_MAPPING)
-    target = _target(filled.document, filled.submitted, ctx)
+    target = CheckTarget(
+        document=document,
+        nodes=_read_nodes(document, ctx),
+        submitted=root.submitted,
+        dsl_issues=dsl.issues(root.app, document),
+    )
     issues = tuple(issue for check in _CHECKS for issue in check.run(target))
     return PackageCheck(
         valid=not any(issue.severity == IssueSeverity.ERROR for issue in issues),

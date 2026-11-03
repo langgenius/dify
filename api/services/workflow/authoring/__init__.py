@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 # Imported for its registration: a node's plugin kind is looked up by data model, so every kind must be loaded.
 from services.workflow.authoring import tool_reference as tool_reference
-from services.workflow.authoring.checks import PackageCheck, check_package
+from services.workflow.authoring.checks import DslCheckRequest, PackageCheck, check_package
 from services.workflow.authoring.fill import fill_package
 
 
@@ -14,4 +14,4 @@ class FillContext:
     account_id: str
 
 
-__all__ = ["FillContext", "PackageCheck", "check_package", "fill_package"]
+__all__ = ["DslCheckRequest", "FillContext", "PackageCheck", "check_package", "fill_package"]
