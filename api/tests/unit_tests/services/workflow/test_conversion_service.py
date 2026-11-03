@@ -2,7 +2,6 @@
 
 import json
 from collections.abc import Mapping
-from typing import cast
 
 import pytest
 from sqlalchemy import event, func, select
@@ -85,7 +84,7 @@ def sessions(sqlite_engine: Engine) -> sessionmaker[Session]:
             ]
         )
         config.id = "config-1"
-    return cast(sessionmaker[Session], factory)
+    return factory  # type: ignore[return-value]
 
 
 @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.COMPLETION])

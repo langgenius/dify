@@ -2,7 +2,7 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Protocol, cast
+from typing import Any, Protocol
 
 from core.workflow.system_variables import build_system_variables
 from enums.human_input import HumanInputFormStatus, ValueSourceType
@@ -65,7 +65,10 @@ class InMemoryPauseStore:
         return RuntimeState.from_snapshot(self._snapshot)
 
 
-class _TestFileReferenceFactory:
+class _TestFileReferenceFactory(DifyFileReferenceFactory):
+    def __init__(self) -> None:
+        pass
+
     def build_from_mapping(self, *, mapping: Mapping[str, Any]) -> File:
         return File(
             file_id=mapping.get("id"),
@@ -199,7 +202,7 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     human_a_callback = DifyHITLCallback(
         form_repository=repo,
         node_data=human_data,
-        file_reference_factory=cast(DifyFileReferenceFactory, _TestFileReferenceFactory()),
+        file_reference_factory=_TestFileReferenceFactory(),
     )
     human_a = HumanInputNode(
         node_id=human_a_config["id"],
@@ -213,7 +216,7 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     human_b_callback = DifyHITLCallback(
         form_repository=repo,
         node_data=human_data,
-        file_reference_factory=cast(DifyFileReferenceFactory, _TestFileReferenceFactory()),
+        file_reference_factory=_TestFileReferenceFactory(),
     )
     human_b = HumanInputNode(
         node_id=human_b_config["id"],

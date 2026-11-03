@@ -7,10 +7,10 @@ import time
 import types
 import uuid
 from collections.abc import Generator, Mapping
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import cast, override
+from typing import override
 from unittest.mock import MagicMock, Mock, create_autospec, patch, sentinel
 from uuid import uuid4
 
@@ -33,6 +33,7 @@ from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError,
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
+from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
 from core.tools.errors import ToolInvokeError
@@ -109,6 +110,22 @@ pytest_plugins = ("tests.helpers.unit.core.workflow.nodes.parameter_extractor.fi
 
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
+
+
+@dataclass
+class _CallSpy:
+    return_value: object = None
+    calls: list[object] = field(default_factory=list)
+
+    def __call__(self, arg: object) -> object:
+        self.calls.append(arg)
+        return self.return_value
+
+    def assert_called_once_with(self, arg: object) -> None:
+        assert self.calls == [arg]
+
+    def assert_not_called(self) -> None:
+        assert self.calls == []
 
 
 def init_llm_node(config: dict[str, object]) -> LLMNode:
@@ -1084,9 +1101,8 @@ class TestToolNodeRuntimeCases:
         workflow_tool = MagicMock()
         tool_invoker = create_autospec(WorkflowToolInvoker, instance=True, spec_set=True)
         tool_invoker.return_value = (message for message in [core_message])
-        assert runtime._workflow_runtime is not None
-        dependencies = cast(WorkflowExecutionDependencies, runtime._workflow_runtime)
-        runtime._workflow_runtime = replace(dependencies, tool_invoker=tool_invoker)
+        assert isinstance(runtime._workflow_runtime, WorkflowExecutionDependencies)
+        runtime._workflow_runtime = replace(runtime._workflow_runtime, tool_invoker=tool_invoker)
 
         with (
             patch.object(ToolManager, "get_workflow_tool_runtime", return_value=workflow_tool),
@@ -1128,12 +1144,13 @@ class TestToolNodeRuntimeCases:
     @staticmethod
     def test_invoke_maps_plugin_errors_to_graph_errors(runtime: DifyToolNodeRuntime) -> None:
         invoke_error = PluginInvokeError('{"error_type":"RateLimit","message":"too many"}')
+        tool = create_autospec(Tool, instance=True)
 
         with patch.object(ToolEngine, "generic_invoke", side_effect=invoke_error):
             with pytest.raises(ToolRuntimeInvocationError, match="An error occurred in the provider"):
                 list(
                     runtime.invoke(
-                        tool_runtime=ToolRuntimeHandle(raw=MagicMock()),
+                        tool_runtime=ToolRuntimeHandle(raw=tool),
                         tool_parameters={},
                         workflow_call_depth=0,
                         provider_name="provider",
@@ -1145,8 +1162,10 @@ class TestToolNodeRuntimeCases:
         usage_payload = LLMUsage.empty_usage().model_dump()
         usage_payload["total_tokens"] = 42
 
+        tool = create_autospec(Tool, instance=True)
+        tool.latest_usage = usage_payload
         usage = runtime.get_usage(
-            tool_runtime=ToolRuntimeHandle(raw=SimpleNamespace(latest_usage=usage_payload)),
+            tool_runtime=ToolRuntimeHandle(raw=tool),
         )
 
         assert usage.total_tokens == 42
@@ -1265,16 +1284,12 @@ class TestToolNodeRuntimeCases:
 
     @staticmethod
     def test_get_runtime_parameters_reads_required_flags(runtime: DifyToolNodeRuntime) -> None:
-        tool_runtime = ToolRuntimeHandle(
-            raw=SimpleNamespace(
-                get_merged_runtime_parameters=MagicMock(
-                    return_value=[
-                        SimpleNamespace(name="city", required=True),
-                        SimpleNamespace(name="country", required=False),
-                    ]
-                )
-            )
-        )
+        tool = create_autospec(Tool, instance=True)
+        tool.get_merged_runtime_parameters.return_value = [
+            SimpleNamespace(name="city", required=True),
+            SimpleNamespace(name="country", required=False),
+        ]
+        tool_runtime = ToolRuntimeHandle(raw=tool)
 
         parameters = runtime.get_runtime_parameters(tool_runtime=tool_runtime)
 
@@ -1285,7 +1300,9 @@ class TestToolNodeRuntimeCases:
 
     @staticmethod
     def test_get_usage_returns_empty_usage_when_tool_has_no_usage(runtime: DifyToolNodeRuntime) -> None:
-        usage = runtime.get_usage(tool_runtime=ToolRuntimeHandle(raw=SimpleNamespace(latest_usage=None)))
+        tool = create_autospec(Tool, instance=True)
+        tool.latest_usage = None
+        usage = runtime.get_usage(tool_runtime=ToolRuntimeHandle(raw=tool))
 
         assert usage == LLMUsage.empty_usage()
 
@@ -1923,7 +1940,7 @@ class TestNodeRuntimeCases:
 
     @staticmethod
     def test_dify_retriever_attachment_loader_builds_graph_files(monkeypatch: pytest.MonkeyPatch) -> None:
-        load_attachments = MagicMock(return_value=[_attachment_record()])
+        load_attachments = _CallSpy(return_value=[_attachment_record()])
         monkeypatch.setattr(node_runtime, "sign_upload_file_url", lambda *, upload_file_id: f"signed:{upload_file_id}")
         loader = DifyRetrieverAttachmentLoader(load_attachments=load_attachments)
 
@@ -1972,7 +1989,7 @@ class TestNodeRuntimeCases:
     @staticmethod
     def test_dify_retriever_attachment_loader_honors_the_scoped_attachment_reader() -> None:
         segment_id = str(uuid4())
-        load_attachments = MagicMock(return_value=[])
+        load_attachments = _CallSpy(return_value=[])
         loader = DifyRetrieverAttachmentLoader(load_attachments=load_attachments)
         scope = FileAccessScope(
             tenant_id="tenant-id",
@@ -1989,7 +2006,7 @@ class TestNodeRuntimeCases:
 
     @staticmethod
     def test_dify_retriever_attachment_loader_skips_ungranted_segment_for_end_user() -> None:
-        load_attachments = MagicMock(return_value=[_attachment_record()])
+        load_attachments = _CallSpy(return_value=[_attachment_record()])
         loader = DifyRetrieverAttachmentLoader(load_attachments=load_attachments)
         scope = FileAccessScope(
             tenant_id="tenant-id",
@@ -2007,8 +2024,8 @@ class TestNodeRuntimeCases:
     @staticmethod
     def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker() -> None:
         segment_id = str(uuid4())
-        load_attachments = MagicMock(return_value=[_attachment_record()])
-        segment_access_checker = MagicMock(return_value=False)
+        load_attachments = _CallSpy(return_value=[_attachment_record()])
+        segment_access_checker = _CallSpy(return_value=False)
         loader = DifyRetrieverAttachmentLoader(
             load_attachments=load_attachments,
             segment_access_checker=segment_access_checker,

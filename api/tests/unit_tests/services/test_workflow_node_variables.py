@@ -1,6 +1,5 @@
 from collections.abc import Mapping, Sequence
 from typing import Literal
-from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import Engine
@@ -28,7 +27,7 @@ def _make_draft_var_loader(sqlite_engine: Engine) -> DraftVarLoader:
         app_id="app",
         tenant_id="tenant",
         user_id="user",
-        load_file=Mock(),
+        load_file=lambda _file_id: b"",
         file_inputs=WorkflowVariableFileGateway(sessions, DatabaseFileAccessController()),
     )
 

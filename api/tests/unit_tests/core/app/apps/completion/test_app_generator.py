@@ -137,6 +137,14 @@ def _persist_message(
     return message
 
 
+class _CompletionAppConfig:
+    def __init__(self) -> None:
+        self.variables = ["v"]
+
+    def to_dict(self) -> dict[str, object]:
+        return {}
+
+
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
 class TestCompletionAppGenerator:
     def test_generate_invalid_query_type(self, generator, sqlite_session: Session):
@@ -174,7 +182,7 @@ class TestCompletionAppGenerator:
         mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=None)
         mocker.patch.object(module.file_factory, "build_from_mappings")
 
-        app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
+        app_config = _CompletionAppConfig()
         get_app_config = mocker.patch.object(
             module.CompletionAppConfigManager,
             "get_app_config",
@@ -235,7 +243,7 @@ class TestCompletionAppGenerator:
         mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=file_extra_config)
         mocker.patch.object(module.file_factory, "build_from_mappings", return_value=["file1"])
 
-        app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
+        app_config = _CompletionAppConfig()
         mocker.patch.object(module.CompletionAppConfigManager, "get_app_config", return_value=app_config)
         mocker.patch.object(module.ModelConfigConverter, "convert", return_value=MagicMock())
 
@@ -286,7 +294,7 @@ class TestCompletionAppGenerator:
         override_config = {"model": {"provider": "override"}}
         mocker.patch.object(module.CompletionAppConfigManager, "config_validate", return_value=override_config)
 
-        app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
+        app_config = _CompletionAppConfig()
         get_app_config = mocker.patch.object(
             module.CompletionAppConfigManager,
             "get_app_config",
@@ -421,7 +429,7 @@ class TestCompletionAppGenerator:
         mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=None)
         build_from_mappings = mocker.patch.object(module.file_factory, "build_from_mappings")
 
-        app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
+        app_config = _CompletionAppConfig()
         get_app_config = mocker.patch.object(
             module.CompletionAppConfigManager,
             "get_app_config",

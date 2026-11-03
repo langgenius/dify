@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TypedDict, cast
+from typing import TypedDict
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -122,9 +122,8 @@ def _persist_log(session: Session, *, tool_still_configured: bool = False, end_u
 def _get_log(
     service: AgentLogService, *, conversation_id: str = "conversation-1", message_id: str = "message-1"
 ) -> _AgentLogResult:
-    return cast(
-        _AgentLogResult,
-        service.get(_CONTEXT, app_id="app-1", conversation_id=conversation_id, message_id=message_id),
+    return service.get(  # type: ignore[return-value]
+        _CONTEXT, app_id="app-1", conversation_id=conversation_id, message_id=message_id
     )
 
 

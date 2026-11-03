@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from typing import override
-from unittest.mock import ANY, Mock
+from unittest.mock import ANY, MagicMock, Mock
 
 import pytest
 from flask import Flask
@@ -459,9 +459,14 @@ class TestHitlServiceApi:
         sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         monkeypatch.setattr(ags_module.session_factory, "get_session_maker", lambda: sqlite_session_maker)
 
-        generator_instance = Mock()
+        generator_instance = MagicMock()
         generator_instance.generate.return_value = {"result": "advanced-blocking"}
-        generator_factory = Mock(return_value=generator_instance)
+        generator_kwargs: list[dict[str, object]] = []
+
+        def generator_factory(**kwargs: object) -> MagicMock:
+            generator_kwargs.append(kwargs)
+            return generator_instance
+
         monkeypatch.setattr(ags_module, "AdvancedChatAppGenerator", generator_factory)
         monkeypatch.setattr(ags_module, "convert_to_event_stream", lambda payload: payload)
 
@@ -481,12 +486,13 @@ class TestHitlServiceApi:
             )
 
         assert result == {"result": "advanced-blocking"}
-        generator_factory.assert_called_once_with(
-            runtime=workflow_runtime,
-            execution_driver=workflow_runtime.execution_driver,
-            draft_variable_loader=workflow_variables.workflow_loader,
-            draft_variable_saver=workflow_variables.saver_factory,
-        )
+        assert len(generator_kwargs) == 1
+        assert generator_kwargs[0] == {
+            "runtime": workflow_runtime,
+            "execution_driver": workflow_runtime.execution_driver,
+            "draft_variable_loader": workflow_variables.workflow_loader,
+            "draft_variable_saver": workflow_variables.saver_factory,
+        }
         call_kwargs = generator_instance.generate.call_args.kwargs
         assert call_kwargs["streaming"] is False
         assert call_kwargs["pause_state_config"] is not None

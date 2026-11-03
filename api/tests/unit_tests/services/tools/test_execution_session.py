@@ -1,10 +1,11 @@
 from collections.abc import Generator, Mapping, Sequence
 from typing import override
-from unittest.mock import MagicMock
+from unittest.mock import create_autospec
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
@@ -134,7 +135,7 @@ def test_dataset_tool_public_invoke_accepts_explicit_session() -> None:
         inputs={},
         invoke_from=InvokeFrom.DEBUGGER,
         return_resource=False,
-        hit_callback=DatasetIndexToolCallbackHandler(MagicMock()),
+        hit_callback=DatasetIndexToolCallbackHandler(create_autospec(AppQueueManager, instance=True)),
         app_id="app-1",
     )
 

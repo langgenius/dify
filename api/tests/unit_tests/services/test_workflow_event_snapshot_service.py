@@ -979,7 +979,9 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
-    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", MagicMock())
+    monkeypatch.setattr(
+        service_module.WorkflowEventStream, "get_response_topic", lambda *_args: _Topic(_StaticSubscription())
+    )
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=resumption_context))
     conversation_lookup = MagicMock(return_value=None)
     app_lookup = MagicMock(return_value=None)
@@ -1017,7 +1019,9 @@ def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
-    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", MagicMock())
+    monkeypatch.setattr(
+        service_module.WorkflowEventStream, "get_response_topic", lambda *_args: _Topic(_StaticSubscription())
+    )
     load_resumption_context = MagicMock(return_value=None)
     monkeypatch.setattr(service_module, "_load_resumption_context", load_resumption_context)
     conversation_lookup = MagicMock(return_value=None)

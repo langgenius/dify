@@ -7,7 +7,7 @@ from datetime import datetime
 from inspect import unwrap
 from inspect import unwrap as unwrap_all
 from typing import TypedDict, Unpack
-from unittest.mock import MagicMock, Mock, create_autospec, patch
+from unittest.mock import MagicMock, create_autospec, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -1490,7 +1490,10 @@ class TestRagPipelineWorkflowApisCases:
             api = RagPipelineByIdApi()
             method = unwrap(api.delete)
             context = RequestContext("delete", None, "account", "tenant")
-            delete = Mock(side_effect=WorkflowInUseError("currently in use by pipeline") if in_use else None)
+            delete = create_autospec(
+                workflow_application.console_workflows.delete,
+                side_effect=WorkflowInUseError("currently in use by pipeline") if in_use else None,
+            )
             with (
                 app.test_request_context("/", method="DELETE"),
                 patch.object(workflow_controller, "application_services", return_value=workflow_application),
