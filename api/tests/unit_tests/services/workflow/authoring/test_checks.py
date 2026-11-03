@@ -66,7 +66,8 @@ def _dsl(nodes: Sequence[_Item], edges: Sequence[_Item], mode: AppMode = AppMode
 
 
 def _check_text(app: str) -> PackageCheck:
-    return check_package(read_package_entries(io.BytesIO(_package({APP: app}))), CTX, limits=LIMITS)
+    members = {APP: app, MANIFEST: new_manifest(app.encode()).decode()}
+    return check_package(read_package_entries(io.BytesIO(_package(members))), CTX, limits=LIMITS)
 
 
 def _check(nodes: Sequence[_Item], edges: Sequence[_Item] = ()) -> PackageCheck:
@@ -184,10 +185,11 @@ def test_an_app_without_a_graph_mode_is_not_graph_checked() -> None:
     assert check == PackageCheck(valid=True, issues=(), node_specs=())
 
 
-def test_new_codes_are_errors_and_only_a_stale_manifest_refuses_an_import() -> None:
+def test_new_codes_are_errors_and_only_manifest_issues_refuse_an_import() -> None:
+    manifest_codes = {AuthoringIssueCode.MANIFEST_STALE, AuthoringIssueCode.MANIFEST_MISSING}
     for code in AuthoringIssueCode:
         assert code.severity == IssueSeverity.ERROR
-        assert code.refuses_import is (code == AuthoringIssueCode.MANIFEST_STALE)
+        assert code.refuses_import is (code in manifest_codes)
 
 
 def test_a_tool_from_a_missing_provider_is_plugin_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -320,10 +322,27 @@ def test_a_manifest_that_matches_the_app_yaml_is_not_stale() -> None:
     assert check.issues == ()
 
 
-def test_a_package_without_a_manifest_is_not_stale() -> None:
+def test_a_package_without_a_manifest_is_reported_and_not_stale() -> None:
     check = _check_members({APP: _dsl([START, END], [{"source": "start", "target": "end"}])})
 
-    assert check.issues == ()
+    [issue] = check.issues
+    assert issue.code == AuthoringIssueCode.MANIFEST_MISSING
+    assert (issue.severity, issue.refuses_import, issue.node_id, issue.loc) == (
+        IssueSeverity.ERROR,
+        True,
+        None,
+        (MANIFEST,),
+    )
+    assert "fill" in issue.message
+    assert check.valid is False
+
+
+def test_a_package_with_a_manifest_is_not_reported_missing() -> None:
+    app = _dsl([START, END], [{"source": "start", "target": "end"}])
+
+    check = _check_members({APP: app, MANIFEST: new_manifest(app.encode()).decode()})
+
+    assert AuthoringIssueCode.MANIFEST_MISSING not in _codes(check)
 
 
 def test_a_manifest_fill_cannot_read_is_not_judged_stale() -> None:

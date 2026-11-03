@@ -54,6 +54,7 @@ class AuthoringIssueCode(StrEnum):
     PLUGIN_NOT_FOUND = ("plugin_not_found", IssueSeverity.ERROR)
     PLUGIN_PARAMETER_MISSING = ("plugin_parameter_missing", IssueSeverity.ERROR)
     MANIFEST_STALE = ("manifest_stale", IssueSeverity.ERROR, True)
+    MANIFEST_MISSING = ("manifest_missing", IssueSeverity.ERROR, True)
 
 
 @dataclass(frozen=True)
@@ -213,6 +214,21 @@ class ManifestStale(Check):
             "Fill the package again before importing it: fill rewrites both values."
         )
         return [self.issue(message, node_id=None, loc=(MANIFEST_PATH, _MANIFEST_APPS_KEY, 0))]
+
+
+class ManifestMissing(Check):
+    """A package sends a `manifest.yaml`; the import refuses one without it."""
+
+    code = AuthoringIssueCode.MANIFEST_MISSING
+
+    def run(self, target: CheckTarget) -> Iterable[AuthoringIssue]:
+        if target.submitted.manifest is not None:
+            return []
+        message = (
+            f"The package has no {MANIFEST_PATH}, so the import refuses it. "
+            f"Fill the package before importing it: fill writes one that matches its {APP_PATH}."
+        )
+        return [self.issue(message, node_id=None, loc=(MANIFEST_PATH,))]
 
 
 class PluginNotFound(Check):
