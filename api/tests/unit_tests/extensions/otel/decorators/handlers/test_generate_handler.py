@@ -6,10 +6,9 @@ Test objectives:
 2. Verify span attribute mapping correctness
 """
 
-from unittest.mock import MagicMock
-
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.otel.decorators.handlers.generate_handler import AppGenerateHandler
@@ -27,6 +26,7 @@ class TestAppGenerateHandler:
         tracer_provider_with_memory_exporter: TracerProvider,
         mock_app_model: App,
         mock_account_user: Account,
+        sqlite_session: Session,
     ) -> None:
         """
         Verify handler compatibility with real AppGenerateService.generate signature.
@@ -40,7 +40,7 @@ class TestAppGenerateHandler:
 
         arguments = handler._extract_arguments(
             AppGenerateService.generate,
-            session=MagicMock(),
+            session=sqlite_session,
             app_model=mock_app_model,
             user=mock_account_user,
             args={"workflow_id": "test-wf-123"},
