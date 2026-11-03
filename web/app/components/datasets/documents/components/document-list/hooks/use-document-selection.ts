@@ -1,6 +1,6 @@
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { useCallback, useMemo } from 'react'
-import { DataSourceType } from '@/models/datasets'
+import { isDownloadableFileDocument } from '../../../document-source'
 
 type LocalDoc = SimpleDocumentDetail & { percent?: number }
 
@@ -22,7 +22,11 @@ export const useDocumentSelection = ({
   const downloadableSelectedIds = useMemo(() => {
     const selectedSet = new Set(selectedIds)
     return documents
-      .filter((doc) => selectedSet.has(doc.id) && doc.data_source_type === DataSourceType.FILE)
+      .filter(
+        (doc) =>
+          selectedSet.has(doc.id) &&
+          isDownloadableFileDocument(doc.data_source_type, doc.data_source_info),
+      )
       .map((doc) => doc.id)
   }, [documents, selectedIds])
 
