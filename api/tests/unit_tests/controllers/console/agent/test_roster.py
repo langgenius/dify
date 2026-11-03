@@ -4,7 +4,7 @@ from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
 from typing import Any, Self, cast
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, create_autospec
 
 import pytest
 from flask import Flask
@@ -2162,10 +2162,8 @@ def test_agent_chat_helper_maps_generation_errors(
     unbound_session: Session,
 ) -> None:
     app_model = _app_detail_obj(id="app-1", mode=AppMode.CHAT)
-    def fail_generate(*args: object, **kwargs: object) -> None:
-        raise error
-
-    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", fail_generate)
+    generate = create_autospec(completion_controller.AppGenerateService.generate, side_effect=error)
+    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
     with app.test_request_context(json={"inputs": {}, "query": "hello"}):
         with pytest.raises(expected):
             completion_controller._create_chat_message(
