@@ -330,6 +330,10 @@ class TestCreateAppTransactionBoundary:
                 account,
                 session=sqlite_session,
             )
+            settings = AppService.prepare_creation(
+                account.current_tenant_id,
+                CreateAppParams(name="Chat", mode=AppMode.CHAT.value),
+            )
 
         app_model_config = sqlite_session.get(AppModelConfig, app.app_model_config_id)
         assert app_model_config is not None
@@ -341,14 +345,9 @@ class TestCreateAppTransactionBoundary:
             "completion_params": {},
         }
         assert default_app_templates[AppMode.CHAT]["model_config"]["model"] == original_template_model
-        model_manager.get_default_provider_model_name.assert_called_once_with(
+        model_manager.get_default_provider_model_name.assert_called_with(
             tenant_id=account.current_tenant_id, model_type=ModelType.LLM
         )
-        settings = AppService.prepare_creation(
-            account.current_tenant_id,
-            CreateAppParams(name="Chat", mode=AppMode.CHAT.value),
-        )
-
         assert settings.model_config is not None
         assert json.loads(settings.model_config["model"]) == {
             **original_template_model,
