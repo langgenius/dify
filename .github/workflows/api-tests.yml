@@ -122,12 +122,32 @@ jobs:
             pending=$(docker ps --filter health=starting --filter health=unhealthy -q | wc -l | tr -d ' ')
             if [ "$pending" -eq 0 ]; then
               echo "All middleware services are healthy"
-              exit 0
+              break
             fi
             sleep 2
           done
-          docker ps --filter health=starting --filter health=unhealthy
-          echo "Timed out waiting for middleware services to become healthy" >&2
+          if [ "$SECONDS" -ge "$deadline" ]; then
+            docker ps --filter health=starting --filter health=unhealthy
+            echo "Timed out waiting for middleware services to become healthy" >&2
+            exit 1
+          fi
+
+      - name: Warm up code execution endpoint
+        run: |
+          # The sandbox /health check passes before its code-execution path is
+          # ready; the first real request can still 502 through ssrf_proxy.
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://127.0.0.1:8194/v1/sandbox/run \
+              -H "X-Api-Key: dify-sandbox" \
+              -H "Content-Type: application/json" \
+              -d '{"language":"nodejs","code":"console.log(\"warmup\")","preload":"","enable_network":true}')
+            if [ "$code" = "200" ]; then
+              echo "Code execution endpoint is ready"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Code execution endpoint did not become ready" >&2
           exit 1
 
       - name: setup test config
