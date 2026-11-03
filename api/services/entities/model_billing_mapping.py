@@ -120,6 +120,7 @@ class SourceVariantAdapter(_StrictModel):
         "openai_provider110_source_v1",
         "openai_provider042_source_v1",
         "openai_credit_llm_source_v1",
+        "openai_credit_llm_source_v2",
     ]
     revision: str = Field(min_length=1)
     rules_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
@@ -141,7 +142,7 @@ class SourceMappingVariant(_StrictModel):
     def closed_operations(self) -> Self:
         if (
             self.target.model_type != ModelType.LLM
-            or self.parameter_adapter.id != "openai_credit_llm_source_v1"
+            or self.parameter_adapter.id not in {"openai_credit_llm_source_v1", "openai_credit_llm_source_v2"}
             and self.target.model not in {"gpt-4o-mini", "gpt-5.5"}
             or set(self.operations) != {"model/schema", "llm/invoke", "llm/num_tokens"}
             or len(self.operations) != 3
@@ -180,16 +181,30 @@ class SourceVariantMapping(_StrictModel):
             or len({item.variant_id for item in self.variants}) != len(self.variants)
         ):
             raise ValueError("Invalid bounded source variant mapping")
-        if any(item.parameter_adapter.id == "openai_credit_llm_source_v1" for item in self.variants):
+        credit_families = {
+            item.parameter_adapter.id
+            for item in self.variants
+            if item.parameter_adapter.id in {"openai_credit_llm_source_v1", "openai_credit_llm_source_v2"}
+        }
+        if credit_families:
+            if len(credit_families) != 1:
+                raise ValueError("Mixed credit LLM source adapter families")
+            credit_family = next(iter(credit_families))
             # Import only when validating the new family: its pure owner uses
             # the shared settings DTO, and owns the finite UID/model/alias rules.
-            from services.model_billing_openai_credit_llm_adapter import (
-                openai_credit_llm_protocol,
-                validate_openai_credit_llm_identity,
-            )
+            if credit_family == "openai_credit_llm_source_v2":
+                from services.model_billing_openai_credit_llm_v2_adapter import (
+                    openai_credit_llm_protocol,
+                    validate_openai_credit_llm_identity,
+                )
+            else:
+                from services.model_billing_openai_credit_llm_adapter import (
+                    openai_credit_llm_protocol,
+                    validate_openai_credit_llm_identity,
+                )
 
             for item in self.variants:
-                if item.parameter_adapter.id != "openai_credit_llm_source_v1" or item.parameter_adapter.revision != "1":
+                if item.parameter_adapter.id != credit_family or item.parameter_adapter.revision != "1":
                     raise ValueError("Invalid bounded source variant mapping")
                 validate_openai_credit_llm_identity(
                     source_provider=self.source.provider_id,

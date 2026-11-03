@@ -1576,8 +1576,10 @@ class ProviderManager:
         from services.model_billing_mapping_service import (
             additional_hosted_availability,
             has_finite_hosted_credit_pool,
+            hosted_audio_source_fact,
             hosted_embedding_source_fact,
             hosted_source_variant_fact,
+            hosted_xai_source_fact,
             mapped_dynamic_source_candidates,
             model_schema_digest,
             provider_has_prepared_ownership,
@@ -1725,6 +1727,18 @@ class ProviderManager:
             models=provider_entity.models,
             credentials=provider_hosting_configuration.credentials,
         )
+        audio_fact = hosted_audio_source_fact(
+            provider=provider_entity.provider,
+            source_uid=plugin_provider_entity.plugin_unique_identifier,
+            models=provider_entity.models,
+            credentials=provider_hosting_configuration.credentials,
+        )
+        xai_fact = hosted_xai_source_fact(
+            provider=provider_entity.provider,
+            source_uid=plugin_provider_entity.plugin_unique_identifier,
+            models=provider_entity.models,
+            credentials=provider_hosting_configuration.credentials,
+        )
         if published_balance and routing_state is not None:
             for candidate in mapped_dynamic_source_candidates(
                 provider=provider_entity,
@@ -1733,6 +1747,8 @@ class ProviderManager:
                 revision=routing_state.get("model_mapping_version", ""),
                 source_fact=variant_fact,
                 embedding_source_fact=embedding_fact,
+                audio_source_fact=audio_fact,
+                xai_source_fact=xai_fact,
                 allow_source_variants=stable_inventory,
             ):
                 source_credentials = dict(provider_hosting_configuration.credentials or {})
@@ -1766,6 +1782,18 @@ class ProviderManager:
                 models=[*provider_entity.models, *resolved_source_schemas],
                 credentials=provider_hosting_configuration.credentials,
             )
+            audio_fact = hosted_audio_source_fact(
+                provider=provider_entity.provider,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                models=[*provider_entity.models, *resolved_source_schemas],
+                credentials=provider_hosting_configuration.credentials,
+            )
+            xai_fact = hosted_xai_source_fact(
+                provider=provider_entity.provider,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                models=[*provider_entity.models, *resolved_source_schemas],
+                credentials=provider_hosting_configuration.credentials,
+            )
             availability = additional_hosted_availability(
                 provider=provider_entity.provider,
                 hosting=provider_hosting_configuration,
@@ -1779,6 +1807,8 @@ class ProviderManager:
                 source_uid=plugin_provider_entity.plugin_unique_identifier,
                 source_fact=variant_fact,
                 embedding_source_fact=embedding_fact,
+                audio_source_fact=audio_fact,
+                xai_source_fact=xai_fact,
                 allow_source_variants=stable_inventory,
             )
             if availability is None:
@@ -1876,6 +1906,8 @@ class ProviderManager:
         result._tokener_source_protocol_fact = source_protocol_fact
         result._tokener_source_variant_fact = variant_fact
         result._tokener_embedding_source_fact = embedding_fact
+        result._tokener_audio_source_fact = audio_fact
+        result._tokener_xai_source_fact = xai_fact
         return result
 
     @staticmethod

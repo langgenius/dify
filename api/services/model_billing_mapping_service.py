@@ -14,8 +14,10 @@ from typing import Any, Literal, cast
 from packaging.version import InvalidVersion, Version
 
 from core.entities.provider_entities import (
+    HostedAudioSourceFact,
     HostedEmbeddingSourceFact,
     HostedSourceVariantFact,
+    HostedXAISourceFact,
     ProviderQuotaType,
     QuotaConfiguration,
     QuotaUnit,
@@ -26,6 +28,8 @@ from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.provider_ids import ModelProviderID
+from services.entities.model_billing_audio_mapping import AudioSourceSettings, SourceAudioVariantMapping
+from services.entities.model_billing_audio_mapping import SelectedAudioSourceVariant as SelectedAudioSourceVariant  # noqa: PLC0414
 from services.entities.model_billing_embedding_mapping import EmbeddingSourceSettings, SourceEmbeddingVariantMapping
 from services.entities.model_billing_embedding_mapping import (
     SelectedEmbeddingSourceVariant as SelectedEmbeddingSourceVariant,  # noqa: PLC0414
@@ -35,6 +39,8 @@ from services.entities.model_billing_mapping import SelectedSourceVariant as Sel
 from services.entities.model_billing_mapping import SourceParameterContract as SourceParameterContract  # noqa: PLC0414
 from services.entities.model_billing_mapping import model_schema_digest as model_schema_digest  # noqa: PLC0414
 from services.entities.model_billing_migration import StableMigrationSourceProviderOwnership
+from services.entities.model_billing_xai_mapping import SelectedXAISourceVariant as SelectedXAISourceVariant  # noqa: PLC0414
+from services.entities.model_billing_xai_mapping import SourceXAIVariantMapping, XAISourceSettings
 from services.model_billing_anthropic_adapter import AnthropicSourceContract as AnthropicSourceContract  # noqa: PLC0414
 from services.model_billing_anthropic_adapter import anthropic_source_marker as anthropic_source_marker  # noqa: PLC0414
 from services.model_billing_anthropic_adapter import build_anthropic_source_contract
@@ -42,6 +48,14 @@ from services.model_billing_anthropic_adapter import (
     restore_anthropic_source_contract as restore_anthropic_source_contract,  # noqa: PLC0414
 )
 from services.model_billing_migration_inventory import saved_dependency_inventory_policy
+from services.model_billing_openai_audio_adapter import (
+    OPENAI_AUDIO_SOURCE_UIDS,
+    OpenAIAudioSourceContract,
+    SourceAudioSettings,
+    build_openai_audio_source_contract,
+    openai_audio_source_marker,
+    restore_openai_audio_source_contract,
+)
 from services.model_billing_openai_chat_adapter import (
     OpenAIChatSourceContract,
     build_openai_chat_source_contract,
@@ -53,6 +67,18 @@ from services.model_billing_openai_credit_llm_adapter import (
     build_openai_credit_llm_source_contract,
     openai_credit_llm_source_marker,
     restore_openai_credit_llm_source_contract,
+)
+from services.model_billing_openai_credit_llm_v2_adapter import (
+    OpenAICreditLLMSourceV2Contract,
+)
+from services.model_billing_openai_credit_llm_v2_adapter import (
+    build_openai_credit_llm_source_contract as build_openai_credit_llm_v2_source_contract,
+)
+from services.model_billing_openai_credit_llm_v2_adapter import (
+    openai_credit_llm_source_marker as openai_credit_llm_v2_source_marker,
+)
+from services.model_billing_openai_credit_llm_v2_adapter import (
+    restore_openai_credit_llm_source_contract as restore_openai_credit_llm_v2_source_contract,
 )
 from services.model_billing_openai_embedding_adapter import (
     OPENAI_EMBEDDING_SOURCE_UIDS,
@@ -81,22 +107,51 @@ from services.model_billing_source_capability_policy import SourceCapabilityDecl
 from services.model_billing_source_capability_policy import (
     resolve_source_capability_policy as resolve_source_capability_policy,  # noqa: PLC0414
 )
+from services.model_billing_source_variants import SELECTED_SOURCE_VARIANT_TYPES as SELECTED_SOURCE_VARIANT_TYPES  # noqa: PLC0414
 from services.model_billing_source_variants import (
+    AudioSourceVariantContext,
     EmbeddingSourceVariantContext,
     MappingDeclaration,
     ModelMappingRevision,
     SelectedModelMapping,
+    SelectedSourceVariantMapping,
+    SourceContext,
     SourceVariantContext,
+    XAISourceVariantContext,
     source_endpoint_class,
 )
 from services.model_billing_source_variants import source_mapping_revision as parse_source_mapping_revision
 from services.model_billing_tts_adapter import TTSVoiceContract as TTSVoiceContract  # noqa: PLC0414
 from services.model_billing_tts_adapter import build_tts_voice_contract as build_tts_voice_contract  # noqa: PLC0414
 from services.model_billing_tts_adapter import normalize_tts_voice as normalize_tts_voice  # noqa: PLC0414
+from services.model_billing_xai_credit_source_adapter import (
+    XAI_CREDIT_SOURCE_UID,
+    XAICreditSourceContract,
+    XAICreditSourceSettings,
+    build_xai_credit_source_contract,
+    restore_xai_credit_source_contract,
+    xai_credit_source_marker,
+)
 
 type SourceIdentity = tuple[ModelType, str]
 type MappingIdentity = tuple[str, ModelType, str]
 type SchemaLookup = Callable[[ModelType, str, dict[str, Any]], AIModelEntity | None]
+
+
+def _xai_factory_settings(settings: XAISourceSettings) -> XAICreditSourceSettings:
+    """One closed boundary from V5 financial-safe facts to the frozen policy.
+
+    Registry/current/selection/cache inventories carry the explicit not_used
+    string. Only the exact pure source factory consumes its original None; this
+    never relaxes the shared canonical hash's prohibition on null/float values.
+    """
+    if type(settings) is not XAISourceSettings or settings.protocol_selector != "not_used":
+        raise ValueError("Invalid xAI source selector behavior")
+    return XAICreditSourceSettings(
+        source_base_is_set=settings.source_base_is_set,
+        request_metadata_enabled=settings.request_metadata_enabled,
+        protocol_selector=None,
+    )
 
 
 def build_source_adapter_contract(
@@ -119,6 +174,29 @@ def build_source_adapter_contract(
         "source_plugin_unique_identifier": source_plugin_unique_identifier,
         "expected_source_schema_digest": mapping.source_schema_digest,
     }
+    if isinstance(mapping, SelectedAudioSourceVariant):
+        audio_contract = build_openai_audio_source_contract(
+            **arguments,
+            source_schema=source_schema,
+            expected_source_runtime_schema_digest=mapping.variant.source_runtime_schema_digest,
+            target_model=mapping.target.model,
+            source_settings=SourceAudioSettings(**mapping.variant.source_settings.model_dump()),
+        )
+        if audio_contract != restore_variant_source_contract(mapping):
+            raise ValueError("Audio source variant evidence changed")
+        return audio_contract
+    if isinstance(mapping, SelectedXAISourceVariant):
+        xai_contract = build_xai_credit_source_contract(
+            **arguments,
+            source_schema=source_schema,
+            expected_source_runtime_schema_digest=mapping.variant.source_runtime_schema_digest,
+            target_model=mapping.target.model,
+            source_settings=_xai_factory_settings(mapping.variant.source_settings),
+            source_endpoint_class=mapping.variant.source_endpoint_class,
+        )
+        if xai_contract != restore_variant_source_contract(mapping):
+            raise ValueError("xAI source variant evidence changed")
+        return xai_contract
     if isinstance(mapping, SelectedEmbeddingSourceVariant):
         embedding_contract = build_openai_embedding_source_contract(
             **arguments,
@@ -134,8 +212,18 @@ def build_source_adapter_contract(
         return embedding_contract
     if isinstance(mapping, SelectedSourceVariant):
         settings = mapping.variant.source_settings
-        if mapping.parameter_adapter.id == "openai_credit_llm_source_v1":
-            contract: SourceParameterContract = build_openai_credit_llm_source_contract(
+        contract: SourceParameterContract
+        if mapping.parameter_adapter.id == "openai_credit_llm_source_v2":
+            contract = build_openai_credit_llm_v2_source_contract(
+                **arguments,
+                source_schema=source_schema,
+                expected_source_runtime_schema_digest=mapping.variant.source_runtime_schema_digest,
+                target_model=mapping.target.model,
+                source_settings=settings,
+                source_endpoint_class="official_root" if settings.source_base_is_set else "unset",
+            )
+        elif mapping.parameter_adapter.id == "openai_credit_llm_source_v1":
+            contract = build_openai_credit_llm_source_contract(
                 **arguments,
                 source_schema=source_schema,
                 expected_source_runtime_schema_digest=mapping.variant.source_runtime_schema_digest,
@@ -206,10 +294,16 @@ def source_parameter_marker(
         "source_model": source_model,
         "target_model": target_model,
     }
+    if isinstance(contract, OpenAIAudioSourceContract):
+        return openai_audio_source_marker(contract, **arguments, model_type=model_type)
+    if isinstance(contract, XAICreditSourceContract):
+        return xai_credit_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, OpenAIChatSourceContract):
         return openai_chat_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, OpenAICreditLLMSourceContract):
         return openai_credit_llm_source_marker(contract, **arguments, model_type=model_type)
+    if isinstance(contract, OpenAICreditLLMSourceV2Contract):
+        return openai_credit_llm_v2_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, OpenAIProvider042SourceContract):
         return openai_provider042_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, OpenAIEmbeddingSourceContract):
@@ -423,6 +517,8 @@ def mapped_dynamic_source_candidates(
     revision: str,
     source_fact: HostedSourceVariantFact | None = None,
     embedding_source_fact: HostedEmbeddingSourceFact | None = None,
+    audio_source_fact: HostedAudioSourceFact | None = None,
+    xai_source_fact: HostedXAISourceFact | None = None,
     allow_source_variants: bool = False,
 ) -> tuple[HostedSourceSchemaCandidate, ...]:
     """Plan bounded source lookups; this policy never performs RPC or inference."""
@@ -448,6 +544,8 @@ def mapped_dynamic_source_candidates(
                 source_uid=getattr(provider, "plugin_unique_identifier", ""),
                 fact=source_fact,
                 embedding_fact=embedding_source_fact,
+                audio_fact=audio_source_fact,
+                xai_fact=xai_source_fact,
             )
         except ValueError:
             continue
@@ -485,6 +583,8 @@ def mapping_has_required_operations(mapping: SelectedModelMapping) -> bool:
     elif mapping.source.model_type == ModelType.TEXT_EMBEDDING:
         # ModelType uses hyphens, while daemon operations use underscores.
         required = {"model/schema", "text_embedding/invoke", "text_embedding/num_tokens"}
+    elif isinstance(mapping, SelectedAudioSourceVariant) and mapping.source.model_type is ModelType.TTS:
+        required.add("tts/model/voices")
     return required <= set(mapping.operations)
 
 
@@ -636,6 +736,8 @@ def additional_hosted_availability(
     source_uid: str = "",
     source_fact: HostedSourceVariantFact | None = None,
     embedding_source_fact: HostedEmbeddingSourceFact | None = None,
+    audio_source_fact: HostedAudioSourceFact | None = None,
+    xai_source_fact: HostedXAISourceFact | None = None,
     allow_source_variants: bool = False,
 ) -> HostedCompatibilityAvailability | None:
     """Build trusted hosted availability using explicit, frozen contracts.
@@ -688,6 +790,8 @@ def additional_hosted_availability(
                             source_uid=source_uid,
                             fact=source_fact,
                             embedding_fact=embedding_source_fact,
+                            audio_fact=audio_source_fact,
+                            xai_fact=xai_source_fact,
                             schema=schema,
                         )
                         if registry is not None
@@ -828,6 +932,125 @@ def hosted_embedding_source_fact(
     )
 
 
+def hosted_audio_source_fact(
+    *, provider: str, source_uid: str, models: Sequence[AIModelEntity], credentials: object
+) -> HostedAudioSourceFact | None:
+    """Exact042/110 audio ignores both raw flags, including their absent state.
+
+    This is positive source implementation behavior from an actual SYSTEM dict,
+    not a false raw flag or a source URL/key retained for the managed request.
+    """
+    if (
+        str(ModelProviderID(provider)) != "langgenius/openai/openai"
+        or source_uid not in OPENAI_AUDIO_SOURCE_UIDS.values()
+        or not isinstance(credentials, dict)
+    ):
+        return None
+    return HostedAudioSourceFact(
+        provider=str(ModelProviderID(provider)),
+        plugin_unique_identifier=source_uid,
+        catalog_schema_digests=tuple(
+            (item.model_type, item.model, model_schema_digest(item))
+            for item in models
+            if item.model_type in {ModelType.TTS, ModelType.SPEECH2TEXT}
+        ),
+        source_endpoint_class=source_endpoint_class(source_uid, credentials.get("openai_api_base")),
+        api_protocol_behavior="not_used",
+        request_metadata_behavior="not_used",
+    )
+
+
+def hosted_xai_source_fact(
+    *, provider: str, source_uid: str, models: Sequence[AIModelEntity], credentials: object
+) -> HostedXAISourceFact | None:
+    """Only exact x027 SYSTEM credentials can attest its finite source settings.
+
+    The source has no protocol/metadata credential fields. Do not manufacture
+    an OpenAI raw flag or propagate unknown credential configuration here.
+    Its official endpoint must be the actual exact /v1 literal, not truthiness.
+    """
+    if (
+        str(ModelProviderID(provider)) != "langgenius/x/x"
+        or source_uid != XAI_CREDIT_SOURCE_UID
+        or not isinstance(credentials, dict)
+        or set(credentials) - {"api_key", "endpoint_url", "model"}
+    ):
+        return None
+    base = credentials.get("endpoint_url")
+    endpoint: Literal["unset", "official_root", "unreviewed"] = "unreviewed"
+    if base is None or type(base) is str and base == "":
+        endpoint = "unset"
+    elif type(base) is str and base == "https://api.x.ai/v1":
+        endpoint = "official_root"
+    return HostedXAISourceFact(
+        provider=str(ModelProviderID(provider)),
+        plugin_unique_identifier=source_uid,
+        catalog_schema_digests=tuple(
+            (item.model_type, item.model, model_schema_digest(item))
+            for item in models
+            if item.model_type is ModelType.LLM
+        ),
+        source_endpoint_class=endpoint,
+        source_base_is_set=bool(base),
+        request_metadata_enabled=False,
+        protocol_selector="not_used",
+    )
+
+
+def audio_source_variant_context(
+    fact: HostedAudioSourceFact | None, *, provider: str, source_uid: str, schema: AIModelEntity | None = None
+) -> AudioSourceVariantContext | None:
+    if (
+        type(fact) is not HostedAudioSourceFact
+        or fact.provider != str(ModelProviderID(provider))
+        or fact.plugin_unique_identifier != source_uid
+        or fact.source_endpoint_class not in {"unset", "official_root"}
+        or fact.api_protocol_behavior != "not_used"
+        or fact.request_metadata_behavior != "not_used"
+    ):
+        return None
+    if schema is not None and [
+        digest
+        for kind, model, digest in fact.catalog_schema_digests
+        if (kind, model) == (schema.model_type, schema.model)
+    ] != [model_schema_digest(schema)]:
+        return None
+    return AudioSourceVariantContext(
+        source_uid,
+        AudioSourceSettings(
+            source_endpoint_class=fact.source_endpoint_class,
+            api_protocol_behavior=fact.api_protocol_behavior,
+            request_metadata_behavior=fact.request_metadata_behavior,
+        ),
+    )
+
+
+def xai_source_variant_context(
+    fact: HostedXAISourceFact | None, *, provider: str, source_uid: str, schema: AIModelEntity | None = None
+) -> XAISourceVariantContext | None:
+    if (
+        type(fact) is not HostedXAISourceFact
+        or fact.provider != str(ModelProviderID(provider))
+        or fact.plugin_unique_identifier != source_uid
+        or fact.source_endpoint_class != "official_root"
+        or fact.source_base_is_set is not True
+        or fact.request_metadata_enabled is not False
+        or fact.protocol_selector != "not_used"
+    ):
+        return None
+    if schema is not None and [
+        digest
+        for kind, model, digest in fact.catalog_schema_digests
+        if (kind, model) == (schema.model_type, schema.model)
+    ] != [model_schema_digest(schema)]:
+        return None
+    return XAISourceVariantContext(
+        source_uid,
+        XAISourceSettings(source_base_is_set=True, request_metadata_enabled=False, protocol_selector="not_used"),
+        "official_root",
+    )
+
+
 def hosted_source_variant_fact(
     *, provider: str, source_uid: str, models: Sequence[AIModelEntity], credentials: object
 ) -> HostedSourceVariantFact | None:
@@ -901,7 +1124,7 @@ def embedding_source_variant_context(
 
 
 def restore_variant_source_contract(
-    mapping: SelectedSourceVariant | SelectedEmbeddingSourceVariant,
+    mapping: SelectedSourceVariantMapping,
 ) -> SourceParameterContract:
     variant = mapping.variant
     marker = {
@@ -918,6 +1141,21 @@ def restore_variant_source_contract(
         "model_type": mapping.source.model_type,
         "target_model": mapping.target.model,
     }
+    if isinstance(mapping, SelectedAudioSourceVariant):
+        return restore_openai_audio_source_contract(
+            marker,
+            **arguments,
+            source_settings=SourceAudioSettings(**mapping.variant.source_settings.model_dump()),
+            expected_source_runtime_schema_digest=variant.source_runtime_schema_digest,
+        )
+    if isinstance(mapping, SelectedXAISourceVariant):
+        return restore_xai_credit_source_contract(
+            marker,
+            **arguments,
+            source_settings=_xai_factory_settings(mapping.variant.source_settings),
+            source_endpoint_class=mapping.variant.source_endpoint_class,
+            expected_source_runtime_schema_digest=variant.source_runtime_schema_digest,
+        )
     if isinstance(mapping, SelectedEmbeddingSourceVariant):
         contract = restore_openai_embedding_source_contract(
             marker,
@@ -936,8 +1174,17 @@ def restore_variant_source_contract(
             raise ValueError("Embedding source variant profile mismatch")
         return contract
     settings = mapping.variant.source_settings
-    if variant.parameter_adapter.id == "openai_credit_llm_source_v1":
-        contract: SourceParameterContract = restore_openai_credit_llm_source_contract(
+    contract: SourceParameterContract
+    if variant.parameter_adapter.id == "openai_credit_llm_source_v2":
+        contract = restore_openai_credit_llm_v2_source_contract(
+            marker,
+            **arguments,
+            source_settings=settings,
+            source_endpoint_class="official_root" if settings.source_base_is_set else "unset",
+            expected_source_runtime_schema_digest=variant.source_runtime_schema_digest,
+        )
+    elif variant.parameter_adapter.id == "openai_credit_llm_source_v1":
+        contract = restore_openai_credit_llm_source_contract(
             marker,
             **arguments,
             source_settings=settings,
@@ -1044,7 +1291,7 @@ def validate_frozen_mapping_evidence(
         source_contract.source_schema_digest != mapping.source_schema_digest
         or (source_contract.adapter_id, source_contract.algorithm_revision, source_contract.rules_digest)
         != (adapter.id, adapter.revision, adapter.rules_digest)
-        or isinstance(mapping, (SelectedSourceVariant, SelectedEmbeddingSourceVariant))
+        or isinstance(mapping, SELECTED_SOURCE_VARIANT_TYPES)
         and source_contract != restore_variant_source_contract(mapping)
     ):
         raise ValueError("Source parameter mapping changed")
@@ -1057,15 +1304,24 @@ def resolve_source_mapping(
     source_uid: str,
     fact: HostedSourceVariantFact | None,
     embedding_fact: HostedEmbeddingSourceFact | None = None,
+    audio_fact: HostedAudioSourceFact | None = None,
+    xai_fact: HostedXAISourceFact | None = None,
     schema: AIModelEntity | None = None,
 ) -> SelectedModelMapping:
-    context = (
-        embedding_source_variant_context(embedding_fact, provider=identity[0], source_uid=source_uid, schema=schema)
-        if isinstance(registry.declarations.get(identity), SourceEmbeddingVariantMapping)
-        else source_variant_context(fact, provider=identity[0], source_uid=source_uid, schema=schema)
-    )
+    declaration = registry.declarations.get(identity)
+    context: SourceContext | None
+    if isinstance(declaration, SourceAudioVariantMapping):
+        context = audio_source_variant_context(audio_fact, provider=identity[0], source_uid=source_uid, schema=schema)
+    elif isinstance(declaration, SourceXAIVariantMapping):
+        context = xai_source_variant_context(xai_fact, provider=identity[0], source_uid=source_uid, schema=schema)
+    elif isinstance(declaration, SourceEmbeddingVariantMapping):
+        context = embedding_source_variant_context(
+            embedding_fact, provider=identity[0], source_uid=source_uid, schema=schema
+        )
+    else:
+        context = source_variant_context(fact, provider=identity[0], source_uid=source_uid, schema=schema)
     selected = registry.resolve(identity, context=context, schema=schema)
-    if isinstance(selected, (SelectedSourceVariant, SelectedEmbeddingSourceVariant)):
+    if isinstance(selected, SELECTED_SOURCE_VARIANT_TYPES):
         restore_variant_source_contract(selected)
     return selected
 

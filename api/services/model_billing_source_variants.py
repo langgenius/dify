@@ -23,6 +23,12 @@ from typing import Annotated, Literal
 from pydantic import Field, TypeAdapter
 
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from services.entities.model_billing_audio_mapping import (
+    AudioSourceSettings,
+    SelectedAudioSourceVariant,
+    SourceAudioVariantMapping,
+    SourceAudioVariantSelection,
+)
 from services.entities.model_billing_embedding_mapping import (
     EmbeddingSourceSettings,
     SelectedEmbeddingSourceVariant,
@@ -37,10 +43,41 @@ from services.entities.model_billing_mapping import (
     SourceVariantSettings,
     model_schema_digest,
 )
+from services.entities.model_billing_xai_mapping import (
+    SelectedXAISourceVariant,
+    SourceXAIVariantMapping,
+    SourceXAIVariantSelection,
+    XAISourceSettings,
+)
 
 type MappingIdentity = tuple[str, ModelType, str]
-type MappingDeclaration = ModelMapping | SourceVariantMapping | SourceEmbeddingVariantMapping
-type SelectedModelMapping = ModelMapping | SelectedSourceVariant | SelectedEmbeddingSourceVariant
+type MappingDeclaration = (
+    ModelMapping
+    | SourceVariantMapping
+    | SourceEmbeddingVariantMapping
+    | SourceAudioVariantMapping
+    | SourceXAIVariantMapping
+)
+type SelectedSourceVariantMapping = (
+    SelectedSourceVariant | SelectedEmbeddingSourceVariant | SelectedAudioSourceVariant | SelectedXAISourceVariant
+)
+type SelectedModelMapping = ModelMapping | SelectedSourceVariantMapping
+type SourceVariantSelectionPayload = (
+    SourceVariantSelection | SourceEmbeddingVariantSelection | SourceAudioVariantSelection | SourceXAIVariantSelection
+)
+
+SOURCE_VARIANT_DECLARATION_TYPES = (
+    SourceVariantMapping,
+    SourceEmbeddingVariantMapping,
+    SourceAudioVariantMapping,
+    SourceXAIVariantMapping,
+)
+SELECTED_SOURCE_VARIANT_TYPES = (
+    SelectedSourceVariant,
+    SelectedEmbeddingSourceVariant,
+    SelectedAudioSourceVariant,
+    SelectedXAISourceVariant,
+)
 
 
 def source_endpoint_class(source_uid: str, source_base: object) -> Literal["unset", "official_root", "unreviewed"]:
@@ -79,16 +116,31 @@ class EmbeddingSourceVariantContext:
 
 
 @dataclass(frozen=True, slots=True)
+class AudioSourceVariantContext:
+    source_plugin_uid: str
+    settings: AudioSourceSettings
+
+
+@dataclass(frozen=True, slots=True)
+class XAISourceVariantContext:
+    source_plugin_uid: str
+    settings: XAISourceSettings
+    source_endpoint_class: Literal["official_root"]
+
+
+type SourceContext = (
+    SourceVariantContext | EmbeddingSourceVariantContext | AudioSourceVariantContext | XAISourceVariantContext
+)
+
+
+@dataclass(frozen=True, slots=True)
 class ModelMappingRevision:
     revision: str
     declarations: Mapping[MappingIdentity, MappingDeclaration]
 
     @property
     def has_variants(self) -> bool:
-        return any(
-            isinstance(item, (SourceVariantMapping, SourceEmbeddingVariantMapping))
-            for item in self.declarations.values()
-        )
+        return any(isinstance(item, SOURCE_VARIANT_DECLARATION_TYPES) for item in self.declarations.values())
 
     @property
     def digest(self) -> str:
@@ -97,7 +149,7 @@ class ModelMappingRevision:
         for key in sorted(self.declarations):
             declaration = self.declarations[key]
             record = declaration.model_dump(mode="json")
-            if isinstance(declaration, (SourceVariantMapping, SourceEmbeddingVariantMapping)):
+            if isinstance(declaration, SOURCE_VARIANT_DECLARATION_TYPES):
                 record["variants"] = [
                     item.model_dump(mode="json")
                     for item in sorted(declaration.variants, key=lambda item: item.variant_id)
@@ -114,7 +166,7 @@ class ModelMappingRevision:
         self,
         identity: MappingIdentity,
         *,
-        context: SourceVariantContext | EmbeddingSourceVariantContext | None,
+        context: SourceContext | None,
         schema: AIModelEntity | None = None,
     ) -> SelectedModelMapping:
         declaration = self.declarations.get(identity)
@@ -124,8 +176,32 @@ class ModelMappingRevision:
             return declaration
         if context is None:
             raise ValueError("Positive source variant facts required")
-        selected: SelectedSourceVariant | SelectedEmbeddingSourceVariant
-        if isinstance(declaration, SourceEmbeddingVariantMapping):
+        selected: SelectedSourceVariantMapping
+        if isinstance(declaration, SourceAudioVariantMapping):
+            if not isinstance(context, AudioSourceVariantContext):
+                raise ValueError("Source audio fact family changed")
+            audio_matches = [
+                item
+                for item in declaration.variants
+                if item.source_plugin_uid == context.source_plugin_uid and item.source_settings == context.settings
+            ]
+            if len(audio_matches) != 1:
+                raise ValueError("Unknown or ambiguous audio source variant")
+            selected = SelectedAudioSourceVariant(declaration, audio_matches[0], self.digest)
+        elif isinstance(declaration, SourceXAIVariantMapping):
+            if not isinstance(context, XAISourceVariantContext):
+                raise ValueError("Source xAI fact family changed")
+            xai_matches = [
+                item
+                for item in declaration.variants
+                if item.source_plugin_uid == context.source_plugin_uid
+                and item.source_settings == context.settings
+                and item.source_endpoint_class == context.source_endpoint_class
+            ]
+            if len(xai_matches) != 1:
+                raise ValueError("Unknown or ambiguous xAI source variant")
+            selected = SelectedXAISourceVariant(declaration, xai_matches[0], self.digest)
+        elif isinstance(declaration, SourceEmbeddingVariantMapping):
             if not isinstance(context, EmbeddingSourceVariantContext):
                 raise ValueError("Source variant fact family changed")
             embedding_matches = [
@@ -154,10 +230,20 @@ class ModelMappingRevision:
             raise ValueError("Source variant catalog changed")
         return selected
 
-    def selected_prospective(self) -> tuple[SelectedSourceVariant | SelectedEmbeddingSourceVariant, ...]:
-        result: list[SelectedSourceVariant | SelectedEmbeddingSourceVariant] = []
+    def selected_prospective(self) -> tuple[SelectedSourceVariantMapping, ...]:
+        result: list[SelectedSourceVariantMapping] = []
         for _, declaration in sorted(self.declarations.items()):
-            if isinstance(declaration, SourceEmbeddingVariantMapping):
+            if isinstance(declaration, SourceAudioVariantMapping):
+                result.extend(
+                    SelectedAudioSourceVariant(declaration, variant, self.digest)
+                    for variant in sorted(declaration.variants, key=lambda item: item.variant_id)
+                )
+            elif isinstance(declaration, SourceXAIVariantMapping):
+                result.extend(
+                    SelectedXAISourceVariant(declaration, variant, self.digest)
+                    for variant in sorted(declaration.variants, key=lambda item: item.variant_id)
+                )
+            elif isinstance(declaration, SourceEmbeddingVariantMapping):
                 result.extend(
                     SelectedEmbeddingSourceVariant(declaration, variant, self.digest)
                     for variant in sorted(declaration.variants, key=lambda item: item.variant_id)
@@ -175,8 +261,21 @@ class ModelMappingRevision:
             if payload is not None:
                 raise ValueError("V1 mapping cannot carry a source variant")
             return declaration
-        record: SourceVariantSelection | SourceEmbeddingVariantSelection
-        if isinstance(declaration, SourceEmbeddingVariantMapping):
+        record: SourceVariantSelectionPayload
+        if isinstance(declaration, SourceAudioVariantMapping):
+            record = SourceAudioVariantSelection.model_validate(payload)
+            selected = self.resolve(
+                identity, context=AudioSourceVariantContext(record.source_plugin_uid, record.source_settings)
+            )
+        elif isinstance(declaration, SourceXAIVariantMapping):
+            record = SourceXAIVariantSelection.model_validate(payload)
+            selected = self.resolve(
+                identity,
+                context=XAISourceVariantContext(
+                    record.source_plugin_uid, record.source_settings, record.source_endpoint_class
+                ),
+            )
+        elif isinstance(declaration, SourceEmbeddingVariantMapping):
             record = SourceEmbeddingVariantSelection.model_validate(payload)
             selected = self.resolve(
                 identity, context=EmbeddingSourceVariantContext(record.source_plugin_uid, record.source_settings)
@@ -186,17 +285,35 @@ class ModelMappingRevision:
             selected = self.resolve(
                 identity, context=SourceVariantContext(record.source_plugin_uid, record.source_settings)
             )
-        if (
-            not isinstance(selected, (SelectedSourceVariant, SelectedEmbeddingSourceVariant))
-            or selection_payload(selected) != record
-        ):
+        if not isinstance(selected, SELECTED_SOURCE_VARIANT_TYPES) or selection_payload(selected) != record:
             raise ValueError("Frozen source variant changed")
         return selected
 
 
 def selection_payload(
-    selected: SelectedSourceVariant | SelectedEmbeddingSourceVariant,
-) -> SourceVariantSelection | SourceEmbeddingVariantSelection:
+    selected: SelectedSourceVariantMapping,
+) -> SourceVariantSelectionPayload:
+    if isinstance(selected, SelectedAudioSourceVariant):
+        return SourceAudioVariantSelection(
+            schema_version=4,
+            variant_id=selected.variant.variant_id,
+            source_plugin_uid=selected.variant.source_plugin_uid,
+            source_settings=selected.variant.source_settings,
+            source_schema_digest=selected.variant.source_schema_digest,
+            source_runtime_schema_digest=selected.variant.source_runtime_schema_digest,
+            registry_digest=selected.registry_digest,
+        )
+    if isinstance(selected, SelectedXAISourceVariant):
+        return SourceXAIVariantSelection(
+            schema_version=5,
+            variant_id=selected.variant.variant_id,
+            source_plugin_uid=selected.variant.source_plugin_uid,
+            source_settings=selected.variant.source_settings,
+            source_endpoint_class=selected.variant.source_endpoint_class,
+            source_schema_digest=selected.variant.source_schema_digest,
+            source_runtime_schema_digest=selected.variant.source_runtime_schema_digest,
+            registry_digest=selected.registry_digest,
+        )
     if isinstance(selected, SelectedEmbeddingSourceVariant):
         return SourceEmbeddingVariantSelection(
             schema_version=3,
@@ -226,7 +343,11 @@ def source_mapping_revision(
     records = TypeAdapter(
         list[
             Annotated[
-                ModelMapping | SourceVariantMapping | SourceEmbeddingVariantMapping,
+                ModelMapping
+                | SourceVariantMapping
+                | SourceEmbeddingVariantMapping
+                | SourceAudioVariantMapping
+                | SourceXAIVariantMapping,
                 Field(discriminator="schema_version"),
             ]
         ]

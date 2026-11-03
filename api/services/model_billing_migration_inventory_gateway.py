@@ -40,7 +40,7 @@ from graphon.model_runtime.entities.model_entities import ModelPropertyKey, Mode
 from models.provider_ids import ModelProviderID
 from repositories.model_billing_dependency_repository import ModelBillingDependencyRepository
 from services.entities.model_billing_embedding_mapping import SelectedEmbeddingSourceVariant
-from services.entities.model_billing_mapping import SelectedSourceVariant, SourceParameterContract
+from services.entities.model_billing_mapping import SourceParameterContract
 from services.model_billing_dependency_inventory import DependencyInventoryPolicy, SavedModelReference
 from services.model_billing_dependency_provenance import (
     ModelDependencySelectionQuery,
@@ -49,9 +49,14 @@ from services.model_billing_dependency_provenance import (
     stable_source_ownership,
 )
 from services.model_billing_mapping_service import (
+    SELECTED_SOURCE_VARIANT_TYPES,
+    SelectedAudioSourceVariant,
+    SelectedXAISourceVariant,
     build_source_adapter_contract,
+    hosted_audio_source_fact,
     hosted_embedding_source_fact,
     hosted_source_variant_fact,
+    hosted_xai_source_fact,
     mapping_has_required_operations,
     model_schema_digest,
     partition_known_unavailable_sources,
@@ -319,6 +324,18 @@ class SavedDependencyMigrationEvidenceGateway:
                         models=[schema] if schema is not None else [],
                         credentials=credentials if actual_system_settings is not None else None,
                     ),
+                    audio_fact=hosted_audio_source_fact(
+                        provider=provider,
+                        source_uid=binding.plugin_unique_identifier,
+                        models=[schema] if schema is not None else [],
+                        credentials=credentials if actual_system_settings is not None else None,
+                    ),
+                    xai_fact=hosted_xai_source_fact(
+                        provider=provider,
+                        source_uid=binding.plugin_unique_identifier,
+                        models=[schema] if schema is not None else [],
+                        credentials=credentials if actual_system_settings is not None else None,
+                    ),
                     schema=schema,
                 )
             except ValueError:
@@ -342,7 +359,7 @@ class SavedDependencyMigrationEvidenceGateway:
                 "target_model": mapping.target.model,
                 "source_mode": mapping.source.mode,
             }
-            if isinstance(mapping, (SelectedSourceVariant, SelectedEmbeddingSourceVariant)):
+            if isinstance(mapping, SELECTED_SOURCE_VARIANT_TYPES):
                 item["source_variant"] = selection_payload(mapping).model_dump(mode="json")
             if kind == ModelType.TEXT_EMBEDDING:
                 item["embedding_dimensions"] = embedding_dimensions_contract(schema)
@@ -381,7 +398,7 @@ class SavedDependencyMigrationEvidenceGateway:
                     )
                     settings = (
                         None
-                        if isinstance(mapping, (SelectedSourceVariant, SelectedEmbeddingSourceVariant))
+                        if isinstance(mapping, SELECTED_SOURCE_VARIANT_TYPES)
                         else source_parameter_public_settings(contract, source_credentials=credentials)
                     )
                     if settings is not None:
@@ -455,7 +472,7 @@ class SavedDependencyMigrationEvidenceGateway:
                     item.get("source_variant"),
                 )
                 if (
-                    not isinstance(selected, (SelectedSourceVariant, SelectedEmbeddingSourceVariant))
+                    not isinstance(selected, SELECTED_SOURCE_VARIANT_TYPES)
                     or item.get("evidence") != "reviewed_target_profile_only"
                 ):
                     raise ModelRouteUnmapped
@@ -471,7 +488,15 @@ class SavedDependencyMigrationEvidenceGateway:
                 raise ModelRouteUnmapped
         elif prospective:
             raise ModelRouteUnmapped
-        for source in (*sources, *prospective):
+        # Collection provenance is authority here, never a label copied into a
+        # source row. An actual installed source cannot opt out of its UID,
+        # marker and runtime proof by claiming to be prospective target-only.
+        for source, prospective_only in (
+            *((item, False) for item in sources),
+            *((item, True) for item in prospective),
+        ):
+            if not prospective_only and source.get("evidence") == "reviewed_target_profile_only":
+                raise ModelRouteUnmapped
             provider, model = str(source["provider"]), str(source["model"])
             kind = ModelType(source["model_type"])
             mapping = registry.restore_selection((provider, kind, model), source.get("source_variant"))
@@ -480,9 +505,9 @@ class SavedDependencyMigrationEvidenceGateway:
             ):
                 raise ModelRouteUnavailable
             contract = None
-            if isinstance(mapping, (SelectedSourceVariant, SelectedEmbeddingSourceVariant)):
+            if isinstance(mapping, SELECTED_SOURCE_VARIANT_TYPES):
                 contract = restore_variant_source_contract(mapping)
-                if source.get("evidence") != "reviewed_target_profile_only":
+                if not prospective_only:
                     marker = source.get("source_parameter_contract")
                     if (
                         source.get("source_plugin_uid") != mapping.variant.source_plugin_uid
@@ -533,10 +558,24 @@ class SavedDependencyMigrationEvidenceGateway:
             )
             if schema is None or schema.model_type != kind:
                 raise ModelRouteUnmapped
+            if (
+                isinstance(mapping, (SelectedAudioSourceVariant, SelectedXAISourceVariant))
+                and schema.model != mapping.target.model
+            ):
+                # These closed families have no alias exception. Do not erase
+                # an unexpected target identity by normalizing the hash below.
+                raise ModelRouteUnmapped
+            if mapping.parameter_adapter.id == "openai_credit_llm_source_v2" and schema.model not in {
+                mapping.source.model,
+                mapping.target.model,
+            }:
+                # V2 has only two reviewed dated042 aliases. Even there, a
+                # returned unknown physical model is not equivalent metadata.
+                raise ModelRouteUnmapped
             if contract is not None:
                 if (
                     contract.source_runtime_schema_digest is not None
-                    and source.get("evidence") != "reviewed_target_profile_only"
+                    and not prospective_only
                     and source.get("source_runtime_schema_digest") != contract.source_runtime_schema_digest
                 ):
                     raise ModelRouteUnmapped
@@ -551,10 +590,7 @@ class SavedDependencyMigrationEvidenceGateway:
             # Neither path maps or infers a vector width from a model name.
             if (
                 kind == ModelType.TEXT_EMBEDDING
-                and not (
-                    isinstance(mapping, SelectedEmbeddingSourceVariant)
-                    and source.get("evidence") == "reviewed_target_profile_only"
-                )
+                and not (isinstance(mapping, SelectedEmbeddingSourceVariant) and prospective_only)
                 and source["embedding_dimensions"] != embedding_dimensions_contract(schema)
             ):
                 raise ModelRouteUnmapped

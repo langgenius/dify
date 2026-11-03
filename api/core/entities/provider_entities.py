@@ -127,6 +127,31 @@ class HostedEmbeddingSourceFact:
     request_metadata_behavior: Literal["not_used"]
 
 
+@dataclass(frozen=True, slots=True)
+class HostedAudioSourceFact:
+    """Positive SYSTEM audio behavior; never raw False protocol/metadata guesses."""
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    source_endpoint_class: Literal["unset", "official_root", "unreviewed"]
+    api_protocol_behavior: Literal["not_used"]
+    request_metadata_behavior: Literal["not_used"]
+
+
+@dataclass(frozen=True, slots=True)
+class HostedXAISourceFact:
+    """Exact x0.0.27 public facts captured before replacing SYSTEM credentials."""
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    source_endpoint_class: Literal["unset", "official_root", "unreviewed"]
+    source_base_is_set: bool
+    request_metadata_enabled: bool
+    protocol_selector: Literal["not_used"]
+
+
 class SystemConfiguration(BaseModel):
     """
     Model class for provider system configuration.
@@ -143,6 +168,8 @@ class SystemConfiguration(BaseModel):
     _tokener_source_protocol_fact: HostedSourceProtocolFact | None = PrivateAttr(default=None)
     _tokener_source_variant_fact: HostedSourceVariantFact | None = PrivateAttr(default=None)
     _tokener_embedding_source_fact: HostedEmbeddingSourceFact | None = PrivateAttr(default=None)
+    _tokener_audio_source_fact: HostedAudioSourceFact | None = PrivateAttr(default=None)
+    _tokener_xai_source_fact: HostedXAISourceFact | None = PrivateAttr(default=None)
 
 
 class CustomProviderConfiguration(BaseModel):
