@@ -209,7 +209,6 @@ def _operation_contract_errors(payload):
     return errors
 
 
-@pytest.mark.timeout(150)  # Two cold, coverage-instrumented CLI exports each have a 60-second limit.
 @pytest.fixture(scope="module")
 def generated_specs(tmp_path_factory: pytest.TempPathFactory) -> list[Path]:
     """Spec files written once by ``generate_specs`` for the tests that only read them.
