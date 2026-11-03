@@ -480,8 +480,26 @@ class WorkflowAgentDifyToolsBuilder:
             description=description or self._description(tool_config, tool_runtime),
             runtime_parameters=self._runtime_parameters(tool_runtime, parameters),
             parameters=parameters,
-            parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),
+            parameters_json_schema=self._core_parameters_json_schema(tool_config, tool_runtime, parameters),
         )
+
+    @staticmethod
+    def _core_parameters_json_schema(
+        tool_config: AgentSoulDifyToolConfig,
+        tool_runtime: Tool,
+        parameters: list[DifyPluginToolParameter],
+    ) -> dict[str, Any]:
+        """Return the model-visible parameter schema for a core-routed tool.
+
+        Core tools normally receive their files from the platform, so
+        ``get_llm_parameters_json_schema()`` hides FILE / FILES / SYSTEM_FILES.
+        A workflow tool's file input is a Start-node variable that only the model can
+        fill, so for workflow tools we reuse the plugin transport's file-aware builder.
+        Other provider types keep the previous behaviour.
+        """
+        if tool_config.provider_type is ToolProviderType.WORKFLOW:
+            return WorkflowAgentDifyToolsBuilder._plugin_parameters_json_schema(tool_runtime, parameters)
+        return tool_runtime.get_llm_parameters_json_schema()
 
     @staticmethod
     def _credential_type(
