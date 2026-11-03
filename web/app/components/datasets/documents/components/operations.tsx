@@ -11,6 +11,7 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isDownloadableFileDocument } from '@/app/components/datasets/documents/document-source'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
@@ -28,6 +29,7 @@ type OperationsProps = {
     enabled?: boolean | null
     archived?: boolean | null
     data_source_type?: string | null
+    data_source_info?: Record<string, unknown> | null
     doc_form?: string | null
     display_status?: string | null
   }
@@ -59,7 +61,7 @@ const Operations = ({
     select: ({ deployment_edition }) => deployment_edition,
   })
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
-  const { id, name, data_source_type, display_status } = detail
+  const { id, name, data_source_type, data_source_info, display_status } = detail
   const enabled = detail.enabled ?? false
   const archived = detail.archived ?? false
   const { t } = useTranslation(['common', 'datasetDocuments'])
@@ -90,7 +92,8 @@ const Operations = ({
   const canShowRenameAction = canEdit && !archived
   const canShowSummaryAction = canEdit && !archived && isNonCloudEdition
   const canShowSettingsAction = canViewSettings
-  const canShowDownloadAction = canDownload && data_source_type === DataSourceType.FILE
+  const canShowDownloadAction =
+    canDownload && isDownloadableFileDocument(data_source_type, data_source_info)
   const canShowSyncAction =
     canEdit &&
     !archived &&

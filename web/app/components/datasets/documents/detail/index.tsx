@@ -278,6 +278,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       archived: documentDetail?.archived || false,
       id: documentId,
       data_source_type: documentDetail?.data_source_type || '',
+      data_source_info: documentDetail?.data_source_info,
       doc_form: documentDetail?.doc_form || '',
     }),
     [
@@ -286,6 +287,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       documentDetail?.archived,
       documentId,
       documentDetail?.data_source_type,
+      documentDetail?.data_source_info,
       documentDetail?.doc_form,
     ],
   )

@@ -396,6 +396,41 @@ describe('Operations', () => {
       })
     })
 
+    it('should keep a converted file downloadable after its source data refreshes', async () => {
+      const user = userEvent.setup()
+      const { rerender } = render(<Operations {...defaultProps} />)
+      await openPopover(user)
+      expect(
+        screen.getByRole('menuitem', { name: 'datasetDocuments.list.action.download' }),
+      ).toBeInTheDocument()
+
+      rerender(
+        <>
+          <Operations
+            {...defaultProps}
+            detail={{
+              ...defaultDetail,
+              data_source_type: 'local_file',
+              data_source_info: { real_file_id: 'file-1' },
+            }}
+          />
+          <AppToaster />
+        </>,
+      )
+      await user.click(
+        screen.getByRole('menuitem', { name: 'datasetDocuments.list.action.download' }),
+      )
+
+      await waitFor(() => {
+        expect(mockDownload).toHaveBeenCalledWith({
+          params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
+        })
+        expect(downloads).toEqual([
+          { url: 'https://example.com/download', fileName: 'Test Document' },
+        ])
+      })
+    })
+
     it('should show settings for archived non-file data source', async () => {
       const user = userEvent.setup()
       render(
