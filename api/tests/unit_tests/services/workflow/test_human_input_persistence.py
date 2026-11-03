@@ -196,10 +196,10 @@ def test_created_form_timeout_reaches_event_stream_in_same_database(form_databas
                 assert isinstance(run_event, EngineEvent)
                 yield run_event
 
-    engine: object = NodeEvents(Graph(root_node=node), node.runtime_state)
+    engine = NodeEvents(Graph(root_node=node), node.runtime_state)
     events = list(
         iter_dify_graph_engine_events(
-            engine,
+            engine,  # type: ignore[arg-type]
             human_form_reader=runtime.human_form_reader,
         )
     )

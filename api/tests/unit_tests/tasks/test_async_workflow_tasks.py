@@ -195,10 +195,11 @@ def test_execute_workflow_projects_the_persisted_workflow_before_generation(
 
     async_workflow_tasks._execute_workflow_common(
         WorkflowTaskData(workflow_trigger_log_id=trigger_log.id),
-        object(),
-        object(),
+        object(),  # type: ignore[arg-type]
+        object(),  # type: ignore[arg-type]
     )
 
+    assert generator.generate.call_args is not None
     execution_workflow = generator.generate.call_args.kwargs["workflow"]
     assert isinstance(execution_workflow, WorkflowSnapshot)
     assert execution_workflow == workflow_snapshot(workflow_model)
@@ -284,6 +285,7 @@ def test_resume_workflow_projects_the_persisted_workflow_before_resuming(
 
     async_workflow_tasks.resume_workflow_execution.run({"workflow_run_id": workflow_run.id})
 
+    assert generator.resume.call_args is not None
     resumed_workflow = generator.resume.call_args.kwargs["workflow"]
     assert isinstance(resumed_workflow, WorkflowSnapshot)
     assert resumed_workflow == workflow_snapshot(workflow_model)

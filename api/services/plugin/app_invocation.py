@@ -58,7 +58,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             if workflow is None:
                 raise ValueError("unexpected app type")
 
-            features_dict: dict[str, Any] = workflow.features_dict
+            features_dict: Mapping[str, Any] = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config_dict = cls._get_app_model_config_dict(app)

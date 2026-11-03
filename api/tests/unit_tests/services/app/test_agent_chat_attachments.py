@@ -71,7 +71,7 @@ def agent_database(
     TypeBase.metadata.create_all(
         engine,
         tables=[
-            model.__table__  # type: ignore[arg-type]
+            TypeBase.metadata.tables[model.__tablename__]
             for model in (App, Conversation, Message, MessageAgentThought, MessageFile, UploadFile)
         ],
     )
