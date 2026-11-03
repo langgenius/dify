@@ -232,6 +232,36 @@ def test_standalone_check_route_is_removed(client: FlaskClient, harness: Connect
     assert harness.auth.calls == []
 
 
+def test_connection_write_revision_is_independent_of_authorization_contract(
+    client: FlaskClient, harness: ConnectionHarness
+) -> None:
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    path = f"/api/connections/{connection.id}"
+    app_revision = harness.connection_revision
+    contract_revision = client.get(path + "/revision").get_json()["connection_revision"]
+    before = harness.repository.find(harness.context, connection.id)
+    assert before is not None
+    assert before.access.revision == 1
+
+    assert client.patch(path, json={"name": "Renamed"}).status_code == 200
+    renamed = harness.repository.find(harness.context, connection.id)
+    assert renamed is not None
+    assert renamed.access.revision == 2
+    assert harness.connection_revision == app_revision
+    assert client.get(path + "/revision").get_json()["connection_revision"] == contract_revision
+
+    replaced = client.patch(
+        path,
+        json={"credentials": {"api_key": "replacement"}, "connection_revision": contract_revision},
+    )
+    assert replaced.status_code == 200
+    current = harness.repository.find(harness.context, connection.id)
+    assert current is not None
+    assert current.access.revision == 3
+    assert harness.connection_revision == app_revision
+    assert client.get(path + "/revision").get_json()["connection_revision"] == contract_revision
+
+
 def test_provider_revision_is_available_after_the_authorization_node_is_removed(
     client: FlaskClient, harness: ConnectionHarness
 ) -> None:
