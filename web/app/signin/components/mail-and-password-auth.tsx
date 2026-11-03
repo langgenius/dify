@@ -102,7 +102,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
           required
           autoComplete="email"
           spellCheck={false}
-          placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+          placeholder={t(($) => $.emailPlaceholder, { ns: 'login' })}
         />
         <FieldError>
           {t(($) => $[email ? 'error.emailInValid' : 'error.emailEmpty'], { ns: 'login' })}
@@ -117,7 +117,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
             onValueChange={setPassword}
             required
             autoComplete="current-password"
-            placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
+            placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
           />
           <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
         </PasswordField>

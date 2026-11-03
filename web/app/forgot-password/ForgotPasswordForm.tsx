@@ -97,7 +97,7 @@ const ForgotPasswordForm = () => {
                   autoComplete="email"
                   spellCheck={false}
                   required
-                  placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+                  placeholder={t(($) => $.emailPlaceholder, { ns: 'login' })}
                 />
                 <FieldError>{t(($) => $['error.emailInValid'], { ns: 'login' })}</FieldError>
               </Field>
