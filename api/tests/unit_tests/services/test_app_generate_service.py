@@ -1003,7 +1003,7 @@ class TestAppGenerateServiceCases:
     # ---------------------------------------------------------------------------
     class TestGenerateSingleIteration(_RealSessionTest):
         def test_advanced_chat_mode(self, mocker: MockerFixture):
-            workflow = _make_workflow()
+            workflow = _make_workflow(node_types=("iteration",))
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             mocker.patch(
                 "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
@@ -1018,7 +1018,7 @@ class TestAppGenerateServiceCases:
             result = AppGenerateService.generate_single_iteration(
                 app_model=app,
                 user=_make_user(),
-                node_id="n1",
+                node_id="node-0",
                 args={"k": "v"},
                 session=session,
             )
@@ -1027,7 +1027,7 @@ class TestAppGenerateServiceCases:
             assert result == {"event": "iteration"}
 
         def test_workflow_mode(self, mocker: MockerFixture):
-            workflow = _make_workflow()
+            workflow = _make_workflow(node_types=("iteration",))
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             mocker.patch(
                 "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
@@ -1042,7 +1042,7 @@ class TestAppGenerateServiceCases:
             result = AppGenerateService.generate_single_iteration(
                 app_model=app,
                 user=_make_user(),
-                node_id="n1",
+                node_id="node-0",
                 args={"k": "v"},
                 session=session,
             )
@@ -1062,7 +1062,7 @@ class TestAppGenerateServiceCases:
     # ---------------------------------------------------------------------------
     class TestGenerateSingleLoop(_RealSessionTest):
         def test_advanced_chat_mode(self, mocker: MockerFixture):
-            workflow = _make_workflow()
+            workflow = _make_workflow(node_types=("loop",))
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             mocker.patch(
                 "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
@@ -1077,7 +1077,7 @@ class TestAppGenerateServiceCases:
             result = AppGenerateService.generate_single_loop(
                 app_model=app,
                 user=_make_user(),
-                node_id="n1",
+                node_id="node-0",
                 args=MagicMock(),
                 session=session,
             )
@@ -1086,7 +1086,7 @@ class TestAppGenerateServiceCases:
             assert result == {"event": "loop"}
 
         def test_workflow_mode(self, mocker: MockerFixture):
-            workflow = _make_workflow()
+            workflow = _make_workflow(node_types=("loop",))
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             mocker.patch(
                 "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
@@ -1101,7 +1101,7 @@ class TestAppGenerateServiceCases:
             result = AppGenerateService.generate_single_loop(
                 app_model=app,
                 user=_make_user(),
-                node_id="n1",
+                node_id="node-0",
                 args=MagicMock(),
                 session=session,
             )
