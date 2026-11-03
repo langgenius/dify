@@ -81,7 +81,7 @@ from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import RuntimeState
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models import Account, Conversation, EndUser, Message, MessageFile
 from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus
 from models.execution_extra_content import HumanInputContent
@@ -202,7 +202,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._conversation_id = conversation.id
         self._conversation_mode = conversation.mode
         self._message_id = message.id
-        self._message_created_at = int(message.created_at.timestamp())
+        self._message_created_at = to_utc_timestamp(message.created_at)
         self._conversation_name_generate_thread: Thread | None = None
         self._recorded_files: list[Mapping[str, Any]] = []
         self._workflow_run_id: str = ""
