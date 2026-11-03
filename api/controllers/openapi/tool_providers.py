@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Generator, Iterable, Sequence
+from collections.abc import Generator, Iterable, Sequence
 from contextlib import contextmanager
 from http import HTTPStatus
 from typing import Final
@@ -34,7 +34,6 @@ from controllers.openapi._models import (
 from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import ADMIN_ROLES, WORKSPACE_READ_GUARDS, workspace_write_guards
-from core.db.session_factory import session_factory
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import ToolParameter
@@ -44,10 +43,7 @@ from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from extensions.ext_application_services import application_services
-from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-from services.tools.mcp_tools_manage_service import MCPToolManageService
-from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 _PROVIDER_EXAMPLE: Final = "langgenius/tavily/tavily"
 _ToolProviderController = BuiltinToolProviderController | PluginToolProviderController
@@ -116,21 +112,6 @@ def _visible_credential(ctx: Context, provider: str, credential_id: str) -> Tool
 def _write_response(ctx: Context, provider: str, credential_id: str) -> CredentialWriteResponse:
     credential = _visible_credential(ctx, provider, credential_id)
     return CredentialWriteResponse(id=credential.id, name=credential.name, active=credential.is_default)
-
-
-def _mcp_providers(ctx: Context) -> list[ToolProviderApiEntity]:
-    with session_factory.create_session() as session:
-        return MCPToolManageService(session=session).list_providers(tenant_id=ctx.workspace.id, include_sensitive=False)
-
-
-_TOOL_SOURCES: Final[dict[ToolSource, Callable[[Context], list[ToolProviderApiEntity]]]] = {
-    ToolSource.BUILTIN: lambda ctx: BuiltinToolManageService.list_builtin_tools(ctx.account.id, ctx.workspace.id),
-    ToolSource.WORKFLOW: lambda ctx: WorkflowToolManageService.list_tenant_workflow_tools(
-        ctx.account.id, ctx.workspace.id
-    ),
-    ToolSource.API: lambda ctx: ApiToolManageService.list_api_tools(ctx.workspace.id),
-    ToolSource.MCP: _mcp_providers,
-}
 
 
 def _inputs(parameters: Sequence[ToolParameter], form: ToolParameter.ToolParameterForm) -> dict[str, ToolInputValue]:
@@ -203,7 +184,9 @@ class ToolsApi(Resource):
     )
     def get(self, ctx: Context, workspace_id: str, *, query: ToolListQuery):
         sources = [query.provider_type] if query.provider_type else list(ToolSource)
-        providers = [p for source in sources for p in _TOOL_SOURCES[source](ctx)]
+        providers = [
+            p for source in sources for p in source.list_providers(tenant_id=ctx.workspace.id, user_id=ctx.account.id)
+        ]
         rows = tool_rows(providers, words=query.query, provider=query.provider, language=ctx.account.interface_language)
         page = ToolListResponse.page_of(rows, query=query)
         unready = sorted({r.provider for r in page.data if not r.configured and r.provider_type == ToolSource.BUILTIN})
