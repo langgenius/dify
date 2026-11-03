@@ -60,7 +60,7 @@ Browser Mode remains a focused component or feature test and currently proves Ch
 
 ## Assert Behavior, Not Implementation
 
-- Drive state transitions through props, user interaction, URL changes, or public APIs.
+- Set initial state through render-time inputs (props, `initialStoreState`, seeded query data), not `store.setState` or internal setters after render. Drive mid-test transitions through user actions or public APIs, including prop and URL updates. Seed a reachable non-empty state before testing reset or clear.
 - Assert rendered UI, ARIA state, navigation, persistence, network-boundary calls, or another observable result.
 - For a reset-or-persistence regression in a hidden surface, exercise the public transition: open, modify, close and wait for the surface to disappear, then reopen. Assert the intended behavior without coupling the test to hook placement, component names, keys, or private mount structure.
 - Do not inspect React state, refs, hook call order, effect dependencies, or private DOM structure.
@@ -69,6 +69,7 @@ Browser Mode remains a focused component or feature test and currently proves Ch
 - Test only input states supported by the type and product contract. Do not manufacture `null`, `undefined`, or extreme values without a reachable scenario.
 - Do not assert CSS class names or mechanically translate them into computed-style assertions. Assert the required outcome; use visual review for incidental styling.
 - Use DOM or data snapshots only when serialized output is itself an intentionally public, stable contract. Visual baselines follow Browser Mode Admission.
+- Never accept both correct and suspicious results, such as parsing again when a value is still a string. Assert the correct contract; if production violates it, mark the case `it.fails` with a tracking issue link and fix production separately.
 
 ## Queries, Interaction, and Accessibility
 
@@ -98,7 +99,7 @@ Keep the production code that owns or transforms the asserted behavior real. Moc
 - External SDKs and expensive providers.
 - Independently tested child boundaries that do not own or transform the asserted behavior and whose setup would otherwise dominate the owner test.
 
-Mocks must preserve the public contract needed by the test. Do not mock interactive Dify UI primitives or feature-owned wrappers around them. Keep their semantic roles, state attributes, portals, focus behavior, and `render(props, state)` contract real; mock only service or external-data boundaries needed to reach the scenario.
+Mocks must preserve the public contract needed by the test. A mock must not reimplement the owner's transformation, state, or subscription. A child double that only records props or manually invokes captured callbacks does not prove the real control exists or submits valid values; render the real child and drive it, or keep the double at an external SDK or service boundary. Do not mock interactive Dify UI primitives or feature-owned wrappers around them. Keep their semantic roles, state attributes, portals, focus behavior, and `render(props, state)` contract real; mock only service or external-data boundaries needed to reach the scenario.
 
 - Never make real network requests.
 - Reset shared mock state before each test that mutates it.
@@ -109,8 +110,8 @@ Mocks must preserve the public contract needed by the test. Do not mock interact
 ## Async, Time, and Isolation
 
 - Await user interactions, promises, `findBy*`, and `waitFor`.
-- Wait for observable state changes. Do not use fixed sleeps or broad retries to hide incorrect timing.
-- Use fake timers only when timer behavior is part of the contract. Restore real timers after the test.
+- Wait for observable state changes. Keep side effects outside `waitFor`. For filtering or refresh, await the intended new result before asserting excluded items are absent.
+- When a production debounce or delay is the contract, use fake timers and advance the full window, including before asserting something did not happen. Restore real timers after the test. Otherwise, use real timers and await the visible result; do not lengthen timeouts, use fixed sleeps, or add broad retries to hide incorrect timing.
 - Control time, randomness, network responses, and shared stores so tests are deterministic.
 - `web/vitest.setup.ts` already runs Testing Library cleanup and resets Zustand stores after each test.
 - Vitest 5 clears mock call history before each test. This does not reset mock implementations or external state; set those up explicitly for each case. Do not use `afterEach` to prepare the next test.
@@ -122,13 +123,14 @@ Mocks must preserve the public contract needed by the test. Do not mock interact
 - Tests in one browser file share a page. `web/vitest.browser.setup.ts` resets the viewport and pointer before each test; set the viewport a test depends on inside that test.
 - Browser failures keep screenshots and Playwright traces under `web/.vitest-browser/`. CI uploads that directory only when failure artifacts exist; Browser Mode does not own coverage or report merging.
 - New component and feature specs should generally use a sibling `__tests__/` directory. Existing colocated utility and hook specs may follow their owning module's convention. Cross-feature integration specs belong in `web/__tests__/`.
+- Shared test helpers must have no import-time side effects: no `beforeEach`/`afterEach` registration, global or fetch stubbing, or assertions. Render helpers accept initial store state and injected props and return the real stores and query client. When two or more specs need the same query-cache seed, extract a side-effect-free preset under `web/test/`, distinct from `__mocks__`, that seeds only the client passed in.
 - The shared `react-i18next` mock is loaded globally. Use `createReactI18nextMock` from `web/test/i18n-mock` only when a test needs custom translations.
 - For `nuqs` behavior, use the helpers in `web/test/nuqs-testing.tsx` and assert URL updates. Mock `nuqs` only when URL synchronization is explicitly outside the test contract.
 - Do not add another test runner, DOM environment, or network interception library without a demonstrated project-level need.
 
 ## Workflow
 
-Use the behavior owner and nearby tests to identify a realistic regression and the assertion that would catch it. For a behavior change or bug fix, establish the failing case first when practical. Remove redundant tests and assertions as readily as adding missing coverage.
+Use the behavior owner and nearby tests to identify a realistic regression and the assertion that would catch it. For a behavior change or bug fix, establish the failing case first when practical. Remove redundant tests and assertions as readily as adding missing coverage. When an old test reached a race, rollback, or sync scenario by mutating internals, rewrite it through a real entry point (socket event, refetch, user action) before deleting it. Internal mutation alone does not prove the scenario is unreachable.
 
 Run the focused spec and the affected suite when it adds coverage beyond that spec, plus the required [static checks]. Once these pass, broaden or repeat verification only for new changes, failures, or unresolved concerns. Diagnose CI-only failures from the failing job and reproduce them locally when possible; reruns do not replace diagnosis or reporting.
 

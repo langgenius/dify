@@ -490,6 +490,7 @@ def test_migrated_saved_message_and_parameter_handlers_dispatch_through_full_adm
                 "retriever_resource",
                 "annotation_reply",
                 "more_like_this",
+                "show_thoughts",
                 "sensitive_word_avoidance",
                 "file_upload",
             )
