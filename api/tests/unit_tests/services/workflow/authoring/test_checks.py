@@ -24,7 +24,7 @@ from services.workflow.authoring import FillContext, PackageCheck, check_package
 from services.workflow.authoring.checks import _CHECKS, AuthoringIssue, AuthoringIssueCode, Check, DslCheckRequest
 from services.workflow.authoring.package_io import PackageUnreadableError, new_manifest, read_package_entries
 from services.workflow.dsl_import import DslImportService, DslNotCheckableError
-from services.workflow.graph_check import IssueCode, IssueSeverity, check_graph
+from services.workflow.graph_check import CANVAS_NOTE_TYPE, IssueCode, IssueSeverity, check_graph
 from tests.unit_tests.services.workflow.authoring.test_fill_package import _skeleton_dsl
 
 pytestmark = pytest.mark.usefixtures("bare_workspace_credentials")
@@ -220,10 +220,11 @@ def test_an_app_without_a_graph_mode_is_not_graph_checked(dsl: DslCheckRequest) 
     assert check == PackageCheck(valid=True, issues=(), node_specs=())
 
 
-def test_new_codes_are_errors_and_only_manifest_issues_refuse_an_import() -> None:
+def test_new_codes_are_errors_but_a_small_note_and_only_manifest_issues_refuse_an_import() -> None:
     manifest_codes = {AuthoringIssueCode.MANIFEST_STALE, AuthoringIssueCode.MANIFEST_MISSING}
     for code in AuthoringIssueCode:
-        assert code.severity == IssueSeverity.ERROR
+        expected = IssueSeverity.WARNING if code == AuthoringIssueCode.NOTE_TOO_SMALL else IssueSeverity.ERROR
+        assert code.severity == expected
         assert code.refuses_import is (code in manifest_codes)
 
 
@@ -510,3 +511,134 @@ def test_an_app_yaml_fill_leaves_as_utf_16_is_refused(dsl: DslCheckRequest) -> N
 
     with pytest.raises(PackageUnreadableError, match="UTF-8"):
         check_package(read_package_entries(archive), CTX, limits=LIMITS, dsl=dsl)
+
+
+NOTE_CODES = {
+    AuthoringIssueCode.NOTE_TEXT_INVALID,
+    AuthoringIssueCode.NOTE_FIELD_MISSING,
+    AuthoringIssueCode.NOTE_COVER_UNKNOWN,
+    AuthoringIssueCode.NOTE_TOO_SMALL,
+}
+
+
+def _note(**data: object) -> dict[str, object]:
+    complete: dict[str, object] = {
+        "type": "",
+        "text": "Collects the input",
+        "theme": "blue",
+        "author": "Builder",
+        "showAuthor": True,
+        "covers": ["start"],
+    }
+    return {"id": "note", "type": CANVAS_NOTE_TYPE, "data": {**complete, **data}}
+
+
+def _bare_note(*absent: str) -> dict[str, object]:
+    note = _note()
+    data = note["data"]
+    assert isinstance(data, dict)
+    return {**note, "data": {key: value for key, value in data.items() if key not in absent}}
+
+
+def _note_issues(dsl: DslCheckRequest, note: _Item, *extra: _Item) -> list[AuthoringIssue]:
+    check = _check(dsl, [START, END, *extra, note], [{"source": "start", "target": "end"}])
+    return [issue for issue in check.issues if issue.code in NOTE_CODES]
+
+
+def _note_locs(issues: Sequence[AuthoringIssue]) -> set[tuple[str, tuple[str | int, ...]]]:
+    return {(issue.code, issue.loc) for issue in issues}
+
+
+def test_a_complete_note_has_no_note_issues(dsl: DslCheckRequest) -> None:
+    assert _note_issues(dsl, _note()) == []
+
+
+@pytest.mark.parametrize("text", ["", "plain words", "42", None])
+def test_text_the_editor_loads_or_fill_converts_is_valid(text: object, dsl: DslCheckRequest) -> None:
+    assert _note_issues(dsl, _note(text=text)) == []
+
+
+def test_a_note_without_text_is_valid(dsl: DslCheckRequest) -> None:
+    assert _note_issues(dsl, _bare_note("text")) == []
+
+
+@pytest.mark.parametrize("text", ['{"no": "root"}', '{"root": {}}', 42, ["a"]])
+def test_text_the_editor_cannot_load_is_invalid(text: object, dsl: DslCheckRequest) -> None:
+    [issue] = _note_issues(dsl, _note(text=text))
+
+    assert (issue.code, issue.severity, issue.refuses_import) == (
+        AuthoringIssueCode.NOTE_TEXT_INVALID,
+        IssueSeverity.ERROR,
+        False,
+    )
+    assert (issue.node_id, issue.loc) == ("note", ("nodes", "note", "data", "text"))
+
+
+def test_each_missing_web_field_is_reported_at_its_own_loc(dsl: DslCheckRequest) -> None:
+    issues = _note_issues(dsl, _bare_note("theme", "author", "showAuthor"))
+
+    assert _note_locs(issues) == {
+        (AuthoringIssueCode.NOTE_FIELD_MISSING, ("nodes", "note", "data", field))
+        for field in ("theme", "author", "showAuthor")
+    }
+    assert all(issue.refuses_import is False for issue in issues)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("theme", "red"), ("theme", ["blue"]), ("author", None), ("showAuthor", "yes")],
+)
+def test_a_web_field_the_canvas_cannot_read_is_reported(field: str, value: object, dsl: DslCheckRequest) -> None:
+    issues = _note_issues(dsl, _note(**{field: value}))
+
+    assert _note_locs(issues) == {(AuthoringIssueCode.NOTE_FIELD_MISSING, ("nodes", "note", "data", field))}
+
+
+def test_an_empty_author_is_valid(dsl: DslCheckRequest) -> None:
+    assert _note_issues(dsl, _note(author="")) == []
+
+
+def test_each_unknown_cover_is_reported_at_its_index(dsl: DslCheckRequest) -> None:
+    iteration = {"id": "loop", "data": {"type": BuiltinNodeTypes.ITERATION}}
+    child = {"id": "child", "parentId": "loop", "data": {"type": BuiltinNodeTypes.CODE}}
+
+    issues = _note_issues(dsl, _note(covers=["start", "missing", "child", 7, "note"]), iteration, child)
+
+    assert _note_locs(issues) >= {
+        (AuthoringIssueCode.NOTE_COVER_UNKNOWN, ("nodes", "note", "data", "covers", index)) for index in (1, 2, 3, 4)
+    }
+    assert {issue.code for issue in issues} == {AuthoringIssueCode.NOTE_COVER_UNKNOWN}
+
+
+def test_covers_that_are_not_a_list_are_reported(dsl: DslCheckRequest) -> None:
+    issues = _note_issues(dsl, _note(covers="start"))
+
+    assert _note_locs(issues) == {(AuthoringIssueCode.NOTE_COVER_UNKNOWN, ("nodes", "note", "data", "covers"))}
+
+
+def test_a_note_without_covers_is_valid(dsl: DslCheckRequest) -> None:
+    assert _note_issues(dsl, _bare_note("covers")) == []
+
+
+def test_a_note_below_the_resizer_minimum_is_a_warning(dsl: DslCheckRequest) -> None:
+    check = _check(dsl, [START, END, _note(width=100, height=40)], [{"source": "start", "target": "end"}])
+    issues = [issue for issue in check.issues if issue.code in NOTE_CODES]
+
+    assert _note_locs(issues) == {
+        (AuthoringIssueCode.NOTE_TOO_SMALL, ("nodes", "note", "data", "width")),
+        (AuthoringIssueCode.NOTE_TOO_SMALL, ("nodes", "note", "data", "height")),
+    }
+    assert all(issue.severity == IssueSeverity.WARNING for issue in issues)
+    assert check.valid is True
+
+
+def test_a_note_error_makes_the_package_invalid(dsl: DslCheckRequest) -> None:
+    check = _check(dsl, [START, END, _bare_note("theme")], [{"source": "start", "target": "end"}])
+
+    assert check.valid is False
+
+
+def test_a_console_export_with_notes_has_no_note_issues(dsl: DslCheckRequest) -> None:
+    check = _check_text((FIXTURES / ITERATION_AND_NOTES_EXPORT).read_text(), dsl)
+
+    assert {issue.code for issue in check.issues}.isdisjoint(NOTE_CODES)
