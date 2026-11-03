@@ -3,10 +3,12 @@ import json
 from core.workflow.node_factory import node_data_model, resolve_workflow_node_class
 from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from graphon.enums import BuiltinNodeTypes
+from models import AppMode
 from models.workflow import Workflow, WorkflowType
+from services.workflow.graph_check import IssueCode, check_graph
 from services.workflow.graph_diff import draft_token
 
-_HUMAN_INPUT_V1 = {
+_HUMAN_INPUT_V1: dict[str, object] = {
     "id": "ask",
     "data": {
         "type": "human-input",
@@ -25,7 +27,7 @@ _HUMAN_INPUT_V1 = {
         ],
     },
 }
-_GRAPH = {
+_GRAPH: dict[str, object] = {
     "nodes": [
         {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
         _HUMAN_INPUT_V1,
@@ -74,3 +76,43 @@ def test_draft_token_unchanged_for_v1_human_input_and_a_plain_graph() -> None:
     )
 
     assert draft_token(draft) == _V1_GRAPH_TOKEN
+
+
+_HUMAN_INPUT_V2_DATA: dict[str, object] = {
+    "type": "human-input",
+    "version": "2",
+    "title": "Ask",
+    "recipients_spec": [{"type": "initiator"}],
+    "message_template": {"subject": "Review", "body": "Please review"},
+    "debug_mode": {"enabled": False, "channels": []},
+    "user_actions": [{"id": "approve", "title": "Approve"}],
+}
+
+
+def _v2_graph(data: dict[str, object]) -> dict[str, object]:
+    return {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+            {"id": "ask", "data": data},
+            {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [
+            {"id": "e1", "source": "start", "target": "ask", "sourceHandle": "source"},
+            {"id": "e2", "source": "ask", "target": "end", "sourceHandle": "approve"},
+            {"id": "e3", "source": "ask", "target": "end", "sourceHandle": "__timeout"},
+        ],
+    }
+
+
+def test_valid_human_input_v2_node_has_no_issues() -> None:
+    assert check_graph(_v2_graph(_HUMAN_INPUT_V2_DATA), mode=AppMode.WORKFLOW) == []
+
+
+def test_human_input_v2_node_missing_a_v2_field_is_reported_at_that_field() -> None:
+    data = {key: value for key, value in _HUMAN_INPUT_V2_DATA.items() if key != "message_template"}
+
+    issues = check_graph(_v2_graph(data), mode=AppMode.WORKFLOW)
+
+    assert [(issue.code, issue.loc) for issue in issues] == [
+        (IssueCode.NODE_DATA_INVALID, ("nodes", "ask", "data", "message_template"))
+    ]
