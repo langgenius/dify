@@ -17,6 +17,7 @@ from libs.archive_writer import (
     ArchiveCompression,
     ArchiveEntry,
     ArchiveError,
+    ArchiveLimitKind,
     ArchiveLimits,
     ArchiveOptions,
     ChunkSource,
@@ -54,11 +55,17 @@ def read_package_entries(source: IO[bytes]) -> list[ArchiveEntry]:
 
     Members are read from `source` when an entry is opened, so `source` must stay open until the entries are
     written. Raises `PackageUnreadableError` for a bad zip or an unsafe path, and when a member cannot be read;
-    `RosterAgentPackageTooLargeError` when the members' declared sizes add up past the package reader's limit.
+    `RosterAgentPackageTooLargeError` when the members outnumber the package reader's entry limit or their
+    declared sizes add up past its size limit.
     """
     try:
         archive = zipfile.ZipFile(source)
-        infos = [info for info in archive.infolist() if not info.is_dir()]
+        members = archive.infolist()
+        # Counted as the package reader counts them, directory entries included.
+        max_entries = dify_config.AGENT_PACKAGE_MAX_ENTRIES
+        if len(members) > max_entries:
+            raise RosterAgentPackageTooLargeError(f"App package {ArchiveLimitKind.ENTRIES.exceeded(max_entries)}")
+        infos = [info for info in members if not info.is_dir()]
         # A member never inflates past its declared size, so the declared total bounds what fill reads.
         if sum(info.file_size for info in infos) > dify_config.AGENT_PACKAGE_MAX_BYTES:
             raise RosterAgentPackageTooLargeError("App package uncompressed size exceeds the limit")

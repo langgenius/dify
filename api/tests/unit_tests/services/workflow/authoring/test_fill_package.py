@@ -375,6 +375,17 @@ def test_a_package_inflating_past_the_limit_is_refused_before_reading(config_ove
         read_package_entries(io.BytesIO(bomb))
 
 
+def test_a_package_over_the_readers_entry_limit_is_refused_before_reading(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(AGENT_PACKAGE_MAX_ENTRIES=2)
+    at_limit = {APP: b"kind: app\n", "a.txt": b"a"}
+
+    assert len(read_package_entries(io.BytesIO(_zip(at_limit)))) == 2
+    with pytest.raises(RosterAgentPackageTooLargeError, match="more than 2"):
+        read_package_entries(io.BytesIO(_zip({**at_limit, "b.txt": b"b"})))
+
+
 def _corrupt_lzma_member() -> bytes:
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_LZMA) as archive:
