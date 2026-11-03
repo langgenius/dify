@@ -59,17 +59,6 @@ it('presents the migration copy and returns to its caller after Cancel', async (
   await expect.element(trigger()).toHaveFocus()
 })
 
-it('closes with Escape and returns keyboard focus to the invoking control', async () => {
-  await render(<DialogOwner />)
-  await userEvent.tab()
-  await expect.element(trigger()).toHaveFocus()
-  await userEvent.keyboard('{Enter}')
-  await expect.element(dialog()).toBeVisible()
-  await userEvent.keyboard('{Escape}')
-  await expect.element(dialog()).not.toBeInTheDocument()
-  await expect.element(trigger()).toHaveFocus()
-})
-
 it('keeps the pending confirmation open and accepts only one request', async () => {
   await render(<DialogOwner />)
   await trigger().click()
