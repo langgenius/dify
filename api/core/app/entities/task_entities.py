@@ -11,6 +11,7 @@ from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from libs.generative_ui import OpenUIContentBlock, OpenUIContentDelta
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -24,6 +25,7 @@ class AnnotationReply(BaseModel):
 
 
 class TaskStateMetadata(BaseModel):
+    content_blocks: list[OpenUIContentBlock] = Field(default_factory=list)
     annotation_reply: AnnotationReply | None = None
     retriever_resources: Sequence[RetrievalSourceMetadata] = Field(default_factory=list)
     usage: LLMUsage | None = None
@@ -68,6 +70,7 @@ class StreamEvent(StrEnum):
     ERROR = "error"
     MESSAGE = "message"
     MESSAGE_END = "message_end"
+    MESSAGE_CONTENT = "message_content"
     TTS_MESSAGE = "tts_message"
     TTS_MESSAGE_END = "tts_message_end"
     MESSAGE_FILE = "message_file"
@@ -123,6 +126,13 @@ class MessageStreamResponse(StreamResponse):
     id: str
     answer: str
     from_variable_selector: list[str] = Field(default_factory=list)
+
+
+class MessageContentStreamResponse(StreamResponse):
+    """An ordered snapshot or source delta for one generative UI content block."""
+
+    event: StreamEvent = StreamEvent.MESSAGE_CONTENT
+    data: OpenUIContentBlock | OpenUIContentDelta
 
 
 class MessageAudioStreamResponse(StreamResponse):

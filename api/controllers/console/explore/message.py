@@ -13,6 +13,8 @@ from pydantic import BaseModel
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.errors import InternalServerError, MessageFeedbackRatingRequiredError, UnauthorizedError
+from controllers.common.generative_ui_errors import OpenUIBlockNotReadyHTTPError
+from controllers.common.generative_ui_schemas import OpenUIStatePayload, OpenUIStateResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -59,6 +61,7 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
+from services.generative_ui_state_service import OpenUIBlockNotReadyError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.message_more_like_this_service import (
     MoreLikeThisConfigNotFoundError,
@@ -73,12 +76,13 @@ class MoreLikeThisQuery(BaseModel):
     response_mode: Literal["blocking", "streaming"]
 
 
-register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, MoreLikeThisQuery)
+register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, MoreLikeThisQuery, OpenUIStatePayload)
 register_response_schema_models(
     console_ns,
     ExploreMessageInfiniteScrollPagination,
     ResultResponse,
     SuggestedQuestionsResponse,
+    OpenUIStateResponse,
 )
 
 
@@ -99,6 +103,8 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise NotCompletionAppError() from error
         except MessageNotExistsError as error:
             raise MessageNotFoundHTTPError() from error
+        except OpenUIBlockNotReadyError as error:
+            raise OpenUIBlockNotReadyHTTPError() from error
         except FirstMessageNotExistsError as error:
             raise MessageCursorNotFoundHTTPError() from error
         except ConversationNotExistsError as error:
@@ -184,6 +190,38 @@ class MessageFeedbackApi(Resource):
             content=payload.content,
         )
         return helper.dump_response(ResultResponse, {"result": "success"})
+
+
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/content-blocks/<string:block_id>/state",
+    endpoint="installed_app_message_openui_state",
+)
+class MessageOpenUIStateApi(Resource):
+    @error_responses(MessageNotFoundHTTPError, OpenUIBlockNotReadyHTTPError)
+    @console_ns.expect(console_ns.models[OpenUIStatePayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Draft saved", console_ns.models[OpenUIStateResponse.__name__])
+    @console_account_admission()
+    @get_installed_app
+    @model_validate(OpenUIStatePayload)
+    @_message_errors
+    def put(
+        self,
+        payload: OpenUIStatePayload,
+        request_context: RequestContext,
+        installed_app: InstalledAppRef,
+        message_id: UUID,
+        block_id: str,
+    ) -> dict[str, object]:
+        block = application_services().openui_states.save_state(
+            actor=MessageAccount(account_id=request_context.account_id),
+            app_id=installed_app.app_id,
+            app_owner_tenant_id=installed_app.app_owner_tenant_id,
+            installed_app=installed_app,
+            message_id=str(message_id),
+            block_id=block_id,
+            form_state=payload.form_state,
+        )
+        return helper.dump_response(OpenUIStateResponse, {"block": block})
 
 
 @console_ns.route(

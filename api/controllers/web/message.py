@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.errors import InternalServerError, MessageFeedbackRatingRequiredError, NotFoundError
 from controllers.common.fields import GeneratedAppResponse
+from controllers.common.generative_ui_errors import OpenUIBlockNotReadyHTTPError
+from controllers.common.generative_ui_schemas import OpenUIStatePayload, OpenUIStateResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
@@ -47,6 +49,7 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
+from services.generative_ui_state_service import OpenUIBlockNotReadyError
 from services.message_more_like_this_service import (
     MoreLikeThisConfigNotFoundError,
     MoreLikeThisNotCompletionError,
@@ -61,13 +64,14 @@ class MessageMoreLikeThisQuery(BaseModel):
     )
 
 
-register_schema_models(web_ns, MessageListQuery, MessageFeedbackPayload, MessageMoreLikeThisQuery)
+register_schema_models(web_ns, MessageListQuery, MessageFeedbackPayload, MessageMoreLikeThisQuery, OpenUIStatePayload)
 register_response_schema_models(
     web_ns,
     GeneratedAppResponse,
     ResultResponse,
     SuggestedQuestionsResponse,
     WebMessageInfiniteScrollPagination,
+    OpenUIStateResponse,
 )
 
 
@@ -170,6 +174,31 @@ class MessageFeedbackApi(WebApiResource):
             raise MessageFeedbackRatingRequiredError() from error
 
         return helper.dump_response(ResultResponse, {"result": "success"})
+
+
+@web_ns.route("/messages/<uuid:message_id>/content-blocks/<string:block_id>/state")
+class MessageOpenUIStateApi(WebApiResource):
+    @error_responses(NotFoundError, OpenUIBlockNotReadyHTTPError)
+    @web_ns.expect(web_ns.models[OpenUIStatePayload.__name__])
+    @web_ns.response(HTTPStatus.OK, "Draft saved", web_ns.models[OpenUIStateResponse.__name__])
+    @model_validate(OpenUIStatePayload)
+    def put(
+        self, payload: OpenUIStatePayload, app_model: App, end_user: EndUser, message_id: UUID, block_id: str
+    ) -> dict[str, object]:
+        try:
+            block = application_services().openui_states.save_state(
+                actor=MessageEndUser(end_user_id=end_user.id),
+                app_id=app_model.id,
+                app_owner_tenant_id=app_model.tenant_id,
+                message_id=str(message_id),
+                block_id=block_id,
+                form_state=payload.form_state,
+            )
+        except MessageNotExistsError as exc:
+            raise NotFoundError("Message or content block not found") from exc
+        except OpenUIBlockNotReadyError as exc:
+            raise OpenUIBlockNotReadyHTTPError() from exc
+        return helper.dump_response(OpenUIStateResponse, {"block": block})
 
 
 @web_ns.route("/messages/<uuid:message_id>/more-like-this")

@@ -1,5 +1,6 @@
 import type { StartNodeType } from '../../nodes/start/types'
 import type { ChatWrapperRefType } from './index'
+import type { ChatProps } from '@/app/components/base/chat/chat'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
@@ -13,6 +14,7 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { saveGenerativeUIState } from '@/features/generative-ui/state-client'
 import { consoleQuery } from '@/service/console'
 import { useStore, useWorkflowStore } from '../../store'
 import { BlockEnum, WorkflowRunningStatus } from '../../types'
@@ -109,6 +111,7 @@ const ChatWrapper = ({
     isResponding,
     suggestedQuestions,
     handleSend,
+    handleContentBlockStateSaved,
     handleRestart,
     handleSwitchSibling,
     handleSubmitHumanInputForm,
@@ -131,6 +134,20 @@ const ChatWrapper = ({
     setMessageLogItem(undefined)
     setInputs(initialInputs)
   }, [handleRestart, setInputs, initialInputs, setMessageLogItem])
+
+  const handleGenerativeUIStateChange: NonNullable<ChatProps['onGenerativeUIStateChange']> =
+    useCallback(
+      async (messageId, blockId, state) => {
+        const result = await saveGenerativeUIState(
+          { kind: 'app', appId },
+          messageId,
+          blockId,
+          state,
+        )
+        handleContentBlockStateSaved(messageId, result.block)
+      },
+      [appId, handleContentBlockStateSaved],
+    )
 
   const doSend: OnSend = useCallback(
     (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
@@ -235,6 +252,7 @@ const ChatWrapper = ({
         showFeatureBar
         onFeatureBarClick={setShowFeaturesPanel}
         onSend={doSend}
+        onGenerativeUIStateChange={handleGenerativeUIStateChange}
         inputs={inputs}
         inputsForm={(startVariables || []) as any}
         onRegenerate={doRegenerate}

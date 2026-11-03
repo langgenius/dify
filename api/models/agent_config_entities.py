@@ -600,6 +600,7 @@ class AgentFileUploadFeatureConfig(AgentFeatureToggleConfig):
 
 
 class AgentSoulAppFeaturesConfig(AgentFlexibleConfig):
+    generative_ui: AgentFeatureToggleConfig = Field(default_factory=AgentFeatureToggleConfig)
     opening_statement: str | None = None
     suggested_questions: list[str] | None = None
     suggested_questions_after_answer: AgentSuggestedQuestionsAfterAnswerFeatureConfig | None = None

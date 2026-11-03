@@ -187,6 +187,10 @@ class QueueTextChunkEvent(AppQueueEvent):
     text: str
     from_variable_selector: list[str] | None = None
     """from variable selector"""
+    node_execution_id: str | None = None
+    """Producer execution identity; None for text emitted outside a node run."""
+    is_final: bool = False
+    """Whether this chunk ends the producer's text stream, including empty terminal chunks."""
     in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
@@ -233,6 +237,7 @@ class QueueMessageReplaceEvent(AppQueueEvent):
         """
 
         OUTPUT_MODERATION = "output_moderation"
+        GENERATIVE_UI_FINAL = "generative_ui_final"
 
     event: QueueEvent = QueueEvent.MESSAGE_REPLACE
     text: str

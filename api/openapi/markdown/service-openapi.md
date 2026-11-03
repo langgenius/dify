@@ -7209,6 +7209,7 @@ A rating is required when there is no existing feedback to remove.
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | No |
+| content_blocks | [ [OpenUIContentBlock](#openuicontentblock) ] |  | No |
 | conversation_id | string (uuid) |  | Yes |
 | created_at | integer |  | No |
 | currency | string |  | No |
@@ -7353,6 +7354,25 @@ Please check if your app mode matches the right API route.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | NotWorkflowAppError |  | Please check if your app mode matches the right API route. |  |
+
+#### OpenUIContentBlock
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_state | object |  | Yes |
+| id | string |  | Yes |
+| library_version | string, <br>**Default:** dify-ui-v1 |  | Yes |
+| sequence | integer |  | Yes |
+| source | string |  | Yes |
+| status | [OpenUIContentStatus](#openuicontentstatus) |  | Yes |
+| text_offset | integer | Position in the prose answer before this block, measured in Unicode code points. | Yes |
+| type | string, <br>**Default:** openui |  | Yes |
+
+#### OpenUIContentStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenUIContentStatus | string |  |  |
 
 #### OptionalServiceApiUserPayload
 

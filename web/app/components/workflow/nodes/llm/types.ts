@@ -26,6 +26,7 @@ export type LLMNodeType = CommonNodeType & {
   }
   structured_output_enabled?: boolean
   structured_output?: StructuredOutput
+  generative_ui_enabled?: boolean
   reasoning_format?: 'tagged' | 'separated'
 }
 

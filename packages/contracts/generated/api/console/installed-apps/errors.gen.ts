@@ -202,19 +202,27 @@ const zMessageCursorNotFoundError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-const zMessageFeedbackRatingRequiredError = /* @__PURE__ */ (() =>
-  zErrorResponse.and(
-    z.object({
-      code: z.literal('message_feedback_rating_required'),
-      status: z.literal(400),
-    }),
-  ))()
-
 const zMessageNotFoundError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('message_not_found'),
       status: z.literal(404),
+    }),
+  ))()
+
+const zOpenuiBlockNotReadyError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('openui_block_not_ready'),
+      status: z.literal(409),
+    }),
+  ))()
+
+const zMessageFeedbackRatingRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('message_feedback_rating_required'),
+      status: z.literal(400),
     }),
   ))()
 
@@ -348,6 +356,14 @@ export const getErrors = {
   conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   not_chat_app: { status: 400, data: zNotChatAppError },
+  web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+}
+
+export const putErrors = {
+  access_denied: { status: 403, data: zAccessDeniedError },
+  installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+  message_not_found: { status: 404, data: zMessageNotFoundError },
+  openui_block_not_ready: { status: 409, data: zOpenuiBlockNotReadyError },
   web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
 }
 

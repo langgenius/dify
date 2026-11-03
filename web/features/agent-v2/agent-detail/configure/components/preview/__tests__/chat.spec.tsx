@@ -96,7 +96,9 @@ const abortControllers: AbortController[] = []
 beforeAll(async () => {
   // Preload the real dynamic Chat module before the timed interaction scenarios.
   await import('@/app/components/base/chat/chat')
-})
+  await import('@/features/generative-ui/renderer')
+  await import('@/app/components/base/markdown/streamdown-wrapper')
+}, 30_000)
 beforeEach(() => {
   messages.clear()
   abortControllers.length = 0
@@ -172,7 +174,7 @@ function renderChat({
     model: { provider: 'openai', model: 'gpt-4' },
     ...draft,
   })
-  const view = render(
+  const renderView = (nextProps: Partial<ChatProps>) => (
     <QueryProvider>
       <Provider store={store}>
         <ChatHarness
@@ -180,12 +182,18 @@ function renderChat({
           mode={mode}
           clearChatList={false}
           onClearChatListChange={() => {}}
-          {...props}
+          {...nextProps}
         />
       </Provider>
-    </QueryProvider>,
+    </QueryProvider>
   )
-  return { ...view, queryClient }
+  const view = render(renderView(props))
+  return {
+    ...view,
+    queryClient,
+    rerenderChat: (nextProps: Partial<ChatProps>) =>
+      view.rerender(renderView({ ...props, ...nextProps })),
+  }
 }
 async function send(user: ReturnType<typeof userEvent.setup>, query = 'Hello') {
   await user.type(input(), query)
@@ -229,6 +237,58 @@ async function complete(index = 0) {
 }
 
 describe('Agent conversation history', () => {
+  it.each(['normal', 'error'])(
+    'restores partial %s prose around UI without repeating thought answers',
+    async (status) => {
+      const user = userEvent.setup()
+      messages.set('conversation-1', [
+        createMessage({
+          answer: 'Before\n\nAfter',
+          status,
+          metadata: { agent_response_is_partial: true },
+          content_blocks: [
+            {
+              id: 'partial-table',
+              type: 'openui',
+              library_version: 'dify-ui-v1',
+              text_offset: 8,
+              source: 'root = Stack([Table("Sales", ["Region", "Revenue"], [["East", "72"]])])',
+              status: 'completed',
+              sequence: 2,
+              form_state: {},
+            },
+          ],
+          agent_thoughts: [
+            {
+              id: 'sales-tool',
+              message_id: 'message-0',
+              position: 1,
+              answer: 'Before\n\nAfter',
+              tool: 'load_sales',
+              observation: 'Loaded',
+              files: [],
+              tool_labels: {},
+            },
+          ],
+        }),
+      ])
+      renderChat({ conversationId: 'conversation-1' })
+      const table = await screen.findByRole('table', { name: 'Sales' })
+      const before = await screen.findByText('Before')
+      const after = await screen.findByText('After')
+      expect(before.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(table.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+      await user.click(
+        screen.getByRole('button', { name: /agentDetail.configure.answer.thinking/ }),
+      )
+      expect(screen.getByText('load_sales')).toBeVisible()
+      expect(screen.getAllByText('Before')).toHaveLength(1)
+      expect(screen.getAllByText('After')).toHaveLength(1)
+      expect(screen.getAllByRole('table', { name: 'Sales' })).toHaveLength(1)
+    },
+  )
+
   it('renders persisted messages and regenerates the answer through the Agent endpoint', async () => {
     const user = userEvent.setup()
     messages.set('conversation-1', [createMessage()])
@@ -598,6 +658,77 @@ describe('Agent attachments and notices', () => {
 })
 
 describe('Agent stop and failure ownership', () => {
+  const createMessageWithAction = () =>
+    createMessage({
+      id: 'saved-message',
+      content_blocks: [
+        {
+          id: 'saved-action',
+          type: 'openui',
+          library_version: 'dify-ui-v1',
+          text_offset: 0,
+          source: 'root = Stack([ActionButton("Review sales", "Review sales now")])',
+          status: 'completed',
+          sequence: 2,
+          form_state: {},
+        },
+      ],
+    })
+
+  it('re-enables completed UI actions after successfully stopping the next turn', async () => {
+    const user = userEvent.setup()
+    messages.set('conversation-1', [createMessageWithAction()])
+    renderChat({ conversationId: 'conversation-1' })
+    const action = await screen.findByRole('button', { name: 'Review sales' })
+    expect(action).toBeEnabled()
+
+    await send(user)
+    await receive(0, 'Working on a follow-up')
+    expect(action).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'appDebug.operation.stopResponding' }))
+    await waitFor(() => expect(abortControllers[0]?.signal.aborted).toBe(true))
+    await act(async () => {
+      stream().onError?.('Connection closed')
+      await stream().onCompleted?.(true)
+    })
+
+    expect(action).toBeEnabled()
+    await user.click(action)
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    expect(ssePost.mock.calls[1]?.[1].body).toEqual(
+      expect.objectContaining({ query: 'Review sales now' }),
+    )
+  })
+
+  it('prevents completed UI actions from sending when the Agent host is disabled', async () => {
+    const user = userEvent.setup()
+    messages.set('conversation-1', [createMessageWithAction()])
+    renderChat({ conversationId: 'conversation-1', disabled: true })
+    const action = await screen.findByRole('button', { name: 'Review sales' })
+    expect(input()).toBeDisabled()
+    await user.click(action)
+    expect(ssePost).not.toHaveBeenCalled()
+    expect(action).toBeDisabled()
+  })
+
+  it('cancels a UI action if the host becomes disabled while saving the draft', async () => {
+    const user = userEvent.setup()
+    const save = createDeferred<void>()
+    const onSaveDraftBeforeRun = vi.fn(() => save.promise)
+    messages.set('conversation-1', [createMessageWithAction()])
+    const view = renderChat({ conversationId: 'conversation-1', onSaveDraftBeforeRun })
+    const action = await screen.findByRole('button', { name: 'Review sales' })
+    await user.click(action)
+    expect(onSaveDraftBeforeRun).toHaveBeenCalledOnce()
+
+    view.rerenderChat({ disabled: true })
+    await act(async () => save.resolve())
+    expect(ssePost).not.toHaveBeenCalled()
+    expect(action).toBeDisabled()
+    view.rerenderChat({ disabled: false })
+    expect(action).toBeEnabled()
+  })
+
   it('stops thought-only execution, preserves its task across empty deltas, and never reuses it next turn', async () => {
     const user = userEvent.setup()
     renderChat()

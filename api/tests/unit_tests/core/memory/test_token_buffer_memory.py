@@ -27,6 +27,7 @@ from graphon.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from libs.generative_ui import OpenUIContentBlock
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import App, AppAnnotationSetting, AppMode, AppModelConfig, Conversation, Message, MessageFile
@@ -570,6 +571,45 @@ class TestGetHistoryPromptText:
 
 
 class TestPreparedHistory:
+    @pytest.mark.parametrize("ui_status", ["completed", "streaming", "cancelled", "error"])
+    def test_chatflow_history_restores_ui_facts_without_unsent_form_drafts(
+        self, database: Database, ui_status: str
+    ) -> None:
+        conversation = _persist_conversation(database, AppMode.ADVANCED_CHAT)
+        prose = "East has the highest sales.\nCheck investment next."
+        source = 'root = Stack([Table("Regional sales", ["Region", "Sales"], [["East", "72"], ["South", "48"]])])'
+        block = OpenUIContentBlock.model_validate(
+            {
+                "id": "ui-block",
+                "source": source,
+                "status": ui_status,
+                "text_offset": len("East has the highest sales.\n"),
+                "form_state": {"filters": {"note": {"value": "Unsent private draft"}}},
+            }
+        )
+        message = _persist_message(database, conversation.id, query="Analyze this period's sales", answer=prose)
+        message.message_metadata = json.dumps({"content_blocks": [block.model_dump(mode="json")]})
+        database.session.commit()
+        database.session.expire(message)
+        app = database.session.get(App, conversation.app_id)
+        before = len(database.statements)
+
+        history = TokenBufferMemory.load_history(
+            conversation=conversation, app_record=app, session=database.session, message_limit=10
+        )
+
+        assistant = history.prompts[1]
+        assert assistant.is_user_message is False
+        if ui_status == "completed":
+            assert assistant.text == f"East has the highest sales.\n\n```openui\n{source}\n```\nCheck investment next."
+        else:
+            assert assistant.text == prose
+        assert "Unsent private draft" not in assistant.text
+        assert message.answer == prose
+        message_selects = [sql for sql, _ in database.statements[before:] if "FROM messages" in sql]
+        assert len(message_selects) == 1
+        assert "messages.message_metadata" in message_selects[0]
+
     @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
     @pytest.mark.parametrize("detail", ["low", "high"])
     def test_load_detaches_history_before_attachment_and_token_io(

@@ -2,7 +2,9 @@ import type { ChatItem } from '../../../types'
 import type { CitationItem } from '../../type'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vite-plus/test'
+import { beforeAll, vi } from 'vite-plus/test'
+import { createChatAnnotationFixture } from '@/test/fixtures/chat'
+import { ChatContextProvider } from '../../context-provider'
 import { AgentRosterResponseContent } from '../agent-roster-response-content'
 
 vi.mock('react-i18next', async () => {
@@ -42,6 +44,177 @@ const thinkingOnlyItem = {
 } satisfies ChatItem
 
 describe('AgentRosterResponseContent', () => {
+  beforeAll(async () => {
+    await import('@/features/generative-ui/renderer')
+    await import('@/app/components/base/markdown/streamdown-wrapper')
+  }, 30_000)
+
+  const tableBlock = (
+    id: string,
+    textOffset: number,
+  ): NonNullable<ChatItem['content_blocks']>[number] => ({
+    id,
+    type: 'openui',
+    library_version: 'dify-ui-v1',
+    source: `root = Stack([Table("${id}", ["Region", "Sales"], [["East", "72"]])])`,
+    status: 'completed',
+    text_offset: textOffset,
+    sequence: 1,
+    form_state: {},
+  })
+
+  it('orders UI across live public message parts and replays each block once in history', async () => {
+    const user = userEvent.setup()
+    const progress = 'Loading sales.\n\n'
+    const conclusion = 'Conclusion \u{1F4CA}.\n\n'
+    const suggestion = 'Review the findings.'
+    const thought = {
+      id: 'sales-tool',
+      thought: '',
+      tool: 'load_sales',
+      tool_input: '',
+      observation: '',
+      message_id: 'answer-sales',
+      conversation_id: 'conversation-1',
+      position: 1,
+    }
+    const item: ChatItem = {
+      id: 'answer-sales',
+      content: '',
+      isAnswer: true,
+      agent_response_parts: [
+        { type: 'message', content: progress },
+        { type: 'thought', thought },
+        { type: 'message', content: conclusion + suggestion },
+      ],
+      content_blocks: [
+        tableBlock('Summary data', Array.from(progress).length),
+        tableBlock('Detailed data', Array.from(progress + conclusion).length),
+      ],
+    }
+    const { rerender } = render(<AgentRosterResponseContent item={item} responding />)
+    const summary = await screen.findByRole('table', { name: 'Summary data' })
+    const detailed = await screen.findByRole('table', { name: 'Detailed data' })
+    const conclusionText = await screen.findByText('Conclusion \u{1F4CA}.')
+    const suggestionText = await screen.findByText(suggestion)
+    expect(
+      screen.getByText('load_sales').compareDocumentPosition(summary) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      summary.compareDocumentPosition(conclusionText) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      conclusionText.compareDocumentPosition(detailed) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      detailed.compareDocumentPosition(suggestionText) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    const restored: ChatItem = {
+      ...item,
+      content: conclusion + suggestion,
+      agent_response_parts: undefined,
+      agent_thoughts: [{ ...thought, answer: progress, observation: 'Loaded' }],
+      content_blocks: [
+        tableBlock('Summary data', 0),
+        tableBlock('Detailed data', Array.from(conclusion).length),
+      ],
+    }
+    rerender(
+      <AgentRosterResponseContent item={restored} content={restored.content} responding={false} />,
+    )
+    expect(screen.getAllByRole('table')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Thinking' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(await screen.findAllByText('Conclusion \u{1F4CA}.')).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Thinking' }))
+    expect(await screen.findByText('Loading sales.')).toBeVisible()
+    expect(screen.getAllByRole('table')).toHaveLength(2)
+  })
+
+  it('shows a UI-only response after live activity and after history restoration', async () => {
+    const item: ChatItem = {
+      ...thinkingOnlyItem,
+      agent_response_parts: thinkingOnlyItem.agent_response_parts.map((part) => ({
+        ...part,
+        thought: {
+          ...part.thought,
+          tool: 'load_sales',
+          observation: 'Loaded',
+        },
+      })),
+      content_blocks: [tableBlock('Sales data', 0)],
+    }
+    const { rerender } = render(<AgentRosterResponseContent item={item} responding />)
+    expect(await screen.findByRole('table', { name: 'Sales data' })).toBeVisible()
+
+    rerender(
+      <AgentRosterResponseContent
+        item={{ ...item, agent_response_parts: undefined }}
+        responding={false}
+      />,
+    )
+    expect(screen.getAllByRole('table', { name: 'Sales data' })).toHaveLength(1)
+  })
+
+  it('preserves UI once after an annotation replaces its original prose', async () => {
+    const item: ChatItem = {
+      id: 'annotated-answer',
+      content: 'Original answer',
+      isAnswer: true,
+      annotation: createChatAnnotationFixture('Edited answer'),
+      content_blocks: [tableBlock('Sales data', 10)],
+    }
+    render(<AgentRosterResponseContent item={item} content={item.content} />)
+    const table = await screen.findByRole('table', { name: 'Sales data' })
+    const annotationText = await screen.findByText('Edited answer')
+    expect(screen.getAllByText('Edited answer')).toHaveLength(1)
+    expect(screen.queryByText('Original answer')).not.toBeInTheDocument()
+    expect(
+      annotationText.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('preserves an edited form when its surrounding live message grows', async () => {
+    const user = userEvent.setup()
+    const onSend = vi.fn()
+    const item: ChatItem = {
+      id: 'answer-form',
+      content: '',
+      isAnswer: true,
+      agent_response_parts: [{ type: 'message', content: 'Choose a filter.' }],
+      content_blocks: [
+        {
+          ...tableBlock('filters', 0),
+          source:
+            'root = Stack([Form("filters", "Filter sales", "Apply filters", "Apply these filters", [TextField("keyword", "Keyword", "", false)])])',
+        },
+      ],
+    }
+    const view = (answer: ChatItem) => (
+      <ChatContextProvider chatList={[answer]} onSend={onSend}>
+        <AgentRosterResponseContent item={answer} />
+      </ChatContextProvider>
+    )
+    const { rerender } = render(view(item))
+    const keyword = await screen.findByRole('textbox', { name: 'Keyword' })
+    await user.type(keyword, 'hardware')
+    rerender(
+      view({
+        ...item,
+        agent_response_parts: [
+          { type: 'message', content: 'Choose a filter. More details arrived.' },
+        ],
+      }),
+    )
+    expect(screen.getByRole('textbox', { name: 'Keyword' })).toBe(keyword)
+    expect(keyword).toHaveValue('hardware')
+    expect(keyword).toHaveFocus()
+  })
+
   it('renders a verified receipt as a working in-answer link, but not a forged receipt', async () => {
     const user = userEvent.setup()
     const receiptId = `kfs_${'a'.repeat(32)}`

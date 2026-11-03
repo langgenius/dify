@@ -717,6 +717,28 @@ Retrieve paginated list of messages from a conversation in a chat application.
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [PUT] /messages/{message_id}/content-blocks/{block_id}/state
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| block_id | path |  | Yes | string |
+| message_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OpenUIStatePayload](#openuistatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft saved | **application/json**: [OpenUIStateResponse](#openuistateresponse)<br> |
+| 409 | Conflict | **application/json**: [OpenuiBlockNotReadyError](#openuiblocknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /messages/{message_id}/feedbacks
 Submit feedback (like/dislike) for a specific message.
 
@@ -2041,6 +2063,45 @@ Please check if your Workflow app mode matches the right API route.
 | ---- | ---- | ----------- | -------- |
 | NotWorkflowAppError |  | Please check if your Workflow app mode matches the right API route. |  |
 
+#### OpenUIContentBlock
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_state | object |  | Yes |
+| id | string |  | Yes |
+| library_version | string, <br>**Default:** dify-ui-v1 |  | Yes |
+| sequence | integer |  | Yes |
+| source | string |  | Yes |
+| status | [OpenUIContentStatus](#openuicontentstatus) |  | Yes |
+| text_offset | integer | Position in the prose answer before this block, measured in Unicode code points. | Yes |
+| type | string, <br>**Default:** openui |  | Yes |
+
+#### OpenUIContentStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenUIContentStatus | string |  |  |
+
+#### OpenUIStatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_state | object |  | Yes |
+
+#### OpenUIStateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| block | [OpenUIContentBlock](#openuicontentblock) |  | Yes |
+
+#### OpenuiBlockNotReadyError
+
+Only completed OpenUI blocks accept form state.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenuiBlockNotReadyError |  | Only completed OpenUI blocks accept form state. |  |
+
 #### ParagraphInput
 
 Resolved multiline text input.
@@ -2592,6 +2653,7 @@ Too many form requests. Please try again later.
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | No |
+| content_blocks | [ [OpenUIContentBlock](#openuicontentblock) ] |  | No |
 | conversation_id | string (uuid) |  | Yes |
 | created_at | integer |  | No |
 | currency | string |  | No |
