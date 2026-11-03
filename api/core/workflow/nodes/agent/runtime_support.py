@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from typing import Any, cast
 
@@ -60,21 +59,11 @@ class AgentRuntimeSupport:
                         raise AgentVariableNotFoundError(str(agent_input.value))
                     parameter_value = variable.value
                 case "mixed" | "constant":
-                    try:
-                        if not isinstance(agent_input.value, str):
-                            parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
-                        else:
-                            parameter_value = str(agent_input.value)
-                    except TypeError:
-                        parameter_value = str(agent_input.value)
-
-                    segment_group = convert_template(variable_pool, parameter_value)
-                    parameter_value = segment_group.log if for_log else segment_group.text
-                    try:
-                        if not isinstance(agent_input.value, str):
-                            parameter_value = json.loads(parameter_value)
-                    except json.JSONDecodeError:
-                        parameter_value = parameter_value
+                    parameter_value = self._resolve_template_value(
+                        agent_input.value,
+                        variable_pool,
+                        for_log=for_log,
+                    )
                 case _:
                     raise AgentInputTypeError(agent_input.type)
 
@@ -280,6 +269,30 @@ class AgentRuntimeSupport:
         )
         model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
         return model_instance, model_schema
+
+    @staticmethod
+    def _resolve_template_value(
+        value: Any,
+        variable_pool: VariablePool,
+        *,
+        for_log: bool,
+    ) -> Any:
+        """Resolve variable templates in a parameter value, preserving its structure.
+
+        Serializing the value to JSON text first breaks whenever a substituted variable contains
+        a quote, a backslash or a control character, because template substitution is not JSON-aware.
+        """
+        if isinstance(value, str):
+            segment_group = convert_template(variable_pool, value)
+            return segment_group.log if for_log else segment_group.text
+        if isinstance(value, dict):
+            return {
+                key: AgentRuntimeSupport._resolve_template_value(item, variable_pool, for_log=for_log)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [AgentRuntimeSupport._resolve_template_value(item, variable_pool, for_log=for_log) for item in value]
+        return value
 
     @staticmethod
     def _remove_unsupported_model_features_for_old_version(model_schema: AIModelEntity) -> AIModelEntity:

@@ -1,8 +1,17 @@
+import json
+from collections.abc import Sequence
+from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
+from core.agent.plugin_entities import AgentStrategyParameter
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.provider_entities import CustomProviderConfiguration
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import PluginModelAssembly
+from core.tools.entities.common_entities import I18nObject as ToolI18nObject
+from core.workflow.nodes.agent.entities import AgentNodeData
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import (
@@ -14,6 +23,7 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterRule,
     ParameterType,
 )
+from graphon.runtime import VariablePool
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
@@ -156,3 +166,142 @@ def test_extract_default_completion_params_empty_when_no_defaults():
         parameter_rules=[],
     )
     assert AgentRuntimeSupport._extract_default_completion_params(schema) == {}
+
+
+_ParameterType = AgentStrategyParameter.AgentStrategyParameterType
+
+
+def _declared_parameter(name: str, parameter_type: _ParameterType) -> AgentStrategyParameter:
+    return AgentStrategyParameter(name=name, label=ToolI18nObject(en_US=name), type=parameter_type)
+
+
+def _build_parameters(
+    *,
+    configured: dict[str, object],
+    declared: Sequence[AgentStrategyParameter],
+    variables: dict[str, object],
+    for_log: bool = False,
+) -> dict[str, object]:
+    variable_pool = VariablePool()
+    for name, value in variables.items():
+        variable_pool.add(("start", name), value)
+    node_data = AgentNodeData.model_validate({"type": "agent", "agent_parameters": configured})
+    return AgentRuntimeSupport().build_parameters(
+        agent_parameters=declared,
+        variable_pool=variable_pool,
+        node_data=node_data,
+        strategy=SimpleNamespace(meta_version="0.0.2"),
+        tenant_id="tenant-1",
+        user_id="user-1",
+        app_id="app-1",
+        invoke_from=InvokeFrom.SERVICE_API,
+        for_log=for_log,
+    )
+
+
+def _tool_with_setting(template: str) -> dict[str, object]:
+    return {
+        "provider_name": "provider",
+        "tool_name": "call_something",
+        "type": "builtin",
+        "enabled": True,
+        "settings": {"target": {"value": {"value": template, "type": "mixed"}}},
+        "parameters": {},
+    }
+
+
+@pytest.mark.parametrize(
+    "raw_value",
+    [
+        pytest.param('a "quoted" word', id="double-quote"),
+        pytest.param("a\\backslash", id="backslash"),
+        pytest.param("tab\there", id="tab"),
+        pytest.param("line\nbreak", id="newline"),
+        pytest.param('{"looks": "like json\t"}', id="json-lookalike"),
+    ],
+)
+def test_build_parameters_keeps_tool_settings_holding_json_special_characters(raw_value: str):
+    """Tool settings referencing a variable must survive values that are illegal inside JSON text."""
+    result = _build_parameters(
+        configured={"tools": {"type": "constant", "value": [_tool_with_setting("{{#start.target#}}")]}},
+        declared=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
+        variables={"target": raw_value},
+        for_log=True,
+    )
+
+    tools = result["tools"]
+    assert isinstance(tools, list)
+    assert len(tools) == 1
+    assert tools[0]["tool_name"] == "call_something"
+    assert tools[0]["settings"]["target"]["value"] == raw_value
+
+
+def test_build_parameters_resolves_template_embedded_in_a_longer_tool_setting():
+    # for_log keeps the tools branch away from ToolManager while still resolving settings.
+    result = _build_parameters(
+        configured={"tools": {"type": "constant", "value": [_tool_with_setting("room {{#start.target#}}!")]}},
+        declared=[_declared_parameter("tools", _ParameterType.TOOLS_SELECTOR)],
+        variables={"target": 'a\t"tabbed"\tname'},
+        for_log=True,
+    )
+
+    assert result["tools"][0]["settings"]["target"]["value"] == 'room a\t"tabbed"\tname!'
+
+
+def test_build_parameters_preserves_nested_constant_structure():
+    raw_value = 'a "quoted"\ttab'
+    result = _build_parameters(
+        configured={
+            "options": {
+                "type": "constant",
+                "value": [{"label": "{{#start.target#}}", "nested": {"items": ["{{#start.target#}}"]}}],
+            }
+        },
+        declared=[_declared_parameter("options", _ParameterType.ANY)],
+        variables={"target": raw_value},
+    )
+
+    assert result["options"] == [{"label": raw_value, "nested": {"items": [raw_value]}}]
+
+
+def test_build_parameters_keeps_scalar_constant_types():
+    result = _build_parameters(
+        configured={
+            "maximum_iterations": {"type": "constant", "value": 10},
+            "stream": {"type": "constant", "value": True},
+            "ratio": {"type": "constant", "value": 0.5},
+        },
+        declared=[
+            _declared_parameter("maximum_iterations", _ParameterType.NUMBER),
+            _declared_parameter("stream", _ParameterType.BOOLEAN),
+            _declared_parameter("ratio", _ParameterType.NUMBER),
+        ],
+        variables={},
+    )
+
+    assert result["maximum_iterations"] == 10
+    assert isinstance(result["maximum_iterations"], int)
+    assert result["stream"] is True
+    assert result["ratio"] == 0.5
+
+
+def test_build_parameters_resolves_plain_string_constant():
+    result = _build_parameters(
+        configured={"query": {"type": "mixed", "value": 'ask about "{{#start.target#}}"'}},
+        declared=[_declared_parameter("query", _ParameterType.STRING)],
+        variables={"target": "dify"},
+    )
+
+    assert result["query"] == 'ask about "dify"'
+
+
+def test_build_parameters_selects_log_form_for_nested_leaves_when_logging():
+    configured = {"options": {"type": "constant", "value": {"payload": "{{#start.blob#}}"}}}
+    declared = [_declared_parameter("options", _ParameterType.ANY)]
+    variables = {"blob": {"key": "value"}}
+
+    logged = _build_parameters(configured=configured, declared=declared, variables=variables, for_log=True)
+    rendered = _build_parameters(configured=configured, declared=declared, variables=variables, for_log=False)
+
+    assert logged["options"]["payload"] == json.dumps({"key": "value"}, ensure_ascii=False, indent=2)
+    assert rendered["options"]["payload"] == json.dumps({"key": "value"}, ensure_ascii=False)
