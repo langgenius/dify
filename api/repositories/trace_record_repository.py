@@ -488,10 +488,17 @@ class TraceRecordRepository(TraceRecordSource):
     def _suggested_questions(
         self, event: TraceEvent, payload: SuggestedQuestionsGenerated
     ) -> SuggestedQuestionTraceInfo:
+        """Read an owned message's suggestion event without modifying its stored data.
+
+        Preserve recorded model prompts, falling back to the persisted user
+        query when a chatflow did not store them. Missing or uncommitted
+        messages retain the assembler's existing source errors.
+        """
         with tracing_store_errors(), self._sessions() as session:
             message = self._message_in_app(session, event, payload.message_id)
             workflow_app_log_id = self._workflow_app_log_id(session, message)
             end_user_session_id = self._end_user_session_id(session, message, event.tenant_id)
+            inputs = message.message or message.query
         metadata = {
             **self._correlation_metadata(event),
             **self._message_metadata(message),
@@ -502,7 +509,7 @@ class TraceRecordRepository(TraceRecordSource):
             trace_id=event.correlation.external_trace_id,
             message_id=workflow_app_log_id or message.id,
             message_data=_trace_message(message),
-            inputs=message.message,
+            inputs=inputs,
             outputs=message.answer,
             start_time=payload.started_at,
             end_time=payload.ended_at,

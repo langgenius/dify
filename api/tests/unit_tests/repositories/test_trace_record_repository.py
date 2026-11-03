@@ -6,6 +6,7 @@ import pytest
 from dify_trace_sdk.events import (
     MessageCompleted,
     ModerationChecked,
+    SuggestedQuestionsGenerated,
     ToolInvoked,
     TraceCorrelation,
     TraceEvent,
@@ -38,6 +39,7 @@ from services.tracing.errors import SourceNotFoundError, SourceNotReadyError, Tr
 from services.tracing.records import (
     MessageTraceInfo,
     ModerationTraceInfo,
+    SuggestedQuestionTraceInfo,
     ToolTraceInfo,
     TraceMessage,
     WorkflowTraceInfo,
@@ -263,6 +265,66 @@ def test_moderation_records_keep_the_verdict(sqlite_session_factory: sessionmake
     assert (record.flagged, record.action, record.query) == (True, "overridden", "sanitized")
     assert record.message_id == MESSAGE_ID
     assert record.inputs == {"topic": "weather"}
+
+
+@pytest.mark.usefixtures("records")
+@pytest.mark.parametrize("stored_prompt", ["", [], {}], ids=["empty-string", "empty-list", "empty-object"])
+def test_chatflow_suggested_questions_fall_back_to_the_user_query(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    stored_prompt: str | list[object] | dict[str, object],
+) -> None:
+    """An owned chatflow message without model prompts exports its persisted user query."""
+    app = sqlite_session.get(App, APP_ID)
+    conversation = sqlite_session.get(Conversation, "conversation-1")
+    message = sqlite_session.get(Message, MESSAGE_ID)
+    assert app is not None
+    assert conversation is not None
+    assert message is not None
+    app.mode = AppMode.ADVANCED_CHAT
+    conversation.mode = AppMode.ADVANCED_CHAT
+    message.app_mode = AppMode.ADVANCED_CHAT
+    message.message = stored_prompt
+    sqlite_session.commit()
+    payload = SuggestedQuestionsGenerated(
+        message_id=MESSAGE_ID,
+        questions=["How do I build a workflow?"],
+        started_at=CREATED_AT + timedelta(seconds=2),
+        ended_at=CREATED_AT + timedelta(seconds=3),
+    )
+
+    record = _assembler(sqlite_session_factory).assemble(_event(payload))
+
+    assert isinstance(record, SuggestedQuestionTraceInfo)
+    assert record.inputs == "What is Dify?"
+    assert record.suggested_question == payload.questions
+    assert record.outputs == "An LLM app platform."
+    assert (record.start_time, record.end_time) == (payload.started_at, payload.ended_at)
+    assert record.message_data is not None
+    assert record.message_data.id == MESSAGE_ID
+    with sqlite_session_factory() as session:
+        persisted = session.get(Message, MESSAGE_ID)
+        assert persisted is not None
+        assert persisted.message == stored_prompt
+
+
+@pytest.mark.usefixtures("records")
+def test_suggested_questions_preserve_recorded_model_prompts(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """An owned chat message with recorded model prompts keeps its existing trace input."""
+    payload = SuggestedQuestionsGenerated(
+        message_id=MESSAGE_ID,
+        questions=[],
+        started_at=CREATED_AT + timedelta(seconds=2),
+        ended_at=CREATED_AT + timedelta(seconds=3),
+    )
+
+    record = _assembler(sqlite_session_factory).assemble(_event(payload))
+
+    assert isinstance(record, SuggestedQuestionTraceInfo)
+    assert record.inputs == [{"role": "user", "text": "What is Dify?"}]
+    assert record.suggested_question == []
 
 
 @pytest.mark.usefixtures("records")
