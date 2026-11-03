@@ -612,9 +612,10 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
     This preserves the user-facing semantics Dify's agent tool runtime relies on:
     text is appended directly, links/images become user-check instructions, JSON
     output is included unless explicitly suppressed, variable messages stay
-    internal, and everything else falls back to ``str(message)``. JSON fragments
-    are deduplicated against existing text so mixed text/JSON streams do not
-    repeat the same content unnecessarily.
+    internal, binary output is described instead of inlined, and everything else
+    falls back to ``str(message)``. JSON fragments are deduplicated against
+    existing text so mixed text/JSON streams do not repeat the same content
+    unnecessarily.
     """
     parts: list[str] = []
     json_parts: list[str] = []
@@ -640,6 +641,14 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
             json_message = response.message
             if isinstance(json_message, DifyPluginToolInvokeMessage.JsonMessage) and not json_message.suppress_output:
                 json_parts.append(json.dumps(json_message.json_object, ensure_ascii=False, default=str))
+        elif response.type is DifyPluginToolInvokeMessage.MessageType.BLOB:
+            # The API stores blobs as tool files before rendering text; without that pipeline the
+            # escaped bytes would land in the prompt at roughly three times their size.
+            blob_message = response.message
+            blob = blob_message.blob if isinstance(blob_message, DifyPluginToolInvokeMessage.BlobMessage) else b""
+            mimetype = (response.meta or {}).get("mime_type")
+            mimetype = mimetype if isinstance(mimetype, str) and mimetype else "application/octet-stream"
+            parts.append(f"binary output ({mimetype}, {len(blob)} bytes) is not included in the text result")
         elif response.type is DifyPluginToolInvokeMessage.MessageType.VARIABLE:
             continue
         else:

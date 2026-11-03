@@ -1,5 +1,6 @@
 """Plugin tools use JSON identity, prepared schemas and native dispatch."""
 
+import base64
 import json
 
 import httpx
@@ -283,3 +284,35 @@ async def test_native_plugin_tool_keeps_json_output_that_differs_from_the_text()
         result = await invoke_native_tool(deps, tools_layer.Toolset("tools"), "get_item", {})
 
     assert result.output == 'summary{"a": 1}'
+
+
+def _blob_frame(blob: bytes, meta: dict | None) -> dict:
+    data: dict = {"type": "blob", "message": {"blob": base64.b64encode(blob).decode()}}
+    if meta is not None:
+        data["meta"] = meta
+    return {"code": 0, "message": "ok", "data": data}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("meta", "mimetype"),
+    [({"mime_type": "image/png"}, "image/png"), (None, "application/octet-stream")],
+)
+async def test_native_plugin_tool_describes_binary_output_instead_of_inlining_it(meta, mimetype):
+    payload = b"\x89PNG\r\n\x1a\n" + bytes(range(256)) * 8
+
+    def handler(request):
+        return httpx.Response(200, text=_daemon_stream(_blob_frame(payload, meta)))
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        deps = Deps(
+            layers={
+                "tools": {"config": _single_tool_config().model_dump(mode="json"), "state": {}},
+                "execution_context": {"config": identity().model_dump(mode="json"), "state": {}},
+            },
+            services=Services(client, client, plugin_daemon_api_key="daemon-secret"),
+            run_id="test",
+        )
+        result = await invoke_native_tool(deps, tools_layer.Toolset("tools"), "get_item", {})
+
+    assert result.output == f"binary output ({mimetype}, {len(payload)} bytes) is not included in the text result"
