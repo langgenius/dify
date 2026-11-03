@@ -1,7 +1,7 @@
 """Add current Workspace Builder cognition policy.
 
 Revision ID: 3f51c8a6d902
-Revises: db7f42c9a801
+Revises: e832a94f210b, b9d3f7a5c102
 """
 
 import sqlalchemy as sa
@@ -10,7 +10,7 @@ from alembic import op
 from models.types import StringUUID
 
 revision = "3f51c8a6d902"
-down_revision = "db7f42c9a801"
+down_revision = ("e832a94f210b", "b9d3f7a5c102")
 branch_labels = None
 depends_on = None
 

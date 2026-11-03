@@ -48,11 +48,8 @@ def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
     assert material.down_revision == "3f51c8a6d902"
     policy = scripts.get_revision("3f51c8a6d902")
     assert policy is not None
-    assert policy.down_revision == "db7f42c9a801"
-    merged = scripts.get_revision("db7f42c9a801")
-    assert merged is not None
-    assert isinstance(merged.down_revision, tuple)
-    assert set(merged.down_revision) == {"e832a94f210b", _KNOWLEDGE_FS_CHAIN[-1]}
+    assert isinstance(policy.down_revision, tuple)
+    assert set(policy.down_revision) == {"e832a94f210b", _KNOWLEDGE_FS_CHAIN[-1]}
 
 
 def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
