@@ -1,7 +1,5 @@
 """Inline clones consume detached source rows and share the workflow transaction."""
 
-from unittest.mock import Mock
-
 import pytest
 from sqlalchemy import Select, event, select
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
@@ -37,7 +35,11 @@ def test_clone_uses_loaded_source_and_commits_all_resources_together(
                 ),
             ]
         )
-    monkeypatch.setattr(AgentDslService, "__init__", Mock(side_effect=AssertionError("clone reentered DSL service")))
+
+    def disallow_dsl_service(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("clone reentered DSL service")
+
+    monkeypatch.setattr(AgentDslService, "__init__", disallow_dsl_service)
     reads: list[str] = []
 
     def read(state: ORMExecuteState) -> None:

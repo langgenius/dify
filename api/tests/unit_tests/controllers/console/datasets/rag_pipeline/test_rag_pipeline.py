@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from dataclasses import dataclass
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, PropertyMock, patch
 from uuid import UUID
 
@@ -497,13 +497,18 @@ def _draft_variable_context() -> RequestContext:
     return RequestContext("request-1", None, "account-1", "tenant-1")
 
 
+@dataclass(frozen=True)
+class _ConsoleWorkflowVariableServices:
+    console_workflow_variables: object
+
+
 @pytest.fixture
 def console_workflow_variables(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     service = MagicMock()
     monkeypatch.setattr(
         draft_variable_module,
         "application_services",
-        lambda: SimpleNamespace(console_workflow_variables=service),
+        lambda: _ConsoleWorkflowVariableServices(console_workflow_variables=service),
     )
     monkeypatch.setattr(draft_variable_module, "dump_response", lambda _schema, value: value)
     return service

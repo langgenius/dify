@@ -22,7 +22,7 @@ if TYPE_CHECKING:
         DifyRunContext,
         WorkflowAppGenerateEntity,
     )
-    from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
+    from models.agent import Agent
 
 
 class AgentAppTracingContext(Protocol):
@@ -41,6 +41,28 @@ class AgentAppTracingContext(Protocol):
     def idempotency_key(self) -> str: ...
 
 
+class WorkflowAgentTracingContext(Protocol):
+    """Tracing-owned view of a Workflow Agent invocation context."""
+
+    @property
+    def dify_context(self) -> DifyRunContext: ...
+
+    @property
+    def agent(self) -> Agent: ...
+
+    @property
+    def workflow_id(self) -> str: ...
+
+    @property
+    def workflow_run_id(self) -> str | None: ...
+
+    @property
+    def node_execution_id(self) -> str: ...
+
+    @property
+    def attempt(self) -> int: ...
+
+
 class ApplicationTracingHooks(Protocol):
     """Execution-owned port for the application tracing lifecycle.
 
@@ -51,7 +73,7 @@ class ApplicationTracingHooks(Protocol):
     def prepare_agent_app(self, context: AgentAppTracingContext) -> ApplicationTracingContext | None: ...
 
     def prepare_workflow_agent(
-        self, context: WorkflowAgentRuntimeBuildContext, conversation_id: str | None
+        self, context: WorkflowAgentTracingContext, conversation_id: str | None
     ) -> ApplicationTracingContext | None: ...
 
     def freeze_workflow_run(

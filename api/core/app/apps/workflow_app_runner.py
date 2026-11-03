@@ -196,11 +196,13 @@ class WorkflowBasedAppRunner:
     @property
     def human_form_reader(self) -> HumanInputFormReader:
         """Return the injected reader, with a legacy fallback during runner migration."""
-        if self._human_form_reader is None:
+        reader = self._human_form_reader
+        if reader is None:
             from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 
-            self._human_form_reader = cast(HumanInputFormReader, HumanInputFormSubmissionRepository())
-        return self._human_form_reader
+            reader = HumanInputFormSubmissionRepository()
+            self._human_form_reader = reader
+        return reader
 
     def prepare(self) -> PreparedWorkflowRun | None:
         raise NotImplementedError

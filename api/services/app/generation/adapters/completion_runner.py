@@ -1,5 +1,4 @@
 import logging
-from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
@@ -47,7 +46,8 @@ class CompletionAppRunner(AppRunner):
         :return:
         """
         app_config = application_generate_entity.app_config
-        app_config = cast(CompletionAppConfig, app_config)
+        if not isinstance(app_config, CompletionAppConfig):
+            raise TypeError(f"Expected CompletionAppConfig, got {type(app_config).__name__}")
         inputs = application_generate_entity.inputs
         query = application_generate_entity.query
         files = application_generate_entity.files

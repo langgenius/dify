@@ -1,8 +1,7 @@
 import json
 import logging
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal, TypedDict
 
-from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
@@ -50,11 +49,11 @@ class SimpleSuccessResult(TypedDict):
 
 
 def _dump_api_tool_bundles(tool_bundles: list[ApiToolBundle]) -> list[dict[str, Any]]:
-    return cast(list[dict[str, Any]], TypeAdapter(list[ApiToolBundle]).dump_python(tool_bundles, mode="json"))
+    return [bundle.model_dump(mode="json") for bundle in tool_bundles]
 
 
 def _dump_provider_configs(configs: list[ProviderConfig]) -> list[dict[str, Any]]:
-    return cast(list[dict[str, Any]], TypeAdapter(list[ProviderConfig]).dump_python(configs, mode="json"))
+    return [config.model_dump(mode="json") for config in configs]
 
 
 class ApiToolManageService:
@@ -99,15 +98,12 @@ class ApiToolManageService:
                 ),
             ]
 
-            return cast(
-                ApiSchemaParseResult,
-                {
-                    "schema_type": schema_type.value,
-                    "parameters_schema": _dump_api_tool_bundles(tool_bundles),
-                    "credentials_schema": _dump_provider_configs(credentials_schema),
-                    "warning": warnings,
-                },
-            )
+            return {
+                "schema_type": schema_type.value,
+                "parameters_schema": _dump_api_tool_bundles(tool_bundles),
+                "credentials_schema": _dump_provider_configs(credentials_schema),
+                "warning": warnings,
+            }
         except Exception as e:
             raise ValueError(f"invalid schema: {str(e)}") from e
 
