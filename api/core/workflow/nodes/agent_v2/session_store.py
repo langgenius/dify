@@ -44,6 +44,8 @@ def resolve_workflow_agent_workspace_owner_scope(
     Chatflow runs carry ``conversation_id`` and should persist Agent memory across
     turns the same way standalone Agent Apps do. Workflow Tool participants keep
     their invocation scope and the owning run's lifetime, even inside Chatflows.
+    Parallel iteration branches partition by ``node_execution_id`` so each branch
+    gets its own Workspace instead of colliding on the shared unique key.
     """
 
     owner_scope_key = f"{node_id}:{workflow_agent_binding_id}"
@@ -58,6 +60,12 @@ def resolve_workflow_agent_workspace_owner_scope(
             owner_id=conversation_id,
             owner_scope_key=owner_scope_key,
         )
+    # A parallel Iteration executes the same node in several branches under one
+    # workflow run. Partition by node execution so each branch allocates its own
+    # Workspace instead of colliding on the shared unique key. Workflow Tool
+    # participants already partition by invocation and keep loop executions shared.
+    if node_execution_id is not None and workflow_tool_invocation_id is None:
+        owner_scope_key = f"{owner_scope_key}:{node_execution_id}"
     return WorkspaceOwnerScope(
         tenant_id=tenant_id,
         app_id=app_id,

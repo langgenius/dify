@@ -97,7 +97,7 @@ def _workspace_row(
     workspace_id: str = "workspace-1",
     tenant_id: str = "tenant-1",
     app_id: str = "app-1",
-    owner_scope_key: str = "node-1:workflow-binding-1",
+    owner_scope_key: str = "node-1:workflow-binding-1:execution-1",
     status: AgentWorkingResourceStatus = AgentWorkingResourceStatus.ACTIVE,
 ) -> AgentWorkspace:
     return AgentWorkspace(
@@ -183,7 +183,7 @@ def test_scope_uses_node_and_workflow_binding_as_workspace_subscope() -> None:
     owner = _scope().workspace_owner
     assert owner.owner_type is AgentWorkspaceOwnerType.WORKFLOW_RUN
     assert owner.owner_id == "run-1"
-    assert owner.owner_scope_key == "node-1:workflow-binding-1"
+    assert owner.owner_scope_key == "node-1:workflow-binding-1:execution-1"
 
 
 def test_resolve_workspace_owner_scope_uses_conversation_for_chatflow() -> None:
@@ -212,6 +212,33 @@ def test_resolve_workspace_owner_scope_keeps_workflow_run_for_pure_workflow() ->
     )
     assert owner.owner_type is AgentWorkspaceOwnerType.WORKFLOW_RUN
     assert owner.owner_id == "run-1"
+    assert owner.owner_scope_key == "node-1:workflow-binding-1:execution-1"
+
+
+def test_parallel_iteration_branches_partition_workspace_by_node_execution() -> None:
+    first = resolve_workflow_agent_workspace_owner_scope(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        conversation_id=None,
+        workflow_run_id="run-1",
+        node_id="node-1",
+        workflow_agent_binding_id="workflow-binding-1",
+        node_execution_id="execution-1",
+    )
+    second = resolve_workflow_agent_workspace_owner_scope(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        conversation_id=None,
+        workflow_run_id="run-1",
+        node_id="node-1",
+        workflow_agent_binding_id="workflow-binding-1",
+        node_execution_id="execution-2",
+    )
+    assert first.owner_type is AgentWorkspaceOwnerType.WORKFLOW_RUN
+    assert first.owner_id == second.owner_id == "run-1"
+    assert first.owner_scope_key == "node-1:workflow-binding-1:execution-1"
+    assert second.owner_scope_key == "node-1:workflow-binding-1:execution-2"
+    assert first.owner_scope_key != second.owner_scope_key
 
 
 def test_conversation_scope_reuses_existing_binding_on_later_turn(
