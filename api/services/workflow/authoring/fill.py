@@ -30,7 +30,7 @@ from services.workflow.authoring.package_io import (
 )
 from services.workflow.authoring.plugins import fill_plugin_values
 from services.workflow.graph_check import GRAPH_MODES
-from services.workflow.node_defaults import editor_defaults
+from services.workflow.node_defaults import editor_defaults, rewrite_old_shapes
 
 if TYPE_CHECKING:
     from services.workflow.authoring import FillContext
@@ -157,7 +157,7 @@ def _fill_node(node: object, ctx: FillContext) -> None:
     data = node.get("data")
     if not isinstance(data, dict):
         return
-    node["data"] = with_canvas_defaults(editor_defaults(data))
+    node["data"] = editor_defaults(with_canvas_defaults(rewrite_old_shapes(data)))
     fill_plugin_values(node["data"], ctx)
 
 

@@ -162,7 +162,17 @@ def test_a_block_seed_is_the_canvas_node() -> None:
     for option in options:
         node = canvas_node(option.type)
         assert node is not None, option.type
-        assert option.seed == {"type": option.type, "version": option.version, "title": option.label, **node.data}
+        edition = node.edition(option.version)
+        assert edition is not None, option.type
+        assert option.seed == {"type": option.type, "version": option.version, "title": option.label, **edition.data}
+
+
+def test_a_human_input_block_seed_has_the_version_two_fields() -> None:
+    [option] = [o for o in _options(kind=NodeOptionKind.BLOCK, roster=_NoRoster()) if o.type == "human-input"]
+
+    assert option.seed["version"] == "2"
+    assert {"recipients_spec", "message_template", "debug_mode"} <= set(option.seed)
+    assert "delivery_methods" not in option.seed
 
 
 def test_tool_rows_include_builtin_current_time(tools: list[ToolSource]) -> None:

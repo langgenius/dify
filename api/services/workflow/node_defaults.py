@@ -102,15 +102,24 @@ def node_data_schema(node_class: type[Node]) -> dict[str, Any]:
     return node_data_model(node_class).model_json_schema()
 
 
-def editor_defaults(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Old shapes rewritten and the empty containers the editor reads added; keys already present win."""
+def rewrite_old_shapes(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Old shapes rewritten to the one the editor reads; a copy of `data` when its type has none."""
     node_type = data.get("type")
     if not isinstance(node_type, str):
         return dict(data)
     normalize = _NORMALIZERS.get(node_type)
-    if normalize is not None:
-        data = normalize(data)
-    return {**copy.deepcopy(dict(EDITOR_EMPTY.get(node_type, {}))), **data}
+    if normalize is None:
+        return dict(data)
+    return dict(normalize(data))
+
+
+def editor_defaults(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Old shapes rewritten and the empty containers the editor reads added; keys already present win."""
+    rewritten = rewrite_old_shapes(data)
+    node_type = rewritten.get("type")
+    if not isinstance(node_type, str):
+        return rewritten
+    return {**copy.deepcopy(dict(EDITOR_EMPTY.get(node_type, {}))), **rewritten}
 
 
 def fill_node_data(data: Mapping[str, Any]) -> dict[str, Any]:

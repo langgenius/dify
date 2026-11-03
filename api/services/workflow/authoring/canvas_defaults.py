@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from enum import StrEnum
 from importlib import resources
 from typing import Final, Self
@@ -22,10 +23,26 @@ type Loc = tuple[str | int, ...]
 
 WILDCARD: Final = "*"
 _TYPE_KEY: Final = "type"
+_VERSION_KEY: Final = "version"
+_ANY_VERSION: Final = ""
+_HUMAN_INPUT_V2_ENTRY: Final = "human-input-v2"
 _DEFAULTS_FILE: Final = "canvas_defaults.json"
 _DEFAULTS: Final = TypeAdapter(dict[str, dict[str, object]]).validate_json(
     resources.files(__package__).joinpath(_DEFAULTS_FILE).read_text(encoding="utf-8")
 )
+
+
+@dataclass(frozen=True)
+class CanvasEdition:
+    """What the canvas gives a node of one version of a block type, from the web entry `entry`."""
+
+    version: str
+    entry: str
+    purpose: tuple[Loc, ...]
+
+    @property
+    def data(self) -> Mapping[str, object]:
+        return _DEFAULTS.get(self.entry, {})
 
 
 class CanvasNode(StrEnum):
@@ -34,17 +51,40 @@ class CanvasNode(StrEnum):
     `purpose` lists the fields the web's `checkValid` rejects when empty, each as the path to it; `*` stands for
     each item of a list. Conditions that depend on other fields (an operator that takes no value, a mode) are not
     listed.
+
+    A type whose versions differ lists one `CanvasEdition` per version; `data` and `purpose` are those of the
+    first, which is the version a node without one has. `edition` picks by a node's version.
     """
 
     data: Mapping[str, object]
     purpose: tuple[Loc, ...]
+    editions: Mapping[str, CanvasEdition]
 
-    def __new__(cls, value: str, *purpose: Loc) -> Self:
+    def __new__(cls, value: str, *parts: Loc | CanvasEdition) -> Self:
         member = str.__new__(cls, value)
         member._value_ = value
-        member.data = _DEFAULTS.get(value, {})
-        member.purpose = purpose
+        editions = [part for part in parts if isinstance(part, CanvasEdition)]
+        if not editions:
+            editions = [
+                CanvasEdition(_ANY_VERSION, value, tuple(part for part in parts if not isinstance(part, CanvasEdition)))
+            ]
+        member.editions = {edition.version: edition for edition in editions}
+        member.data = editions[0].data
+        member.purpose = editions[0].purpose
         return member
+
+    def edition(self, version: object = None) -> CanvasEdition | None:
+        """The edition for a node's version; None when this type has editions and the version is not one of them."""
+        if _ANY_VERSION in self.editions:
+            return self.editions[_ANY_VERSION]
+        key = self.default_version if version is None else version
+        if not isinstance(key, str):
+            return None
+        return self.editions.get(key)
+
+    @property
+    def default_version(self) -> str:
+        return next(iter(self.editions))
 
     # answer/default.ts:21
     ANSWER = (BuiltinNodeTypes.ANSWER, ("answer",))
@@ -68,13 +108,33 @@ class CanvasNode(StrEnum):
     )
     # http/default.ts:45; the binary body file is required only for a binary body (:51-56)
     HTTP_REQUEST = (BuiltinNodeTypes.HTTP_REQUEST, ("url",))
-    # human-input/default.ts:53 and shared/default-utils.ts:23-35
     HUMAN_INPUT = (
         BuiltinNodeTypes.HUMAN_INPUT,
-        ("delivery_methods",),
-        ("user_actions",),
-        ("user_actions", WILDCARD, "id"),
-        ("user_actions", WILDCARD, "title"),
+        # human-input/default.ts:53 and shared/default-utils.ts:23-35
+        CanvasEdition(
+            "1",
+            BuiltinNodeTypes.HUMAN_INPUT,
+            (
+                ("delivery_methods",),
+                ("user_actions",),
+                ("user_actions", WILDCARD, "id"),
+                ("user_actions", WILDCARD, "title"),
+            ),
+        ),
+        # human-input-v2/default.ts:51, 72, 74 and shared/default-utils.ts:23-35; the checks on a recipient (:53) and on
+        # the request URL in the body (:76-79) are not listed
+        CanvasEdition(
+            "2",
+            _HUMAN_INPUT_V2_ENTRY,
+            (
+                ("recipients_spec",),
+                ("message_template", "subject"),
+                ("message_template", "body"),
+                ("user_actions",),
+                ("user_actions", WILDCARD, "id"),
+                ("user_actions", WILDCARD, "title"),
+            ),
+        ),
     )
     # if-else/default.ts:43, 47, 56, 62; the value is required only for some operators (:84-89)
     IF_ELSE = (
@@ -158,7 +218,8 @@ def with_canvas_defaults(data: Mapping[str, object]) -> dict[str, object]:
 
     A missing key gets the canvas value. A dict that is there gets the canvas dict's missing keys, one level deep,
     unless the canvas dict names a `type` that the written one lacks or contradicts. Lists and scalars are never
-    merged, and nothing is written as null. Data of a type the canvas gives no defaults is returned as it is.
+    merged, and nothing is written as null. Data of a type the canvas gives no defaults, or of a version it does
+    not know, is returned as it is.
     """
     filled = dict(data)
     node_type = data.get(_TYPE_KEY)
@@ -167,7 +228,10 @@ def with_canvas_defaults(data: Mapping[str, object]) -> dict[str, object]:
     node = canvas_node(node_type)
     if node is None:
         return filled
-    for key, canvas in node.data.items():
+    edition = node.edition(data.get(_VERSION_KEY))
+    if edition is None:
+        return filled
+    for key, canvas in edition.data.items():
         if key not in filled:
             filled[key] = copy.deepcopy(canvas)
             continue
@@ -187,12 +251,15 @@ def _step(value: object, key: str | int) -> object | None:
     return None
 
 
-def canvas_value(node_type: str, loc: Loc) -> object | None:
+def canvas_value(node_type: str, loc: Loc, *, version: str | None = None) -> object | None:
     """A copy of the canvas value at `loc` for a block type; None where the canvas has none. `*` is the first item."""
     node = canvas_node(node_type)
     if node is None:
         return None
-    value: object | None = node.data
+    edition = node.edition(version)
+    if edition is None:
+        return None
+    value: object | None = edition.data
     for key in loc:
         value = _step(value, key)
         if value is None:
