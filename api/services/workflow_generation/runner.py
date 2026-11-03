@@ -1555,7 +1555,9 @@ class WorkflowGenerator:
             stage=stage,
             validate=validate_config,
         )
-        return cast(dict[str, Any], parsed["config"])
+        config = parsed["config"]
+        assert isinstance(config, dict)
+        return config
 
     @staticmethod
     def _hydrate_tool_nodes(
@@ -3324,7 +3326,7 @@ class WorkflowGenerator:
         # re-homed every edge it could do so unambiguously; whatever is left
         # would hang off a handle that does not exist and its arm would never
         # run, while the run still reports "succeeded" (ESQ1-303).
-        edges_raw = list(cast(list[dict[str, Any]], graph.get("edges", [])))
+        edges_raw = [dict(edge) for edge in graph.get("edges", [])]
         for bad in graph_normalizers.undeclared_branch_handles(nodes, edges_raw):
             errors.append(
                 _err(

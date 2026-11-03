@@ -1,7 +1,6 @@
 """Canonical bounded Run header parsing; the parsed value grants no authority."""
 
 import base64
-import binascii
 import json
 
 from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
@@ -45,5 +44,5 @@ def _parse_header[Model: BaseModel](headers, name: str, model: type[Model]) -> M
         if raw != canonical or encoded != base64.urlsafe_b64encode(canonical).rstrip(b"=").decode("ascii"):
             raise ValueError("noncanonical selection")
         return value
-    except (ValueError, UnicodeError, binascii.Error):
+    except ValueError:
         raise BuilderExecutionPolicyError("native_agent_selection_invalid") from None

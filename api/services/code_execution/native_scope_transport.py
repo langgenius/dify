@@ -22,10 +22,9 @@ import re
 import shlex
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from typing import Any, Protocol, cast
+from typing import Any, Protocol
 
 from dify_agent.adapters.shell.protocols import ShellCommandResult
-from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
 from dify_agent.runtime_backend.local import LocalNativeScopeClient
 from dify_agent.runtime_backend.native_test_scope import NativeScopeCommands, NativeScopeLease
 from dify_agent.runtime_backend.protocols import RuntimeLayout
@@ -188,8 +187,8 @@ class NativeScopeCodeExecutionTransport:
                 lease = NativeScopeLease(
                     handle=f"native:{handle.scope_id}:{handle.generation}",
                     layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace"),
-                    client=cast(ShellctlClientProtocol, client),
-                    commands=NativeScopeCommands(client=cast(ShellctlClientProtocol, client)),
+                    client=client,
+                    commands=NativeScopeCommands(client=client),
                     workspace_generation=handle.generation,
                 )
                 self._check_current()

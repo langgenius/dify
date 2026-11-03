@@ -76,7 +76,7 @@ _FLOWS = [
 
 
 def _query_env(
-    mode: str = "advanced-chat", variables: list[Graph] | None = None
+    monkeypatch: pytest.MonkeyPatch, mode: str = "advanced-chat", variables: list[Graph] | None = None
 ) -> tuple[FixtureEnv, InMemoryRepository, Session, DifyBuilderContext]:
     dify = FakeDifyPort()
     dify.app_mode = mode
@@ -88,7 +88,7 @@ def _query_env(
         _ = prior_failed
         return {v["variable"]: "mock message" for v in schema["variables"] if v["type"] not in {"file", "file-list"}}
 
-    agent.generate_mock_inputs = generate_mock_inputs
+    monkeypatch.setattr(agent, "generate_mock_inputs", generate_mock_inputs)
     repo = InMemoryRepository()
     env = FixtureEnv(dify=dify, agent=agent, repo=repo, now=lambda: datetime.min)
     return (
@@ -119,10 +119,12 @@ def _form(result: StepResult) -> Graph:
 @pytest.mark.parametrize("flow", _FLOWS)
 @pytest.mark.parametrize("variables", [[], [{"variable": "query", "type": "text-input", "required": True}]])
 def test_chatflow_form_has_a_distinct_required_system_message(
-    flow: tuple[Handler, str, Handler, Handler, PcState, PcState], variables: list[Graph]
+    monkeypatch: pytest.MonkeyPatch,
+    flow: tuple[Handler, str, Handler, Handler, PcState, PcState],
+    variables: list[Graph],
 ) -> None:
     gate, action, _prepare, _run, _await_state, _success = flow
-    env, _, session, fc = _query_env(variables=variables)
+    env, _, session, fc = _query_env(monkeypatch, variables=variables)
     before = copy.deepcopy(env.fake_dify.graph)
     result = gate(env, _query_turn(action), session, fc)
     fields = _form(result)["fields"]
@@ -137,21 +139,26 @@ def test_chatflow_form_has_a_distinct_required_system_message(
 @pytest.mark.parametrize("flow", _FLOWS)
 @pytest.mark.parametrize("query", [None, "  ", 7])
 def test_invalid_chatflow_query_returns_to_inputs_before_launch(
-    flow: tuple[Handler, str, Handler, Handler, PcState, PcState], query: str | int | None
+    monkeypatch: pytest.MonkeyPatch,
+    flow: tuple[Handler, str, Handler, Handler, PcState, PcState],
+    query: str | int | None,
 ) -> None:
     _gate, _action, prepare, run, await_state, _success = flow
     env, repo, session, fc = _query_env(
+        monkeypatch,
         variables=[
             {"variable": "report_pdf", "type": "file", "required": True},
             {"variable": "endpoint", "type": "text-input"},
-        ]
+        ],
     )
     supplied = {"sys.query": query, "report_pdf": {"id": "file-1"}, "endpoint": "https://example.com"}
     prepared = prepare(env, _query_turn(inputs=supplied), session, fc)
     assert prepared.next == await_state
     assert fc.test_input_ref == ""
     assert _form(prepared)["values"] == supplied
-    env.fake_dify.run_draft = lambda *_args, **_kwargs: pytest.fail("invalid query reached runtime")
+    monkeypatch.setattr(
+        env.fake_dify, "run_draft", lambda *_args, **_kwargs: pytest.fail("invalid query reached runtime")
+    )
     ti = TestInput(session_id=session.id, inputs=supplied)
     repo.save_test_input(ti)
     fc.test_input_ref = ti.id
@@ -166,11 +173,13 @@ def test_invalid_chatflow_query_returns_to_inputs_before_launch(
 @pytest.mark.parametrize("flow", _FLOWS)
 @pytest.mark.parametrize("mode", ["advanced-chat", "workflow"])
 def test_mock_and_manual_inputs_share_mode_aware_schema_hash(
-    flow: tuple[Handler, str, Handler, Handler, PcState, PcState], mode: str
+    monkeypatch: pytest.MonkeyPatch, flow: tuple[Handler, str, Handler, Handler, PcState, PcState], mode: str
 ) -> None:
     _gate, _action, prepare, run, _await_state, success = flow
     env, repo, session, fc = _query_env(
-        mode=mode, variables=[{"variable": "query", "type": "text-input"}, {"variable": "report_pdf", "type": "file"}]
+        monkeypatch,
+        mode=mode,
+        variables=[{"variable": "query", "type": "text-input"}, {"variable": "report_pdf", "type": "file"}],
     )
     prepare(env, _query_turn(mode="mock"), session, fc)
     mocked = repo.get_test_input(fc.test_input_ref)
@@ -189,14 +198,17 @@ def test_mock_and_manual_inputs_share_mode_aware_schema_hash(
 
 @pytest.mark.parametrize("flow", _FLOWS)
 def test_chatflow_saved_workflow_inputs_are_stale(
+    monkeypatch: pytest.MonkeyPatch,
     flow: tuple[Handler, str, Handler, Handler, PcState, PcState],
 ) -> None:
     _gate, _action, prepare, run, await_state, _success = flow
-    env, repo, session, fc = _query_env(mode="workflow")
+    env, repo, session, fc = _query_env(monkeypatch, mode="workflow")
     prepare(env, _query_turn(inputs={"query": "custom"}), session, fc)
     old_hash = repo.get_test_input(fc.test_input_ref).start_schema_hash
     env.fake_dify.app_mode = "advanced-chat"
-    env.fake_dify.run_draft = lambda *_args, **_kwargs: pytest.fail("stale inputs reached runtime")
+    monkeypatch.setattr(
+        env.fake_dify, "run_draft", lambda *_args, **_kwargs: pytest.fail("stale inputs reached runtime")
+    )
     result = run(env, _query_turn(), session, fc)
     assert result.next in {PcState.BUILD_AWAIT_REPAIR, PcState.EDIT_AWAIT_REPAIR, PcState.FIX_AWAIT_DECISION}
     assert fc.test_input_ref != ""
@@ -224,15 +236,18 @@ def test_query_related_graph_errors_still_need_repair(error: str) -> None:
 
 @pytest.mark.parametrize("flow", _FLOWS)
 def test_chatflow_rejects_a_stale_schema_even_when_query_is_valid(
+    monkeypatch: pytest.MonkeyPatch,
     flow: tuple[Handler, str, Handler, Handler, PcState, PcState],
 ) -> None:
     _gate, _action, prepare, run, await_state, _success = flow
-    env, repo, session, fc = _query_env()
+    env, repo, session, fc = _query_env(monkeypatch)
     prepare(env, _query_turn(inputs={"sys.query": "message", "report_pdf": {"id": "file-1"}}), session, fc)
     env.fake_dify.graph["nodes"][0]["data"]["variables"] = [
         {"variable": "topic", "type": "text-input", "required": True}
     ]
-    env.fake_dify.run_draft = lambda *_args, **_kwargs: pytest.fail("stale input contract reached runtime")
+    monkeypatch.setattr(
+        env.fake_dify, "run_draft", lambda *_args, **_kwargs: pytest.fail("stale input contract reached runtime")
+    )
     result = run(env, _query_turn(), session, fc)
     assert result.next in {PcState.BUILD_AWAIT_REPAIR, PcState.EDIT_AWAIT_REPAIR, PcState.FIX_AWAIT_DECISION}
     assert result.run is not None
@@ -242,10 +257,13 @@ def test_chatflow_rejects_a_stale_schema_even_when_query_is_valid(
 
 @pytest.mark.parametrize("flow", _FLOWS)
 def test_workflow_legacy_inputs_and_reserved_looking_variable_remain_ordinary(
+    monkeypatch: pytest.MonkeyPatch,
     flow: tuple[Handler, str, Handler, Handler, PcState, PcState],
 ) -> None:
     _gate, _action, _prepare, run, _await_state, success = flow
-    env, repo, session, fc = _query_env(mode="workflow", variables=[{"variable": "sys.query", "type": "text-input"}])
+    env, repo, session, fc = _query_env(
+        monkeypatch, mode="workflow", variables=[{"variable": "sys.query", "type": "text-input"}]
+    )
     saved = TestInput(session_id=session.id, inputs={"sys.query": 7, "query": "custom"})
     repo.save_test_input(saved)
     fc.test_input_ref = saved.id
@@ -254,13 +272,15 @@ def test_workflow_legacy_inputs_and_reserved_looking_variable_remain_ordinary(
     assert env.fake_dify.run_draft_inputs == saved.inputs
 
 
-def test_workflow_fix_input_failures_keep_the_existing_decision_route() -> None:
+def test_workflow_fix_input_failures_keep_the_existing_decision_route(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.dify_builder.models import Run
 
-    env, repo, session, fc = _query_env(mode="workflow")
+    env, repo, session, fc = _query_env(monkeypatch, mode="workflow")
     prepare = handlers_fix.handle_await_testdata
     prepare(env, _query_turn(inputs={"query": "custom"}), session, fc)
-    env.fake_dify.run_draft = lambda *_args, **_kwargs: Run(status="failed", error="missing input: custom field")
+    monkeypatch.setattr(
+        env.fake_dify, "run_draft", lambda *_args, **_kwargs: Run(status="failed", error="missing input: custom field")
+    )
     result = handlers_fix.handle_verify(env, _query_turn(), session, fc)
     assert result.next == PcState.FIX_AWAIT_DECISION
 

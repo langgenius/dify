@@ -5,11 +5,11 @@ from collections.abc import Container, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, is_dataclass
 from datetime import UTC, datetime, timedelta
-from typing import NoReturn, cast
+from typing import NoReturn
 
 import pytest
 from sqlalchemy import Select, inspect
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.state import InstanceState
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.elements import (
@@ -57,6 +57,14 @@ from services.dify_builder.native_testing.repository import (
     native_workflow_revision,
 )
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import (
+    SqlMethods,
+    checked_row,
+    checked_rows,
+    selected_rows,
+    sql_session,
+    sql_session_factory,
+)
 
 NOW = datetime(2026, 10, 16, tzinfo=UTC)
 
@@ -69,7 +77,7 @@ class Rows[T](UserList[T]):
 class SQL:
     def __init__(self, rows: Mapping[type, Sequence[object]], events: list[str]) -> None:
         assert isinstance(rows, dict)
-        self.rows = cast(dict[type, list[object]], rows)
+        self.rows = rows
         self.events = events
         self.occupancy: list[tuple[object, ...]] = []
 
@@ -177,7 +185,7 @@ class SQL:
                     selected.append(asdict(row)[name])
             else:
                 selected.append(row)
-        return Rows(cast(list[T], selected))
+        return Rows(selected_rows(query, selected))
 
     def scalar[T](self, query: Select[tuple[T]]) -> T | None:
         if query.column_descriptions[0]["entity"] is App and query._for_update_arg is not None:
@@ -192,14 +200,16 @@ class SQL:
             state = inspect(row, raiseerr=False)
             assert isinstance(state, InstanceState)
             if state.attrs["id"].value == identity:
-                return cast(T, row)
+                return checked_row(model, row)
         return None
 
-    def execute[T: tuple[object, ...]](self, _query: Select[T]) -> Rows[T]:
-        return Rows(cast(list[T], self.occupancy))
+    def execute(self, _query: Select[tuple[object, ...]]) -> Rows[object]:
+        return Rows(self.occupancy)
 
     def add(self, row: object) -> None:
-        self.rows.setdefault(type(row), []).append(row)
+        rows = self.rows.setdefault(type(row), [])
+        assert isinstance(rows, list)
+        rows.append(row)
 
     def flush(self) -> None:
         for i, row in enumerate(self.rows.get(NativeDispatch, [])):
@@ -207,6 +217,17 @@ class SQL:
             identity: object = row.id
             if identity is None:
                 row.id = "dispatch-" + str(i)
+
+    def sql_methods(self) -> SqlMethods:
+        """Expose this fixture's explicit SQL IO methods, including overrides."""
+        return {
+            "get": self.get,
+            "scalar": self.scalar,
+            "scalars": self.scalars,
+            "execute": self.execute,
+            "add": self.add,
+            "flush": self.flush,
+        }
 
 
 @dataclass
@@ -419,7 +440,8 @@ def case(monkeypatch: pytest.MonkeyPatch) -> HostCapacityCase:
             yield session
             events.append("commit")
 
-    factory = cast(sessionmaker[Session], SessionFactory())
+    boundary = SessionFactory()
+    factory = sql_session_factory(monkeypatch, boundary, boundary.begin, methods=SQL.sql_methods)
 
     def load(
         _session: object, *, ref: NativeTestContextRef, lock: bool = False, **_kwargs: object
@@ -467,8 +489,8 @@ def test_initial_generation_claim_uses_acknowledged_context_without_fake_checkpo
     assert case.lifecycle.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
     assert case.state.state == "running"
     assert not case.state.cleanup_complete
-    assert cast(list[NativeContinuation], case.session.rows[NativeContinuation]) == []
-    assert cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0].state == "claimed"
+    assert checked_rows(NativeContinuation, case.session.rows[NativeContinuation]) == []
+    assert checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].state == "claimed"
     assert not case.lifecycle.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
 
 
@@ -487,11 +509,14 @@ def test_transaction_local_c03_ports_are_explicit(method: str) -> None:
     )
 
 
-def test_capacity_requires_actual_cleanup_verifier(case: HostCapacityCase) -> None:
+@pytest.mark.parametrize("cleanup_verifier", [None])
+def test_capacity_requires_actual_cleanup_verifier(
+    case: HostCapacityCase, cleanup_verifier: NativeHostCleanupVerifier
+) -> None:
     from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
 
     with pytest.raises(BuilderExecutionPolicyError, match="native_cleanup_verifier_required"):
-        NativeHostCapacity(case.lifecycle, cleanup_verifier=cast(NativeHostCleanupVerifier, None))
+        NativeHostCapacity(case.lifecycle, cleanup_verifier=cleanup_verifier)
 
 
 class OnceVerifier:
@@ -606,7 +631,7 @@ def test_unclean_existing_root_holds_capacity_across_sessions_and_terminal_statu
     ]
     with pytest.raises(BuilderExecutionPolicyError, match="native_capacity_busy"):
         owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
-    assert cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0].state == "queued"
+    assert checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].state == "queued"
 
 
 def test_cleanup_is_once_exact_current_lifetime_outside_writer_and_releases_only_after_proof(
@@ -669,7 +694,9 @@ def test_runtime_cancel_ids_do_not_release_composed_capacity_without_verifier(ca
     assert not case.state.cleanup_complete
 
 
-def test_transaction_local_finalize_cannot_mutate_another_requests_claim(case: HostCapacityCase) -> None:
+def test_transaction_local_finalize_cannot_mutate_another_requests_claim(
+    case: HostCapacityCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
 
     foreign = NativeDispatch(
@@ -681,7 +708,7 @@ def test_transaction_local_finalize_cannot_mutate_another_requests_claim(case: H
         generation=0,
         state="claimed",
     )
-    cast(list[NativeDispatch], case.session.rows[NativeDispatch]).append(foreign)
+    case.session.add(foreign)
     outcome = NativeWorkflowOutcome(
         status="completed",
         ref=case.ref,
@@ -695,7 +722,7 @@ def test_transaction_local_finalize_cannot_mutate_another_requests_claim(case: H
     )
     with pytest.raises(BuilderExecutionPolicyError, match="native_dispatch_conflict"):
         case.lifecycle.finalize_dispatch_locked(
-            session=cast(Session, case.session),
+            session=sql_session(monkeypatch, case.session.sql_methods()),
             owned=case.owned,
             scope=case.scope,
             dispatch_id=foreign.id,
@@ -711,16 +738,16 @@ def test_initial_enqueue_is_real_acknowledged_idempotent_outbox_not_a_checkpoint
     first = case.lifecycle.enqueue_initial_dispatch(ref=case.ref)
     assert first == case.lifecycle.enqueue_initial_dispatch(ref=case.ref)
     assert (first.ref, first.generation, case.state.state) == (case.ref, 0, "queued")
-    assert len(cast(list[NativeDispatch], case.session.rows[NativeDispatch])) == 1
-    assert cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0].state == "queued"
-    assert cast(list[NativeContinuation], case.session.rows[NativeContinuation]) == []
+    assert len(checked_rows(NativeDispatch, case.session.rows[NativeDispatch])) == 1
+    assert checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].state == "queued"
+    assert checked_rows(NativeContinuation, case.session.rows[NativeContinuation]) == []
 
 
 @pytest.mark.parametrize("fault", ["wrong_initial_key", "already_clean", "unrepresented_form"])
 def test_initial_claim_cannot_borrow_resume_or_prior_pending_authority(case: HostCapacityCase, fault: str) -> None:
 
     if fault == "wrong_initial_key":
-        cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0].idempotency_digest = "foreign"
+        checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].idempotency_digest = "foreign"
     elif fault == "already_clean":
         case.state.cleanup_complete = True
     else:
@@ -740,7 +767,7 @@ def test_initial_claim_cannot_borrow_resume_or_prior_pending_authority(case: Hos
         ]
     with pytest.raises(BuilderExecutionPolicyError, match="native_initial_conflict"):
         case.lifecycle.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
-    assert cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0].state == "queued"
+    assert checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].state == "queued"
 
 
 @pytest.mark.parametrize("fault", ["missing_context", "changed_input", "changed_graph", "prior_effect"])
@@ -752,9 +779,9 @@ def test_initial_enqueue_rechecks_actual_context_and_sql_inputs_before_outbox(
     if fault == "missing_context":
         case.session.rows[NativePayloadObject] = []
     elif fault == "changed_input":
-        cast(list[DifyBuilderTestInput], case.session.rows[DifyBuilderTestInput])[0].inputs = {"x": "true"}
+        checked_rows(DifyBuilderTestInput, case.session.rows[DifyBuilderTestInput])[0].inputs = {"x": "true"}
     elif fault == "changed_graph":
-        cast(list[Workflow], case.session.rows[Workflow])[0].graph = '{"changed":true}'
+        checked_rows(Workflow, case.session.rows[Workflow])[0].graph = '{"changed":true}'
     else:
         case.session.rows[NativeEffectAttempt] = [
             NativeEffectAttempt(
@@ -777,19 +804,21 @@ def test_initial_enqueue_rechecks_actual_context_and_sql_inputs_before_outbox(
         ]
     with pytest.raises(BuilderExecutionPolicyError):
         case.lifecycle.enqueue_initial_dispatch(ref=case.ref)
-    assert cast(list[NativeDispatch], case.session.rows[NativeDispatch]) == []
+    assert checked_rows(NativeDispatch, case.session.rows[NativeDispatch]) == []
 
 
-def test_boolean_cleanup_result_is_not_actual_trusted_none_success(case: HostCapacityCase) -> None:
+def test_boolean_cleanup_result_is_not_actual_trusted_none_success(
+    case: HostCapacityCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
 
     class BooleanCleanupVerifier:
         def consume_cleanup(self, **_kwargs: object) -> bool:
             return True
 
-    owner = NativeHostCapacity(
-        case.lifecycle, cleanup_verifier=cast(NativeHostCleanupVerifier, BooleanCleanupVerifier())
-    )
+    verifier = OnceVerifier(case.events)
+    monkeypatch.setattr(verifier, "consume_cleanup", BooleanCleanupVerifier().consume_cleanup)
+    owner = NativeHostCapacity(case.lifecycle, cleanup_verifier=verifier)
     assert owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
     with pytest.raises(BuilderExecutionPolicyError, match="native_cleanup_unproven"):
         owner.record_cleanup(ref=case.ref, generation=0, dispatch_id="dispatch")
@@ -803,18 +832,20 @@ def test_an_old_capacity_lifetime_cannot_claim_same_sql_ids_again_after_cleanup(
     assert owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
     owner.record_cleanup(ref=case.ref, generation=0, dispatch_id="dispatch")
     # Boundary-double simulation of a requeued row, not initial crash-recovery proof.
-    cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0].state = "queued"
+    checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].state = "queued"
     case.state.state = "queued"
     assert not owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
-    assert cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0].state == "queued"
+    assert checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].state == "queued"
     assert case.state.cleanup_complete
 
 
-def test_transaction_local_wait_finalization_requires_actual_c03_ack(case: HostCapacityCase) -> None:
+def test_transaction_local_wait_finalization_requires_actual_c03_ack(
+    case: HostCapacityCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from runtime_contracts.builder.native.contracts import CheckpointRef
     from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
 
-    dispatch = cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0]
+    dispatch = checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0]
     dispatch.state = "claimed"
     case.state.state = "running"
     outcome = NativeWorkflowOutcome(
@@ -830,7 +861,7 @@ def test_transaction_local_wait_finalization_requires_actual_c03_ack(case: HostC
     )
     with pytest.raises(BuilderExecutionPolicyError, match="checkpoint_unavailable"):
         case.lifecycle.finalize_dispatch_locked(
-            session=cast(Session, case.session),
+            session=sql_session(monkeypatch, case.session.sql_methods()),
             owned=case.owned,
             scope=case.scope,
             dispatch_id=dispatch.id,
@@ -840,13 +871,15 @@ def test_transaction_local_wait_finalization_requires_actual_c03_ack(case: HostC
     assert dispatch.state == "claimed"
 
 
-def test_transaction_local_outcome_cannot_attach_a_foreign_private_result(case: HostCapacityCase) -> None:
+def test_transaction_local_outcome_cannot_attach_a_foreign_private_result(
+    case: HostCapacityCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
 
-    dispatch = cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0]
+    dispatch = checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0]
     dispatch.state = "claimed"
     case.state.state = "running"
-    cast(list[NativePayloadObject], case.session.rows[NativePayloadObject]).append(
+    case.session.add(
         NativePayloadObject(
             logical_key="result",
             storage_key="foreign-storage",
@@ -872,7 +905,7 @@ def test_transaction_local_outcome_cannot_attach_a_foreign_private_result(case: 
     )
     with pytest.raises(BuilderExecutionPolicyError, match="native_result_owner_mismatch"):
         case.lifecycle.finalize_dispatch_locked(
-            session=cast(Session, case.session),
+            session=sql_session(monkeypatch, case.session.sql_methods()),
             owned=case.owned,
             scope=case.scope,
             dispatch_id=dispatch.id,
@@ -894,13 +927,13 @@ def test_delayed_claim_rechecks_lifetime_after_app_lock(
     def delayed(**kwargs: object) -> Generator[tuple[Session, OwnedNativeTest, NativeTestScope]]:
         # Model another call acquiring this exact lifetime while our prepared
         # delivery waits for App, followed by same-ID SQL requeue after cleanup.
-        with original(ref=cast(NativeTestContextRef, kwargs["ref"])) as value:
+        with original(ref=checked_row(NativeTestContextRef, kwargs["ref"])) as value:
             owner._used = True
             yield value
 
     monkeypatch.setattr(owner, "locked", delayed)
     assert not owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
-    assert cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0].state == "queued"
+    assert checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].state == "queued"
 
 
 @pytest.mark.parametrize("status", ["queued", "published"])
@@ -910,7 +943,7 @@ def test_never_acquired_cancel_finishes_and_reconcile_does_not_repeat(case: Host
     verifier = OnceVerifier(case.events)
     verifier.current = False  # No physical acquisition exists to verify.
     NativeHostCapacity(case.lifecycle, cleanup_verifier=verifier)
-    cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0].state = status
+    checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].state = status
     first = case.lifecycle.cancel(actor=case.loader.actor, request_id="request", idempotency_key="cancel")
     assert first.status == "cancelled"
     assert case.state.cleanup_complete
@@ -938,9 +971,9 @@ def test_preclaim_cancel_refuses_uncertain_history_without_calling_physical_veri
     if fault == "missing_dispatch":
         case.session.rows[NativeDispatch] = []
     elif fault == "prior_lease":
-        cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0].claim_expires_at = NOW
+        checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].claim_expires_at = NOW
     elif fault == "foreign_dispatch":
-        cast(list[NativeDispatch], case.session.rows[NativeDispatch])[0].tenant_id = "foreign"
+        checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].tenant_id = "foreign"
     elif fault == "missing_context":
         case.session.rows[NativePayloadObject] = []
     else:
@@ -966,7 +999,9 @@ def test_code_cleanup_sql_check_precedes_consume_and_rechecks_inside_writer(case
 
     class CodeCleanup:
         def validate_cleanup_rows(self, **kwargs: object) -> None:
-            assert kwargs["session"] is case.session
+            session = kwargs["session"]
+            assert isinstance(session, Session)
+            assert session.get(NativeInvocationState, "state") is case.state
             case.events.append("code_rows")
 
     owner = NativeHostCapacity(case.lifecycle, cleanup_verifier=OnceVerifier(case.events), code_cleanup=CodeCleanup())

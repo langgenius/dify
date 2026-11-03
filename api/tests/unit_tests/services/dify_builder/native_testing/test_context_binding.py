@@ -1,8 +1,7 @@
 """Trusted reload must finish before any marked run reaches native setup."""
 
-from collections.abc import Mapping
 from datetime import datetime
-from typing import cast
+from operator import methodcaller
 
 import pytest
 import sqlalchemy.orm
@@ -13,7 +12,7 @@ from core.dify_builder.models import Actor
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import JsonValue, NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
-from services.dify_builder.native_testing.agent_binding import AgentBindingAuthorization, AgentBindingSelection
+from services.dify_builder.native_testing.agent_binding import AgentBindingAuthorization
 from services.dify_builder.native_testing.context_binding import (
     NativeAdmissionCompilation,
     NativeAdmissionCompiler,
@@ -267,14 +266,15 @@ def test_native_graph_refuses_unselected_agent_before_sync(
         }
     )
     with pytest.raises(BuilderExecutionPolicyError, match="agent_binding_not_prepared"):
-        _prepare_native_agent_graph(
+        methodcaller(
+            "__call__",
             session=sqlite_session,
             actor=case.actor,
             workflow=case.workflow,
             graph=graph,
-            selections=cast(Mapping[str, AgentBindingSelection], None),
+            selections=None,
             authorization=None,
-        )
+        )(_prepare_native_agent_graph)
 
 
 def test_agent_selection_uses_exact_confirmed_opaque_identity() -> None:

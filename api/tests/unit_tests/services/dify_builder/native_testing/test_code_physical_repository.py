@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from time import monotonic
-from typing import NotRequired, Unpack, cast
+from typing import NotRequired, Unpack
 from uuid import uuid4
 
 import pytest
@@ -42,6 +42,7 @@ from services.dify_builder.native_testing.sandbox.contracts import (
 )
 from services.dify_builder.native_testing.sandbox.repository import NativeCodePhysicalRepository
 from tests.unit_tests.installed_spies import installed_mock
+from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import selected_rows
 
 
 class ReservationArguments(TypedDict, closed=True):
@@ -237,12 +238,12 @@ def _timeout_loader(
         pass
 
     engine = create_engine("postgresql+psycopg2://unused@127.0.0.1:1/unused")
-    factory = sessionmaker(bind=engine, class_=TimeoutSession)
+    factory = sessionmaker[Session](bind=engine, class_=TimeoutSession)
     if record_begin:
         event.listen(TimeoutSession, "after_transaction_create", lambda *_: events.append("begin"))
     event.listen(TimeoutSession, "after_commit", lambda *_: events.append("commit"))
     mocker.patch.object(TimeoutSession, "execute", side_effect=execute)
-    loader = _loader(cast(sessionmaker[Session], factory))
+    loader = _loader(factory)
     mocker.patch.object(loader, "load", return_value=None)
     mocker.patch.object(loader, "_load", return_value=(_owned(p), _scope(p, expires_at=expires_at)))
     return loader
@@ -856,8 +857,9 @@ def test_invalid_or_expired_transaction_deadline_never_opens_writer(
     begin = mocker.patch.object(factory, "begin", side_effect=AssertionError("invalid budget opened SQL writer"))
     loader = _loader(factory)
     repo = NativeCodePhysicalRepository(
-        loader, acquisition_owner=Current(), transaction_deadline=lambda _: cast(float, deadline)
+        loader, acquisition_owner=Current(), transaction_deadline=fixed_transaction_deadline()
     )
+    mocker.patch.object(repo, "_transaction_deadline", return_value=deadline)
     with (
         pytest.raises(BuilderExecutionPolicyError),
         repo._transaction(ref=p.ref, acquisition=p.acquisition, settlement=True),
@@ -891,10 +893,10 @@ def test_admission_persists_once_bounded_wire_spec_separate_from_logical_intent(
     wire = t.args["spec"].native.model_copy(update={"deadline": deadline})
     assert physical.scope_spec_digest == canonical_digest(wire.model_dump(mode="json"))
     assert t.args["intent"].model_dump(mode="json") == original_intent
+    repeated = t.args.copy()
+    repeated["physical_deadline"] = deadline + timedelta(seconds=1)
     with pytest.raises(BuilderExecutionPolicyError):
-        t.repo.reserve_scope(
-            **cast(ReservationArguments, {**t.args, "physical_deadline": deadline + timedelta(seconds=1)})
-        )
+        t.repo.reserve_scope(**repeated)
     assert len(t.stored) == 1
     assert t.stored[0].scope_expires_at == deadline
 
@@ -929,7 +931,7 @@ def test_settlement_reloads_exact_persisted_deadline_after_expiry_without_recrea
 
     def row_read[T](query: Select[tuple[T]]) -> T | None:
         if query.column_descriptions[0]["entity"] is NativeCodePhysicalOperation:
-            return cast(T, t.stored[0])
+            return selected_rows(query, t.stored)[0]
         return scalar(query)
 
     monkeypatch.setattr(t.session, "scalar", row_read)
@@ -944,14 +946,8 @@ def test_settlement_reloads_exact_persisted_deadline_after_expiry_without_recrea
     assert t.root.claim_expires_at == original_expiry
     assert not loaded.scope_create_acked
     assert loaded.destroyed_at is None
+    repeated = t.args.copy()
+    repeated["physical_deadline"] = physical.scope_expires_at + timedelta(seconds=10)
     with pytest.raises(BuilderExecutionPolicyError):
-        t.repo.reserve_scope(
-            **cast(
-                ReservationArguments,
-                {
-                    **t.args,
-                    "physical_deadline": physical.scope_expires_at + timedelta(seconds=10),
-                },
-            )
-        )
+        t.repo.reserve_scope(**repeated)
     assert len(t.stored) == 1

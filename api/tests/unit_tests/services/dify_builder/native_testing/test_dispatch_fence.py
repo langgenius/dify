@@ -4,11 +4,11 @@ from collections import UserList
 from collections.abc import Generator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Literal, NoReturn, Unpack, cast, override
+from typing import Literal, NoReturn, Unpack, override
 
 import pytest
 from sqlalchemy import Select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from typing_extensions import TypedDict
 
 from core.dify_builder.models import Actor
@@ -32,6 +32,14 @@ from services.dify_builder.native_testing.private_reads import PrivateReadOwner
 from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context as sample_context
+from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import (
+    SqlMethods,
+    checked_row,
+    checked_rows,
+    selected_rows,
+    sql_session,
+    sql_session_factory,
+)
 
 NOW = datetime(2026, 10, 15, tzinfo=UTC)
 REF = NativeTestContextRef(request_id="request", invocation_id="root", context_digest="a" * 64)
@@ -134,8 +142,8 @@ class SQLDouble:
             for row in rows:
                 assert isinstance(row, (NativeInvocationState, NativeTestInvocation, NativePendingAction))
                 identities.append(row.invocation_id)
-            return Rows(cast(Sequence[T], identities))
-        return Rows(cast(Sequence[T], rows))
+            return Rows(selected_rows(statement, identities))
+        return Rows(selected_rows(statement, rows))
 
     def scalar[T](self, statement: Select[tuple[T]]) -> T | None:
         rows = self.scalars(statement)
@@ -143,7 +151,7 @@ class SQLDouble:
 
     def get[T](self, model: type[T], _identity: object) -> T | None:
         rows = self.rows[model]
-        return cast(T, rows[0]) if rows else None
+        return checked_row(model, rows[0]) if rows else None
 
     def add(self, row: object, /) -> None:
         del row
@@ -151,6 +159,16 @@ class SQLDouble:
 
     def flush(self) -> None:
         raise AssertionError("unexpected SQL flush")
+
+    def sql_methods(self) -> SqlMethods:
+        """Expose this fixture's explicit SQL IO methods, including overrides."""
+        return {
+            "get": self.get,
+            "scalar": self.scalar,
+            "scalars": self.scalars,
+            "add": self.add,
+            "flush": self.flush,
+        }
 
 
 class InvocationChanges(TypedDict, total=False, closed=True):
@@ -222,37 +240,45 @@ def pending(identity: str = "pending", **changes: Unpack[PendingChanges]) -> Nat
 
 
 def readiness(
-    session: SQLDouble, *, ref: NativeTestContextRef = REF, coalesce: bool = False
+    monkeypatch: pytest.MonkeyPatch, session: SQLDouble, *, ref: NativeTestContextRef = REF, coalesce: bool = False
 ) -> NativePendingAction | None:
     from services.dify_builder.native_testing import transitions
 
     assert hasattr(transitions, "dispatch_readiness"), "durable dispatch-readiness SQL guard is missing"
     return transitions.dispatch_readiness(
-        cast(Session, session), ref=ref, tenant_id="tenant", now=NOW, coalesce_self=coalesce
+        sql_session(monkeypatch, session.sql_methods()), ref=ref, tenant_id="tenant", now=NOW, coalesce_self=coalesce
     )
 
 
-def test_active_unfenced_lineage_allows_dispatch_without_requiring_global_generation_equality() -> None:
+def test_active_unfenced_lineage_allows_dispatch_without_requiring_global_generation_equality(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     root, child = state(), state("child", "root", generation=1)
-    assert readiness(SQLDouble([root, child]), ref=REF.model_copy(update={"invocation_id": "child"})) is None
+    assert (
+        readiness(monkeypatch, SQLDouble([root, child]), ref=REF.model_copy(update={"invocation_id": "child"})) is None
+    )
 
 
 @pytest.mark.parametrize("status", ["waiting", "queued", "unknown", "cancelled", "completed", "stopped"])
 @pytest.mark.parametrize("selected", ["self", "ancestor"])
-def test_closed_self_or_ancestor_refuses_fresh_dispatch(status: str, selected: str) -> None:
+def test_closed_self_or_ancestor_refuses_fresh_dispatch(
+    monkeypatch: pytest.MonkeyPatch, status: str, selected: str
+) -> None:
     root, child = state(), state("child", "root")
     (child if selected == "self" else root).state = status
     with pytest.raises(BuilderExecutionPolicyError):
-        readiness(SQLDouble([root, child]), ref=REF.model_copy(update={"invocation_id": "child"}))
+        readiness(monkeypatch, SQLDouble([root, child]), ref=REF.model_copy(update={"invocation_id": "child"}))
 
 
 @pytest.mark.parametrize("category", ["approval", "configuration", "interaction"])
-def test_same_invocation_fence_preserves_real_pending_identity_and_category(category: str) -> None:
+def test_same_invocation_fence_preserves_real_pending_identity_and_category(
+    monkeypatch: pytest.MonkeyPatch, category: str
+) -> None:
     row = pending(category=category)
     session = SQLDouble([state(pending_ids=[row.id], wait_reason=category)], [row])
-    assert readiness(session, coalesce=True) is row
+    assert readiness(monkeypatch, session, coalesce=True) is row
     with pytest.raises(BuilderExecutionPolicyError):
-        readiness(session)
+        readiness(monkeypatch, session)
 
 
 @pytest.mark.parametrize(
@@ -266,20 +292,25 @@ def test_same_invocation_fence_preserves_real_pending_identity_and_category(cate
         {"id": "unrepresented"},
     ],
 )
-def test_fence_never_coalesces_foreign_stale_or_invalid_pending_row(change: PendingChanges) -> None:
+def test_fence_never_coalesces_foreign_stale_or_invalid_pending_row(
+    monkeypatch: pytest.MonkeyPatch, change: PendingChanges
+) -> None:
     with pytest.raises(BuilderExecutionPolicyError):
-        readiness(SQLDouble([state(pending_ids=["pending"])], [pending(**change)]), coalesce=True)
+        readiness(monkeypatch, SQLDouble([state(pending_ids=["pending"])], [pending(**change)]), coalesce=True)
 
 
 @pytest.mark.parametrize("ids", [["pending", "pending"], ["missing"], [True]])
-def test_malformed_or_missing_fence_membership_fails_closed(ids: list[JsonValue]) -> None:
+def test_malformed_or_missing_fence_membership_fails_closed(
+    monkeypatch: pytest.MonkeyPatch, ids: list[JsonValue]
+) -> None:
     with pytest.raises(BuilderExecutionPolicyError):
-        readiness(SQLDouble([state(pending_ids=ids)], [pending()]), coalesce=True)
+        readiness(monkeypatch, SQLDouble([state(pending_ids=ids)], [pending()]), coalesce=True)
 
 
-def test_child_cannot_coalesce_an_ancestor_pending_id_as_its_own_wait() -> None:
+def test_child_cannot_coalesce_an_ancestor_pending_id_as_its_own_wait(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(BuilderExecutionPolicyError):
         readiness(
+            monkeypatch,
             SQLDouble([state(pending_ids=["pending"]), state("child", "root")], [pending()]),
             ref=REF.model_copy(update={"invocation_id": "child"}),
             coalesce=True,
@@ -287,7 +318,7 @@ def test_child_cannot_coalesce_an_ancestor_pending_id_as_its_own_wait() -> None:
 
 
 @pytest.mark.parametrize("fault", ["missing", "cycle", "foreign", "inactive", "root_owner", "expired", "cancelled"])
-def test_incomplete_or_revoked_lineage_never_authorizes_dispatch(fault: str) -> None:
+def test_incomplete_or_revoked_lineage_never_authorizes_dispatch(monkeypatch: pytest.MonkeyPatch, fault: str) -> None:
     root, child = state(), state("child", "root")
     session = SQLDouble([root, child])
     if fault == "missing":
@@ -297,15 +328,15 @@ def test_incomplete_or_revoked_lineage_never_authorizes_dispatch(fault: str) -> 
     elif fault == "foreign":
         root.tenant_id = "foreign"
     elif fault == "inactive":
-        cast(Sequence[NativeTestInvocation], session.rows[NativeTestInvocation])[0].active = False
+        checked_rows(NativeTestInvocation, session.rows[NativeTestInvocation])[0].active = False
     elif fault == "root_owner":
         root.app_id = "other-app"
     elif fault == "expired":
-        cast(Sequence[NativeTestScope], session.rows[NativeTestScope])[0].expires_at = NOW
+        checked_rows(NativeTestScope, session.rows[NativeTestScope])[0].expires_at = NOW
     else:
-        cast(Sequence[NativeTestScope], session.rows[NativeTestScope])[0].cancelled = True
+        checked_rows(NativeTestScope, session.rows[NativeTestScope])[0].cancelled = True
     with pytest.raises(BuilderExecutionPolicyError):
-        readiness(session, ref=REF.model_copy(update={"invocation_id": "child"}))
+        readiness(monkeypatch, session, ref=REF.model_copy(update={"invocation_id": "child"}))
 
 
 def test_existing_c02_coalesces_fenced_sibling_before_any_operation_write(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -318,8 +349,8 @@ def test_existing_c02_coalesces_fenced_sibling_before_any_operation_write(monkey
     session = SQLDouble([state(pending_ids=[row.id], wait_reason="configuration")], [row])
     session.rows.update({NativeEffectOperation: [], NativeEffectGrant: []})
     writes: list[object] = []
-    session.add = writes.append
-    session.flush = lambda: None
+    monkeypatch.setattr(session, "add", writes.append)
+    monkeypatch.setattr(session, "flush", lambda: None)
     effect = intent().model_copy(update={"key": intent().key.model_copy(update={"invocation_id": "root"})})
     owned = fence_owner(ref=REF, tenant_id="tenant", actor_id="actor", app_id="app", generation=3, task_approved=False)
     service = EffectAuthorizationService(
@@ -331,7 +362,10 @@ def test_existing_c02_coalesces_fenced_sibling_before_any_operation_write(monkey
     # This test isolates the ordered admission guard after current binding validation.
     monkeypatch.setattr(service, "_binding", lambda *_args: binding(effect))
     result = service._claim(
-        cast(Session, session), owned, cast(Sequence[NativeTestScope], session.rows[NativeTestScope])[0], effect
+        sql_session(monkeypatch, session.sql_methods()),
+        owned,
+        checked_rows(NativeTestScope, session.rows[NativeTestScope])[0],
+        effect,
     )
     assert result == ApprovalWait(pending_operation_id=row.id, wait_reason="configuration")
     assert writes == []
@@ -360,7 +394,7 @@ def test_pause_cannot_discard_a_late_running_fence(monkeypatch: pytest.MonkeyPat
 
     @contextmanager
     def locked(**_kwargs: object) -> Generator[tuple[SQLDouble, OwnedNativeTest, NativeTestScope]]:
-        yield session, owned, cast(Sequence[NativeTestScope], session.rows[NativeTestScope])[0]
+        yield session, owned, checked_rows(NativeTestScope, session.rows[NativeTestScope])[0]
 
     from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
 
@@ -393,17 +427,19 @@ def test_pause_cannot_discard_a_late_running_fence(monkeypatch: pytest.MonkeyPat
     assert selected.pending_ids == ["late"]
 
 
-def test_approval_pending_uses_actual_local_generation_after_shared_scope_advance() -> None:
+def test_approval_pending_uses_actual_local_generation_after_shared_scope_advance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 
     session = SQLDouble([state()])
     session.rows[NativePendingAction] = []
     writes: list[object] = []
-    session.add = writes.append
-    session.flush = lambda: setattr(writes[-1], "id", "pending")
+    monkeypatch.setattr(session, "add", writes.append)
+    monkeypatch.setattr(session, "flush", lambda: setattr(writes[-1], "id", "pending"))
     owned = fence_owner(ref=REF, tenant_id="tenant", generation=9, app_id="app")
     EffectAuthorizationService._pending(
-        cast(Session, session),
+        sql_session(monkeypatch, session.sql_methods()),
         owned,
         NativeEffectOperation(
             id="operation",
@@ -435,7 +471,7 @@ def test_native_pending_owner_uses_local_generation_after_shared_scope_advance(
 
     @contextmanager
     def locked(**_kwargs: object) -> Generator[tuple[SQLDouble, OwnedNativeTest, NativeTestScope]]:
-        yield session, owned, cast(Sequence[NativeTestScope], session.rows[NativeTestScope])[0]
+        yield session, owned, checked_rows(NativeTestScope, session.rows[NativeTestScope])[0]
 
     resolver = NativeHttpBindingResolver()
     monkeypatch.setattr(
@@ -472,7 +508,7 @@ def test_fence_pending_acknowledges_after_commit_without_changing_running_state(
 
     @contextmanager
     def locked(**_kwargs: object) -> Generator[tuple[SQLDouble, OwnedNativeTest, NativeTestScope]]:
-        yield session, owned, cast(Sequence[NativeTestScope], session.rows[NativeTestScope])[0]
+        yield session, owned, checked_rows(NativeTestScope, session.rows[NativeTestScope])[0]
         committed.append(True)
 
     authority = PrivateReadOwner(
@@ -538,7 +574,7 @@ def test_child_creation_checks_fence_before_protected_input_or_resolver_work(mon
     touched = []
     parent = fence_owner(tenant_id="tenant", ref=REF)
     loader = OwnedNativeTestLoader(
-        cast(sessionmaker[Session], factory),
+        sql_session_factory(monkeypatch, factory, methods=SQLDouble.sql_methods),
         actor=Actor(tenant_id=parent.tenant_id, account_id=parent.actor_id),
         resolver=NativeHttpBindingResolver(),
     )
@@ -567,7 +603,9 @@ def test_child_creation_checks_fence_before_protected_input_or_resolver_work(mon
     assert touched == []
 
 
-def test_retained_acknowledged_historical_ids_do_not_coalesce_or_close_admission() -> None:
+def test_retained_acknowledged_historical_ids_do_not_coalesce_or_close_admission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
 
     selected = state(pending_ids=["pending"], wait_reason=None, checkpoint_id="checkpoint")
     session = SQLDouble([selected], [pending(generation=2)])
@@ -593,8 +631,8 @@ def test_retained_acknowledged_historical_ids_do_not_coalesce_or_close_admission
             checkpoint_id="checkpoint",
         )
     ]
-    assert readiness(session, coalesce=True) is None
-    assert readiness(session) is None
+    assert readiness(monkeypatch, session, coalesce=True) is None
+    assert readiness(monkeypatch, session) is None
 
 
 @pytest.mark.parametrize("saved", [False, True])
@@ -647,17 +685,17 @@ def test_generation_claim_requires_actual_saved_configuration_resolution(
 
     @contextmanager
     def locked(**_kwargs: object) -> Generator[tuple[SQLDouble, OwnedNativeTest, NativeTestScope]]:
-        yield session, owned, cast(Sequence[NativeTestScope], session.rows[NativeTestScope])[0]
+        yield session, owned, checked_rows(NativeTestScope, session.rows[NativeTestScope])[0]
 
     loader = OwnedNativeTestLoader(
-        cast(sessionmaker[Session], factory),
+        sql_session_factory(monkeypatch, factory, methods=SQLDouble.sql_methods),
         actor=Actor(tenant_id=owned.tenant_id, account_id=owned.actor_id),
         resolver=NativeHttpBindingResolver(),
     )
     monkeypatch.setattr(
         loader,
         "_load",
-        lambda *_args, **_kw: (owned, cast(Sequence[NativeTestScope], session.rows[NativeTestScope])[0]),
+        lambda *_args, **_kw: (owned, checked_rows(NativeTestScope, session.rows[NativeTestScope])[0]),
     )
     monkeypatch.setattr(loader, "load", lambda **_kw: owned)
     monkeypatch.setattr(loader, "locked", locked)
@@ -713,7 +751,7 @@ def test_coalesced_native_wait_still_validates_requested_pending_owner(monkeypat
 
     @contextmanager
     def locked(**_kwargs: object) -> Generator[tuple[SQLDouble, OwnedNativeTest, NativeTestScope]]:
-        yield session, owned, cast(Sequence[NativeTestScope], session.rows[NativeTestScope])[0]
+        yield session, owned, checked_rows(NativeTestScope, session.rows[NativeTestScope])[0]
 
     resolver = NativeHttpBindingResolver()
     monkeypatch.setattr(
@@ -744,9 +782,11 @@ def test_coalesced_native_wait_still_validates_requested_pending_owner(monkeypat
         {"wait_reason": None, "pending_ids": {}},
     ],
 )
-def test_inconsistent_reason_ids_or_unacknowledged_current_rows_never_open_dispatch(changes: InvocationChanges) -> None:
+def test_inconsistent_reason_ids_or_unacknowledged_current_rows_never_open_dispatch(
+    monkeypatch: pytest.MonkeyPatch, changes: InvocationChanges
+) -> None:
     with pytest.raises(BuilderExecutionPolicyError):
-        readiness(SQLDouble([state(**changes)], [pending()]), coalesce=True)
+        readiness(monkeypatch, SQLDouble([state(**changes)], [pending()]), coalesce=True)
 
 
 @pytest.mark.parametrize("child_status", ["running", "completed", "stopped"])
@@ -787,7 +827,7 @@ def test_existing_nested_child_lookup_requires_actual_parent_private_authority(
         @override
         def scalar[T](self, statement: Select[tuple[T]]) -> T | None:
             if statement.column_descriptions[0]["entity"] is NativeInvocationState:
-                return cast(T, child)  # exact existing child selected by parent occurrence
+                return selected_rows(statement, [child])[0]  # exact existing child selected by parent occurrence
             return super().scalar(statement)
 
     session = ExistingChildSQL([state(), state("parent-B", "root", app_id="app-B", workflow_id="workflow-B"), child])
@@ -799,7 +839,7 @@ def test_existing_nested_child_lookup_requires_actual_parent_private_authority(
     # Root request loader remains authorized in every case, including local B revocation.
     owned = fence_owner(tenant_id="tenant", app_id="app", ref=parent_ref)
     loader = OwnedNativeTestLoader(
-        cast(sessionmaker[Session], factory),
+        sql_session_factory(monkeypatch, factory, methods=SQLDouble.sql_methods),
         actor=Actor(tenant_id=owned.tenant_id, account_id=owned.actor_id),
         resolver=NativeHttpBindingResolver(),
     )
@@ -894,9 +934,9 @@ def test_waiting_immutable_denial_is_negative_evidence_without_fresh_admission(
         }
     )
     writes: list[object] = []
-    session.add = writes.append
-    session.flush = lambda: None
-    scope = cast(Sequence[NativeTestScope], session.rows[NativeTestScope])[0]
+    monkeypatch.setattr(session, "add", writes.append)
+    monkeypatch.setattr(session, "flush", lambda: None)
+    scope = checked_rows(NativeTestScope, session.rows[NativeTestScope])[0]
     scope.spent_calls = scope.spent_dispatches = scope.spent_cost_units = 0
     owned = fence_owner(ref=REF, tenant_id="tenant", actor_id="actor", app_id="app", task_approved=False)
     service = EffectAuthorizationService(
@@ -907,10 +947,12 @@ def test_waiting_immutable_denial_is_negative_evidence_without_fresh_admission(
     )
     monkeypatch.setattr(service, "_binding", lambda *_: binding(effect))
     if decision == "denied":
-        assert service._claim(cast(Session, session), owned, scope, effect) == PolicyStop(reason_code="effect_denied")
+        assert service._claim(sql_session(monkeypatch, session.sql_methods()), owned, scope, effect) == PolicyStop(
+            reason_code="effect_denied"
+        )
     else:
         with pytest.raises(BuilderExecutionPolicyError, match="native_dispatch_closed"):
-            service._claim(cast(Session, session), owned, scope, effect)
+            service._claim(sql_session(monkeypatch, session.sql_methods()), owned, scope, effect)
     assert writes == []
     assert (scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units) == (0, 0, 0)
     assert operation.state == "pending"
@@ -941,7 +983,7 @@ def test_physical_claim_validates_permit_then_preserves_ancestor_refusal(
     )
     session = SQLDouble([state(state=ancestor_state), state("child", "root")])
     session.rows[NativeEffectOperation] = [operation]
-    scope = cast(Sequence[NativeTestScope], session.rows[NativeTestScope])[0]
+    scope = checked_rows(NativeTestScope, session.rows[NativeTestScope])[0]
     attempt = NativeEffectAttempt(
         expires_at=NOW + timedelta(hours=1),
         tenant_id="tenant",
@@ -978,7 +1020,7 @@ def test_physical_claim_validates_permit_then_preserves_ancestor_refusal(
     expected = "invalid_dispatch_permit" if fault else "native_ancestor_quarantined"
     with pytest.raises(BuilderExecutionPolicyError, match=expected):
         service._validate_dispatch_locked(
-            session=cast(Session, session),
+            session=sql_session(monkeypatch, session.sql_methods()),
             owned=fence_owner(ref=child_ref, tenant_id="tenant"),
             scope=scope,
             intent=effect,
@@ -1014,21 +1056,24 @@ def test_terminal_child_settlement_without_resolution_owner_commits_and_keeps_pa
         def scalar[T](self, statement: Select[tuple[T]]) -> T | None:
             entity = statement.column_descriptions[0]["entity"]
             if entity in {NativeInvocationState, NativeTestInvocation}:
-                rows = cast(Sequence[NativeInvocationState | NativeTestInvocation], self.rows[entity])
+                rows: list[NativeInvocationState | NativeTestInvocation] = []
+                for row in self.rows[entity]:
+                    assert isinstance(row, (NativeInvocationState, NativeTestInvocation))
+                    rows.append(row)
                 params = statement.compile().params
                 if "invocation_id_1" in params:
                     rows = [r for r in rows if r.invocation_id == params["invocation_id_1"]]
                 if "state_1" in params:
                     rows = [r for r in rows if isinstance(r, NativeInvocationState) and r.state == params["state_1"]]
-                return cast(T, rows[0]) if rows else None
+                return selected_rows(statement, rows)[0] if rows else None
             return super().scalar(statement)
 
     session = SettlementSQL([root, child], [pending(invocation_id="child", category=category)])
     writes: list[object] = []
     committed: list[bool] = []
-    session.add = writes.append
+    monkeypatch.setattr(session, "add", writes.append)
     owned = fence_owner(ref=child_ref, tenant_id="tenant")
-    scope = cast(Sequence[NativeTestScope], session.rows[NativeTestScope])[0]
+    scope = checked_rows(NativeTestScope, session.rows[NativeTestScope])[0]
     scope.generation = 3
 
     @contextmanager
@@ -1039,7 +1084,7 @@ def test_terminal_child_settlement_without_resolution_owner_commits_and_keeps_pa
     def load(_session: object, *, ref: NativeTestContextRef, **_: object) -> tuple[OwnedNativeTest, NativeTestScope]:
         current = next(
             row
-            for row in cast(Sequence[NativeTestInvocation], session.rows[NativeTestInvocation])
+            for row in checked_rows(NativeTestInvocation, session.rows[NativeTestInvocation])
             if row.invocation_id == ref.invocation_id
         )
         if not current.active:
@@ -1072,5 +1117,5 @@ def test_terminal_child_settlement_without_resolution_owner_commits_and_keeps_pa
     assert committed == [True]
     assert (child.state, child.outcome) == ("completed", outcome.model_dump(mode="json"))
     assert (root.state, root.pending_ids, root.checkpoint_id) == ("waiting", ["pending"], "parent-checkpoint")
-    assert not cast(Sequence[NativeTestInvocation], session.rows[NativeTestInvocation])[1].active
+    assert not checked_rows(NativeTestInvocation, session.rows[NativeTestInvocation])[1].active
     assert writes == []

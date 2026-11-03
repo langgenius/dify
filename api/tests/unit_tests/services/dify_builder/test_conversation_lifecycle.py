@@ -65,12 +65,12 @@ def forbidden(*_args: object, **_kwargs: object) -> NoReturn:
 
 
 def test_clear_requires_confirmation_and_permanently_hides_history_without_graph_reads(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     session = seed(repo)
     service._get_app_revision_fn = forbidden
     service._read_task_dsl_fn = forbidden
-    service._build_session_view = forbidden
+    monkeypatch.setattr(service, "_build_session_view", forbidden)
     service._enqueue_fn = forbidden
     owner = lifecycle()
     with pytest.raises(BadRequestError):
@@ -124,7 +124,7 @@ def test_clear_fences_late_insert_in_its_sql_transaction(
 
 @pytest.mark.parametrize("settlement", ["settled", "pending", "unknown"])
 def test_clear_reload_projects_durable_settlement_without_reviving_history(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository, settlement: str
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, settlement: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from copy import deepcopy
 
@@ -145,7 +145,7 @@ def test_clear_reload_projects_durable_settlement_without_reviving_history(
     assert receipt["settlement"] == settlement
     service._get_app_revision_fn = forbidden
     service._read_task_dsl_fn = forbidden
-    service._build_session_view = forbidden
+    monkeypatch.setattr(service, "_build_session_view", forbidden)
     service._enqueue_fn = forbidden
     view = service.get_session_view(session.id, _actor())
     assert view.lifecycle_settlement == settlement
@@ -299,10 +299,10 @@ def test_clear_keeps_run_evidence_and_rejects_cross_owner_or_key_reuse(
 
 
 def test_abandon_keeps_transcript_but_invalidates_cards_and_switch_stop_is_view_free(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     session = seed(repo)
-    service._build_session_view = forbidden
+    monkeypatch.setattr(service, "_build_session_view", forbidden)
     owner = lifecycle()
     stopped, context = owner.stop_task_for_switch(
         service, session.id, _actor(), expected_task_id=session.id + ":0", client_action_id="switch"

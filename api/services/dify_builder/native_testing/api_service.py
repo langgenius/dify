@@ -7,9 +7,10 @@ fail closed before admission. No default profile or ordinary executor is used.
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Literal, Protocol, cast
+from typing import Literal, Protocol
 from uuid import uuid4
 
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -60,6 +61,9 @@ from services.dify_builder.native_testing.repository import (
     utc_now,
 )
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, native_payload_read_scope
+
+_WAIT_REASON = TypeAdapter(WaitReason)
+_OPTIONAL_WAIT_REASON = TypeAdapter(WaitReason | None)
 
 
 class NativeLaunchPort(Protocol):
@@ -470,7 +474,7 @@ class NativeTestApiService:
                 pending.append(
                     PendingActionDisclosure(
                         pending_operation_id=row.id,
-                        wait_reason=cast(WaitReason, row.category),
+                        wait_reason=_WAIT_REASON.validate_python(row.category),
                         version=row.generation + 1,
                         scope_digest=None,
                         account_label=None,
@@ -531,7 +535,7 @@ class NativeTestApiService:
             else "running"
             if native_run or root.state in {"cancelled", "queued"}
             else "prepared",
-            wait_reason=cast(WaitReason | None, root.wait_reason)
+            wait_reason=_OPTIONAL_WAIT_REASON.validate_python(root.wait_reason)
             if cancellation is None and root.state == "waiting"
             else None,
             native_run_id=native_run.id if native_run else None,

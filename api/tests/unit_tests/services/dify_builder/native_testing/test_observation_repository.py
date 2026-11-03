@@ -2,26 +2,27 @@
 
 from __future__ import annotations
 
+import json
 from collections import UserList
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
-from typing import NoReturn, Protocol, Self, cast
+from operator import methodcaller
+from typing import NoReturn, Self
 
 import pytest
 from sqlalchemy import Select
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.entities import WorkflowExecution, WorkflowNodeExecution
 from graphon.enums import (
     WorkflowExecutionStatus,
-    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
+from graphon.variables import segments
 from models import Account, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.enums import CreatorUserRole, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 from models.model import UploadFile
@@ -33,6 +34,11 @@ from services.dify_builder.native_testing.observation_adapters import NativeObse
 from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
 from services.dify_builder.native_testing.observation_repository import bind_native_repository_observation
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import SENTINEL, context, graph_data
+from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import (
+    SqlMethods,
+    checked_row,
+    sql_session_factory,
+)
 
 NOW = datetime(2026, 10, 16)
 
@@ -60,6 +66,17 @@ class SQLPort:
         self.commits = 0
         self.fail = False
         self.writing = False
+
+    def sql_methods(self) -> SqlMethods:
+        return {
+            "get": self.get,
+            "scalars": self.scalars,
+            "execute": self.execute,
+            "merge": self.merge,
+            "add": self.add,
+            "flush": self.flush,
+            "commit": self.commit,
+        }
 
     def __call__(self, **_kwargs: object) -> Self:
         return self
@@ -124,7 +141,7 @@ class RepositoryCase:
 
 
 @pytest.fixture
-def case() -> RepositoryCase:
+def case(monkeypatch: pytest.MonkeyPatch) -> RepositoryCase:
     ctx = context()
     user = Account(name=SENTINEL, email=SENTINEL)
     user.id = ctx.actor_id
@@ -133,13 +150,13 @@ def case() -> RepositoryCase:
         on_failure=lambda: None,
     )
     sql = SQLPort()
+    sessions = sql_session_factory(monkeypatch, sql, sql.begin, methods=SQLPort.sql_methods)
     runs = SQLAlchemyWorkflowExecutionRepository(
-        sessionmaker(), ctx.tenant_id, user, ctx.app_id, WorkflowRunTriggeredFrom.DEBUGGING
+        sessions, ctx.tenant_id, user, ctx.app_id, WorkflowRunTriggeredFrom.DEBUGGING
     )
     nodes = SQLAlchemyWorkflowNodeExecutionRepository(
-        sessionmaker(), ctx.tenant_id, user, ctx.app_id, WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+        sessions, ctx.tenant_id, user, ctx.app_id, WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
     )
-    runs._session_factory = nodes._session_factory = cast(sessionmaker[Session], sql)
     return RepositoryCase(context=ctx, guard=guard, sql=sql, runs=runs, nodes=nodes, user=user)
 
 
@@ -328,7 +345,7 @@ def test_native_save_execution_data_does_not_mutate_operational_domain(
     bind(c)
     raw = node(c)
     monkeypatch.setattr(c.nodes, "_truncate_and_upload", lambda *_args: None)
-    c.nodes.save_execution_data(raw)
+    c.nodes._save_execution_data(raw)
     assert raw.outputs == {SENTINEL: SENTINEL}
     saved = c.sql.required((WorkflowNodeExecutionModel, "row"))
     assert saved.outputs is not None
@@ -340,13 +357,7 @@ def storage_chunks(content: bytes) -> Iterator[bytes]:
     yield content
 
 
-class WrappedTelemetryFixture(Protocol):
-    @property
-    def __wrapped__(self) -> Callable[[], Iterator[None]]: ...
-
-
-@pytest.fixture(autouse=True)
-def telemetry() -> Iterator[None]:
+def _telemetry_routes() -> Iterator[None]:
     """Initialize/restore real test-owned sinks and routes, never mock readiness."""
     import logging
 
@@ -389,6 +400,11 @@ def telemetry() -> Iterator[None]:
             owned_handler.close()
 
 
+@pytest.fixture(autouse=True)
+def telemetry() -> Iterator[None]:
+    yield from _telemetry_routes()
+
+
 def offloaded(c: RepositoryCase, row: WorkflowNodeExecutionModel, *, value: object = None) -> tuple[UploadFile, bytes]:
     import hashlib
     import json
@@ -396,9 +412,8 @@ def offloaded(c: RepositoryCase, row: WorkflowNodeExecutionModel, *, value: obje
 
     from configs import dify_config
     from extensions.storage.storage_type import StorageType
-    from models.enums import ExecutionOffLoadType
     from models.workflow import WorkflowNodeExecutionOffload
-    from tests.unit_tests.model_factories import make_upload_file
+    from tests.helpers.unit.model_factories import make_upload_file
 
     content = json.dumps(value if value is not None else c.guard.values({"private": SENTINEL})).encode()
     file = make_upload_file(
@@ -475,7 +490,7 @@ def test_bad_offload_or_late_content_never_enters_cache(
     if fault == "relation":
         row.offload_data[0].node_execution_id = "foreign"
     if fault == "type":
-        row.offload_data[0].type_ = cast(ExecutionOffLoadType, "foreign")
+        monkeypatch.setattr(row.offload_data[0], "type_", "foreign")
     if fault == "hash":
         file.hash = "0" * 64
     c.sql.selected = [first, row]
@@ -553,7 +568,7 @@ def test_native_actual_truncation_uploads_only_safe_data_then_cache_has_no_secon
     from uuid import uuid4
 
     from services.variable_truncator import VariableTruncator
-    from tests.unit_tests.model_factories import make_upload_file
+    from tests.helpers.unit.model_factories import make_upload_file
 
     c = case
     bind(c)
@@ -588,7 +603,7 @@ def test_native_actual_truncation_uploads_only_safe_data_then_cache_has_no_secon
 
     monkeypatch.setattr(c.nodes._file_service, "upload_file", upload)
     raw = node(c)
-    c.nodes.save_execution_data(raw)
+    c.nodes._save_execution_data(raw)
     assert len(files) == 3
     assert raw.outputs == {SENTINEL: SENTINEL}
     stored = c.sql.required((WorkflowNodeExecutionModel, "row"))
@@ -628,7 +643,9 @@ def test_empty_success_error_remains_empty(case: RepositoryCase) -> None:
     assert row.status is WorkflowNodeExecutionStatus.SUCCEEDED
 
 
-def test_history_owner_objects_cannot_spoof_equality_or_get_rendered(case: RepositoryCase) -> None:
+def test_history_owner_objects_cannot_spoof_equality_or_get_rendered(
+    case: RepositoryCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     c = case
     bind(c)
     calls: list[str] = []
@@ -647,7 +664,7 @@ def test_history_owner_objects_cannot_spoof_equality_or_get_rendered(case: Repos
             return SENTINEL
 
     row = safe_row(c)
-    row.tenant_id = cast(str, Spoof())
+    monkeypatch.setattr(row, "tenant_id", Spoof())
     row.offload_data = []
     c.sql.selected = [row]
     with pytest.raises(NativeObservationError):
@@ -712,8 +729,8 @@ def test_writer_recheck_failure_notifies_guard_only_after_writer_exit(
     def get[T: StoredRow](model: type[T], key: str, **kwargs: object) -> T | None:
         result = original(model, key, **kwargs)
         if model is WorkflowNodeExecutionModel and kwargs.get("with_for_update"):
-            assert result is not None
-            cast(WorkflowNodeExecutionModel, result).outputs = '{"raw":"' + SENTINEL + '"}'
+            stored = checked_row(WorkflowNodeExecutionModel, result)
+            stored.outputs = '{"raw":"' + SENTINEL + '"}'
         return result
 
     monkeypatch.setattr(c.sql, "get", get)
@@ -813,7 +830,7 @@ def test_test_owned_telemetry_initializes_and_restores_actual_logging_routes(
     original_route_handlers = route.handlers
     original_propagation = route.propagate
     filters = {handler: handler.filters[:] for handler in [*root.handlers, *route.handlers]}
-    setup = cast(WrappedTelemetryFixture, telemetry).__wrapped__()
+    setup = _telemetry_routes()
     next(setup)
     try:
         bind(case)
@@ -872,13 +889,13 @@ def test_unrecognized_timed_run_subclass_still_refuses_before_writes(case: Repos
 
 @pytest.mark.parametrize("elapsed_time", [True, -1.0, float("nan"), float("inf")])
 def test_mutated_timed_native_run_refuses_invalid_duration_before_writes(
-    case: RepositoryCase, elapsed_time: object
+    case: RepositoryCase, elapsed_time: object, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     c = case
     bind(c)
     execution = TimedWorkflowExecution(**run(c).model_dump(), accumulated_elapsed_time=0.0)
     # The upstream DTO is mutable; the repository boundary must revalidate it.
-    execution.accumulated_elapsed_time = cast(float | None, elapsed_time)
+    monkeypatch.setattr(execution, "accumulated_elapsed_time", elapsed_time)
     with pytest.raises(NativeObservationError):
         c.runs.save(execution)
     assert c.sql.commits == 0
@@ -891,7 +908,7 @@ def test_native_history_adoption_restores_active_duration_after_entity_json_roun
 ) -> None:
     """Timing callback/repository unit test; C03/claim authority is not qualified here."""
     from core.app.app_config.entities import WorkflowUIBasedAppConfig
-    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
     from core.workflow.system_variables import build_system_variables
     from graphon.engine.command import InMemoryChannel
     from graphon.engine_events import GraphRunStartedEvent, GraphRunSucceededEvent
@@ -917,6 +934,7 @@ def test_native_history_adoption_restores_active_duration_after_entity_json_roun
         inputs={SENTINEL: SENTINEL},
         files=[],
         user_id=c.context.actor_id,
+        user_from=UserFrom.ACCOUNT,
         stream=True,
         invoke_from=InvokeFrom.DEBUGGER,
         native_test_required=True,
@@ -941,6 +959,7 @@ def test_native_history_adoption_restores_active_duration_after_entity_json_roun
             ),
             workflow_execution_repository=c.runs,
             workflow_node_execution_repository=c.nodes,
+            trace_scope=None,
             native_observation=c.guard,
         )
         layer.initialize(ReadOnlyRuntimeStateWrapper(runtime), InMemoryChannel())
@@ -1060,11 +1079,13 @@ def test_native_node_absent_metadata_roundtrips_without_mutating_domain(
 
 
 @pytest.mark.parametrize("metadata", [[], False, ""])
-def test_native_node_non_none_malformed_metadata_refuses_before_write(case: RepositoryCase, metadata: object) -> None:
+def test_native_node_non_none_malformed_metadata_refuses_before_write(
+    case: RepositoryCase, metadata: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
     c = case
     bind(c)
     execution = node(c)
-    execution.metadata = cast(Mapping[WorkflowNodeExecutionMetadataKey, object], metadata)
+    monkeypatch.setattr(execution, "metadata", metadata)
 
     with pytest.raises(NativeObservationError):
         c.nodes.save(execution)
@@ -1080,8 +1101,8 @@ def test_service_binding_requires_exact_guard_before_attaching_observer(
 ) -> None:
     repository = {"runs": case.runs, "nodes": case.nodes}[repository_name]
     with pytest.raises(NativeObservationError, match="^native_observation_failed$"):
-        bind_native_repository_observation(
-            repository=repository, context=case.context, guard=cast(NativeObservationGuard, object())
+        methodcaller("__call__", repository=repository, context=case.context, guard=object())(
+            bind_native_repository_observation
         )
     assert repository._native_observation is None
     assert not repository._native_observation_started
@@ -1106,3 +1127,105 @@ def test_repository_cannot_replace_retained_observer_even_with_same_guard(
 def required_run_id(context: ResolvedNativeTestContext) -> str:
     assert context.native_run_id is not None
     return context.native_run_id
+
+
+def test_current_dify_node_execution_preserves_native_diagnostics(case: RepositoryCase) -> None:
+    from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
+
+    bind(case)
+    execution = DifyWorkflowNodeExecution.model_validate(node(case).model_dump())
+    case.nodes.save(execution)
+    saved = case.sql.required((WorkflowNodeExecutionModel, execution.id))
+    assert saved.workflow_id == case.context.workflow_id
+    assert saved.workflow_run_id == required_run_id(case.context)
+    assert saved.triggered_from_workflow_id is None
+    assert saved.triggered_from_node_execution_id is None
+    assert SENTINEL not in (saved.outputs or "")
+    assert not case.guard.failed
+
+
+@pytest.mark.parametrize("field", ["triggered_from_workflow_id", "triggered_from_node_execution_id"])
+@pytest.mark.parametrize("stored", [False, True])
+def test_native_node_refuses_workflow_tool_source_identity(case: RepositoryCase, field: str, stored: bool) -> None:
+    from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
+
+    bind(case)
+    if stored:
+        row = safe_row(case)
+        setattr(row, field, "foreign-source")
+        row.offload_data = []
+        case.sql.selected = [row]
+        with pytest.raises(NativeObservationError):
+            case.nodes.get_by_workflow_execution(required_run_id(case.context))
+    else:
+        execution = DifyWorkflowNodeExecution.model_validate(node(case).model_dump())
+        setattr(execution, field, "foreign-source")
+        with pytest.raises(NativeObservationError):
+            case.nodes.save(execution)
+    assert case.sql.commits == 0
+    assert not case.nodes._node_execution_cache
+    assert case.guard.failed
+
+
+@pytest.mark.parametrize(
+    "segment",
+    [
+        segments.NoneSegment(),
+        segments.StringSegment(value=SENTINEL),
+        segments.FloatSegment(value=1.5),
+        segments.IntegerSegment(value=2),
+        segments.BooleanSegment(value=True),
+        segments.ObjectSegment(value={"private": SENTINEL}),
+        segments.ArrayAnySegment(value=[2, SENTINEL]),
+        segments.ArrayStringSegment(value=[SENTINEL]),
+        segments.ArrayNumberSegment(value=[2, 1.5]),
+        segments.ArrayObjectSegment(value=[{"private": SENTINEL}]),
+        segments.ArrayBooleanSegment(value=[True]),
+    ],
+    ids=[
+        "none",
+        "string",
+        "float",
+        "integer",
+        "boolean",
+        "object",
+        "any-array",
+        "string-array",
+        "number-array",
+        "object-array",
+        "boolean-array",
+    ],
+)
+def test_native_graphon_segments_expose_only_bounded_shapes(case: RepositoryCase, segment: segments.Segment) -> None:
+    projected = case.guard.values({"value": segment})
+    assert SENTINEL not in json.dumps(projected)
+    assert (
+        projected["shape"]["values"][0]["type"]
+        == case.guard.values({"value": segment.value})["shape"]["values"][0]["type"]
+    )
+    assert not case.guard.failed
+
+
+@pytest.mark.parametrize("fault", ["subclass", "payload"])
+def test_native_segment_projection_refuses_untrusted_objects_without_rendering(
+    case: RepositoryCase, fault: str
+) -> None:
+    rendered: list[str] = []
+
+    class UntrustedSegment(segments.StringSegment):
+        pass
+
+    class Hostile:
+        def __repr__(self) -> str:
+            rendered.append("repr")
+            return SENTINEL
+
+    value = (
+        UntrustedSegment(value=SENTINEL)
+        if fault == "subclass"
+        else segments.ArrayAnySegment.model_construct(value=[Hostile()])
+    )
+    with pytest.raises(NativeObservationError):
+        case.guard.values({"value": value})
+    assert rendered == []
+    assert case.guard.failed

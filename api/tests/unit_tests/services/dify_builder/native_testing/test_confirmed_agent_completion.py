@@ -65,7 +65,7 @@ from services.dify_builder.native_testing.repository import OwnedNativeTest, nat
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision, execution_revision
 from tests.builder_agent_fixtures import AgentCase, make_case
-from tests.unit_tests.core.app.entities.test_app_invoke_entities import _create_workflow_generate_entity
+from tests.unit_tests.core.app.entities.test_app_invoke_entities import _create_workflow_generate_entity, _trace_scope
 
 
 @dataclass
@@ -407,8 +407,8 @@ def completed(
         backend=None,
         publish=None,
     )
-    commands._request = lambda **_: None
-    commands._root_ref = lambda **_: ref
+    monkeypatch.setattr(commands, "_request", lambda **_: None)
+    monkeypatch.setattr(commands, "_root_ref", lambda **_: ref)
     return CompletedOwner(
         factory=factory,
         repo=repo,
@@ -839,7 +839,7 @@ def declining(
     except AttributeError:
         generation = 1
     saved, execution_id = saved_state(ref=owner.ref, run_id=owner.native_id)
-    entity = _create_workflow_generate_entity().model_copy(
+    entity = _create_workflow_generate_entity(trace_scope=_trace_scope()).model_copy(
         update={
             "builder_agent_execution": BuilderAgentExecutionContext(ref=owner.ref, native_run_id=owner.native_id),
         }
@@ -2796,7 +2796,11 @@ def test_expired_terminal_context_requires_actual_owned_terminal_workflow(
     ],
 )
 def test_waiting_binding_retention_is_health_only_and_fails_closed(
-    declining: CompletedOwner, mocker: pytest_mock.MockerFixture, fault: str | None, caplog: pytest.LogCaptureFixture
+    declining: CompletedOwner,
+    mocker: pytest_mock.MockerFixture,
+    fault: str | None,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Real SQL exclusion fences; protected storage/SDK are explicit bounded ports."""
     from celery.exceptions import SoftTimeLimitExceeded
@@ -2887,7 +2891,7 @@ def test_waiting_binding_retention_is_health_only_and_fails_closed(
             invocation.active = False
         elif fault == "terminal":
             request.state = "sealed"
-    commands._request = ConfirmedAgentCommands._request.__get__(commands)
+    monkeypatch.setattr(commands, "_request", ConfirmedAgentCommands._request.__get__(commands))
     prepared = _AgentPreparation(
         parent=wait.parent_node,
         context=_context(owner),

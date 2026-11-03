@@ -5,7 +5,7 @@ import json
 from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
-from typing import Unpack, cast, override
+from typing import Unpack, override
 
 import pytest
 from typing_extensions import TypedDict
@@ -34,7 +34,6 @@ from services.dify_builder.application.handlers_build import (
     handle_resource_recommendation,
 )
 from services.dify_builder.application.placeholder_agent import PlaceholderAgent
-from services.dify_builder.application.ports import DifyPort, Repository
 from services.dify_builder.application.runner import Env
 from services.dify_builder.initial_draft import build_intents_for_draft, is_initial_chatflow
 from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
@@ -216,8 +215,7 @@ def _build_env(
     port.graph = copy.deepcopy(initial_graph)
     agent = _GeneratedAgent(intents)
     repo = InMemoryRepository()
-    # The shared fakes use underscored parameter names; these handlers call them positionally.
-    env = Env(dify=cast(DifyPort, port), agent=agent, repo=cast(Repository, repo), now=lambda: datetime.min)
+    env = Env(dify=port, agent=agent, repo=repo, now=lambda: datetime.min)
     actor = Actor(account_id="account", tenant_id="tenant")
     session = Session(
         app_id="app",

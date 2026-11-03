@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from copy import deepcopy
 from datetime import datetime, timezone
-from typing import Any, cast
+from typing import Any
 
 from core.app.entities import queue_entities as q
 from core.app.entities.app_invoke_entities import AppGenerateEntity
@@ -182,7 +182,7 @@ def project_native_queue_event[E: q.AppQueueEvent](
 
             validate_projection_host(host=native_host, guard=guard)
             event = native_host.diagnostic_event(event=event)
-        cls: type[q.AppQueueEvent] = type(event)
+        cls: type[E] = type(event)
         if cls not in _SUPPORTED or event.model_extra or event.event != cls.model_fields["event"].default:
             guard.fail()
         payload: Any = event
@@ -262,6 +262,10 @@ def project_native_queue_event[E: q.AppQueueEvent](
                 if any(type(reason) is not SchedulingPause or type(reason.message) is not str for reason in value):
                     guard.fail()
                 fields[name] = [SchedulingPause(message=_REDACTED) for _ in value]
+            elif name == "human_input_v2_forms" and cls is q.QueueWorkflowPausedEvent:
+                if type(value) is not dict or value:
+                    guard.fail()
+                fields[name] = {}
             elif name == "paused_nodes":
                 if type(value) not in (list, tuple) or len(value) > 100_000:
                     guard.fail()
@@ -274,4 +278,4 @@ def project_native_queue_event[E: q.AppQueueEvent](
                 fields[name] = value
             else:
                 guard.fail()
-        return cast(E, cls.model_validate(fields))
+        return cls.model_validate(fields)

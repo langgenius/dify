@@ -10,8 +10,9 @@ import json
 import threading
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
-from typing import NotRequired, Protocol, TypedDict, cast
+from typing import NotRequired, Protocol, TypedDict, runtime_checkable
 from uuid import uuid4
 
 import pytest
@@ -19,7 +20,6 @@ from sqlalchemy import select
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from core.plugin.entities.plugin import PluginInstallation
 from core.plugin.entities.plugin_daemon import PluginToolProviderEntity
 from core.tools import tool_manager as manager_module
@@ -27,6 +27,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.plugin_tool import tool as plugin_tool_module
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
+from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from runtime_contracts.builder.execution import (
@@ -41,8 +42,8 @@ from services.dify_builder import json_tool_metadata as metadata
 from services.dify_builder.application.execution_policy import TrustedExecutionCompletion
 from services.dify_builder.dify_port import WorkflowServiceDifyPort, _BuilderExecutionLaunch
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
-from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import NativeOwner
-from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
+from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import NativeOwner
+from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414
 )
 from tests.unit_tests.services.dify_builder.test_json_tool_execution import add_native_editor_metadata
@@ -54,9 +55,10 @@ class _JsonSealCapture(TypedDict):
     receipt: NotRequired[dict[str, object]]
 
 
-FIXTURE = Path(__file__).parents[3] / "fixtures/workflow/builder_restricted/json_parse.yml"
+FIXTURE = Path(__file__).parents[4] / "fixtures/workflow/builder_restricted/json_parse.yml"
 
 
+@runtime_checkable
 class ThreadTarget(Protocol):
     _target: Callable[..., object] | None
 
@@ -104,7 +106,8 @@ def test_json_caller_explicit_read_session_closes_before_native_spawn(
     def capture_spawn(thread: threading.Thread) -> None:
         from types import FunctionType, MethodType
 
-        target = cast(ThreadTarget, thread)._target
+        assert isinstance(thread, ThreadTarget)
+        target = thread._target
         if isinstance(target, (FunctionType, MethodType)) and target.__name__ == "_generate_worker":
             assert caller_session is not None
             at_spawn.append(caller_session.in_transaction())
@@ -140,7 +143,10 @@ def _external_json_transport(
             assert (actual_tenant, plugin_ids) == (tenant_id, [metadata.PLUGIN_ID])
             return [_installation(tenant_id=tenant_id, runtime_type=runtime_type)]
 
+    @dataclass(kw_only=True)
     class Manager:
+        plugin_unique_identifier: str | None = None
+
         def fetch_tool_provider(self, actual_tenant: str, provider_id: str) -> PluginToolProviderEntity:
             if metadata_calls is not None:
                 metadata_calls.append("provider")
@@ -148,6 +154,7 @@ def _external_json_transport(
             return provider
 
         def invoke(self, **kwargs: object) -> Iterator[ToolInvokeMessage]:
+            assert self.plugin_unique_identifier == provider.plugin_unique_identifier
             assert kwargs["tenant_id"] == tenant_id
             assert kwargs["tool_provider"] == metadata.PROVIDER_ID
             assert kwargs["tool_name"] == metadata.TOOL_NAME
@@ -751,6 +758,7 @@ def test_concurrent_json_launch_claim_dispatches_at_most_once(
 
     def compete(index: int) -> None:
         launch = _BuilderExecutionLaunch(service, context)
+        # pyrefly: ignore[missing-argument]  # partial entity: only admission fields are read
         entity = WorkflowAppGenerateEntity.model_construct(
             builder_execution=context,
             files=[],
@@ -761,6 +769,7 @@ def test_concurrent_json_launch_claim_dispatches_at_most_once(
                 app_id=app.id,
                 tenant_id=actor.tenant_id,
                 workflow_id=workflow.id,
+                # pyrefly: ignore[bad-argument-type]  # raw stored mode value
                 app_mode="workflow",
             ),
             user_id=actor.account_id,

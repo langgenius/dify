@@ -173,5 +173,5 @@ def decode_native_ref(raw: JsonValue) -> NativeTestContextRef:
     """Validate structure only; accepted JSON cannot authorize execution."""
     try:
         return NativeTestContextRef.model_validate(raw)
-    except (ValidationError, ValueError, TypeError, UnicodeError):
+    except (ValidationError, ValueError, TypeError):
         raise BuilderExecutionPolicyError("invalid_native_test_ref") from None

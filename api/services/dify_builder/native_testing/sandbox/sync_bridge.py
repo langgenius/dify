@@ -14,7 +14,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from math import isfinite
 from time import monotonic, sleep
-from typing import Any, cast
+from typing import Any
 
 from gevent.monkey import get_original
 
@@ -30,6 +30,10 @@ class _Selector(selectors.SelectSelector):
 
 
 class _Loop(asyncio.SelectorEventLoop):
+    _internal_fds: int
+    _add_reader: Callable[[int, Callable[[], None]], asyncio.Handle]
+    _read_from_self: Callable[[], None]
+
     def __init__(self):
         super().__init__(selector=_Selector())
 
@@ -40,8 +44,8 @@ class _Loop(asyncio.SelectorEventLoop):
         self._ssock.setblocking(False)
         self._csock.setblocking(False)
         # CPython 3.13 private selector internals; pinned-process witness required.
-        cast(Any, self)._internal_fds += 1
-        cast(Any, self)._add_reader(self._ssock.fileno(), cast(Any, self)._read_from_self)
+        self._internal_fds += 1
+        self._add_reader(self._ssock.fileno(), self._read_from_self)
 
 
 class _MailboxBusyError(Exception):

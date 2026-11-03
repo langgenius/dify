@@ -2,7 +2,6 @@
 
 import dataclasses
 import json
-from typing import cast
 
 import httpx
 import pytest
@@ -61,16 +60,12 @@ def test_create_intent_is_committed_before_transport_and_survives_service_restar
     assert restarted.process_data(scope=_scope())["kept"] == "value"
 
 
+@pytest.mark.parametrize("missing_client", [None])
 def test_recovery_needs_no_executable_request_and_never_posts(
-    recovery: WorkflowAgentRunRecovery, mocker: pytest_mock.MockerFixture
+    recovery: WorkflowAgentRunRecovery, mocker: pytest_mock.MockerFixture, missing_client: AgentCreateRecoveryClient
 ) -> None:
     # No durable intent: even a missing client must remain untouched.
-    assert (
-        recovery.recover_existing(
-            scope=_scope(), client=cast(AgentCreateRecoveryClient, None), on_persisted=lambda _data: None
-        )
-        is None
-    )
+    assert recovery.recover_existing(scope=_scope(), client=missing_client, on_persisted=lambda _data: None) is None
     recovery.reserve(scope=_scope(), attempt=0, key="saved", digest="a" * 64)
     seen: list[LookupRunRequest] = []
     response = CreateRunResponse(run_id="original-child", status="succeeded")

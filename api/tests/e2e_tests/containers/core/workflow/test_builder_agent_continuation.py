@@ -6,13 +6,11 @@ fixture double; this suite proves no physical READY/Redis/Agent execution.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NotRequired, Unpack, cast
+from typing import TYPE_CHECKING, NotRequired, Unpack
 
 from dify_agent.protocol.native_testing import ReadAgentRuntimeIdentity
-from flask import Flask
 from pydantic import JsonValue
 from typing_extensions import TypedDict
-from werkzeug.local import LocalProxy
 
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
@@ -25,18 +23,18 @@ if TYPE_CHECKING:
 from typing import TYPE_CHECKING
 
 from runtime_contracts.builder.native.agent_contracts import AgentCreateExisting, AgentCreateInserted
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.repository import OwnedNativeTest
-    from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
         AgentAssociationCase,
     )
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import (
+    from tests.e2e_tests.containers.core.workflow import (
         test_builder_native_agent_associations as _fixture_types_0,
     )
 
@@ -49,7 +47,7 @@ from dify_agent.protocol.native_testing import (
     AgentPrepareRunPayload,
     AgentRuntimeIdentity,
 )
-from flask import current_app
+from flask.globals import app_ctx
 from sqlalchemy import select
 
 from models.agent import AgentConfigSnapshot, AgentWorkingResourceStatus, AgentWorkspace
@@ -65,26 +63,26 @@ from services.dify_builder.native_testing.agent_runtime_config import (
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
 from services.dify_builder.native_testing.repository import OwnedNativeTest
 from services.dify_builder.native_testing.state_store import ObjectReceipt
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     AgentAssociationCase,
     require_present,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_agent_associations import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_agent_associations import (
     association_case as association_case,  # noqa: PLC0414 - shared pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_agent_associations import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_agent_associations import (
     base_native_owner as base_native_owner,  # noqa: PLC0414 - fixture dependency
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_agent_associations import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_agent_associations import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414 - fixture dependency
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_agent_associations import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_agent_associations import (
     migrated_native_tables as migrated_native_tables,  # noqa: PLC0414 - fixture dependency
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_agent_associations import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_agent_associations import (
     native_owner as native_owner,  # noqa: PLC0414 - fixture dependency
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_agent_associations import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_agent_associations import (
     no_live as no_live,  # noqa: PLC0414 - fixture dependency
 )
 
@@ -140,7 +138,7 @@ def test_real_pg_concurrent_initial_reservation_has_one_local_post_owner(
     association_case: _fixture_types_0.AgentAssociationCase,
 ) -> None:
     c = association_case
-    app = cast("LocalProxy[Flask]", current_app)._get_current_object()
+    app = app_ctx.app
 
     def attempt(_index) -> AgentCreateExisting | AgentCreateInserted:
         with app.app_context():

@@ -208,7 +208,7 @@ def _valid_request(url: Any, kwargs: Mapping[str, Any]) -> bool:
             return False
         canonical_digest(dict(kwargs))
         return len(json.dumps(kwargs, ensure_ascii=False, allow_nan=False).encode("utf-8")) <= _MAX_TEXT_BYTES
-    except (BuilderExecutionPolicyError, ValueError, TypeError, UnicodeError, RecursionError):
+    except (BuilderExecutionPolicyError, ValueError, TypeError, RecursionError):
         return False
 
 

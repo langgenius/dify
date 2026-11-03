@@ -97,8 +97,6 @@ class NativeAgentEndpointLineage:
             DifyAgentClientError,
             ValueError,
             OSError,
-            TimeoutError,
-            BuilderExecutionPolicyError,
         ):
             raise BuilderExecutionPolicyError("native_agent_identity_unavailable") from None
         if (

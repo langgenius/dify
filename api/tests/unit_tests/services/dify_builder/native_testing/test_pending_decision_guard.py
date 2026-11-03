@@ -1,10 +1,11 @@
 """Post-read guard compares the complete frozen checkpoint identity."""
 
 import importlib.util
+from collections.abc import Mapping
 from types import ModuleType
-from typing import cast
 
 import pytest
+from pydantic import TypeAdapter
 from typing_extensions import TypedDict
 
 from models.dify_builder_native_tests import (
@@ -118,12 +119,12 @@ def test_guard_rejects_changed_generation_checkpoint_key_intent_scope_and_owner(
         "payload_digest": "d" * 64,
     }
 
-    def validate(**overrides: object) -> None:
+    def validate(**overrides: Mapping[str, object]) -> None:
         # Mutation cases retain the snapshot shape and change one selected value.
-        p = cast(PendingSnapshot, overrides.get("p", pending))
-        o = cast(OperationSnapshot, overrides.get("o", operation))
-        s = cast(StateSnapshot, overrides.get("s", state))
-        checkpoint = cast(ContinuationSnapshot, overrides.get("checkpoint", cp))
+        p = TypeAdapter(PendingSnapshot).validate_python(overrides.get("p", pending), strict=True)
+        o = TypeAdapter(OperationSnapshot).validate_python(overrides.get("o", operation), strict=True)
+        s = TypeAdapter(StateSnapshot).validate_python(overrides.get("s", state), strict=True)
+        checkpoint = TypeAdapter(ContinuationSnapshot).validate_python(overrides.get("checkpoint", cp), strict=True)
         m.validate_pending_snapshot(
             resolved=resolved,
             tenant_id="t",

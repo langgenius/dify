@@ -7,7 +7,8 @@ by these synthetic values. Counters expose each physical callback attempt.
 import importlib.util
 from collections.abc import Callable, Iterator
 from copy import deepcopy
-from typing import NoReturn, cast
+from operator import methodcaller
+from typing import NoReturn
 
 import pytest
 
@@ -180,7 +181,7 @@ class Authorization:
 
 
 class Case:
-    def __init__(self, *, max_result_bytes: object = 4096) -> None:
+    def __init__(self, *, max_result_bytes: int = 4096) -> None:
         self.events: list[tuple[object, ...]] = []
         self.state = State(self.events)
         self.authorization = Authorization(self.events)
@@ -191,10 +192,10 @@ class Case:
             state=self.state,
             authorization=self.authorization,
             journal=self.journal,
-            max_result_bytes=cast(int, max_result_bytes),
+            max_result_bytes=max_result_bytes,
         )
         self.calls = 0
-        self.value: object = {"typed": [False, 2, "2", None]}
+        self.value: JsonValue = {"typed": [False, 2, "2", None]}
         self.dispatch_hook: Callable[[], None] | None = None
         self.dispatch_error: BaseException | None = None
 
@@ -220,7 +221,7 @@ class Case:
             self.dispatch_hook()
         if self.dispatch_error:
             raise self.dispatch_error
-        return cast(JsonValue, self.value)
+        return self.value
 
     def call(self, intent: EffectIntent | None = None) -> JsonValue:
         return self.adapter.call(ref=REF, intent=intent or self.intent(), dispatch=self.dispatch)
@@ -333,16 +334,24 @@ def test_callback_failure_records_unknown_once_and_never_replays(error: BaseExce
 
 
 @pytest.mark.parametrize("value", [float("inf"), float("nan"), (1, 2), {1: "wrong-key"}, b"bytes", object()])
-def test_non_json_or_non_finite_callback_result_is_unknown_and_never_stored(value: object) -> None:
+def test_non_json_or_non_finite_callback_result_is_unknown_and_never_stored(
+    value: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
     case = Case()
-    case.value = value
+    dispatch = case.dispatch
+
+    def malformed(permit: DispatchPermit) -> object:
+        dispatch(permit)
+        return value
+
+    monkeypatch.setattr(case, "dispatch", malformed)
     assert_unknown(case)
     assert case.calls == 1
     assert not any(event[0] == "store" for event in case.events)
     assert case.authorization.outcomes == {0: ("unknown", None)}
 
 
-def test_generator_is_not_consumed_or_treated_as_scalar_completion() -> None:
+def test_generator_is_not_consumed_or_treated_as_scalar_completion(monkeypatch: pytest.MonkeyPatch) -> None:
     case = Case()
     consumed: list[bool] = []
 
@@ -350,8 +359,14 @@ def test_generator_is_not_consumed_or_treated_as_scalar_completion() -> None:
         consumed.append(True)
         yield "prefix"
 
-    case.value = stream()
-    assert isinstance(case.value, Iterator)
+    value = stream()
+    dispatch = case.dispatch
+
+    def malformed(permit: DispatchPermit) -> Iterator[str]:
+        dispatch(permit)
+        return value
+
+    monkeypatch.setattr(case, "dispatch", malformed)
     assert_unknown(case)
     assert consumed == []
     assert case.calls == 1
@@ -470,8 +485,15 @@ def test_duplicate_delivery_while_claimed_never_issues_another_physical_call() -
 
 @pytest.mark.parametrize("limit", [0, -1, True, 1.5, "4096", None])
 def test_invalid_result_budget_is_refused_before_any_effect(limit: object) -> None:
+    case = Case()
     with pytest.raises(ValueError, match="^native_call_result_budget_required$"):
-        Case(max_result_bytes=limit)
+        methodcaller(
+            "__call__",
+            state=case.state,
+            authorization=case.authorization,
+            journal=case.journal,
+            max_result_bytes=limit,
+        )(adapter_class())
 
 
 def test_generation_drift_after_claim_is_truthfully_not_dispatched() -> None:

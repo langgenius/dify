@@ -8,8 +8,8 @@ failure retry ONCE with a corrective hint before raising.
 """
 
 import json
-from collections.abc import Callable, Generator, Iterator, Mapping
-from typing import Any, cast
+from collections.abc import Callable, Iterator, Mapping
+from typing import Any
 
 import json_repair
 from pydantic import BaseModel
@@ -61,7 +61,7 @@ def _direct_reasoning(value: object) -> str:
     if isinstance(value, BaseModel):
         sources = (value.model_dump(), value.model_extra or {})
     elif isinstance(value, Mapping):
-        sources = (cast(Mapping[str, object], value),)
+        sources = (value,)
     else:
         return ""
     for source in sources:
@@ -180,7 +180,7 @@ def invoke_text_stream(
         return
 
     think_filter = ThinkStreamFilter()
-    for chunk in _stream_chunks(cast(Generator[LLMResultChunk], result)):
+    for chunk in _stream_chunks(result):
         check_current()
         native_reasoning = next(
             (
@@ -197,7 +197,7 @@ def invoke_text_stream(
         elif isinstance(content, list):
             delta = "".join(
                 part.data if isinstance(part, TextPromptMessageContent) else part
-                for part in cast(list[object], content)
+                for part in content
                 if isinstance(part, (TextPromptMessageContent, str))
             )
         else:

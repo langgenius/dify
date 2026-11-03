@@ -197,12 +197,16 @@ def _confirmed(
     # A Workflow context has no owning chat conversation.
     pool = node.runtime_state.variable_pool
     old_get = pool.get
-    pool.get = lambda selector: (
-        StringSegment(value=context.native_run_id)
-        if tuple(selector) == ("sys", "workflow_run_id")
-        else None
-        if tuple(selector) == ("sys", "conversation_id")
-        else old_get(selector)
+    monkeypatch.setattr(
+        pool,
+        "get",
+        lambda selector: (
+            StringSegment(value=context.native_run_id)
+            if tuple(selector) == ("sys", "workflow_run_id")
+            else None
+            if tuple(selector) == ("sys", "conversation_id")
+            else old_get(selector)
+        ),
     )
     parent = AgentParentNodeRef(
         ref=context.ref, execution_id=node.execution_id, input_result_ref="input-ref", input_digest="a" * 64

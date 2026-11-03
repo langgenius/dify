@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import Literal, TypeIs
 
 NativeModelFailureStage = Literal["invoke", "receipt_append", "result_store", "outcome_complete", "unknown_settlement"]
 NativeModelFailureCategory = Literal[
@@ -34,6 +34,16 @@ _MODEL_CATEGORIES = frozenset(
 )
 
 
+def _is_model_failure_stage(value: str) -> TypeIs[NativeModelFailureStage]:
+    """Narrow a diagnostic stage only when it belongs to the fixed allowlist."""
+    return value in _MODEL_STAGES
+
+
+def _is_model_failure_category(value: str) -> TypeIs[NativeModelFailureCategory]:
+    """Narrow a diagnostic category only when it belongs to the fixed allowlist."""
+    return value in _MODEL_CATEGORIES
+
+
 @dataclass(frozen=True)
 class NativeModelFailureDiagnostic:
     """Fixed post-claim facts only; never permission, model output or retry advice."""
@@ -62,11 +72,9 @@ def parse_native_model_failure(error: str) -> NativeModelFailureDiagnostic | Non
     if match is None:
         return None
     stage, category = match.groups()
-    if stage not in _MODEL_STAGES or category not in _MODEL_CATEGORIES:
+    if not _is_model_failure_stage(stage) or not _is_model_failure_category(category):
         return None
-    return NativeModelFailureDiagnostic(
-        stage=cast(NativeModelFailureStage, stage), category=cast(NativeModelFailureCategory, category)
-    )
+    return NativeModelFailureDiagnostic(stage=stage, category=category)
 
 
 class NativeObservationError(RuntimeError):

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Generator
 from threading import Barrier, Event, Thread, current_thread
 from time import monotonic, sleep
-from typing import Literal, cast, override
+from typing import Literal, override
 
 import pytest
 
@@ -592,7 +592,6 @@ def test_actual_native_boundary_keeps_scope_across_generator_yield_and_real_clos
     from graphon.engine_events.node import NodeRunStartedEvent
     from graphon.nodes.container_effects import IterationFrameRequest
     from tests.unit_tests.services.dify_builder.native_testing.test_control import (
-        Observations,
         bound_guard,
         make_native,
         observed_iteration_config,
@@ -600,7 +599,7 @@ def test_actual_native_boundary_keeps_scope_across_generator_yield_and_real_clos
     )
 
     _, life = opened()
-    _, factory = make_native(config=observed_iteration_config(), decision=permit(), ownership=cast(Observations, life))
+    _, factory = make_native(config=observed_iteration_config(), decision=permit(), ownership=life)
     life.bind_runtime(runtime_state=factory.runtime)
     node = bound_guard(factory)
     if phase == "resume_container":

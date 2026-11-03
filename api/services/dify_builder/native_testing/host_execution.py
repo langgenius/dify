@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from math import isfinite
 from threading import Lock, RLock, Thread, current_thread
 from time import monotonic
-from typing import Literal, Protocol, cast, override, runtime_checkable
+from typing import Literal, Protocol, override, runtime_checkable
 
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.repositories.sqlalchemy_workflow_execution_repository import (
@@ -455,7 +455,6 @@ class NativeHostLaunch:
         from libs.sensitive_http_telemetry import sensitive_http_telemetry
         from services.dify_builder.native_testing.context_runtime import NATIVE_LOG_EMITTERS
         from services.dify_builder.native_testing.observation_owner import create_http_observation_guard
-        from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 
         try:
             with self._registration:
@@ -475,7 +474,7 @@ class NativeHostLaunch:
                 raise NativeObservationError()
             with sensitive_http_telemetry(additional_emitters=NATIVE_LOG_EMITTERS):
                 guard = create_http_observation_guard(
-                    state=cast(NativeExecutionStateStore, state),
+                    state=state,
                     context=context,
                     on_failure=self.mark_unknown,
                 )

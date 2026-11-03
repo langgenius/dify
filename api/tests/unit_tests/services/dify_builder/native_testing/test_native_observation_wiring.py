@@ -13,19 +13,20 @@ import json
 import logging
 import sys
 from _io import StringIO
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import AbstractContextManager
 from contextvars import ContextVar
 from threading import Thread, current_thread
 from time import monotonic
 from types import ModuleType
-from typing import NoReturn, Protocol, Self, TypedDict, cast, override
+from typing import NoReturn, Protocol, Self, TypedDict, override
 
 import pytest
 import pytest_mock
 from flask import Flask, current_app, has_app_context
 from httpx._models import Response
+from pydantic import TypeAdapter
 from sqlalchemy.orm import Session
 
 from context.flask_app_context import capture_flask_context
@@ -37,7 +38,7 @@ from graphon.engine_events.base import EngineEvent
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import NodeExecutionType
-from graphon.file import File
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes.base.node import Node
 from graphon.runtime import RuntimeState, VariablePool
 from libs import sensitive_http_telemetry as telemetry
@@ -266,13 +267,17 @@ def test_initial_preflight_refuses_unqualified_routes_before_worker(
     if feature == "tts":
         arguments["workflow"].features = json.dumps({"text_to_speech": {"enabled": True}})
     elif feature == "files":
-        entity.files = cast(Sequence[File], [object()])
+        entity.files = [
+            File(
+                file_type=FileType.DOCUMENT,
+                transfer_method=FileTransferMethod.REMOTE_URL,
+                remote_url="https://example.test/input.txt",
+            )
+        ]
     elif feature == "trace":
         entity.extras["external_trace_id"] = SENTINEL
     else:
-        entity.single_iteration_run = cast(
-            WorkflowAppGenerateEntity.SingleIterationRunEntity, {"node_id": SENTINEL, "inputs": {}}
-        )
+        entity.single_iteration_run = WorkflowAppGenerateEntity.SingleIterationRunEntity(node_id=SENTINEL, inputs={})
     monkeypatch.setattr(
         generator, "_generate_worker", lambda **_kwargs: pytest.fail("worker launched before preflight")
     )
@@ -335,7 +340,7 @@ def supported_graph(kind: str) -> _SupportedGraph:
     """Only the profile's actual Start/HTTP/End and Loop/Iteration classes."""
     from copy import deepcopy
 
-    graph = cast(_SupportedGraph, deepcopy(sample_context().graph))
+    graph = TypeAdapter(_SupportedGraph).validate_python(deepcopy(sample_context().graph))
     if kind == "root":
         return graph
     http = next(n for n in graph["nodes"] if n["id"] == "http")
@@ -388,9 +393,7 @@ def supported_engine(
     from core.workflow.node_runtime import DifyFileReferenceFactory
     from graphon.engine import Engine
     from graphon.engine.command import InMemoryChannel
-    from graphon.entities.base_node_data import BaseNodeData
     from graphon.graph import Graph
-    from graphon.nodes.base.node import Node
     from graphon.nodes.end.end_node import EndNode
     from graphon.nodes.http_request.node import HttpRequestNode
     from graphon.nodes.iteration.iteration_node import IterationNode
@@ -403,6 +406,7 @@ def supported_engine(
     from services.dify_builder.native_testing.control import (
         BoundaryOwnerState,
         NativeControlBridge,
+        _NativeControlBoundary,
         marked_native_node_class,
     )
     from services.dify_builder.native_testing.http_binding import (
@@ -498,6 +502,7 @@ def supported_engine(
             raw_data = node_config["data"].model_dump(mode="python", exclude_unset=True)
             original = next(cls for cls in originals if cls.node_type == raw_data["type"])
             cls = marked_native_node_class(original, marked=True)
+            assert issubclass(cls, _NativeControlBoundary)
             kwargs: dict[str, object] = {}
             if original is HttpRequestNode:
                 kwargs = {
@@ -507,9 +512,9 @@ def supported_engine(
                     "tool_file_manager_factory": lambda: None,
                     "file_reference_factory": file_references,
                 }
-            return cast(Callable[..., Node[BaseNodeData]], cls)(
+            node = cls(
                 node_id=node_config["id"],
-                data=cls.validate_node_data(raw_data),
+                data=original.validate_node_data(raw_data),
                 init_params=InitParams(
                     workflow_id="supported-native", graph_config=graph, run_context={}, call_depth=0
                 ),
@@ -518,6 +523,8 @@ def supported_engine(
                 native_control_sink=sink,
                 **kwargs,
             )
+            assert isinstance(node, Node)
+            return node
 
     actual = Graph.init(graph_config=graph, node_factory=Factory(runtime), root_node_id="start")
     engine = Engine(
@@ -606,10 +613,11 @@ def test_actual_initial_entry_rejects_persisted_profile_before_input_effect(
     case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockerFixture
 ) -> None:
 
-    from core.app.entities.app_invoke_entities import InvokeFrom
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
     from models.account import Account
     from models.model import App
     from models.workflow import Workflow
+    from repositories.entities.workflow_execution import WorkflowExecutionIdentity
     from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
     from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
@@ -640,6 +648,7 @@ def test_actual_initial_entry_rejects_persisted_profile_before_input_effect(
     account.id = context.actor_id
     with pytest.raises(NativeObservationError, match="^native_observation_failed$"):
         WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+            execution_identity=WorkflowExecutionIdentity(user_id=account.id, user_from=UserFrom.ACCOUNT),
             app_model=App(id=context.app_id, tenant_id=context.tenant_id),
             workflow=Workflow(id=context.workflow_id, graph=json.dumps(context.graph), _features="{}"),
             user=account,
@@ -898,15 +907,17 @@ def test_actual_worker_replaces_raw_error_before_queue_error_model_and_logging(
         def run(self) -> NoReturn:
             raise errors[0]
 
+    def execute_runner(runner: object, *_args: object) -> NoReturn:
+        assert isinstance(runner, RunnerPort)
+        runner.run()
+
     monkeypatch.setattr(module, "WorkflowAppRunner", RunnerPort)
     monkeypatch.setattr(module, "active_workflow_task", lambda _task: nullcontext())
     monkeypatch.setattr(queue, "publish_error", publish)
     app = Flask(__name__)
     with app.app_context():
         worker = Thread(
-            target=module.WorkflowAppGenerator(
-                execution_driver=lambda runner, *_args: cast(RunnerPort, runner).run()
-            )._generate_worker,
+            target=module.WorkflowAppGenerator(execution_driver=execute_runner)._generate_worker,
             kwargs={
                 "flask_app": app,
                 "application_generate_entity": entity,

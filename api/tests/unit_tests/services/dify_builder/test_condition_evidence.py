@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Never, cast, override
+from typing import Never, override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -909,11 +909,13 @@ def test_runtime_handler_write_reloads_trusted_failed_run_and_refuses_value_only
     native_adapter.sync.assert_not_called()
 
 
-def test_runtime_non_if_fix_keeps_existing_native_write_behavior(native_adapter: NativeEvidenceCase) -> None:
+def test_runtime_non_if_fix_keeps_existing_native_write_behavior(
+    native_adapter: NativeEvidenceCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     native_adapter.rows[0].status = WorkflowNodeExecutionStatus.FAILED
     native_adapter.rows[0].error = "NameError: missing_variable"
     # Deliberately malformed persisted status must not authorize a failed-node repair.
-    native_adapter.rows[1].status = cast(WorkflowNodeExecutionStatus, "skipped")
+    monkeypatch.setattr(native_adapter.rows[1], "status", "skipped")
     intent = MutationIntent(
         op="set_node_config", args={"node_id": "producer", "path": "code", "value": "def main(): return {}"}
     )
@@ -1013,14 +1015,14 @@ def test_review_r1_handled_exception_cannot_hide_terminal_failed_if(
 )
 @pytest.mark.parametrize("boundary", ["proposal", "write"])
 def test_review_r1_r2_unknown_failure_identity_cannot_authorize_producer_rewrite(
-    native_adapter: NativeEvidenceCase, kind: str, boundary: str
+    native_adapter: NativeEvidenceCase, kind: str, boundary: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     if kind == "two-terminal-failures":
         native_adapter.rows[0].status = WorkflowNodeExecutionStatus.FAILED
     elif kind == "only-handled-exception":
         native_adapter.rows[0].status = WorkflowNodeExecutionStatus.EXCEPTION
         # Deliberately malformed persisted status must not authorize a failed-node repair.
-        native_adapter.rows[1].status = cast(WorkflowNodeExecutionStatus, "skipped")
+        monkeypatch.setattr(native_adapter.rows[1], "status", "skipped")
     elif kind == "missing-run":
         repository = native_adapter.repositories.create_api_workflow_run_repository.return_value
         repository.get_workflow_run_by_id.return_value = None
@@ -1129,11 +1131,11 @@ def test_review_r4_normalized_explicit_credentials_never_reach_prompts_or_eviden
 
 @pytest.mark.parametrize("boundary", ["proposal", "write"])
 def test_review_r2_missing_history_cannot_use_current_non_if_type(
-    native_adapter: NativeEvidenceCase, boundary: str
+    native_adapter: NativeEvidenceCase, boundary: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     native_adapter.rows[0].status = WorkflowNodeExecutionStatus.FAILED
     # Deliberately malformed persisted status must not authorize a failed-node repair.
-    native_adapter.rows[1].status = cast(WorkflowNodeExecutionStatus, "skipped")
+    monkeypatch.setattr(native_adapter.rows[1], "status", "skipped")
     native_adapter.run.graph = json.dumps({})
     if boundary == "proposal":
         _, intents, _, _ = _real_context_proposal(native_adapter)
@@ -1212,11 +1214,13 @@ def test_review_r2_unavailable_context_rejects_schema_and_routing(
         native_adapter.sync.assert_not_called()
 
 
-def test_review_r2_successful_run_cannot_authorize_a_terminal_non_if_repair(native_adapter: NativeEvidenceCase) -> None:
+def test_review_r2_successful_run_cannot_authorize_a_terminal_non_if_repair(
+    native_adapter: NativeEvidenceCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     native_adapter.run.status = WorkflowExecutionStatus.SUCCEEDED
     native_adapter.rows[0].status = WorkflowNodeExecutionStatus.FAILED
     # Deliberately malformed persisted status must not authorize a failed-node repair.
-    native_adapter.rows[1].status = cast(WorkflowNodeExecutionStatus, "skipped")
+    monkeypatch.setattr(native_adapter.rows[1], "status", "skipped")
     with pytest.raises(PreflightError):
         apply_native(
             native_adapter,

@@ -12,7 +12,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
-from typing import Any, Literal, NoReturn, Self, cast, overload
+from typing import Any, Literal, NoReturn, Self, overload
 
 from graphon.engine.layer import ExecutionLimitsLayer, Layer
 from graphon.engine_events import (
@@ -54,7 +54,20 @@ from graphon.nodes.iteration.entities import IterationNodeData, IterationStartNo
 from graphon.nodes.loop.entities import LoopEndNodeData, LoopNodeData, LoopStartNodeData
 from graphon.nodes.start.entities import StartNodeData
 from graphon.variables.input_entities import VariableEntityType
-from graphon.variables.segments import ArrayFileSegment
+from graphon.variables.segments import (
+    ArrayAnySegment,
+    ArrayBooleanSegment,
+    ArrayFileSegment,
+    ArrayNumberSegment,
+    ArrayObjectSegment,
+    ArrayStringSegment,
+    BooleanSegment,
+    FloatSegment,
+    IntegerSegment,
+    NoneSegment,
+    ObjectSegment,
+    StringSegment,
+)
 from runtime_contracts.builder.execution import (
     BuilderExecutionPolicyError,
     canonical_digest,
@@ -175,7 +188,8 @@ def _shape(value: Any, *, depth: int = 0, budget: list[int] | None = None) -> di
     """Validate bounded plain values without rendering objects or leaking keys.
 
     All children are checked, even when only eight shapes are displayed. The
-    native empty files segment is allowed; file-bearing segments are not.
+    Exact native scalar and JSON segments are inspected through their values.
+    Empty files segments are allowed; file-bearing segments are not.
     """
     if budget is None:
         budget = [100_000]
@@ -195,6 +209,20 @@ def _shape(value: Any, *, depth: int = 0, budget: list[int] | None = None) -> di
         return {"type": "number"}
     if kind is str:
         return {"type": "string", "length": len(value)}
+    if kind in (
+        NoneSegment,
+        StringSegment,
+        FloatSegment,
+        IntegerSegment,
+        BooleanSegment,
+        ObjectSegment,
+        ArrayAnySegment,
+        ArrayStringSegment,
+        ArrayNumberSegment,
+        ArrayObjectSegment,
+        ArrayBooleanSegment,
+    ):
+        return _shape(value.value, depth=depth + 1, budget=budget)
     if kind is ArrayFileSegment and type(value.value) in (list, tuple) and not value.value:
         return {"type": "array", "length": 0}
     if kind is dict:
@@ -213,8 +241,7 @@ def _shape(value: Any, *, depth: int = 0, budget: list[int] | None = None) -> di
             "length": len(value),
             "items": shapes[:8] if depth < 3 else [],
         }
-    _refuse()
-    raise AssertionError("unreachable")
+    return _refuse()
 
 
 def _pause(reason: Any) -> SchedulingPause:
@@ -406,8 +433,7 @@ class NativeHttpObservationPolicy:
             return error
         if type(error) is str or isinstance(error, BaseException):
             return "native_execution_error"
-        _refuse()
-        raise AssertionError("unreachable")
+        return _refuse()
 
     def graph(self, graph: Mapping[str, Any]) -> dict[str, Any]:
         """Project only the pinned graph; expose topology, never node configuration."""
@@ -610,9 +636,9 @@ class NativeHttpObservationPolicy:
                     _refuse()
                 fields[name] = value
             elif name == "node_title":
-                if type(value) is not str:
+                if type(value) is not str or not isinstance(event, NodeEvent):
                     _refuse()
-                fields[name] = cast(NodeEvent, event).node_type
+                fields[name] = event.node_type
             elif name in {"provider_type", "provider_id"}:
                 if type(value) is not str:
                     _refuse()
@@ -641,7 +667,9 @@ class NativeHttpObservationPolicy:
                 fields[name] = _REDACTED
             elif name == "selector":
                 _shape(value)
-                fields[name] = [cast(NodeEvent, event).node_id, _REDACTED]
+                if not isinstance(event, NodeEvent):
+                    _refuse()
+                fields[name] = [event.node_id, _REDACTED]
             elif name == "source_handle":
                 if value is not None and type(value) is not str:
                     _refuse()

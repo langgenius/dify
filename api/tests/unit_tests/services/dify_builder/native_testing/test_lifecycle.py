@@ -1,7 +1,5 @@
 """Unit boundary failures; SQL lifecycle behavior is covered in normal CI."""
 
-from typing import cast
-
 import pytest
 from pydantic import ValidationError
 
@@ -44,15 +42,17 @@ def test_pending_resolution_never_coerces_client_boolean() -> None:
     from services.dify_builder.native_testing.lifecycle import NativePendingResolution
 
     with pytest.raises(ValidationError):
-        NativePendingResolution(
-            category="configuration",
-            invocation_id="inv",
-            pending_action_id="pending",
-            owner_ref="owner",
-            reference="config",
-            resolved="true",
-            account_ref="account",
-            answer_result_ref=None,
+        NativePendingResolution.model_validate(
+            {
+                "category": "configuration",
+                "invocation_id": "inv",
+                "pending_action_id": "pending",
+                "owner_ref": "owner",
+                "reference": "config",
+                "resolved": "true",
+                "account_ref": "account",
+                "answer_result_ref": None,
+            }
         )
 
 
@@ -80,11 +80,10 @@ def test_payload_codec_rejects_cross_owner_and_changed_typed_payload() -> None:
 def test_payload_codec_snapshots_caller_mutation() -> None:
     from services.dify_builder.native_testing.state_store import decode_payload, encode_payload
 
-    payload = {"inputs": [True, 1, "1"]}
-    raw, digest = encode_payload(
-        tenant_id="t", request_id="r", invocation_id="i", kind="result", payload=cast(JsonValue, payload)
-    )
-    payload["inputs"].clear()
+    inputs: list[JsonValue] = [True, 1, "1"]
+    payload: dict[str, JsonValue] = {"inputs": inputs}
+    raw, digest = encode_payload(tenant_id="t", request_id="r", invocation_id="i", kind="result", payload=payload)
+    inputs.clear()
     assert decode_payload(raw, tenant_id="t", request_id="r", invocation_id="i", kind="result", digest=digest) == {
         "inputs": [True, 1, "1"]
     }

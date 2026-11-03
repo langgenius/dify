@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 from types import ModuleType
-from typing import Literal, NoReturn, Unpack, cast
+from typing import Literal, NoReturn, Unpack
 from uuid import uuid4
 
 import pytest
@@ -36,7 +36,7 @@ from models.workflow import (
 from runtime_contracts.builder.execution import TrustedExecutionCompletion
 from services.dify_builder.application import execution_policy as domain
 from services.dify_builder.serde import context_to_dict
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, policy
 
 type Owned = tuple[sessionmaker[Session], Actor, App, Workflow, str, str]
@@ -576,7 +576,7 @@ def test_all_handlers_persist_actual_server_stamp(
     port = FakeDifyPort()
     port.graph = graph(http=True)
     port.hash = revision
-    port.stamp_http_fixtures = dify_port.WorkflowServiceDifyPort().stamp_http_fixtures
+    monkeypatch.setattr(port, "stamp_http_fixtures", dify_port.WorkflowServiceDifyPort().stamp_http_fixtures)
     repo = InMemoryRepository()
     env = Env(dify=port, repo=repo, agent=StubAgent(), now=lambda: datetime.min)
     session = BuilderSession(
@@ -777,7 +777,9 @@ def test_native_rbac_agent_app_binding_precedes_maintainer_bypass(
     from services.enterprise.rbac_service import RBACService
 
     factory, actor, app, workflow, sid, tid = owned
-    cast(Table, Agent.__table__).create(factory.kw["bind"], checkfirst=True)
+    table = Agent.__table__
+    assert isinstance(table, Table)
+    table.create(factory.kw["bind"], checkfirst=True)
     with factory.begin() as db:
         row = db.get(App, app.id)
         assert row is not None
@@ -1162,7 +1164,7 @@ def test_null_predecessor_prefix_requires_failed_or_stopped_run(owned: Owned, st
 def test_null_predecessor_http_retry_requires_all_attempt_proof(
     owned: Owned, receipt_count: int, retry_index: int, total_steps: int, outcome: str
 ) -> None:
-    from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+    from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 
     factory, _, _, workflow, _, _ = owned
     workflow.graph = json.dumps(graph(http=True))
@@ -1242,6 +1244,7 @@ def test_seal_revalidates_constructed_preworker_origin(owned: Owned, invalid: st
         facts.update(worker_finished=True, worker_exit="policy_refused")
     else:
         facts["worker_exit"] = "policy_refused"
+    # pyrefly: ignore[bad-argument-type]  # forged completion bypasses validation on purpose
     forged = domain.TrustedExecutionCompletion.model_construct(_fields_set=None, **facts)
     service = service_module().BuilderExecutionPolicyService(owned[0])
     with pytest.raises(domain.BuilderExecutionPolicyError, match="invalid_execution_completion"):

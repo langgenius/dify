@@ -148,7 +148,7 @@ class AgentPreparationService:
             actual = AgentRuntimeIdentity.model_validate(
                 self.backend.read_run_identity_sync(payload.agent_run_id, selection).model_dump(mode="json")
             )
-        except (DifyAgentClientError, ValueError, BuilderExecutionPolicyError):
+        except (DifyAgentClientError, ValueError):
             raise BuilderExecutionPolicyError("native_agent_identity_unavailable") from None
         if (
             actual.run_id,

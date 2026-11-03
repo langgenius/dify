@@ -1,7 +1,6 @@
 """Policy CAS, membership and tenant isolation through real SQL sessions."""
 
 from collections.abc import Iterator
-from typing import cast
 
 import pytest
 from sqlalchemy import Table, create_engine
@@ -28,7 +27,8 @@ type SqlContext = tuple[SqlDifyBuilderRepository, sessionmaker[Session]]
 def sql() -> Iterator[SqlContext]:
     engine = create_engine("sqlite://")
     for table in (Tenant.__table__, TenantAccountJoin.__table__, DifyBuilderCognitionPolicy.__table__):
-        cast(Table, table).create(engine)
+        assert isinstance(table, Table)
+        table.create(engine)
     factory = sessionmaker(bind=engine)
     with factory() as session, session.begin():
         tenant = Tenant(name="test", custom_config='{"branding":"preserved"}')

@@ -8,7 +8,7 @@ the native output schema: discovery must not manufacture dynamic selectors.
 import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import NoReturn, cast
+from typing import NoReturn
 from uuid import uuid4
 
 import pytest
@@ -111,7 +111,8 @@ def _add_provider(
 def _add_parsed_public_fixture(engine: Engine) -> None:
     """Persist the approved public fixture through the real native parser."""
     fixture = Path(__file__).with_name("fixtures") / "qa_news_search_openapi.json"
-    schema = cast(dict[str, object], json.loads(fixture.read_text()))
+    schema = json.loads(fixture.read_text())
+    assert isinstance(schema, dict)
     bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(schema)
     _add_provider(engine, tools=[bundle.model_dump(mode="json") for bundle in bundles])
 
@@ -232,7 +233,9 @@ def test_api_provider_label_routes_to_uuid_and_formatter_preserves_native_type(
     engine, _forbidden, _sql = public_inventory
     bundle = _bundle("lookup")
     bundle["summary"] = "Lookup"
-    cast(dict[str, object], bundle["openapi"])["description"] = "Fetch records."
+    openapi = bundle["openapi"]
+    assert isinstance(openapi, dict)
+    openapi["description"] = "Fetch records."
     _add_provider(engine, tools=[bundle])
 
     selected = select_tool_candidates(
@@ -295,9 +298,17 @@ def test_api_readiness_cannot_borrow_builtin_authorization(
 ) -> None:
     from services.dify_builder.agent import resources
 
-    entry = {"provider_name": PROVIDER_ID, "provider_type": "api", "needs_credentials": needs_credentials}
+    entry: ToolCatalogueEntry = {
+        "provider_name": PROVIDER_ID,
+        "provider_type": "api",
+        "plugin_id": "",
+        "tool_name": ACTION,
+        "tool_label": "QA News Search",
+        "description": "Search recent news headlines.",
+        "needs_credentials": needs_credentials,
+    }
 
-    readiness, note = resources._tool_readiness(cast(ToolCatalogueEntry, entry), authorized)
+    readiness, note = resources._tool_readiness(entry, authorized)
 
     assert readiness == "missing_config"
     assert "authorization" in note.lower()
@@ -343,10 +354,18 @@ def test_native_api_catalogue_hydration_preserves_runtime_keyword_and_fixed_para
         "timespan": {"type": "constant", "value": "24h"},
         "maxrecords": {"type": "constant", "value": 5},
     }
-    graph = cast(
-        GraphDict,
-        {"nodes": [{"id": "search", "data": {"type": "tool", "tool_parameters": parameters}}], "edges": []},
-    )
+    graph: GraphDict = {
+        "nodes": [
+            {
+                "id": "search",
+                "type": "custom",
+                "position": {"x": 0, "y": 0},
+                "data": {"type": "tool", "tool_parameters": parameters},
+            }
+        ],
+        "edges": [],
+        "viewport": {"x": 0, "y": 0, "zoom": 1},
+    }
     WorkflowGenerator._hydrate_tool_nodes(
         graph=graph,
         plan_nodes=[{"id": "search", "node_type": "tool", "tool": {"provider_id": PROVIDER_ID, "tool_name": ACTION}}],

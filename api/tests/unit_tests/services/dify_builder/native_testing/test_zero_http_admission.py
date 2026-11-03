@@ -6,10 +6,10 @@ units qualify no database authorization, persistence, host cleanup or external I
 
 import json
 from collections.abc import Callable, Generator
-from contextlib import AbstractContextManager, contextmanager
+from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import NoReturn, cast
+from typing import NoReturn
 
 import httpx
 import pytest
@@ -33,6 +33,7 @@ from services.dify_builder.native_testing.context_binding import NativeAdmission
 from services.dify_builder.native_testing.control import BoundaryOwnerState
 from services.workflow_runtime.node_factory import DifyNodeFactory
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import FixtureGraph, FixtureNode
+from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import sql_session_factory
 
 
 @dataclass
@@ -47,7 +48,7 @@ class ZeroHttpCase:
     workflow_reads: int = 0
     permission_failure: int | None = None
     workflow_failure: str | None = None
-    sessions: Callable[[], AbstractContextManager[object]] | None = None
+    sessions: sessionmaker[OrmSession] | None = None
     forbidden_io: Callable[..., NoReturn] | None = None
     snapshot: http_binding.NativeHttpResourceSnapshot | None = None
     compiler: NativeAdmissionCompiler | None = None
@@ -150,7 +151,7 @@ def zero_http_case(monkeypatch: pytest.MonkeyPatch) -> ZeroHttpCase:
         assert case.active == 0
         assert actual_actor is actor
         assert app_id == "app"
-        assert factory is sessions
+        assert factory is case.sessions
         case.permissions.append((actual_actor.tenant_id, actual_actor.account_id, app_id))
         if case.permission_failure == len(case.permissions):
             raise BuilderExecutionPolicyError("execution_permission_denied")
@@ -163,11 +164,12 @@ def zero_http_case(monkeypatch: pytest.MonkeyPatch) -> ZeroHttpCase:
     monkeypatch.setattr(context_binding, "check_execution_permission", permission)
     monkeypatch.setattr(http_binding, "check_execution_permission", permission)
     monkeypatch.setattr(httpx.Client, "send", forbidden_io)
-    case.sessions, case.forbidden_io = sessions, forbidden_io
-    case.snapshot = http_binding.NativeHttpResourceSnapshot(session_factory=sessions)
-    case.compiler = NativeAdmissionCompiler(
-        session_factory=cast(sessionmaker[OrmSession], sessions), resources=case.snapshot
+    case.sessions = sql_session_factory(
+        monkeypatch, sessions, methods=lambda boundary: {"get": boundary.get, "scalar": boundary.scalar}
     )
+    case.forbidden_io = forbidden_io
+    case.snapshot = http_binding.NativeHttpResourceSnapshot(session_factory=case.sessions)
+    case.compiler = NativeAdmissionCompiler(session_factory=case.sessions, resources=case.snapshot)
 
     return case
 
@@ -191,8 +193,9 @@ def delivery_factory(
 
     # This unit replaces protected-object/RBAC readback, while preserving the
     # actual delivery, host, journal, control and collaborator composition.
+    assert case.sessions is not None
     api = NativeTestApiService(
-        session_factory=cast(sessionmaker[OrmSession], case.sessions),
+        session_factory=case.sessions,
         actor=case.actor,
         resolver=http_binding.NativeHttpBindingResolver(),
         admission=None,
@@ -341,7 +344,7 @@ def test_zero_http_snapshot_preserves_profile_refusal_before_owner_reads(zero_ht
             actor=case.actor,
             app_id="app",
             workflow_id="workflow",
-            graph=cast(dict[str, object], case.graph),
+            graph=dict(case.graph),
             profile=http_binding.build_native_http_profile().model_copy(update={"implementation_revision": "foreign"}),
         )
     assert case.permissions == []
@@ -415,4 +418,4 @@ def test_empty_manifest_does_not_enable_unsupported_native_collaborators(zero_ht
     assert compiled.context.resource_manifest == ()
     factory, _, _ = delivery_factory(case, compiled.context)
     with pytest.raises(BuilderExecutionPolicyError, match="native_capability_unavailable$"):
-        factory.create_node(cast(dict[str, object], node))
+        factory.create_node(dict(node))

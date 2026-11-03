@@ -1,9 +1,7 @@
 """Stage Fix proposals and distinguish repair approval from an empty proposal."""
 
-from typing import cast
-
 from core.dify_builder.contract import Action, ActionKind, DecisionItem
-from core.dify_builder.models import Diagnosis, DifyBuilderContext, Session, Turn
+from core.dify_builder.models import DifyBuilderContext, Session, Turn
 from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.state import PcState
 from runtime_contracts.builder.copy_ids import BuilderCopyId
@@ -52,6 +50,7 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     graph, revision = env.dify.read_graph(s.app_id, turn.actor)
     progress.activate("fix-propose-repair")
     # Both proposal states are entered after their diagnosis has committed.
+    assert fc.diagnosis is not None
     if fc.source != "checklist" and fc.failed_run_id:
         from services.dify_builder.condition_evidence import propose_failure
 
@@ -60,14 +59,12 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
             s.app_id,
             turn.actor,
             env.repo.get_run(fc.failed_run_id),
-            cast(Diagnosis, fc.diagnosis),
+            fc.diagnosis,
             graph,
             task=(s, fc, revision),
         )
     else:
-        intents, risk = env.agent.propose_repair(
-            cast(Diagnosis, fc.diagnosis), graph, reply_language=fc.reply_language or None
-        )
+        intents, risk = env.agent.propose_repair(fc.diagnosis, graph, reply_language=fc.reply_language or None)
     fc.staged_repair = intents
     fc.risk = risk
 

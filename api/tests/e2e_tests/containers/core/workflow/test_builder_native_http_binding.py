@@ -10,19 +10,17 @@ whole-run Graphon trace/privacy/driver activation.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Literal, NotRequired, Unpack, cast
+from typing import TYPE_CHECKING, Literal, NotRequired, Unpack
 
-from flask import Flask
 from pydantic import JsonValue
 from typing_extensions import TypedDict
-from werkzeug.local import LocalProxy
 
 from models.workflow import Workflow
 from runtime_contracts.builder.native.contracts import DispatchPermit, NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import NodeJournalState
 from services.dify_builder.native_testing.control import NativeControlRecord
 from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     InternalDecisionArguments,
     PublicDecisionArguments,
     require_instance,
@@ -38,14 +36,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from core.dify_builder.models import Actor
     from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
-    from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
         HttpBindingCase,
     )
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_0
+    from tests.e2e_tests.containers.core.workflow import test_builder_restricted_native as _fixture_types_0
 
 
 import json
@@ -96,31 +94,31 @@ from services.dify_builder.native_testing.public_contracts import NativeTestPubl
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, native_workflow_revision
 from services.dify_builder.native_testing.runtime_bridge import NativeCollaborators, NativeRuntimeBridge
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, ObjectReceipt
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     HttpBindingCase,
     HttpConsentCase,
     PreparedHttpCase,
     require_present,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414 - shared pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_dispatch_claims import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_dispatch_claims import (
     migrated_dispatch_claims as migrated_dispatch_claims,  # noqa: PLC0414 - shared pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     ledger_case as ledger_case,  # noqa: PLC0414 - shared pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     migrated_native_tables as migrated_native_tables,  # noqa: PLC0414 - shared pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     no_live as no_live,  # noqa: PLC0414 - shared pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import raw_ledger_case
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import raw_ledger_case
 
 
 def literal_data() -> dict[str, str | dict[str, str] | dict[str, list[dict[str, str]] | str]]:
@@ -376,7 +374,7 @@ def test_real_http_snapshot_and_equal_install_preserve_other_entries(http_case: 
 def test_real_http_conflict_is_immutable_and_concurrent_merge_preserves_entries(http_case: HttpBindingCase) -> None:
     from threading import Barrier
 
-    from flask import current_app
+    from flask.globals import app_ctx
 
     c = http_case
     first = prepare(c)
@@ -390,7 +388,7 @@ def test_real_http_conflict_is_immutable_and_concurrent_merge_preserves_entries(
             intent=conflict,
         )
     assert bindings(c) == before
-    app = cast("LocalProxy[Flask]", current_app)._get_current_object()
+    app = app_ctx.app
     start = Barrier(2)
 
     def prepare_in_worker(_) -> PreparedHttpCase:

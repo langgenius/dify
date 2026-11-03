@@ -4,7 +4,8 @@ Durability, ordering and concurrency belong to the CI-only PostgreSQL module.
 """
 
 from datetime import UTC, datetime, timedelta
-from typing import NoReturn, cast
+from operator import methodcaller
+from typing import NoReturn
 
 import pytest
 from sqlalchemy.orm import sessionmaker
@@ -51,11 +52,7 @@ def test_missing_dispatch_evidence_stops_before_authority_lookup(field: str, mon
     claim = guard.claim_dispatch
     assert callable(claim), "durable physical dispatch claim protocol is unavailable"
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_dispatch_permit"):
-        claim(
-            ref=cast(NativeTestContextRef, args["ref"]),
-            intent=cast(EffectIntent, args["intent"]),
-            permit=cast(DispatchPermit, args["permit"]),
-        )
+        methodcaller("claim_dispatch", **args)(guard)
 
 
 @pytest.mark.parametrize(
@@ -88,8 +85,4 @@ def test_in_process_dto_bypass_is_revalidated_before_authority_lookup(
     claim = guard.claim_dispatch
     assert callable(claim), "durable physical dispatch claim protocol is unavailable"
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_dispatch_permit"):
-        claim(
-            ref=cast(NativeTestContextRef, args["ref"]),
-            intent=cast(EffectIntent, args["intent"]),
-            permit=cast(DispatchPermit, args["permit"]),
-        )
+        methodcaller("claim_dispatch", **args)(guard)

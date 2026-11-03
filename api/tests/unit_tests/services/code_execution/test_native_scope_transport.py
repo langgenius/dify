@@ -6,8 +6,9 @@ import asyncio
 import json
 from collections.abc import Callable, Coroutine
 from dataclasses import replace
+from operator import call
 from pathlib import Path
-from typing import Literal, Never, Unpack, cast, override
+from typing import Literal, Never, Unpack, override
 
 import httpx2 as httpx
 import pytest
@@ -192,19 +193,13 @@ class TransportOverrides(TypedDict, total=False, closed=True):
     sync_owner: NativeCodeSyncOwner | None
 
 
-class BoundOverrides(TypedDict, total=False, closed=True):
-    timeout_seconds: float
-    output_bytes: int
-    max_pages: int
-    input_bytes: int
-    close_seconds: float
-
-
 def setup_transport(
     outputs: list[dict[str, object]] | None = None, **overrides: Unpack[TransportOverrides]
 ) -> tuple[NativeScopeCodeExecutionTransport, ScopedSDK, DurableOwner, LifetimeOwner]:
     sdk = ScopedSDK(outputs)
-    sdk.final_offset = cast(int, outputs[-1]["offset"]) if outputs else len(b"<<RESULT>>{}<<RESULT>>\n")
+    offset = outputs[-1]["offset"] if outputs else len(b"<<RESULT>>{}<<RESULT>>\n")
+    assert isinstance(offset, int)
+    sdk.final_offset = offset
     durable, lifetime = DurableOwner(), LifetimeOwner()
     sdk.durable = durable
     args: TransportArgs = {
@@ -337,7 +332,7 @@ def test_async_entry_does_not_nest_the_existing_event_loop() -> None:
 
 
 @pytest.mark.parametrize("boundary", ["associate", "current_after_input", "input_timeout", "close", "settle"])
-def test_boundary_failure_redacts_and_settles(boundary: str) -> None:
+def test_boundary_failure_redacts_and_settles(boundary: str, monkeypatch: pytest.MonkeyPatch) -> None:
     transport, sdk, durable, lifetime = setup_transport()
     if boundary == "associate":
 
@@ -345,7 +340,7 @@ def test_boundary_failure_redacts_and_settles(boundary: str) -> None:
             del identity, job_id
             raise ValueError("private persistence failure")
 
-        durable.associate_job = reject
+        monkeypatch.setattr(durable, "associate_job", reject)
     elif boundary == "current_after_input":
         original = sdk.respond
 
@@ -355,7 +350,7 @@ def test_boundary_failure_redacts_and_settles(boundary: str) -> None:
                 lifetime.current = False
             return result
 
-        sdk.respond = respond
+        monkeypatch.setattr(sdk, "respond", respond)
     elif boundary == "input_timeout":
         original = sdk.respond
 
@@ -364,7 +359,7 @@ def test_boundary_failure_redacts_and_settles(boundary: str) -> None:
                 raise httpx.ReadTimeout("private timeout", request=request)
             return original(request)
 
-        sdk.respond = respond
+        monkeypatch.setattr(sdk, "respond", respond)
     elif boundary == "close":
         original_factory = sdk.job_client
 
@@ -376,10 +371,10 @@ def test_boundary_failure_redacts_and_settles(boundary: str) -> None:
                 await original_close()
                 raise ValueError("private close")
 
-            client.close = close
+            monkeypatch.setattr(client, "close", close)
             return client
 
-        sdk.job_client = factory
+        monkeypatch.setattr(sdk, "job_client", factory)
     else:
 
         async def settle(identity: NativeCodeIdentity, *, succeeded: bool) -> None:
@@ -387,7 +382,7 @@ def test_boundary_failure_redacts_and_settles(boundary: str) -> None:
             lifetime.settlements.append(succeeded)
             raise ValueError("private settlement")
 
-        lifetime.settle = settle
+        monkeypatch.setattr(lifetime, "settle", settle)
     with pytest.raises(CodeExecutionError, match="^Native code execution unavailable$"):
         execute(transport)
     assert sdk.closed == 1
@@ -396,7 +391,7 @@ def test_boundary_failure_redacts_and_settles(boundary: str) -> None:
     assert sum(r.url.path.endswith("/input") for r in sdk.requests) <= 1
 
 
-def test_total_deadline_cancels_wait_and_closes_owned_client() -> None:
+def test_total_deadline_cancels_wait_and_closes_owned_client(monkeypatch: pytest.MonkeyPatch) -> None:
     transport, sdk, durable, lifetime = setup_transport()
     transport = replace(transport, bounds=replace(transport.bounds, timeout_seconds=0.01))
     original_factory = sdk.job_client
@@ -409,10 +404,10 @@ def test_total_deadline_cancels_wait_and_closes_owned_client() -> None:
             await asyncio.sleep(1)
             raise AssertionError("deadline did not cancel the controlled SDK operation")
 
-        client.run = run
+        monkeypatch.setattr(client, "run", run)
         return client
 
-    sdk.job_client = factory
+    monkeypatch.setattr(sdk, "job_client", factory)
     with pytest.raises(CodeExecutionError):
         execute(transport)
     assert sdk.closed == 1
@@ -443,15 +438,17 @@ def test_page_count_exhaustion_never_reports_partial_success() -> None:
 def test_invalid_or_exceeded_bounds_refuse_before_sdk(bound: str, value: float) -> None:
     transport, sdk, _, _ = setup_transport()
     # Invalid integer bounds deliberately retain their original noninteger runtime values.
-    overrides = cast(BoundOverrides, {bound: value})
-    transport = replace(transport, bounds=replace(transport.bounds, **overrides))
+    overrides = {bound: value}
+    transport = replace(transport, bounds=call(replace, transport.bounds, **overrides))
     with pytest.raises(CodeExecutionError):
         execute(transport)
     assert sdk.requests == []
 
 
 @pytest.mark.parametrize("language", ["python3", "javascript", "jinja2"])
-def test_actual_offline_runner_transformer_roundtrip_with_sdk_response_double(language: str, tmp_path: Path) -> None:
+def test_actual_offline_runner_transformer_roundtrip_with_sdk_response_double(
+    language: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Real interpreter/transformer execution; HTTP/scope/kernel/lifetime remain doubles."""
     import shutil
     import subprocess
@@ -499,7 +496,7 @@ def test_actual_offline_runner_transformer_roundtrip_with_sdk_response_double(la
             sdk.final_offset = len(result.stdout.encode())
         return original(request)
 
-    sdk.respond = respond
+    monkeypatch.setattr(sdk, "respond", respond)
     typed = {"nested": [1, True, None, {"x": 2.5}]}
     expected = {"result": "Hello " + value} if language == "jinja2" else {"answer": value, "typed": typed}
     assert (
@@ -511,7 +508,9 @@ def test_actual_offline_runner_transformer_roundtrip_with_sdk_response_double(la
     assert sdk.closed == 1
 
 
-def test_actual_python_preload_runs_before_code_and_preserves_stdout(tmp_path: Path) -> None:
+def test_actual_python_preload_runs_before_code_and_preserves_stdout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import subprocess
     import sys
 
@@ -538,14 +537,14 @@ def test_actual_python_preload_runs_before_code_and_preserves_stdout(tmp_path: P
             sdk.final_offset = len(result.stdout.encode())
         return original(request)
 
-    sdk.respond = respond
+    monkeypatch.setattr(sdk, "respond", respond)
     assert (
         transport.execute(language="python3", preload="value = 'é'\nprint('preload')", code="print(value)")
         == "preload\né\n"
     )
 
 
-def test_slow_http_close_cannot_escape_settlement_deadline() -> None:
+def test_slow_http_close_cannot_escape_settlement_deadline(monkeypatch: pytest.MonkeyPatch) -> None:
     transport, sdk, durable, lifetime = setup_transport()
     transport = replace(transport, bounds=replace(transport.bounds, close_seconds=0.01))
     original_factory = sdk.job_client
@@ -559,17 +558,17 @@ def test_slow_http_close_cannot_escape_settlement_deadline() -> None:
             await asyncio.sleep(1)
             raise AssertionError("deadline did not cancel the controlled SDK operation")
 
-        client.close = close
+        monkeypatch.setattr(client, "close", close)
         return client
 
-    sdk.job_client = factory
+    monkeypatch.setattr(sdk, "job_client", factory)
     with pytest.raises(CodeExecutionError):
         execute(transport)
     assert lifetime.settlements == [False]
     assert durable.unknowns >= 1
 
 
-def test_borrowed_http_client_lifetime_is_preserved_by_actual_sdk() -> None:
+def test_borrowed_http_client_lifetime_is_preserved_by_actual_sdk(monkeypatch: pytest.MonkeyPatch) -> None:
     transport, sdk, _, _ = setup_transport()
 
     async def scenario() -> None:
@@ -578,7 +577,7 @@ def test_borrowed_http_client_lifetime_is_preserved_by_actual_sdk() -> None:
             def factory(handle: NativeScopeHandle) -> ShellctlClient:
                 return ShellctlClient(base_url=sdk.endpoint, token=sdk.auth_token, native_scope=handle, client=borrowed)
 
-            sdk.job_client = factory
+            monkeypatch.setattr(sdk, "job_client", factory)
             assert (
                 await transport.execute_async(language="python3", preload="", code="private")
                 == "<<RESULT>>{}<<RESULT>>\n"
@@ -590,14 +589,14 @@ def test_borrowed_http_client_lifetime_is_preserved_by_actual_sdk() -> None:
         runner.run(scenario())
 
 
-def test_async_unknown_persistence_failure_is_redacted_and_still_settles() -> None:
+def test_async_unknown_persistence_failure_is_redacted_and_still_settles(monkeypatch: pytest.MonkeyPatch) -> None:
     transport, sdk, durable, lifetime = setup_transport([page(exit_code=1)])
 
     def reject(identity: NativeCodeIdentity) -> None:
         del identity
         raise ValueError("private persistence outage")
 
-    durable.mark_unknown = reject
+    monkeypatch.setattr(durable, "mark_unknown", reject)
     with asyncio.Runner() as runner, pytest.raises(CodeExecutionError, match="^Native code execution unavailable$"):
         runner.run(transport.execute_async(language="python3", preload="", code="private"))
     assert sdk.closed == 1
@@ -605,7 +604,7 @@ def test_async_unknown_persistence_failure_is_redacted_and_still_settles() -> No
 
 
 @pytest.mark.parametrize("phase", ["close", "settle", "body_then_repeated"])
-def test_external_cancellation_waits_for_bounded_ownership_handoff(phase: str) -> None:
+def test_external_cancellation_waits_for_bounded_ownership_handoff(phase: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """Event-driven cancellation of the actual adapter lifecycle, never sleeps to race it."""
     transport, sdk, durable, lifetime = setup_transport()
     transport = replace(transport, bounds=replace(transport.bounds, close_seconds=0.04))
@@ -629,7 +628,7 @@ def test_external_cancellation_waits_for_bounded_ownership_handoff(phase: str) -
                 await original_close()
                 closed = True
 
-            client.close = close
+            monkeypatch.setattr(client, "close", close)
             if phase == "body_then_repeated":
 
                 async def run(*args: object, **kwargs: object) -> Never:
@@ -640,10 +639,10 @@ def test_external_cancellation_waits_for_bounded_ownership_handoff(phase: str) -
                     await asyncio.Event().wait()
                     raise AssertionError("controlled SDK operation unexpectedly resumed")
 
-                client.run = run
+                monkeypatch.setattr(client, "run", run)
             return client
 
-        sdk.job_client = factory
+        monkeypatch.setattr(sdk, "job_client", factory)
 
         async def settle(identity: NativeCodeIdentity, *, succeeded: bool) -> None:
             del identity
@@ -651,7 +650,7 @@ def test_external_cancellation_waits_for_bounded_ownership_handoff(phase: str) -
             settle_entered.set()
             await settle_release.wait()
 
-        lifetime.settle = settle
+        monkeypatch.setattr(lifetime, "settle", settle)
         loop = asyncio.get_running_loop()
         started = loop.time()
         operation = asyncio.create_task(transport.execute_async(language="python3", preload="", code="private"))
@@ -703,7 +702,9 @@ def test_external_cancellation_waits_for_bounded_ownership_handoff(phase: str) -
 
 
 @pytest.mark.parametrize("phase", ["close", "settle"])
-def test_cancelled_cleanup_keeps_original_deadline_and_leaves_no_task(phase: str) -> None:
+def test_cancelled_cleanup_keeps_original_deadline_and_leaves_no_task(
+    phase: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     transport, sdk, durable, lifetime = setup_transport()
     budget = 0.03
     transport = replace(transport, bounds=replace(transport.bounds, close_seconds=budget))
@@ -723,10 +724,10 @@ def test_cancelled_cleanup_keeps_original_deadline_and_leaves_no_task(phase: str
                     entered.set()
                     await never_release.wait()
 
-                client.close = close
+                monkeypatch.setattr(client, "close", close)
                 return client
 
-            sdk.job_client = factory
+            monkeypatch.setattr(sdk, "job_client", factory)
         else:
 
             async def settle(identity: NativeCodeIdentity, *, succeeded: bool) -> None:
@@ -735,7 +736,7 @@ def test_cancelled_cleanup_keeps_original_deadline_and_leaves_no_task(phase: str
                 entered.set()
                 await never_release.wait()
 
-            lifetime.settle = settle
+            monkeypatch.setattr(lifetime, "settle", settle)
         operation = asyncio.create_task(transport.execute_async(language="python3", preload="", code="private"))
         await asyncio.wait_for(entered.wait(), timeout=1)
         loop = asyncio.get_running_loop()

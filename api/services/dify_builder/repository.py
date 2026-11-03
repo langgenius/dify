@@ -26,7 +26,6 @@ import dataclasses
 from collections.abc import Callable, Iterable, Iterator
 from datetime import timedelta
 from itertools import islice
-from typing import cast
 
 from sqlalchemy import func, select, update
 from sqlalchemy.engine import CursorResult
@@ -908,15 +907,13 @@ class SqlDifyBuilderRepository:
         # replacement can take ownership without changing this session's head.
         self._lock_live_insert(db_session, session_id)
         new_version = base_version + 1
-        result = cast(
-            CursorResult,
-            db_session.execute(
-                update(DifyBuilderSession)
-                .where(DifyBuilderSession.id == session_id, DifyBuilderSession.version == base_version)
-                .values(version=DifyBuilderSession.version + 1, current_state=str(next))
-                .execution_options(synchronize_session=False)
-            ),
+        result = db_session.execute(
+            update(DifyBuilderSession)
+            .where(DifyBuilderSession.id == session_id, DifyBuilderSession.version == base_version)
+            .values(version=DifyBuilderSession.version + 1, current_state=str(next))
+            .execution_options(synchronize_session=False)
         )
+        assert isinstance(result, CursorResult)
 
         if result.rowcount == 0:
             if db_session.get(DifyBuilderSession, session_id) is None:

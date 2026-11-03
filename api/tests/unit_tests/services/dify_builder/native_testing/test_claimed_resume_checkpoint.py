@@ -5,11 +5,11 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import NoReturn, cast
+from operator import methodcaller
+from typing import NoReturn
 
 import pytest
 from sqlalchemy import inspect
-from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.orm.state import InstanceState
 
 from core.dify_builder.models import Actor
@@ -30,6 +30,7 @@ from services.dify_builder.native_testing.private_reads import PrivateReadOwner
 from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL
+from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import sql_session_factory
 
 NOW = datetime(2026, 10, 16, tzinfo=UTC)
 REF = NativeTestContextRef(request_id="request", invocation_id="root", context_digest="a" * 64)
@@ -184,7 +185,7 @@ def metadata_case(monkeypatch: pytest.MonkeyPatch) -> ClaimedCheckpointCase:
         ), scope
 
     loader = OwnedNativeTestLoader(
-        cast(sessionmaker[Session], factory),
+        sql_session_factory(monkeypatch, factory, methods=SQL.sql_methods),
         actor=Actor(tenant_id="tenant", account_id="actor"),
         resolver=NativeHttpBindingResolver(),
     )
@@ -273,7 +274,7 @@ def test_local_generation_can_lag_shared_scope_and_skip_checkpoint_generation(
 def test_refuses_initial_or_untyped_generation(metadata_case: ClaimedCheckpointCase, generation: object) -> None:
     c = metadata_case
     with pytest.raises(BuilderExecutionPolicyError):
-        c.service.claimed_resume_checkpoint(ref=c.ref, generation=cast(int, generation), dispatch_id="dispatch")
+        methodcaller("claimed_resume_checkpoint", ref=c.ref, generation=generation, dispatch_id="dispatch")(c.service)
 
 
 @pytest.mark.parametrize("status", ["queued", "published", "unknown", "completed", "cancelled"])

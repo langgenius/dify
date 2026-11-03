@@ -7,7 +7,7 @@ These are regression checks, not native runtime/remote cleanup acceptance.
 
 import json
 from collections.abc import Iterator
-from typing import Never, cast
+from typing import Never
 from uuid import uuid4
 
 import httpx
@@ -37,10 +37,10 @@ from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder import dify_port
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.effect_disclosure import disclose
-from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import FakeSessionStore, _node
 from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder import test_confirmed_full_run as full_run_tests
 from tests.unit_tests.services.dify_builder.test_confirmed_full_run import FullRunCase
+from tests.unit_tests.services.workflow_runtime.test_agent_node import FakeSessionStore, _node
 
 harness = full_run_tests.harness
 _bind_native_result = WorkflowServiceDifyPort._bind_run
@@ -69,8 +69,11 @@ AGENT_GRAPH = {
 
 @pytest.fixture(autouse=True)
 def _no_model_metadata_io(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core.app.llm.model_access import ModelRuntimeProfile
+
     monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window", lambda **_kwargs: None
+        "core.app.llm.model_access.resolve_model_runtime_profile",
+        lambda **_kwargs: ModelRuntimeProfile(context_window_tokens=None, supported_modalities=[]),
     )
 
 
@@ -159,7 +162,9 @@ def test_agent_acknowledged_attempt_recovers_parent_without_second_child(
 
         def generate(**kwargs: object) -> Iterator[dict[str, str | dict[str, str]]]:
             parent_dispatches.append(kwargs)
-            result = cast(StreamCompletedEvent, list(child._run())[-1]).node_run_result
+            completed = list(child._run())[-1]
+            assert isinstance(completed, StreamCompletedEvent)
+            result = completed.node_run_result
             assert result.status.value == ("failed" if status == "failed" else "succeeded")
             with harness.factory.begin() as session:
                 session.add(
@@ -242,7 +247,9 @@ def test_graph_abort_waits_for_child_terminal_or_preserves_cleanup_uncertainty(c
     with httpx.Client(transport=httpx.MockTransport(transport)) as http:
         node = _node(agent_backend_client=_client(http), session_store=store)
         node.runtime_state.graph_execution.aborted = True
-        result = cast(StreamCompletedEvent, list(node._run())[-1]).node_run_result
+        completed = list(node._run())[-1]
+        assert isinstance(completed, StreamCompletedEvent)
+        result = completed.node_run_result
 
     assert len(transport.created) == 1
     assert transport.cancel_requests == [

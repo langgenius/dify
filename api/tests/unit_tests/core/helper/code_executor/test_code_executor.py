@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack
-from typing import Any, Never, cast
+from operator import methodcaller
+from typing import Any, Never
 
 import httpx
 import pytest
@@ -15,7 +16,7 @@ from core.helper.code_executor.python3.python3_transformer import Python3Templat
 
 def test_execute_workflow_code_template_raises_for_unsupported_language() -> None:
     with pytest.raises(code_executor_module.CodeExecutionError, match="Unsupported language"):
-        code_executor_module.CodeExecutor.execute_workflow_code_template(cast(Any, "ruby"), "print(1)", {})
+        methodcaller("execute_workflow_code_template", "ruby", "print(1)", {})(code_executor_module.CodeExecutor)
 
 
 @pytest.fixture
@@ -309,5 +310,5 @@ def test_concurrent_injected_transports_do_not_cross_scopes() -> None:
 def test_injected_transport_does_not_bypass_unsupported_language() -> None:
     transport = RecordingTransport("unused")
     with pytest.raises(code_executor_module.CodeExecutionError, match="Unsupported language ruby"):
-        code_executor_module.CodeExecutor.execute_code(cast(Any, "ruby"), "", "", transport=transport)
+        methodcaller("execute_code", "ruby", "", "", transport=transport)(code_executor_module.CodeExecutor)
     assert transport.calls == []

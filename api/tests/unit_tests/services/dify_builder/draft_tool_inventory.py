@@ -1,12 +1,10 @@
 """ENG-1200 external daemon boundary with real declarations and credential SQL."""
 
 from dataclasses import dataclass
-from typing import cast
 
 import pytest
 from sqlalchemy.engine import Engine
 
-from core.dify_builder.models import Graph
 from services.credentials.query import CredentialQuery
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     OTHER_TENANT_ID,
@@ -19,6 +17,7 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     install_fake_daemon,
     provider_payload,
 )
+from tests.unit_tests.services.dify_builder.typed_fixtures import dictionaries, dictionary
 
 AUTH_PROVIDER = "acme/huddle/huddle"
 FREE_PROVIDER = "acme/free/free"
@@ -57,8 +56,8 @@ def draft_tools(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Draft
         [FakeTool("post", "Post to Huddle", "Post a message to a channel.")],
         needs_credentials=True,
     )
-    declaration = cast(Graph, auth["declaration"])
-    declaration["tools"][0]["parameters"] = [
+    declaration = dictionary(auth["declaration"])
+    dictionaries(declaration["tools"])[0]["parameters"] = [
         {
             "name": "message",
             "type": "string",
@@ -69,7 +68,10 @@ def draft_tools(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Draft
             "llm_description": "Message to post",
         }
     ]
-    declaration["tools"][0]["output_schema"] = {"type": "object", "properties": {"message_id": {"type": "string"}}}
+    dictionaries(declaration["tools"])[0]["output_schema"] = {
+        "type": "object",
+        "properties": {"message_id": {"type": "string"}},
+    }
     daemon = install_fake_daemon(
         monkeypatch,
         FakeToolDaemon(

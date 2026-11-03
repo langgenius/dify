@@ -20,6 +20,7 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session as SQLSession
 from sqlalchemy.orm import sessionmaker
 
 import schedule.dify_builder_reconcile_task as mod
@@ -55,12 +56,12 @@ def engine() -> Iterator[Engine]:
 
 
 @pytest.fixture
-def factory(engine: Engine) -> sessionmaker:
+def factory(engine: Engine) -> sessionmaker[SQLSession]:
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 
 @pytest.fixture
-def repo(factory: sessionmaker) -> SqlDifyBuilderRepository:
+def repo(factory: sessionmaker[SQLSession]) -> SqlDifyBuilderRepository:
     return SqlDifyBuilderRepository(factory)
 
 
@@ -77,7 +78,7 @@ def _seed(repo: SqlDifyBuilderRepository, state: PcState) -> Session:
 
 
 def test_reconcile_flags_stale_working_session_with_no_live_lock(
-    monkeypatch, repo: SqlDifyBuilderRepository, factory: sessionmaker
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, factory: sessionmaker[SQLSession]
 ) -> None:
     a = _seed(repo, PcState.FIX_VERIFY)  # working, no lock -> flagged
     b = _seed(repo, PcState.FIX_VERIFY)  # working, live lock -> skipped
@@ -92,7 +93,7 @@ def test_reconcile_flags_stale_working_session_with_no_live_lock(
     )
     monkeypatch.setattr(mod.session_lock, "exists", lambda sid: sid == b.id)
 
-    published: list[tuple[str, dict]] = []
+    published: list[tuple[str, dict[str, object]]] = []
     monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: published.append((sid, ev)))
 
     count = mod.reconcile_interrupted_sessions()
@@ -103,14 +104,14 @@ def test_reconcile_flags_stale_working_session_with_no_live_lock(
 
 
 def test_reconcile_empty_sweep_when_nothing_stale(
-    monkeypatch, repo: SqlDifyBuilderRepository, factory: sessionmaker
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, factory: sessionmaker[SQLSession]
 ) -> None:
     _seed(repo, PcState.FIX_VERIFY)  # working, freshly seeded -> not stale
 
     monkeypatch.setattr(mod, "_session_factory", lambda: factory)
     monkeypatch.setattr(mod.session_lock, "exists", lambda _sid: False)
 
-    published: list[tuple[str, dict]] = []
+    published: list[tuple[str, dict[str, object]]] = []
     monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: published.append((sid, ev)))
 
     count = mod.reconcile_interrupted_sessions()
@@ -236,7 +237,7 @@ def test_waiting_binding_retention_has_own_one_minute_schedule(enabled: bool, mo
 
     from dify_app import DifyApp
     from extensions import ext_celery
-    from tests.unit_tests.config_override import config_overrides_context
+    from tests.helpers.unit.config_override import config_overrides_context
 
     monkeypatch.setattr(ext_celery, "setup_workflow_warm_shutdown_handler", lambda: None)
     with (
@@ -262,12 +263,14 @@ def test_waiting_binding_retention_has_own_one_minute_schedule(enabled: bool, mo
 
 
 def test_waiting_binding_task_has_a_finite_wall_time_budget() -> None:
-    from typing import Protocol, cast
+    from typing import Protocol, runtime_checkable
 
+    @runtime_checkable
     class QueuedTask(Protocol):
         queue: str
 
     task = mod.retain_waiting_agent_bindings
     assert task.soft_time_limit == 45
     assert task.time_limit == 50
-    assert cast(QueuedTask, task).queue == "dify_builder"
+    assert isinstance(task, QueuedTask)
+    assert task.queue == "dify_builder"

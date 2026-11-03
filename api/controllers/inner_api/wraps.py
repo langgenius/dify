@@ -4,10 +4,9 @@ from functools import wraps
 from hashlib import sha1
 from hmac import compare_digest
 from hmac import new as hmac_new
-from typing import cast
 
 from flask import abort, current_app, g, request
-from werkzeug.local import LocalProxy
+from flask.globals import request_ctx
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -158,10 +157,7 @@ def agent_endpoint_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-        if (
-            g.get("agent_runtime_admitted", False)
-            and g.get("agent_runtime_request") is cast(LocalProxy, request)._get_current_object()
-        ):
+        if g.get("agent_runtime_admitted", False) and g.get("agent_runtime_request") is request_ctx.request:
             return view(*args, **kwargs)
         return authenticated_legacy(*args, **kwargs)
 
@@ -299,7 +295,7 @@ def agent_runtime_api_only(boundary: str):
                 raise AgentRuntimeRefused() from None
             # g can outlive one request under an explicitly pushed app context.
             # Bind this admission to the actual request object, not only g.
-            g.agent_runtime_request = cast(LocalProxy, request)._get_current_object()
+            g.agent_runtime_request = request_ctx.request
             g.agent_runtime_principal = principal
             g.agent_runtime_selection = selection
             g.agent_runtime_context = context

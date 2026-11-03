@@ -13,7 +13,7 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from threading import Barrier, Thread, current_thread
 from time import monotonic
-from typing import cast, override
+from typing import override
 
 import httpx
 import pytest
@@ -62,7 +62,6 @@ from services.dify_builder.native_testing.runtime import (
     DifyNativeRuntime,
     build_delivery_bridge,
 )
-from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from services.workflow_runtime.entry import WorkflowEntry
 from services.workflow_runtime.node_factory import DifyGraphInitContext, DifyNodeFactory
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import REF, Authorization, State
@@ -180,7 +179,20 @@ def make_host(
     *,
     snapshot: NativeCheckpointPayload | None = None,
 ) -> SchedulingHostCase:
-    journal = NodeOperationJournal(state=state, authorization=authorization)
+    api = _api()
+    monkeypatch.setattr(api.loader, "load", lambda **_: scheduling_owner(state))
+    store = api.store
+    monkeypatch.setattr(store, "load_context", state.load_context)
+    monkeypatch.setattr(store, "store_node_inputs", state.store_node_inputs)
+    monkeypatch.setattr(store, "store_result", state.store_result)
+    monkeypatch.setattr(store, "load_result", state.load_result)
+    monkeypatch.setattr(store, "read_checkpoint", state.read_checkpoint)
+    monkeypatch.setattr(store, "commit_checkpoint", state.commit_checkpoint)
+    authority = EffectAuthorizationService(api.loader)
+    monkeypatch.setattr(authority, "before_call", authorization.before_call)
+    monkeypatch.setattr(authority, "claim_dispatch", authorization.claim_dispatch)
+    monkeypatch.setattr(authority, "record_outcome", authorization.record_outcome)
+    journal = NodeOperationJournal(state=store, authorization=authority)
     if snapshot is not None:
         state.payload = snapshot
         journal.restore(ref=REF, checkpoint=CheckpointRef(checkpoint_id="checkpoint", payload_digest="b" * 64))
@@ -198,10 +210,10 @@ def make_host(
         dispatch_id=dispatch_id,
         lifetime=lifetime,
         journal=journal,
-        checkpoints=NativeCheckpointBridge(state=state, lifecycle=NoCheckpointLifecycle()),
+        checkpoints=NativeCheckpointBridge(state=store, lifecycle=NoCheckpointLifecycle()),
         fence_pending=ports.fence_pending,
         stop_sealer=ports,
-        authorization=authorization,
+        authorization=authority,
         http_baseline=(timeout.connect, timeout.read, timeout.write),
     )
     case = SchedulingHostCase(state=state, host=host, lifetime=lifetime, registry=registry, ports=ports)
@@ -223,11 +235,9 @@ def make_host(
             else NativeGraphRuntimeState.from_snapshot(snapshot.graph_runtime_state_json)
         )
         runtime.variable_pool.add(("start", "items"), ["one", "two"])
-        api = _api()
-        monkeypatch.setattr(api.loader, "load", lambda **_: scheduling_owner(state))
         lifecycle = NativeTestLifecycleService(
             api.loader,
-            state_store=cast(NativeExecutionStateStore, state),
+            state_store=store,
             resume_settlement=DifyNativeResumeSettlement(),
         )
         delivery_runtime = DifyNativeRuntime(
@@ -236,7 +246,7 @@ def make_host(
             registry=registry,
         )
         delivery_runtime.host = host
-        delivery_runtime.authorization = cast(EffectAuthorizationService, authorization)
+        delivery_runtime.authorization = authority
         delivery_runtime._journal = journal
         bridge = build_delivery_bridge(runtime=delivery_runtime)
         run_context = DifyRunContext(

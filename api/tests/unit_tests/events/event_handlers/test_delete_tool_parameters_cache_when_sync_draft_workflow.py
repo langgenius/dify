@@ -1,5 +1,7 @@
 import json
 import logging
+from collections.abc import Callable
+from typing import Never
 
 import pytest
 
@@ -105,14 +107,14 @@ def test_missing_tool_provider_does_not_log_error_traceback(
     ],
 )
 def test_native_draft_cache_receiver_deletes_exact_key_without_resolving_runtime(
-    monkeypatch,
-    provider_type,
-    provider_id,
-    provider_name,
-    tool_name,
-    credential_id,
-    expected_key,
-):
+    monkeypatch: pytest.MonkeyPatch,
+    provider_type: str,
+    provider_id: str,
+    provider_name: str,
+    tool_name: str,
+    credential_id: str | None,
+    expected_key: str,
+) -> None:
     """Saving a Tool never needs declaration, credential, decrypt or OAuth owners.
 
     Real graph adaptation, ToolEntity parsing, receiver and ToolParameterCache
@@ -124,17 +126,17 @@ def test_native_draft_cache_receiver_deletes_exact_key_without_resolving_runtime
     from core.plugin.impl.oauth import OAuthHandler
     from core.plugin.impl.tool import PluginToolManager
 
-    deleted = []
-    forbidden = []
+    deleted: list[str] = []
+    forbidden: list[str] = []
 
     class RedisBoundary:
         @staticmethod
-        def delete(key):
+        def delete(key: str) -> int:
             deleted.append(key)
             return 1
 
-    def forbidden_owner(name):
-        def fail(*_args, **_kwargs):
+    def forbidden_owner(name: str) -> Callable[..., Never]:
+        def fail(*_args: object, **_kwargs: object) -> Never:
             forbidden.append(name)
             raise AssertionError(f"normal draft cache invalidation must not call {name}")
 

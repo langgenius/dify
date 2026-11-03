@@ -33,9 +33,7 @@ module must not push its own.
 """
 
 import logging
-from collections.abc import Callable
 from datetime import timedelta
-from typing import cast
 from uuid import UUID
 
 from celery import shared_task
@@ -149,7 +147,7 @@ def retain_waiting_agent_bindings(*, limit: int = 100) -> int:
         value = raw_cursor.decode("ascii") if isinstance(raw_cursor, bytes) and len(raw_cursor) == 36 else raw_cursor
         if isinstance(value, str) and len(value) == 36 and str(UUID(value)) == value:
             cursor = value
-    except (ValueError, UnicodeError):
+    except ValueError:
         pass  # Scheduling metadata is never authority or an SQL expression.
     query = (
         select(
@@ -261,7 +259,7 @@ def reconcile_native_tests(*, limit: int = 100) -> int:
                 actor=actor,
                 session_id=session_id,
                 request_id=request_id,
-                publish=cast(Callable[..., None], advance_native_test.delay),
+                publish=advance_native_test.delay,
                 limit=limit,
             )
         except Exception:

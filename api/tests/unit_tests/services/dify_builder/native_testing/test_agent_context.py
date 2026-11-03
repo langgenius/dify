@@ -12,7 +12,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
-from tests.unit_tests.core.app.entities.test_app_invoke_entities import _create_workflow_generate_entity
+from tests.unit_tests.core.app.entities.test_app_invoke_entities import _create_workflow_generate_entity, _trace_scope
 
 
 def marker() -> BuilderAgentExecutionContext:
@@ -51,7 +51,9 @@ def test_marker_round_trips_graph_context_and_pause_entity() -> None:
         builder_agent_execution=context,
     )["_dify"]
     assert DifyRunContext.model_validate_json(run.model_dump_json()).builder_agent_execution == context
-    entity = _create_workflow_generate_entity().model_copy(update={"builder_agent_execution": context})
+    entity = _create_workflow_generate_entity(trace_scope=_trace_scope()).model_copy(
+        update={"builder_agent_execution": context}
+    )
     pause = WorkflowResumptionContext(
         serialized_graph_runtime_state="{}",
         generate_entity=_WorkflowGenerateEntityWrapper(entity=entity),
