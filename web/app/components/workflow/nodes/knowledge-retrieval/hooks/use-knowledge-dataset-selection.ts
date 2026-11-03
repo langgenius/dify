@@ -1,5 +1,5 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -14,7 +14,7 @@ type ModelIdentity = {
 
 type Params = {
   inputs: KnowledgeRetrievalNodeType
-  inputRef: MutableRefObject<KnowledgeRetrievalNodeType>
+  inputRef: RefObject<KnowledgeRetrievalNodeType>
   setInputs: (inputs: KnowledgeRetrievalNodeType) => void
   payloadRetrievalMode: RETRIEVE_TYPE
   updateDatasetsDetail: (datasets: DatasetDetailWithPartialMembersResponse[]) => void

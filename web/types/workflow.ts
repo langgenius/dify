@@ -43,6 +43,7 @@ export type AgentLogItemWithChildren = AgentLogItem & {
 
 export type NodeTracing = {
   id: string
+  node_execution_id?: string | null
   index: number
   predecessor_node_id: string
   node_id: string
@@ -344,6 +345,7 @@ export type AgentLogResponse = {
 }
 
 export type HumanInputFormData = {
+  form_version?: '1' | '2'
   form_id: string
   node_id: string
   node_title: string

@@ -73,6 +73,17 @@ describe('SearchInput', () => {
         screen.queryByRole('button', { name: 'common.operation.clear' }),
       ).not.toBeInTheDocument()
     })
+
+    it('forwards keyboard events so forms can own the search action', async () => {
+      const onKeyDown = vi.fn()
+      const user = userEvent.setup()
+      render(<SearchInput value="query" onValueChange={() => {}} onKeyDown={onKeyDown} />)
+
+      await user.click(screen.getByRole('searchbox'))
+      await user.keyboard('{Enter}')
+
+      expect(onKeyDown).toHaveBeenCalledWith(expect.objectContaining({ key: 'Enter' }))
+    })
   })
 
   describe('Interaction', () => {

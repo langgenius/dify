@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, Mock, patch
 
@@ -15,9 +15,9 @@ from models.base import TypeBase
 from models.model import App, AppMode
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_app
-from tests.unit_tests.services.workflow_collaboration_fixtures import RedisState, seed_session, seed_sessions
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.services.workflow_collaboration_fixtures import RedisState, seed_session, seed_sessions
 
 ServiceFixture = tuple[WorkflowCollaborationService, WorkflowCollaborationRepository, Mock]
 
@@ -704,7 +704,7 @@ class TestWorkflowCollaborationService:
         events: list[str] = []
 
         @contextmanager
-        def graph_view_lock() -> Iterator[None]:
+        def graph_view_lock() -> Generator[None]:
             events.append("lock_enter")
             yield
             events.append("lock_exit")

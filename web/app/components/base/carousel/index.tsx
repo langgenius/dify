@@ -1,5 +1,6 @@
 import type { UseEmblaCarouselType } from 'embla-carousel-react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
 import Autoplay from 'embla-carousel-autoplay'
 import Fade from 'embla-carousel-fade'
 import useEmblaCarousel from 'embla-carousel-react'
@@ -46,8 +47,9 @@ function Carousel({
   ...props
 }: React.HTMLAttributes<HTMLDivElement> &
   CarouselProps & { ref?: React.Ref<CarouselContextValue> }) {
+  const direction = useDirection()
   const [carouselRef, api] = useEmblaCarousel(
-    { ...opts, axis: orientation === 'horizontal' ? 'x' : 'y' },
+    { direction, ...opts, axis: orientation === 'horizontal' ? 'x' : 'y' },
     plugins,
   )
   const [canScrollPrev, setCanScrollPrev] = React.useState(false)

@@ -16,6 +16,7 @@ import StatusPanel from './status'
 import TracingPanel from './tracing-panel'
 
 type RunProps = {
+  appId?: string
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
@@ -33,6 +34,7 @@ type RequestLifetime = {
 }
 
 const RunPanel: FC<RunProps> = ({
+  appId,
   activeTab = 'RESULT',
   hideResult,
   getResultCallback,
@@ -49,6 +51,7 @@ const RunPanel: FC<RunProps> = ({
   return (
     <RunSession
       key={JSON.stringify([runDetailUrl, tracingListUrl])}
+      appId={appId}
       hideResult={hideResult}
       getResultCallback={getResultCallback}
       runDetailUrl={runDetailUrl}
@@ -67,6 +70,7 @@ type RunSessionProps = Omit<RunProps, 'activeTab'> & {
 }
 
 function RunSession({
+  appId,
   hideResult,
   getResultCallback,
   runDetailUrl,
@@ -92,7 +96,7 @@ function RunSession({
     async (lifetime: RequestLifetime) => {
       const request = ++lifetime.detailRequest
       try {
-        const res = await fetchRunDetail(runDetailUrl)
+        const res = await fetchRunDetail(runDetailUrl, { silent: true })
         if (!lifetime.active || request !== lifetime.detailRequest) return
         setRunDetail(res)
         if (getResultCallback) getResultCallback(res)
@@ -113,9 +117,7 @@ function RunSession({
     async (lifetime: RequestLifetime) => {
       const request = ++lifetime.tracingRequest
       try {
-        const { data: nodeList } = await fetchTracingList({
-          url: tracingListUrl,
-        })
+        const { data: nodeList } = await fetchTracingList({ url: tracingListUrl }, { silent: true })
         if (lifetime.active && request === lifetime.tracingRequest) setList(nodeList)
       } catch (err) {
         if (lifetime.active && request === lifetime.tracingRequest)
@@ -240,6 +242,9 @@ function RunSession({
               exceptionCounts={runDetail.exceptions_count}
               isListening={isListening}
               workflowRunId={runDetail.id}
+              externalTrace={
+                appId ? { appId, kind: 'workflow', workflowRunId: runDetail.id } : undefined
+              }
               onOpenTracingTab={() => switchTab('TRACING')}
             />
           )}
@@ -248,7 +253,21 @@ function RunSession({
           )}
         </TabsPanel>
         <TabsPanel value="TRACING">
-          {!loading && <TracingPanel className="bg-background-section-burn" list={list} />}
+          {!loading && (
+            <TracingPanel
+              externalTraceRun={
+                appId && runDetail ? { appId, workflowRunId: runDetail.id } : undefined
+              }
+              key={runDetail?.id}
+              className="bg-background-section-burn"
+              list={list}
+              workflowRun={
+                appId && runDetail
+                  ? { appId, runId: runDetail.id, status: runDetail.status }
+                  : undefined
+              }
+            />
+          )}
         </TabsPanel>
       </div>
     </Tabs>

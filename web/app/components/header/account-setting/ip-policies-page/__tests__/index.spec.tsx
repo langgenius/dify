@@ -35,6 +35,42 @@ describe('IpPoliciesPage', () => {
       })
   })
 
+  it('exposes policy data in cells associated with their column headers', () => {
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, {
+      groups: [
+        createNetworkAccessGroupFixture({ allowed_cidrs: ['203.0.113.42/32'], used_by_count: 0 }),
+      ],
+    })
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      {
+        queryClient,
+        currentWorkspace: { role: 'admin' },
+        systemFeatures: { deployment_edition: 'CLOUD' },
+      },
+    )
+
+    const table = screen.getByRole('table', { name: 'IP Policies' })
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent),
+    ).toEqual(['Name', 'IP Entries', 'Used by', 'Updated at', 'More actions'])
+    const row = within(table).getAllByRole('row')[1]!
+    const cells = within(row).getAllByRole('cell')
+    expect(cells).toHaveLength(5)
+    expect(within(cells[0]!).getByRole('button', { name: 'Internal Network' })).toBeInTheDocument()
+    expect(cells[1]).toHaveTextContent('1')
+    expect(cells[2]).toHaveTextContent('0 apps')
+    expect(cells[3]).not.toBeEmptyDOMElement()
+    expect(
+      within(cells[4]!).getByRole('button', { name: 'More actions for Internal Network' }),
+    ).toBeInTheDocument()
+  })
+
   it.each([true, false])(
     'lets an editor read the complete policy without management actions (entitled: %s)',
     async (entitled) => {
@@ -194,7 +230,10 @@ describe('IpPoliciesPage', () => {
         return Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [remote] })
       putBodies.push(JSON.parse(await request.clone().text()))
       if (requests.filter((item) => item.method === 'PUT').length === 1)
-        return Response.json({ code: 'network_access_conflict' }, { status: 409 })
+        return Response.json(
+          { code: 'network_access_version_conflict', message: 'Changed', status: 409 },
+          { status: 409 },
+        )
       return Response.json({ group: remote, entitled: true })
     })
     renderWithConsoleQuery(
@@ -244,7 +283,10 @@ describe('IpPoliciesPage', () => {
       if (request.method === 'PUT') {
         saves += 1
         return saves === 1
-          ? Response.json({ code: 'network_access_conflict' }, { status: 409 })
+          ? Response.json(
+              { code: 'network_access_version_conflict', message: 'Changed', status: 409 },
+              { status: 409 },
+            )
           : Response.json({ group, entitled: true })
       }
       return Response.json({
@@ -355,7 +397,10 @@ describe('IpPoliciesPage', () => {
           ? Response.json({ message: 'Unavailable' }, { status: 500 })
           : Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [remote] })
       }
-      return Response.json({ code: 'network_access_conflict' }, { status: 409 })
+      return Response.json(
+        { code: 'network_access_version_conflict', message: 'Changed', status: 409 },
+        { status: 409 },
+      )
     })
     renderWithConsoleQuery(
       <NuqsTestingAdapter>
@@ -391,7 +436,10 @@ describe('IpPoliciesPage', () => {
       if (request.url.endsWith('/current-ip')) return Response.json({ client_ip: '203.0.113.42' })
       return request.method === 'GET'
         ? reload
-        : Response.json({ code: 'network_access_conflict' }, { status: 409 })
+        : Response.json(
+            { code: 'network_access_version_conflict', message: 'Changed', status: 409 },
+            { status: 409 },
+          )
     })
     renderWithConsoleQuery(
       <NuqsTestingAdapter>
@@ -1071,7 +1119,9 @@ describe('IpPoliciesPage', () => {
       )
       expect(screen.getByText('Used by')).toBeInTheDocument()
       expect(
-        within(screen.getByRole('button', { name: 'Internal Network' })).getByText('2 apps'),
+        within(screen.getByRole('table', { name: 'IP Policies' })).getByRole('cell', {
+          name: '2 apps',
+        }),
       ).toBeInTheDocument()
       expect(screen.queryByText('Enforcing')).not.toBeInTheDocument()
     },

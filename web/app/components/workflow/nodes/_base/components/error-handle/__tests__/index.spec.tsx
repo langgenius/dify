@@ -3,8 +3,8 @@ import type { NodeProps } from 'reactflow'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ReactFlowProvider } from 'reactflow'
-import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { ReactFlowProvider, useEdges, useNodes } from 'reactflow'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
   renderWorkflowComponent,
   renderWorkflowFlowComponent,
@@ -18,11 +18,6 @@ import ErrorHandleTypeSelector from '../error-handle-type-selector'
 import FailBranchCard from '../fail-branch-card'
 import { ErrorHandleTypeEnum } from '../types'
 
-const { updateNode, deleteBranch } = vi.hoisted(() => ({
-  updateNode: vi.fn(),
-  deleteBranch: vi.fn(),
-}))
-
 const render = (ui: ReactElement) => {
   const result = renderWorkflowComponent(<ReactFlowProvider>{ui}</ReactFlowProvider>)
   return {
@@ -31,13 +26,6 @@ const render = (ui: ReactElement) => {
       result.rerender(<ReactFlowProvider>{next}</ReactFlowProvider>),
   }
 }
-
-vi.mock('@/app/components/workflow/hooks/use-node-data-update', () => ({
-  useNodeDataUpdate: () => ({ handleNodeDataUpdateWithSyncDraft: updateNode }),
-}))
-vi.mock('@/app/components/workflow/hooks/use-edges-interactions', () => ({
-  useEdgesInteractions: () => ({ handleEdgeDeleteByDeleteBranch: deleteBranch }),
-}))
 
 // Port connections and the block picker have their own canvas integration tests.
 vi.mock('../../node-handle', () => ({ NodeSourceHandle: () => null }))
@@ -72,6 +60,42 @@ const renderErrorHandleNode = (data: CommonNodeType) =>
     },
   })
 
+function ErrorPanel() {
+  const nodes = useNodes<CommonNodeType>()
+  const edges = useEdges()
+  const node = nodes.find((node) => node.id === 'node-1')
+  if (!node) return null
+  return (
+    <>
+      <ErrorHandleOnPanel id={node.id} data={node.data} />
+      <output aria-label="Saved defaults">{JSON.stringify(node.data.default_value ?? null)}</output>
+      <output aria-label="Saved error strategy">{node.data.error_strategy ?? 'stop'}</output>
+      <output aria-label="Canvas edges">{edges.map((edge) => edge.id).join(',')}</output>
+    </>
+  )
+}
+
+function renderPanel(data: CommonNodeType) {
+  return renderWorkflowFlowComponent(<ErrorPanel />, {
+    nodes: [
+      createNode({ id: 'node-1', data }),
+      createNode({ id: 'target' }),
+      createNode({ id: 'other' }),
+    ],
+    edges: [
+      createEdge({
+        id: 'failure',
+        source: 'node-1',
+        target: 'target',
+        sourceHandle: ErrorHandleTypeEnum.failBranch,
+      }),
+      createEdge({ id: 'success', source: 'node-1', target: 'other', sourceHandle: 'source' }),
+      createEdge({ id: 'unrelated', source: 'other', target: 'target' }),
+    ],
+    hooksStoreProps: { doSyncWorkflowDraft: async () => undefined },
+  })
+}
+
 describe('error-handle path', () => {
   beforeAll(() => {
     class MockDOMMatrixReadOnly {
@@ -89,10 +113,6 @@ describe('error-handle path', () => {
       writable: true,
       value: MockDOMMatrixReadOnly,
     })
-  })
-
-  beforeEach(() => {
-    vi.clearAllMocks()
   })
 
   afterAll(() => {
@@ -209,12 +229,7 @@ describe('error-handle path', () => {
   // The container components should show the correct branch card or default-value editor and propagate actions.
   describe('Containers', () => {
     it('should render the fail-branch panel body when the strategy is active', () => {
-      render(
-        <ErrorHandleOnPanel
-          id="node-1"
-          data={baseData({ error_strategy: ErrorHandleTypeEnum.failBranch })}
-        />,
-      )
+      renderPanel(baseData({ error_strategy: ErrorHandleTypeEnum.failBranch }))
 
       expect(screen.getByText('workflow.nodes.common.errorHandle.title')).toBeInTheDocument()
       expect(
@@ -231,33 +246,26 @@ describe('error-handle path', () => {
           { key: 'count', type: VarType.number, value: 7 },
         ],
       })
-      render(<ErrorHandleOnPanel id="node-1" data={data} />)
+      renderPanel(data)
 
       const answer = screen.getByRole<HTMLInputElement>('textbox', { name: 'answer' })
       await user.click(answer)
       answer.select()
       await user.paste('next')
 
-      expect(updateNode).toHaveBeenLastCalledWith({
-        id: 'node-1',
-        data: {
-          default_value: [
-            { key: 'answer', type: VarType.string, value: 'next' },
-            { key: 'count', type: VarType.number, value: 7 },
-          ],
-        },
-      })
+      expect(
+        JSON.parse(screen.getByRole('status', { name: 'Saved defaults' }).textContent!),
+      ).toEqual([
+        { key: 'answer', type: VarType.string, value: 'next' },
+        { key: 'count', type: VarType.number, value: 7 },
+      ])
+      expect(answer).toHaveValue('next')
       expect(data.default_value?.[0]?.value).toBe('draft')
     })
 
     it('collapses and reopens the configured failure strategy', async () => {
       const user = userEvent.setup()
-      render(
-        <ErrorHandleOnPanel
-          id="node-1"
-          data={baseData({ error_strategy: ErrorHandleTypeEnum.failBranch })}
-        />,
-      )
+      renderPanel(baseData({ error_strategy: ErrorHandleTypeEnum.failBranch }))
       const title = 'workflow.nodes.common.errorHandle.title'
       const toggle = screen.getByRole('button', { name: title, expanded: true })
       await user.click(toggle)
@@ -269,16 +277,21 @@ describe('error-handle path', () => {
       expect(
         screen.getByText('workflow.nodes.common.errorHandle.failBranch.customize'),
       ).toBeInTheDocument()
-      expect(updateNode).not.toHaveBeenCalled()
+      expect(screen.getByRole('status', { name: 'Saved error strategy' })).toHaveTextContent(
+        ErrorHandleTypeEnum.failBranch,
+      )
+      expect(screen.getByRole('status', { name: 'Canvas edges' })).toHaveTextContent(
+        'failure,success,unrelated',
+      )
     })
 
     it('removes the failure route and defaults when stop-on-error is selected', async () => {
       const user = userEvent.setup()
-      render(
-        <ErrorHandleOnPanel
-          id="node-1"
-          data={baseData({ error_strategy: ErrorHandleTypeEnum.failBranch })}
-        />,
+      renderPanel(
+        baseData({
+          error_strategy: ErrorHandleTypeEnum.failBranch,
+          default_value: [{ key: 'answer', type: VarType.string, value: 'old' }],
+        }),
       )
       await user.click(
         screen.getByRole('button', { name: 'workflow.nodes.common.errorHandle.failBranch.title' }),
@@ -287,11 +300,11 @@ describe('error-handle path', () => {
         screen.getByRole('menuitemradio', { name: /workflow.nodes.common.errorHandle.none.title/ }),
       )
 
-      expect(updateNode).toHaveBeenCalledWith({
-        id: 'node-1',
-        data: { error_strategy: undefined, default_value: undefined },
-      })
-      expect(deleteBranch).toHaveBeenCalledWith('node-1', ErrorHandleTypeEnum.failBranch)
+      expect(screen.getByRole('status', { name: 'Saved error strategy' }).textContent).toBe('stop')
+      expect(screen.getByRole('status', { name: 'Saved defaults' }).textContent).toBe('null')
+      expect(screen.getByRole('status', { name: 'Canvas edges' }).textContent).toBe(
+        'success,unrelated',
+      )
       expect(
         screen.queryByText('workflow.nodes.common.errorHandle.failBranch.customize'),
       ).not.toBeInTheDocument()

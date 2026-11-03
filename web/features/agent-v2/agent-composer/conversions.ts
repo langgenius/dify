@@ -27,6 +27,7 @@ import type { ModelConfig } from '@/app/components/workflow/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { DATASET_DEFAULT } from '@/config'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
+import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { checkKey } from '@/utils/var'
 import { defaultAgentSoulConfigFormState } from './form-state'
@@ -71,7 +72,11 @@ const toRetrievalConfig = (item: AgentKnowledgeRetrievalItem): AgentKnowledgeRet
     top_k: config?.top_k ?? DATASET_DEFAULT.top_k,
     score_threshold: config?.score_threshold ?? undefined,
     reranking_mode: config?.reranking_mode,
-    reranking_enable: config?.reranking_enable ?? false,
+    // The shared workflow helper stores weighted score with reranking disabled, but the
+    // runtime only post-processes multi-dataset results when reranking is enabled.
+    reranking_enable:
+      config?.reranking_mode === RerankingModeEnum.WeightedScore ||
+      (config?.reranking_enable ?? false),
     reranking_model: config?.reranking_model,
     weights: config?.weights,
   }
@@ -127,43 +132,65 @@ const toMetadataFilteringConfig = (
 const toKnowledgeSets = (
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[],
 ): AgentKnowledgeSetConfig[] =>
-  knowledgeRetrievals.map((item) => ({
-    id: item.id,
-    name: getKnowledgeRetrievalSetName(item),
-    description: item.description,
-    datasets: toKnowledgeDatasetRefs(item),
-    query: {
-      mode: item.queryMode === 'custom' ? ('user_query' as const) : ('generated_query' as const),
-      value: item.queryMode === 'custom' ? item.customQuery?.trim() || undefined : undefined,
-    },
-    retrieval: toRetrievalConfig(item),
-    metadata_filtering: toMetadataFilteringConfig(item),
-  }))
+  knowledgeRetrievals
+    .filter((item) => !item.controlSpaceId)
+    .map((item) => ({
+      id: item.id,
+      name: getKnowledgeRetrievalSetName(item),
+      description: item.description,
+      datasets: toKnowledgeDatasetRefs(item),
+      query: {
+        mode: item.queryMode === 'custom' ? ('user_query' as const) : ('generated_query' as const),
+        value: item.queryMode === 'custom' ? item.customQuery?.trim() || undefined : undefined,
+      },
+      retrieval: toRetrievalConfig(item),
+      metadata_filtering: toMetadataFilteringConfig(item),
+    }))
 
 const toKnowledgeRetrievalFormState = (config?: AgentSoulConfig): AgentKnowledgeRetrievalItem[] => {
-  return (config?.knowledge?.sets ?? []).map((knowledgeSet) => ({
-    id: knowledgeSet.id,
-    name: knowledgeSet.name,
-    description: knowledgeSet.description ?? undefined,
-    queryMode: knowledgeSet.query.mode === 'user_query' ? 'custom' : 'agent',
-    customQuery: knowledgeSet.query.value ?? undefined,
-    datasetRefs: knowledgeSet.datasets,
-    retrievalMode:
-      knowledgeSet.retrieval.mode === 'single' ? RETRIEVE_TYPE.oneWay : RETRIEVE_TYPE.multiWay,
-    multipleRetrievalConfig: toMultipleRetrievalFormState(knowledgeSet.retrieval),
-    singleRetrievalConfig: toSingleRetrievalFormState(knowledgeSet.retrieval),
-    metadataFilterMode: (knowledgeSet.metadata_filtering?.mode ??
-      MetadataFilteringModeEnum.disabled) as MetadataFilteringModeEnum,
-    metadataFilteringConditions: knowledgeSet.metadata_filtering?.conditions as
-      | MetadataFilteringConditions
-      | undefined,
-    metadataModelConfig: toModelFormState(knowledgeSet.metadata_filtering?.model_config),
+  const spaces: AgentKnowledgeRetrievalItem[] = (config?.knowledge?.spaces ?? []).map((space) => ({
+    id: space.id,
+    controlSpaceId: space.control_space_id,
+    name: space.name,
+    description: space.description ?? undefined,
+    isMissing: space.is_missing ?? false,
   }))
+  return [
+    ...spaces,
+    ...(config?.knowledge?.sets ?? []).map((knowledgeSet): AgentKnowledgeRetrievalItem => ({
+      id: knowledgeSet.id,
+      name: knowledgeSet.name,
+      description: knowledgeSet.description ?? undefined,
+      queryMode: knowledgeSet.query.mode === 'user_query' ? 'custom' : 'agent',
+      customQuery: knowledgeSet.query.value ?? undefined,
+      datasetRefs: knowledgeSet.datasets,
+      retrievalMode:
+        knowledgeSet.retrieval.mode === 'single' ? RETRIEVE_TYPE.oneWay : RETRIEVE_TYPE.multiWay,
+      multipleRetrievalConfig: toMultipleRetrievalFormState(knowledgeSet.retrieval),
+      singleRetrievalConfig: toSingleRetrievalFormState(knowledgeSet.retrieval),
+      metadataFilterMode: (knowledgeSet.metadata_filtering?.mode ??
+        MetadataFilteringModeEnum.disabled) as MetadataFilteringModeEnum,
+      // The API sends null when no conditions are saved; form defaults only replace undefined.
+      metadataFilteringConditions: (knowledgeSet.metadata_filtering?.conditions ?? undefined) as
+        | MetadataFilteringConditions
+        | undefined,
+      metadataModelConfig: toModelFormState(knowledgeSet.metadata_filtering?.model_config),
+    })),
+  ]
 }
 
 const toKnowledgeConfig = (
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[],
 ): AgentSoulConfig['knowledge'] => ({
+  spaces: knowledgeRetrievals
+    .filter((item) => item.controlSpaceId)
+    .map((item) => ({
+      id: item.id,
+      control_space_id: item.controlSpaceId!,
+      name: getKnowledgeRetrievalSetName(item),
+      description: item.description,
+      is_missing: item.isMissing ?? false,
+    })),
   sets: toKnowledgeSets(knowledgeRetrievals),
 })
 
@@ -534,7 +561,7 @@ const toFileFormState = (config?: AgentSoulConfig): AgentFileNode[] => {
     name: file.name,
     icon: getFileIconType(file.name, file.mime_type ?? undefined),
     fileId: file.file_id,
-    isMissing: isConfigReferenceMissing(file) || undefined,
+    ...(isConfigReferenceMissing(file) ? { isMissing: true } : {}),
     configName: file.name,
     size: file.size ?? undefined,
     hash: file.hash ?? undefined,

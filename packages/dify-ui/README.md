@@ -39,12 +39,12 @@ Import `styles.css` once from the consumer's root stylesheet or entrypoint.
 | Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                                              |
 | Controls         | `./segmented-control`                                                                                                                                                                |
 | Display          | `./collapsible`, `./kbd`                                                                                                                                                             |
-| Feedback         | `./meter`, `./progress`, `./spinner`, `./status-dot`, `./toast`                                                                                                                      |
+| Feedback         | `./alert`, `./meter`, `./progress`, `./spinner`, `./status-dot`, `./toast`                                                                                                           |
 | Form             | `./form`, `./field`, `./fieldset`, `./input`, `./input-group`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` |
 | Layout           | `./scroll-area`, `./separator`                                                                                                                                                       |
 | Media            | `./avatar`                                                                                                                                                                           |
 | Navigation       | `./breadcrumb`, `./file-tree`, `./pagination`, `./tabs`                                                                                                                              |
-| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./infotip`, `./popover`, `./preview-card`, `./tooltip`                                               |
+| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./menu`, `./infotip`, `./popover`, `./preview-card`, `./tooltip`                                                        |
 | Search and pick  | `./autocomplete`, `./combobox`, `./select`, `./date-picker`, `./time-picker`, `./date-time-picker`                                                                                   |
 
 Utilities:

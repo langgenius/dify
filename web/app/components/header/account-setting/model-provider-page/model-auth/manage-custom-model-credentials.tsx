@@ -37,7 +37,7 @@ const ManageCustomModelCredentials = ({
           {...triggerProps}
           variant="ghost"
           size="small"
-          className={cn('mr-0.5 text-text-tertiary', open && 'bg-components-button-ghost-bg-hover')}
+          className={cn('me-0.5 text-text-tertiary', open && 'bg-components-button-ghost-bg-hover')}
         >
           {t(($) => $['modelProvider.auth.manageCredentials'], { ns: 'modelProvider' })}
         </Button>

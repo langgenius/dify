@@ -1,15 +1,17 @@
-import type { FC, FormEventHandler } from 'react'
+import type { FC, SubmitEventHandler } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
-type FormProps = {
+type ExternalAPIFormProps = {
   id: string
-  onSubmit: FormEventHandler<HTMLFormElement>
+  onSubmit: SubmitEventHandler<HTMLFormElement>
   className?: string
   itemClassName?: string
   fieldLabelClassName?: string
@@ -17,9 +19,10 @@ type FormProps = {
   onChange: (val: CreateExternalAPIReq) => void
   formSchemas: FormSchema[]
   inputClassName?: string
+  errors?: Partial<Record<'api_key' | 'endpoint' | 'name', string>>
 }
 
-const Form: FC<FormProps> = React.memo(
+const ExternalAPIForm: FC<ExternalAPIFormProps> = React.memo(
   ({
     id,
     onSubmit,
@@ -30,6 +33,7 @@ const Form: FC<FormProps> = React.memo(
     onChange,
     formSchemas,
     inputClassName,
+    errors,
   }) => {
     const { t, i18n } = useTranslation(['common', 'dataset'])
     const docLink = useDocLink()
@@ -56,10 +60,7 @@ const Form: FC<FormProps> = React.memo(
           : value.settings[variable as keyof typeof value.settings] || ''
 
       return (
-        <div
-          key={variable}
-          className={cn(itemClassName, 'flex flex-col items-start gap-1 self-stretch')}
-        >
+        <Field key={variable} name={variable} className={cn(itemClassName, 'self-stretch')}>
           <div className="flex w-full items-center justify-between">
             <label
               className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary')}
@@ -87,28 +88,29 @@ const Form: FC<FormProps> = React.memo(
             placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
             spellCheck={variable === 'endpoint' || type === 'secret' ? false : undefined}
             id={variable}
-            name={variable}
             value={fieldValue}
             onChange={(val) => handleFormChange(variable, val.target.value)}
             required={required}
             className={cn(inputClassName)}
           />
-        </div>
+          <FieldError />
+        </Field>
       )
     }
 
     return (
-      <form
+      <Form
         id={id}
+        errors={errors}
         onSubmit={onSubmit}
         className={cn('flex flex-col items-start justify-center gap-4 self-stretch', className)}
       >
         {formSchemas.map((formSchema) => renderField(formSchema))}
-      </form>
+      </Form>
     )
   },
 )
 
-Form.displayName = 'Form'
+ExternalAPIForm.displayName = 'ExternalAPIForm'
 
-export default Form
+export default ExternalAPIForm

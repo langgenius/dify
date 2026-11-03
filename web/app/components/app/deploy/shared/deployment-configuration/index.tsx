@@ -5,6 +5,7 @@ import type { DeploymentVersion } from '../../utils/version'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { DeploymentConfigurationContent } from './content'
@@ -43,7 +44,7 @@ export function DeploymentConfiguration({
     environmentId: request.environmentId,
     workflowId: version.id,
   })
-  const { canDeploy, clearFieldError, fieldError, formRef, handleSubmit, isDeploying } =
+  const { canDeploy, clearFieldError, fieldErrors, formRef, handleSubmit, isDeploying } =
     useDeploymentConfigurationForm({
       appId,
       configurationValues,
@@ -57,7 +58,12 @@ export function DeploymentConfiguration({
     })
 
   return (
-    <form ref={formRef} className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
+    <Form
+      ref={formRef}
+      className="flex min-h-0 flex-1 flex-col"
+      errors={fieldErrors}
+      onSubmit={handleSubmit}
+    >
       {!embedded && (
         <DialogClose
           render={
@@ -101,7 +107,6 @@ export function DeploymentConfiguration({
       <DeploymentConfigurationContent
         compact={embedded}
         configurationValues={configurationValues}
-        fieldError={fieldError}
         onConfigurationChange={clearFieldError}
         queryState={queryState}
         request={request}
@@ -127,6 +132,6 @@ export function DeploymentConfiguration({
           {tCommon(($) => $['appMenus.deploy'])}
         </Button>
       </footer>
-    </form>
+    </Form>
   )
 }

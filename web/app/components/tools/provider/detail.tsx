@@ -279,7 +279,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                 <div className="shrink-0">
                   <div className="mb-3 flex">
                     <Icon src={collection.icon} />
-                    <div className="ml-3 w-0 grow">
+                    <div className="ms-3 w-0 grow">
                       <div className="flex h-5 items-center">
                         <Title title={collection.label[language]!} />
                       </div>
@@ -347,7 +347,10 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                           <span className="min-w-0 truncate system-sm-medium">
                             {t(($) => $.openInStudio, { ns: 'tools' })}
                           </span>
-                          <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
+                          <span
+                            aria-hidden
+                            className="i-ri-arrow-right-up-line size-4 shrink-0 rtl:-scale-x-100"
+                          />
                         </a>
                         <Button
                           variant="secondary"

@@ -59,24 +59,13 @@ describe('System Features server requests', () => {
     ])
   })
 
-  it('keeps optional failures soft and lets required consumers retry', async () => {
-    mocks.getSystemFeatures
-      .mockRejectedValueOnce(new Error('System Features unavailable'))
-      .mockResolvedValueOnce({ deployment_edition: 'CLOUD' })
-    const { getOptionalSystemFeatures, getSystemFeatures } = await import('../server')
+  it('keeps optional failures soft for the rest of the request', async () => {
+    mocks.getSystemFeatures.mockRejectedValueOnce(new Error('System Features unavailable'))
+    const { getOptionalSystemFeatures } = await import('../server')
 
     await expect(getOptionalSystemFeatures()).resolves.toBeUndefined()
     await expect(getOptionalSystemFeatures()).resolves.toBeUndefined()
-    await expect(getSystemFeatures()).resolves.toEqual({ deployment_edition: 'CLOUD' })
 
-    expect(mocks.getSystemFeatures).toHaveBeenCalledTimes(2)
-  })
-
-  it('preserves required failures for hard route gates', async () => {
-    const error = new Error('System Features unavailable')
-    mocks.getSystemFeatures.mockRejectedValue(error)
-    const { getSystemFeatures } = await import('../server')
-
-    await expect(getSystemFeatures()).rejects.toBe(error)
+    expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
   })
 })

@@ -1,5 +1,5 @@
 import type { Draft } from 'immer'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { LLMNodeType } from '../types'
 import type {
   Memory,
@@ -19,7 +19,7 @@ import { EditionType, VarType } from '@/app/components/workflow/types'
 
 type Params = {
   inputs: LLMNodeType
-  inputRef: MutableRefObject<LLMNodeType>
+  inputRef: RefObject<LLMNodeType>
   isChatflow: boolean
   isChatModel: boolean
   setInputs: (inputs: LLMNodeType) => void

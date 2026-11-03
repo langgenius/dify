@@ -4,7 +4,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import Operations from '../operations'
 
@@ -21,7 +21,6 @@ const mockArchive = vi.fn<DocumentsClient['status']['byAction']['batch']['patch'
 const mockUnArchive = vi.fn<DocumentsClient['status']['byAction']['batch']['patch']>()
 const mockEnable = vi.fn<DocumentsClient['status']['byAction']['batch']['patch']>()
 const mockDisable = vi.fn<DocumentsClient['status']['byAction']['batch']['patch']>()
-const mockDelete = vi.fn<DocumentsClient['delete']>()
 const mockDownload = vi.fn<DocumentsClient['byDocumentId']['download']['get']>()
 const mockSync = vi.fn<DocumentsClient['byDocumentId']['notion']['sync']['get']>()
 const mockSyncWebsite = vi.fn<DocumentsClient['byDocumentId']['websiteSync']['get']>()
@@ -44,7 +43,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'datasets.byDatasetId.documents.status.byAction.batch.patch': (
         input: Parameters<DocumentsClient['status']['byAction']['batch']['patch']>[0],
       ) => statusMocks[input.params.action]!(input),
-      'datasets.byDatasetId.documents.delete': (input) => mockDelete(input),
       'datasets.byDatasetId.documents.byDocumentId.download.get': (input) => mockDownload(input),
       'datasets.byDatasetId.documents.byDocumentId.notion.sync.get': (input) => mockSync(input),
       'datasets.byDatasetId.documents.byDocumentId.websiteSync.get': (input) =>
@@ -63,7 +61,7 @@ const render = (ui: ReactElement) =>
   renderWithConsoleQuery(
     <>
       {ui}
-      <AppToastHost />
+      <AppToaster />
     </>,
   )
 
@@ -82,7 +80,6 @@ afterEach(async () => {
 
 describe('Operations', () => {
   const mockOnUpdate = vi.fn()
-  const mockOnSelectedIdChange = vi.fn()
 
   const defaultDetail = {
     id: 'doc-1',
@@ -99,6 +96,7 @@ describe('Operations', () => {
     datasetId: 'dataset-1',
     detail: defaultDetail,
     onUpdate: mockOnUpdate,
+    onDelete: vi.fn(),
     canEdit: true,
     canDownload: true,
     canDelete: true,
@@ -110,7 +108,6 @@ describe('Operations', () => {
     mockUnArchive.mockReset().mockResolvedValue({ result: 'success' })
     mockEnable.mockReset().mockResolvedValue({ result: 'success' })
     mockDisable.mockReset().mockResolvedValue({ result: 'success' })
-    mockDelete.mockReset().mockResolvedValue({ result: 'success' })
     mockDownload.mockResolvedValue({ url: 'https://example.com/download' })
     mockSync.mockReset().mockResolvedValue({ result: 'success' })
     mockSyncWebsite.mockReset().mockResolvedValue({ result: 'success' })
@@ -308,52 +305,6 @@ describe('Operations', () => {
       })
     })
 
-    it('should close delete modal when cancel is clicked', async () => {
-      const user = userEvent.setup()
-      render(<Operations {...defaultProps} />)
-      await openPopover(user)
-      const deleteButton = screen.getByRole('menuitem', {
-        name: 'datasetDocuments.list.action.delete',
-      })
-      await user.click(deleteButton)
-
-      expect(screen.getByText('datasetDocuments.list.delete.title')).toBeInTheDocument()
-
-      const cancelButton = screen.getByRole('button', { name: 'common.operation.cancel' })
-      await user.click(cancelButton)
-
-      await waitFor(() => {
-        expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
-        expect(mockDelete).not.toHaveBeenCalled()
-      })
-    })
-
-    it('should update selectedIds after delete operation', async () => {
-      const user = userEvent.setup()
-      render(
-        <Operations
-          {...defaultProps}
-          selectedIds={['doc-1', 'doc-2']}
-          onSelectedIdChange={mockOnSelectedIdChange}
-        />,
-      )
-      await openPopover(user)
-      const deleteButton = screen.getByRole('menuitem', {
-        name: 'datasetDocuments.list.action.delete',
-      })
-      await user.click(deleteButton)
-      const confirmButton = screen.getByRole('button', { name: 'common.operation.sure' })
-      await user.click(confirmButton)
-      await waitFor(() => {
-        expect(mockOnSelectedIdChange).toHaveBeenCalledWith(['doc-2'])
-        expect(mockDelete).toHaveBeenCalledWith({
-          params: { dataset_id: 'dataset-1' },
-          query: { document_id: ['doc-1'] },
-        })
-        expect(mockOnUpdate).toHaveBeenCalledWith('delete')
-      })
-    })
-
     it('should call sync for notion data source', async () => {
       const user = userEvent.setup()
       render(
@@ -494,7 +445,7 @@ describe('Operations', () => {
       })
       await user.click(archiveButton)
       await waitFor(() => {
-        expect(screen.getByText('common.actionMsg.modifiedUnsuccessfully')).toBeInTheDocument()
+        expect(screen.getByText('API Error')).toBeInTheDocument()
         expect(mockOnUpdate).not.toHaveBeenCalled()
       })
     })
@@ -509,7 +460,7 @@ describe('Operations', () => {
       })
       await user.click(downloadButton)
       await waitFor(() => {
-        expect(screen.getByText('common.actionMsg.downloadUnsuccessfully')).toBeInTheDocument()
+        expect(screen.getByText('Download Error')).toBeInTheDocument()
         expect(downloads).toEqual([])
       })
     })

@@ -14,6 +14,16 @@ class OAuthProxyService(BasePluginClient):
     __KEY_PREFIX__ = "oauth_proxy_context:"
 
     @staticmethod
+    def validate_plugin_context(
+        context: Mapping[str, Any], *, plugin_id: str, provider: str, plugin_unique_identifier: str
+    ) -> None:
+        if context.get("plugin_id") != plugin_id or context.get("provider") != provider:
+            raise ValueError("OAuth context belongs to another provider")
+        expected_identifier = context.get("plugin_unique_identifier")
+        if expected_identifier is not None and expected_identifier != plugin_unique_identifier:
+            raise ValueError("Plugin changed during OAuth authorization; restart authorization")
+
+    @staticmethod
     def create_proxy_context(
         user_id: str,
         tenant_id: str,

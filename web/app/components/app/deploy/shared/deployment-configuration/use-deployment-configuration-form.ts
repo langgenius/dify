@@ -1,10 +1,10 @@
 'use client'
 
-import type { FormEventHandler } from 'react'
+import type { SubmitEventHandler } from 'react'
 import type { DeploymentConfigurationQueryState } from './use-deployment-configuration-queries'
 import type { DeploymentConfigurationValuesController } from './use-deployment-configuration-values'
 import type { DeploymentFieldError } from './utils/field-id'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useDeployWorkflow } from '../../hooks/use-deploy-workflow'
@@ -41,7 +41,12 @@ export function useDeploymentConfigurationForm({
   const { t: tDeployments } = useTranslation(['deployments'])
   const { t: tWorkflow } = useTranslation(['workflow'])
   const [fieldError, setFieldError] = useState<DeploymentFieldError>()
+  const fieldErrors = useMemo(
+    () => fieldError && { [fieldError.fieldId]: fieldError.message },
+    [fieldError],
+  )
   const formRef = useRef<HTMLFormElement | null>(null)
+  // `Form` focuses invalid fields with a registered control; the LLM value group has none.
   useLayoutEffect(() => {
     if (fieldError)
       formRef.current?.querySelector<HTMLElement>(`[id="${fieldError.fieldId}"]`)?.focus()
@@ -56,7 +61,7 @@ export function useDeploymentConfigurationForm({
   })
   const canDeploy = Boolean(appId) && !disabled && queryState.canDeploy && !deployMutation.isPending
 
-  const handleSubmit: FormEventHandler<HTMLFormElement> = (event) => {
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault()
     if (!appId || !canDeploy || !queryState.deploymentOptions) return
 
@@ -115,7 +120,7 @@ export function useDeploymentConfigurationForm({
   return {
     canDeploy,
     clearFieldError: () => setFieldError(undefined),
-    fieldError,
+    fieldErrors,
     formRef,
     handleSubmit,
     isDeploying: deployMutation.isPending,

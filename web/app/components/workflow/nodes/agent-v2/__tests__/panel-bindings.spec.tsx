@@ -27,6 +27,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.trace.get': async () => ({ enabled: false, tracing_provider: null }),
       'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get': api.loadComposer,
       'snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get': api.loadComposer,
       'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post': api.copyApp,

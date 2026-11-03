@@ -83,7 +83,7 @@ it.each([
       )
       await screen.getByRole('button', { name: 'System Model Settings' }).click()
       const settings = screen.getByRole('dialog', { name: 'Default Model Settings' })
-      await settings.getByRole('button', { name: new RegExp(`^${modelType} model`) }).hover()
+      await settings.getByRole('button', { name: `${label} ${modelType} model` }).hover()
       const clearButton = settings.getByRole('button', { name: `Clear ${label}` })
       const settingsPopup = settings.element()
       await clearButton.click()
@@ -101,9 +101,10 @@ it.each([
         await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
       }
       await expect.element(clearButton).not.toBeInTheDocument()
-      // All other defaults remain configured, so the only empty selector is the cleared field.
       await expect
-        .element(settings.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+        .element(
+          settings.getByRole('button', { name: `${label} plugin.detailPanel.configureModel` }),
+        )
         .toHaveFocus()
     } finally {
       queryClient.clear()
