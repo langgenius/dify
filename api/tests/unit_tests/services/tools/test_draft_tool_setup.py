@@ -15,6 +15,7 @@ from models.model import AppMode
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.workflow_service import WorkflowService
+from tests.helpers import billing_builders as builders
 from tests.unit_tests.services.dify_builder.draft_tool_inventory import APP_ID, AUTH_PROVIDER, DRAFT_ID, FREE_PROVIDER
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     ACCOUNT_A,
@@ -61,14 +62,12 @@ def builder_disabled_deployment(
     config_overrides: Callable[..., None],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from types import SimpleNamespace
-
     config_overrides(DEPLOYMENT_EDITION=request.param, DIFY_BUILDER_ENABLED=False)
     monkeypatch.setattr(generate_module.QuotaService, "reserve", lambda *_args: generate_module.unlimited())
     monkeypatch.setattr(
         workflow_module.BillingService,
         "get_info",
-        lambda *_args: SimpleNamespace(subscription=SimpleNamespace(plan="team")),
+        lambda *_args: builders.subscription_info("team"),
     )
 
 

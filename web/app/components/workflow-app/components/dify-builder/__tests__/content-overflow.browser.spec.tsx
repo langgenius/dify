@@ -163,10 +163,9 @@ it('keeps long user text and expanded execution labels readable within the conve
   const message = transcript.getByText(userText)
   await expect.element(message).toBeVisible()
   expectTextContained(message.element(), transcript.element())
-  expectTextContained(
-    transcript.getByText(`Available model: ${endpoint}`).element(),
-    transcript.element(),
-  )
+  const reply = transcript.getByText(`Available model: ${endpoint}`)
+  await expect.element(reply).toBeVisible()
+  expectTextContained(reply.element(), transcript.element())
   await transcript.getByText(activity).click()
   const labels = transcript.getByText(activity)
   await expect.element(labels.nth(1)).toBeVisible()
