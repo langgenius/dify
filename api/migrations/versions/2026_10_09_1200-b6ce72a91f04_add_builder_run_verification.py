@@ -1,7 +1,7 @@
 """add nullable Builder run verification evidence
 
 Revision ID: b6ce72a91f04
-Revises: 733e4c46f90e
+Revises: a9cc8d552db4, e7b2a9c4d601
 """
 
 import sqlalchemy as sa
@@ -10,7 +10,7 @@ from alembic import op
 from models.types import AdjustedJSON
 
 revision = "b6ce72a91f04"
-down_revision = "733e4c46f90e"
+down_revision = ("a9cc8d552db4", "e7b2a9c4d601")
 branch_labels = None
 depends_on = None
 
