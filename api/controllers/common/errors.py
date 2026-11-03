@@ -1,7 +1,7 @@
 import logging
 from collections import OrderedDict
 from http import HTTPStatus
-from typing import NoReturn, cast
+from typing import NoReturn
 
 from flask import current_app, got_request_exception
 from werkzeug.exceptions import HTTPException
@@ -238,6 +238,8 @@ def register_resource_error_handlers(api: ExternalApi) -> None:
         got_request_exception.send(current_app, exception=error)
         return {"code": "forbidden", "message": str(error), "status": 403}, 403
 
+    handlers: object = api.error_handlers
+    assert isinstance(handlers, OrderedDict)
     for error_type in (
         AnnotationResourceNotFoundError,
         DatasetNotFoundError,
@@ -245,9 +247,9 @@ def register_resource_error_handlers(api: ExternalApi) -> None:
         DocumentSourceNotFoundError,
     ):
         api.errorhandler(error_type)(missing_resource)
-        cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(error_type, last=False)
+        handlers.move_to_end(error_type, last=False)
     api.errorhandler(DocumentAccessDeniedError)(document_access_denied)
-    cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(DocumentAccessDeniedError, last=False)
+    handlers.move_to_end(DocumentAccessDeniedError, last=False)
     for error_type in (
         AnnotationResourceNotFoundError,
         DatasetNotFoundError,
@@ -275,7 +277,9 @@ def register_permission_error_handler(api: ExternalApi) -> None:
         }, HTTPStatus.BAD_REQUEST
 
     # Flask-RESTX picks the first matching handler, including the generic Exception handler.
-    cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(NoPermissionError, last=False)
+    handlers: object = api.error_handlers
+    assert isinstance(handlers, OrderedDict)
+    handlers.move_to_end(NoPermissionError, last=False)
     api.document_error_handler(NoPermissionError, status=HTTPStatus.BAD_REQUEST, code=InvalidArgumentError.error_code)
 
 
