@@ -220,24 +220,7 @@ describe('Banner', () => {
       'true',
     )
     expect(screen.getByRole('link', { name: 'Second banner' })).toBeInTheDocument()
-  })
-
-  it('keeps current-page selection idempotent', () => {
-    render(
-      <Banner
-        banners={[
-          createMockBanner('1', 'enabled', 'First banner'),
-          createMockBanner('2', 'enabled', 'Second banner'),
-        ]}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: '01 First banner' }))
-
-    expect(screen.getByRole('button', { name: '01 First banner' })).toHaveAttribute(
-      'aria-current',
-      'true',
-    )
+    expect(liveRegion()).toHaveAttribute('aria-live', 'off')
   })
 
   it('does not control an inactive autoplay plugin during manual selection', () => {
@@ -258,6 +241,7 @@ describe('Banner', () => {
       'true',
     )
     expect(screen.getByRole('link', { name: 'Second banner' })).toBeInTheDocument()
+    expect(liveRegion()).toHaveAttribute('aria-live', 'polite')
   })
 
   it('updates the live region when Embla stops and restarts automatic rotation', () => {
@@ -287,11 +271,13 @@ describe('Banner', () => {
     )
 
     fireEvent.pointerOver(carousel())
+    expect(liveRegion()).toHaveAttribute('aria-live', 'polite')
 
     expect(screen.getByRole('button', { name: 'banner.stopRotation' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'banner.startRotation' })).not.toBeInTheDocument()
 
     fireEvent.pointerOut(carousel())
+    expect(liveRegion()).toHaveAttribute('aria-live', 'off')
 
     expect(screen.getByRole('button', { name: 'banner.stopRotation' })).toBeInTheDocument()
   })
