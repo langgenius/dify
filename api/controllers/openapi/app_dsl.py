@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from contextlib import contextmanager
+from dataclasses import replace
 from http import HTTPStatus
+from io import BytesIO
 from typing import IO, Final
 from uuid import UUID, uuid4
 
@@ -34,12 +36,14 @@ from controllers.openapi._models import (
     AppDslImportPayload,
     AppDslImportResponse,
     AppPackageExportQuery,
+    AppPackageFillPayload,
     AppPackageImportPayload,
     CheckDependenciesResponse,
     DslCheckPayload,
     DslCheckResponse,
     DslIssueRow,
     Hint,
+    PackageCheckResponse,
 )
 from controllers.openapi._upload import UploadPart, UploadParts
 from controllers.openapi.auth.requirements import (
@@ -55,6 +59,7 @@ from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.plugins import PluginInstallApi
 from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
+from libs.archive_writer import ArchiveError
 from machinery.context import AppRequestContext, RequestContext
 from services.agent.errors import (
     InvalidRosterAgentPackageError,
@@ -63,6 +68,7 @@ from services.agent.errors import (
     WorkspaceSkillUnavailableError,
 )
 from services.app.console_service import ConsoleAppNotFoundError
+from services.app_package_service import package_filename
 from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import DraftGuardedImportParams, Import, ImportMode, ImportStatus
 from services.errors.app import (
@@ -72,6 +78,9 @@ from services.errors.app import (
     WorkflowNotFoundError,
 )
 from services.errors.base import NoPermissionError
+from services.workflow.authoring import FillContext, check_package
+from services.workflow.authoring.fill import filled_package
+from services.workflow.authoring.package_io import PackageUnreadableError, read_package_entries
 from services.workflow.dsl_import import (
     DslNotCheckableError,
     DslRefusedError,
@@ -103,6 +112,7 @@ _PACKAGE_UPLOAD: Final = FolderUpload(
     max_bytes=lambda: dify_config.AGENT_PACKAGE_MAX_BYTES,
     rejections=FolderRejections("package folder", AppPackageInvalid, AppPackageTooLarge),
 )
+_PACKAGE_FILL_UPLOAD: Final = replace(_PACKAGE_UPLOAD, payload=AppPackageFillPayload)
 
 
 def _check_hint(context: RequestContext, app_id: str | None) -> Hint:
@@ -152,16 +162,33 @@ def _export_refusals(workflow_id: str | None) -> Generator[None]:
 
 
 @contextmanager
-def _package_source(package: UploadPart | UploadParts) -> Generator[IO[bytes]]:
+def _package_source(package: UploadPart | UploadParts, upload: FolderUpload) -> Generator[IO[bytes]]:
     """A file part is the package as sent; a folder is zipped into a temporary archive, closed on exit."""
     if isinstance(package, FileStorage):
         yield package.stream
         return
-    archive = _PACKAGE_UPLOAD.archive(package)
+    archive = upload.archive(package)
     try:
         yield archive.file
     finally:
         archive.file.close()
+
+
+@contextmanager
+def _authoring_refusals() -> Generator[None]:
+    """Answer a package fill or check cannot read, or one over this server's limits."""
+    try:
+        yield
+    except PackageUnreadableError as exc:
+        raise AppPackageInvalid(str(exc)) from exc
+    except RosterAgentPackageTooLargeError as exc:
+        raise AppPackageTooLarge(exc.description) from exc
+    except ArchiveError as exc:
+        raise _PACKAGE_FILL_UPLOAD.rejections.of(exc) from exc
+
+
+def _fill_context(context: RequestContext) -> FillContext:
+    return FillContext(tenant_id=context.active_workspace_id, account_id=context.account_id)
 
 
 def _import_response(result: Import, *, workspace_id: str) -> AppDslImportResponse:
@@ -293,7 +320,7 @@ class AppPackageImportApi(Resource):
             body.model_dump(exclude={"package", "preserve_agent_bindings"}) | {"mode": ImportMode.YAML_CONTENT}
         )
         services = application_services().apps
-        with _package_source(body.package) as source, _yaml_check_refusals(ctx, body.app_id):
+        with _package_source(body.package, _PACKAGE_UPLOAD) as source, _yaml_check_refusals(ctx, body.app_id):
             try:
                 result = services.console.import_app(
                     ctx,
@@ -332,6 +359,75 @@ class AppPackageImportApi(Resource):
             except NoPermissionError as exc:
                 raise ForbiddenError(str(exc)) from exc
         return _import_response(result, workspace_id=workspace_id), _import_status(result)
+
+
+@openapi_ns.route("/workspaces/<string:workspace_id>/apps/packages:fill")
+class AppPackageFillApi(Resource):
+    """Fill an agent-built package and download it: what the console editor writes for a node or edge left
+    unset is written, and every value the package already has is kept.
+
+    Nothing is saved. Filling a filled package changes nothing. Returns 400 ``app_package_invalid`` for a
+    package that cannot be read and 413 for one over this server's limits.
+    """
+
+    @endpoint(
+        context="workspace",
+        op="fill.console_app.package",
+        kind=Kind.FILE,
+        effect=Effect.READ,
+        summary="Fill the editor's defaults into a .ifpkg package or an unpacked package folder",
+        examples=(
+            Example(title="Fill an unpacked package folder", input={"package": "./app/"}),
+            Example(title="Fill a .ifpkg file", input={"package": "./app.ifpkg"}),
+        ),
+        requirements=(*_PACKAGE_IMPORT_GUARDS, _PACKAGE_FILL_UPLOAD.cap()),
+        body=AppPackageFillPayload,
+        returns=(HTTPStatus.OK, BinaryFileResponse, "Filled app package"),
+    )
+    def post(self, ctx: RequestContext, workspace_id: str, *, body: AppPackageFillPayload):
+        with _package_source(body.package, _PACKAGE_FILL_UPLOAD) as source, _authoring_refusals():
+            filled = filled_package(
+                read_package_entries(source), _fill_context(ctx), limits=_PACKAGE_FILL_UPLOAD.limits()
+            )
+        return send_file(
+            BytesIO(filled.archive),
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name=package_filename(filled.app_name),
+        )
+
+
+@openapi_ns.route("/workspaces/<string:workspace_id>/apps/packages:check")
+class AppPackageCheckApi(Resource):
+    """Fill an agent-built package, then check it without importing it.
+
+    ``valid`` is false while any issue is an error. ``refuses_import`` marks the issues the package import
+    refuses today; the others are what the app still needs to run. ``node_specs`` gives, for every node, its
+    data schema, its plugin's declared parameters and every field it has not written yet. Returns 400
+    ``app_package_invalid`` for a package that cannot be read or has no ``app.yaml`` mapping, and 413 for one
+    over this server's limits.
+    """
+
+    @endpoint(
+        context="workspace",
+        op="check.console_app.package",
+        kind=Kind.OBJECT,
+        effect=Effect.READ,
+        summary="Check a .ifpkg package or an unpacked package folder: every problem, and what each node needs",
+        examples=(
+            Example(title="Check an unpacked package folder", input={"package": "./app/"}),
+            Example(title="Check a .ifpkg file", input={"package": "./app.ifpkg"}),
+        ),
+        requirements=(*_PACKAGE_IMPORT_GUARDS, _PACKAGE_FILL_UPLOAD.cap()),
+        body=AppPackageFillPayload,
+        returns=(HTTPStatus.OK, PackageCheckResponse, "Check result"),
+    )
+    def post(self, ctx: RequestContext, workspace_id: str, *, body: AppPackageFillPayload):
+        with _package_source(body.package, _PACKAGE_FILL_UPLOAD) as source, _authoring_refusals():
+            result = check_package(
+                read_package_entries(source), _fill_context(ctx), limits=_PACKAGE_FILL_UPLOAD.limits()
+            )
+        return PackageCheckResponse.of(result), HTTPStatus.OK
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports:check")

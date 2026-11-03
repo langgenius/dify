@@ -25,7 +25,7 @@ from services.agent.errors import RosterAgentPackageTooLargeError
 from services.app_package_service import AppPackageService
 from services.entities.dsl_entities import AppImportParams, ImportStatus
 from services.workflow.authoring import FillContext, fill_package
-from services.workflow.authoring.fill import fill_graph_document
+from services.workflow.authoring.fill import FilledPackage, fill_graph_document
 from services.workflow.authoring.package_io import PackageUnreadableError, read_package_entries
 from services.workflow.graph_check import IssueCode, check_graph
 from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
@@ -407,3 +407,19 @@ def test_limits_bound_the_written_package() -> None:
 
     with pytest.raises(ArchiveTooLargeError):
         fill_package(entries, CTX, limits=ArchiveLimits(max_entries=2, max_bytes=dify_config.AGENT_PACKAGE_MAX_BYTES))
+
+
+@pytest.mark.parametrize(
+    ("document", "name"),
+    [
+        ({"app": {"name": "Skeleton"}}, "Skeleton"),
+        ({"app": {"name": ["not", "text"]}}, None),
+        ({"app": "not a mapping"}, None),
+        ({}, None),
+        (None, None),
+    ],
+)
+def test_a_filled_package_reads_its_app_name_only_when_it_is_text(
+    document: dict[str, object] | None, name: str | None
+) -> None:
+    assert FilledPackage(archive=b"", document=document).app_name == name
