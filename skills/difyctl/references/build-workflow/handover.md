@@ -9,7 +9,7 @@ Start when every slice in `plan.md` is ticked. `<mode>` is `workflow` or `advanc
    difyctl check console_app release --app-id <app_id> --json
    ```
 
-   Fix every item in `issues`. If `tested` fails, run the draft again. Go on only when `ready` is true.
+   Fix every item in `issues`. If `tested` fails, run the draft again; a run that paused on a human-input node doesn't count, so include a case that ends. Go on only when `ready` is true.
 
 3. Stop at the human gate. Show in plain words: the `changes` against the published version, the `checks`, the acceptance results, the "Changes during build" list, and anything still open.
 4. On a yes, publish. Show any `warning` in the result. Then confirm the row whose `id` is the result's `version_id` shows `current: true`:
@@ -32,13 +32,13 @@ Start when every slice in `plan.md` is ticked. `<mode>` is `workflow` or `advanc
      difyctl set service_api --app-id <app_id> --enabled --json
      ```
 
-   - Who may open the web app (Enterprise): `public`, `private_all` or `sso_verified`. Picking members or groups (`private`) is done in the Dify console. `difyctl run` obeys this too, so the logged-in account must be allowed for the smoke test. `public` exits 4 with `webapp_public_access_disabled` when the server disables public web apps; offer the human `private_all` or `sso_verified`.
+   - Who may open the web app (Enterprise). Read the current mode with `difyctl describe webapp_access --app-id <app_id> --json`; a new app can start as `private` with no members, which refuses even you. Ask the human which mode to set: `public`, `private_all` or `sso_verified`. Picking members or groups (`private`) is done in the Dify console. `difyctl run` obeys this too, so the logged-in account must be allowed for the smoke test; otherwise it exits 4 with `user_not_allowed_for_private_app`. `public` exits 4 with `webapp_public_access_disabled` when the server disables public web apps; offer the human `private_all` or `sso_verified`.
 
      ```bash
      difyctl set webapp_access --app-id <app_id> --access-mode <access_mode> --json
      ```
 
-6. Smoke test the live app with one acceptance case. Chatflow also takes `--query "<message>"`.
+6. Smoke test the live app with one acceptance case. Chatflow also takes `--query "<message>"`. Skip this for a trigger-started app, which `difyctl run` can't start; after its first scheduled time, list its runs with `difyctl get run --app-id <app_id> --triggered-from schedule --json` (or `webhook`, `plugin`) and describe the newest.
 
    ```bash
    difyctl run console_app <mode> --app-id <app_id> --inputs '{"<var>": "<value>"}' --json
