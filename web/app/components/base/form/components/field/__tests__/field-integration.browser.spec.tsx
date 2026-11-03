@@ -166,6 +166,16 @@ it.each([true, false])(
       if (supportFile) await expect.element(page.getByRole('option', { name })).toBeVisible()
       else await expect.element(page.getByRole('option', { name })).not.toBeInTheDocument()
     }
+    if (supportFile) {
+      await page.getByRole('option', { name: /appDebug.variableConfig.single-file/ }).click()
+      await expect.poll(readValue).toBe('file')
+      await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+      await page.getByRole('combobox', { name: 'Input type' }).click()
+      await page.getByRole('option', { name: /appDebug.variableConfig.multi-files/ }).click()
+      await expect.poll(readValue).toBe('file-list')
+      await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
+      await page.getByRole('combobox', { name: 'Input type' }).click()
+    }
     await page.getByRole('option', { name: /appDebug.variableConfig.number/ }).click()
     await expect.poll(readValue).toBe('number')
   },
