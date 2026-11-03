@@ -12,6 +12,7 @@ const render = (ui: ReactElement) =>
 
 const serviceRow = (name: string) => screen.getByRole('listitem', { name })
 const progress = () => screen.getByText(/share\.connections\.headless\.progress/)
+const readyMessage = () => screen.getByText(/share\.connections\.headless\.allConnected/)
 
 async function connectServices(user: ReturnType<typeof userEvent.setup>) {
   for (const provider of ['Gmail', 'Notion', 'Google Search'])
@@ -46,15 +47,21 @@ describe('ConnectionAuth', () => {
 
     for (const provider of ['Notion', 'Google Search'])
       await user.click(within(serviceRow(provider)).getByRole('button', { name: connectLabel }))
-    expect(progress()).toHaveTextContent('"connected":3')
+    expect(readyMessage()).toHaveTextContent('"count":3')
     await user.click(screen.getByRole('button', { name: finishLabel }))
 
     expect(
       screen.getByRole('heading', { name: 'share.connections.headless.completeTitle' }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/share\.connections\.headless\.completeDescription/)).toHaveTextContent(
-      'Dify CLI',
-    )
+    expect(
+      screen.getByText(/share\.connections\.headless\.continuesAutomatically/),
+    ).toHaveTextContent('Dify CLI')
+    for (const provider of ['Gmail', 'Notion', 'Google Search'])
+      expect(within(serviceRow(provider)).getByText('alex@northstar.io')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/share\.connections\.headless\.requestedFrom/),
+    ).not.toBeInTheDocument()
   })
 
   it('keeps an invalid API key in the editor and selects the corrected key after saving', async () => {
@@ -88,6 +95,13 @@ describe('ConnectionAuth', () => {
       within(serviceRow('Google Search')).getByRole('button', { name: 'Google Search' }),
     ).toHaveTextContent('Research key')
     expect(progress()).toHaveTextContent('"connected":1')
+
+    for (const provider of ['Gmail', 'Notion'])
+      await user.click(within(serviceRow(provider)).getByRole('button', { name: connectLabel }))
+    await user.click(screen.getByRole('button', { name: finishLabel }))
+    expect(within(serviceRow('Google Search')).getByText('Research key')).toBeInTheDocument()
+    expect(screen.queryByText('sk-research')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('disables finishing again when the selected account is removed', async () => {
@@ -95,6 +109,7 @@ describe('ConnectionAuth', () => {
     render(<ConnectionAuth appId="sales-assistant" />)
     await connectServices(user)
     expect(screen.getByRole('button', { name: finishLabel })).toBeEnabled()
+    expect(readyMessage()).toHaveTextContent('"count":3')
 
     await user.click(within(serviceRow('Gmail')).getByRole('button', { name: 'Gmail' }))
     const selector = screen.getByRole('dialog', {
@@ -113,6 +128,7 @@ describe('ConnectionAuth', () => {
     await waitFor(() => expect(confirmation).not.toBeInTheDocument())
 
     expect(progress()).toHaveTextContent('"connected":2')
+    expect(screen.queryByText(/share\.connections\.headless\.allConnected/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: finishLabel })).toBeDisabled()
     expect(within(serviceRow('Gmail')).getByRole('button', { name: connectLabel })).toBeEnabled()
   })
@@ -209,5 +225,11 @@ describe('ConnectionAuth', () => {
     expect(progress()).toHaveTextContent('"connected":0')
     expect(within(serviceRow('Gmail')).getByRole('button', { name: connectLabel })).toBeEnabled()
     expect(screen.getByRole('button', { name: finishLabel })).toBeDisabled()
+
+    await connectServices(user)
+    await user.click(screen.getByRole('button', { name: finishLabel }))
+    expect(
+      screen.getByText(/share\.connections\.headless\.continuesAutomatically/),
+    ).toHaveTextContent('Service API')
   })
 })

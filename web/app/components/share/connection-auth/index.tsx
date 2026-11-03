@@ -10,6 +10,7 @@ import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { MAIN_CONTENT_ID, SkipLink } from '@/app/components/main-nav/skip-link'
 import useDocumentTitle from '@/hooks/use-document-title'
 import RequiredServices from '../connections/required-services'
+import ConnectionAuthCompletion from './completion'
 import { mockRequest } from './mock-data'
 import RequestContextItem from './request-context-item'
 import useMockConnections from './use-mock-connections'
@@ -55,52 +56,43 @@ function ConnectionAuthSession({ source }: { source: ConnectionAuthSource }) {
               </p>
             </div>
           </div>
-          <div className="divide-y divide-divider-subtle overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg">
-            <RequestContextItem
-              iconClassName="i-ri-terminal-box-line"
-              text={t(($) => $['connections.headless.requestedFrom'], {
-                ns: 'share',
-                source: requester,
-              })}
-            />
-            <RequestContextItem
-              iconClassName="i-ri-shield-user-line"
-              text={t(($) => $['connections.headless.signedInAs'], {
-                ns: 'share',
-                identity: mockRequest.identity,
-              })}
-            />
-          </div>
           {finished ? (
-            <div role="status" className="flex flex-col gap-2">
-              <span
-                aria-hidden="true"
-                className="i-ri-checkbox-circle-fill size-6 text-text-success"
-              />
-              <h2 className="title-2xl-semi-bold text-text-primary">
-                {t(($) => $['connections.headless.completeTitle'], { ns: 'share' })}
-              </h2>
-              <p className="system-xs-regular text-text-tertiary">
-                {t(($) => $['connections.headless.completeDescription'], {
-                  ns: 'share',
-                  source: requester,
-                })}
-              </p>
-            </div>
+            <ConnectionAuthCompletion services={services} source={requester} />
           ) : (
             <>
+              <div className="divide-y divide-divider-subtle overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg">
+                <RequestContextItem
+                  iconClassName="i-ri-terminal-box-line"
+                  text={t(($) => $['connections.headless.requestedFrom'], {
+                    ns: 'share',
+                    source: requester,
+                  })}
+                />
+                <RequestContextItem
+                  iconClassName="i-ri-shield-user-line"
+                  text={t(($) => $['connections.headless.signedInAs'], {
+                    ns: 'share',
+                    identity: mockRequest.identity,
+                  })}
+                />
+              </div>
               <section aria-labelledby={titleId} className="flex flex-col gap-6">
                 <div className="space-y-2">
                   <h2 id={titleId} className="title-2xl-semi-bold text-text-primary">
                     {t(($) => $['connections.headless.title'], { ns: 'share' })}
                   </h2>
                   <p role="status" className="min-h-5 system-xs-regular text-text-tertiary">
-                    {t(($) => $['connections.headless.progress'], {
-                      ns: 'share',
-                      source: requester,
-                      connected: connectedCount,
-                      total: services.length,
-                    })}
+                    {ready
+                      ? t(($) => $['connections.headless.allConnected'], {
+                          ns: 'share',
+                          count: services.length,
+                        })
+                      : t(($) => $['connections.headless.progress'], {
+                          ns: 'share',
+                          source: requester,
+                          connected: connectedCount,
+                          total: services.length,
+                        })}
                   </p>
                 </div>
                 <RequiredServices services={services} {...actions} />
