@@ -122,6 +122,14 @@ describe('InputMail Form', () => {
 
   // Validation and failure paths.
   describe('Edge Cases', () => {
+    it('should disable native validation so the translated message is used', () => {
+      const { container } = renderForm()
+      const form = container.querySelector('form')
+
+      expect(form).not.toBeNull()
+      expect(form).toHaveProperty('noValidate', true)
+    })
+
     it('should block submission when email is invalid', async () => {
       const user = userEvent.setup()
       renderForm()
