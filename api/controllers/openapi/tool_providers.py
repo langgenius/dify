@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Generator, Iterable, Sequence
 from contextlib import contextmanager
+from dataclasses import asdict
 from http import HTTPStatus
 from typing import Final
 
@@ -14,7 +15,6 @@ from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import CredentialNotFound, CredentialOAuthOnly, ProviderNotFound
-from controllers.openapi._i18n import localized
 from controllers.openapi._models import (
     CredentialFormField,
     CredentialRef,
@@ -43,7 +43,9 @@ from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from extensions.ext_application_services import application_services
+from libs.i18n_text import localized
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+from services.tools.tool_sources import ToolNodeIdentity
 
 _PROVIDER_EXAMPLE: Final = "langgenius/tavily/tavily"
 _ToolProviderController = BuiltinToolProviderController | PluginToolProviderController
@@ -135,25 +137,18 @@ def _parameter_row(parameter: ToolParameter, language: str | None) -> ToolParame
 
 def tool_row(provider: ToolProviderApiEntity, tool: ToolApiEntity, language: str | None) -> ToolRow:
     parameters = tool.parameters or []
-    label = localized(tool.label, language) or tool.name
+    identity = ToolNodeIdentity.of(provider, tool, language)
     return ToolRow(
         provider=provider.id,
         provider_type=str(provider.type),
         provider_label=localized(provider.label, language),
         configured=provider.is_team_authorization,
         name=tool.name,
-        label=label,
+        label=identity.tool_label,
         description=localized(tool.description, language),
         parameters=[_parameter_row(p, language) for p in parameters],
         node_data=ToolNodeTemplate(
-            title=label,
-            provider_type=str(provider.type),
-            provider_id=provider.server_identifier or provider.id,
-            provider_name=provider.name,
-            plugin_id=provider.plugin_id or None,
-            plugin_unique_identifier=provider.plugin_unique_identifier or None,
-            tool_name=tool.name,
-            tool_label=label,
+            **asdict(identity),
             tool_parameters=_inputs(parameters, ToolParameter.ToolParameterForm.LLM),
             tool_configurations=_inputs(parameters, ToolParameter.ToolParameterForm.FORM),
         ),

@@ -12,7 +12,6 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo, 
 from constants.languages import supported_language
 from constants.oauth_bearer import SubjectType
 from controllers.common.human_input import HumanInputFormSubmitPayload
-from controllers.openapi._i18n import localized
 from controllers.openapi._upload import UploadPart, UploadParts
 from core.plugin.entities.plugin import PluginCategory
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
@@ -23,11 +22,12 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.nodes.tool.entities import ToolInputType
 from graphon.variables import SegmentType
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_value
+from libs.i18n_text import localized
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
-from services.tools.tool_sources import ToolSource
+from services.tools.tool_sources import TOOL_NODE_VERSION, ToolSource
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
@@ -1326,9 +1326,6 @@ class ToolParameterRow(BaseModel):
     min: float | None
     max: float | None
     llm_description: str | None
-
-
-TOOL_NODE_VERSION: Final = "2"
 
 
 class ToolNodeTemplate(BaseModel):
