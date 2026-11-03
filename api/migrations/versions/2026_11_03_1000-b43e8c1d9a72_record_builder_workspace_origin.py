@@ -6,14 +6,14 @@ workspaces were removed. Uninitialized End User accounts remain eligible for the
 first explicit creation. This migration does not enqueue onboarding or email jobs.
 
 Revision ID: b43e8c1d9a72
-Revises: a91d5e7c3b20
+Revises: 4f2a90b8c317
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision = "b43e8c1d9a72"
-down_revision = "a91d5e7c3b20"
+down_revision = "4f2a90b8c317"
 branch_labels = None
 depends_on = None
 
