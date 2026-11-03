@@ -414,7 +414,7 @@ def test_changed_code_input_redisplays_before_accepting_checkbox_and_reuses_show
 
 @pytest.mark.parametrize("flow_index", [0, 1, 2])
 def test_stale_worker_risk_returns_existing_input_interaction_without_repair(
-    mocker: pytest_mock.MockerFixture, flow_index: int
+    mocker: pytest_mock.MockerFixture, flow_index: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
 
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
@@ -424,8 +424,10 @@ def test_stale_worker_risk_returns_existing_input_interaction_without_repair(
     flow = FLOWS[flow_index]
     module, port, repo, env, session, turn = _fixture(flow, disclosed=False)
     fc = saved_test_context(repo, session.id)
-    port.run_draft = lambda *_, **__: dify_port._unsupported_run(
-        BuilderExecutionPolicyError("code_risk_assessment_stale")
+    monkeypatch.setattr(
+        port,
+        "run_draft",
+        lambda *_, **__: dify_port._unsupported_run(BuilderExecutionPolicyError("code_risk_assessment_stale")),
     )
     mocker.patch.object(
         env.agent, "diagnose", side_effect=AssertionError("Stale disclosure is not a failed Code execution")

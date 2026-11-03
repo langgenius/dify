@@ -1,6 +1,5 @@
 """Actual lineage policy; backend and protected state I/O are explicit doubles."""
 
-from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -128,9 +127,9 @@ def owner(
         sessionmaker(), actor=Actor(account_id="actor", tenant_id="tenant"), resolver=AgentOperationBindingResolver()
     )
     store = NativeExecutionStateStore(loader)
-    store.load_context = load_context
-    store.load_prepared_config = load_prepared_config
-    store.discover_agent_run = discover_agent_run
+    patch.object(store, "load_context", side_effect=load_context).start()
+    patch.object(store, "load_prepared_config", side_effect=load_prepared_config).start()
+    patch.object(store, "discover_agent_run", side_effect=discover_agent_run).start()
 
     def settlement_identity(
         **kwargs: object,
@@ -140,7 +139,7 @@ def owner(
             raise BuilderExecutionPolicyError("native_agent_identity_mismatch")
         return load_context(**kwargs), load_prepared_config(**kwargs), saved
 
-    store.load_agent_settlement_identity = settlement_identity
+    patch.object(store, "load_agent_settlement_identity", side_effect=settlement_identity).start()
     backend = Client(base_url="http://agent.invalid")
     patch.object(backend, "read_run_identity_sync", side_effect=read_run_identity_sync).start()
     preparation = AgentPreparationService(state_store=store, backend=backend, workspace=None, config_builder=None)
@@ -221,11 +220,12 @@ def test_caller_cannot_override_owned_run_or_parent(caller: dict[str, JsonValue]
         lineage.resolve(principal=principal, selection=selection, boundary="model", caller=caller)
 
 
-def test_resolver_requires_authenticated_principal() -> None:
+@pytest.mark.parametrize("principal", [None])
+def test_resolver_requires_authenticated_principal(principal: AgentServicePrincipal) -> None:
     lineage, _principal, selection, phase = owner(parent=False)
     # Deliberately violate the typed internal contract to test the runtime authentication guard.
     with pytest.raises(BuilderExecutionPolicyError):
-        lineage.resolve(principal=cast(AgentServicePrincipal, None), selection=selection, boundary="model", caller={})
+        lineage.resolve(principal=principal, selection=selection, boundary="model", caller={})
     assert phase == []
 
 
@@ -277,10 +277,11 @@ def test_validated_native_context_checks_exact_effect_but_never_spends_permit(ch
     if change == "ref":
         envelope = envelope.model_copy(update={"ref": envelope.ref.model_copy(update={"request_id": "foreign"})})
     with Flask(__name__).test_request_context():
-        from flask import Request
         from werkzeug.local import LocalProxy
 
-        g.agent_runtime_request = cast("LocalProxy[Request]", request)._get_current_object()
+        proxy: object = request
+        assert isinstance(proxy, LocalProxy)
+        g.agent_runtime_request = proxy._get_current_object()
         g.agent_runtime_context = context
         with pytest.raises(BuilderExecutionPolicyError, match=reason):
             claim_agent_endpoint(

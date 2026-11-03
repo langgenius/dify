@@ -1,7 +1,7 @@
 """The actual API dispatcher spends only a current, exact operation permit."""
 
 from collections.abc import Generator
-from typing import Never, Unpack, cast
+from typing import Never, Unpack
 
 import pytest
 import sqlalchemy.orm
@@ -12,7 +12,6 @@ from dify_agent.protocol.native_testing import (
     AgentNativeTestRef,
     AgentOperationKey,
 )
-from flask import Request
 from sqlalchemy.orm import Session
 from typing_extensions import TypedDict
 
@@ -647,8 +646,6 @@ def test_actual_inner_tool_service_never_prepares_or_dispatches_before_permissio
 
 
 def test_direct_service_cannot_lose_a_known_native_envelope_before_runtime() -> None:
-    from typing import cast
-
     from flask import Flask, g, request
     from werkzeug.local import LocalProxy
 
@@ -659,11 +656,13 @@ def test_direct_service_cannot_lose_a_known_native_envelope_before_runtime() -> 
     lineage, principal, selection, _phase = owner()
     context = lineage.resolve(principal=principal, selection=selection, boundary="core_tool", caller={})
     app = Flask(__name__)
-    with app.test_request_context():
+    with app.test_request_context(), Session() as session:
         g.agent_runtime_context = context
-        g.agent_runtime_request = cast(LocalProxy[Request], request)._get_current_object()
+        proxy: object = request
+        assert isinstance(proxy, LocalProxy)
+        g.agent_runtime_request = proxy._get_current_object()
         with pytest.raises(BuilderExecutionPolicyError, match="native_endpoint_owner_mismatch"):
-            AgentToolInnerService().invoke(_request(), session=cast(Session, object()))
+            AgentToolInnerService().invoke(_request(), session=session)
 
 
 def test_confirmed_tool_error_never_returns_private_provider_text(
@@ -680,8 +679,8 @@ def test_confirmed_tool_error_never_returns_private_provider_text(
     monkeypatch.setattr(module, "agent_operations_for_ref", lambda _ref: operations_service)
     request = _request()
     request.native_dispatch = envelope()
-    with pytest.raises(BuilderExecutionPolicyError) as error:
-        AgentToolInnerService().invoke(request, session=cast(Session, object()))
+    with Session() as session, pytest.raises(BuilderExecutionPolicyError) as error:
+        AgentToolInnerService().invoke(request, session=session)
     assert "PRIVATE_PROVIDER_TOKEN_CANARY" not in str(error.value)
     assert error.value.reason_code == "native_agent_tool_dispatch_failed"
 

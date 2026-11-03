@@ -9,6 +9,7 @@ from dataclasses import replace
 from datetime import datetime
 from typing import NoReturn, Unpack
 
+import pytest
 import pytest_mock
 
 from core.dify_builder.contract import PreflightContextCard, PreflightIssue
@@ -146,13 +147,13 @@ def test_diagnose_then_propose_high_risk_stops_at_await_approval() -> None:
     assert not canvas_read_only(out.current_state), "await states leave the canvas editable"
 
 
-def test_handle_propose_empty_intents_explains_the_missing_repair() -> None:
+def test_handle_propose_empty_intents_explains_the_missing_repair(monkeypatch: pytest.MonkeyPatch) -> None:
     # propose_repair may legitimately return no intents alongside a high-risk
     # surface-to-human Risk (Task 3) -- the reply must explain that instead of
     # claiming "0 change(s)".
     env, _ = _new_env()
     s = _session()
-    fc = DifyBuilderContext()
+    fc = DifyBuilderContext(diagnosis=Diagnosis(culprit_node_id="output", root_cause="Missing input"))
 
     def propose_repair(
         diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
@@ -161,7 +162,7 @@ def test_handle_propose_empty_intents_explains_the_missing_repair() -> None:
         _ = diagnosis, graph
         return ([], Risk(level="high", reason="none", has_external_side_effect=False))
 
-    env.agent.propose_repair = propose_repair
+    monkeypatch.setattr(env.agent, "propose_repair", propose_repair)
 
     result = handle_propose(env, Turn(actor=_actor()), s, fc)
 
@@ -224,7 +225,7 @@ def test_apply_refuses_to_apply_an_empty_staged_repair() -> None:
     assert not env.fake_dify.applied, "nothing staged -> the adapter must not be called"
 
 
-def test_apply_surfaces_a_stale_intent_instead_of_failing_the_session() -> None:
+def test_apply_surfaces_a_stale_intent_instead_of_failing_the_session(monkeypatch: pytest.MonkeyPatch) -> None:
     """ESQ1-271: apply_repair re-validates against the draft as it is NOW.
     An uncaught ValueError here reaches the runner and kills the session."""
     from core.dify_builder.models import MutationIntent
@@ -234,7 +235,7 @@ def test_apply_surfaces_a_stale_intent_instead_of_failing_the_session() -> None:
     def _stale(*_args: object, **_kwargs: object) -> NoReturn:
         raise ValueError("path 'outputs.result': no key 'outputs' at outputs")
 
-    env.fake_dify.apply_repair = _stale  # type: ignore[method-assign]
+    monkeypatch.setattr(env.fake_dify, "apply_repair", _stale)
     s = _session(current_state=PcState.FIX_APPLY)
     fc = DifyBuilderContext(
         staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "code", "path": "o.r", "value": 1})]
@@ -251,7 +252,7 @@ def test_apply_surfaces_a_stale_intent_instead_of_failing_the_session() -> None:
     assert result.context.staged_repair == []
 
 
-def test_apply_says_a_fix_that_would_not_start_is_not_a_stale_fix() -> None:
+def test_apply_says_a_fix_that_would_not_start_is_not_a_stale_fix(monkeypatch: pytest.MonkeyPatch) -> None:
     """A fix the preflight rejected applied fine; it would leave a draft that
     fails at Graph.init. Same recovery as a stale intent, true reason."""
     from core.dify_builder.errors import DraftWouldNotStartError
@@ -262,7 +263,7 @@ def test_apply_says_a_fix_that_would_not_start_is_not_a_stale_fix() -> None:
     def _would_not_start(*_args: object, **_kwargs: object) -> NoReturn:
         raise DraftWouldNotStartError("the draft would not start: node 'code' (code): 1 validation error")
 
-    env.fake_dify.apply_repair = _would_not_start  # type: ignore[method-assign]
+    monkeypatch.setattr(env.fake_dify, "apply_repair", _would_not_start)
     s = _session(current_state=PcState.FIX_APPLY)
     fc = DifyBuilderContext(
         staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "code", "path": "o.r", "value": 1})]
@@ -416,7 +417,7 @@ def test_run_validation_exposes_testdata_form_for_start_inputs() -> None:
     assert assistant.payload["cards"] == ["form"]
 
 
-def test_mock_validation_inputs_use_the_workflow_start_schema() -> None:
+def test_mock_validation_inputs_use_the_workflow_start_schema(monkeypatch: pytest.MonkeyPatch) -> None:
     env, repo = _new_env()
     env.fake_dify.graph = {
         "nodes": [
@@ -439,7 +440,7 @@ def test_mock_validation_inputs_use_the_workflow_start_schema() -> None:
         captured_schema.update(schema)
         return {"topic": "mock topic"}
 
-    env.agent.generate_mock_inputs = generate_mock_inputs
+    monkeypatch.setattr(env.agent, "generate_mock_inputs", generate_mock_inputs)
     runner, s = _drive_to_await_verify(env, repo)
     out = runner.advance(
         s.id,
@@ -536,7 +537,7 @@ def test_verify_fail_freezes_run_allows_re_fix() -> None:
     assert verify.immutable
 
 
-def test_verify_running_without_proof_stops_at_decision() -> None:
+def test_verify_running_without_proof_stops_at_decision(monkeypatch: pytest.MonkeyPatch) -> None:
     """Missing proof stops at the existing review gate with publication blocked."""
     from core.dify_builder.models import Run
 
@@ -547,11 +548,15 @@ def test_verify_running_without_proof_stops_at_decision() -> None:
     out = runner.advance(s.id, turn)
     assert out.current_state == PcState.FIX_AWAIT_TESTDATA
 
-    env.fake_dify.run_draft = lambda *_a, **_k: Run(
-        dify_run_id="",
-        status="running",
-        per_node=[],
-        error="the workflow run's progress stream ended before the run did, so its outcome is unknown",
+    monkeypatch.setattr(
+        env.fake_dify,
+        "run_draft",
+        lambda *_a, **_k: Run(
+            dify_run_id="",
+            status="running",
+            per_node=[],
+            error="the workflow run's progress stream ended before the run did, so its outcome is unknown",
+        ),
     )
     turn = Turn(
         action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version), actor=_actor()
@@ -1060,7 +1065,7 @@ def test_without_endpoint_values_keeps_everything_when_no_url_reads_a_start_vari
     assert without_endpoint_values(graph, {"topic": "x"}) == {"topic": "x"}
 
 
-def test_fix_await_testdata_mock_leaves_the_endpoint_for_the_form() -> None:
+def test_fix_await_testdata_mock_leaves_the_endpoint_for_the_form(monkeypatch: pytest.MonkeyPatch) -> None:
     """A mocked URL for an endpoint variable is accepted at launch and fails on
     connection -- a config failure, not an input one, so it feeds the repair
     loop (ESQ1-302). Dropped, the missing required key is rejected at launch as
@@ -1073,7 +1078,7 @@ def test_fix_await_testdata_mock_leaves_the_endpoint_for_the_form() -> None:
         _ = schema, prior_failed
         return {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}
 
-    env.agent.generate_mock_inputs = generate_mock_inputs
+    monkeypatch.setattr(env.agent, "generate_mock_inputs", generate_mock_inputs)
     s = _session(current_state=PcState.FIX_AWAIT_TESTDATA)
 
     result = handle_await_testdata(
@@ -1311,13 +1316,17 @@ def test_build_change_set_survives_non_string_changed_nodes() -> None:
     assert scope == "configuration"
 
 
-def test_verify_keeps_the_ports_run_error() -> None:
+def test_verify_keeps_the_ports_run_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """Fix's ``Run(...)`` literal had no ``error=`` at all, so a launch failure
     was persisted with an empty error and diagnose saw nothing."""
     launch_error = "node 'node4' (http-request): body.data.0.type Field required [invalid_param]"
     env, _ = _new_env()
-    env.fake_dify.run_draft = lambda *_a, **_k: Run(
-        kind="verify", immutable=True, dify_run_id="", status="failed", per_node=[], error=launch_error
+    monkeypatch.setattr(
+        env.fake_dify,
+        "run_draft",
+        lambda *_a, **_k: Run(
+            kind="verify", immutable=True, dify_run_id="", status="failed", per_node=[], error=launch_error
+        ),
     )
     s = _session(current_state=PcState.FIX_VERIFY)
 
@@ -1329,11 +1338,13 @@ def test_verify_keeps_the_ports_run_error() -> None:
     assert res.run.error == launch_error
 
 
-def test_verify_survives_a_run_draft_that_raises() -> None:
+def test_verify_survives_a_run_draft_that_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     """Build and Edit already degrade a raising ``run_draft`` to a failed Run;
     Fix's ``handle_verify`` had no try/except and killed the advance."""
     env, _ = _new_env()
-    env.fake_dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("kaboom-provider"))
+    monkeypatch.setattr(
+        env.fake_dify, "run_draft", lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("kaboom-provider"))
+    )
     s = _session(current_state=PcState.FIX_VERIFY)
 
     res = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
@@ -1345,7 +1356,7 @@ def test_verify_survives_a_run_draft_that_raises() -> None:
     assert res.run.culprit_node_id == ""
 
 
-def test_verify_marks_a_succeeded_run_that_reached_no_end_as_no_output() -> None:
+def test_verify_marks_a_succeeded_run_that_reached_no_end_as_no_output(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.dify_builder.models import NodeOutput
 
     env, _ = _new_env()
@@ -1363,13 +1374,17 @@ def test_verify_marks_a_succeeded_run_that_reached_no_end_as_no_output() -> None
             {"source": "node2", "target": "node6", "sourceHandle": "else"},
         ],
     }
-    env.fake_dify.run_draft = lambda *_a, **_k: Run(
-        kind="verify",
-        immutable=True,
-        dify_run_id="run-f",
-        verification=successful_verification(env.fake_dify, no_output=True),
-        status="succeeded",
-        per_node=[NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")],
+    monkeypatch.setattr(
+        env.fake_dify,
+        "run_draft",
+        lambda *_a, **_k: Run(
+            kind="verify",
+            immutable=True,
+            dify_run_id="run-f",
+            verification=successful_verification(env.fake_dify, no_output=True),
+            status="succeeded",
+            per_node=[NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")],
+        ),
     )
     s = _session(current_state=PcState.FIX_VERIFY)
 
@@ -1460,12 +1475,16 @@ def test_run_finished_without_output_is_false_without_an_end_node() -> None:
     assert run_finished_without_output(graph, per_node) is False
 
 
-def test_each_unknown_outcome_stops_at_the_fix_decision_gate() -> None:
+def test_each_unknown_outcome_stops_at_the_fix_decision_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
 
     env, _ = _new_env()
-    env.fake_dify.run_draft = lambda *_a, **_k: Run(
-        kind="verify", immutable=True, status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+    monkeypatch.setattr(
+        env.fake_dify,
+        "run_draft",
+        lambda *_a, **_k: Run(
+            kind="verify", immutable=True, status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+        ),
     )
     s = _session(current_state=PcState.FIX_VERIFY)
 
@@ -1482,13 +1501,17 @@ def test_each_unknown_outcome_stops_at_the_fix_decision_gate() -> None:
     )
 
 
-def test_re_fix_after_unknown_requires_new_inputs() -> None:
+def test_re_fix_after_unknown_requires_new_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
     """Re-fix clears the input reference; another verification requires new inputs."""
     from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
 
     env, _ = _new_env()
-    env.fake_dify.run_draft = lambda *_a, **_k: Run(
-        kind="verify", immutable=True, status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+    monkeypatch.setattr(
+        env.fake_dify,
+        "run_draft",
+        lambda *_a, **_k: Run(
+            kind="verify", immutable=True, status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+        ),
     )
     s = _session(current_state=PcState.FIX_VERIFY)
 
@@ -1526,6 +1549,7 @@ _UNFED_AGGREGATOR_REASON = (
 
 
 def test_a_repair_the_guards_condemned_reaches_the_gate_with_its_reason(
+    monkeypatch: pytest.MonkeyPatch,
     mocker: pytest_mock.MockerFixture,
 ) -> None:
     """Parity with Edit's refusal. ``propose_repair`` already refused to stage a
@@ -1536,7 +1560,7 @@ def test_a_repair_the_guards_condemned_reaches_the_gate_with_its_reason(
     is precisely what makes a manual fix possible."""
     env, _ = _new_env()
     s = _session()
-    fc = DifyBuilderContext()
+    fc = DifyBuilderContext(diagnosis=Diagnosis(culprit_node_id="output", root_cause="Missing input"))
     written: list[object] = []
     mocker.patch.object(env.fake_dify, "apply_repair", side_effect=lambda *a, **k: written.append((a, k)))
 
@@ -1547,7 +1571,7 @@ def test_a_repair_the_guards_condemned_reaches_the_gate_with_its_reason(
         _ = diagnosis, graph
         return ([], Risk(level="high", reason=_UNFED_AGGREGATOR_REASON, has_external_side_effect=False))
 
-    env.agent.propose_repair = propose_repair
+    monkeypatch.setattr(env.agent, "propose_repair", propose_repair)
 
     result = handle_propose(env, Turn(actor=_actor()), s, fc)
 
@@ -1561,12 +1585,12 @@ def test_a_repair_the_guards_condemned_reaches_the_gate_with_its_reason(
     assert turns[-1].payload["cards"] == []
 
 
-def test_a_staged_repair_still_carries_no_error_card() -> None:
+def test_a_staged_repair_still_carries_no_error_card(monkeypatch: pytest.MonkeyPatch) -> None:
     """The other half: the card appears only when there is nothing to stage, so
     an ordinary proposal is unchanged."""
     env, _ = _new_env()
     s = _session()
-    fc = DifyBuilderContext()
+    fc = DifyBuilderContext(diagnosis=Diagnosis(culprit_node_id="output", root_cause="Missing input"))
     from core.dify_builder.models import MutationIntent
 
     def propose_repair(
@@ -1579,7 +1603,7 @@ def test_a_staged_repair_still_carries_no_error_card() -> None:
             Risk(level="low", reason="Config-only fix.", has_external_side_effect=False),
         )
 
-    env.agent.propose_repair = propose_repair
+    monkeypatch.setattr(env.agent, "propose_repair", propose_repair)
 
     result = handle_propose(env, Turn(actor=_actor()), s, fc)
 

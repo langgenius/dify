@@ -1,14 +1,13 @@
 """Keep public action declarations intact at the planning model boundary."""
 
-from typing import cast
-
 import pytest
 
-from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from services.dify_builder.agent import build
 from services.dify_builder.agent.resources import ResourceRef, _tool_ref
 from tests.unit_tests.services.dify_builder.test_build_cognition import _FakeInstance, _plan_reply
+from tests.unit_tests.services.dify_builder.test_plugin_tool_output_context import _entry
+from tests.unit_tests.services.dify_builder.typed_fixtures import dictionary
 
 
 def test_planner_and_discovery_receive_the_actual_action_parameters() -> None:
@@ -49,26 +48,26 @@ def test_unknown_parameter_contract_is_distinct_from_a_no_parameter_action() -> 
 def test_inventory_exposes_output_schema_availability_to_the_high_level_planner(
     declaration: dict[str, object], expected_state: str
 ) -> None:
-    entry = cast(
-        ToolCatalogueEntry,
-        {"provider_name": "fixture/decoder/decoder", "tool_name": "decode", **declaration},
-    )
+    entry = _entry({})
+    if "output_schema" in declaration:
+        entry["output_schema"] = dictionary(declaration["output_schema"])
+    else:
+        del entry["output_schema"]
     resource = _tool_ref(entry, set())
 
     assert f"Action output schema: {expected_state}" in build._planner_tool_section([resource])
 
 
 def test_high_level_plan_receives_tool_channels_before_committing_consumer_steps() -> None:
-    entry = cast(
-        ToolCatalogueEntry,
-        {"provider_name": "fixture/decoder/decoder", "tool_name": "decode", "output_schema": {}},
-    )
+    entry = _entry({})
     model = _FakeInstance([_plan_reply(["tool node decodes content", "code node validates the decoded records"])])
 
     plan = build.propose_plan_v1(model, {}, tools=[_tool_ref(entry, set())], goal_text="Count paid records only.")
 
     assert plan is not None
-    messages = cast(list[PromptMessage], model.calls[0][0])
+    messages = model.calls[0][0]
+    assert isinstance(messages, list)
+    assert isinstance(messages[0], PromptMessage)
     system = messages[0].get_text_content()
     assert "Action output schema: absent" in system
     assert "json is a collection of JSON messages" in system

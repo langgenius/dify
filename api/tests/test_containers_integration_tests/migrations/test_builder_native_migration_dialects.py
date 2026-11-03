@@ -1,12 +1,11 @@
 """Real database migration parity for retained native execution evidence."""
 
 import importlib.util
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
 from types import ModuleType
-from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -43,11 +42,9 @@ def migrated_connection(request: pytest.FixtureRequest, free_tcp_port: int) -> I
         if request.param == "postgresql"
         else MySqlContainer("mysql:8.0", dialect="pymysql", username="root", password="test")
     )
-    # Docker accepts host-IP tuples; testcontainers annotates only scalar ports.
     # Use an OS-assigned unused port: Docker's empty HostPort allocation collided
-    # on the Linux CI daemon. Loopback also avoids Docker Desktop proxy resets.
-    bind = cast(Callable[[int, tuple[str, int]], object], container.with_bind_ports)
-    bind(container.port, ("127.0.0.1", free_tcp_port))
+    # on the Linux CI daemon.
+    container.with_bind_ports(container.port, free_tcp_port)
     probe = (
         'PGPASSWORD="$POSTGRES_PASSWORD" psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" '
         '--host 127.0.0.1 -tAc "SELECT 1"'

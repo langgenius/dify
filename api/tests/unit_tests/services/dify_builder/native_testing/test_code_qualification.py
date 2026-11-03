@@ -1,11 +1,14 @@
 from collections.abc import Callable
-from typing import cast
 
 import pytest
 from pydantic import JsonValue
 
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-from services.dify_builder.native_testing.sandbox.qualification import NativeCodeCapability, NativeCodeQualification
+from services.dify_builder.native_testing.sandbox.qualification import (
+    NativeCodeCapability,
+    NativeCodeQualification,
+    NativeCodeQualificationOwner,
+)
 
 
 class CapabilityOwner:
@@ -56,18 +59,10 @@ def qualification() -> tuple[NativeCodeQualification, list[NativeCodeCapability]
     return NativeCodeQualification(capability=capability(), owner=owner), seen
 
 
-def test_capability_dto_and_artifact_hashes_do_not_grant_authority() -> None:
-    from services.dify_builder.native_testing.sandbox.qualification import (
-        NativeCodeQualification,
-        NativeCodeQualificationOwner,
-    )
-
+@pytest.mark.parametrize("owner", [None, InvalidQualificationOwner()], ids=["missing", "invalid-result"])
+def test_capability_dto_and_artifact_hashes_do_not_grant_authority(owner: NativeCodeQualificationOwner) -> None:
     with pytest.raises(BuilderExecutionPolicyError):
-        NativeCodeQualification(capability=capability(), owner=cast(NativeCodeQualificationOwner, None))
-    with pytest.raises(BuilderExecutionPolicyError):
-        NativeCodeQualification(
-            capability=capability(), owner=cast(NativeCodeQualificationOwner, InvalidQualificationOwner())
-        )
+        NativeCodeQualification(capability=capability(), owner=owner)
 
 
 def test_qualification_rechecks_exact_complete_snapshot_for_each_use() -> None:
@@ -105,9 +100,9 @@ def test_invalid_qualified_identity_refuses_before_owner(field: str, value: Json
         )
 
 
-def test_owner_revocation_refuses_existing_qualification() -> None:
+def test_owner_revocation_refuses_existing_qualification(monkeypatch: pytest.MonkeyPatch) -> None:
     q, _ = qualification()
-    q.owner.validate = lambda **_kw: (_ for _ in ()).throw(ValueError("private reason"))
+    monkeypatch.setattr(q.owner, "validate", lambda **_kw: (_ for _ in ()).throw(ValueError("private reason")))
     with pytest.raises(BuilderExecutionPolicyError) as error:
         q.check()
     assert "private reason" not in str(error.value)
@@ -148,9 +143,11 @@ def test_code_descriptor_binds_config_environment_and_limits_without_payload() -
     )
     assert d["native_type"] == "code"
     assert d["native_version"] == "1"
-    assert d["policy"]["isolated"] is True
-    assert d["policy"]["egress"] is False
-    assert d["policy"]["approval_scope"] == "operation"
+    policy = d["policy"]
+    assert isinstance(policy, dict)
+    assert policy["isolated"] is True
+    assert policy["egress"] is False
+    assert policy["approval_scope"] == "operation"
     assert "CANARY" not in str(d)
     assert "private title" not in str(d)
     changed = describe_code_resource(

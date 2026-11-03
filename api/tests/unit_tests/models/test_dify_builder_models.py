@@ -6,10 +6,9 @@ values (`id`, `version`, timestamps) populate on flush, and the
 """
 
 from collections.abc import Iterator
-from typing import cast
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -166,8 +165,6 @@ def test_run_and_test_input_round_trip(session: Session) -> None:
         kind="verify",
         dify_run_id="run-123",
         status="succeeded",
-        # Preserve this legacy JSON shape: the round trip must not coerce it.
-        per_node=cast(list[dict[str, object]], {"node-1": "ok"}),
         culprit_node_id=None,
         inputs_ref="ref-1",
         tokens=42,
@@ -182,9 +179,13 @@ def test_run_and_test_input_round_trip(session: Session) -> None:
     )
     session.add_all([run, test_input])
     session.flush()
+    # Seed the legacy JSON shape at the database boundary, outside the typed constructor.
+    table = Base.metadata.tables[DifyBuilderRun.__tablename__]
+    session.execute(update(table).where(table.c.id == run.id).values(per_node={"node-1": "ok"}))
     session.refresh(run)
     session.refresh(test_input)
 
     assert run.id
     assert run.immutable is True
+    assert run.per_node == {"node-1": "ok"}
     assert test_input.id

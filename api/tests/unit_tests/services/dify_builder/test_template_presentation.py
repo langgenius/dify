@@ -127,20 +127,20 @@ def test_json_coverage_refusal_uses_only_static_actionable_copy(reason: str, exp
     assert card.terminal_outputs is None
 
 
-def test_template_refusal_clears_staged_repairs_and_cannot_publish() -> None:
+def test_template_refusal_clears_staged_repairs_and_cannot_publish(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.application.handlers_build import handle_test_and_repair
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
 
     run = refused_run("unsupported_template_syntax")
     dify = FakeBuildDifyPort()
-    dify.run_draft = lambda *_args, **_kwargs: run
+    monkeypatch.setattr(dify, "run_draft", lambda *_args, **_kwargs: run)
     agent = StubAgent()
 
     def forbidden(*_args: object, **_kwargs: object) -> Never:
         pytest.fail("policy refusal entered automatic diagnosis or repair")
 
-    agent.diagnose = forbidden
-    agent.propose_repair = forbidden
+    monkeypatch.setattr(agent, "diagnose", forbidden)
+    monkeypatch.setattr(agent, "propose_repair", forbidden)
     env, repo = _new_env(dify=dify, agent=agent)
     session = _session(current_state=PcState.BUILD_TEST_AND_REPAIR)
     repo.save_test_input(TestInput(id="ti", session_id=session.id, source="user", inputs={"body": "SECRET-INPUT"}))

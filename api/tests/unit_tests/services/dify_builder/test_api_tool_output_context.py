@@ -4,7 +4,6 @@ import json
 from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
-from typing import cast
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -29,6 +28,7 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     forbid_secret_and_business_calls,
     install_fake_daemon,
 )
+from tests.unit_tests.services.dify_builder.typed_fixtures import dictionaries, dictionary, list_value
 from tests.unit_tests.services.tools.test_api_tool_catalogue import ACTION, PROVIDER_ID, _add_provider
 
 type PublicApi = tuple[Engine, list[str]]
@@ -53,7 +53,7 @@ def public_api(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Public
 
 def _public_schema() -> dict[str, object]:
     fixture = Path(__file__).parents[1] / "tools" / "fixtures" / "qa_news_search_openapi.json"
-    return cast(dict[str, object], json.loads(fixture.read_text()))
+    return dictionary(json.loads(fixture.read_text()))
 
 
 def _response_schema() -> dict[str, object]:
@@ -81,8 +81,8 @@ def _response_schema() -> dict[str, object]:
 def _entry(engine: Engine, response_schemas: dict[str, object] | None = None) -> ToolCatalogueEntry:
     schema = _public_schema()
     if response_schemas is not None:
-        paths = cast(dict[str, object], schema["paths"])
-        operation = cast(dict[str, object], cast(dict[str, object], paths["/news"])["get"])
+        paths = dictionary(schema["paths"])
+        operation = dictionary(dictionary(paths["/news"])["get"])
         operation["responses"] = response_schemas
     bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(schema)
     _add_provider(engine, tools=[bundle.model_dump(mode="json") for bundle in bundles])
@@ -167,8 +167,8 @@ def _capture_consumer(
 def _contracts(prompt: str) -> list[dict[str, object]]:
     marker = "# Native API output contracts\n\n"
     assert marker in prompt
-    payload = cast(dict[str, object], json.loads(prompt.split(marker, 1)[1].splitlines()[0]))
-    return cast(list[dict[str, object]], payload["tools"])
+    payload = dictionary(json.loads(prompt.split(marker, 1)[1].splitlines()[0]))
+    return dictionaries(payload["tools"])
 
 
 def test_direct_public_response_schema_stays_separate_from_native_outputs(public_api: PublicApi) -> None:
@@ -279,9 +279,9 @@ def test_many_relevant_api_nodes_have_bounded_context_and_explicit_omissions(pub
     marker = "# Native API output contracts\n\n"
     assert marker in prompt
     context = prompt.split(marker, 1)[1].split("# Normalized plan and topology", 1)[0]
-    payload = cast(dict[str, object], json.loads(context.splitlines()[0]))
+    payload = dictionary(json.loads(context.splitlines()[0]))
 
-    assert len(cast(list[object], payload["tools"])) == 8
+    assert len(list_value(payload["tools"])) == 8
     assert payload["omitted_upstream_api_nodes"] == 32
     assert len(context.encode()) < 16_000
     assert forbidden == []
@@ -356,7 +356,7 @@ def test_api_code_system_rules_keep_undeclared_shapes_unknown(
     assert _SYSTEM_RULE_MARKER in system
     assert "If no direct response declaration establishes a shape, do not invent fields" in system
     assert '"news"' not in system
-    assert cast(dict[str, object], _contracts(user)[0]["response_contracts"])["schemas"] == []
+    assert dictionary(_contracts(user)[0]["response_contracts"])["schemas"] == []
     assert forbidden == []
 
 

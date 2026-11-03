@@ -126,16 +126,20 @@ def test_build_form_fields_whitelists_and_coerces_type() -> None:
     assert fields[1].type == "text"  # unknown type coerced to text
 
 
-def test_capability_check_renders_agent_fields() -> None:
+def test_capability_check_renders_agent_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     # StubAgent.analyze_goal returns dynamic fields; the form card and
     # fc.form_fields must reflect them (not a hardcoded constant).
     from services.dify_builder.application.handlers_build import handle_capability_check
 
     env, _ = _new_env()
-    env.agent.analyze_goal = lambda goal_text, *, reply_language=None: {  # noqa: ARG005
-        "fields": [{"key": "categories", "label": "Categories", "type": "text"}],
-        "values": {"categories": "billing, refunds"},
-    }
+    monkeypatch.setattr(
+        env.agent,
+        "analyze_goal",
+        lambda goal_text, *, reply_language=None: {  # noqa: ARG005
+            "fields": [{"key": "categories", "label": "Categories", "type": "text"}],
+            "values": {"categories": "billing, refunds"},
+        },
+    )
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_CAPABILITY_CHECK)
     fc = DifyBuilderContext(goal_text="triage support tickets")
     result = handle_capability_check(env, Turn(actor=_actor()), s, fc)
@@ -652,7 +656,7 @@ def test_plan_approval_ignores_non_approve_action() -> None:
     assert res.next == PcState.BUILD_PLAN_APPROVAL
 
 
-def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas() -> None:
+def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas(monkeypatch: pytest.MonkeyPatch) -> None:
     """If build_nodes yields no create_node intents (generation ultimately failed),
     the handler must NOT delete the placeholder start, must NOT claim a successful
     build, and must stay in plan_approval -- otherwise the canvas is emptied while
@@ -679,7 +683,7 @@ def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas() -> None:
         del plan_items, resource_ids, trusted_text, reply_language
         return BuildNodesResult(intents=[], error="UNRESOLVED_REFERENCE: Reference {#node4.x#} not declared")
 
-    env.agent.build_nodes = build_nodes
+    monkeypatch.setattr(env.agent, "build_nodes", build_nodes)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
     fc = DifyBuilderContext(plan_items=["x"])
 
@@ -693,7 +697,9 @@ def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas() -> None:
     assert "Workflow draft created" not in english_text(assistant.payload["reply_text"])  # no false success claim
 
 
-def test_plan_approval_records_diagnostics_in_backend_logs(caplog: pytest.LogCaptureFixture) -> None:
+def test_plan_approval_records_diagnostics_in_backend_logs(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     """Structured graph-generation diagnostics stay backend-only."""
     from services.dify_builder.application.handlers_build import handle_plan_approval
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
@@ -727,7 +733,7 @@ def test_plan_approval_records_diagnostics_in_backend_logs(caplog: pytest.LogCap
             intents=[], error="Reference {#node2.response#} not declared on node 'node2'", diagnostics=diag
         )
 
-    env.agent.build_nodes = build_nodes
+    monkeypatch.setattr(env.agent, "build_nodes", build_nodes)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
     fc = DifyBuilderContext(plan_items=["x"])
 
@@ -739,7 +745,7 @@ def test_plan_approval_records_diagnostics_in_backend_logs(caplog: pytest.LogCap
     assert record.__dict__["diagnostics"] == diag
 
 
-def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build() -> None:
+def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.dify_builder.models import MutationIntent
     from services.dify_builder.application.handlers_build import handle_plan_approval
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
@@ -776,7 +782,7 @@ def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build() -> Non
             ]
         )
 
-    env.agent.build_nodes = build_nodes
+    monkeypatch.setattr(env.agent, "build_nodes", build_nodes)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
     fc = DifyBuilderContext(plan_items=["x"])
     handle_plan_approval(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
@@ -787,7 +793,9 @@ def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build() -> Non
     assert types == {"start", "end"}  # exactly one start
 
 
-def test_plan_approval_survives_generator_reusing_the_deleted_placeholder_start_id() -> None:
+def test_plan_approval_survives_generator_reusing_the_deleted_placeholder_start_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """M2 fix (final review, Minor/latent): on a from-scratch build, delete_intents
     drops the draft's placeholder start(s) by id, and _already_present filters
     generator creates against the PRE-delete existing_node_ids. If the generator's
@@ -831,7 +839,7 @@ def test_plan_approval_survives_generator_reusing_the_deleted_placeholder_start_
             ]
         )
 
-    env.agent.build_nodes = build_nodes
+    monkeypatch.setattr(env.agent, "build_nodes", build_nodes)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
     fc = DifyBuilderContext(plan_items=["x"])
     handle_plan_approval(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
@@ -979,7 +987,9 @@ def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair() -> Non
         ("", False),
     ],
 )
-def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate(reason: str, expected_reason: bool) -> None:
+def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate(
+    monkeypatch: pytest.MonkeyPatch, reason: str, expected_reason: bool
+) -> None:
     """When propose_repair finds no safe fix (empty intents), the fail path
     must still route to the gate, but WITHOUT a change_set card, and with the
     "no safe automatic fix" reply_text variant -- the `if intents` branch the
@@ -997,7 +1007,7 @@ def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate(reaso
         _ = diagnosis, graph, reply_language
         return ([], Risk(level="high", reason=reason, has_external_side_effect=False))
 
-    env.agent.propose_repair = propose_repair
+    monkeypatch.setattr(env.agent, "propose_repair", propose_repair)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     fc = DifyBuilderContext(built_node_ids=["llm"])
     result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
@@ -1145,6 +1155,7 @@ def test_test_and_repair_model_config_failure_surfaces_without_repair() -> None:
 
 
 def test_missing_proof_running_result_stops_at_review(
+    monkeypatch: pytest.MonkeyPatch,
     mocker: pytest_mock.MockerFixture,
 ) -> None:
     """A truncated verify result requires review and never enters diagnosis."""
@@ -1157,11 +1168,15 @@ def test_missing_proof_running_result_stops_at_review(
     mocker.patch.object(agent, "diagnose", side_effect=lambda *a, **kw: diagnose_calls.append((a, kw)))
     env, _ = _new_env(agent=agent)
     env.fake_dify = FakeBuildDifyPort()
-    env.fake_dify.run_draft = lambda *_a, **_k: Run(
-        dify_run_id="",
-        status="running",
-        per_node=[],
-        error="the workflow run's progress stream ended before the run did, so its outcome is unknown",
+    monkeypatch.setattr(
+        env.fake_dify,
+        "run_draft",
+        lambda *_a, **_k: Run(
+            dify_run_id="",
+            status="running",
+            per_node=[],
+            error="the workflow run's progress stream ended before the run did, so its outcome is unknown",
+        ),
     )
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     fc = DifyBuilderContext(built_node_ids=["llm"])
@@ -1184,7 +1199,7 @@ def test_missing_proof_running_result_stops_at_review(
     assert "Execution safety requires review" in english_text(assistant.payload["reply_text"])
 
 
-def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed() -> None:
+def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed(monkeypatch: pytest.MonkeyPatch) -> None:
     """run_draft raising must not crash the advance -- the try/except degrade
     path converts the exception into a failed run and still routes to the
     build.await_repair gate."""
@@ -1193,7 +1208,7 @@ def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed() -> Non
 
     env, _ = _new_env()
     env.fake_dify = FakeBuildDifyPort()
-    env.fake_dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom"))
+    monkeypatch.setattr(env.fake_dify, "run_draft", lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom")))
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     fc = DifyBuilderContext(built_node_ids=["llm"])
 
@@ -1204,7 +1219,7 @@ def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed() -> Non
     assert result.run.status == "failed"
 
 
-def test_test_and_repair_run_draft_raises_captures_error_on_run() -> None:
+def test_test_and_repair_run_draft_raises_captures_error_on_run(monkeypatch: pytest.MonkeyPatch) -> None:
     """Regression: a launch-time exception must be captured on run.error
     (logged + stored), not silently discarded into a blank failed stub. A
     non-input error still routes to the config-repair gate."""
@@ -1213,7 +1228,9 @@ def test_test_and_repair_run_draft_raises_captures_error_on_run() -> None:
 
     env, _ = _new_env()
     env.fake_dify = FakeBuildDifyPort()
-    env.fake_dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("kaboom-provider"))
+    monkeypatch.setattr(
+        env.fake_dify, "run_draft", lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("kaboom-provider"))
+    )
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     fc = DifyBuilderContext(built_node_ids=["llm"])
 
@@ -1224,7 +1241,7 @@ def test_test_and_repair_run_draft_raises_captures_error_on_run() -> None:
     assert "kaboom-provider" in (result.run.error or "")
 
 
-def test_launch_input_error_without_proof_stops_at_review() -> None:
+def test_launch_input_error_without_proof_stops_at_review(monkeypatch: pytest.MonkeyPatch) -> None:
     """Launch error text is preserved, but cannot authorize diagnosis or automatic retry."""
     from core.dify_builder.models import TestInput
     from services.dify_builder.application.handlers_build import handle_test_and_repair
@@ -1232,7 +1249,11 @@ def test_launch_input_error_without_proof_stops_at_review() -> None:
 
     env, _ = _new_env()
     env.fake_dify = FakeBuildDifyPort()
-    env.fake_dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(ValueError("query is required in input form"))
+    monkeypatch.setattr(
+        env.fake_dify,
+        "run_draft",
+        lambda *_a, **_k: (_ for _ in ()).throw(ValueError("query is required in input form")),
+    )
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
     fc = DifyBuilderContext(built_node_ids=["llm"], test_input_ref="ti-1")
@@ -1805,7 +1826,7 @@ def test_run_test_skips_gate_when_input_prepared() -> None:
     assert result.next == PcState.BUILD_TEST_AND_REPAIR
 
 
-def test_run_test_prefills_the_form_with_mock_values() -> None:
+def test_run_test_prefills_the_form_with_mock_values(monkeypatch: pytest.MonkeyPatch) -> None:
     """The user never has to invent test data -- but they do get to see and
     edit it. Inventing the values is the cost item 5 removed; confirming them
     with one click is not, and a green check produced by inputs nobody saw is
@@ -1832,7 +1853,7 @@ def test_run_test_prefills_the_form_with_mock_values() -> None:
         del schema, prior_failed
         return {"topic": "A synthetic topic"}
 
-    env.agent.generate_mock_inputs = generate_mock_inputs
+    monkeypatch.setattr(env.agent, "generate_mock_inputs", generate_mock_inputs)
     result = handle_execution(env, Turn(actor=_actor(), action=Action(kind="run_test")), s, fc)
     assert result.next == PcState.BUILD_AWAIT_TESTDATA
     form = next(i for i in result.items if i.kind == "form")
@@ -1841,7 +1862,7 @@ def test_run_test_prefills_the_form_with_mock_values() -> None:
     assert form.payload["values"] == {"topic": "A synthetic topic"}
 
 
-def test_run_test_prefill_omits_a_placeholder_endpoint_but_keeps_other_fields() -> None:
+def test_run_test_prefill_omits_a_placeholder_endpoint_but_keeps_other_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     """ESQ1-302 fix round 1: ``_ground_placeholder_endpoints`` re-points a
     placeholder http-request URL at a required start variable, but the mock
     generator invents just as plausible a URL for a text-input as it does for
@@ -1878,7 +1899,7 @@ def test_run_test_prefill_omits_a_placeholder_endpoint_but_keeps_other_fields() 
         _ = schema, prior_failed
         return {"topic": "quarterly report", "h_url": "https://api.example.com/invented"}
 
-    env.agent.generate_mock_inputs = generate_mock_inputs
+    monkeypatch.setattr(env.agent, "generate_mock_inputs", generate_mock_inputs)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
     fc = DifyBuilderContext(test_input_ref="")
     result = handle_execution(env, Turn(actor=_actor(), action=Action(kind="run_test")), s, fc)
@@ -1888,7 +1909,9 @@ def test_run_test_prefill_omits_a_placeholder_endpoint_but_keeps_other_fields() 
     assert [f["type"] for f in form.payload["fields"]] == ["text-input", "text-input"]  # both still asked for
 
 
-def test_run_test_prefill_omits_a_placeholder_credential_but_keeps_other_fields() -> None:
+def test_run_test_prefill_omits_a_placeholder_credential_but_keeps_other_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The credential counterpart of the placeholder-endpoint prefill guard
     (Task 3): a mocked API key would let the run launch with an invented
     secret and fail deep inside the http-request node instead of at input
@@ -1931,7 +1954,7 @@ def test_run_test_prefill_omits_a_placeholder_credential_but_keeps_other_fields(
         _ = schema, prior_failed
         return {"topic": "quarterly report", "h_api_key": "sk-mock-invented"}
 
-    env.agent.generate_mock_inputs = generate_mock_inputs
+    monkeypatch.setattr(env.agent, "generate_mock_inputs", generate_mock_inputs)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
     fc = DifyBuilderContext(test_input_ref="")
     result = handle_execution(env, Turn(actor=_actor(), action=Action(kind="run_test")), s, fc)
@@ -1974,7 +1997,7 @@ def test_run_test_still_asks_when_a_file_is_declared_among_other_variables() -> 
     assert [f["type"] for f in form.payload["fields"]] == ["text-input", "file"]
 
 
-def test_await_testdata_mock_prepares_input_and_advances() -> None:
+def test_await_testdata_mock_prepares_input_and_advances(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.application.handlers_build import handle_await_testdata
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -1986,7 +2009,7 @@ def test_await_testdata_mock_prepares_input_and_advances() -> None:
         _ = schema, prior_failed
         return {"topic": "hi"}
 
-    env.agent.generate_mock_inputs = generate_mock_inputs
+    monkeypatch.setattr(env.agent, "generate_mock_inputs", generate_mock_inputs)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_AWAIT_TESTDATA)
     fc = DifyBuilderContext()
     result = handle_await_testdata(
@@ -2083,14 +2106,14 @@ class _EngineRunDraft:
         )
 
 
-def test_await_testdata_mock_leaves_the_endpoint_for_the_form() -> None:
+def test_await_testdata_mock_leaves_the_endpoint_for_the_form(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.application.handlers_build import handle_await_testdata
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     env, _ = _new_env()
     env.fake_dify = FakeBuildDifyPort()
     env.fake_dify.graph = _endpoint_graph()
-    env.agent.generate_mock_inputs = _mock_with_an_invented_endpoint
+    monkeypatch.setattr(env.agent, "generate_mock_inputs", _mock_with_an_invented_endpoint)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_AWAIT_TESTDATA)
 
     result = handle_await_testdata(
@@ -2105,7 +2128,7 @@ def test_await_testdata_mock_leaves_the_endpoint_for_the_form() -> None:
     assert env.repo.get_test_input(result.context.test_input_ref).inputs == {"topic": "quarterly report"}
 
 
-def test_mock_inputs_route_a_missing_endpoint_back_to_the_testdata_gate() -> None:
+def test_mock_inputs_route_a_missing_endpoint_back_to_the_testdata_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     """ESQ1-302's repair thrash: "use mock data" invented a URL for the endpoint
     variable, the engine accepted it, the node failed on connection, and
     ``is_input_failure`` (rightly) called that a config failure -- so the flow
@@ -2118,8 +2141,9 @@ def test_mock_inputs_route_a_missing_endpoint_back_to_the_testdata_gate() -> Non
     env, _ = _new_env()
     env.fake_dify = FakeBuildDifyPort()
     env.fake_dify.graph = _endpoint_graph()
-    env.fake_dify.run_draft = engine = _EngineRunDraft(env.fake_dify.graph)
-    env.agent.generate_mock_inputs = _mock_with_an_invented_endpoint
+    engine = _EngineRunDraft(env.fake_dify.graph)
+    monkeypatch.setattr(env.fake_dify, "run_draft", engine)
+    monkeypatch.setattr(env.agent, "generate_mock_inputs", _mock_with_an_invented_endpoint)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_AWAIT_TESTDATA)
     mocked = handle_await_testdata(
         env,
@@ -2144,15 +2168,16 @@ def test_mock_inputs_route_a_missing_endpoint_back_to_the_testdata_gate() -> Non
     )
 
 
-def test_test_and_repair_defensive_mock_leaves_the_endpoint_for_the_form() -> None:
+def test_test_and_repair_defensive_mock_leaves_the_endpoint_for_the_form(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.application.handlers_build import handle_test_and_repair
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     env, _ = _new_env()
     env.fake_dify = FakeBuildDifyPort()
     env.fake_dify.graph = _endpoint_graph()
-    env.fake_dify.run_draft = engine = _EngineRunDraft(env.fake_dify.graph)
-    env.agent.generate_mock_inputs = _mock_with_an_invented_endpoint
+    engine = _EngineRunDraft(env.fake_dify.graph)
+    monkeypatch.setattr(env.fake_dify, "run_draft", engine)
+    monkeypatch.setattr(env.agent, "generate_mock_inputs", _mock_with_an_invented_endpoint)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
 
     result = handle_test_and_repair(
@@ -2943,7 +2968,7 @@ def _esq1_302_launch_failed_run(*_a: object, **_k: object) -> Run:
     )
 
 
-def test_launch_error_without_native_proof_never_stages_repair() -> None:
+def test_launch_error_without_native_proof_never_stages_repair(monkeypatch: pytest.MonkeyPatch) -> None:
     """Repeated launch errors retain their text and stay at review without diagnosis."""
     from core.dify_builder.models import TestInput
     from services.dify_builder.application.handlers_build import (
@@ -2955,7 +2980,7 @@ def test_launch_error_without_native_proof_never_stages_repair() -> None:
 
     env, _ = _new_env(agent=StubAgent())
     env.fake_dify = FakeBuildDifyPort()
-    env.fake_dify.run_draft = _esq1_302_launch_failed_run
+    monkeypatch.setattr(env.fake_dify, "run_draft", _esq1_302_launch_failed_run)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
     fc = DifyBuilderContext(test_input_ref="ti-1")
@@ -2987,7 +3012,9 @@ def test_launch_error_without_native_proof_never_stages_repair() -> None:
     )
 
 
-def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing() -> None:
+def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """``apply_repair`` now dry-validates the graph it is about to write and
     raises ``PreflightError`` (a ``DraftWouldNotStartError``). Before this, the error left
     the handler uncaught and the advance died mid-step; now it is a reply and
@@ -3006,7 +3033,7 @@ def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing
             "the draft would not start: node 'llm' (llm): 2 validation errors for LLMNodeData"
         )
 
-    dify.apply_repair = would_not_start
+    monkeypatch.setattr(dify, "apply_repair", would_not_start)
     events: list[dict[str, object]] = []
     env, repo = _new_env(dify=dify, emit_canvas=events.append)
     s = _seed_build_session(
@@ -3027,7 +3054,9 @@ def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing
     assert events == []
 
 
-def test_plan_approval_does_not_call_an_unapplicable_graph_a_workflow_that_cannot_start() -> None:
+def test_plan_approval_does_not_call_an_unapplicable_graph_a_workflow_that_cannot_start(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A graph_ops rejection ("node not found") is a ValueError too, but the
     draft was never checked for startability -- the generated intents just
     did not apply. Calling that "The workflow can't start" sends the user
@@ -3042,7 +3071,7 @@ def test_plan_approval_does_not_call_an_unapplicable_graph_a_workflow_that_canno
     def does_not_apply(*_a: object, **_k: object) -> NoReturn:
         raise ValueError("node not found: x")
 
-    dify.apply_repair = does_not_apply
+    monkeypatch.setattr(dify, "apply_repair", does_not_apply)
     events: list[dict[str, object]] = []
     env, repo = _new_env(dify=dify, emit_canvas=events.append)
     s = _seed_build_session(
@@ -3100,7 +3129,7 @@ def _succeeded_run(per_node_ids: list[str]) -> Callable[..., Run]:
     return run_draft
 
 
-def test_a_succeeded_run_that_took_a_branch_and_reached_no_end_is_not_a_pass() -> None:
+def test_a_succeeded_run_that_took_a_branch_and_reached_no_end_is_not_a_pass(monkeypatch: pytest.MonkeyPatch) -> None:
     """ESQ1-303's silent false pass. The engine reported ``succeeded`` because
     nothing failed; only node1 and node2 ran. That is not "All checks passed"."""
     from core.dify_builder.models import TestInput
@@ -3110,7 +3139,7 @@ def test_a_succeeded_run_that_took_a_branch_and_reached_no_end_is_not_a_pass() -
     events: list[dict[str, object]] = []
     dify = FakeBuildDifyPort()
     dify.graph = _BRANCHING_GRAPH
-    dify.run_draft = _succeeded_run(["node1", "node2"])
+    monkeypatch.setattr(dify, "run_draft", _succeeded_run(["node1", "node2"]))
     env, _ = _new_env(dify=dify, emit_canvas=events.append)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
@@ -3132,14 +3161,16 @@ def test_a_succeeded_run_that_took_a_branch_and_reached_no_end_is_not_a_pass() -
     assert events == []
 
 
-def test_a_succeeded_run_that_took_a_branch_and_reached_the_end_is_still_a_pass() -> None:
+def test_a_succeeded_run_that_took_a_branch_and_reached_the_end_is_still_a_pass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from core.dify_builder.models import TestInput
     from services.dify_builder.application.handlers_build import handle_test_and_repair
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     dify = FakeBuildDifyPort()
     dify.graph = _BRANCHING_GRAPH
-    dify.run_draft = _succeeded_run(["node1", "node2", "node3", "node6"])
+    monkeypatch.setattr(dify, "run_draft", _succeeded_run(["node1", "node2", "node3", "node6"]))
     env, _ = _new_env(dify=dify)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
@@ -3175,7 +3206,7 @@ _SIDE_EFFECT_ARM_GRAPH: Graph = {
 }
 
 
-def test_a_side_effect_only_arm_that_ran_to_completion_is_still_a_pass() -> None:
+def test_a_side_effect_only_arm_that_ran_to_completion_is_still_a_pass(monkeypatch: pytest.MonkeyPatch) -> None:
     """Reviewer Important #1: the run took node2's true-arm through to node4
     (a side-effect node with no End of its own) and never touched node5's End
     -- but node3/node4 DO appear in per_node, so node2 did not route nowhere.
@@ -3186,7 +3217,7 @@ def test_a_side_effect_only_arm_that_ran_to_completion_is_still_a_pass() -> None
 
     dify = FakeBuildDifyPort()
     dify.graph = _SIDE_EFFECT_ARM_GRAPH
-    dify.run_draft = _succeeded_run(["node1", "node2", "node3", "node4"])
+    monkeypatch.setattr(dify, "run_draft", _succeeded_run(["node1", "node2", "node3", "node4"]))
     env, _ = _new_env(dify=dify)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
@@ -3214,14 +3245,14 @@ _FAIL_BRANCH_LINEAR_GRAPH: Graph = {
 }
 
 
-def test_a_succeeded_fail_branch_node_in_a_linear_graph_is_still_a_pass() -> None:
+def test_a_succeeded_fail_branch_node_in_a_linear_graph_is_still_a_pass(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.dify_builder.models import TestInput
     from services.dify_builder.application.handlers_build import handle_test_and_repair
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     dify = FakeBuildDifyPort()
     dify.graph = _FAIL_BRANCH_LINEAR_GRAPH
-    dify.run_draft = _succeeded_run(["node1", "node2", "node6"])
+    monkeypatch.setattr(dify, "run_draft", _succeeded_run(["node1", "node2", "node6"]))
     env, _ = _new_env(dify=dify)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
@@ -3241,7 +3272,7 @@ def _unknown_outcome_run(*_a: object, **_k: object) -> Run:
     )
 
 
-def test_unknown_outcome_requires_review_on_every_attempt() -> None:
+def test_unknown_outcome_requires_review_on_every_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
     """Missing execution proof stops immediately at review on each attempt."""
     from core.dify_builder.models import TestInput
     from services.dify_builder.application.handlers_build import handle_test_and_repair
@@ -3250,7 +3281,7 @@ def test_unknown_outcome_requires_review_on_every_attempt() -> None:
 
     assert MAX_UNKNOWN_OUTCOMES == 2
     dify = FakeBuildDifyPort()
-    dify.run_draft = _unknown_outcome_run
+    monkeypatch.setattr(dify, "run_draft", _unknown_outcome_run)
     env, _ = _new_env(dify=dify)
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
@@ -3300,7 +3331,7 @@ def test_confirmed_build_test_uses_saved_input_without_repair_and_returns_to_rev
     assert_confirmed_handler_outcome("build", PcState.BUILD_TEST_AND_REPAIR, PcState.BUILD_REVIEW)
 
 
-def test_default_build_test_never_passes_consent_even_with_a_pending_reference() -> None:
+def test_default_build_test_never_passes_consent_even_with_a_pending_reference(monkeypatch: pytest.MonkeyPatch) -> None:
     from collections.abc import Callable, Mapping
 
     from core.dify_builder.models import Inputs, NodeEvent, Run
@@ -3338,7 +3369,7 @@ def test_default_build_test_never_passes_consent_even_with_a_pending_reference()
             effect_confirmation=effect_confirmation,
         )
 
-    env.fake_dify.run_draft = recording_run_draft
+    monkeypatch.setattr(env.fake_dify, "run_draft", recording_run_draft)
     handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
     assert seen == [(None, None)]
 

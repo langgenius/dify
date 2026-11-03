@@ -2,9 +2,7 @@
 
 import dataclasses
 import inspect
-from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -30,7 +28,7 @@ def _table(model: type[TypeBase]) -> sa.Table:
 
 def _new[T: TypeBase](model: type[T], values: dict[str, object]) -> T:
     # SQL metadata supplies heterogeneous constructor fields for each real model.
-    return cast(Callable[..., T], model)(**values)
+    return model(**values)
 
 
 @pytest.mark.parametrize("model", MODELS, ids=lambda model: model.__name__)

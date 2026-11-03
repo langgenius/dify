@@ -9,7 +9,7 @@ Redis-backed ``session_lock`` module.
 
 import json
 from collections.abc import Callable, Iterator
-from typing import Never, Protocol, cast, override
+from typing import Never, Protocol, override
 
 import pytest
 from sqlalchemy import create_engine
@@ -316,14 +316,15 @@ def test_create_build_session_records_the_apps_current_name(
     assert fc.app_name == "Refund approval"
 
 
+@pytest.mark.parametrize("app_name", [None])
 def test_create_build_session_tolerates_an_unreadable_app_name(
-    repo: SqlDifyBuilderRepository, lock: FakeSessionLock, enqueued: list[Enqueued]
+    repo: SqlDifyBuilderRepository, lock: FakeSessionLock, enqueued: list[Enqueued], app_name: str
 ) -> None:
     svc = DifyBuilderService(
         repo,
         lock,
         lambda sid, action, actor, token: enqueued.append((sid, action, actor, token)),
-        get_app_name_fn=lambda _app_id, _actor: cast(str, None),
+        get_app_name_fn=lambda _app_id, _actor: app_name,
     )
 
     view = svc.create_build_session(APP_ID, _actor(), goal_text="Build it")
@@ -413,20 +414,20 @@ def test_create_fix_session_converts_valid_checklist_dicts_before_persisting(
     ],
 )
 def test_create_fix_session_rejects_malformed_checklist_items_before_persisting(
-    service: DifyBuilderService, enqueued: list[Enqueued], entry: object
+    service: DifyBuilderService, enqueued: list[Enqueued], entry: dict[str, object]
 ) -> None:
     with pytest.raises(BadRequestError, match="invalid checklist_errors item"):
-        service.create_fix_session(APP_ID, _actor(), checklist_errors=cast(list[ChecklistError], [entry]))
+        service.create_fix_session(APP_ID, _actor(), checklist_errors=[entry])
 
     assert enqueued == []
 
 
 @pytest.mark.parametrize("app_id", ["", "   ", None, 1])
 def test_create_rejects_invalid_app_id_before_persisting(
-    service: DifyBuilderService, enqueued: list[Enqueued], app_id: object
+    service: DifyBuilderService, enqueued: list[Enqueued], app_id: str
 ) -> None:
     with pytest.raises(BadRequestError, match="app_id is required"):
-        service.create_build_session(cast(str, app_id), _actor(), goal_text="Build it")
+        service.create_build_session(app_id, _actor(), goal_text="Build it")
 
     assert enqueued == []
 
@@ -958,21 +959,24 @@ def test_submit_action_rejects_removed_action_during_verification(
 
 
 @pytest.mark.parametrize(
-    "action",
+    ("kind", "payload", "base_version"),
     [
-        Action(kind="publish", payload=cast(dict[str, object], []), base_version=1),
-        Action(kind="publish", base_version=True),
-        Action(kind="publish", base_version=cast(int, "1")),
-        Action(kind="message", payload={"text": 1}, base_version=1),
-        Action(kind="message", payload={"text": "   "}, base_version=1),
+        pytest.param("publish", [], 1, id="action0"),
+        pytest.param("publish", {}, True, id="action1"),
+        pytest.param("publish", {}, "1", id="action2"),
+        pytest.param("message", {"text": 1}, 1, id="action3"),
+        pytest.param("message", {"text": "   "}, 1, id="action4"),
     ],
 )
 def test_submit_action_rejects_malformed_action_without_enqueue(
     service: DifyBuilderService,
     repo: SqlDifyBuilderRepository,
     enqueued: list[Enqueued],
-    action: Action,
+    kind: str,
+    payload: dict[str, object],
+    base_version: int,
 ) -> None:
+    action = Action(kind=kind, payload=payload, base_version=base_version)
     session = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION)
 
     with pytest.raises(BadRequestError):
