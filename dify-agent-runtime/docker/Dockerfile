@@ -23,6 +23,9 @@ FROM python:3.13-slim-bookworm AS production
 ARG NODE_VERSION=24.22.1
 ARG PNPM_VERSION=11.9.0
 ARG UV_VERSION=0.13.4
+# Override pnpm's bundled undici, which is below the patched 6.29.1 release.
+ARG UNDICI_VERSION=6.29.1
+ARG UNDICI_SHA512=EvRlUt/QqAEvXdQeRMYUfwOQsfzpDztykrG2owGEE/rBOBoYv9uF39ZzsNDh4lTFHhTr2XOZjKkYgueD12ZmGA==
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -59,6 +62,17 @@ RUN apt-get update \
     && tar -xJf "${node_dist}.tar.xz" -C /usr/local --strip-components=1 \
     && rm -f SHASUMS256.txt "${node_dist}.tar.xz" \
     && npm install --global "pnpm@${PNPM_VERSION}" \
+    && undici_dir="$(npm root -g)/pnpm/dist/node_modules/undici" \
+    && test -f "${undici_dir}/package.json" \
+    && curl -fsSL "https://registry.npmjs.org/undici/-/undici-${UNDICI_VERSION}.tgz" -o /tmp/undici.tgz \
+    && expected_sha512="$(printf '%s' "${UNDICI_SHA512}" | base64 -d | od -An -v -tx1 | tr -d ' \n')" \
+    && actual_sha512="$(sha512sum /tmp/undici.tgz | cut -d ' ' -f1)" \
+    && test "${actual_sha512}" = "${expected_sha512}" \
+    && rm -rf "${undici_dir}" \
+    && mkdir -p "${undici_dir}" \
+    && tar -xzf /tmp/undici.tgz -C "${undici_dir}" --strip-components=1 \
+    && rm -f /tmp/undici.tgz \
+    && test "$(node -p "require('${undici_dir}/package.json').version")" = "${UNDICI_VERSION}" \
     && npm cache clean --force \
     && rm -rf /var/lib/apt/lists/*
 
