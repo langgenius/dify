@@ -112,7 +112,7 @@ const ChangePasswordForm = () => {
                       autoComplete="new-password"
                       value={password}
                       onValueChange={setPassword}
-                      placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
+                      placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
                     />
                     <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
                   </PasswordField>
@@ -130,7 +130,7 @@ const ChangePasswordForm = () => {
                     autoComplete="new-password"
                     value={confirmPassword}
                     onValueChange={setConfirmPassword}
-                    placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
+                    placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' })}
                   />
                   <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
                 </PasswordField>
