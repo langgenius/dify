@@ -1,7 +1,9 @@
 import json
+import os
+import time
 import uuid
 from collections.abc import Callable, Generator, Iterator
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import ANY, MagicMock, patch, sentinel
@@ -81,6 +83,7 @@ from services.workflow_service import (
     _rebuild_single_file,
     _setup_variable_pool,
 )
+from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -1503,7 +1506,7 @@ class TestWorkflowServiceCases:
             with (
                 patch("services.workflow_service.BillingService") as mock_billing_service,
             ):
-                mock_billing_service.get_info.return_value = {"subscription": {"plan": "sandbox"}}
+                mock_billing_service.get_info.return_value = builders.subscription_info("sandbox")
 
                 with pytest.raises(TriggerNodeLimitExceededError):
                     workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
@@ -3012,6 +3015,49 @@ class TestWorkflowServiceCases:
                 node_id="start-node",
                 inputs={"k": "v"},
             )
+
+        def test_setup_variable_pool_should_read_the_timestamp_from_the_epoch(
+            self, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
+            """sys.timestamp is a Unix timestamp, so it must not follow the host timezone."""
+            if not hasattr(time, "tzset"):
+                pytest.skip("tzset is only available on POSIX platforms")
+
+            recorded_at = datetime(2024, 5, 1, tzinfo=UTC)
+            previous_tz = os.environ.get("TZ")
+            monkeypatch.setenv("TZ", "Asia/Shanghai")
+            time.tzset()
+            try:
+                workflow = self._make_workflow()
+                monkeypatch.setattr("services.workflow_service.naive_utc_now", lambda: recorded_at.replace(tzinfo=None))
+
+                with (
+                    patch("services.workflow_service.VariablePool"),
+                    patch("services.workflow_service.build_system_variables") as mock_build_system_variables,
+                    patch("services.workflow_service.build_bootstrap_variables"),
+                    patch("services.workflow_service.add_variables_to_pool"),
+                    patch("services.workflow_service.add_node_inputs_to_pool"),
+                ):
+                    _setup_variable_pool(
+                        query="hello",
+                        files=[],
+                        user_id="u-1",
+                        user_inputs={},
+                        workflow=workflow,
+                        node_id="start-node",
+                        node_type=BuiltinNodeTypes.START,
+                        conversation_id="conv-1",
+                        conversation_variables=[],
+                    )
+            finally:
+                if previous_tz is None:
+                    monkeypatch.delenv("TZ", raising=False)
+                else:
+                    monkeypatch.setenv("TZ", previous_tz)
+                time.tzset()
+
+            values = mock_build_system_variables.call_args.args[0]
+            assert values["timestamp"] == int(recorded_at.timestamp())
 
         def test_setup_variable_pool_should_use_default_system_variables_for_non_start_node(
             self,

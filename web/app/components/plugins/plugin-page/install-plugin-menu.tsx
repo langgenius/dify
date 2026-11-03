@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next'
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
+import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
   GithubInstallSourceIcon,
@@ -62,10 +63,7 @@ const InstallPluginMenu = ({
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const buttonLabel = triggerLabel ?? t(($) => $.installPlugin, { ns: 'plugin' })
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const enable_marketplace = useMarketplace() !== null
   const { data: plugin_installation_permission } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (s) => s.plugin_installation_permission,

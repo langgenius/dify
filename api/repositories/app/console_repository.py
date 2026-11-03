@@ -129,6 +129,16 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             binding = app.agent_app_binding_with_session(session=session, include_archived=True)
             return AppAgentBinding(binding.id, binding.scope == AgentScope.WORKFLOW_ONLY) if binding else None
 
+    def get_agent_creator_id(self, workspace_id: str, agent_id: str) -> str | None:
+        with self._session_factory() as session:
+            return session.scalar(
+                select(Agent.created_by).where(
+                    Agent.id == agent_id,
+                    Agent.tenant_id == workspace_id,
+                    Agent.status == AgentStatus.ACTIVE,
+                )
+            )
+
     def get_maintainer_id(self, workspace_id: str, resource_id: str, *, normal_only: bool = False) -> str | None:
         statement = select(App.maintainer).where(App.id == resource_id, App.tenant_id == workspace_id)
         if normal_only:

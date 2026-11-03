@@ -1,0 +1,73 @@
+{
+  "transport_evidence": {
+    "callback": "register_p2_card_action_trigger",
+    "kind": "official_sdk_stream",
+    "payload_boundary": "sdk_object_to_authenticated_event",
+    "source": "sanitized_real_callback"
+  },
+  "captured_at": "2026-08-12T10:00:02+00:00",
+  "stream": {
+    "callback": "register_p2_card_action_trigger",
+    "object_type": "lark_oapi.event.callback.model.p2_card_action_trigger.P2CardActionTrigger",
+    "sdk_serialization": {
+      "method": "lark_oapi.JSON.marshal",
+      "value": "{\"schema\":\"2.0\",\"header\":{\"app_id\":\"cli_test_only\",\"create_time\":\"1786473269367799\",\"event_id\":\"evt_test_only_stream\",\"event_type\":\"card.action.trigger\",\"tenant_key\":\"tenant_test_only\",\"token\":\"verification_test_only\"},\"event\":{\"action\":{\"form_value\":{\"comment\":\"Sanitized callback input\",\"decision\":\"ship\"},\"name\":\"approve\",\"tag\":\"button\",\"timezone\":\"Asia/Shanghai\",\"value\":{\"__dify.human_input.action\":{\"version\":1,\"action_id\":\"approve\",\"correlation_token\":\"feishu-lark-card-evidence-token\"}}},\"context\":{\"open_chat_id\":\"chat_test_only\",\"open_message_id\":\"message_test_only\"},\"host\":\"im_message\",\"operator\":{\"open_id\":\"open_test_only\",\"tenant_key\":\"tenant_test_only\",\"union_id\":\"union_test_only\",\"user_id\":\"user_test_only\"},\"token\":\"callback_test_only\"}}"
+    },
+    "callback_response": {
+      "object_type": "lark_oapi.event.callback.model.p2_card_action_trigger.P2CardActionTriggerResponse",
+      "sdk_serialization": {
+        "method": "lark_oapi.JSON.marshal",
+        "value": "{}"
+      }
+    }
+  },
+  "authenticated_event": {
+    "provider": "feishu",
+    "provider_tenant_id": "tenant_test_only",
+    "event_id": "evt_test_only_stream",
+    "event_type": "card.action.trigger",
+    "occurred_at": "2026-08-11T18:34:29.367799",
+    "received_at": "2026-08-12T10:00:00",
+    "payload": {
+      "schema": "2.0",
+      "header": {
+        "app_id": "cli_test_only",
+        "create_time": "1786473269367799",
+        "event_id": "evt_test_only_stream",
+        "event_type": "card.action.trigger",
+        "tenant_key": "tenant_test_only",
+        "token": "verification_test_only"
+      },
+      "event": {
+        "action": {
+          "form_value": {
+            "comment": "Sanitized callback input",
+            "decision": "ship"
+          },
+          "name": "approve",
+          "tag": "button",
+          "timezone": "Asia/Shanghai",
+          "value": {
+            "__dify.human_input.action": {
+              "version": 1,
+              "action_id": "approve",
+              "correlation_token": "feishu-lark-card-evidence-token"
+            }
+          }
+        },
+        "context": {
+          "open_chat_id": "chat_test_only",
+          "open_message_id": "message_test_only"
+        },
+        "host": "im_message",
+        "operator": {
+          "open_id": "open_test_only",
+          "tenant_key": "tenant_test_only",
+          "union_id": "union_test_only",
+          "user_id": "user_test_only"
+        },
+        "token": "callback_test_only"
+      }
+    }
+  }
+}

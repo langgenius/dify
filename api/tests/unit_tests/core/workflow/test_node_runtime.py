@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import time
-import types
 import uuid
 from collections.abc import Generator, Iterator, Mapping
 from datetime import UTC, datetime
@@ -1042,14 +1040,7 @@ def _build_tool_node_data() -> ToolNodeData:
 class TestToolNodeRuntimeCases:
     @staticmethod
     @pytest.fixture
-    def runtime(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> DifyToolNodeRuntime:
-        module_name = "core.ops.ops_trace_manager"
-        if module_name not in sys.modules:
-            ops_stub = types.ModuleType(module_name)
-            ops_stub.TraceQueueManager = object  # pragma: no cover - stub attribute
-            ops_stub.TraceTask = object  # pragma: no cover - stub attribute
-            monkeypatch.setitem(sys.modules, module_name, ops_stub)
-
+    def runtime(sqlite_engine: Engine) -> DifyToolNodeRuntime:
         init_params = build_test_graph_init_params(
             workflow_id="workflow-id",
             graph_config={"nodes": [], "edges": []},

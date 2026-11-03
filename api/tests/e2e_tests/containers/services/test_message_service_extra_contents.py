@@ -53,7 +53,8 @@ def test_message_details_include_serialized_extra_contents(db_session_with_conta
         messages=MessageRepository(session_factory=sessions),
         files=MessageFileResolver(),
         extra_contents=ExecutionExtraContentReader(
-            repository=SQLAlchemyExecutionExtraContentRepository(session_maker=sessions)
+            repository=SQLAlchemyExecutionExtraContentRepository(session_maker=sessions),
+            session_factory=sessions,
         ),
     )
     messages = [
@@ -75,6 +76,7 @@ def test_message_details_include_serialized_extra_contents(db_session_with_conta
             "submitted": True,
             "form_definition": {
                 "form_id": form.id,
+                "form_version": "1",
                 "node_id": form.node_id,
                 "node_title": "Approval",
                 "form_content": "Rendered block",

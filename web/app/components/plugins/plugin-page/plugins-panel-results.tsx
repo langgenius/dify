@@ -3,6 +3,7 @@ import type { PluginDetail } from '../types'
 import type { EmbeddedMarketplaceCategory } from './category-marketplace'
 import type { PluginPageContentInset } from './content-inset'
 import type { Collection } from '@/app/components/tools/types'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -36,6 +37,7 @@ type PluginsPanelResultsProps = {
   filteredBuiltinTools: Collection[]
   filteredList: Array<PluginDetail & { latest_version: string }>
   hasToolMarketplacePanel: boolean
+  marketplace: MarketplaceLinks | null
   hasVisibleBuiltinTools: boolean
   hasVisiblePlugins: boolean
   hasEmbeddedMarketplace: boolean
@@ -64,6 +66,7 @@ const PluginsPanelResults = ({
   filteredBuiltinTools,
   filteredList,
   hasToolMarketplacePanel,
+  marketplace,
   hasVisibleBuiltinTools,
   hasVisiblePlugins,
   hasEmbeddedMarketplace,
@@ -187,16 +190,18 @@ const PluginsPanelResults = ({
               )}
             </div>
           )}
-          {hasToolMarketplacePanel && (
+          {marketplace && hasToolMarketplacePanel && (
             <BuiltinMarketplacePanel
+              marketplace={marketplace}
               containerRef={containerRef}
               contentInset={contentInset}
               keywords={keywords}
               tagFilterValue={tagFilterValue}
             />
           )}
-          {categoryMarketplace && (
+          {marketplace && categoryMarketplace && (
             <CategoryMarketplacePanel
+              marketplace={marketplace}
               category={categoryMarketplace}
               searchText={keywords}
               tags={categoryMarketplace === 'trigger' ? tagFilterValue : []}

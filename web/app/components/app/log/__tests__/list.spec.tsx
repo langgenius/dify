@@ -532,7 +532,9 @@ it('opens and closes the workflow run selected from an answer', async () => {
     'aria-selected',
     'true',
   )
-  await waitFor(() => expect(api.run).toHaveBeenCalledWith('/apps/app-1/workflow-runs/run-1'))
+  await waitFor(() =>
+    expect(api.run).toHaveBeenCalledWith('/apps/app-1/workflow-runs/run-1', { silent: true }),
+  )
   expect(await screen.findByRole('link', { name: 'app.tracing.run.viewTrace' })).toHaveAttribute(
     'href',
     'https://cloud.langfuse.com/trace/run-1',
@@ -540,9 +542,12 @@ it('opens and closes the workflow run selected from an answer', async () => {
   expect(api.externalTrace).toHaveBeenCalledWith({
     params: { app_id: 'app-1', source_kind: 'workflow', source_id: 'run-1' },
   })
-  expect(api.tracing).toHaveBeenCalledWith({
-    url: '/apps/app-1/workflow-runs/run-1/node-executions',
-  })
+  expect(api.tracing).toHaveBeenCalledWith(
+    {
+      url: '/apps/app-1/workflow-runs/run-1/node-executions',
+    },
+    { silent: true },
+  )
   await user.click(within(runDialog).getByRole('button', { name: 'common.operation.close' }))
   await waitFor(() => expect(runDialog).not.toBeInTheDocument())
 })
