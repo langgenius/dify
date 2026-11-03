@@ -2,16 +2,15 @@
 
 from collections.abc import Callable
 from threading import Thread
-from typing import Any, cast
+from typing import Any
 
-from flask import current_app
-from werkzeug.local import LocalProxy
+from flask import Flask, current_app
 
 from extensions.otel import propagate_context
 
 
 def retrieval_thread(*, target: Callable[..., None], kwargs: dict[str, Any]) -> Thread:
-    app = cast(LocalProxy, current_app)._get_current_object()
+    app: Flask = current_app._get_current_object()  # type: ignore[attr-defined]
 
     @propagate_context
     def run() -> None:

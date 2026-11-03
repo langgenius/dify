@@ -2,12 +2,11 @@
 
 import json
 from collections.abc import Generator, Iterator
-from typing import cast
 from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, Table, create_engine, event
+from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
@@ -44,19 +43,16 @@ def databases(
     for engine in engines:
         TypeBase.metadata.create_all(
             engine,
-            tables=cast(
-                list[Table],
-                [
-                    model.__table__
-                    for model in (
-                        Account,
-                        BuiltinToolProvider,
-                        ToolOAuthTenantClient,
-                        ToolOAuthSystemClient,
-                        MCPToolProvider,
-                    )
-                ],
-            ),
+            tables=[  # type: ignore[arg-type]
+                model.__table__
+                for model in (
+                    Account,
+                    BuiltinToolProvider,
+                    ToolOAuthTenantClient,
+                    ToolOAuthSystemClient,
+                    MCPToolProvider,
+                )
+            ],
         )
     sessions: sessionmaker[Session] = sessionmaker(engines[0], expire_on_commit=False)
     global_sessions: sessionmaker[Session] = sessionmaker(engines[1], expire_on_commit=False)

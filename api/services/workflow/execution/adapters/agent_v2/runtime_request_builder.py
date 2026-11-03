@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, assert_never, cast
+from typing import Any, Literal, Protocol, assert_never
 
 from dify_agent.agent_stub.protocol import AgentStubFileMapping
 from dify_agent.layers.config import (
@@ -47,7 +47,7 @@ from clients.agent_backend import (
     redact_for_agent_backend_log,
 )
 from configs import dify_config
-from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.app.llm.model_access import resolve_model_context_window
 from core.ops.base_trace_instance import application_tracing_hooks
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
@@ -61,6 +61,7 @@ from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentKnowledgeMetadataFilteringConfig,
     AgentKnowledgeModelConfig,
+    AgentKnowledgeQueryMode,
     AgentKnowledgeRetrievalConfig,
     AgentKnowledgeSpaceConfig,
     AgentSoulConfig,
@@ -254,7 +255,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
                     user_id=context.dify_context.user_id,
-                    user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
+                    user_from=_execution_context_user_from(context.dify_context.user_from),
                     app_id=context.dify_context.app_id,
                     workflow_id=context.workflow_id,
                     workflow_run_id=context.workflow_run_id,
@@ -265,11 +266,11 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_config_version_id=context.snapshot.id,
                     agent_config_version_kind="snapshot",
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
-                    invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
+                    invoke_from=_execution_context_invoke_from(context.dify_context.invoke_from),
                     trace_id=context.dify_context.trace_session_id,
                     tracing=(
                         tracing_hooks.prepare_workflow_agent(
-                            cast(Any, context),
+                            context,
                             get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID),
                         )
                         if tracing_hooks is not None
@@ -295,7 +296,10 @@ class WorkflowAgentRuntimeRequestBuilder:
                 metadata=metadata,
             )
         )
-        redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
+        redacted_payload = redact_for_agent_backend_log(request)
+        if not isinstance(redacted_payload, dict):
+            raise TypeError(f"Expected dict from redact_for_agent_backend_log, got {type(redacted_payload).__name__}")
+        redacted = redacted_payload
         return WorkflowAgentRuntimeRequest(
             request=request,
             redacted_request=redacted,
@@ -521,9 +525,19 @@ class WorkflowAgentRuntimeRequestBuilder:
                         transfer_method="remote_url",
                         url=value.get("url") or value.get("remote_url"),
                     )
-                elif transfer_method in {"local_file", "tool_file", "datasource_file"}:
+                elif transfer_method == "local_file":
                     mapping = AgentStubFileMapping(
-                        transfer_method=cast(AgentStubFileTransferMethod, transfer_method),
+                        transfer_method="local_file",
+                        reference=value.get("reference"),
+                    )
+                elif transfer_method == "tool_file":
+                    mapping = AgentStubFileMapping(
+                        transfer_method="tool_file",
+                        reference=value.get("reference"),
+                    )
+                elif transfer_method == "datasource_file":
+                    mapping = AgentStubFileMapping(
+                        transfer_method="datasource_file",
                         reference=value.get("reference"),
                     )
                 else:
@@ -763,6 +777,42 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
     )
 
 
+def _execution_context_user_from(user_from: UserFrom) -> DifyExecutionContextUserFrom:
+    match user_from:
+        case UserFrom.ACCOUNT:
+            return "account"
+        case UserFrom.END_USER:
+            return "end-user"
+
+
+def _execution_context_invoke_from(invoke_from: InvokeFrom) -> DifyExecutionContextInvokeFrom:
+    match invoke_from:
+        case InvokeFrom.SERVICE_API:
+            return "service-api"
+        case InvokeFrom.OPENAPI:
+            return "openapi"
+        case InvokeFrom.WEB_APP:
+            return "web-app"
+        case InvokeFrom.EXPLORE:
+            return "explore"
+        case InvokeFrom.DEBUGGER:
+            return "debugger"
+        case InvokeFrom.PUBLISHED_PIPELINE:
+            return "published"
+        case InvokeFrom.VALIDATION:
+            return "validation"
+        case InvokeFrom.TRIGGER:
+            return "trigger"
+
+
+def _knowledge_query_mode(mode: AgentKnowledgeQueryMode) -> Literal["user_query", "generated_query"]:
+    match mode:
+        case AgentKnowledgeQueryMode.USER_QUERY:
+            return "user_query"
+        case AgentKnowledgeQueryMode.GENERATED_QUERY:
+            return "generated_query"
+
+
 def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBaseLayerConfig | None:
     """Map Agent Soul knowledge sets into one Dify knowledge-base layer.
 
@@ -790,7 +840,7 @@ def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBa
                     for dataset in knowledge_set.datasets
                 ],
                 query=DifyKnowledgeQueryConfig(
-                    mode=cast(Literal["user_query", "generated_query"], knowledge_set.query.mode.value),
+                    mode=_knowledge_query_mode(knowledge_set.query.mode),
                     value=knowledge_set.query.value,
                 ),
                 retrieval=_knowledge_retrieval_config(knowledge_set.retrieval),
@@ -802,25 +852,20 @@ def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBa
 
 
 def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> DifyKnowledgeRetrievalConfig:
-    weights = None
+    weights: dict[str, Any] | None = None
     if retrieval.weights is not None:
         # The dify-agent runtime payload only consumes the nested vector/keyword
         # settings; ``weight_type`` is an API-side authoring detail and must not
         # leak into the inner request shape.
-        weights = (
-            cast(
-                dict[str, Any],
-                {
-                    key: value
-                    for key, value in {
-                        "vector_setting": retrieval.weights.vector_setting,
-                        "keyword_setting": retrieval.weights.keyword_setting,
-                    }.items()
-                    if value is not None
-                },
-            )
-            or None
-        )
+        raw_weights: dict[str, Any] = {
+            key: value
+            for key, value in {
+                "vector_setting": retrieval.weights.vector_setting,
+                "keyword_setting": retrieval.weights.keyword_setting,
+            }.items()
+            if value is not None
+        }
+        weights = raw_weights or None
 
     return DifyKnowledgeRetrievalConfig(
         mode=retrieval.mode,
@@ -845,11 +890,8 @@ def _knowledge_metadata_filtering_config(
     return DifyKnowledgeMetadataFilteringConfig(
         mode=metadata_filtering.mode,
         model_config=_knowledge_model_config(metadata_filtering.metadata_model_config),
-        conditions=cast(
-            Any,
-            metadata_filtering.conditions.model_dump(
-                mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}
-            ),
+        conditions=metadata_filtering.conditions.model_dump(
+            mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}
         )
         if metadata_filtering.conditions is not None
         else None,
@@ -917,8 +959,8 @@ def load_runtime_agent_skill_configs(*, tenant_id: str, agent_id: str) -> list[D
         DifyConfigSkillConfig(
             name=str(item["name"]),
             description=str(item.get("description") or ""),
-            size=cast(int | None, item.get("size")),
-            mime_type=cast(str | None, item.get("mime_type")),
+            size=item.get("size") if isinstance(item.get("size"), int) else None,
+            mime_type=item.get("mime_type") if isinstance(item.get("mime_type"), str) else None,
         )
         for item in runtime_skills
     ]

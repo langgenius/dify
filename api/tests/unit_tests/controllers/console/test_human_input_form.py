@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
@@ -38,6 +39,21 @@ from services.entities.app_entities import AppAgentBinding
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app
 from tests.helpers.unit.rbac_fakes import RBACDomain
+
+
+@dataclass
+class _ToolProvidersStub:
+    pass
+
+
+@dataclass
+class _ToolsServiceStub:
+    tool_providers: object
+
+
+@dataclass
+class _AppServicesStub:
+    tools: _ToolsServiceStub
 
 
 @pytest.fixture(autouse=True)
@@ -430,11 +446,11 @@ def test_workflow_events_snapshot_can_continue_across_pauses(
             return workflow_run
 
     snapshot_calls: list[dict[str, object]] = []
-    tool_providers = Mock()
+    tool_providers = _ToolProvidersStub()
     monkeypatch.setattr(
         human_input_form_module,
         "application_services",
-        lambda: SimpleNamespace(tools=SimpleNamespace(tool_providers=tool_providers)),
+        lambda: _AppServicesStub(tools=_ToolsServiceStub(tool_providers=tool_providers)),
     )
 
     def snapshot_events() -> Iterator[dict[str, str]]:

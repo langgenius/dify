@@ -6,7 +6,7 @@ import json
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
@@ -99,9 +99,9 @@ class WorkflowSnapshot(WorkflowBindingScope):
         """Decode features and normalize the legacy image-upload shape without mutating stored data."""
         if not self.features:
             return {}
-        payload = json.loads(self.features)
+        payload: dict[str, Any] = json.loads(self.features)
         if not isinstance(payload, dict):
-            return cast(dict[str, Any], payload)
+            return payload
         file_upload = payload.get("file_upload")
         if not isinstance(file_upload, dict):
             return payload
@@ -119,7 +119,7 @@ class WorkflowSnapshot(WorkflowBindingScope):
 
     @property
     def rag_pipeline_variable_values(self) -> list[dict[str, Any]]:
-        variables = cast(dict[str, dict[str, Any]], json.loads(self.rag_pipeline_variables or "{}"))
+        variables: dict[str, dict[str, Any]] = json.loads(self.rag_pipeline_variables or "{}")
         return [RAGPipelineVariable.model_validate(value).model_dump(mode="json") for value in variables.values()]
 
     @property
@@ -237,8 +237,8 @@ class WorkflowRecord:
     updated_by: dict[str, str] | None
     updated_at: datetime
     tool_published: bool
-    environment_variables: list[VariableBase]
-    conversation_variables: list[VariableBase]
+    environment_variables: Sequence[VariableBase]
+    conversation_variables: Sequence[VariableBase]
     rag_pipeline_variables: list[dict[str, Any]]
 
 
