@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import SchemaError
 
 from tests.helpers.unit.config_override import apply_config_overrides
 
@@ -106,16 +107,18 @@ def _iter_subschemas(schema):
 
 
 def _iter_content_schemas(content):
+    """Yield unmodified schema roots from an optional OpenAPI content mapping."""
     for media_type in (content or {}).values():
         if isinstance(media_type, dict) and "schema" in media_type:
-            yield from _iter_subschemas(media_type["schema"])
+            yield media_type["schema"]
 
 
 def _iter_parameter_schemas(parameter):
+    """Yield unmodified schema roots when the input is an OpenAPI parameter mapping."""
     if not isinstance(parameter, dict):
         return
     if "schema" in parameter:
-        yield from _iter_subschemas(parameter["schema"])
+        yield parameter["schema"]
     yield from _iter_content_schemas(parameter.get("content"))
 
 
@@ -134,8 +137,8 @@ def _iter_operation_schemas(operation):
 
 
 def _iter_document_schemas(payload):
-    for schema in payload["components"]["schemas"].values():
-        yield from _iter_subschemas(schema)
+    """Yield schema roots from a document without recursively duplicating their children."""
+    yield from payload["components"]["schemas"].values()
     for path_item in payload["paths"].values():
         for parameter in path_item.get("parameters") or []:
             yield from _iter_parameter_schemas(parameter)
@@ -145,35 +148,35 @@ def _iter_document_schemas(payload):
 
 
 def _schema_contract_errors(payload):
+    """Report invalid schemas and broken local contracts without changing the document.
+
+    The input has OpenAPI paths and component schemas. Validate each schema tree
+    once, then inspect its subschemas for required fields and local references.
+    """
     errors = []
     known_refs = {f"#/components/schemas/{name}" for name in payload["components"]["schemas"]}
-    for schema in _iter_document_schemas(payload):
-        try:
-            Draft202012Validator.check_schema(schema)
-        except Exception as exc:
-            errors.append(f"malformed schema: {exc}")
-            continue
+    roots = list(_iter_document_schemas(payload))
+    # check_schema recursively validates children. Batching roots also avoids
+    # constructing the meta-schema validator again for every property and ref.
+    try:
+        Draft202012Validator.check_schema({"$defs": {str(index): schema for index, schema in enumerate(roots)}})
+    except SchemaError as exc:
+        return [f"malformed schema: {exc}"]
+    for schema in (child for root in roots for child in _iter_subschemas(root)):
         required = schema.get("required")
         properties = schema.get("properties")
         if required and isinstance(properties, dict) and not ({"allOf", "anyOf", "oneOf", "$ref"} & schema.keys()):
             missing = sorted(set(required) - set(properties))
             if missing:
                 errors.append(f"required properties missing from properties: {missing}")
-        for value in _walk_values(schema):
-            if not isinstance(value, dict):
-                continue
-            ref = value.get("$ref")
-            if isinstance(ref, str) and ref.startswith("#/components/schemas/") and ref not in known_refs:
-                errors.append(f"dangling $ref: {ref}")
-            discriminator = value.get("discriminator")
-            if isinstance(discriminator, dict):
-                for mapped in (discriminator.get("mapping") or {}).values():
-                    if (
-                        isinstance(mapped, str)
-                        and mapped.startswith("#/components/schemas/")
-                        and mapped not in known_refs
-                    ):
-                        errors.append(f"dangling discriminator mapping: {mapped}")
+        ref = schema.get("$ref")
+        if isinstance(ref, str) and ref.startswith("#/components/schemas/") and ref not in known_refs:
+            errors.append(f"dangling $ref: {ref}")
+        discriminator = schema.get("discriminator")
+        if isinstance(discriminator, dict):
+            for mapped in (discriminator.get("mapping") or {}).values():
+                if isinstance(mapped, str) and mapped.startswith("#/components/schemas/") and mapped not in known_refs:
+                    errors.append(f"dangling discriminator mapping: {mapped}")
     return errors
 
 
@@ -587,6 +590,29 @@ def test_generate_specs_include_command_oriented_knowledge_fs_contract(tmp_path)
     assert tree_operation["operationId"] == "tree_knowledge_fs"
 
 
+@pytest.mark.parametrize(
+    ("nested_schema", "expected_error"),
+    [
+        ({"type": "invalid-type"}, "malformed schema"),
+        ({"properties": {}, "required": ["missing"]}, "required properties missing"),
+        ({"$ref": "#/components/schemas/Missing"}, "dangling $ref"),
+        (
+            {"discriminator": {"propertyName": "kind", "mapping": {"cat": "#/components/schemas/Missing"}}},
+            "dangling discriminator mapping",
+        ),
+    ],
+)
+def test_schema_contract_rejects_invalid_nested_schemas(nested_schema, expected_error):
+    """Nested schema defects must remain detectable when validating roots together."""
+    payload = {
+        "components": {"schemas": {"Envelope": {"properties": {"nested": nested_schema}}}},
+        "paths": {},
+    }
+
+    assert any(expected_error in error for error in _schema_contract_errors(payload))
+
+
+@pytest.mark.timeout(60)  # Validate all five exports under coverage, including the large console schema.
 def test_generate_specs_produce_valid_openapi_contracts(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
