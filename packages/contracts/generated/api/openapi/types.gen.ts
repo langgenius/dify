@@ -317,6 +317,15 @@ export type AppPackageExportQuery = {
   workflow_id?: string | null
 }
 
+export type AppPackageFillPayload = {
+  package:
+    | Blob
+    | File
+    | {
+        [key: string]: Blob | File | Array<Blob | File>
+      }
+}
+
 export type AppPackageImportPayload = {
   app_id?: string | null
   description?: string | null
@@ -341,6 +350,16 @@ export type AppSettingsInfo = {
   icon_type?: string | null
   max_active_requests?: number | null
   name: string
+}
+
+export type AuthoringIssueRow = {
+  code: string
+  hint: FieldHintRow | null
+  loc: Array<string | number>
+  message: string
+  node_id: string | null
+  refuses_import: boolean
+  severity: string
 }
 
 export type BinaryFileResponse = Blob | File
@@ -479,6 +498,16 @@ export type CustomModelRow = {
   active_credential: CredentialRef | null
   model: string
   model_type: string
+}
+
+export type DeclaredParameterRow = {
+  default?: unknown
+  form: string | null
+  help: string | null
+  name: string
+  options: Array<string>
+  required: boolean
+  type: string
 }
 
 export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
@@ -621,6 +650,15 @@ export type ErrorDetail = {
 }
 
 export type EventStreamResponse = string
+
+export type FieldHintRow = {
+  default?: unknown
+  description: string | null
+  loc: Array<string | number>
+  options: Array<string>
+  required: boolean
+  type: string | null
+}
 
 export type FileResponse = {
   conversation_id?: string | null
@@ -1100,6 +1138,36 @@ export type NodeChange = {
   type: string
 }
 
+export type NodeOptionKind = 'agent' | 'block' | 'tool'
+
+export type NodeOptionListResponse = {
+  data: Array<NodeOptionRow>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type NodeOptionQuery = {
+  app_mode: 'advanced-chat' | 'workflow'
+  keyword?: string | null
+  kind?: NodeOptionKind | null
+  limit?: number
+  page?: number
+}
+
+export type NodeOptionRow = {
+  description: string | null
+  kind: NodeOptionKind
+  label: string
+  seed: {
+    [key: string]: unknown
+  }
+  type: string
+  version: string
+}
+
 export type NodeRunPayload = {
   files?: {
     [key: string]: Blob | File | Array<Blob | File>
@@ -1107,6 +1175,17 @@ export type NodeRunPayload = {
   inputs?: {
     [key: string]: unknown
   }
+}
+
+export type NodeSpecRow = {
+  node_id: string
+  open_fields: Array<FieldHintRow>
+  plugin_parameters: Array<DeclaredParameterRow>
+  schema: {
+    [key: string]: unknown
+  }
+  type: string
+  version: string
 }
 
 export type NodeTypeDetailResponse = {
@@ -1215,6 +1294,13 @@ export type OpenApiFormSubmitPayload = {
   inputs: {
     [key: string]: JsonValue
   }
+}
+
+export type PackageCheckResponse = {
+  hints?: Array<Hint>
+  issues: Array<AuthoringIssueRow>
+  node_specs: Array<NodeSpecRow>
+  valid: boolean
 }
 
 export type PermittedExternalAppsListQuery = {
@@ -4042,6 +4128,54 @@ export type PostWorkspacesByWorkspaceIdAppsPackagesResponses = {
 export type PostWorkspacesByWorkspaceIdAppsPackagesResponse =
   PostWorkspacesByWorkspaceIdAppsPackagesResponses[keyof PostWorkspacesByWorkspaceIdAppsPackagesResponses]
 
+export type PostWorkspacesByWorkspaceIdAppsPackagesCheckData = {
+  body: AppPackageFillPayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/apps/packages:check'
+}
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesCheckErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesCheckError =
+  PostWorkspacesByWorkspaceIdAppsPackagesCheckErrors[keyof PostWorkspacesByWorkspaceIdAppsPackagesCheckErrors]
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesCheckResponses = {
+  200: PackageCheckResponse
+}
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesCheckResponse =
+  PostWorkspacesByWorkspaceIdAppsPackagesCheckResponses[keyof PostWorkspacesByWorkspaceIdAppsPackagesCheckResponses]
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesFillData = {
+  body: AppPackageFillPayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/apps/packages:fill'
+}
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesFillErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesFillError =
+  PostWorkspacesByWorkspaceIdAppsPackagesFillErrors[keyof PostWorkspacesByWorkspaceIdAppsPackagesFillErrors]
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesFillResponses = {
+  200: BinaryFileResponse
+}
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesFillResponse =
+  PostWorkspacesByWorkspaceIdAppsPackagesFillResponses[keyof PostWorkspacesByWorkspaceIdAppsPackagesFillResponses]
+
 export type PostWorkspacesByWorkspaceIdAppsWorkflowData = {
   body: CreateAppPayload
   path: {
@@ -4670,6 +4804,36 @@ export type GetWorkspacesByWorkspaceIdModelsResponses = {
 
 export type GetWorkspacesByWorkspaceIdModelsResponse =
   GetWorkspacesByWorkspaceIdModelsResponses[keyof GetWorkspacesByWorkspaceIdModelsResponses]
+
+export type GetWorkspacesByWorkspaceIdNodeOptionsData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query: {
+    app_mode: 'advanced-chat' | 'workflow'
+    keyword?: string
+    kind?: 'agent' | 'block' | 'tool'
+    limit?: number
+    page?: number
+  }
+  url: '/workspaces/{workspace_id}/node-options'
+}
+
+export type GetWorkspacesByWorkspaceIdNodeOptionsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdNodeOptionsError =
+  GetWorkspacesByWorkspaceIdNodeOptionsErrors[keyof GetWorkspacesByWorkspaceIdNodeOptionsErrors]
+
+export type GetWorkspacesByWorkspaceIdNodeOptionsResponses = {
+  200: NodeOptionListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdNodeOptionsResponse =
+  GetWorkspacesByWorkspaceIdNodeOptionsResponses[keyof GetWorkspacesByWorkspaceIdNodeOptionsResponses]
 
 export type GetWorkspacesByWorkspaceIdPluginTasksByTaskIdData = {
   body?: never
