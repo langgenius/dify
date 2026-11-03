@@ -475,8 +475,8 @@ def test_month_lease_lets_deletion_clean_zip_after_failed_upload_compensation(
             raise ArchiveStorageError("compensation failed")
         original_delete(key)
 
-    downloads.put_object = upload
-    downloads.delete_object = fail_compensation_once
+    monkeypatch.setattr(downloads, "put_object", upload)
+    monkeypatch.setattr(downloads, "delete_object", fail_compensation_once)
     preparer = WorkflowRunArchiveDownloadPreparer(
         archive_storage_provider=lambda: archive,
         download_storage_provider=lambda: downloads,

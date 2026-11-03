@@ -16,6 +16,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { InputVarType } from '@/app/components/workflow/types'
+import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   fetchSuggestedQuestions,
@@ -391,11 +392,12 @@ const ChatWrapper = () => {
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
       if (!connectionsReadyRef.current) return
-      if (!(await prepareHumanInputSubmission())) return
+      const { form_version: formVersion, ...submission } = formData
+      await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
       if (!connectionsReadyRef.current) return
 
-      if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
+      else await submitHumanInputForm(formToken, submission, formVersion)
     },
     [isInstalledApp, prepareHumanInputSubmission],
   )

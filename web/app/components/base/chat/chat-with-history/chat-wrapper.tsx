@@ -1,5 +1,6 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { SpeechToTextTarget } from '../../voice-input/types'
+import type { HumanInputFormSubmitData } from '../chat/answer/human-input-content/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -15,6 +16,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { InputVarType } from '@/app/components/workflow/types'
+import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   fetchChatList,
@@ -310,13 +312,14 @@ const ChatWrapper = () => {
   }, [chatList, currentConversationId])
 
   const handleSubmitHumanInputForm = useCallback(
-    async (formToken: string, formData: any) => {
+    async (formToken: string, formData: HumanInputFormSubmitData) => {
       if (!connectionsReadyRef.current) return
-      if (!(await prepareHumanInputSubmission())) return
+      const { form_version: formVersion, ...submission } = formData
+      await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
       if (!connectionsReadyRef.current) return
 
-      if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
+      else await submitHumanInputForm(formToken, submission, formVersion)
     },
     [isInstalledApp, prepareHumanInputSubmission],
   )

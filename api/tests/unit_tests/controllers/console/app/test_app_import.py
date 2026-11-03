@@ -39,7 +39,7 @@ from services.agent.roster_package_importer import RosterAgentPackageImportResul
 from services.app.console_gateway import AppTransferGateway, EnterpriseConsoleAppAccess
 from services.app_dsl_service import AppDslService, PendingData
 from services.app_package_service import AppPackageService, PreparedAppPackage
-from services.billing_service import BillingService, _BillingHTTPStatusError
+from services.billing_client import transport
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import AppImportPackage, AppImportParams, DslImportWarning, Import, ImportStatus
 from services.entities.feature_entities import FeatureModel, LimitationModel
@@ -869,14 +869,14 @@ class TestAppImportQuotaCases:
             )
         else:
 
-            def failed_billing(*_args: object, **_kwargs: object) -> dict[str, str]:
+            def failed_billing(*_args: object, **_kwargs: object) -> httpx.Response:
                 if failure == "timeout":
                     raise httpx.ReadTimeout("Private billing timeout details")
                 if failure == "upstream_503":
-                    raise _BillingHTTPStatusError("Private billing failure details", 503)
-                return {"subscription": "Private invalid billing response"}
+                    return httpx.Response(503, text="Private billing failure details")
+                return httpx.Response(200, json={"subscription": "Private invalid billing response"})
 
-            monkeypatch.setattr(BillingService, "_send_request", failed_billing)
+            monkeypatch.setattr(transport, "_send", failed_billing)
 
         app = Flask(__name__)
         app.config["TESTING"] = True

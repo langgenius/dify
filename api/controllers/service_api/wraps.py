@@ -40,7 +40,7 @@ from services.api_token_service import (
     record_token_usage,
 )
 from services.app_service import AppService
-from services.auth.resource_access_token_contracts import is_resource_access_token
+from services.auth.resource_access_token_contracts import DatasetServiceApiGrant, is_resource_access_token
 from services.feature_service import FeatureService
 from services.knowledge_rate_limit_service import KnowledgeRateLimitExceededError, enforce_knowledge_rate_limit
 
@@ -330,12 +330,14 @@ def cloud_edition_billing_rate_limit_check[**P, R](
 
 
 def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
+    view_parameters = inspect.signature(view).parameters
     positional_parameters = [
         parameter
-        for parameter in inspect.signature(view).parameters.values()
+        for parameter in view_parameters.values()
         if parameter.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
     ]
     expects_bound_instance = bool(positional_parameters and positional_parameters[0].name in {"self", "cls"})
+    accepts_dataset_grant = "dataset_grant" in view_parameters
 
     @wraps(view)
     def decorated(*args: object, **kwargs: object) -> R:
@@ -354,10 +356,11 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
         auth_token = peek_service_api_bearer_token()
         if auth_token and is_resource_access_token(auth_token):
             with resource_access_token_errors():
-                tenant_id = application_services().resource_access_tokens.resolve_tenant_for_dataset_service_api(
+                dataset_grant = application_services().resource_access_tokens.resolve_datasets_for_service_api(
                     token=auth_token,
                     dataset_id=str(dataset_id) if dataset_id else None,
                 )
+            tenant_id = dataset_grant.tenant_id
         else:
             api_token = validate_and_get_api_token("dataset")
             tenant_id = api_token.tenant_id
@@ -381,6 +384,11 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
                 raise Unauthorized("API key is no longer valid.")
             if not scope.allows_dataset(str(dataset_id) if dataset_id else None):
                 raise Forbidden("The API key is not authorized to access this knowledge base.")
+            dataset_grant = DatasetServiceApiGrant(
+                token_id=str(api_token.id),
+                tenant_id=tenant_id,
+                dataset_ids=None,
+            )
 
         if dataset_id:
             dataset_id = str(dataset_id)
@@ -417,6 +425,9 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
                 raise Unauthorized("Tenant owner account does not exist.")
         else:
             raise Unauthorized("Tenant does not exist.")
+
+        if accepts_dataset_grant:
+            kwargs["dataset_grant"] = dataset_grant
 
         if expects_bound_instance:
             if not args:
