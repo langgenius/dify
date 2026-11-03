@@ -62,6 +62,8 @@ x-shared-api-config: &shared-api-config
     - path: ./envs/core-services/api.env
       required: false
     - ./.env
+    - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
+      required: false
     - ./envs/core-services/api-worker.defaults
     - ./envs/core-services/api.defaults
   networks:
@@ -132,6 +134,8 @@ x-shared-worker-config: &shared-worker-config
     - path: ./envs/core-services/worker.env
       required: false
     - ./.env
+    - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
+      required: false
     - ./envs/core-services/api-worker.defaults
     - ./envs/core-services/worker.defaults
   networks:
@@ -251,6 +255,8 @@ x-shared-worker-beat-config: &shared-worker-beat-config
     - path: ./envs/core-services/worker-beat.env
       required: false
     - ./.env
+    - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
+      required: false
     - ./envs/core-services/api-worker.defaults
     - ./envs/core-services/worker-beat.defaults
   networks:
@@ -744,6 +750,8 @@ services:
         required: false
       - ./.env
       - ./envs/core-services/dify-agent.defaults
+    environment:
+      DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: ${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
     depends_on:
       redis:
         condition: service_started
@@ -1176,6 +1184,7 @@ services:
       - 9091:9091
     networks:
       - milvus
+      - default
 
   # Opensearch vector database
   opensearch:
@@ -1198,6 +1207,7 @@ services:
       - ./volumes/opensearch/data:/usr/share/opensearch/data
     networks:
       - opensearch-net
+      - default
 
   opensearch-dashboards:
     container_name: opensearch-dashboards

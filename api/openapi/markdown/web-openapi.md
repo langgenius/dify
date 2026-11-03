@@ -2071,6 +2071,7 @@ Form input definition.
 | opening_statement |  |  | No |
 | retriever_resource | { **"enabled"**: boolean } |  | Yes |
 | sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| show_thoughts | { **"enabled"**: boolean } |  | No |
 | speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
 | suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |

@@ -1,9 +1,10 @@
 import io
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
+from uuid import UUID
 
 from flask import send_file
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, BeforeValidator, Field, field_validator
 
 from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
@@ -37,6 +38,11 @@ from services.model_provider.service import ModelProviderService
 
 class ParserModelList(BaseModel):
     model_type: ModelType | None = None
+
+
+class ModelProviderIconPath(BaseModel):
+    tenant_id: UUID
+    icon_type: Annotated[Literal["icon_small", "icon_small_dark"], BeforeValidator(str.lower)]
 
 
 class ParserCredentialId(BaseModel):
@@ -349,12 +355,17 @@ class ModelProviderIconApi(Resource):
 
     @console_ns.response(200, "Model provider icon")
     def get(self, tenant_id: str, provider: str, icon_type: str, lang: str):
+        """Return an icon for a tenant UUID and a supported icon type.
+
+        Invalid path arguments fail before provider discovery or asset access.
+        """
         # response-contract:ignore binary send_file response
+        path = ModelProviderIconPath.model_validate({"tenant_id": tenant_id, "icon_type": icon_type})
         model_provider_service = ModelProviderService()
         icon, mimetype = model_provider_service.get_model_provider_icon(
-            tenant_id=tenant_id,
+            tenant_id=str(path.tenant_id),
             provider=provider,
-            icon_type=icon_type,
+            icon_type=path.icon_type,
             lang=lang,
         )
         if icon is None:
