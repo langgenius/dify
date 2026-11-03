@@ -7,13 +7,14 @@ from datetime import UTC, datetime
 from mimetypes import guess_type
 from typing import Any, cast
 
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ToolInvoked, json_safe
 from sqlalchemy.orm import Session, sessionmaker
 from yarl import URL
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolInvokeMessage,
@@ -34,6 +35,7 @@ from core.tools.utils.message_transformer import ToolFileMessageTransformer, saf
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
 from graphon.file import FileTransferMethod, FileType
+from libs.datetime_utils import utc_now
 from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import Message, MessageFile
 
@@ -55,7 +57,7 @@ class ToolEngine:
         message: Message,
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
-        trace_manager: TraceQueueManager | None = None,
+        trace_scope: TraceScope | None,
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
@@ -83,6 +85,7 @@ class ToolEngine:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
 
+            started_at = utc_now()
             messages = ToolEngine._invoke(session, tool, tool_parameters, user_id, conversation_id, app_id, message_id)
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
@@ -121,9 +124,21 @@ class ToolEngine:
                 tool_name=tool.entity.identity.name,
                 tool_inputs=tool_parameters,
                 tool_outputs=plain_text,
-                message_id=message.id,
-                trace_manager=trace_manager,
             )
+            if trace_scope is not None:
+                trace_scope.emit(
+                    ToolInvoked(
+                        message_id=message.id,
+                        tool_name=tool.entity.identity.name,
+                        tool_inputs={key: json_safe(value) for key, value in tool_parameters.items()},
+                        tool_outputs=plain_text,
+                        tool_config={key: json_safe(value) for key, value in (meta.tool_config or {}).items()},
+                        error=meta.error,
+                        time_cost=meta.time_cost,
+                        started_at=started_at,
+                        ended_at=utc_now(),
+                    )
+                )
 
             # transform tool invoke message to get LLM friendly message
             return plain_text, message_files, meta

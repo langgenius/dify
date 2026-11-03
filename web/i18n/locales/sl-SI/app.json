@@ -268,6 +268,7 @@
   "tracing.config": "Konfiguracija",
   "tracing.configProvider.clientId": "ID odjemalca OAuth",
   "tracing.configProvider.clientSecret": "OAuth skrivnost odjemalca",
+  "tracing.configProvider.configuredSecretPlaceholder": "Konfigurirano. Pustite prazno, da ohranite shranjeno vrednost.",
   "tracing.configProvider.databricksHost": "URL delovnega prostora Databricks",
   "tracing.configProvider.experimentId": "ID eksperimenta",
   "tracing.configProvider.password": "Geslo",

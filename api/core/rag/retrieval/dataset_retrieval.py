@@ -8,6 +8,7 @@ from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
 from typing import Any, cast
 
+from dify_trace_sdk.events import DatasetRetrieved
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
 from sqlalchemy import and_, func, literal, or_, select, update
@@ -35,9 +36,6 @@ from core.entities.model_entities import ModelStatus
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_context import with_credit_usage_created_by, with_credit_usage_metadata
 from core.model_manager import ModelInstance, ModelManager
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.ops.utils import measure_time
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
@@ -80,6 +78,7 @@ from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMU
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from libs.datetime_utils import Timing, measure_time
 from libs.helper import parse_uuid_str_or_none
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import (
@@ -949,7 +948,7 @@ class DatasetRetrieval:
         flask_app: Flask,
         documents: list[Document],
         message_id: str | None = None,
-        timer: dict[str, Any] | None = None,
+        timer: Timing | None = None,
     ):
         """Handle retrieval end."""
         with flask_app.app_context():
@@ -1062,17 +1061,29 @@ class DatasetRetrieval:
 
             self._send_trace_task(message_id, documents, timer)
 
-    def _send_trace_task(self, message_id: str | None, documents: list[Document], timer: dict[str, Any] | None):
-        """Send trace task if trace manager is available."""
-        trace_manager: TraceQueueManager | None = (
-            self.application_generate_entity.trace_manager if self.application_generate_entity else None
-        )
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.DATASET_RETRIEVAL_TRACE, message_id=message_id, documents=documents, timer=timer
-                )
+    def _send_trace_task(self, message_id: str | None, documents: list[Document], timer: Timing | None):
+        trace_scope = self.application_generate_entity.trace_scope if self.application_generate_entity else None
+        if trace_scope is None or timer is None:
+            return
+        trace_scope.emit(
+            DatasetRetrieved(
+                message_id=message_id,
+                # Embeddings only bloat traces.
+                documents=[
+                    document.model_dump(
+                        mode="json",
+                        exclude={
+                            "vector": True,
+                            "children": {"__all__": {"vector"}},
+                            "attachments": {"__all__": {"vector"}},
+                        },
+                    )
+                    for document in documents
+                ],
+                started_at=timer.started_at,
+                ended_at=timer.ended_at,
             )
+        )
 
     @staticmethod
     def _resolve_creator_user_role(user_from: str) -> CreatorUserRole | None:

@@ -268,6 +268,7 @@
   "tracing.config": "پیکربندی",
   "tracing.configProvider.clientId": "شناسه مشتری OAuth",
   "tracing.configProvider.clientSecret": "رمز مخفی مشتری OAuth",
+  "tracing.configProvider.configuredSecretPlaceholder": "پیکربندی شده. برای حفظ مقدار ذخیره‌شده، آن را خالی بگذارید.",
   "tracing.configProvider.databricksHost": "نشانی اینترنتی محیط کاری دیتابریکس",
   "tracing.configProvider.experimentId": "شناسه آزمایش",
   "tracing.configProvider.password": "رمز عبور",
