@@ -116,9 +116,17 @@ class ComposeEnvironmentTests(unittest.TestCase):
 
     def test_api_and_weaviate_defaults_and_isolated_overrides(self):
         cases = [
-            ("core-services/shared", "worker", "CELERY_WORKER_AMOUNT", "CELERY_WORKER_AMOUNT", "4", "2", "3"),
-            ("core-services/shared", "api", "SERVER_WORKER_CLASS", "SERVER_WORKER_CLASS", "gevent", "sync", "gthread"),
-            ("core-services/shared", "api", "GUNICORN_TIMEOUT", "GUNICORN_TIMEOUT", "360", "120", "240"),
+            ("core-services/api-worker", "worker", "CELERY_WORKER_AMOUNT", "CELERY_WORKER_AMOUNT", "4", "2", "3"),
+            (
+                "core-services/api-worker",
+                "api",
+                "SERVER_WORKER_CLASS",
+                "SERVER_WORKER_CLASS",
+                "gevent",
+                "sync",
+                "gthread",
+            ),
+            ("core-services/api-worker", "api", "GUNICORN_TIMEOUT", "GUNICORN_TIMEOUT", "360", "120", "240"),
             (
                 "vectorstores/weaviate",
                 "weaviate",
@@ -156,11 +164,53 @@ class ComposeEnvironmentTests(unittest.TestCase):
                     (self.project / target).unlink(missing_ok=True)
                     root.write_text(initial_root)
 
-    def test_copying_shared_defaults_does_not_activate_optional_settings(self):
+    def test_copying_api_worker_defaults_does_not_activate_optional_settings(self):
         baseline = self.render()
-        self.copy_template("envs/core-services/shared.defaults", "envs/core-services/shared.env")
+        self.copy_template("envs/core-services/api-worker.defaults", "envs/core-services/api-worker.env")
         # Compare the entire configuration, including extra variables introduced by an unsafe copy.
         self.assertEqual(self.render(), baseline)
+
+    def test_api_worker_overrides_preserve_legacy_settings_and_precedence(self):
+        consumers = (
+            "api",
+            "api_websocket",
+            "worker",
+            "worker_knowledge_fs_upgrade",
+            "worker_beat",
+            "knowledge_fs_document_worker",
+            "knowledge_fs_source_worker",
+            "knowledge_fs_research_worker",
+            "knowledge_fs_maintenance_worker",
+            "knowledge_fs_dispatch_worker",
+            "plugin_daemon",
+        )
+        baseline = self.render()
+        legacy = self.project / "envs/core-services/shared.env"
+        legacy.write_text("DB_HOST=legacy-db\n")
+
+        services = self.render()
+        for name in consumers:
+            self.assertEqual(services[name]["environment"]["DB_HOST"], "legacy-db", name)
+
+        source = "envs/core-services/api-worker.defaults"
+        target = "envs/core-services/api-worker.env"
+        # An unchanged copy must not mask existing shared.env customizations.
+        self.copy_template(source, target)
+        self.assertEqual(self.render(), services)
+
+        self.copy_template(source, target, {"DB_HOST": "api-worker-db"})
+        services = self.render()
+        for name in consumers:
+            self.assertEqual(services[name]["environment"]["DB_HOST"], "api-worker-db", name)
+        for name in baseline.keys() - set(consumers):
+            self.assertEqual(services[name], baseline[name], name)
+
+        # Change only the root file while retaining both local override files.
+        self.override_root({"DB_HOST": "root-db"})
+        services = self.render()
+        for name in consumers:
+            self.assertEqual(services[name]["environment"]["DB_HOST"], "root-db", name)
+        self.assertEqual(legacy.read_text(), "DB_HOST=legacy-db\n")
 
     def test_consolidated_settings_reach_consumers_and_respect_root_precedence(self):
         api_services = ("api", "api_websocket")
@@ -176,7 +226,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         vector_clients = (*api_services, "worker", "worker_knowledge_fs_upgrade", "worker_beat")
         cases = [
             (
-                "core-services/shared.defaults",
+                "core-services/api-worker.defaults",
                 (*api_services, *worker_services, "worker_beat"),
                 {
                     "CODE_MAX_STRING_LENGTH": ("500000", "600000"),
@@ -369,7 +419,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
 
     def test_database_redis_overrides_reach_clients_and_commands(self):
         for name in (
-            "shared",
+            "api-worker",
             "api",
             "worker",
             "worker-beat",
@@ -451,7 +501,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
             self.assertFalse((self.project / "should-not-exist").exists())
 
     def test_root_plugin_credentials_reach_every_consumer(self):
-        for name in ("shared", "api", "worker", "worker-beat", "plugin-daemon", "dify-agent"):
+        for name in ("api-worker", "api", "worker", "worker-beat", "plugin-daemon", "dify-agent"):
             self.copy_template(f"envs/core-services/{name}.defaults", f"envs/core-services/{name}.env")
         api_services = (
             "api",

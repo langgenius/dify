@@ -85,13 +85,13 @@ in the settings before use.
 Find settings in:
 
 - [Core services](envs/core-services/): API, workers, web, plugin daemon, and
-  sandboxes. [shared.defaults](envs/core-services/shared.defaults) contains the
+  sandboxes. [api-worker.defaults](envs/core-services/api-worker.defaults) contains the
   common API, worker, and Beat settings, grouped by function. API process options
   live in `api.defaults`; worker autoscaling lives in `worker.defaults`.
 - [Databases](envs/databases/): PostgreSQL, MySQL, and Redis.
 - [Vector stores](envs/vectorstores/): bundled and external vector databases,
   including their API/worker client settings. Providers without a dedicated
-  template are documented in `shared.defaults`.
+  template are documented in `api-worker.defaults`.
 - [Infrastructure](envs/infrastructure/): nginx, Certbot, proxies, and supporting services.
 
 ### Change a service setting
@@ -226,11 +226,13 @@ Bundled service templates now use the `.defaults` extension. Existing service
 `.env` paths still work. Root `.env.example` remains the only required starting
 template, and the Compose generator creates only a missing root `.env`.
 
-The shared application reference is now consolidated in
-[shared.defaults](envs/core-services/shared.defaults). Existing `shared.env`
-and other override paths still work; do not replace or rename your local files.
-New customizations use the matching template listed above. Root `.env` retains
-precedence, including for settings that have moved to a provider template.
+Common API and worker application settings are documented in
+[api-worker.defaults](envs/core-services/api-worker.defaults). New customizations
+use `envs/core-services/api-worker.env`. Existing `shared.env` files and other
+service override paths remain supported; keep local files and edit them in place.
+If both `shared.env` and `api-worker.env` exist, `api-worker.env` takes precedence
+for matching settings. Root `.env` retains precedence over both files, including
+for settings documented in a provider template.
 
 Review accidental empty assignments left by older template copies. For example,
 `CELERY_WORKER_AMOUNT=` overrides the Docker default of `4` and lets the worker
@@ -275,7 +277,7 @@ Weaviate. Update that value if you need different profiles.
 
 For HTTPS certificates, follow the [Certbot guide](certbot/README.md).
 
-For OpenTelemetry, create `envs/core-services/shared.env` from `shared.defaults`
+For OpenTelemetry, create `envs/core-services/api-worker.env` from `api-worker.defaults`
 if it does not exist. Uncomment `ENABLE_OTEL` and set it to `true`; uncomment
 `OTLP_BASE_ENDPOINT` and set it to your collector's endpoint, reachable from
 the API and worker containers. The same file documents optional `OTEL_*`
@@ -298,7 +300,7 @@ provider's interaction configuration after changing the public origin.
 ### Ops tracing rolling upgrades
 
 New tracing tasks use `OPS_TRACE_QUEUE=ops_trace_v2` by default. Set it consistently on the API,
-workers, and Beat in `docker/envs/core-services/shared.env` (or `docker/.env`). Default worker
+workers, and Beat in `docker/envs/core-services/api-worker.env` (or `docker/.env`). Default worker
 subscriptions follow this value; explicit `CELERY_QUEUES` or `CELERY_WORKER_QUEUES` lists must
 include it and exclude legacy `ops_trace` while old workers are draining.
 
@@ -445,10 +447,10 @@ For a directly exposed API, leave `RESPECT_XFORWARD_HEADERS_ENABLED=false`.
 The Python configuration and `api/.env.example` retain that default. To override
 the Compose default, set the variable in `docker/.env`, the shell used by Compose,
 or a Compose override. The API services' explicit `environment` entry takes
-precedence over `envs/core-services/shared.env`.
+precedence over `envs/core-services/api-worker.env` and legacy `shared.env` files.
 Existing `false` overrides in `docker/.env`, the invoking shell, or a Compose
 override remain in effect during upgrades. Move settings previously supplied only
-by `shared.env` to one of those override locations if you need to preserve them.
+by `api-worker.env` or `shared.env` to one of those override locations if you need to preserve them.
 After establishing the trusted ingress boundary, enable the setting to retain
 visitor IPs.
 

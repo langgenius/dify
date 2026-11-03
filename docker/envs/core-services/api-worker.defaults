@@ -1,5 +1,6 @@
-# Shared API, worker and Beat configuration. Copy this file to shared.env to customize it.
+# Common API and worker configuration, including Beat. Copy this file to api-worker.env to customize it.
 # Edit the copy; docker/.env takes precedence. Existing shared.env files remain supported.
+# If both override files exist, api-worker.env takes precedence over shared.env.
 # Active assignments preserve Docker defaults and explicit overrides, including empty values.
 # Optional application/provider settings are commented examples: uncomment only what you need.
 # Do not uncomment empty values or placeholders unless you intend to set them.
@@ -77,7 +78,7 @@ CELERY_WORKER_AMOUNT=${CELERY_WORKER_AMOUNT-4}
 # Celery broker and KnowledgeFS dispatch
 # ------------------------------
 # Broker URL defaults/mappings live in api.defaults, worker.defaults and worker-beat.defaults.
-# Set a common CELERY_BROKER_URL override in shared.env or docker/.env for every producer/consumer.
+# Set a common CELERY_BROKER_URL override in api-worker.env or docker/.env for every producer/consumer.
 # Optional long-running KnowledgeFS Celery rollout: set identically in every API, worker and Beat
 # process sharing this Redis broker. It must exceed the KnowledgeFS hard task limit (7230s by
 # default). Keep unset to preserve Celery's existing default when this rollout is disabled.
