@@ -115,9 +115,10 @@ def test_connection_queries_do_not_decrypt_or_expose_foreign_and_guest_credentia
     assert "original-secret" not in result.model_dump_json()
     for id_ in (foreign.id, guest.id, str(uuid4())):
         with pytest.raises(ConnectionNotFoundError):
-            harness.service.get_connection(harness.identity, id_)
+            harness.service.delete_connection(harness.identity, id_)
     harness.access.denied.add(base.context.app_id)
-    assert harness.service.get_connection(harness.identity, owned.id).apps == ()
+    result = harness.service.list_connections(harness.identity, provider=None, cursor=None, limit=20)
+    assert result.data[0].apps == ()
 
 
 def test_orphan_connection_can_be_disconnected_without_app(harness: ConsumerHarness) -> None:
@@ -128,7 +129,8 @@ def test_orphan_connection_can_be_disconnected_without_app(harness: ConsumerHarn
     with base.sessions.begin() as session:
         session.execute(sa.delete(EndUser).where(EndUser.id == base.context.end_user_id))
         session.execute(sa.delete(App).where(App.id == base.context.app_id))
-    assert harness.service.get_connection(harness.identity, owned.id).connection.id == owned.id
+    result = harness.service.list_connections(harness.identity, provider=None, cursor=None, limit=20)
+    assert [entry.connection.id for entry in result.data] == [owned.id]
     harness.service.delete_connection(harness.identity, owned.id)
     with base.sessions() as session:
         assert session.get(EndUserConnection, owned.id) is None

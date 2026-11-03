@@ -895,21 +895,6 @@ Disconnect an owned Connection. Cookie-authenticated browser mutations require t
 | 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [GET] /me/connections/{connection_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| connection_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Owned Connection | **application/json**: [ConsumerConnectionDetailResponse](#consumerconnectiondetailresponse)<br> |
-| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
 ### [GET] /messages
 Retrieve paginated list of messages from a conversation in a chat application.
 

@@ -219,10 +219,5 @@ class ConsumerService:
     def connection_context(self, identity: ConsumerIdentity, connection_id: str) -> AccountConnectionContext:
         return self._connections.account_connection_context(identity, connection_id)
 
-    def get_connection(self, identity: ConsumerIdentity, connection_id: str) -> ConsumerConnection:
-        context = self.connection_context(identity, connection_id)
-        summary = self._management.get_connection(context, connection_id)
-        return self._with_apps(identity, (summary,))[0]
-
     def delete_connection(self, identity: ConsumerIdentity, connection_id: str) -> None:
         self._management.delete_connection(self.connection_context(identity, connection_id), connection_id)

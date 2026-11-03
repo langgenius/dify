@@ -182,14 +182,6 @@ class ConsumerConnectionsApi(Resource):
 
 @web_ns.route("/me/connections/<uuid:connection_id>")
 class ConsumerConnectionApi(Resource):
-    @web_ns.response(200, "Owned Connection", web_ns.models[ConsumerConnectionDetailResponse.__name__])
-    @error_responses(ConnectionNotFoundHTTPError)
-    def get(self, connection_id: UUID):
-        identity = _identity()
-        with _errors():
-            result = application_services().consumer.get_connection(identity, str(connection_id))
-        return dump_response(ConsumerConnectionDetailResponse, result)
-
     @web_ns.response(204, "Connection disconnected")
     @web_ns.doc(
         description="Disconnect an owned Connection. "

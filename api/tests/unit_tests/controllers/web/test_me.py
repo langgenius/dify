@@ -58,21 +58,21 @@ def test_connections_support_only_query_and_disconnect(client: FlaskClient, harn
     path = f"/api/me/connections/{created.id}"
     listed = client.get("/api/me/connections?limit=1")
     assert listed.status_code == 200
-    assert listed.get_json()["data"][0]["connection"]["id"] == created.id
-    response = client.get(path)
-    assert response.status_code == 200
-    assert isinstance(response.get_json()["connection"]["created_at"], int)
-    assert "encrypted_credentials" not in response.get_data(as_text=True)
+    listed_connection = listed.get_json()["data"][0]["connection"]
+    assert listed_connection["id"] == created.id
+    assert isinstance(listed_connection["created_at"], int)
+    assert "encrypted_credentials" not in listed.get_data(as_text=True)
+    assert client.get(path).status_code == 405
     assert client.patch(path, json={"name": "Renamed"}).status_code == 405
     assert client.get(path + "/credential-schema").status_code == 404
     assert client.post(path + "/reauthorize").status_code == 404
     assert client.get(path + "/revision").status_code == 404
     assert client.delete(path).status_code == 204
-    assert client.get(path).status_code == 404
+    assert client.get("/api/me/connections").get_json()["data"] == []
 
 
 def test_foreign_connection_matches_unknown_http_id(client: FlaskClient) -> None:
-    response = client.get(f"/api/me/connections/{uuid4()}")
+    response = client.delete(f"/api/me/connections/{uuid4()}")
     assert response.status_code == 404
     assert response.get_json()["code"] == "connection_not_found"
 

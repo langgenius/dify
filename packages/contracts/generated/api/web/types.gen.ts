@@ -2841,30 +2841,6 @@ export type DeleteMeConnectionsByConnectionIdResponses = {
 export type DeleteMeConnectionsByConnectionIdResponse =
   DeleteMeConnectionsByConnectionIdResponses[keyof DeleteMeConnectionsByConnectionIdResponses]
 
-export type GetMeConnectionsByConnectionIdData = {
-  body?: never
-  path: {
-    connection_id: string
-  }
-  query?: never
-  url: '/me/connections/{connection_id}'
-}
-
-export type GetMeConnectionsByConnectionIdErrors = {
-  404: ConnectionNotFoundError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type GetMeConnectionsByConnectionIdError =
-  GetMeConnectionsByConnectionIdErrors[keyof GetMeConnectionsByConnectionIdErrors]
-
-export type GetMeConnectionsByConnectionIdResponses = {
-  200: ConsumerConnectionDetailResponse
-}
-
-export type GetMeConnectionsByConnectionIdResponse =
-  GetMeConnectionsByConnectionIdResponses[keyof GetMeConnectionsByConnectionIdResponses]
-
 export type GetMessagesData = {
   body?: never
   path?: never

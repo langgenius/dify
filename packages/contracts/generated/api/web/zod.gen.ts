@@ -2943,15 +2943,6 @@ export const zDeleteMeConnectionsByConnectionIdPath = z.object({
  */
 export const zDeleteMeConnectionsByConnectionIdResponse = z.void()
 
-export const zGetMeConnectionsByConnectionIdPath = z.object({
-  connection_id: z.uuid(),
-})
-
-/**
- * Owned Connection
- */
-export const zGetMeConnectionsByConnectionIdResponse = zConsumerConnectionDetailResponse
-
 export const zGetMessagesQuery = z.object({
   conversation_id: z.string(),
   first_id: z.string().optional(),
