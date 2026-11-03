@@ -13,7 +13,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'An account password input on the InputGroup surface. PasswordFieldInput requires autoComplete; PasswordFieldToggle reveals the value.',
+          'A password input on the InputGroup surface. PasswordFieldInput requires autoComplete; PasswordFieldToggle reveals the value.',
       },
     },
   },
