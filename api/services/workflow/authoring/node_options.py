@@ -53,7 +53,7 @@ class NodeOption:
 class _Request:
     ctx: FillContext
     keyword: str | None
-    accessible_agent_ids: Sequence[str] | None
+    accessible_agent_ids: Callable[[], Sequence[str] | None]
     roster: AgentInviteOptions
     language: str | None
 
@@ -106,6 +106,7 @@ def _tools(request: _Request) -> Iterable[NodeOption]:
 
 def _roster_agents(request: _Request) -> Iterator[Mapping[str, Any]]:
     """Every invite option the roster serves, read page by page until it reports no more or serves an empty page."""
+    accessible_agent_ids = request.accessible_agent_ids()
     page = 1
     while True:
         result = request.roster.list_invite_options(
@@ -113,7 +114,7 @@ def _roster_agents(request: _Request) -> Iterator[Mapping[str, Any]]:
             page=page,
             limit=_ROSTER_PAGE_SIZE,
             keyword=request.keyword,
-            accessible_agent_ids=request.accessible_agent_ids,
+            accessible_agent_ids=accessible_agent_ids,
         )
         agents = result["data"]
         yield from agents
@@ -184,7 +185,7 @@ def list_node_options(
     mode: AppMode,
     kind: NodeOptionKind | None,
     keyword: str | None,
-    accessible_agent_ids: Sequence[str] | None,
+    accessible_agent_ids: Callable[[], Sequence[str] | None],
     roster: AgentInviteOptions,
     language: str | None = None,
 ) -> list[NodeOption]:
@@ -192,7 +193,8 @@ def list_node_options(
 
     Plugin text is read in `language`, else its fallback language. `keyword` keeps the options whose label contains
     it, ignoring case. Types `mode` refuses are never offered.
-    Agents are read from `roster` page by page until none are left, limited to `accessible_agent_ids` when given.
+    Agents are read from `roster` page by page until none are left, limited to the ids `accessible_agent_ids` returns
+    when it returns any; it is called only when agents are listed.
     Reads only; a failing tool source or roster raises its own error.
     """
     request = _Request(
