@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import inspect
 from decimal import Decimal
 from types import SimpleNamespace
@@ -10,6 +11,7 @@ from unittest.mock import MagicMock
 import pytest
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
+from flask import Flask
 from pytest_mock import MockerFixture
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
@@ -501,8 +503,8 @@ class TestAppGeneratorCases:
             _patch_annotation(monkeypatch)
 
             generator._generate_worker(
-                flask_app=mocker.MagicMock(),
-                context=mocker.MagicMock(),
+                flask_app=Flask(__name__),
+                context=contextvars.copy_context(),
                 application_generate_entity=entity,
                 queue_manager=_FakeQueueManager(),
                 conversation_id="conv",
