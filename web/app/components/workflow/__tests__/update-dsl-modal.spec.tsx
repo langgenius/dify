@@ -169,7 +169,6 @@ describe('UpdateDSLModal', () => {
       graph: { nodes: [importedNode], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
       features: {},
       hash: 'imported-hash',
-      client_save_id: '40c6cf5c-a5a1-4bfd-b3ae-f072e3f1efcd',
       conversation_variables: [],
       environment_variables: [],
     })
@@ -191,12 +190,7 @@ describe('UpdateDSLModal', () => {
     expect(mockEmit).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'WORKFLOW_DATA_UPDATE',
-        payload: expect.objectContaining({
-          nodes,
-          edges,
-          hash: 'imported-hash',
-          client_save_id: '40c6cf5c-a5a1-4bfd-b3ae-f072e3f1efcd',
-        }),
+        payload: expect.objectContaining({ nodes, edges, hash: 'imported-hash' }),
       }),
     )
     expect(mockReplaceGraphFromCommittedDraft.mock.invocationCallOrder[0]).toBeLessThan(
