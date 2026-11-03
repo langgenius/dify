@@ -26,7 +26,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     (node) => node.data.type === BlockEnum.Start,
   )
   const startNodeId = startNode?.id
-  const { inputs, setInputs: doSetInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload)
+  // The legacy node retains inactive retrieval-mode settings for later mode switches.
+  const { inputs, setInputs: doSetInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload, {
+    replace: false,
+  })
   const updateDatasetsDetail = useDatasetsDetailStore((s) => s.updateDatasetsDetail)
   const { inputRef, setInputs, handleQueryVarChange, handleQueryAttachmentChange } =
     useKnowledgeInputManager({
