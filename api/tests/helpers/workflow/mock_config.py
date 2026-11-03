@@ -48,7 +48,7 @@ class MockConfig:
     default_tool_response: dict[str, Any] = field(default_factory=lambda: {"result": "mocked tool output"})
     default_retrieval_response: str = "This is mocked retrieval content"
     default_http_response: dict[str, Any] = field(
-        default_factory=lambda: {"status_code": 200, "body": "mocked response", "headers": {}}
+        default_factory=lambda: {"status_code": 200, "body": "mocked response", "headers": dict[str, str]()}
     )
     default_template_transform_response: str = "This is mocked template transform output"
     default_code_response: dict[str, Any] = field(default_factory=lambda: {"result": "mocked code execution result"})
