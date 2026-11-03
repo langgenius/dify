@@ -130,6 +130,9 @@ import {
   zGetWorkspacesByWorkspaceIdModelsPath,
   zGetWorkspacesByWorkspaceIdModelsQuery,
   zGetWorkspacesByWorkspaceIdModelsResponse,
+  zGetWorkspacesByWorkspaceIdNodeOptionsPath,
+  zGetWorkspacesByWorkspaceIdNodeOptionsQuery,
+  zGetWorkspacesByWorkspaceIdNodeOptionsResponse,
   zGetWorkspacesByWorkspaceIdPath,
   zGetWorkspacesByWorkspaceIdPluginsPath,
   zGetWorkspacesByWorkspaceIdPluginsQuery,
@@ -278,6 +281,12 @@ import {
   zPostWorkspacesByWorkspaceIdAppsImportsPath,
   zPostWorkspacesByWorkspaceIdAppsImportsResponse,
   zPostWorkspacesByWorkspaceIdAppsPackagesBody,
+  zPostWorkspacesByWorkspaceIdAppsPackagesCheckBody,
+  zPostWorkspacesByWorkspaceIdAppsPackagesCheckPath,
+  zPostWorkspacesByWorkspaceIdAppsPackagesCheckResponse,
+  zPostWorkspacesByWorkspaceIdAppsPackagesFillBody,
+  zPostWorkspacesByWorkspaceIdAppsPackagesFillPath,
+  zPostWorkspacesByWorkspaceIdAppsPackagesFillResponse,
   zPostWorkspacesByWorkspaceIdAppsPackagesPath,
   zPostWorkspacesByWorkspaceIdAppsPackagesResponse,
   zPostWorkspacesByWorkspaceIdAppsWorkflowBody,
@@ -1881,6 +1890,46 @@ export const post27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdAppsPackagesCheck',
+    path: '/workspaces/{workspace_id}/apps/packages:check',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdAppsPackagesCheckBody,
+      params: zPostWorkspacesByWorkspaceIdAppsPackagesCheckPath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdAppsPackagesCheckResponse)
+
+export const check4 = {
+  post: post27,
+}
+
+export const post28 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdAppsPackagesFill',
+    path: '/workspaces/{workspace_id}/apps/packages:fill',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdAppsPackagesFillBody,
+      params: zPostWorkspacesByWorkspaceIdAppsPackagesFillPath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdAppsPackagesFillResponse)
+
+export const fill = {
+  post: post28,
+}
+
+export const post29 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
     operationId: 'postWorkspacesByWorkspaceIdAppsPackages',
     path: '/workspaces/{workspace_id}/apps/packages',
     tags: ['openapi'],
@@ -1894,10 +1943,12 @@ export const post27 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsPackagesResponse)
 
 export const packages = {
-  post: post27,
+  post: post29,
+  check: check4,
+  fill,
 }
 
-export const post28 = oc
+export const post30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1915,7 +1966,7 @@ export const post28 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsWorkflowResponse)
 
 export const workflow5 = {
-  post: post28,
+  post: post30,
 }
 
 export const apps2 = {
@@ -1978,7 +2029,7 @@ export const cat = {
  *
  * Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
  */
-export const post29 = oc
+export const post31 = oc
   .route({
     description:
       'Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
@@ -1998,7 +2049,7 @@ export const post29 = oc
   .output(zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse)
 
 export const diff = {
-  post: post29,
+  post: post31,
 }
 
 /**
@@ -2235,7 +2286,7 @@ export const get50 = oc
   )
   .output(zGetWorkspacesByWorkspaceIdMembersResponse)
 
-export const post30 = oc
+export const post32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2254,7 +2305,7 @@ export const post30 = oc
 
 export const members = {
   get: get50,
-  post: post30,
+  post: post32,
   byMemberId,
 }
 
@@ -2278,7 +2329,7 @@ export const byCredentialId = {
   patch: patch16,
 }
 
-export const post31 = oc
+export const post33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2296,7 +2347,7 @@ export const post31 = oc
   .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse)
 
 export const credentials = {
-  post: post31,
+  post: post33,
   byCredentialId,
 }
 
@@ -2324,7 +2375,7 @@ export const byCredentialId2 = {
   patch: patch17,
 }
 
-export const post32 = oc
+export const post34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2342,7 +2393,7 @@ export const post32 = oc
   .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse)
 
 export const credentials2 = {
-  post: post32,
+  post: post34,
   byCredentialId: byCredentialId2,
 }
 
@@ -2395,6 +2446,26 @@ export const get53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdNodeOptions',
+    path: '/workspaces/{workspace_id}/node-options',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdNodeOptionsPath,
+      query: zGetWorkspacesByWorkspaceIdNodeOptionsQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdNodeOptionsResponse)
+
+export const nodeOptions = {
+  get: get53,
+}
+
+export const get54 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
     operationId: 'getWorkspacesByWorkspaceIdPluginTasksByTaskId',
     path: '/workspaces/{workspace_id}/plugin-tasks/{task_id}',
     tags: ['openapi'],
@@ -2403,7 +2474,7 @@ export const get53 = oc
   .output(zGetWorkspacesByWorkspaceIdPluginTasksByTaskIdResponse)
 
 export const byTaskId2 = {
-  get: get53,
+  get: get54,
 }
 
 export const pluginTasks = {
@@ -2425,7 +2496,7 @@ export const byPluginId = {
   delete: delete5,
 }
 
-export const post33 = oc
+export const post35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2442,10 +2513,10 @@ export const post33 = oc
   .output(zPostWorkspacesByWorkspaceIdPluginsInstallResponse)
 
 export const install = {
-  post: post33,
+  post: post35,
 }
 
-export const get54 = oc
+export const get55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2462,7 +2533,7 @@ export const get54 = oc
   .output(zGetWorkspacesByWorkspaceIdPluginsResponse)
 
 export const plugins2 = {
-  get: get54,
+  get: get55,
   byPluginId,
   install,
 }
@@ -2474,7 +2545,7 @@ export const plugins2 = {
  * Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
  * so an edit made in the same second as the export is not detected.
  */
-export const post34 = oc
+export const post36 = oc
   .route({
     description:
       "Creates a draft (201) or overwrites it (200), relaying archive and service errors.\nImport never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,\nso an edit made in the same second as the export is not detected.",
@@ -2494,10 +2565,10 @@ export const post34 = oc
   .output(zPostWorkspacesByWorkspaceIdSkillsImportsResponse)
 
 export const imports2 = {
-  post: post34,
+  post: post36,
 }
 
-export const get55 = oc
+export const get56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2514,10 +2585,10 @@ export const get55 = oc
   .output(zGetWorkspacesByWorkspaceIdSkillsBySkillIdArchiveResponse)
 
 export const archive = {
-  get: get55,
+  get: get56,
 }
 
-export const get56 = oc
+export const get57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2534,10 +2605,10 @@ export const get56 = oc
   .output(zGetWorkspacesByWorkspaceIdSkillsBySkillIdVersionsResponse)
 
 export const versions2 = {
-  get: get56,
+  get: get57,
 }
 
-export const post35 = oc
+export const post37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2554,10 +2625,10 @@ export const post35 = oc
   .output(zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishResponse)
 
 export const publish2 = {
-  post: post35,
+  post: post37,
 }
 
-export const get57 = oc
+export const get58 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2569,13 +2640,13 @@ export const get57 = oc
   .output(zGetWorkspacesByWorkspaceIdSkillsBySkillIdResponse)
 
 export const bySkillId = {
-  get: get57,
+  get: get58,
   archive,
   versions: versions2,
   publish: publish2,
 }
 
-export const get58 = oc
+export const get59 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2592,7 +2663,7 @@ export const get58 = oc
   .output(zGetWorkspacesByWorkspaceIdSkillsResponse)
 
 export const skills = {
-  get: get58,
+  get: get59,
   imports: imports2,
   bySkillId,
 }
@@ -2617,7 +2688,7 @@ export const byCredentialId3 = {
   patch: patch18,
 }
 
-export const post36 = oc
+export const post38 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2635,11 +2706,11 @@ export const post36 = oc
   .output(zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse)
 
 export const credentials3 = {
-  post: post36,
+  post: post38,
   byCredentialId: byCredentialId3,
 }
 
-export const get59 = oc
+export const get60 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2651,7 +2722,7 @@ export const get59 = oc
   .output(zGetWorkspacesByWorkspaceIdToolProvidersByProviderResponse)
 
 export const byProvider2 = {
-  get: get59,
+  get: get60,
   credentials: credentials3,
 }
 
@@ -2659,7 +2730,7 @@ export const toolProviders = {
   byProvider: byProvider2,
 }
 
-export const get60 = oc
+export const get61 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2676,10 +2747,10 @@ export const get60 = oc
   .output(zGetWorkspacesByWorkspaceIdToolsResponse)
 
 export const tools = {
-  get: get60,
+  get: get61,
 }
 
-export const get61 = oc
+export const get62 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2691,7 +2762,7 @@ export const get61 = oc
   .output(zGetWorkspacesByWorkspaceIdResponse)
 
 export const byWorkspaceId = {
-  get: get61,
+  get: get62,
   agents,
   apps: apps2,
   knowledgeBases,
@@ -2700,6 +2771,7 @@ export const byWorkspaceId = {
   members,
   modelProviders,
   models: models2,
+  nodeOptions,
   pluginTasks,
   plugins: plugins2,
   skills,
@@ -2707,7 +2779,7 @@ export const byWorkspaceId = {
   tools,
 }
 
-export const get62 = oc
+export const get63 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2719,7 +2791,7 @@ export const get62 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get62,
+  get: get63,
   byWorkspaceId,
 }
 
