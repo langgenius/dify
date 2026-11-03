@@ -191,7 +191,7 @@ describe('Leaving Build', () => {
     const discard = createDeferred<{ result: string }>()
     api.discard.mockReturnValueOnce(discard.promise)
     const view = createEnvironment({ buildDraft: createBuildDraft() }).render()
-    await send(user)
+    await send(user, 'build', 'Go')
     await receive()
     await changeMode(user, 'preview')
     expect(api.discard).not.toHaveBeenCalled()
