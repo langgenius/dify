@@ -2342,3 +2342,114 @@ def test_embedding_byok_stays_original_even_when_shared_source_settings_are_unav
         assert config.get_current_credentials(ModelType.TEXT_EMBEDDING, EMBEDDING_MODELS[0]) == {
             "api_key": "USER_SECRET"
         }
+
+
+@pytest.mark.parametrize(
+    ("version", "model"),
+    [
+        ("042", "gpt-4o"),
+        ("042", "gpt-5-2025-08-07"),
+        ("042", "gpt-5-mini-2025-08-07"),
+        ("110", "gpt-6-luna"),
+    ],
+)
+@pytest.mark.parametrize("official", [False, True])
+def test_credit_llm_family_routes_and_freezes_only_reviewed_aliases(
+    version: str, model: str, official: bool, provider_case: ProviderCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.unit_tests.services.test_model_billing_source_variants import (
+        _CREDIT_LLM_PROFILES,
+        _CREDIT_LLM_REVISION,
+        _credit_llm_catalog,
+        _credit_llm_credentials,
+        _credit_llm_records,
+    )
+
+    index = next(
+        i
+        for i, profile in enumerate(_CREDIT_LLM_PROFILES)
+        if profile["source_version"] == version
+        and profile["source_model"] == model
+        and profile["protocol"] == ("chat" if version == "042" else "responses")
+        and profile["source_endpoint_class"] == ("official_root" if official else "unset")
+    )
+    profile = _CREDIT_LLM_PROFILES[index]
+    case = provider_case
+    case.provider.models = [_credit_llm_catalog(index)]
+    case.provider.plugin_unique_identifier = profile["source_plugin_uid"]
+    case.integration.plugin_unique_identifier = "langgenius/tokener:9.9.9@" + "c" * 64
+    original = _credit_llm_credentials(index, "absent")
+    snapshot = deepcopy(original)
+    case.hosting[SOURCE_PROVIDER].credentials = original
+    raw = json.dumps(_credit_llm_records())
+    digest = source_mapping_revision(raw, _CREDIT_LLM_REVISION).digest
+    case.state["model_mapping_version"] = _CREDIT_LLM_REVISION
+    case.state["source_variant_registry_digest"] = digest
+    preparation = case.state["preparation"]
+    assert isinstance(preparation, dict)
+    preparation["source_variant_registry_digest"] = digest
+    state_before = deepcopy(case.state)
+    policy = json.dumps(
+        [
+            {
+                "schema_version": 1,
+                "mapping_revision": _CREDIT_LLM_REVISION,
+                "inventory_policy": "saved_system_dependencies_v2",
+            }
+        ]
+    )
+    with config_overrides_context(
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=raw, TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=policy
+    ):
+        config = case.manager.get_configurations(TENANT_ID).get(SOURCE_PROVIDER)
+        assert config is not None
+        assert config.system_configuration.credentials is None
+        routed = config.get_current_credentials(ModelType.LLM, model)
+        assert isinstance(routed, RoutedModelCredentials)
+        assert dict(routed) == {}
+        plan = routed.plan
+        assert plan.logical_model == model
+        assert plan.target_model == profile["target_model"]
+        contract = plan.source_parameter_contract
+        assert contract is not None
+        assert contract.adapter_id == "openai_credit_llm_source_v1"
+        assert contract.source_model == model
+        assert contract.profile_id == profile["profile_id"]
+        assert plan.source_variant_binding is not None
+        assert plan.mapping_revision_digest == digest
+
+        def admit(value: RoutedModelCredentials = routed) -> None:
+            validate_invocation_admission(
+                value, tenant_id=TENANT_ID, provider=SOURCE_PROVIDER, model_type=ModelType.LLM, model=model
+            )
+
+        admit()
+        for changed in (
+            replace(plan, target_model="unreviewed-target"),
+            replace(plan, source_variant_binding=None),
+            replace(
+                plan, source_parameter_contract=replace(contract, source_runtime_schema_digest="sha256:" + "f" * 64)
+            ),
+        ):
+            assert changed.cache_identity != plan.cache_identity
+            with pytest.raises(ModelInvocationReprepare):
+                admit(RoutedModelCredentials(changed))
+        wrong_kind = replace(plan, model_type=ModelType.TEXT_EMBEDDING)
+        assert wrong_kind.cache_identity != plan.cache_identity
+        with pytest.raises(ModelRouteUnavailable):
+            admit(RoutedModelCredentials(wrong_kind))
+        monkeypatch.setattr(
+            "core.model_invocation_routing.managed_credentials", lambda _: {"api_key": "MANAGED_TEST_KEY"}
+        )
+        payload = redirect_payload(plan, {"provider": "openai", "model": model, "model_type": "llm"})
+        assert payload["target"]["model"] == profile["target_model"]
+        assert payload["target"]["credentials"]["_dify_source_contract"]["source_model"] == model
+        assert isinstance(original["api_key"], str)
+        assert original["api_key"] not in json.dumps(payload)
+        assert "https://api.openai.com" not in json.dumps(payload)
+        original["enable_request_metadata"] = "enabled"
+        with pytest.raises(ModelInvocationReprepare):
+            admit()
+        original.pop("enable_request_metadata")
+    assert original == snapshot
+    assert case.state == state_before

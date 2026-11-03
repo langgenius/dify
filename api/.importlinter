@@ -1460,6 +1460,23 @@ forbidden_modules =
     tasks
     werkzeug
 
+[importlinter:contract:model-billing-openai-credit-llm-source-adapter-pure]
+name = Source OpenAI credit LLM family adapter is pure and infrastructure independent
+type = forbidden
+source_modules =
+    services.model_billing_openai_credit_llm_adapter
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
 [importlinter:contract:model-billing-free-migration-controller-boundary]
 name = Migration control transport reaches persistence through application owners
 type = forbidden

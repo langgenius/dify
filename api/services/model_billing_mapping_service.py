@@ -48,6 +48,12 @@ from services.model_billing_openai_chat_adapter import (
     openai_chat_source_marker,
     restore_openai_chat_source_contract,
 )
+from services.model_billing_openai_credit_llm_adapter import (
+    OpenAICreditLLMSourceContract,
+    build_openai_credit_llm_source_contract,
+    openai_credit_llm_source_marker,
+    restore_openai_credit_llm_source_contract,
+)
 from services.model_billing_openai_embedding_adapter import (
     OPENAI_EMBEDDING_SOURCE_UIDS,
     OpenAIEmbeddingSourceContract,
@@ -128,8 +134,17 @@ def build_source_adapter_contract(
         return embedding_contract
     if isinstance(mapping, SelectedSourceVariant):
         settings = mapping.variant.source_settings
-        if mapping.parameter_adapter.id == "openai_provider042_source_v1":
-            contract: SourceParameterContract = build_openai_provider042_source_contract(
+        if mapping.parameter_adapter.id == "openai_credit_llm_source_v1":
+            contract: SourceParameterContract = build_openai_credit_llm_source_contract(
+                **arguments,
+                source_schema=source_schema,
+                expected_source_runtime_schema_digest=mapping.variant.source_runtime_schema_digest,
+                target_model=mapping.target.model,
+                source_settings=settings,
+                source_endpoint_class="official_root" if settings.source_base_is_set else "unset",
+            )
+        elif mapping.parameter_adapter.id == "openai_provider042_source_v1":
+            contract = build_openai_provider042_source_contract(
                 **arguments,
                 source_schema=source_schema,
                 target_model=mapping.target.model,
@@ -193,6 +208,8 @@ def source_parameter_marker(
     }
     if isinstance(contract, OpenAIChatSourceContract):
         return openai_chat_source_marker(contract, **arguments, model_type=model_type)
+    if isinstance(contract, OpenAICreditLLMSourceContract):
+        return openai_credit_llm_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, OpenAIProvider042SourceContract):
         return openai_provider042_source_marker(contract, **arguments, model_type=model_type)
     if isinstance(contract, OpenAIEmbeddingSourceContract):
@@ -919,8 +936,16 @@ def restore_variant_source_contract(
             raise ValueError("Embedding source variant profile mismatch")
         return contract
     settings = mapping.variant.source_settings
-    if variant.parameter_adapter.id == "openai_provider042_source_v1":
-        contract: SourceParameterContract = restore_openai_provider042_source_contract(
+    if variant.parameter_adapter.id == "openai_credit_llm_source_v1":
+        contract: SourceParameterContract = restore_openai_credit_llm_source_contract(
+            marker,
+            **arguments,
+            source_settings=settings,
+            source_endpoint_class="official_root" if settings.source_base_is_set else "unset",
+            expected_source_runtime_schema_digest=variant.source_runtime_schema_digest,
+        )
+    elif variant.parameter_adapter.id == "openai_provider042_source_v1":
+        contract = restore_openai_provider042_source_contract(
             marker,
             **arguments,
             source_settings=OpenAI042SourceSettings(

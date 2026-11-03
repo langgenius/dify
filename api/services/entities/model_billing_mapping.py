@@ -115,7 +115,12 @@ class SourceVariantSettings(_StrictModel):
 class SourceVariantAdapter(_StrictModel):
     """V2 has its own closed adapter family; V1 validation is unchanged."""
 
-    id: Literal["openai_chat_source_v1", "openai_provider110_source_v1", "openai_provider042_source_v1"]
+    id: Literal[
+        "openai_chat_source_v1",
+        "openai_provider110_source_v1",
+        "openai_provider042_source_v1",
+        "openai_credit_llm_source_v1",
+    ]
     revision: str = Field(min_length=1)
     rules_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
 
@@ -136,7 +141,8 @@ class SourceMappingVariant(_StrictModel):
     def closed_operations(self) -> Self:
         if (
             self.target.model_type != ModelType.LLM
-            or self.target.model not in {"gpt-4o-mini", "gpt-5.5"}
+            or self.parameter_adapter.id != "openai_credit_llm_source_v1"
+            and self.target.model not in {"gpt-4o-mini", "gpt-5.5"}
             or set(self.operations) != {"model/schema", "llm/invoke", "llm/num_tokens"}
             or len(self.operations) != 3
             or len(set(self.conformance_fixture_ids)) != len(self.conformance_fixture_ids)
@@ -169,10 +175,36 @@ class SourceVariantMapping(_StrictModel):
         if (
             self.source.provider_id != "langgenius/openai/openai"
             or self.source.model_type != ModelType.LLM
-            or self.source.model not in {"gpt-4o-mini", "gpt-5.5"}
             or self.source.mode != "chat"
             or len(set(self.pool_types)) != len(self.pool_types)
             or len({item.variant_id for item in self.variants}) != len(self.variants)
+        ):
+            raise ValueError("Invalid bounded source variant mapping")
+        if any(item.parameter_adapter.id == "openai_credit_llm_source_v1" for item in self.variants):
+            # Import only when validating the new family: its pure owner uses
+            # the shared settings DTO, and owns the finite UID/model/alias rules.
+            from services.model_billing_openai_credit_llm_adapter import (
+                openai_credit_llm_protocol,
+                validate_openai_credit_llm_identity,
+            )
+
+            for item in self.variants:
+                if item.parameter_adapter.id != "openai_credit_llm_source_v1" or item.parameter_adapter.revision != "1":
+                    raise ValueError("Invalid bounded source variant mapping")
+                validate_openai_credit_llm_identity(
+                    source_provider=self.source.provider_id,
+                    source_model=self.source.model,
+                    source_plugin_unique_identifier=item.source_plugin_uid,
+                    model_type=self.source.model_type,
+                    target_model=item.target.model,
+                )
+                openai_credit_llm_protocol(
+                    source_plugin_unique_identifier=item.source_plugin_uid,
+                    source_settings=item.source_settings,
+                    source_endpoint_class="official_root" if item.source_settings.source_base_is_set else "unset",
+                )
+        elif (
+            self.source.model not in {"gpt-4o-mini", "gpt-5.5"}
             or any(item.target.model != self.source.model for item in self.variants)
             or any(
                 (item.parameter_adapter.id == "openai_provider042_source_v1") != (self.source.model == "gpt-5.5")

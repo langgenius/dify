@@ -1315,3 +1315,95 @@ def test_new_revision_collects_both_saved_original042_mini_and_gpt55_runtime_bou
     assert module.ext_hosting_provider.hosting_configuration.provider_map[PROVIDER].credentials == {
         "api_key": "platform-test-boundary"
     }
+
+
+@pytest.mark.parametrize(("version", "model"), [("042", "gpt-5-2025-08-07"), ("110", "gpt-6-sol")])
+def test_credit_llm_family_checks_selected_source_and_every_prospective_target(
+    version: str, model: str, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    from tests.unit_tests.services.test_model_billing_source_variants import (
+        _CREDIT_LLM_PROFILES,
+        _CREDIT_LLM_REVISION,
+        _credit_llm_catalog,
+        _credit_llm_records,
+    )
+
+    index = next(
+        i
+        for i, p in enumerate(_CREDIT_LLM_PROFILES)
+        if p["source_version"] == version
+        and p["source_model"] == model
+        and p["source_endpoint_class"] == "unset"
+        and p["protocol"] == ("chat" if version == "042" else "responses")
+    )
+    profile = _CREDIT_LLM_PROFILES[index]
+    gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    catalog = _credit_llm_catalog(index)
+    runtime = AIModelEntity.model_validate(profile["source_daemon_schema"])
+    uid = profile["source_plugin_uid"]
+    metadata.bindings[0].plugin_unique_identifier = uid
+    metadata.bindings[0].version = "0.4.2" if version == "042" else "1.1.0"
+    metadata.catalogs[0].plugin_unique_identifier = uid
+    metadata.catalogs[0].declaration.models = [catalog]
+    metadata.dynamic = runtime
+    selections.value = replace(
+        selections.value, providers=(replace(selections.value.providers[0], source_plugin_unique_identifier=uid),)
+    )
+    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", json.dumps(_credit_llm_records()))
+    evidence = gateway.sources(
+        "tenant",
+        _CREDIT_LLM_REVISION,
+        (RequiredSavedCreditModel(PROVIDER, "llm", model, ("paid",)),),
+        inventory_policy="saved_system_dependencies_v2",
+    )
+    assert len(evidence.models) == 1
+    assert len(evidence.prospective_variants) == 192
+    assert metadata.dynamic_uid == uid
+    assert evidence.models[0]["source_runtime_schema_digest"] == module.model_schema_digest(runtime)
+    expected = "sha256:" + "a" * 64
+    monkeypatch.setattr(
+        gateway._records,
+        "managed_target_binding",
+        lambda _: ManagedModelReadinessBinding("credential", "langgenius/tokener:9.9.9@" + "c" * 64, expected),
+    )
+    monkeypatch.setattr(
+        module,
+        "migration_routing_state",
+        lambda _: {
+            "provisioned_binding": {
+                "tenant_id": "tenant",
+                "provider_name": "langgenius/tokener/tokener",
+                "provider_credential_id": "credential",
+                "credential_fingerprint": expected,
+            }
+        },
+    )
+    profiles = {p["profile_id"]: p for p in _CREDIT_LLM_PROFILES}
+    seen: list[str] = []
+    invalid: list[str] = []
+
+    def target_schema(_tenant, _user, _plugin, _provider, _kind, _model, credentials, **_kwargs):
+        assert isinstance(credentials, RoutedModelCredentials)
+        assert dict(credentials) == {}
+        contract = credentials.plan.source_parameter_contract
+        assert contract is not None
+        seen.append(contract.profile_id)
+        schema = AIModelEntity.model_validate(profiles[contract.profile_id]["source_daemon_schema"])
+        if invalid and contract.profile_id == invalid[0]:
+            return schema.model_copy(update={"model_type": ModelType.TEXT_EMBEDDING})
+        return schema.model_copy(update={"model": contract.target_model})
+
+    monkeypatch.setattr(metadata, "get_model_schema", target_schema)
+    inventory = {
+        "models": list(evidence.models),
+        "prospective_variants": list(evidence.prospective_variants),
+        "source_variant_registry_digest": evidence.source_variant_registry_digest,
+    }
+    assert gateway.validate_target("tenant", _CREDIT_LLM_REVISION, inventory) == expected
+    assert len(seen) == 193
+    assert set(seen) == set(profiles)
+    invalid[:] = [profile["profile_id"]]
+    with pytest.raises(ModelRouteUnmapped):
+        gateway.validate_target("tenant", _CREDIT_LLM_REVISION, inventory)
+    with pytest.raises(ModelRouteUnmapped):
+        gateway.validate_target("tenant", _CREDIT_LLM_REVISION, {**inventory, "prospective_variants": []})

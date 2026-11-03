@@ -1,10 +1,13 @@
 """Exact-version registry/availability; real reviewed042 contracts, no model calls."""
 
+import base64
+import gzip
 import hashlib
 import json
 from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
+from typing import TypedDict, cast
 
 import pytest
 from pydantic import ValidationError
@@ -1213,4 +1216,401 @@ def test_daemon_revision_cannot_be_downgraded_to_the_old_direct_sdk_projection(c
             source_uid=OPENAI_PROVIDER042_SOURCE_UID,
             fact=fact,
             schema=catalog,
+        )
+
+
+class _CreditLLMProfile(TypedDict):
+    profile_id: str
+    source_version: str
+    source_model: str
+    target_model: str
+    source_plugin_uid: str
+    source_schema_digest: str
+    source_runtime_schema_digest: str
+    source_sdk_core_schema_digest: str
+    source_codec_schema_digest: str
+    source_endpoint_class: str
+    source_settings: dict[str, bool]
+    source_schema: dict[str, object]
+    source_daemon_schema: dict[str, object]
+    source_codec_schema: dict[str, object]
+    supported_protocol_selectors: list[str]
+    adapter_id: str
+    adapter_revision: str
+    protocol: str
+    codec_rules: dict[str, object]
+    operations: list[str]
+
+
+class _CreditLLMSourceRow(TypedDict):
+    source_version: str
+    source_model: str
+    source_plugin_uid: str
+    source_schema_status: str
+    source_schema_digest: str
+    daemon_runtime_schema_digest: str
+    core_runtime_schema_digest: str
+    source_catalog_schema: dict[str, object]
+    source_catalog_raw_schema: dict[str, object]
+    source_daemon_schema: dict[str, object]
+    source_daemon_raw_schema: dict[str, object]
+    source_schema: dict[str, object]
+    source_codec_schema: dict[str, object]
+
+
+def _credit_llm_unpack(name: str) -> dict[str, object]:
+    packet = json.loads((Path(__file__).parent / "fixtures" / name).read_bytes())
+    raw = gzip.decompress(base64.b64decode(packet["payload_base64"], validate=True))
+    assert hashlib.sha256(raw).hexdigest() == packet["raw_sha256"]
+    document = json.loads(raw)
+    assert isinstance(document, dict)
+    return document
+
+
+_CREDIT_LLM_REVISION = "positive-credit-openai-family-new-v1"
+_CREDIT_LLM_PROFILES = cast(
+    list[_CreditLLMProfile], _credit_llm_unpack("model_billing_openai_credit_llm_profiles.packed.json")["profiles"]
+)
+_CREDIT_LLM_SOURCE_ROWS = {
+    (row["source_version"], row["source_model"]): row
+    for row in cast(
+        list[_CreditLLMSourceRow],
+        _credit_llm_unpack("model_billing_openai_credit_llm_source_matrix.packed.json")["rows"],
+    )
+    if row["source_schema_status"] == "source_sdk_schema_positive"
+}
+_CREDIT_LLM_SELECTOR_CASES = [
+    (index, selector)
+    for index, profile in enumerate(_CREDIT_LLM_PROFILES)
+    for selector in profile["supported_protocol_selectors"]
+]
+
+
+def _credit_llm_catalog(index: int) -> AIModelEntity:
+    profile = _CREDIT_LLM_PROFILES[index]
+    row = _CREDIT_LLM_SOURCE_ROWS[(profile["source_version"], profile["source_model"])]
+    return AIModelEntity.model_validate(row["source_catalog_schema"])
+
+
+def _credit_llm_record(index: int, selector: str) -> dict[str, object]:
+    profile = _CREDIT_LLM_PROFILES[index]
+    template = mapping(_credit_llm_catalog(index), revision=_CREDIT_LLM_REVISION, target=profile["target_model"])
+    target = section(template, "target")
+    target["minimum_plugin_version"] = "0.4.3-dev14"
+    return {
+        "schema_version": 2,
+        "mapping_revision": _CREDIT_LLM_REVISION,
+        "source": template["source"],
+        "settlement_owner": "shared_credit_pool",
+        "pool_types": ["paid", "trial"],
+        "variants": [
+            {
+                "variant_id": profile["profile_id"] + ":" + selector,
+                "source_plugin_uid": profile["source_plugin_uid"],
+                "source_settings": {"protocol_selector": selector, **profile["source_settings"]},
+                "source_schema_digest": profile["source_schema_digest"],
+                "source_runtime_schema_digest": profile["source_runtime_schema_digest"],
+                "source_profile_id": profile["profile_id"],
+                "parameter_adapter": {
+                    "id": profile["adapter_id"],
+                    "revision": profile["adapter_revision"],
+                    "rules_digest": profile_digest(profile),
+                },
+                "target": target,
+                "operations": template["operations"],
+                "conformance_fixture_ids": ["exact-positive-credit-source-family-offline"],
+            }
+        ],
+    }
+
+
+def _credit_llm_records() -> list[dict[str, object]]:
+    records: dict[str, dict[str, object]] = {}
+    for index, selector in _CREDIT_LLM_SELECTOR_CASES:
+        item = _credit_llm_record(index, selector)
+        model = _CREDIT_LLM_PROFILES[index]["source_model"]
+        if model not in records:
+            records[model] = item
+        else:
+            variants(records[model]).extend(variants(item))
+    return list(records.values())
+
+
+def _credit_llm_restore_record(record: dict[str, object]) -> SourceParameterContract:
+    registry = source_mapping_revision(json.dumps([record]), _CREDIT_LLM_REVISION)
+    return restore_variant_source_contract(registry.selected_prospective()[0])
+
+
+def _credit_llm_credentials(index: int, selector: str) -> dict[str, object]:
+    profile = _CREDIT_LLM_PROFILES[index]
+    credentials: dict[str, object] = {"api_key": "ORIGINAL_SOURCE_KEY_MUST_STAY_PRIVATE"}
+    if selector != "absent":
+        credentials["api_protocol"] = selector
+    if profile["source_endpoint_class"] == "official_root":
+        credentials["openai_api_base"] = "https://api.openai.com"
+    return credentials
+
+
+@pytest.mark.parametrize(("index", "selector"), _CREDIT_LLM_SELECTOR_CASES)
+def test_credit_llm_family_all_192_selectors_parse_resolve_build_restore_and_freeze(index: int, selector: str) -> None:
+    from services.model_billing_openai_credit_llm_adapter import OpenAICreditLLMSourceContract
+
+    assert len(_CREDIT_LLM_PROFILES) == 128
+    assert len(_CREDIT_LLM_SOURCE_ROWS) == 32
+    assert len(_CREDIT_LLM_SELECTOR_CASES) == 192
+    profile = _CREDIT_LLM_PROFILES[index]
+    catalog = _credit_llm_catalog(index)
+    identity = (SOURCE_PROVIDER, ModelType.LLM, profile["source_model"])
+    credentials = _credit_llm_credentials(index, selector)
+    before = deepcopy(credentials)
+    registry = source_mapping_revision(json.dumps(_credit_llm_records()), _CREDIT_LLM_REVISION)
+    assert len(registry.declarations) == 20
+    assert len(registry.selected_prospective()) == 192
+    fact = hosted_source_variant_fact(
+        provider=SOURCE_PROVIDER, source_uid=profile["source_plugin_uid"], models=[catalog], credentials=credentials
+    )
+    selected = resolve_source_mapping(
+        registry, identity, source_uid=profile["source_plugin_uid"], fact=fact, schema=catalog
+    )
+    assert isinstance(selected, SelectedSourceVariant)
+    assert selected.variant.source_profile_id == profile["profile_id"]
+    assert selected.target.model == profile["target_model"]
+    restored = restore_variant_source_contract(selected)
+    built = build_source_adapter_contract(
+        selected,
+        source_provider=SOURCE_PROVIDER,
+        source_plugin_unique_identifier=profile["source_plugin_uid"],
+        source_schema=catalog,
+        source_credentials=credentials,
+    )
+    assert type(built) is OpenAICreditLLMSourceContract
+    assert built == restored
+    assert built.source_model == profile["source_model"]
+    assert built.target_model == profile["target_model"]
+    assert built.rules_digest == profile_digest(profile)
+    assert built.source_runtime_schema_digest == profile_digest(profile["source_daemon_schema"])
+    marker = source_parameter_marker(
+        built,
+        source_provider=SOURCE_PROVIDER,
+        source_model=profile["source_model"],
+        model_type=ModelType.LLM,
+        target_model=profile["target_model"],
+    )
+    assert marker == {
+        "schema_version": 1,
+        "profile_id": profile["profile_id"],
+        "source_plugin_uid": profile["source_plugin_uid"],
+        "source_model": profile["source_model"],
+        "source_schema_digest": profile["source_schema_digest"],
+        "rules_digest": profile_digest(profile),
+    }
+    assert registry.restore_selection(identity, selection_payload(selected).model_dump(mode="json")) == selected
+    validate_frozen_mapping_evidence(
+        selected,
+        provider=SOURCE_PROVIDER,
+        model=profile["source_model"],
+        model_type=ModelType.LLM,
+        target_model=profile["target_model"],
+        operations=tuple(selected.operations),
+        source_contract=built,
+        tts_contract=None,
+    )
+    assert credentials == before
+    assert "ORIGINAL_SOURCE_KEY" not in json.dumps(marker)
+    assert "ORIGINAL_SOURCE_KEY" not in selection_payload(selected).model_dump_json()
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "source_type",
+        "target_type",
+        "mode",
+        "target_alias",
+        "unknown_uid",
+        "revision",
+        "rules",
+        "runtime_pin",
+        "catalog_pin",
+        "metadata",
+        "base",
+        "profile",
+        "operations",
+        "110_missing_gpt-4o",
+        "110_missing_gpt-5-2025-08-07",
+        "110_missing_gpt-5-mini-2025-08-07",
+        "042_missing_gpt-5.6-luna",
+        "042_missing_gpt-5.6-sol",
+        "042_missing_gpt-5.6-terra",
+        "042_missing_gpt-6-luna",
+        "042_missing_gpt-6-sol",
+    ],
+)
+def test_credit_llm_family_declarations_fail_closed_on_unreviewed_evidence(change: str) -> None:
+    index = 0
+    version = ""
+    if "_missing_" in change:
+        version, model = change.split("_missing_", 1)
+        index = next(i for i, profile in enumerate(_CREDIT_LLM_PROFILES) if profile["source_model"] == model)
+    record = _credit_llm_record(index, _CREDIT_LLM_PROFILES[index]["supported_protocol_selectors"][0])
+    row = variants(record)[0]
+    if "_missing_" in change:
+        row["source_plugin_uid"] = (
+            OPENAI_PROVIDER042_SOURCE_UID
+            if version == "042"
+            else CURRENT_SOURCE_CONTRACTS[0].source_plugin_unique_identifier
+        )
+    elif change == "source_type":
+        section(record, "source")["model_type"] = "text-embedding"
+    elif change == "target_type":
+        section(row, "target")["model_type"] = "tts"
+    elif change == "mode":
+        section(record, "source")["mode"] = "completion"
+    elif change == "target_alias":
+        section(row, "target")["model"] = "gpt-5"
+    elif change == "unknown_uid":
+        row["source_plugin_uid"] = OPENAI_PROVIDER042_SOURCE_UID.replace(":0.4.2@", ":0.4.1@")
+    elif change in {"revision", "rules"}:
+        section(row, "parameter_adapter")["revision" if change == "revision" else "rules_digest"] = (
+            "2" if change == "revision" else "sha256:" + "0" * 64
+        )
+    elif change in {"runtime_pin", "catalog_pin"}:
+        row["source_runtime_schema_digest" if change == "runtime_pin" else "source_schema_digest"] = (
+            "sha256:" + "0" * 64
+        )
+    elif change in {"metadata", "base"}:
+        section(row, "source_settings")[
+            "request_metadata_enabled" if change == "metadata" else "source_base_is_set"
+        ] = True
+    elif change == "profile":
+        row["source_profile_id"] = _CREDIT_LLM_PROFILES[1]["profile_id"]
+    else:
+        row["operations"] = ["model/schema", "llm/invoke"]
+    with pytest.raises(ValueError, match="[Ss]ource|[Vv]ariant|OpenAI|model_type|target|parameter_adapter"):
+        _credit_llm_restore_record(record)
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("api_protocol", "default_chat"),
+        ("api_protocol", False),
+        ("enable_request_metadata", "enabled"),
+        ("enable_request_metadata", "unknown"),
+        ("enable_request_metadata", False),
+        ("openai_api_base", "https://api.openai.com/v1"),
+        ("openai_api_base", "https://custom.invalid"),
+        ("openai_api_base", False),
+        ("source_uid", "langgenius/openai:0.4.1@" + "0" * 64),
+    ],
+)
+def test_credit_llm_family_actual_public_facts_cannot_select_a_fallback(key: str, value: object) -> None:
+    profile = _CREDIT_LLM_PROFILES[0]
+    catalog = _credit_llm_catalog(0)
+    credentials = _credit_llm_credentials(0, "absent")
+    uid = profile["source_plugin_uid"]
+    if key == "source_uid":
+        assert isinstance(value, str)
+        uid = value
+    else:
+        credentials[key] = value
+    before = deepcopy(credentials)
+    fact = hosted_source_variant_fact(
+        provider=SOURCE_PROVIDER, source_uid=uid, models=[catalog], credentials=credentials
+    )
+    with pytest.raises(ValueError, match="[Ss]ource|[Vv]ariant|OpenAI"):
+        resolve_source_mapping(
+            source_mapping_revision(json.dumps(_credit_llm_records()), _CREDIT_LLM_REVISION),
+            (SOURCE_PROVIDER, ModelType.LLM, profile["source_model"]),
+            source_uid=uid,
+            fact=fact,
+            schema=catalog,
+        )
+    assert credentials == before
+
+
+@pytest.mark.parametrize("source_model", ["gpt-5-2025-08-07", "gpt-5-mini-2025-08-07"])
+@pytest.mark.parametrize(
+    "old_family", ["openai_chat_source_v1", "openai_provider042_source_v1", "openai_provider110_source_v1"]
+)
+def test_credit_llm_family_two_exact_aliases_cannot_be_injected_into_old_families(
+    source_model: str, old_family: str
+) -> None:
+    aliases = {
+        (p["source_model"], p["target_model"]) for p in _CREDIT_LLM_PROFILES if p["source_model"] != p["target_model"]
+    }
+    assert aliases == {("gpt-5-2025-08-07", "gpt-5"), ("gpt-5-mini-2025-08-07", "gpt-5-mini")}
+    index = next(i for i, profile in enumerate(_CREDIT_LLM_PROFILES) if profile["source_model"] == source_model)
+    assert _CREDIT_LLM_PROFILES[index]["source_version"] == "042"
+    record = _credit_llm_record(index, "chat")
+    section(variants(record)[0], "parameter_adapter")["id"] = old_family
+    with pytest.raises(ValidationError, match="Invalid bounded source variant"):
+        source_mapping_revision(json.dumps([record]), _CREDIT_LLM_REVISION)
+    # The new family is V2 only; a legacy-shaped declaration cannot gain it.
+    legacy = mapping(_credit_llm_catalog(index), revision="credit-family-v1-denied", target=source_model)
+    section(legacy, "parameter_adapter")["id"] = "openai_credit_llm_source_v1"
+    with pytest.raises(ValidationError, match="parameter_adapter"):
+        source_mapping_revision(json.dumps([legacy]), "credit-family-v1-denied")
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "rules_digest",
+        "algorithm_revision",
+        "source_runtime_schema_digest",
+        "target_model",
+        "source_plugin_unique_identifier",
+    ],
+)
+def test_credit_llm_family_frozen_contract_drift_is_not_reservation_authority(field: str) -> None:
+    profile = _CREDIT_LLM_PROFILES[0]
+    registry = source_mapping_revision(json.dumps([_credit_llm_record(0, "chat")]), _CREDIT_LLM_REVISION)
+    selected = registry.selected_prospective()[0]
+    contract = restore_variant_source_contract(selected)
+    forged = replace(contract, **{field: "2" if field == "algorithm_revision" else "sha256:" + "0" * 64})
+    with pytest.raises(ValueError, match="[Ss]ource|[Vv]ariant|OpenAI|[Ff]rozen"):
+        validate_frozen_mapping_evidence(
+            selected,
+            provider=SOURCE_PROVIDER,
+            model=profile["source_model"],
+            model_type=ModelType.LLM,
+            target_model=profile["target_model"],
+            operations=tuple(selected.operations),
+            source_contract=forged,
+            tts_contract=None,
+        )
+
+
+def test_credit_llm_family_append_preserves_all_prior_registry_shapes_and_digests() -> None:
+    prior = [
+        mapping(revision="credit-family-preserved-v1"),
+        variant_record(),
+        *full_embedding_registry(),
+        *full_daemon_registry(),
+    ]
+    revisions = ("credit-family-preserved-v1", REVISION, EMBEDDING_REVISION, DAEMON_REVISION)
+    before = {revision: source_mapping_revision(json.dumps(prior), revision) for revision in revisions}
+    records = _credit_llm_records()
+    combined = json.dumps([*prior, *records])
+    for revision, original in before.items():
+        restored = source_mapping_revision(combined, revision)
+        assert restored.digest == original.digest
+        assert [item.model_dump_json() for item in restored.declarations.values()] == [
+            item.model_dump_json() for item in original.declarations.values()
+        ]
+    current = source_mapping_revision(combined, _CREDIT_LLM_REVISION)
+    reordered = deepcopy(records)
+    reordered.reverse()
+    for record in reordered:
+        variants(record).reverse()
+    assert source_mapping_revision(json.dumps(reordered), _CREDIT_LLM_REVISION).digest == current.digest
+    frozen = current.selected_prospective()[0]
+    changed = deepcopy(records)
+    section(variants(changed[-1])[-1], "target")["catalog_revision"] = "different-unpublished-catalog"
+    drifted = source_mapping_revision(json.dumps(changed), _CREDIT_LLM_REVISION)
+    assert drifted.digest != current.digest
+    with pytest.raises(ValueError, match="Frozen source variant changed"):
+        drifted.restore_selection(
+            (SOURCE_PROVIDER, ModelType.LLM, frozen.source.model), selection_payload(frozen).model_dump(mode="json")
         )
