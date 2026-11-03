@@ -1,3 +1,8 @@
+import type {
+  SyncDraftWorkflowResponse,
+  WorkflowResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
+
 export type JoinFailure = 'denied' | 'unavailable' | 'session_unavailable'
 
 export type OnlineUser = {
@@ -62,7 +67,10 @@ export type CollaborationUpdate = {
 export type WorkflowSyncResult = {
   hash: string
   updatedAt: number
+  clientSaveId?: SyncDraftWorkflowResponse['client_save_id']
 }
+
+export type WorkflowDraftBaseline = Pick<WorkflowResponse, 'hash' | 'client_save_id'>
 
 export type WorkflowSyncAcknowledgement =
   | ({ success: true } & WorkflowSyncResult)
