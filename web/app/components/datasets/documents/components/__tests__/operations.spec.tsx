@@ -446,6 +446,31 @@ describe('Operations', () => {
       })
     })
 
+    it('should keep download available after a document changes to a pipeline file', async () => {
+      const { rerender } = render(<Operations {...defaultProps} />)
+      await openPopover()
+      expect(screen.getByText('datasetDocuments.list.action.download')).toBeInTheDocument()
+
+      rerender(
+        <Operations
+          {...defaultProps}
+          detail={{
+            ...defaultDetail,
+            data_source_type: 'local_file',
+            data_source_info: { real_file_id: 'file-1' },
+          }}
+        />,
+      )
+      const downloadButton = screen.getByText('datasetDocuments.list.action.download')
+      await act(async () => {
+        fireEvent.click(downloadButton)
+      })
+      await waitFor(() => {
+        expect(mockDownload).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+        expect(mockDownloadUrl).toHaveBeenCalledWith({ url: 'https://example.com/download', fileName: 'Test Document' })
+      })
+    })
+
     it('should show download option for archived file data source', async () => {
       render(
         <Operations

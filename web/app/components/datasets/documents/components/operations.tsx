@@ -25,6 +25,7 @@ import CustomPopover from '@/app/components/base/popover'
 import Switch from '@/app/components/base/switch'
 import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
+import { isDownloadableFileDocument } from '@/app/components/datasets/documents/document-source'
 import { IS_CE_EDITION } from '@/config'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
@@ -55,6 +56,7 @@ type OperationsProps = {
     archived: boolean
     id: string
     data_source_type: string
+    data_source_info?: Record<string, unknown> | null
     doc_form: string
     display_status?: string
   }
@@ -76,7 +78,7 @@ const Operations = ({
   scene = 'list',
   className = '',
 }: OperationsProps) => {
-  const { id, name, enabled = false, archived = false, data_source_type, display_status } = detail || {}
+  const { id, name, enabled = false, archived = false, data_source_type, data_source_info, display_status } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const { notify } = useContext(ToastContext)
@@ -244,7 +246,7 @@ const Operations = ({
                       <RiEditLine className="h-4 w-4 text-text-tertiary" />
                       <span className={s.actionName}>{t('list.table.rename', { ns: 'datasetDocuments' })}</span>
                     </div>
-                    {data_source_type === DataSourceType.FILE && (
+                    {isDownloadableFileDocument(data_source_type, data_source_info) && (
                       <div
                         className={s.actionItem}
                         onClick={(evt) => {
@@ -275,7 +277,7 @@ const Operations = ({
                     <Divider className="my-1" />
                   </>
                 )}
-                {archived && data_source_type === DataSourceType.FILE && (
+                {archived && isDownloadableFileDocument(data_source_type, data_source_info) && (
                   <>
                     <div
                       className={s.actionItem}
