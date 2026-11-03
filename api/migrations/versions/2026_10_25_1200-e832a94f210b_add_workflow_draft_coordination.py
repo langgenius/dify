@@ -1,7 +1,7 @@
 """add durable workflow draft coordination
 
 Revision ID: e832a94f210b
-Revises: d41e6b8c2a75
+Revises: c6f4a90d8b31, 7d2b9c4e61a8
 """
 
 import sqlalchemy as sa
@@ -10,7 +10,7 @@ from alembic import op
 from models.types import AdjustedJSON, StringUUID
 
 revision = "e832a94f210b"
-down_revision = "d41e6b8c2a75"
+down_revision = ("c6f4a90d8b31", "7d2b9c4e61a8")
 branch_labels = None
 depends_on = None
 

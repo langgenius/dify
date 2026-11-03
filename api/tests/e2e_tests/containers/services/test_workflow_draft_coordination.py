@@ -10,20 +10,18 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from redis.lock import Lock as RedisLock
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.app import workflow as workflow_api
 from core.dify_builder.models import Graph
+from events.event_handlers import sync_webhook_when_app_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.model import App, AppMode
 from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
 from models.workflow_draft_coordination import WorkflowDraftCoordination as Coordination
-from services.trigger import webhook_service
-from services.trigger.webhook_service import WebhookService
 from services.workflow.draft_coordination_service import WorkflowDraftCoordinationService as Coordinator
 from services.workflow_service import WorkflowService
 from tasks.workflow_draft_coordination_task import (
@@ -442,20 +440,8 @@ def test_deleted_workflow_still_retires_candidates(db_session_with_containers: S
     signal.assert_not_called()
 
 
-def test_cache_hit_never_suppresses_sql_and_cache_failure_is_advisory(db_session_with_containers: Session) -> None:
-    session = db_session_with_containers
-    owner = seed_owner(session, graph=webhook_graph(1))
-    assert owner.draft is not None
-    redis = webhook_service.redis_client
-    redis.set(f"webhook_nodes:{owner.app.id}:hook-0", "stale proof")
-    # Fault double only the cache SET after actual PostgreSQL relationship commit.
-    with patch.object(redis, "set", side_effect=RuntimeError("cache unavailable")):
-        WebhookService.sync_webhook_relationships(owner.app, owner.draft, remove_stale=False)
-    with sessionmaker(bind=session.get_bind())() as reader:
-        assert [row.node_id for row in reader.scalars(select(WorkflowWebhookTrigger))] == ["hook-0"]
-
-
-def test_durable_delivery_reloads_current_draft_after_lock_wait(db_session_with_containers: Session) -> None:
+def test_durable_delivery_reloads_current_draft(db_session_with_containers: Session) -> None:
+    """A durable draft signal syncs webhook rows from the draft as it is now, not from its stale payload."""
     import json
 
     session = db_session_with_containers
@@ -465,18 +451,10 @@ def test_durable_delivery_reloads_current_draft_after_lock_wait(db_session_with_
     factory = sessionmaker(bind=session.get_bind())
     with factory() as reader:
         stale = require(reader.get(Workflow, draft_id), Workflow)
+    with factory.begin() as writer:
+        require(writer.get(Workflow, draft_id), Workflow).graph = json.dumps(webhook_graph(2))
 
-    acquire = RedisLock.acquire
-
-    def update_after_wait(lock: RedisLock, *, blocking: bool, blocking_timeout: float) -> bool:
-        acquired = acquire(lock, blocking=blocking, blocking_timeout=blocking_timeout)
-        assert acquired
-        with factory.begin() as writer:
-            require(writer.get(Workflow, draft_id), Workflow).graph = json.dumps(webhook_graph(2))
-        return acquired
-
-    with patch.object(RedisLock, "acquire", new=update_after_wait):
-        WebhookService.sync_webhook_relationships(owner.app, stale, remove_stale=False, reconcile_current_draft=True)
+    sync_webhook_when_app_created.handle(owner.app, synced_draft_workflow=stale, reconcile_current_draft=True)
     with factory() as reader:
         assert {row.node_id for row in reader.scalars(select(WorkflowWebhookTrigger))} == {"hook-0", "hook-1"}
 
@@ -569,7 +547,7 @@ def test_coordination_actual_migration_upgrade_downgrade_and_offline(flask_app_w
     from sqlalchemy.exc import IntegrityError
 
     path = (
-        Path(__file__).parents[3]
+        Path(__file__).parents[4]
         / "migrations/versions/2026_10_25_1200-e832a94f210b_add_workflow_draft_coordination.py"
     )
     spec = importlib.util.spec_from_file_location("coordination_migration", path)
@@ -577,7 +555,7 @@ def test_coordination_actual_migration_upgrade_downgrade_and_offline(flask_app_w
     assert spec.loader is not None
     migration = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(migration)
-    assert migration.down_revision == "d41e6b8c2a75"
+    assert migration.down_revision == ("c6f4a90d8b31", "7d2b9c4e61a8")
     schema = "draft_coordination_" + uuid4().hex
     table = "workflow_draft_coordination"
     with flask_app_with_containers.app_context(), db.engine.begin() as connection:
@@ -622,10 +600,9 @@ def test_coordination_actual_migration_upgrade_downgrade_and_offline(flask_app_w
     assert "DROP TABLE workflow_draft_coordination" in output.getvalue()
 
 
-@pytest.mark.parametrize("fault", ["redis-lock", "relationship-sql"])
 @pytest.mark.parametrize("hook_count", [0, 1])
 def test_webhook_outage_preserves_accepted_receipt_and_recovers(
-    db_session_with_containers: Session, fault: str, hook_count: int
+    db_session_with_containers: Session, hook_count: int
 ) -> None:
     from sqlalchemy import event
 
@@ -640,26 +617,18 @@ def test_webhook_outage_preserves_accepted_receipt_and_recovers(
         if statement.startswith("INSERT INTO workflow_webhook_triggers"):
             raise RuntimeError("relationship SQL fault")
 
-    def deny_acquire(_lock: RedisLock, **_kwargs: object) -> bool:
-        return False
-
-    if fault == "relationship-sql":
-        event.listen(engine, "before_cursor_execute", fail_insert)
+    # The webhook binding sync has no Redis lock since main moved it to the trigger app repository,
+    # so a relationship SQL fault is the remaining outage to recover from.
+    event.listen(engine, "before_cursor_execute", fail_insert)
     try:
         with patch.object(process_workflow_draft_coordination, "delay"):
-            with (
-                patch.object(RedisLock, "acquire", new=deny_acquire)
-                if fault == "redis-lock"
-                else __import__("contextlib").nullcontext()
-            ):
-                result = save(session, owner, webhook_graph(hook_count))
+            result = save(session, owner, webhook_graph(hook_count))
     finally:
-        if fault == "relationship-sql":
-            event.remove(engine, "before_cursor_execute", fail_insert)
+        event.remove(engine, "before_cursor_execute", fail_insert)
     assert result.graph_dict == webhook_graph(hook_count)
     with sessionmaker(bind=engine)() as reader:
         rows = reader.scalars(select(Coordination)).all()
-        if fault == "relationship-sql" and hook_count == 0:
+        if hook_count == 0:
             assert not rows  # no SQL relationship INSERT exists to fault
             return
         assert len(rows) == 1

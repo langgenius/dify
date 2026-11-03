@@ -236,7 +236,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     """Real Alembic traversal upgrades both branches, merges/splits heads without changing their data."""
     from extensions.ext_database import db
 
-    merge_revision = "f9a3c62de418"
+    merge_revision = "7d95a2e61346"
     current_head = "7d95a2e61346"
     main_head = "53c10126d551"
     fix_intents_head = "6c84f1d90235"
@@ -244,16 +244,15 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     material_head = "4a62d9b7e013"
     coordination_head = "e832a94f210b"
     knowledge_fs_head = "b9d3f7a5c102"
-    builder_merge_head = "d41e6b8c2a75"
     code_head = "7d2b9c4e61a8"
     task_head = "c6f4a90d8b31"
     dispatch_head = "e59b7d32a6c1"
     owner_head = "f47a1c90d2e8"
     continuation_head = "d28f0e3c912a"
     native_head = "c67e12a904bf"
-    previous_merge = "a61e9b2c7d40"
+    archive_head = "f1d3c5b7a902"
     branch_heads = {"d82f9a6c31e0", "a8c9e2f1b704"}
-    predecessor = "733e4c46f90e"
+    predecessor = ("a9cc8d552db4", "e7b2a9c4d601")
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[5] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
@@ -272,18 +271,12 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     assert material_revision.down_revision == "3f51c8a6d902"
     policy_revision = scripts.get_revision("3f51c8a6d902")
     assert policy_revision is not None
-    assert policy_revision.down_revision == "db7f42c9a801"
-    final_merge = scripts.get_revision("db7f42c9a801")
-    assert final_merge is not None
-    assert isinstance(final_merge.down_revision, tuple)
-    assert set(final_merge.down_revision) == {coordination_head, knowledge_fs_head}
+    assert isinstance(policy_revision.down_revision, tuple)
+    assert set(policy_revision.down_revision) == {coordination_head, knowledge_fs_head}
     coordination_revision = scripts.get_revision(coordination_head)
     assert coordination_revision is not None
-    assert coordination_revision.down_revision == builder_merge_head
-    merged_head = scripts.get_revision(builder_merge_head)
-    assert merged_head is not None
-    assert isinstance(merged_head.down_revision, tuple)
-    assert set(merged_head.down_revision) == {code_head, task_head}
+    assert isinstance(coordination_revision.down_revision, tuple)
+    assert set(coordination_revision.down_revision) == {code_head, task_head}
     task_revision = scripts.get_revision(task_head)
     assert task_revision is not None
     assert task_revision.down_revision == "f1d3c5b7a902"
@@ -301,15 +294,11 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     assert continuation_revision.down_revision == native_head
     native_revision = scripts.get_revision(native_head)
     assert native_revision is not None
-    assert native_revision.down_revision == previous_merge
-    current_merge = scripts.get_revision(previous_merge)
-    assert current_merge is not None
-    assert isinstance(current_merge.down_revision, tuple)
-    assert set(current_merge.down_revision) == {merge_revision, "f1d3c5b7a902"}
-    merged = scripts.get_revision(merge_revision)
-    assert merged is not None
-    assert isinstance(merged.down_revision, tuple)
-    assert set(merged.down_revision) == branch_heads
+    assert isinstance(native_revision.down_revision, tuple)
+    assert set(native_revision.down_revision) == {"d82f9a6c31e0", archive_head}
+    verification = scripts.get_revision("b6ce72a91f04")
+    assert verification is not None
+    assert verification.down_revision == predecessor
 
     schema = "builder_forward_merge_" + uuid4().hex
     with (
@@ -318,7 +307,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         _isolated_migration_schema(connection, schema),
     ):
         assert connection.dialect.name == "postgresql"
-        # Only the two preexisting tables touched by descendants of 733 are prerequisites.
+        # Only the two preexisting tables touched by the Builder branch are prerequisites.
         # Their structures come from the real database; remove the later nullable additions.
         for table in ("dify_builder_test_inputs", "dify_builder_runs"):
             connection.execute(text(f"CREATE TABLE {table} (LIKE public.{table} INCLUDING ALL)"))
@@ -341,7 +330,8 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             {"id": identity},
         )
         context = MigrationContext.configure(connection, opts={"version_table_schema": schema})
-        context.stamp(scripts, predecessor)
+        for revision in predecessor:
+            context.stamp(scripts, revision)
 
         def migrate(target: str, *, downgrade: bool = False) -> tuple[str, ...]:
             def revisions(current: tuple[str, ...], _context: MigrationContext) -> list[RevisionStep]:
@@ -492,15 +482,10 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             }
 
         before = witness()
-        assert migrate(merge_revision) == (merge_revision,)
-        assert witness() == before
-        assert set(migrate(merge_revision, downgrade=True)) == branch_heads
-        assert witness() == before
-        assert migrate(merge_revision) == (merge_revision,)
-        assert witness() == before
+        assert set(context.get_current_heads()) == branch_heads
 
         # The new archive branch touches this preexisting table, not the original
-        # six witnesses. Clone its real structure only after the legacy merge/split controls.
+        # six witnesses. Clone its real structure before applying the archive branch.
         archive_table = "workflow_run_archive_bundles"
         connection.execute(text(f"CREATE TABLE {archive_table} (LIKE public.{archive_table} INCLUDING ALL)"))
         connection.execute(text(f"ALTER TABLE {archive_table} DROP COLUMN deletion_status"))
@@ -537,7 +522,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
 
         archive_before = archive_witness()
         assert witness(include_archive=True) == before
-        assert migrate(previous_merge) == (previous_merge,)
+        assert set(migrate(archive_head)) == {"d82f9a6c31e0", archive_head}
         assert witness(include_archive=True) == before
         assert archive_witness() == archive_before
         archive_after_columns = inspect(connection).get_columns(archive_table, schema=schema)
@@ -752,6 +737,33 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             )
             == expected_after_fix_intents
         )
+
+        def final_witness() -> dict[str, _TableWitness]:
+            return witness(
+                include_archive=True,
+                include_native=True,
+                include_continuation=True,
+                include_dispatch_claims=True,
+                include_code_physical=True,
+                include_workflow_tasks=True,
+                include_draft_coordination=True,
+                include_builder_context=True,
+                include_workflow_writer=True,
+                include_fix_intents=True,
+            )
+
+        # Only the retained final merge is empty. Splitting/rejoining it must
+        # preserve schema and historical execution-evidence witnesses.
+        final_before = final_witness()
+        final_ledger = native_ledger_witness()
+        assert set(migrate(merge_revision, downgrade=True)) == {fix_intents_head, main_head}
+        assert final_witness() == final_before
+        assert native_ledger_witness() == final_ledger
+        assert archive_witness() == archive_before
+        assert migrate(merge_revision) == (current_head,)
+        assert final_witness() == final_before
+        assert native_ledger_witness() == final_ledger
+        assert archive_witness() == archive_before
 
 
 @pytest.mark.parametrize(
