@@ -251,7 +251,7 @@ function SwitchAppSession({
                 required
                 readOnly={isPending}
                 defaultValue={`${sourceApp.name}(copy)`}
-                placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
+                placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' })}
                 className="h-10 grow"
               />
               <FieldError className="col-span-2" />
