@@ -69,7 +69,7 @@
   "list.table.header.action": "EYLEM",
   "list.table.header.chunkingMode": "PARÇALAMA MODU",
   "list.table.header.fileName": "DOSYA ADI",
-  "list.table.header.hitCount": "GERİ ALIM SAYISI",
+  "list.table.header.hitCount": "ALIM SAYISI",
   "list.table.header.status": "DURUM",
   "list.table.header.uploadTime": "YÜKLEME ZAMANI",
   "list.table.header.words": "KELİMELER",
@@ -143,7 +143,7 @@
   "metadata.field.technicalParameters.avgParagraphLength": "Ort. paragraf uzunluğu",
   "metadata.field.technicalParameters.embeddedSpend": "Yerleştirme harcaması",
   "metadata.field.technicalParameters.embeddingTime": "Yerleştirme zamanı",
-  "metadata.field.technicalParameters.hitCount": "Geri alım sayısı",
+  "metadata.field.technicalParameters.hitCount": "Alım sayısı",
   "metadata.field.technicalParameters.paragraphs": "Paragraflar",
   "metadata.field.technicalParameters.segmentLength": "Parçalar uzunluğu",
   "metadata.field.technicalParameters.segmentSpecification": "Parçalar spesifikasyonu",
@@ -236,7 +236,7 @@
   "segment.editedAt": "Şurada düzenlendi:",
   "segment.empty": "Parça bulunamadı",
   "segment.expandChunks": "Parçaları genişletme",
-  "segment.hitCount": "Geri alım sayısı",
+  "segment.hitCount": "Alım sayısı",
   "segment.keywordDuplicate": "Anahtar kelime zaten var",
   "segment.keywordEmpty": "Anahtar kelime boş olamaz",
   "segment.keywordError": "Anahtar kelimenin maksimum uzunluğu 20",
@@ -259,5 +259,5 @@
   "segment.searchResults_zero": "SONUÇ",
   "segment.statusFilterLabel": "Segmentleri duruma göre filtrele",
   "segment.summary": "ÖZET",
-  "segment.summaryPlaceholder": "Daha iyi arama için kısa bir özet yazın…"
+  "segment.summaryPlaceholder": "Daha iyi alım için kısa bir özet yazın…"
 }

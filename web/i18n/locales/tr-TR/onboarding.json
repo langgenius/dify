@@ -68,7 +68,7 @@
   "stepByStepTour.tasks.home.primaryActionLabel": "Göz atın",
   "stepByStepTour.tasks.home.title": "Bir Learn Dify dersini deneyin",
   "stepByStepTour.tasks.integration.description": "Modeller, araçlar, veri kaynakları ve daha fazlası — neleri bağlayabileceğinizi keşfedin.",
-  "stepByStepTour.tasks.integration.noPermission.description": "Modellere, araçlara, veri kaynaklarına ve tetikleyicilere göz atın. Entegrasyon oluşturmak veya yönetmek için izniniz olan bir çalışma alanına geçin ya da Çalışma alanı Owner veya Admin ile iletişime geçin.",
+  "stepByStepTour.tasks.integration.noPermission.description": "Modellere, araçlara, veri kaynaklarına ve tetikleyicilere göz atın. Entegrasyon oluşturmak veya yönetmek için izniniz olan bir çalışma alanına geçin ya da çalışma alanı sahibiniz veya yöneticinizle iletişime geçin.",
   "stepByStepTour.tasks.integration.noPermission.title": "Explore Integrations",
   "stepByStepTour.tasks.integration.primaryActionLabel": "Göz atın",
   "stepByStepTour.tasks.integration.title": "Explore Integrations",

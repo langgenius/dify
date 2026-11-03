@@ -49,7 +49,7 @@
   "dataset.acl.pipeline_test": "İşlem hattını test et",
   "dataset.acl.preview": "Bilgi tabanını önizle",
   "dataset.acl.readonly": "Bilgi tabanı içeriğini ve ayarlarını görüntüle",
-  "dataset.acl.retrieval_recall": "Geri alım testlerini görüntüle ve çalıştır",
+  "dataset.acl.retrieval_recall": "Alım testlerini görüntüle ve çalıştır",
   "dataset.acl.use": "Bilgi tabanı belgelerini yükle",
   "dataset.api_key.manage": "Bilgi tabanı API anahtarlarını yönet",
   "dataset.create_and_management": "Bilgi tabanı oluştur",

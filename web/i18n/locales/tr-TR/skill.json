@@ -4,7 +4,7 @@
   "skillManagement.dateTimeFormat": "AAA Gün, YYYY SS:dd",
   "skillManagement.deleteDialog.confirmInputLabel": "Onaylamak için aşağıdaki alana <skillName>{{skillName}}</skillName> yazın:",
   "skillManagement.deleteDialog.confirmInputPlaceholder": "Beceri görünen adını girin…",
-  "skillManagement.deleteDialog.description": "Yeteneğin silinmesi geri alınamaz. İçeriği ve tam sürüm geçmişi kalıcı olarak silinecek. Şu anda hiçbir ajan bunu kullanmıyor.",
+  "skillManagement.deleteDialog.description": "Becerinin silinmesi geri alınamaz. İçeriği ve tam sürüm geçmişi kalıcı olarak silinecek. Şu anda hiçbir ajan bunu kullanmıyor.",
   "skillManagement.deleteDialog.referencedDescription_one": "{{count}} ajan bu beceriyi bağımsız olarak veya bir iş akışında kullanıyor. Bu becerinin silinmesi, içeriğinin ve sürüm geçmişinin kalıcı olarak silinmesine ve etkilenen ajandan kaldırılmasına neden olur.",
   "skillManagement.deleteDialog.referencedDescription_other": "{{count}} ajan bu beceriyi bağımsız olarak veya iş akışlarında kullanıyor. Bu becerinin silinmesi, içeriğinin ve sürüm geçmişinin kalıcı olarak silinmesine ve etkilenen tüm ajanlardan kaldırılmasına neden olur.",
   "skillManagement.deleteDialog.title": "{{name}} silinsin mi?",
