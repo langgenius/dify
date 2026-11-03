@@ -155,7 +155,9 @@ def test_plugin_invokes_persisted_workflow_tool_through_composed_runtime(
     monkeypatch.setattr("core.db.session_factory._session_maker", sessionmaker())
     monkeypatch.setattr(base_app_queue_manager.redis_client, "setex", lambda *_args, **_kwargs: None)
     trace_queue_manager = create_autospec(TraceQueueManager, instance=True, spec_set=True)
-    monkeypatch.setattr(generator_module, "TraceQueueManager", Mock(return_value=trace_queue_manager))
+    monkeypatch.setattr(
+        generator_module, "TraceQueueManager", lambda *args, **kwargs: trace_queue_manager  # noqa: ARG005
+    )
     monkeypatch.setattr(generator_module.WorkflowAppGenerator, "_generate_worker", staticmethod(lambda **_kwargs: None))
     handled = []
 

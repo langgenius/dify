@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, create_autospec
@@ -39,6 +40,11 @@ from services.workflow_run_service import (
 )
 
 """Unit tests for the Console workflow-run application service."""
+
+
+@dataclass(frozen=True)
+class _PreparedFormStub:
+    form_token: SecretStr
 
 
 def _workflow_run_service_service(dependencies: tuple[MagicMock, MagicMock], *, tool_providers) -> WorkflowRunService:
@@ -459,7 +465,7 @@ def test_get_pause_details_maps_v2_form_version_and_initiator_token(
         lambda *_args, **_kwargs: WorkflowPauseSnapshot(
             runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0),
             reasons=(reason,),
-            v2_forms={"form-2": SimpleNamespace(form_token=SecretStr("v2-token"))},
+            v2_forms={"form-2": _PreparedFormStub(form_token=SecretStr("v2-token"))},
         ),
     )
 

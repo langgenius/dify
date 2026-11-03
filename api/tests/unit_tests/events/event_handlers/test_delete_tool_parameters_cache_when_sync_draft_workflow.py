@@ -1,5 +1,5 @@
 import logging
-from types import SimpleNamespace
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -56,11 +56,19 @@ def test_missing_tool_provider_does_not_log_error_traceback(
         },
     )
     monkeypatch.setattr(handler_module.ToolEntity, "model_validate", lambda _data: tool_entity)
-    tool_services = SimpleNamespace(tool_providers=object(), workflow_queries=object())
+    @dataclass
+    class _ToolServices:
+        tool_providers: object = field(default_factory=object)
+        workflow_queries: object = field(default_factory=object)
+
+    @dataclass
+    class _AppServices:
+        tools: _ToolServices = field(default_factory=_ToolServices)
+
     monkeypatch.setattr(
         handler_module,
         "application_services",
-        lambda: SimpleNamespace(tools=tool_services),
+        lambda: _AppServices(),
     )
     monkeypatch.setattr(
         handler_module.ToolManager,

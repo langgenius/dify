@@ -2001,9 +2001,10 @@ def test_publication_repository_is_independent_of_agent_service_and_commits_requ
 
     # A repository must not instantiate or invoke Agent business orchestration,
     # even if it used to receive that service hidden behind a factory/Protocol.
-    monkeypatch.setattr(
-        WorkflowAgentPublishService, "__init__", Mock(side_effect=AssertionError("repository called service"))
-    )
+    def fail_init(*args, **kwargs):  # noqa: ARG001
+        raise AssertionError("repository called service")
+
+    monkeypatch.setattr(WorkflowAgentPublishService, "__init__", fail_init)
     if snippet:
         with seeded.begin() as session:
             session.add(

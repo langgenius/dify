@@ -74,11 +74,15 @@ def test_blocking_generation_detaches_request_inputs_before_waiting(
     if mode == AppMode.ADVANCED_CHAT:
         generator = chatflow_module.AdvancedChatAppGenerator
         converter = chatflow_module.AdvancedChatAppGenerateResponseConverter
-        monkeypatch.setattr(chatflow_module, "TraceQueueManager", Mock(return_value=trace_queue_manager))
+        monkeypatch.setattr(
+            chatflow_module, "TraceQueueManager", lambda *args, **kwargs: trace_queue_manager  # noqa: ARG005
+        )
     else:
         generator = workflow_module.WorkflowAppGenerator
         converter = workflow_module.WorkflowAppGenerateResponseConverter
-        monkeypatch.setattr(workflow_module, "TraceQueueManager", Mock(return_value=trace_queue_manager))
+        monkeypatch.setattr(
+            workflow_module, "TraceQueueManager", lambda *args, **kwargs: trace_queue_manager  # noqa: ARG005
+        )
     monkeypatch.setattr("services.app_generate_service.RateLimit", _DummyRateLimit)
     monkeypatch.setattr(base_app_queue_manager.redis_client, "setex", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(generator, "_generate_worker", staticmethod(lambda **_kwargs: None))
