@@ -104,7 +104,6 @@ describe('OutputPanel', () => {
     ).not.toBeInTheDocument()
   })
 
-  // TODO: OutputPanel pre-serializes the object before CodeEditor serializes it again.
   it('renders structured outputs inside the code editor when height is available', () => {
     const outputs = { answer: 'hello', score: 1 }
     render(<OutputPanel height={200} outputs={outputs} />)
