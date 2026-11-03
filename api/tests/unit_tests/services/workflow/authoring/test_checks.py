@@ -1,6 +1,7 @@
 import io
 import itertools
 import zipfile
+from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -12,8 +13,9 @@ from core.plugin.impl.tool import PluginToolManager
 from graphon.enums import BuiltinNodeTypes
 from libs.archive_writer import ArchiveLimits
 from models.model import AppMode
-from services.workflow.authoring import FillContext, PackageCheck, check_package
-from services.workflow.authoring.checks import AuthoringIssue, AuthoringIssueCode
+from services.tools.tool_sources import resolve_tool
+from services.workflow.authoring import FillContext, PackageCheck, check_package, tool_reference
+from services.workflow.authoring.checks import _CHECKS, AuthoringIssue, AuthoringIssueCode, Check
 from services.workflow.authoring.package_io import PackageUnreadableError, read_package_entries
 from services.workflow.graph_check import IssueCode, IssueSeverity, check_graph
 
@@ -197,8 +199,34 @@ def test_a_tool_from_a_missing_provider_is_plugin_not_found(monkeypatch: pytest.
     assert issue.loc == ("nodes", "tool", "data")
     assert "builtin/missing/current_time" in issue.message
     assert "not installed" not in issue.message
+    assert "could not be resolved" in issue.message
     assert issue.refuses_import is False
     assert check.valid is False
+
+
+def test_check_looks_each_tool_up_once_after_fill(monkeypatch: pytest.MonkeyPatch) -> None:
+    looked_up: list[str] = []
+
+    def counting(**kwargs: str) -> object:
+        looked_up.append(kwargs["tool_name"])
+        return resolve_tool(**kwargs)
+
+    monkeypatch.setattr(tool_reference, "resolve_tool", counting)
+
+    _chain(START, _tool("timezone_conversion"), END)
+
+    # One lookup is fill's, the other is shared by every check and the node spec.
+    assert looked_up == ["timezone_conversion", "timezone_conversion"]
+
+
+def test_an_abstract_check_is_not_registered() -> None:
+    registered = list(_CHECKS)
+
+    class _Family(Check, ABC):
+        @abstractmethod
+        def extra(self) -> None: ...
+
+    assert registered == _CHECKS
 
 
 def test_a_typo_in_the_tool_name_is_plugin_not_found() -> None:

@@ -114,7 +114,7 @@ class _Graph:
     mode: AppMode
 
 
-def _data_loc(node_id: str, *path: str | int) -> tuple[str | int, ...]:
+def data_loc(node_id: str, *path: str | int) -> tuple[str | int, ...]:
     return ("nodes", node_id, "data", *path)
 
 
@@ -134,7 +134,7 @@ def _read_known_node(node_id: str, raw_data: Mapping[str, Any], node_class: type
     except ValidationError as error:
         problems = error.errors(include_url=False, include_input=False, include_context=False)
         issues = tuple(
-            GraphIssue(IssueCode.NODE_DATA_INVALID, p["msg"], node_id, _data_loc(node_id, *p["loc"]), p["type"])
+            GraphIssue(IssueCode.NODE_DATA_INVALID, p["msg"], node_id, data_loc(node_id, *p["loc"]), p["type"])
             for p in problems
         )
         return _Node(node_id, data, issues)
@@ -150,7 +150,7 @@ def _read_node(node_id: str, raw: Mapping[str, Any]) -> _Node:
         )
     except ValueError:
         issue = GraphIssue(
-            IssueCode.UNKNOWN_NODE_TYPE, f"Unknown node type {node_type!r}", node_id, _data_loc(node_id, "type")
+            IssueCode.UNKNOWN_NODE_TYPE, f"Unknown node type {node_type!r}", node_id, data_loc(node_id, "type")
         )
         return _Node(node_id, raw_data, (issue,))
     try:
@@ -159,9 +159,7 @@ def _read_node(node_id: str, raw: Mapping[str, Any]) -> _Node:
         # A validator or reference reader can raise other errors on bad or newer data; report this node, check the rest.
         logger.warning("node %s data could not be read", node_id, exc_info=True)
         message = f"The node data could not be read ({type(error).__name__}: {error})"
-        return _Node(
-            node_id, raw_data, (GraphIssue(IssueCode.NODE_DATA_INVALID, message, node_id, _data_loc(node_id)),)
-        )
+        return _Node(node_id, raw_data, (GraphIssue(IssueCode.NODE_DATA_INVALID, message, node_id, data_loc(node_id)),))
 
 
 def _mode_issues(graph: _Graph) -> Iterable[GraphIssue]:
@@ -172,7 +170,7 @@ def _mode_issues(graph: _Graph) -> Iterable[GraphIssue]:
                 IssueCode.MODE_INCOMPATIBLE,
                 f"A {graph.mode} app can't hold a {node.type} node",
                 node.id,
-                _data_loc(node.id, "type"),
+                data_loc(node.id, "type"),
             )
 
 
@@ -185,7 +183,7 @@ def _node_issues(graph: _Graph) -> Iterable[GraphIssue]:
                 IssueCode.CONTAINER_START_MISSING,
                 f"start_node_id {start!r} is not in the graph",
                 node.id,
-                _data_loc(node.id, "start_node_id"),
+                data_loc(node.id, "start_node_id"),
             )
 
 
@@ -246,7 +244,7 @@ def _output_name_issues(graph: _Graph) -> Iterable[GraphIssue]:
                 IssueCode.OUTPUT_NAME_DUPLICATE,
                 f"Output {name!r} is used by more than one End node output; output names must be unique",
                 node_id,
-                _data_loc(node_id, "outputs", index, "variable"),
+                data_loc(node_id, "outputs", index, "variable"),
             )
 
 
@@ -258,7 +256,7 @@ def _reference_issues(graph: _Graph) -> Iterable[GraphIssue]:
                     IssueCode.REFERENCE_MISSING,
                     f"{key} reads node {selector[0]!r}, which is not in the graph",
                     node.id,
-                    _data_loc(node.id),
+                    data_loc(node.id),
                 )
 
 
@@ -297,7 +295,7 @@ def _shape_issues(graph: Mapping[str, Any]) -> list[GraphIssue]:
             )
         elif not isinstance(node.get("data"), Mapping):
             issues.append(
-                GraphIssue(IssueCode.GRAPH_INVALID, "The node data must be a mapping", node_id, _data_loc(node_id))
+                GraphIssue(IssueCode.GRAPH_INVALID, "The node data must be a mapping", node_id, data_loc(node_id))
             )
         if isinstance(node_id, str) and node_id:
             seen_ids.add(node_id)
