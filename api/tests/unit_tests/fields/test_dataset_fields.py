@@ -1,7 +1,6 @@
 import json
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import cast
 
 from sqlalchemy import event
 from sqlalchemy.orm import Session
@@ -165,13 +164,13 @@ def test_dataset_detail_expands_legacy_null_retrieval_nested_fields() -> None:
         )
     )
 
-    retrieval_model_dict = cast("dict[str, object]", response["retrieval_model_dict"])
+    retrieval_model_dict = response["retrieval_model_dict"]
+    assert isinstance(retrieval_model_dict, dict)
 
     assert retrieval_model_dict["reranking_model"] == {
         "reranking_provider_name": None,
         "reranking_model_name": None,
     }
-    retrieval_model_dict = cast("dict[str, object]", response["retrieval_model_dict"])
 
     assert retrieval_model_dict["weights"] == {
         "weight_type": None,
@@ -200,7 +199,8 @@ def test_dataset_detail_expands_missing_weighted_score_nested_fields() -> None:
         )
     )
 
-    retrieval_model_dict = cast("dict[str, object]", response["retrieval_model_dict"])
+    retrieval_model_dict = response["retrieval_model_dict"]
+    assert isinstance(retrieval_model_dict, dict)
 
     assert retrieval_model_dict["weights"] == {
         "weight_type": None,
