@@ -13,7 +13,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'A password or secret input on the InputGroup surface. PasswordFieldInput requires autoComplete; PasswordFieldToggle reveals the value and is omitted for secrets that stay masked.',
+          'An account password input on the InputGroup surface. PasswordFieldInput requires autoComplete; PasswordFieldToggle reveals the value.',
       },
     },
   },
@@ -141,17 +141,5 @@ export const WithField: Story = {
         </Button>
       </div>
     </Form>
-  ),
-}
-
-export const Secret: Story = {
-  render: () => (
-    <Field name="apiKey" className="w-80">
-      <FieldLabel>API key</FieldLabel>
-      <PasswordField>
-        <PasswordFieldInput autoComplete="new-password" placeholder="Enter your API key" />
-      </PasswordField>
-      <FieldDescription>Saved keys stay masked and are never shown again.</FieldDescription>
-    </Field>
   ),
 }

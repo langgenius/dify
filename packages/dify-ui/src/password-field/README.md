@@ -1,6 +1,6 @@
 # Password Field
 
-Use `PasswordField` for a password or any other secret typed into a single-line input. It renders
+Use `PasswordField` for an account password: sign-in, sign-up, reset, and change. It renders
 the [Input Group] surface, so the shared border, background, focus, invalid, and disabled visuals
 are the same as every other grouped input.
 
@@ -23,14 +23,14 @@ wrappers around it without changing call sites.
 
 ## Contract
 
-- `PasswordFieldInput` owns `type`. `autoComplete` is required: `current-password` for sign-in,
-  `new-password` for a new password or a secret such as an API key, so password managers do not
-  treat a secret as the account password.
-- `PasswordFieldToggle` is optional. Omit it when the value must stay masked, such as a stored
-  secret the server returns as a placeholder. Its `aria-label` stays constant; `aria-pressed`
-  reports whether the value is revealed. Pressing it with a pointer keeps focus in the input.
-- `disabled` on `PasswordField` applies to the input and the toggle. Wrap the field in `Field` for
-  the label, validation, and errors.
+- `PasswordFieldInput` owns `type`. `autoComplete` is required: `current-password` for the
+  password the account already has, `new-password` for a password being set.
+- `PasswordFieldToggle` is optional. Its `aria-label` stays constant; `aria-pressed` reports
+  whether the value is revealed. Pressing it with a pointer keeps focus in the input. It stays
+  available while the input is read-only.
+- `disabled` on `PasswordField` applies to the input and the toggle; a disabled `Field` reaches
+  only the input. Wrap the field in `Field` for the label, validation, and errors.
+- Masked secrets such as API keys stay on `Input` with `type="password"`.
 
 [Base UI Password Field]: https://github.com/mui/base-ui/pull/5114
 [Input Group]: ../input-group/README.md
