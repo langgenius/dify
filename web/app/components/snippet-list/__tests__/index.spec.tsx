@@ -278,9 +278,7 @@ it.each([
 })
 
 it('searches and clears the filter through actual query state', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
-  vi.stubGlobal('jest', { advanceTimersByTime: vi.advanceTimersByTime })
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  const user = userEvent.setup()
   listSnippets.mockImplementation(
     async ({ query }: NonNullable<Parameters<typeof listSnippets>[0]> = {}) =>
       page([snippet({ name: query?.keyword ? 'Summary snippet' : 'Sales Snippet' })]),
@@ -289,16 +287,10 @@ it('searches and clears the filter through actual query state', async () => {
   await salesCard()
   const search = screen.getByRole('searchbox', { name: 'workflow.tabs.searchSnippets' })
   await user.type(search, 'summary')
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(500)
-  })
   expect(await screen.findByRole('link', { name: /Summary snippet/ })).toBeInTheDocument()
   expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('keywords')).toBe('summary')
   expect(listSnippets).toHaveBeenLastCalledWith(searchParams({ keyword: 'summary' }))
   await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(500)
-  })
   expect(await salesCard()).toBeInTheDocument()
   expect(search).toHaveValue('')
   await waitFor(() =>
