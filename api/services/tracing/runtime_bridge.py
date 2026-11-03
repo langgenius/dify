@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from core.ops.base_trace_instance import AgentAppTracingContext, WorkflowAgentTracingContext
     from core.ops.entities.trace_entity import BaseTraceInfo
     from services.tracing.service import ApplicationTracingService
-    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 
 logger = logging.getLogger(__name__)
 
