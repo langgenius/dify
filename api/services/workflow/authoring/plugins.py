@@ -13,6 +13,7 @@ from core.workflow.node_factory import node_data_model, resolve_workflow_node_cl
 from core.workflow.nodes.datasource.entities import DatasourceEntity
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from graphon.entities.base_node_data import BaseNodeData
+from graphon.nodes.base.node import Node
 
 if TYPE_CHECKING:
     from services.workflow.authoring import FillContext
@@ -68,6 +69,10 @@ class PluginReference(ABC):
     @abstractmethod
     def apply(self, raw: dict[str, Any], declaration: PluginDeclaration) -> None: ...
 
+    @abstractmethod
+    def value_loc(self, parameter: DeclaredParameter) -> tuple[str, ...]:
+        """Where in the node data a declared parameter's value is stored."""
+
 
 @functools.singledispatch
 def _reference_class(_data_model: type) -> type[PluginReference] | None:
@@ -109,6 +114,9 @@ class _DeferredReference(PluginReference):
     def apply(self, raw: dict[str, Any], declaration: PluginDeclaration) -> None:
         raise NotImplementedError("a deferred plugin kind has no references")
 
+    def value_loc(self, parameter: DeclaredParameter) -> tuple[str, ...]:
+        raise NotImplementedError("a deferred plugin kind has no references")
+
 
 @plugin_reference_for(TriggerEventNodeData)
 class TriggerEventReference(_DeferredReference):
@@ -125,16 +133,23 @@ def node_version(raw: Mapping[str, Any]) -> str:
     return str(raw.get("version", _RUNTIME_DEFAULT_VERSION))
 
 
-def node_references(raw: Mapping[str, Any]) -> list[PluginReference]:
-    """The plugins a raw node uses; a node of an unknown type or of no plugin kind uses none."""
+def node_class(raw: Mapping[str, Any]) -> type[Node] | None:
+    """The class a raw node runs as; None for a node of no type or of an unknown type."""
     node_type = raw.get("type")
     if not isinstance(node_type, str):
-        return []
+        return None
     try:
-        node_class = resolve_workflow_node_class(node_type=node_type, node_version=node_version(raw), node_data=raw)
+        return resolve_workflow_node_class(node_type=node_type, node_version=node_version(raw), node_data=raw)
     except ValueError:
+        return None
+
+
+def node_references(raw: Mapping[str, Any]) -> list[PluginReference]:
+    """The plugins a raw node uses; a node of an unknown type or of no plugin kind uses none."""
+    resolved = node_class(raw)
+    if resolved is None:
         return []
-    reference = references_for(node_data_model(node_class))
+    reference = references_for(node_data_model(resolved))
     if reference is None:
         return []
     return list(reference.extract(raw))

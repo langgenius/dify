@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from itertools import starmap
 from typing import TYPE_CHECKING, Any, Final
 
@@ -34,6 +35,19 @@ if TYPE_CHECKING:
 _GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
 
 
+@dataclass(frozen=True)
+class FilledPackage:
+    archive: bytes
+    # The root app's document as `archive` holds it; None when there is no `app.yaml` or it is not a YAML mapping.
+    document: dict[str, Any] | None
+
+
+@dataclass(frozen=True)
+class _App:
+    content: bytes
+    document: dict[str, Any] | None
+
+
 def fill_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits: ArchiveLimits) -> bytes:
     """Write the package again with its root `app.yaml` filled and its manifest matching it.
 
@@ -44,49 +58,57 @@ def fill_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits: A
     `RosterAgentPackageTooLargeError` for an `app.yaml` or manifest over the reader's size limits, and
     `PackageUnreadableError` for a member that cannot be read.
     """
+    return filled_package(entries, ctx, limits=limits).archive
+
+
+def filled_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits: ArchiveLimits) -> FilledPackage:
+    """`fill_package`'s archive, with the root app's document it holds; raises what `fill_package` raises."""
     by_path = {entry.path: entry for entry in entries}
     if APP_PATH not in by_path:
-        return write_package(entries, limits=limits)
-    app = read_member(by_path[APP_PATH], max_bytes=DSL_MAX_SIZE)
+        return FilledPackage(write_package(entries, limits=limits), None)
+    app = _read_app(read_member(by_path[APP_PATH], max_bytes=DSL_MAX_SIZE))
     manifest = None
     if MANIFEST_PATH in by_path:
         manifest = read_member(by_path[MANIFEST_PATH], max_bytes=dify_config.AGENT_PACKAGE_MAX_MANIFEST_BYTES)
     app, manifest = _filled(app, manifest, ctx)
     # Read members are written again from their bytes: a folder part's stream can be read only once.
-    replaced = {APP_PATH: app, MANIFEST_PATH: manifest}
+    replaced = {APP_PATH: app.content, MANIFEST_PATH: manifest}
     kept = [entry for entry in entries if entry.path not in replaced]
-    return write_package([*kept, *starmap(bytes_entry, replaced.items())], limits=limits)
+    return FilledPackage(write_package([*kept, *starmap(bytes_entry, replaced.items())], limits=limits), app.document)
 
 
-def _filled(app: bytes, manifest: bytes | None, ctx: FillContext) -> tuple[bytes, bytes]:
-    filled = _filled_app(app, ctx)
-    final = app if filled is None else filled
+def _read_app(content: bytes) -> _App:
+    try:
+        document = yaml.load(content, Loader=PackageYamlLoader)  # noqa: S506
+    except YAML_ERRORS:
+        return _App(content, None)
+    return _App(content, document if isinstance(document, dict) else None)
+
+
+def _filled(app: _App, manifest: bytes | None, ctx: FillContext) -> tuple[_App, bytes]:
+    final = _filled_app(app, ctx)
     if manifest is None:
-        return final, new_manifest(final)
-    merged = merge_manifest(manifest, final)
+        return final, new_manifest(final.content)
+    merged = merge_manifest(manifest, final.content)
     if merged is None:
         return app, manifest
     return final, merged
 
 
-def _filled_app(app: bytes, ctx: FillContext) -> bytes | None:
-    """The filled `app.yaml`, or None when fill changes nothing or cannot read it."""
-    try:
-        document = yaml.load(app, Loader=PackageYamlLoader)  # noqa: S506
-    except YAML_ERRORS:
-        return None
-    if not isinstance(document, dict):
-        return None
-    before = copy.deepcopy(document)
+def _filled_app(app: _App, ctx: FillContext) -> _App:
+    """The filled `app.yaml`; `app` itself when fill changes nothing or cannot read it."""
+    if app.document is None:
+        return app
+    document = copy.deepcopy(app.document)
     fill_graph_document(document, ctx)
-    if document == before:
-        return None
-    return yaml.dump(document, allow_unicode=True).encode()
+    if document == app.document:
+        return app
+    return _App(yaml.dump(document, allow_unicode=True).encode(), document)
 
 
 def fill_graph_document(document: dict[str, Any], ctx: FillContext) -> None:
     """Fill a workflow or chatflow DSL's graph in place; any other app, or a part it cannot read, is left as is."""
-    graph = _graph(document)
+    graph = document_graph(document)
     if graph is None:
         return
     nodes = graph.get("nodes")
@@ -105,7 +127,8 @@ def _fill_node(node: object, ctx: FillContext) -> None:
     fill_plugin_values(node["data"], ctx)
 
 
-def _graph(document: dict[str, Any]) -> dict[str, Any] | None:
+def graph_mode(document: Mapping[str, Any]) -> AppMode | None:
+    """The app's mode when it is a workflow or chatflow; None for any other app or a mode it cannot read."""
     app = document.get("app")
     if not isinstance(app, dict):
         return None
@@ -113,6 +136,13 @@ def _graph(document: dict[str, Any]) -> dict[str, Any] | None:
     if not isinstance(mode, str):
         return None
     if mode not in _GRAPH_MODES:
+        return None
+    return AppMode(mode)
+
+
+def document_graph(document: Mapping[str, Any]) -> dict[str, Any] | None:
+    """A workflow or chatflow DSL's graph; None for any other app or a graph it cannot read."""
+    if graph_mode(document) is None:
         return None
     workflow = document.get("workflow")
     if not isinstance(workflow, dict):
