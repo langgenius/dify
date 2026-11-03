@@ -335,11 +335,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
 
-    const unsubscribeBaseline = collaborationManager.onDraftBaseline((baseline) => {
-      workflowStore
-        .getState()
-        .adoptWorkflowDraftSaveId(appId, baseline.hash, baseline.client_save_id)
-    })
     const unsubscribeRequest = collaborationManager.onServerDraftRequest(
       ({ change, acknowledge }) => {
         const localStartPlaceholderNodes = collaborationManager
@@ -367,7 +362,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       // A refresh already invalidated queued saves. Keep that refresh alive
       // while its server-approved graph and matching metadata arrive.
       if (!state.isSyncingWorkflowDraft) state.invalidateWorkflowDraftSync()
-      state.setSyncWorkflowDraftHash(update.hash, undefined, update.client_save_id)
+      state.setSyncWorkflowDraftHash(update.hash)
       state.setDraftUpdatedAt(update.updated_at)
       if (hadUnsavedChanges && !state.isSyncingWorkflowDraft) {
         state.markWorkflowDraftDirty()
@@ -376,7 +371,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       }
     })
     return () => {
-      unsubscribeBaseline()
       unsubscribeRequest()
       unsubscribeApplied()
     }
@@ -423,7 +417,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         .then((result) => {
           acknowledge(
             result
-              ? { success: true, ...result }
+              ? { success: true, hash: result.hash, updatedAt: result.updatedAt }
               : {
                   success: false,
                   ...(workflowStore.getState().hasWorkflowDraftConflict
