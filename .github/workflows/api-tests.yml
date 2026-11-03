@@ -115,6 +115,21 @@ jobs:
             sandbox
             ssrf_proxy
 
+      - name: Wait for middleware services to be healthy
+        run: |
+          deadline=$((SECONDS + 180))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            pending=$(docker ps --filter health=starting --filter health=unhealthy -q | wc -l | tr -d ' ')
+            if [ "$pending" -eq 0 ]; then
+              echo "All middleware services are healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker ps --filter health=starting --filter health=unhealthy
+          echo "Timed out waiting for middleware services to become healthy" >&2
+          exit 1
+
       - name: setup test config
         run: |
           cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
