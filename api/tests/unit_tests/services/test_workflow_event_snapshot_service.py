@@ -1,7 +1,7 @@
 import json
 import queue
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
 from itertools import cycle
@@ -64,7 +64,42 @@ from services.workflow_event_snapshot_service import (
     _build_paused_snapshot_events as _build_checkpoint_snapshot_events,
 )
 
-_TEST_TOOL_PROVIDERS = MagicMock()
+
+@dataclass
+class _CallArgs:
+    args: tuple[object, ...]
+    kwargs: dict[str, object]
+
+
+@dataclass
+class _CallSpy:
+    return_value: object = None
+    calls: list[_CallArgs] = field(default_factory=list)
+
+    def __call__(self, *args: object, **kwargs: object) -> object:
+        self.calls.append(_CallArgs(args=args, kwargs=kwargs))
+        return self.return_value
+
+    @property
+    def call_args(self) -> _CallArgs:
+        assert self.calls, "Expected at least one call"
+        return self.calls[-1]
+
+    def assert_called_once(self) -> None:
+        assert len(self.calls) == 1, f"Expected 1 call, got {len(self.calls)}"
+
+    def assert_not_called(self) -> None:
+        assert len(self.calls) == 0, f"Expected 0 calls, got {len(self.calls)}"
+
+
+@dataclass
+class _TestToolProviders:
+    def icon(self, *args: object, **kwargs: object) -> str | None:
+        del args, kwargs
+        return None
+
+
+_TEST_TOOL_PROVIDERS = _TestToolProviders()
 
 
 @dataclass(frozen=True)
@@ -824,7 +859,7 @@ def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
     buffer_state = BufferState(queue.Queue(), Event(), Event(), Event(), task_id_hint="task-1")
     buffer_state.done_event.set()
     monkeypatch.setattr(service_module, "_start_buffering", lambda _sub: buffer_state)
-    extras_builder = MagicMock(return_value={"icon": "node-icon"})
+    extras_builder = _CallSpy(return_value={"icon": "node-icon"})
     monkeypatch.setattr(service_module, "node_execution_extras", extras_builder)
 
     events = list(
@@ -979,7 +1014,9 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
-    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", MagicMock())
+    monkeypatch.setattr(
+        service_module.WorkflowEventStream, "get_response_topic", lambda *_args: _Topic(_StaticSubscription())
+    )
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=resumption_context))
     conversation_lookup = MagicMock(return_value=None)
     app_lookup = MagicMock(return_value=None)
@@ -1017,7 +1054,9 @@ def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
-    monkeypatch.setattr(service_module.WorkflowEventStream, "get_response_topic", MagicMock())
+    monkeypatch.setattr(
+        service_module.WorkflowEventStream, "get_response_topic", lambda *_args: _Topic(_StaticSubscription())
+    )
     load_resumption_context = MagicMock(return_value=None)
     monkeypatch.setattr(service_module, "_load_resumption_context", load_resumption_context)
     conversation_lookup = MagicMock(return_value=None)

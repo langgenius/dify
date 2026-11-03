@@ -1,5 +1,4 @@
 import logging
-from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.chat.app_config_manager import ChatAppConfig
@@ -53,7 +52,8 @@ class ChatAppRunner(AppRunner):
         :return:
         """
         app_config = application_generate_entity.app_config
-        app_config = cast(ChatAppConfig, app_config)
+        if not isinstance(app_config, ChatAppConfig):
+            raise TypeError(f"Expected ChatAppConfig, got {type(app_config).__name__}")
         inputs = application_generate_entity.inputs
         query = application_generate_entity.query
         files = application_generate_entity.files

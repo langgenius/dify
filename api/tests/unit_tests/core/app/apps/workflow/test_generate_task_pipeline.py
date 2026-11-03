@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -268,6 +269,46 @@ def _end_user(*, end_user_id: str = "user", session_id: str = "session") -> EndU
     return make_end_user(end_user_id=end_user_id, tenant_id="tenant", app_id="app", session_id=session_id)
 
 
+class _DummyContexts:
+    pass
+
+
+class _DummyToolProviders:
+    pass
+
+
+@dataclass
+class _Call:
+    kwargs: dict[str, object]
+
+
+@dataclass
+class _CallArgs:
+    kwargs: dict[str, object]
+
+
+class _RecordMethod:
+    def __init__(self) -> None:
+        self.call_args_list: list[_Call] = []
+        self.call_args = None
+
+    @property
+    def call_count(self) -> int:
+        return len(self.call_args_list)
+
+    def assert_called_once(self) -> None:
+        assert len(self.call_args_list) == 1
+
+    def __call__(self, **kwargs) -> None:
+        self.call_args = _CallArgs(kwargs)
+        self.call_args_list.append(_Call(kwargs))
+
+
+class _ExecutionLogsRecorder:
+    def __init__(self) -> None:
+        self.record = _RecordMethod()
+
+
 def _make_pipeline():
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant",
@@ -300,9 +341,9 @@ def _make_pipeline():
         user=user,
         stream=False,
         draft_var_saver_factory=lambda **kwargs: None,
-        contexts=MagicMock(),
-        logs=MagicMock(),
-        tool_providers=MagicMock(),
+        contexts=_DummyContexts(),
+        logs=_ExecutionLogsRecorder(),
+        tool_providers=_DummyToolProviders(),
     )
 
     return pipeline
@@ -742,9 +783,9 @@ class TestGenerateTaskPipelineCoreCases:
                 user=end_user,
                 stream=False,
                 draft_var_saver_factory=lambda **kwargs: None,
-                contexts=MagicMock(),
-                logs=MagicMock(),
-                tool_providers=MagicMock(),
+                contexts=_DummyContexts(),
+                logs=_ExecutionLogsRecorder(),
+                tool_providers=_DummyToolProviders(),
             )
 
             assert pipeline._created_by_role == CreatorUserRole.END_USER

@@ -1,7 +1,7 @@
 import json
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, TypedDict, cast
+from typing import Any, TypedDict
 
 from core.app.app_config.easy_ui_based_app.dataset.manager import DatasetConfigManager
 from core.app.app_config.easy_ui_based_app.model_config.manager import ModelConfigManager
@@ -135,12 +135,13 @@ class WorkflowConverter:
                     "sensitive_word_avoidance": app_model_config_dict.get("sensitive_word_avoidance"),
                     "retriever_resource": app_model_config_dict.get("retriever_resource"),
                 }
-        return ConvertedWorkflow(mode=new_app_mode, graph=cast(dict[str, Any], graph), features=features)
+        return ConvertedWorkflow(mode=new_app_mode, graph=dict(graph), features=features)
 
     def app_config(self, source: WorkflowConversionSource) -> EasyUIBasedAppConfig:
         """Reuse the config parsers without loading or mutating an ORM App."""
         assert source.model_config is not None
         config = deepcopy(source.model_config)
+        assert isinstance(config, dict)
         variables, external_variables = BasicVariablesConfigManager.convert(config)
         return EasyUIBasedAppConfig(
             tenant_id=source.tenant_id,
@@ -148,7 +149,7 @@ class WorkflowConverter:
             app_mode=source.mode,
             app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
             app_model_config_id=source.model_config_id,
-            app_model_config_dict=cast(dict[str, Any], config),
+            app_model_config_dict=config,
             model=ModelConfigManager.convert(config),
             prompt_template=PromptTemplateConfigManager.convert(config),
             dataset=DatasetConfigManager.convert(config),

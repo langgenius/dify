@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Sequence
-from typing import Any, cast
+from typing import Any
 
 from packaging.version import Version
 from pydantic import ValidationError
@@ -87,8 +87,9 @@ class AgentRuntimeSupport:
 
             value = parameter_value
             if parameter.type == "array[tools]":
-                value = cast(list[dict[str, Any]], value)
-                value = [tool for tool in value if tool.get("enabled", False)]
+                if not isinstance(value, list):
+                    raise TypeError("Expected tool array parameter value to be a list")
+                value = [tool for tool in value if isinstance(tool, dict) and tool.get("enabled", False)]
                 value = self._filter_mcp_type_tool(strategy, value)
                 for tool in value:
                     if "schemas" in tool:
@@ -122,9 +123,12 @@ class AgentRuntimeSupport:
 
             if not for_log:
                 if parameter.type == "array[tools]":
-                    value = cast(list[dict[str, Any]], value)
+                    if not isinstance(value, list):
+                        raise TypeError("Expected tool array parameter value to be a list")
                     tool_value = []
                     for tool in value:
+                        if not isinstance(tool, dict):
+                            raise TypeError("Expected tool item to be a dict")
                         provider_type = ToolProviderType(tool.get("type", ToolProviderType.BUILT_IN))
                         setting_params = tool.get("settings", {})
                         parameters = tool.get("parameters", {})
@@ -188,7 +192,8 @@ class AgentRuntimeSupport:
                         )
                     value = tool_value
                 if parameter.type == AgentStrategyParameter.AgentStrategyParameterType.MODEL_SELECTOR:
-                    value = cast(dict[str, Any], value)
+                    if not isinstance(value, dict):
+                        raise TypeError("Expected model selector parameter value to be a dict")
                     model_instance, model_schema = self.fetch_model(
                         tenant_id=tenant_id,
                         user_id=user_id,

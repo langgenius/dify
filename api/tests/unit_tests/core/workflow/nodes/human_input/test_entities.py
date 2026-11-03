@@ -9,7 +9,7 @@ from datetime import datetime as _dify_owned_contracts_datetime
 from datetime import datetime as _entities_datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import Any, cast, override
+from typing import Any, override
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
@@ -130,8 +130,7 @@ from services.workflow.execution.adapters.human_input import (
 )
 from services.workflow.execution.adapters.human_input_events import HumanInputFormEventFilter
 from services.workflow.execution.adapters.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
-from services.workflow.execution.adapters.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
-from services.workflow.execution.chatflow_ports import ChatflowRecords
+from services.workflow.execution.adapters.workflow_entry import iter_dify_graph_engine_events
 from services.workflow.execution.ports import ExecutionContexts
 from tests.helpers.unit.model_factories import make_account, make_message, make_tenant
 from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
@@ -1183,7 +1182,7 @@ def _persist_form(
 
 
 class _FakeFormRepository(HumanInputFormRepository):
-    def __init__(self, form: HumanInputFormEntity) -> None:
+    def __init__(self, form: object) -> None:
         self._form = form
 
     def get_form(self, node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None:
@@ -1196,11 +1195,14 @@ class _FakeFormRepository(HumanInputFormRepository):
     def mark_timeout(self, node_id: str, *, form_id: str) -> HumanInputFormEntity:
         _ = node_id
         assert form_id == self._form.id
-        cast(Any, self._form).status = HumanInputFormStatus.TIMEOUT
+        self._form.status = HumanInputFormStatus.TIMEOUT
         return self._form
 
 
-class _HumanInputFormFilledEventTestfilereferencefactory(FileReferenceFactoryProtocol):
+class _HumanInputFormFilledEventTestfilereferencefactory(DifyFileReferenceFactory):
+    def __init__(self) -> None:
+        pass
+
     def build_from_mapping(self, *, mapping: Mapping[str, Any]) -> File:
         return File(
             file_id=mapping.get("id"),
@@ -1230,10 +1232,7 @@ def _create_human_input_node(
     callback = DifyHITLCallback(
         form_repository=repo,
         node_data=node_data,
-        file_reference_factory=cast(
-            DifyFileReferenceFactory,
-            _HumanInputFormFilledEventTestfilereferencefactory(),
-        ),
+        file_reference_factory=_HumanInputFormFilledEventTestfilereferencefactory(),
     )
     node = HumanInputNode(
         node_id=config["id"],
@@ -1336,7 +1335,7 @@ def _build_node(
         config["data"]["inputs"] = []
         fake_form.submitted_data = {}
 
-    repo = _FakeFormRepository(cast(HumanInputFormEntity, fake_form))
+    repo = _FakeFormRepository(fake_form)
     return _create_human_input_node(
         config=config,
         init_params=graph_init_params,
@@ -1399,7 +1398,7 @@ def _build_timeout_node(
         or naive_utc_now() - _human_input_form_filled_event_datetime.timedelta(minutes=1),
     )
 
-    repo = _FakeFormRepository(cast(HumanInputFormEntity, fake_form))
+    repo = _FakeFormRepository(fake_form)
     return _create_human_input_node(
         config=config,
         init_params=graph_init_params,
@@ -1411,7 +1410,7 @@ def _build_timeout_node(
 def _publish_node_events(node: HumanInputNode, *, sessions: sessionmaker[Session] | None = None) -> list[AppQueueEvent]:
     form_reader = HumanInputFormSubmissionRepository(sessions=sessions) if sessions else NO_HUMAN_INPUT_FORMS
     return _publish_graph_events(
-        _filter_human_input_events(cast(Iterable[EngineEvent], node.run()), node=node, form_reader=form_reader),
+        _filter_human_input_events(node.run(), node=node, form_reader=form_reader),
         runtime_state=node.runtime_state,
     )
 
@@ -1437,7 +1436,8 @@ def _filter_human_input_events(
 def test_human_input_filter_forwards_traversals_without_waiting_for_completion(
     event_type: type[GraphEdgeTakenEvent | GraphEdgeSkippedEvent],
 ) -> None:
-    started = cast(NodeRunStartedEvent, list(_build_node().run())[0])
+    started = list(_build_node().run())[0]
+    assert isinstance(started, NodeRunStartedEvent)
     edge = event_type(frame_id=ROOT_FRAME_ID, edge_id="human-answer", source_node_id="node-1", target_node_id="answer")
     edge_forwarded = False
 
@@ -1456,8 +1456,10 @@ def test_human_input_filter_forwards_traversals_without_waiting_for_completion(
 def test_form_events_keep_titles_for_interleaved_executions_of_one_node() -> None:
     node = _build_node()
     raw_events = list(node.run())
-    started = cast(NodeRunStartedEvent, raw_events[0])
-    succeeded = cast(NodeRunSucceededEvent, raw_events[1])
+    started = raw_events[0]
+    succeeded = raw_events[1]
+    assert isinstance(started, NodeRunStartedEvent)
+    assert isinstance(succeeded, NodeRunSucceededEvent)
     first_start = started.model_copy(update={"id": "first", "node_title": "First approval"})
     second_start = started.model_copy(update={"id": "second", "node_title": "Second approval"})
     first_result = succeeded.model_copy(
@@ -1518,15 +1520,22 @@ class _EventQueue(AppQueueManager):
             yield WorkflowQueueMessage(task_id="task-1", app_mode=AppMode.ADVANCED_CHAT, event=event)
 
 
+@dataclass
+class _StubGraphEngine:
+    runtime_state: RuntimeState
+
+
+@dataclass
+class _StubWorkflowRunEntry:
+    graph_engine: _StubGraphEngine
+
+
 def _publish_graph_events(events: Iterable[EngineEvent], *, runtime_state: RuntimeState) -> list[AppQueueEvent]:
     published: list[AppQueueEvent] = []
     queue_manager = create_autospec(AppQueueManager, instance=True, spec_set=True)
     queue_manager.publish.side_effect = lambda event, _publish_from: published.append(event)
     publisher = WorkflowEventPublisher(queue_manager, notify_pause=lambda _: None)
-    workflow_entry = cast(
-        WorkflowEntry,
-        SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=runtime_state)),
-    )
+    workflow_entry = _StubWorkflowRunEntry(graph_engine=_StubGraphEngine(runtime_state=runtime_state))
     for event in events:
         publisher.publish(workflow_entry, event)
 
@@ -1549,8 +1558,8 @@ class StreamMessageWrites:
     ) -> None:
         pass
 
-    def save_message(self, _identity: MessageIdentity, _update: MessageUpdate) -> Message:
-        return cast(Message, None)
+    def save_message(self, _identity: MessageIdentity, _update: MessageUpdate) -> Message | None:
+        return None
 
     def fail_message(self, identity: MessageIdentity, error: str) -> None:
         pass
@@ -1620,9 +1629,10 @@ def _sse_payloads(
                     expiration_time=naive_utc_now() + _human_input_form_filled_event_datetime.timedelta(days=1),
                     status=HumanInputFormStatus.SUBMITTED,
                 )
+    chat_records: Any = StreamMessageWrites()
     pipeline = AdvancedChatAppGenerateTaskPipeline(
         contexts=workflow_contexts,
-        chat_records=cast(ChatflowRecords, StreamMessageWrites()),
+        chat_records=chat_records,
         application_generate_entity=generate_entity,
         workflow=WorkflowSnapshot(id="workflow", tenant_id="tenant", features_dict={}),
         queue_manager=queue_manager,

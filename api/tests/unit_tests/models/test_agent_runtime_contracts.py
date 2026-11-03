@@ -1,5 +1,4 @@
 import json
-from typing import cast
 
 from enums.agent import WorkflowAgentBindingType
 from models.agent_config_entities import (
@@ -9,6 +8,11 @@ from models.agent_config_entities import (
     WorkflowNodeJobMetadata,
 )
 from models.agent_runtime_contracts import AgentSnapshotRecord, WorkflowAgentBindingError, WorkflowBindingRecord
+
+
+def _as_object_dict(value: object) -> dict[str, object]:
+    assert isinstance(value, dict)
+    return value
 
 
 def test_agent_snapshot_config_dump_is_json_compatible_and_independent() -> None:
@@ -22,11 +26,11 @@ def test_agent_snapshot_config_dump_is_json_compatible_and_independent() -> None
     assert json.loads(json.dumps(materialized)) == materialized
 
     config.prompt.system_prompt = "source mutation"
-    dumped_prompt = cast(dict[str, object], materialized["prompt"])
+    dumped_prompt = _as_object_dict(materialized["prompt"])
     dumped_prompt["system_prompt"] = "result mutation"
 
     assert config.prompt.system_prompt == "source mutation"
-    fresh_prompt = cast(dict[str, object], record.config_snapshot_dict["prompt"])
+    fresh_prompt = _as_object_dict(record.config_snapshot_dict["prompt"])
     assert fresh_prompt["system_prompt"] == "source mutation"
     assert materialized["config_note"] == "original note"
 
@@ -55,18 +59,18 @@ def test_workflow_binding_job_dump_is_json_compatible_and_independent() -> None:
 
     source_agent_soul = job.metadata.agent_soul
     assert source_agent_soul is not None
-    source_routing = cast(dict[str, object], source_agent_soul["routing"])
+    source_routing = _as_object_dict(source_agent_soul["routing"])
     source_routing["enabled"] = False
 
-    dumped_metadata = cast(dict[str, object], materialized["metadata"])
-    dumped_agent_soul = cast(dict[str, object], dumped_metadata["agent_soul"])
-    dumped_routing = cast(dict[str, object], dumped_agent_soul["routing"])
+    dumped_metadata = _as_object_dict(materialized["metadata"])
+    dumped_agent_soul = _as_object_dict(dumped_metadata["agent_soul"])
+    dumped_routing = _as_object_dict(dumped_agent_soul["routing"])
     assert dumped_routing["enabled"] is True
     dumped_routing["enabled"] = "result mutation"
 
-    fresh_metadata = cast(dict[str, object], record.node_job_config_dict["metadata"])
-    fresh_agent_soul = cast(dict[str, object], fresh_metadata["agent_soul"])
-    fresh_routing = cast(dict[str, object], fresh_agent_soul["routing"])
+    fresh_metadata = _as_object_dict(record.node_job_config_dict["metadata"])
+    fresh_agent_soul = _as_object_dict(fresh_metadata["agent_soul"])
+    fresh_routing = _as_object_dict(fresh_agent_soul["routing"])
     assert fresh_routing["enabled"] is False
 
 

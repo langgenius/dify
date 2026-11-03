@@ -61,7 +61,7 @@ def test_node_binding_resolution_uses_injected_database_through_nested_factories
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     monkeypatch.setattr(
         "clients.agent_backend.factory.create_agent_backend_run_client",
-        Mock(return_value=create_autospec(AgentBackendRunClient, instance=True, spec_set=True)),
+        lambda *args, **kwargs: create_autospec(AgentBackendRunClient, instance=True, spec_set=True),  # noqa: ARG005
     )
     try:
         TypeBase.metadata.create_all(

@@ -132,7 +132,9 @@ def _handle_draft_variable_changed_error(error: DraftVariableChangedError):
     }, status.value
 
 
-cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(DraftVariableChangedError, last=False)
+_console_error_handlers: object = api.error_handlers
+assert isinstance(_console_error_handlers, OrderedDict)
+_console_error_handlers.move_to_end(DraftVariableChangedError, last=False)
 api.document_error_handler(
     DraftVariableChangedError,
     status=HTTPStatus.CONFLICT,

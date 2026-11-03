@@ -3,7 +3,7 @@ import re
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Protocol, cast
+from typing import Any, Protocol, runtime_checkable
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -16,13 +16,6 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveBrowseFilesRequest,
     OnlineDriveBrowseFilesResponse,
     WebsiteCrawlMessage,
-)
-from core.datasource.online_document.online_document_plugin import (
-    OnlineDocumentDatasourcePlugin,
-)
-from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
-from core.datasource.website_crawl.website_crawl_plugin import (
-    WebsiteCrawlDatasourcePlugin,
 )
 from core.rag.entities import (
     DatasourceCompletedEvent,
@@ -69,6 +62,52 @@ from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables, environment_variable_values
 
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class _OnlineDocumentPagesDatasourceRuntime(Protocol):
+    def datasource_provider_type(self) -> str: ...
+
+    def get_online_document_pages(
+        self,
+        user_id: str,
+        datasource_parameters: dict[str, Any],
+        provider_type: str,
+    ) -> Generator[OnlineDocumentPagesMessage]: ...
+
+
+@runtime_checkable
+class _OnlineDocumentPageContentDatasourceRuntime(Protocol):
+    def get_online_document_page_content(
+        self,
+        user_id: str,
+        datasource_parameters: GetOnlineDocumentPageContentRequest,
+        provider_type: str,
+    ) -> Generator[DatasourceMessage]: ...
+
+
+@runtime_checkable
+class _OnlineDriveDatasourceRuntime(Protocol):
+    def datasource_provider_type(self) -> str: ...
+
+    def online_drive_browse_files(
+        self,
+        user_id: str,
+        request: OnlineDriveBrowseFilesRequest,
+        provider_type: str,
+    ) -> Generator[OnlineDriveBrowseFilesResponse]: ...
+
+
+@runtime_checkable
+class _WebsiteCrawlDatasourceRuntime(Protocol):
+    def datasource_provider_type(self) -> str: ...
+
+    def get_website_crawl(
+        self,
+        user_id: str,
+        datasource_parameters: Mapping[str, Any],
+        provider_type: str,
+    ) -> Generator[WebsiteCrawlMessage]: ...
 
 
 def _build_seeded_variable_pool(variables: Sequence[Variable]) -> VariablePool:
@@ -277,7 +316,10 @@ class RagPipelineExecutionService:
                 datasource_runtime.runtime.credentials = credentials
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
-                    datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
+                    if not isinstance(datasource_runtime, _OnlineDocumentPagesDatasourceRuntime):
+                        raise TypeError(
+                            f"Expected _OnlineDocumentPagesDatasourceRuntime, got {type(datasource_runtime).__name__}"
+                        )
                     online_document_result: Generator[OnlineDocumentPagesMessage] = (
                         datasource_runtime.get_online_document_pages(
                             user_id=account.id,
@@ -302,7 +344,10 @@ class RagPipelineExecutionService:
                         logger.exception("Error during online document.")
                         yield DatasourceErrorEvent(error=str(e)).model_dump()
                 case DatasourceProviderType.ONLINE_DRIVE:
-                    datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
+                    if not isinstance(datasource_runtime, _OnlineDriveDatasourceRuntime):
+                        raise TypeError(
+                            f"Expected _OnlineDriveDatasourceRuntime, got {type(datasource_runtime).__name__}"
+                        )
                     online_drive_result: Generator[OnlineDriveBrowseFilesResponse] = (
                         datasource_runtime.online_drive_browse_files(
                             user_id=account.id,
@@ -331,7 +376,10 @@ class RagPipelineExecutionService:
                         )
                         yield online_drive_event.model_dump()
                 case DatasourceProviderType.WEBSITE_CRAWL:
-                    datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
+                    if not isinstance(datasource_runtime, _WebsiteCrawlDatasourceRuntime):
+                        raise TypeError(
+                            f"Expected _WebsiteCrawlDatasourceRuntime, got {type(datasource_runtime).__name__}"
+                        )
                     website_crawl_result: Generator[WebsiteCrawlMessage] = datasource_runtime.get_website_crawl(
                         user_id=account.id,
                         datasource_parameters=variables_map,
@@ -419,7 +467,11 @@ class RagPipelineExecutionService:
                 datasource_runtime.runtime.credentials = credentials
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
-                    datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
+                    if not isinstance(datasource_runtime, _OnlineDocumentPageContentDatasourceRuntime):
+                        raise TypeError(
+                            "Expected _OnlineDocumentPageContentDatasourceRuntime, "
+                            f"got {type(datasource_runtime).__name__}"
+                        )
                     online_document_result: Generator[DatasourceMessage] = (
                         datasource_runtime.get_online_document_page_content(
                             user_id=account.id,

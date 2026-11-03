@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -5,6 +6,7 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy.orm import Session
 
+from core.app.apps.chat.app_config_manager import ChatAppConfig
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
@@ -17,6 +19,20 @@ from models.model import App, AppMode, AppModelConfig, Conversation, IconType, M
 from services.app.generation.adapters.chat import ChatAppGenerator
 from services.app.generation.adapters.chat_runner import ChatAppRunner
 from services.errors.conversation import ConversationNotExistsError
+
+
+@dataclass
+class _ChatAppConfig:
+    variables: list[object] = field(default_factory=list)
+    external_data_variables: list[object] = field(default_factory=list)
+    app_model_config_dict: dict[str, object] = field(default_factory=dict)
+    app_mode: AppMode = AppMode.CHAT
+
+
+@dataclass
+class _AppIdTenantId:
+    app_id: str
+    tenant_id: str
 
 
 class DummyGenerateEntity:
@@ -227,7 +243,7 @@ class TestChatAppGenerator:
         assert sqlite_session.get(App, app_model.id) is not None
         assert sqlite_session.in_transaction()
 
-        app_config = SimpleNamespace(
+        app_config = _ChatAppConfig(
             variables=[],
             external_data_variables=[],
             app_model_config_dict={},
@@ -256,7 +272,7 @@ class TestChatAppGenerator:
             patch("services.app.generation.adapters.chat.ChatAppConfigManager.get_app_config", return_value=app_config),
             patch("services.app.generation.adapters.chat.ModelConfigConverter.convert", return_value=SimpleNamespace()),
             patch("services.app.generation.adapters.chat.FileUploadConfigManager.convert", return_value=None),
-            patch("services.app.generation.adapters.chat.ChatAppGenerateEntity", Mock(side_effect=DummyGenerateEntity)),
+            patch("services.app.generation.adapters.chat.ChatAppGenerateEntity", DummyGenerateEntity),
             patch("services.app.generation.adapters.chat.TraceQueueManager", return_value=SimpleNamespace()),
             patch("services.app.generation.adapters.chat.MessageBasedAppQueueManager", DummyQueueManager),
             patch.object(ChatAppGenerator, "_prepare_user_inputs", return_value={}),
@@ -351,7 +367,11 @@ class TestChatAppGenerator:
             records=app_records,
         )
         queue_manager = DummyQueueManager()
-        entity = DummyGenerateEntity(task_id="t1", user_id="u1", app_config=Mock(app_id="app-1", tenant_id="tenant-1"))
+        entity = DummyGenerateEntity(
+            task_id="t1",
+            user_id="u1",
+            app_config=_AppIdTenantId(app_id="app-1", tenant_id="tenant-1"),
+        )
 
         with (
             patch.object(app_records, "load", return_value=(_app(), _conversation(), _message())),
@@ -391,7 +411,7 @@ class TestChatAppGenerator:
         entity = DummyGenerateEntity(
             task_id="t1",
             user_id="u1",
-            app_config=SimpleNamespace(app_id="missing-app", tenant_id="tenant-1"),
+            app_config=_AppIdTenantId(app_id="missing-app", tenant_id="tenant-1"),
         )
 
         generator._generate_worker(
@@ -415,7 +435,7 @@ class TestChatAppRunner:
             retrieval=build_dataset_retrieval(sqlite_session_factory),
             records=app_records,
         )
-        app_config = SimpleNamespace(
+        app_config = ChatAppConfig.model_construct(
             app_id="app-1",
             tenant_id="tenant-1",
             app_mode=AppMode.CHAT,
@@ -461,7 +481,7 @@ class TestChatAppRunner:
             retrieval=build_dataset_retrieval(sqlite_session_factory),
             records=app_records,
         )
-        app_config = SimpleNamespace(
+        app_config = ChatAppConfig.model_construct(
             app_id="app-1",
             tenant_id="tenant-1",
             app_mode=AppMode.CHAT,
@@ -518,9 +538,10 @@ class TestChatAppRunner:
             retrieval=build_dataset_retrieval(sqlite_session_factory),
             records=app_records,
         )
-        app_config = SimpleNamespace(
+        app_config = ChatAppConfig.model_construct(
             app_id="app-1",
             tenant_id="tenant-1",
+            app_mode=AppMode.CHAT,
             prompt_template=None,
             external_data_variables=[],
             dataset=None,
