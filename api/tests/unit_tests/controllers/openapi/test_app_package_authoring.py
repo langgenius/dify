@@ -31,7 +31,6 @@ from controllers.openapi._models import (
 from controllers.openapi._upload import UploadParts
 from controllers.openapi.app_dsl import AppPackageCheckApi, AppPackageFillApi
 from controllers.openapi.auth.spec import Effect, Kind, spec_of
-from core.tools.entities.tool_entities import ToolParameter
 from extensions.ext_application_services import ApplicationServices
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolNodeData
@@ -40,6 +39,7 @@ from models.model import AppMode
 from models.workflow import Workflow
 from services.app_package_service import AppPackageService
 from services.entities.dsl_entities import ImportStatus
+from services.workflow.authoring.checks import AuthoringIssueCode
 from services.workflow.authoring.node_spec import FieldHint
 from services.workflow.authoring.plugins import NO_DEFAULT, DeclaredParameter
 from tests.helpers.unit.model_factories import make_workflow
@@ -51,6 +51,8 @@ _CONTEXT = RequestContext("request-1", None, "account-1", "workspace-1")
 _APP = "app.yaml"
 _MANIFEST = "manifest.yaml"
 _LLM_WITHOUT_MODEL = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM}}
+# What the built-in time/current_time tool declares for its two form parameters.
+_CURRENT_TIME_DEFAULTS = {"format": "%Y-%m-%d %H:%M:%S", "timezone": "UTC"}
 
 
 @runtime_checkable
@@ -399,25 +401,22 @@ def test_an_agent_builds_an_app_from_node_options_through_fill_check_and_import(
     first = _check_over_the_wire(world, package)
     assert (first.valid, first.issues) == (True, [])
     assert _node_data(_app_graph(package), "end")["outputs"] == []
-    [tool_spec] = [spec for spec in first.node_specs if spec.node_id == "now"]
-    declared_defaults = {
-        parameter.name: parameter.default
-        for parameter in tool_spec.plugin_parameters
-        if parameter.form != ToolParameter.ToolParameterForm.LLM and parameter.default is not NO_DEFAULT
-    }
-    assert declared_defaults
 
+    end_outputs = [{"variable": "current_time", "value_type": "string", "value_selector": ["now", "text"]}]
     edited = yaml.safe_load(package[_APP])
-    _node_data(edited["workflow"]["graph"], "end")["outputs"] = [
-        {"variable": "current_time", "value_type": "string", "value_selector": ["now", "text"]}
-    ]
+    _node_data(edited["workflow"]["graph"], "end")["outputs"] = end_outputs
     package[_APP] = yaml.safe_dump(edited).encode()
     second = _check_over_the_wire(world, package)
-    assert (second.valid, second.issues) == (True, [])
+    assert second.valid is False
+    assert [(issue.code, issue.refuses_import) for issue in second.issues] == [
+        (AuthoringIssueCode.MANIFEST_STALE, True)
+    ]
 
     refilled = _post(world, "packages:fill", package)
     assert refilled.status_code == 200
     package = _members(refilled.get_data())
+    third = _check_over_the_wire(world, package)
+    assert (third.valid, third.issues) == (True, [])
     exported = world.client.get(f"/openapi/v1/apps/{world.app_id}/dsl", headers=world.headers)
     assert exported.status_code == 200, exported.get_json()
     imported = _post(
@@ -434,5 +433,5 @@ def test_an_agent_builds_an_app_from_node_options_through_fill_check_and_import(
     assert isinstance(tool_configurations, dict)
     assert all(set(value) == {"type", "value"} for value in tool_configurations.values())
     inputs = {name: ToolNodeData.ToolInput.model_validate(value) for name, value in tool_configurations.items()}
-    assert {name: tool_input.value for name, tool_input in inputs.items()} == declared_defaults
-    assert _node_data(draft.graph_dict, "end")["outputs"] == _node_data(_app_graph(package), "end")["outputs"]
+    assert {name: tool_input.value for name, tool_input in inputs.items()} == _CURRENT_TIME_DEFAULTS
+    assert _node_data(draft.graph_dict, "end")["outputs"] == end_outputs

@@ -16,13 +16,14 @@ from models.model import AppMode
 from services.tools.tool_sources import resolve_tool
 from services.workflow.authoring import FillContext, PackageCheck, check_package, tool_reference
 from services.workflow.authoring.checks import _CHECKS, AuthoringIssue, AuthoringIssueCode, Check
-from services.workflow.authoring.package_io import PackageUnreadableError, read_package_entries
+from services.workflow.authoring.package_io import PackageUnreadableError, new_manifest, read_package_entries
 from services.workflow.graph_check import IssueCode, IssueSeverity, check_graph
 
 CTX = FillContext(tenant_id="tenant-1", account_id="account-1")
 LIMITS = ArchiveLimits(max_entries=64, max_bytes=16 * 1024 * 1024)
 FIXTURES = Path(__file__).parents[4] / "fixtures" / "workflow"
 APP = "app.yaml"
+MANIFEST = "manifest.yaml"
 ITERATION_AND_NOTES_EXPORT = "book_translation_iteration_note_workflow.yml"
 # Exports whose plugins resolve in a bare workspace and that check_graph passes; time is a built-in tool.
 CLEAN_EXPORTS = [
@@ -183,10 +184,10 @@ def test_an_app_without_a_graph_mode_is_not_graph_checked() -> None:
     assert check == PackageCheck(valid=True, issues=(), node_specs=())
 
 
-def test_new_codes_are_errors_that_never_refuse_an_import() -> None:
+def test_new_codes_are_errors_and_only_a_stale_manifest_refuses_an_import() -> None:
     for code in AuthoringIssueCode:
         assert code.severity == IssueSeverity.ERROR
-        assert code.refuses_import is False
+        assert code.refuses_import is (code == AuthoringIssueCode.MANIFEST_STALE)
 
 
 def test_a_tool_from_a_missing_provider_is_plugin_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -292,3 +293,42 @@ def test_a_console_export_has_no_issues(fixture: str) -> None:
 
 def test_check_graph_does_not_report_the_new_checks() -> None:
     assert check_graph({"nodes": [], "edges": []}, mode=AppMode.WORKFLOW) == []
+
+
+def _check_members(members: dict[str, str]) -> PackageCheck:
+    return check_package(read_package_entries(io.BytesIO(_package(members))), CTX, limits=LIMITS)
+
+
+def test_a_manifest_for_another_app_yaml_is_stale() -> None:
+    app = _dsl([START, END], [{"source": "start", "target": "end"}])
+    manifest = new_manifest(_dsl([START], []).encode()).decode()
+
+    check = _check_members({APP: app, MANIFEST: manifest})
+
+    [issue] = [issue for issue in check.issues if issue.code == AuthoringIssueCode.MANIFEST_STALE]
+    assert (issue.severity, issue.refuses_import, issue.node_id) == (IssueSeverity.ERROR, True, None)
+    assert issue.loc == (MANIFEST, "apps", 0)
+    assert "fill" in issue.message
+    assert check.valid is False
+
+
+def test_a_manifest_that_matches_the_app_yaml_is_not_stale() -> None:
+    app = _dsl([START, END], [{"source": "start", "target": "end"}])
+
+    check = _check_members({APP: app, MANIFEST: new_manifest(app.encode()).decode()})
+
+    assert check.issues == ()
+
+
+def test_a_package_without_a_manifest_is_not_stale() -> None:
+    check = _check_members({APP: _dsl([START, END], [{"source": "start", "target": "end"}])})
+
+    assert check.issues == ()
+
+
+def test_a_manifest_fill_cannot_read_is_not_judged_stale() -> None:
+    app = _dsl([START, END], [{"source": "start", "target": "end"}])
+
+    check = _check_members({APP: app, MANIFEST: "apps: [unclosed"})
+
+    assert AuthoringIssueCode.MANIFEST_STALE not in _codes(check)

@@ -108,15 +108,12 @@ def merge_manifest(manifest: bytes, app: bytes) -> bytes | None:
     """The manifest for `app`: kept byte for byte when `apps[0]` already describes it, else with only
     `apps[0].size` and `sha256` rewritten; None when it cannot be read or the rewrite is not a valid manifest.
     """
-    try:
-        data = yaml.load(manifest, Loader=PackageYamlLoader)  # noqa: S506
-    except YAML_ERRORS:
-        return None
+    data = _load_manifest(manifest)
     root = _root_app(data)
     if root is None:
         return None
     resource = _app(app)
-    if (root.get("size"), root.get("sha256")) == (resource.size, resource.sha256):
+    if _describes(root, resource):
         return manifest
     root.update(size=resource.size, sha256=resource.sha256)
     try:
@@ -124,6 +121,29 @@ def merge_manifest(manifest: bytes, app: bytes) -> bytes | None:
     except ValidationError:
         return None
     return yaml.safe_dump(data).encode()
+
+
+def manifest_is_stale(manifest: bytes, app: bytes) -> bool:
+    """True when the manifest's `apps[0]` is `app.yaml` with a size or sha256 other than `app`'s.
+
+    A manifest that cannot be read, or whose `apps[0]` is not `app.yaml`, is not stale.
+    """
+    root = _root_app(_load_manifest(manifest))
+    if root is None:
+        return False
+    return not _describes(root, _app(app))
+
+
+def _load_manifest(manifest: bytes) -> object:
+    """The manifest's YAML data; None when it cannot be parsed."""
+    try:
+        return yaml.load(manifest, Loader=PackageYamlLoader)  # noqa: S506
+    except YAML_ERRORS:
+        return None
+
+
+def _describes(root: dict[str, Any], resource: RosterAgentPackageApp) -> bool:
+    return (root.get("size"), root.get("sha256")) == (resource.size, resource.sha256)
 
 
 def _root_app(data: object) -> dict[str, Any] | None:

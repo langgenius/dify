@@ -422,4 +422,4 @@ def test_limits_bound_the_written_package() -> None:
 def test_a_filled_package_reads_its_app_name_only_when_it_is_text(
     document: dict[str, object] | None, name: str | None
 ) -> None:
-    assert FilledPackage(archive=b"", document=document).app_name == name
+    assert FilledPackage(archive=b"", document=document, submitted=None).app_name == name
