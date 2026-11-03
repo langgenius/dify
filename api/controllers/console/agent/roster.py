@@ -8,7 +8,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from controllers.common.agent_access import resolve_agent_access_filter
+from controllers.common.agent_access import account_agent_access
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
@@ -679,13 +679,9 @@ class AgentAppListApi(Resource):
             current_tenant_id,
             current_user.id,
         )
-        if dify_config.RBAC_ENABLED:
-            access_filter = resolve_agent_access_filter(
-                current_tenant_id,
-                current_user.id,
-                permissions=permissions,
-            )
-            access_filter.apply_to_app_params(params, tenant_id=current_tenant_id, session=session)
+        account_agent_access(current_tenant_id, current_user.id, permissions=permissions).apply_to_app_params(
+            params, tenant_id=current_tenant_id, session=session
+        )
 
         app_service = AppService()
         publication_counts = app_service.get_agent_publication_counts(
@@ -1147,20 +1143,7 @@ class AgentInviteOptionsApi(Resource):
         tenant_id: str,
         current_user: Account,
     ):
-        accessible_agent_ids = None
-        if dify_config.RBAC_ENABLED:
-            permissions = application_services().rbac.members.permissions(
-                tenant_id,
-                current_user.id,
-            )
-            access_filter = resolve_agent_access_filter(
-                tenant_id,
-                current_user.id,
-                permissions=permissions,
-            )
-            if access_filter.accessible_agent_ids is not None:
-                accessible_agent_ids = sorted(access_filter.accessible_agent_ids)
-
+        accessible_agent_ids = account_agent_access(tenant_id, current_user.id).sorted_ids()
         return dump_response(
             AgentInviteOptionsResponse,
             _agent_roster_service(session).list_invite_options(

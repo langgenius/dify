@@ -113,6 +113,8 @@ _PACKAGE_UPLOAD: Final = FolderUpload(
     rejections=FolderRejections("package folder", AppPackageInvalid, AppPackageTooLarge),
 )
 _PACKAGE_FILL_UPLOAD: Final = replace(_PACKAGE_UPLOAD, payload=AppPackageFillPayload)
+# Fill writes the package again whether it came as a file or a folder.
+_FILLED_PACKAGE_REJECTIONS: Final = FolderRejections("package", AppPackageInvalid, AppPackageTooLarge)
 
 
 def _check_hint(context: RequestContext, app_id: str | None) -> Hint:
@@ -184,7 +186,7 @@ def _authoring_refusals() -> Generator[None]:
     except RosterAgentPackageTooLargeError as exc:
         raise AppPackageTooLarge(exc.description) from exc
     except ArchiveError as exc:
-        raise _PACKAGE_FILL_UPLOAD.rejections.of(exc) from exc
+        raise _FILLED_PACKAGE_REJECTIONS.of(exc) from exc
 
 
 def _fill_context(context: RequestContext) -> FillContext:
@@ -367,7 +369,8 @@ class AppPackageFillApi(Resource):
     unset is written, and every value the package already has is kept.
 
     Nothing is saved. Filling a filled package changes nothing. Returns 400 ``app_package_invalid`` for a
-    package that cannot be read and 413 for one over this server's limits.
+    package that cannot be read and 413 for one over this server's limits. A package already at the entry
+    limit without a ``manifest.yaml`` is refused with 413, because fill adds one.
     """
 
     @endpoint(
@@ -405,7 +408,7 @@ class AppPackageCheckApi(Resource):
     refuses today; the others are what the app still needs to run. ``node_specs`` gives, for every node, its
     data schema, its plugin's declared parameters and every field it has not written yet. Returns 400
     ``app_package_invalid`` for a package that cannot be read or has no ``app.yaml`` mapping, and 413 for one
-    over this server's limits.
+    over this server's limits, as fill does.
     """
 
     @endpoint(

@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from configs import dify_config
+from extensions.ext_application_services import application_services
 from services.agent.roster_service import AgentRosterService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.app_entities import AppListBaseParams
@@ -31,6 +33,11 @@ class AgentAccessFilter:
     @classmethod
     def unrestricted(cls) -> AgentAccessFilter:
         return cls(accessible_agent_ids=None)
+
+    def sorted_ids(self) -> list[str] | None:
+        if self.accessible_agent_ids is None:
+            return None
+        return sorted(self.accessible_agent_ids)
 
     def apply_to_app_params(self, params: AppListBaseParams, *, tenant_id: str, session: Session) -> None:
         """Translate visible Agent ids to their Agent App ids before pagination."""
@@ -67,3 +74,20 @@ def resolve_agent_access_filter(
     accessible_agent_ids = permission_agent_ids if whitelist_scope.unrestricted else set(whitelist_scope.resource_ids)
 
     return AgentAccessFilter(accessible_agent_ids=accessible_agent_ids)
+
+
+def account_agent_access(
+    tenant_id: str,
+    account_id: str,
+    *,
+    permissions: MyPermissionsResponse | None = None,
+) -> AgentAccessFilter:
+    """The Agents an account may see in a workspace: every Agent while RBAC is off.
+
+    Reads the account's permissions from the workspace RBAC members service unless `permissions` is given.
+    """
+    if not dify_config.RBAC_ENABLED:
+        return AgentAccessFilter.unrestricted()
+    if permissions is None:
+        permissions = application_services().rbac.members.permissions(tenant_id, account_id)
+    return resolve_agent_access_filter(tenant_id, account_id, permissions=permissions)

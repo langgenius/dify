@@ -14,7 +14,6 @@ from core.tools.entities.tool_entities import ToolProviderType
 from models import Account
 from services.agent.roster_service import AgentRosterService
 from services.tools.tool_sources import ToolSource, resolve_tool
-from tests.helpers.unit.rbac_fakes import RBACDomain
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 
@@ -96,17 +95,16 @@ def test_a_mode_without_a_graph_is_refused(admitted_bearer: AdmittedWorld, query
 def test_agents_are_limited_to_the_ones_the_account_may_see_under_rbac(
     admitted_bearer: AdmittedWorld,
     config_overrides: Callable[..., None],
-    rbac_domain: RBACDomain,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config_overrides(RBAC_ENABLED=True)
-    rbac_domain.transport.response = {}
-    monkeypatch.setattr(node_options_controller, "application_services", lambda: rbac_domain)
-    monkeypatch.setattr(
-        node_options_controller,
-        "resolve_agent_access_filter",
-        lambda *_args, **_kwargs: AgentAccessFilter(accessible_agent_ids={"agent-2", "agent-1"}),
-    )
+    asked: list[str] = []
+
+    def account_agent_access(tenant_id: str, _account_id: str) -> AgentAccessFilter:
+        asked.append(tenant_id)
+        return AgentAccessFilter(accessible_agent_ids={"agent-2", "agent-1"})
+
+    monkeypatch.setattr(node_options_controller, "account_agent_access", account_agent_access)
     seen: list[object] = []
 
     def list_invite_options(_self: AgentRosterService, **kwargs: object) -> dict[str, object]:
@@ -119,6 +117,7 @@ def test_agents_are_limited_to_the_ones_the_account_may_see_under_rbac(
 
     assert response.status_code == 200, response.get_json()
     assert seen == [["agent-1", "agent-2"]]
+    assert asked == [admitted_bearer.workspace_id]
 
 
 def test_without_rbac_every_agent_is_listed(admitted_bearer: AdmittedWorld, monkeypatch: pytest.MonkeyPatch) -> None:
