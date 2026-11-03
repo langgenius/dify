@@ -320,10 +320,25 @@ class AdmittedAccount:
     status: str
 
 
+@pytest.fixture(scope="module")
+def console_app() -> Flask:
+    """One app with the console namespace, which takes a few hundred milliseconds to mount.
+
+    Each test registers its own ``extensions["application_services"]`` for the duration of that test.
+    """
+    app = Flask(__name__)
+    app.config.update(TESTING=False, PROPAGATE_EXCEPTIONS=False)
+    api = ExternalApi(app)
+    api.error_handlers = console_api.error_handlers.copy()
+    api.add_namespace(console_ns, path="/console/api")
+    return app
+
+
 class TestDataSourceCases:
     @staticmethod
     @pytest.fixture
     def collaborators(
+        console_app: Flask,
         config_overrides: Callable[..., None],
         monkeypatch: pytest.MonkeyPatch,
     ) -> ControllerCollaborators:
@@ -333,12 +348,6 @@ class TestDataSourceCases:
             RBAC_ENABLED=False,
             CONSOLE_API_URL="https://console-api.example.com",
         )
-        app = Flask(__name__)
-        app.config.update(TESTING=False, PROPAGATE_EXCEPTIONS=False)
-        api = ExternalApi(app)
-        api.error_handlers = console_api.error_handlers.copy()
-        api.add_namespace(console_ns, path="/console/api")
-
         account = AdmittedAccount(id=ACCOUNT_ID, role="owner", status="active")
         account_with_tenant = AccountWithTenant(account=cast("Account", account), tenant_id=TENANT_ID)
         monkeypatch.setattr(
@@ -393,7 +402,7 @@ class TestDataSourceCases:
         )
         estimates = RecordingEstimateService()
         dispatcher = RecordingDispatcher()
-        app.extensions["application_services"] = ApplicationServiceRegistry(
+        services = ApplicationServiceRegistry(
             data_sources=DataSourceApplicationServices(
                 bindings=DataSourceBindingApplicationService(bindings=bindings),
                 notion_imports=NotionImportApplicationService(
@@ -412,8 +421,9 @@ class TestDataSourceCases:
                 indexing_estimates=estimates,
             ),
         )
+        monkeypatch.setitem(console_app.extensions, "application_services", services)
         return ControllerCollaborators(
-            client=app.test_client(),
+            client=console_app.test_client(),
             account=account,
             bindings=bindings,
             notion_source=notion_source,

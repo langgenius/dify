@@ -72,6 +72,16 @@ def _reset_schema_cache(api):
     api.__dict__.pop("__schema__", None)
 
 
+@pytest.fixture(scope="module")
+def generated_specs(tmp_path_factory: pytest.TempPathFactory) -> list[Path]:
+    """Spec files written once by ``generate_specs`` for the tests that only read them.
+
+    Each export imports every API surface and takes seconds, so read-only checks share one;
+    tests that exercise generation itself still call ``generate_specs`` on their own.
+    """
+    return _load_generate_swagger_specs_module().generate_specs(tmp_path_factory.mktemp("specs"))
+
+
 @pytest.mark.timeout(150)  # Two cold, coverage-instrumented CLI exports each have a 60-second limit.
 def test_console_stdout_export_contains_both_surfaces_without_spec_files(tmp_path: Path):
     script = Path(__file__).resolve().parents[3] / "dev" / "export_console_openapi.py"
@@ -105,12 +115,8 @@ def test_console_stdout_export_contains_both_surfaces_without_spec_files(tmp_pat
     assert not list(tmp_path.rglob("*.json"))
 
 
-def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-
-    assert [path.name for path in written_paths] == [
+def test_generate_specs_writes_all_openapi_files(generated_specs: list[Path]):
+    assert [path.name for path in generated_specs] == [
         "console-openapi.json",
         "web-openapi.json",
         "service-openapi.json",
@@ -118,12 +124,12 @@ def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
         "inner-openapi.json",
     ]
 
-    for path in written_paths:
+    for path in generated_specs:
         payload = json.loads(path.read_text(encoding="utf-8"))
         assert payload["openapi"] == "3.1.0"
         assert "paths" in payload
 
-    inner_path = next(path for path in written_paths if path.name == "inner-openapi.json")
+    inner_path = next(path for path in generated_specs if path.name == "inner-openapi.json")
     inner_payload = json.loads(inner_path.read_text(encoding="utf-8"))
     assert inner_payload["security"] == [{"InnerApiKey": []}]
     assert inner_payload["components"]["securitySchemes"] == {
@@ -229,12 +235,8 @@ def test_apply_runtime_defaults_forces_swagger_routes_on(monkeypatch):
     assert dify_config.SWAGGER_UI_ENABLED is True
 
 
-def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defaults(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-
-    for path in written_paths:
+def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defaults(generated_specs: list[Path]):
+    for path in generated_specs:
         payload = json.loads(path.read_text(encoding="utf-8"))
         schemas = payload["components"]["schemas"]
         refs = {
@@ -248,7 +250,7 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defau
         assert refs <= set(schemas)
         assert all("nullable" not in value for value in _walk_values(payload) if isinstance(value, dict))
 
-    service_payload = json.loads((tmp_path / "service-openapi.json").read_text(encoding="utf-8"))
+    service_payload = json.loads((generated_specs[0].parent / "service-openapi.json").read_text(encoding="utf-8"))
     conversation_id = service_payload["components"]["schemas"]["ChatRequestPayload"]["properties"]["conversation_id"]
     assert "default" in conversation_id
     assert conversation_id["default"] is None
@@ -267,12 +269,8 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defau
     assert document_detail["properties"]["tokens"]["default"] is None
 
 
-def test_generate_specs_writes_unique_operation_ids(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-
-    for path in written_paths:
+def test_generate_specs_writes_unique_operation_ids(generated_specs: list[Path]):
+    for path in generated_specs:
         payload = json.loads(path.read_text(encoding="utf-8"))
         operation_ids = list(_operation_ids(payload))
 
@@ -337,10 +335,8 @@ def test_finalize_openapi_payload_only_marks_explicit_binary_responses():
     assert "x-dify-binary-response-media-types" not in operation
 
 
-def test_console_file_and_audio_responses_declare_binary_success_and_json_errors(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-    module.generate_specs(tmp_path)
-    payload = json.loads((tmp_path / "console-openapi.json").read_text(encoding="utf-8"))
+def test_console_file_and_audio_responses_declare_binary_success_and_json_errors(generated_specs: list[Path]):
+    payload = json.loads((generated_specs[0].parent / "console-openapi.json").read_text(encoding="utf-8"))
     audio_media = {"audio/aac", "audio/flac", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm"}
     operations = [
         ("/workspaces/current/plugin/asset", "get", {"application/octet-stream"}),
@@ -360,10 +356,7 @@ def test_console_file_and_audio_responses_declare_binary_success_and_json_errors
             assert set(response["content"]) == {"application/json"}, (path, status)
 
 
-def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
+def test_system_features_specs_exclude_backend_only_fields(generated_specs: list[Path]):
     excluded_fields = {
         "enable_trial_app",
         "is_allow_create_workspace",
@@ -372,7 +365,7 @@ def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):
     }
 
     for spec_name in ("console-openapi.json", "web-openapi.json"):
-        spec_path = next(path for path in written_paths if path.name == spec_name)
+        spec_path = next(path for path in generated_specs if path.name == spec_name)
         payload = json.loads(spec_path.read_text(encoding="utf-8"))
         schemas = payload["components"]["schemas"]
         system_features_schema = schemas["SystemFeatureModel"]
@@ -381,22 +374,15 @@ def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):
         assert "PluginManagerModel" not in schemas
 
 
-def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-
-    for path in written_paths:
+def test_generate_specs_writes_get_operations_without_request_bodies(generated_specs: list[Path]):
+    for path in generated_specs:
         payload = json.loads(path.read_text(encoding="utf-8"))
 
         assert all("requestBody" not in operation for operation in _get_operations(payload))
 
 
-def test_generate_specs_include_command_oriented_knowledge_fs_contract(tmp_path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-    openapi_path = next(path for path in written_paths if path.name == "openapi-openapi.json")
+def test_generate_specs_include_command_oriented_knowledge_fs_contract(generated_specs: list[Path]):
+    openapi_path = next(path for path in generated_specs if path.name == "openapi-openapi.json")
     payload = json.loads(openapi_path.read_text(encoding="utf-8"))
     paths = payload["paths"]
     prefix = "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs"
@@ -453,11 +439,8 @@ def test_generate_specs_include_command_oriented_knowledge_fs_contract(tmp_path)
     assert tree_operation["operationId"] == "tree_knowledge_fs"
 
 
-def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-    service_path = next(path for path in written_paths if path.name == "service-openapi.json")
+def test_generate_specs_writes_service_api_reference_descriptions(generated_specs: list[Path]):
+    service_path = next(path for path in generated_specs if path.name == "service-openapi.json")
     payload = json.loads(service_path.read_text(encoding="utf-8"))
 
     chat_operation = payload["paths"]["/chat-messages"]["post"]
@@ -764,11 +747,8 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     }
 
 
-def test_generate_specs_writes_web_file_upload_error_codes(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-    web_path = next(path for path in written_paths if path.name == "web-openapi.json")
+def test_generate_specs_writes_web_file_upload_error_codes(generated_specs: list[Path]):
+    web_path = next(path for path in generated_specs if path.name == "web-openapi.json")
     payload = json.loads(web_path.read_text(encoding="utf-8"))
 
     upload_bad_request = payload["paths"]["/files/upload"]["post"]["responses"]["400"]["description"]
@@ -803,11 +783,8 @@ def test_generate_specs_is_idempotent(tmp_path: Path):
         assert first_path.read_text(encoding="utf-8") == second_path.read_text(encoding="utf-8")
 
 
-def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-    console_path = next(path for path in written_paths if path.name == "console-openapi.json")
+def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(generated_specs: list[Path]):
+    console_path = next(path for path in generated_specs if path.name == "console-openapi.json")
     payload = json.loads(console_path.read_text(encoding="utf-8"))
     schemas = payload["components"]["schemas"]
 
@@ -818,11 +795,8 @@ def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tm
     assert schemas["AgentKnowledgeQueryMode"]["enum"] == ["generated_query", "user_query"]
 
 
-def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
-    console_path = next(path for path in written_paths if path.name == "console-openapi.json")
+def test_generate_specs_include_console_contract_shapes_for_schema_migration(generated_specs: list[Path]):
+    console_path = next(path for path in generated_specs if path.name == "console-openapi.json")
     payload = json.loads(console_path.read_text(encoding="utf-8"))
     schemas = payload["components"]["schemas"]
     paths = payload["paths"]
