@@ -1,10 +1,11 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 
 import pytest
 from sqlalchemy.orm import Session
 
+from services.workflow.execution.contracts import WorkflowRunDriver
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -78,8 +79,10 @@ def test_public_invoke_passes_explicit_session_and_injects_service_generator_dep
     actor = make_account()
     calls: list[_GenerateCall] = []
     generators: list[WorkflowAppGenerator] = []
-    execution_driver = Mock(name="execution_driver")
-    workflow_runtime: WorkflowRuntime = Mock(spec=WorkflowRuntime, execution_driver=execution_driver)
+    execution_driver = create_autospec(WorkflowRunDriver, instance=True)
+    workflow_runtime: WorkflowRuntime = create_autospec(
+        WorkflowRuntime, instance=True, execution_driver=execution_driver
+    )
 
     def generate(
         generator: WorkflowAppGenerator,

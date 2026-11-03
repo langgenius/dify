@@ -1,7 +1,7 @@
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Literal, Protocol, cast
+from typing import Literal, Protocol
 
 import pytest
 from sqlalchemy import Table, create_engine, event, select
@@ -48,17 +48,18 @@ def annotation_store(config_overrides: ConfigOverrides) -> Iterator[AnnotationSt
     config_overrides(VECTOR_STORE="qdrant")
     # The injected store is deliberately separate from the globally configured test database.
     engine = create_engine("sqlite://", poolclass=QueuePool)
-    tables = [
-        cast(Table, model.__table__)
-        for model in (
-            App,
-            Message,
-            AppAnnotationSetting,
-            DatasetCollectionBinding,
-            MessageAnnotation,
-            AppAnnotationHitHistory,
-        )
-    ]
+    tables: list[Table] = []
+    for model in (
+        App,
+        Message,
+        AppAnnotationSetting,
+        DatasetCollectionBinding,
+        MessageAnnotation,
+        AppAnnotationHitHistory,
+    ):
+        table = model.__table__
+        assert isinstance(table, Table)
+        tables.append(table)
     TypeBase.metadata.create_all(
         engine,
         tables=tables,
@@ -100,7 +101,8 @@ def annotation_store(config_overrides: ConfigOverrides) -> Iterator[AnnotationSt
         annotation = MessageAnnotation(app_id="app-1", question="question", content="answer", account_id="user")
         annotation.id = "annotation-1"
         session.add_all([binding, setting, annotation])
-    yield AnnotationStore(engine=engine, pool=cast(QueuePool, engine.pool), sessions=sessions)
+    assert isinstance(engine.pool, QueuePool)
+    yield AnnotationStore(engine=engine, pool=engine.pool, sessions=sessions)
     engine.dispose()
 
 

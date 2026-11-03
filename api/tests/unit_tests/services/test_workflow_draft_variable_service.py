@@ -458,8 +458,8 @@ class TestDraftVarLoaderSimpleCases:
             with patch("services.workflow.draft_variable_service.ThreadPoolExecutor") as executor_cls:
                 executor = executor_cls.return_value.__enter__.return_value
                 executor.map.return_value = [
-                    (("node1", "offloaded_var1"), Mock()),
-                    (("node2", "offloaded_var2"), Mock()),
+                    (("node1", "offloaded_var1"), object()),
+                    (("node2", "offloaded_var2"), object()),
                 ]
 
                 result = draft_var_loader.load_variables(selectors)

@@ -7,7 +7,7 @@ import zipfile
 from collections.abc import Callable, Generator, Mapping
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 from uuid import uuid4
 
 import pytest
@@ -547,7 +547,7 @@ class TestWorkflowPackageServiceCases:
         )
         sqlite_session.add(target)
         sqlite_session.commit()
-        denied = Mock(return_value=False)
+        denied = create_autospec(AppDslService._check_overwrite_access, return_value=False)
         monkeypatch.setattr(AppDslService, "_check_overwrite_access", denied)
         with pytest.raises(NoPermissionError, match="permission to overwrite"):
             _import(sqlite_session, content, app_id="protected-app")

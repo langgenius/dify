@@ -615,7 +615,12 @@ class TestAppInputAdapterExtras:
         saver = create_autospec(DraftVariableSaver, instance=True, spec_set=True)
         factory = create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
         factory.return_value = saver
-        provider = Mock(return_value=factory)
+        provider_calls: list[tuple[str, Account]] = []
+
+        def provider(tenant_id: str, user: Account) -> DraftVariableSaverFactory:
+            provider_calls.append((tenant_id, user))
+            return factory
+
         generator = AppInputAdapter(draft_variable_saver=provider)
         account = Account(name="Tester", email="tester@example.com")
         account.id = "account-id"
@@ -626,7 +631,7 @@ class TestAppInputAdapterExtras:
             )
             is saver
         )
-        provider.assert_called_once_with("tenant-id", account)
+        assert provider_calls == [("tenant-id", account)]
         assert factory.call_count == 1
         assert factory.call_args == call(
             app_id="app-id", node_id="node-id", node_type=BuiltinNodeTypes.START, node_execution_id="node-exec-id"

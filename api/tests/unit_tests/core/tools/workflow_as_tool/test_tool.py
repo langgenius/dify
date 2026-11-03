@@ -5,12 +5,12 @@ import threading
 import uuid
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from typing import Any, cast
-from unittest.mock import Mock, create_autospec, patch
+from typing import Any
+from unittest.mock import create_autospec, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine, Table, inspect, select
+from sqlalchemy import Engine, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
@@ -76,7 +76,7 @@ def sqlite_tool_db(
 ) -> Iterator[SqliteToolDb]:
     """Bind service-owned sessions to SQLite."""
     models = (App, Workflow, EndUser, Account, Tenant, TenantAccountJoin)
-    TypeBase.metadata.create_all(sqlite_engine, tables=[cast(Table, model.__table__) for model in models])
+    TypeBase.metadata.create_all(sqlite_engine, tables=[model.__table__ for model in models])  # type: ignore[arg-type]
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     with session_maker() as caller_session:
         yield SqliteToolDb(engine=sqlite_engine, session_maker=session_maker, caller_session=caller_session)
@@ -183,8 +183,8 @@ def _build_tool(
     )
     runtime = ToolRuntime(tenant_id=tenant_id, invoke_from=InvokeFrom.EXPLORE)
     return WorkflowTool(
-        draft_variable_saver=Mock(
-            return_value=create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
+        draft_variable_saver=lambda *args, **kwargs: create_autospec(
+            DraftVariableSaverFactory, instance=True, spec_set=True
         ),
         workflow_app_id=workflow_app_id,
         workflow_id="workflow-1",
@@ -1131,7 +1131,7 @@ def test_composed_tool_fork_runs_real_generator_with_injected_draft_saver(
     monkeypatch.setattr(
         generator_module,
         "TraceQueueManager",
-        Mock(return_value=create_autospec(TraceQueueManager, instance=True, spec_set=True)),
+        lambda *args, **kwargs: create_autospec(TraceQueueManager, instance=True, spec_set=True),
     )
     monkeypatch.setattr(WorkflowAppGenerator, "_generate_worker", staticmethod(lambda **_kwargs: None))
     outputs = {"result": "nested result"}

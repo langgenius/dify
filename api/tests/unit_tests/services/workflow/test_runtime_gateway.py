@@ -2,9 +2,9 @@
 
 import json
 from collections.abc import Callable, Generator, Iterable
-from dataclasses import replace
-from typing import Literal, NoReturn, Self, cast, override
-from unittest.mock import Mock, create_autospec
+from dataclasses import dataclass, field, replace
+from typing import Literal, NoReturn, Self, override
+from unittest.mock import create_autospec
 
 import pytest
 from flask import Flask
@@ -66,6 +66,7 @@ from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 from services.workflow.variable_service import WorkflowVariableService
 from services.workflow_service import WorkflowService
+from tasks.collect_agent_resources_task import collect_agent_resources
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
 from tests.unit_tests.workflow_execution import debug_lease, set_debug_deadline
@@ -80,6 +81,16 @@ class RecordingSession(Session):
     def close(self) -> None:
         self.closed = True
         super().close()
+
+
+class _Topic:
+    def publish(self, payload: bytes) -> None:
+        pass
+
+
+@dataclass
+class _DbEngine:
+    engine: object
 
 
 @pytest.fixture(name="runtime")
@@ -97,9 +108,8 @@ def runtime_gateway(
             ]
         )
     sessions: list[RecordingSession] = []
-    factory = cast(
-        sessionmaker[Session],
-        sessionmaker(bind=sqlite_session_factory.kw["bind"], class_=RecordingSession, expire_on_commit=False),
+    factory: sessionmaker[Session] = sessionmaker(  # type: ignore[assignment]
+        bind=sqlite_session_factory.kw["bind"], class_=RecordingSession, expire_on_commit=False
     )
 
     def opened(session: Session, _transaction: object, _connection: object) -> None:
@@ -145,6 +155,64 @@ def test_generate_closes_session_before_stream_is_consumed(
     stream = gateway.generate(CONTEXT, "app-1", {}, root_node_id=None, workflow=None)
     assert all(session.closed for session in sessions)
     assert list(stream) == ["data: ready\n\n"]
+
+
+@dataclass
+class _CallArgs:
+    args: tuple[object, ...]
+    kwargs: dict[str, object]
+
+
+@dataclass
+class _TopicPublishSpy:
+    call_args_list: list[_CallArgs] = field(default_factory=list)
+
+    def __call__(self, *args: object, **kwargs: object) -> None:
+        self.call_args_list.append(_CallArgs(args=args, kwargs=kwargs))
+
+    def reset_mock(self) -> None:
+        self.call_args_list.clear()
+
+
+@dataclass
+class _TopicSpy:
+    publish: _TopicPublishSpy = field(default_factory=_TopicPublishSpy)
+
+
+@dataclass
+class _CollectorDelaySpy:
+    side_effect: list[object] | None = None
+    calls: list[_CallArgs] = field(default_factory=list)
+
+    def __call__(self, *args: object, **kwargs: object) -> None:
+        self.calls.append(_CallArgs(args=args, kwargs=kwargs))
+        if self.side_effect:
+            effect = self.side_effect.pop(0)
+            if isinstance(effect, Exception):
+                raise effect
+
+    @property
+    def call_count(self) -> int:
+        return len(self.calls)
+
+    @property
+    def call_args(self) -> _CallArgs:
+        assert self.calls, "Expected at least one call"
+        return self.calls[-1]
+
+    def assert_not_called(self) -> None:
+        assert len(self.calls) == 0, f"Expected 0 calls, got {len(self.calls)}"
+
+
+@dataclass
+class _EngineSpy:
+    calls: list[_CallArgs] = field(default_factory=list)
+
+    def __call__(self, *args: object, **kwargs: object) -> None:
+        self.calls.append(_CallArgs(args=args, kwargs=kwargs))
+
+    def assert_not_called(self) -> None:
+        assert len(self.calls) == 0, f"Expected 0 calls, got {len(self.calls)}"
 
 
 @pytest.mark.parametrize("handoff", ["abandoned", "fresh", "running", "paused", "lost_worker"])
@@ -210,9 +278,9 @@ def test_recover_abandoned_debug_reservation_without_global_database(
 
     # The complete operation must use its injected database, including retirement.
     monkeypatch.setattr("core.db.session_factory._session_maker", sessionmaker())
-    engine = Mock()
+    engine = _EngineSpy()
     monkeypatch.setattr(task_module._AppRunner, "_run_app", engine)
-    topic = Mock()
+    topic = _TopicSpy()
     monkeypatch.setattr(task_module.WorkflowEventStream, "get_response_topic", lambda *_args: topic)
     if handoff == "abandoned":
         # An expired lease is fenced even before the periodic sweep gets to it.
@@ -222,7 +290,7 @@ def test_recover_abandoned_debug_reservation_without_global_database(
         assert [payload["event"] for payload in payloads] == ["workflow_started", "workflow_finished"]
         assert payloads[-1]["data"]["status"] == "failed"
         assert "expired before worker startup" in payloads[-1]["data"]["error"]
-    collector = Mock(side_effect=[RuntimeError("broker unavailable"), None] if broker_failure else None)
+    collector = _CollectorDelaySpy(side_effect=[RuntimeError("broker unavailable"), None] if broker_failure else None)
     monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", collector)
     recovery = WorkflowDebugReservationService(
         WorkflowDebugReservationRepository(sqlite_session_factory),
@@ -276,7 +344,7 @@ def test_stop_scopes_task_to_the_requested_app(
     runtime: tuple[WorkflowRuntimeGateway, list[RecordingSession]], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     gateway, _ = runtime
-    stop = Mock(return_value=True)
+    stop = create_autospec(gateway._tasks.stop_workflow_task, return_value=True)
     monkeypatch.setattr(gateway._tasks, "stop_workflow_task", stop)
 
     gateway.stop(CONTEXT, "app-1", "task-1")
@@ -334,18 +402,20 @@ def test_rejected_debug_handoff_only_notifies_owned_expired_stream(
         params = params.model_copy(update={f"{rejection}_id": "wrong-owner"})
     elif rejection == "mode":
         params = params.model_copy(update={"invoke_from": InvokeFrom.SERVICE_API})
-    topic = Mock()
+    topic = create_autospec(_Topic, instance=True)
 
     def publish(_payload: bytes) -> None:
         assert all(session.closed and not session.in_transaction() for session in sessions)
 
     topic.publish.side_effect = publish
-    get_topic = Mock(return_value=topic)
+    get_topic = create_autospec(task_module.WorkflowEventStream.get_response_topic, return_value=topic)
     monkeypatch.setattr(task_module.WorkflowEventStream, "get_response_topic", get_topic)
-    finish = Mock(wraps=WorkflowAgentRetirementService.finish_execution)
+    finish = create_autospec(
+        WorkflowAgentRetirementService.finish_execution, wraps=WorkflowAgentRetirementService.finish_execution
+    )
     monkeypatch.setattr(WorkflowAgentRetirementService, "finish_execution", finish)
     runner = task_module._AppRunner(gateway._sessions, params, variables=gateway._variables)
-    engine = Mock()
+    engine = create_autospec(runner._run_app)
     monkeypatch.setattr(runner, "_run_app", engine)
     with pytest.raises(
         ValueError,
@@ -414,7 +484,7 @@ def test_claimed_worker_is_not_cancelled_by_stream_cleanup(
         assert binding is not None
         session.delete(binding)
     monkeypatch.setattr("core.db.session_factory._session_maker", sessionmaker())
-    collector = Mock()
+    collector = create_autospec(collect_agent_resources.delay)
     monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", collector)
     WorkflowAgentRetirementService.finish_execution(
         sessions=sqlite_session_factory,
@@ -499,7 +569,7 @@ def test_paused_trigger_finalizes_once_despite_delayed_start_write(
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
     )
     monkeypatch.setattr("core.db.session_factory.session_factory.create_session", gateway._sessions)
-    queued = Mock()
+    queued = create_autospec(storage_module.save_workflow_execution_task.delay)
     monkeypatch.setattr(storage_module.save_workflow_execution_task, "delay", queued)
     if storage_backend == "celery":
         writer.save(started)
@@ -516,7 +586,7 @@ def test_paused_trigger_finalizes_once_despite_delayed_start_write(
         binding = session.get(WorkflowAgentNodeBinding, "binding")
         assert binding is not None
         session.delete(binding)
-    collector = Mock()
+    collector = create_autospec(collect_agent_resources.delay)
     monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", collector)
     from repositories.workflow.execution_write_repository import WorkflowExecutionWriteRepository
 
@@ -545,7 +615,7 @@ def test_paused_trigger_finalizes_once_despite_delayed_start_write(
         )
 
     monkeypatch.setattr(WorkflowExecutionWriteRepository, "finish", record_finish)
-    topic = Mock()
+    topic = create_autospec(_Topic, instance=True)
     if publish_fails:
         topic.publish.side_effect = RuntimeError("pause publish failed")
     monkeypatch.setattr(WorkflowEventStream, "get_response_topic", lambda *_args: topic)
@@ -646,7 +716,7 @@ def test_pause_publication_can_resume_before_old_worker_exits(
         binding = session.get(WorkflowAgentNodeBinding, "binding")
         assert binding is not None
         session.delete(binding)
-    collector = Mock()
+    collector = create_autospec(collect_agent_resources.delay)
     monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", collector)
     runs = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
 
@@ -666,7 +736,7 @@ def test_pause_publication_can_resume_before_old_worker_exits(
         assert pause is not None
         runs.resume_workflow_pause(snapshot.execution_id, pause)
 
-    topic = Mock()
+    topic = create_autospec(_Topic, instance=True)
     topic.publish.side_effect = resume_on_publication
     monkeypatch.setattr(WorkflowEventStream, "get_response_topic", lambda *_args: topic)
     runner = task_module._AppRunner(gateway._sessions, params, variables=gateway._variables)
@@ -732,18 +802,20 @@ def test_trigger_runner_finalizes_failure_before_stream_cleanup(
         assert binding is not None
         session.delete(binding)
     monkeypatch.setattr("core.db.session_factory.session_factory.create_session", gateway._sessions)
-    collector = Mock()
+    collector = create_autospec(collect_agent_resources.delay)
     monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", collector)
-    finish = Mock(wraps=WorkflowAgentRetirementService.finish_execution)
+    finish = create_autospec(
+        WorkflowAgentRetirementService.finish_execution, wraps=WorkflowAgentRetirementService.finish_execution
+    )
     monkeypatch.setattr(WorkflowAgentRetirementService, "finish_execution", finish)
-    topic = Mock()
+    topic = create_autospec(WorkflowEventStream.get_response_topic)
     if failure_stage == "publish-setup":
         topic.side_effect = RuntimeError("stream setup failed")
     monkeypatch.setattr(WorkflowEventStream, "get_response_topic", topic)
-    generate = Mock(return_value=(event for event in []))
+    runner = task_module._AppRunner(gateway._sessions, params, variables=gateway._variables)
+    generate = create_autospec(runner._run_app, return_value=(event for event in []))
     if failure_stage == "prepare":
         generate.side_effect = RuntimeError("stream setup failed")
-    runner = task_module._AppRunner(gateway._sessions, params, variables=gateway._variables)
     monkeypatch.setattr(runner, "_run_app", generate)
 
     with Flask(__name__).app_context(), pytest.raises(RuntimeError, match="stream setup failed"):
@@ -1904,7 +1976,6 @@ def test_global_timeout_retires_paused_trigger_agent_after_last_execution(
     other_execution: str | None,
 ) -> None:
     from datetime import timedelta
-    from types import SimpleNamespace
 
     from enums.human_input import HumanInputFormKind, HumanInputFormStatus
     from graphon.enums import WorkflowExecutionStatus
@@ -1961,9 +2032,9 @@ def test_global_timeout_retires_paused_trigger_agent_after_last_execution(
             )
         )
         assert session.scalar(select(WorkflowAgentNodeBinding.agent_id)) == "agent-1"
-    monkeypatch.setattr(timeout_module, "db", SimpleNamespace(engine=sqlite_session_factory.kw["bind"]))
+    monkeypatch.setattr(timeout_module, "db", _DbEngine(engine=sqlite_session_factory.kw["bind"]))
     apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=3600)
-    collector = Mock()
+    collector = create_autospec(collect_agent_resources.delay)
     monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", collector)
 
     timeout_module.check_and_handle_human_input_timeouts()

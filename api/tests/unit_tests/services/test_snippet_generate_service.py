@@ -1,7 +1,7 @@
 import json
 from copy import deepcopy
-from types import SimpleNamespace
-from unittest.mock import Mock, create_autospec
+from dataclasses import dataclass, field
+from unittest.mock import create_autospec
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -73,6 +73,38 @@ def _snippet(*, input_fields: list[dict] | None = None) -> CustomizedSnippet:
 
 def _account(account_id: str = "user-1") -> Account:
     return make_account(account_id=account_id, name="Test User", email=f"{account_id}@example.com")
+
+
+@dataclass
+class _CallArgs:
+    kwargs: dict[str, object]
+
+
+class _TrackedMethod:
+    def __init__(self, return_value: object = None) -> None:
+        self.return_value = return_value
+        self.call_args: _CallArgs | None = None
+        self.call_count = 0
+        self.calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+
+    def __call__(self, *args: object, **kwargs: object) -> object:
+        self.call_count += 1
+        self.call_args = _CallArgs(kwargs)
+        self.calls.append((args, kwargs))
+        return self.return_value
+
+    def assert_called_once(self) -> None:
+        assert self.call_count == 1
+
+    def assert_called_once_with(self, *args: object, **kwargs: object) -> None:
+        assert self.calls == [(args, kwargs)]
+
+
+@dataclass
+class _WorkflowGeneratorStub:
+    generate: _TrackedMethod = field(default_factory=_TrackedMethod)
+    single_iteration_generate: _TrackedMethod = field(default_factory=_TrackedMethod)
+    single_loop_generate: _TrackedMethod = field(default_factory=_TrackedMethod)
 
 
 @pytest.mark.parametrize("entry", ["generate", "iteration", "loop"])
@@ -379,13 +411,12 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(
             {"event": "node_finished", "data": {"node_id": "llm-1"}},
         ]
     )
-    generator = SimpleNamespace(generate=Mock(return_value=raw_stream))
-    workflow_generator_class = Mock(return_value=generator)
+    generator = _WorkflowGeneratorStub(generate=_TrackedMethod(return_value=raw_stream))
     snippet_reader.workflow = workflow
     expected_workflow = workflow_snapshot(workflow)
-    ensure_start_node = Mock(return_value=expected_workflow)
+    ensure_start_node = _TrackedMethod(return_value=expected_workflow)
     monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
-    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
+    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", lambda *_args, **_kwargs: generator)
 
     result = generation.generate(
         snippet=snippet,
@@ -472,10 +503,9 @@ def test_generate_single_iteration_delegates_to_workflow_generator(
     snippet = _snippet()
     user = _account()
     response = iter(["event"])
-    generator = SimpleNamespace(single_iteration_generate=Mock(return_value=response))
-    workflow_generator_class = Mock(return_value=generator)
+    generator = _WorkflowGeneratorStub(single_iteration_generate=_TrackedMethod(return_value=response))
     snippet_reader.workflow = workflow
-    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
+    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", lambda *_args, **_kwargs: generator)
 
     result = generation.generate_single_iteration(
         snippet=snippet,
@@ -520,10 +550,9 @@ def test_generate_single_loop_delegates_to_workflow_generator(
     snippet = _snippet()
     user = _account()
     response = iter(["event"])
-    generator = SimpleNamespace(single_loop_generate=Mock(return_value=response))
-    workflow_generator_class = Mock(return_value=generator)
+    generator = _WorkflowGeneratorStub(single_loop_generate=_TrackedMethod(return_value=response))
     snippet_reader.workflow = workflow
-    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
+    monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", lambda *_args, **_kwargs: generator)
 
     result = generation.generate_single_loop(
         snippet=snippet,

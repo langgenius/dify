@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
-from typing import Protocol, cast
+from typing import Protocol
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
@@ -50,9 +50,6 @@ from services.workflow.execution.adapters.node_factory import get_default_root_n
 from services.workflow.execution.adapters.node_runtime import (
     DifyHumanInputNodeRuntime,
     resolve_dify_run_context,
-)
-from services.workflow.execution.adapters.workflow.app_config_manager import (
-    WorkflowAppConfig,
 )
 from services.workflow.execution.adapters.workflow.command_channels import (
     CelerySignalCommandChannel,
@@ -126,7 +123,6 @@ class WorkflowAppRunner:
     def prepare(self) -> PreparedWorkflowRun | None:
         """Prepare graph execution and passive application observers."""
         app_config = self.application_generate_entity.app_config
-        app_config = cast(WorkflowAppConfig, app_config)
         invoke_from = self.application_generate_entity.invoke_from
         # if only single iteration or single loop run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:

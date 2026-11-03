@@ -1,6 +1,7 @@
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from threading import Event
-from unittest.mock import Mock, create_autospec
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -8,6 +9,43 @@ from repositories.workflow.debug_reservation_repository import WorkflowDebugRese
 from services.errors.workflow_service import WorkflowDebugReservationExpiredError
 from services.workflow.debug_worker_lease import keep_debug_worker_alive
 from services.workflow.execution.ports import WorkflowRuntime
+
+
+@dataclass
+class _CallSpy:
+    call_count: int = 0
+    side_effect: Exception | None = None
+
+    def __call__(self, *args: object, **kwargs: object) -> object:
+        del args, kwargs
+        self.call_count += 1
+        if self.side_effect:
+            raise self.side_effect
+        return None
+
+    def assert_not_called(self) -> None:
+        assert self.call_count == 0, f"Expected 0 calls, got {self.call_count}"
+
+
+@dataclass
+class _TaskDoneSpy:
+    calls: int = 0
+
+    def __call__(self, *args: object, **kwargs: object) -> None:
+        del args, kwargs
+        self.calls += 1
+
+    def assert_called_once(self) -> None:
+        assert self.calls == 1, f"Expected 1 call, got {self.calls}"
+
+
+@dataclass
+class _InnerQueueSpy:
+    task_done: _TaskDoneSpy = field(default_factory=_TaskDoneSpy)
+
+    def get(self, timeout: float | None = None) -> object:
+        del timeout
+        return object()
 
 
 def test_silent_worker_renews_until_execution_scope_exits(config_overrides: Callable[..., None]) -> None:
@@ -101,7 +139,7 @@ def test_lost_lease_aborts_real_graph_and_prevents_successor_node(
         return original_run()
 
     monkeypatch.setattr(graph.nodes["llm"], "_run", delayed_node)
-    successor = Mock(side_effect=AssertionError("successor executed after lease loss"))
+    successor = _CallSpy(side_effect=AssertionError("successor executed after lease loss"))
     monkeypatch.setattr(graph.nodes["answer"], "_run", successor)
     reservations = create_autospec(WorkflowDebugReservationRepository, instance=True, spec_set=True)
 
@@ -159,7 +197,7 @@ def test_blocked_renewal_or_suspended_process_cannot_start_queued_node(monkeypat
     state = GraphExecution(workflow_id="workflow", started=True)
     cancellation = module.DebugExecutionCancellation(deadline=10)
     cancellation.bind(state)
-    inner = Mock()
+    inner = _InnerQueueSpy()
     queue = StopAwareReadyQueue(inner, task_id="task", graph_execution=state, should_stop=cancellation.is_cancelled)
     # The process resumes scheduling before its heartbeat thread returns.
     monkeypatch.setattr(module, "monotonic", lambda: 11)
@@ -260,7 +298,7 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
         cancellation=cancellation,
         runtime=workflow_runtime,
     )
-    monkeypatch.setattr(runner._graphs, "build", Mock())
+    monkeypatch.setattr(runner._graphs, "build", lambda *_args, **_kwargs: None)
 
     def lose_lease_before_engine_starts(**_kwargs: object) -> None:
         cancellation.cancel()

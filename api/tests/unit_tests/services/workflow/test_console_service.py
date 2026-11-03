@@ -3,7 +3,6 @@
 from contextlib import nullcontext
 from dataclasses import replace
 from datetime import datetime
-from typing import cast
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -75,7 +74,7 @@ def test_publish_advisory_accepts_empty_or_uncheckable_graph(
 ) -> None:
     service, definitions, *_ = dependencies
     publication = WorkflowPublication(datetime(2024, 1, 1), graph)
-    cast(Mock, service._definitions).publication.return_value.enter_result.create_version.return_value = replace(
+    definitions.publication.return_value.enter_result.create_version.return_value = replace(
         SNAPSHOT, created_at=publication.created_at, graph=publication.graph
     )
     assert service.publish(CONTEXT, "app", marked_name="Release", marked_comment="") == (publication, None)
@@ -89,13 +88,13 @@ def test_publish_checker_failure_does_not_fail_committed_publish(
 ) -> None:
     service, definitions, *_ = dependencies
     publication = WorkflowPublication(datetime(2024, 1, 1), '{"nodes": []}')
-    cast(Mock, service._definitions).publication.return_value.enter_result.create_version.return_value = replace(
+    definitions.publication.return_value.enter_result.create_version.return_value = replace(
         SNAPSHOT, created_at=publication.created_at, graph=publication.graph
     )
     monkeypatch.setattr(module, "validate_variable_references", lambda _graph: ["issue"])
 
     def fail(*_args: object) -> None:
-        cast(Mock, service._definitions).publication.return_value.enter_result.create_version.assert_called_once()
+        definitions.publication.return_value.enter_result.create_version.assert_called_once()
         raise RuntimeError("checker unavailable")
 
     monkeypatch.setattr(module, failing, fail)
@@ -107,7 +106,7 @@ def test_publish_warning_is_advisory(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     service, definitions, *_ = dependencies
-    cast(Mock, service._definitions).publication.return_value.enter_result.create_version.return_value = replace(
+    definitions.publication.return_value.enter_result.create_version.return_value = replace(
         SNAPSHOT, graph='{"nodes": []}'
     )
     monkeypatch.setattr(module, "validate_variable_references", lambda _graph: ["issue"])
@@ -119,7 +118,7 @@ def test_missing_draft_and_foreign_author(
     dependencies: tuple[ConsoleWorkflowService[WorkflowAgentBindingStore], Mock, Mock, Mock, Mock, Mock],
 ) -> None:
     service, definitions, *_ = dependencies
-    cast(Mock, service._definitions).draft.return_value = nullcontext(None)
+    definitions.draft.return_value = nullcontext(None)
     with pytest.raises(DraftWorkflowMissingError):
         service.draft(CONTEXT, "app")
     with pytest.raises(NoPermissionError):
@@ -273,8 +272,10 @@ def test_conversion_resolves_permissions_for_new_app(
     dependencies: tuple[ConsoleWorkflowService[WorkflowAgentBindingStore], Mock, Mock, Mock, Mock, Mock],
 ) -> None:
     service, _, runtime, _, _, access = dependencies
-    cast(Mock, service._conversion).convert.return_value = "new-app"
+    conversion = create_autospec(WorkflowConversion, instance=True, spec_set=True)
+    service._conversion = conversion
+    conversion.convert.return_value = "new-app"
     access.permission_keys.return_value = ["edit"]
     assert service.convert(CONTEXT, "source", {}) == {"new_app_id": "new-app", "permission_keys": ["edit"]}
     access.permission_keys.assert_called_once_with(CONTEXT, "new-app")
-    cast(Mock, service._conversion).convert.assert_called_once_with(CONTEXT, "source", {})
+    conversion.convert.assert_called_once_with(CONTEXT, "source", {})

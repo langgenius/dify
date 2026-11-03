@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from http import HTTPStatus
-from typing import Any, Final, cast
+from typing import Any, Final
 
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
@@ -313,7 +313,7 @@ class _DraftTokenView:
 
 
 def _draft_token(draft: WorkflowRecord) -> str:
-    return draft_token(cast(Any, _DraftTokenView(draft)))
+    return draft_token(_DraftTokenView(draft))  # type: ignore[arg-type]
 
 
 def _patch_env(ctx: Context, *, upserts: list[VariableBase], deletions: list[str]) -> None:

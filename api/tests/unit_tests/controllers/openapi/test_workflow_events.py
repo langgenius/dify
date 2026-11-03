@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Iterator
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -26,6 +27,22 @@ from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
+
+
+@dataclass
+class _ToolProvidersStub:
+    pass
+
+
+@dataclass
+class _ToolsServiceStub:
+    tool_providers: object
+
+
+@dataclass
+class _AppServicesStub:
+    tools: _ToolsServiceStub
+
 
 _RUN_ID = "11111111-1111-1111-1111-111111111111"
 
@@ -253,11 +270,11 @@ class TestOpenApiWorkflowEventsApi:
             return iter(["a", "b"])
 
         monkeypatch.setattr(module, "build_workflow_event_stream", snapshot_builder)
-        tool_providers = Mock()
+        tool_providers = _ToolProvidersStub()
         monkeypatch.setattr(
             module,
             "application_services",
-            lambda: SimpleNamespace(tools=SimpleNamespace(tool_providers=tool_providers)),
+            lambda: _AppServicesStub(tools=_ToolsServiceStub(tool_providers=tool_providers)),
         )
 
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)

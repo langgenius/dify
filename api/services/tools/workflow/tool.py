@@ -4,7 +4,7 @@ import json
 import logging
 from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import suppress
-from typing import Any, cast, override
+from typing import Any, override
 
 from sqlalchemy.orm import Session
 
@@ -28,7 +28,7 @@ from core.workflow.file_reference import resolve_file_record_id
 from factories.file_factory import build_from_mapping
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from models import Account
 from models.model import App, EndUser
 from models.tool_runtime_contracts import WorkflowToolQueries
@@ -193,7 +193,7 @@ class WorkflowTool(Tool):
     def _derive_usage_from_result(cls, data: Mapping[str, Any]) -> LLMUsage:
         usage_dict = cls._extract_usage_dict(data)
         if usage_dict is not None:
-            return LLMUsage.from_metadata(cast(LLMUsageMetadata, dict(usage_dict)))
+            return LLMUsage.from_metadata(usage_dict)
 
         total_tokens = data.get("total_tokens")
         total_price = data.get("total_price")
@@ -213,7 +213,7 @@ class WorkflowTool(Tool):
         if not usage_metadata:
             return LLMUsage.empty_usage()
 
-        return LLMUsage.from_metadata(cast(LLMUsageMetadata, usage_metadata))
+        return LLMUsage.from_metadata(usage_metadata)
 
     @classmethod
     def _extract_usage_dict(cls, payload: Mapping[str, Any]) -> Mapping[str, Any] | None:
@@ -324,8 +324,8 @@ class WorkflowTool(Tool):
                     try:
                         file_var_list = [
                             build_file_from_stored_mapping(
-                                file_mapping=cast(Mapping[str, Any], f),
-                                tenant_id=self.runtime.tenant_id,
+                                file_mapping=dict(f),
+                                tenant_id=str(self.runtime.tenant_id),
                             )
                             for f in file
                             if isinstance(f, Mapping)

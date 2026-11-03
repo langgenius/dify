@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -45,7 +44,7 @@ class WorkflowConversationVariableRepository:
                     session.add(row)
                     rows.append(row)
                     present.add(key)
-            return [cast(Variable, row.to_variable()) for row in rows]
+            return [row.to_variable() for row in rows]
 
     def update(self, conversation_id: str, variable: VariableBase) -> None:
         stmt = select(ConversationVariable).where(
