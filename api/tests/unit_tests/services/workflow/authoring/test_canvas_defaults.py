@@ -18,6 +18,7 @@ from services.workflow.authoring.canvas_defaults import (
 )
 from services.workflow.authoring.fill import fill_graph_document
 from services.workflow.authoring.node_options import AgentInviteOptions, NodeOptionKind, list_node_options
+from services.workflow.node_defaults import editor_defaults, rewrite_old_shapes
 
 CTX = FillContext(tenant_id="tenant-1", account_id="account-1")
 GENERATED = json.loads(Path(canvas_defaults.__file__).with_name("canvas_defaults.json").read_text())
@@ -78,6 +79,7 @@ def test_each_block_type_offered_has_a_generated_entry() -> None:
 
     assert offered <= set(GENERATED)
     assert {node.value for node in CanvasNode} == offered
+    assert {edition.entry for node in CanvasNode for edition in node.editions.values()} <= set(GENERATED)
 
 
 def test_a_type_without_a_canvas_node_has_none() -> None:
@@ -96,6 +98,57 @@ def test_a_bare_seed_fills_to_the_canvas_node(node: CanvasNode) -> None:
     assert filled == {"type": node.value, **node.data}
     for key, value in node.data.items():
         assert filled[key] == value
+
+
+V2_ONLY_KEYS = {"recipients_spec", "message_template", "debug_mode"}
+
+
+def test_a_human_input_node_gets_the_defaults_of_its_version() -> None:
+    v1 = with_canvas_defaults({"type": BuiltinNodeTypes.HUMAN_INPUT, "version": "1"})
+    v2 = with_canvas_defaults({"type": BuiltinNodeTypes.HUMAN_INPUT, "version": "2"})
+
+    assert v1 == {"type": "human-input", "version": "1", **GENERATED["human-input"]}
+    assert v2 == {"type": "human-input", "version": "2", **GENERATED["human-input-v2"]}
+    assert "delivery_methods" not in v2
+
+
+@pytest.mark.parametrize("data", [{}, {"version": None}, {"version": "1"}])
+def test_a_human_input_node_without_a_version_is_version_one_and_gains_no_v2_key(data: dict[str, object]) -> None:
+    filled = with_canvas_defaults({"type": BuiltinNodeTypes.HUMAN_INPUT, **data})
+
+    assert V2_ONLY_KEYS.isdisjoint(filled)
+    assert filled["delivery_methods"] == []
+    assert filled["timeout_unit"] == "day"
+
+
+@pytest.mark.parametrize("version", ["3", "", 2, ["2"]])
+def test_a_human_input_node_of_an_unknown_version_is_left_alone(version: object) -> None:
+    data = {"type": BuiltinNodeTypes.HUMAN_INPUT, "version": version}
+
+    assert with_canvas_defaults(data) == data
+
+
+def test_the_version_is_ignored_for_a_type_with_one_edition() -> None:
+    filled = with_canvas_defaults({"type": BuiltinNodeTypes.LLM, "version": "7"})
+
+    assert filled == {"type": "llm", "version": "7", **CanvasNode.LLM.data}
+
+
+def test_a_human_input_edition_has_its_own_defaults_and_purpose() -> None:
+    node = CanvasNode.HUMAN_INPUT
+    v1, v2 = node.edition("1"), node.edition("2")
+
+    assert v1 is not None
+    assert v2 is not None
+    assert node.edition() == v1
+    assert node.edition("3") is None
+    assert (node.data, node.purpose) == (v1.data, v1.purpose)
+    assert ("delivery_methods",) in v1.purpose
+    assert ("recipients_spec",) in v2.purpose
+    assert ("delivery_methods",) not in v2.purpose
+    assert canvas_value(BuiltinNodeTypes.HUMAN_INPUT, ("timeout",)) == 3
+    assert canvas_value(BuiltinNodeTypes.HUMAN_INPUT, ("timeout",), version="2") == 36
+    assert canvas_value(BuiltinNodeTypes.HUMAN_INPUT, ("timeout",), version="3") is None
 
 
 def test_a_written_value_wins_at_every_depth() -> None:
@@ -201,10 +254,11 @@ def test_no_generated_key_starts_with_an_underscore_and_no_value_is_none() -> No
 
 def test_every_purpose_loc_names_a_field() -> None:
     for node in CanvasNode:
-        assert len(set(node.purpose)) == len(node.purpose), node
-        for loc in node.purpose:
-            assert loc, node
-            assert loc[0] != WILDCARD, node
+        for edition in node.editions.values():
+            assert len(set(edition.purpose)) == len(edition.purpose), node
+            for loc in edition.purpose:
+                assert loc, node
+                assert loc[0] != WILDCARD, node
 
 
 def test_canvas_value_is_the_canvas_value_at_a_loc() -> None:
@@ -251,6 +305,26 @@ def test_legacy_if_else_conditions_get_no_extra_case() -> None:
     )
 
     assert filled["branch"]["cases"] == [{"case_id": "true", "logical_operator": "or", "conditions": conditions}]
+
+
+def test_old_shapes_are_rewritten_apart_from_the_empty_containers() -> None:
+    conditions = [{"variable_selector": ["start", "x"], "comparison_operator": "is", "value": "1"}]
+    legacy = {"type": BuiltinNodeTypes.IF_ELSE, "conditions": conditions}
+
+    rewritten = rewrite_old_shapes(legacy)
+
+    assert rewritten["cases"] == [{"case_id": "true", "logical_operator": "and", "conditions": conditions}]
+    assert rewrite_old_shapes({"type": BuiltinNodeTypes.IF_ELSE}) == {"type": BuiltinNodeTypes.IF_ELSE}
+    assert rewrite_old_shapes({"type": BuiltinNodeTypes.CODE}) == {"type": BuiltinNodeTypes.CODE}
+    assert rewrite_old_shapes({"type": None}) == {"type": None}
+    assert editor_defaults({"type": BuiltinNodeTypes.IF_ELSE}) == {"type": BuiltinNodeTypes.IF_ELSE, "cases": []}
+    assert editor_defaults(legacy) == editor_defaults(rewritten)
+
+
+def test_a_bare_if_else_fills_to_the_canvas_case() -> None:
+    filled = _filled_data([{"id": "branch", "data": {"type": BuiltinNodeTypes.IF_ELSE}}])
+
+    assert filled["branch"]["cases"] == [{"case_id": "true", "conditions": [], "logical_operator": "and"}]
 
 
 def test_a_container_child_gets_canvas_defaults() -> None:
