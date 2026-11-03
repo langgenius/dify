@@ -1450,7 +1450,13 @@ class WorkflowGenerator:
         reply_language: str | None = None,
         node_output_contracts: dict[str, dict[str, PlannerOutputContractDict]] | None = None,
     ) -> dict[str, Any]:
-        """Generate only the semantic config for one normalized plan node."""
+        """Generate semantic fields directly inside config for one normalized node.
+
+        The caller supplies the planned node and owns its canvas wrapper. Reject
+        a generated config.data wrapper within the existing one-correction budget,
+        before assembly or default merging can hide its misplaced fields. A second
+        rejection raises a schema error without returning a usable config.
+        """
         node_id = str(target_node.get("id") or "")
         node_type = str(target_node.get("node_type") or "")
         model_section = ""
@@ -1526,6 +1532,11 @@ class WorkflowGenerator:
                 raise _StageSchemaError(stage, "missing 'config' object")
             if not isinstance(parsed["config"], dict):
                 raise _StageSchemaError(stage, f"'config' must be an object, got {type(parsed['config']).__name__}")
+            if "data" in parsed["config"]:
+                raise _StageSchemaError(
+                    stage,
+                    "'config.data' is a canvas wrapper; put the node's configuration fields directly in 'config'.",
+                )
             if node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM:
                 template = parsed["config"].get("template")
                 if not isinstance(template, str):
