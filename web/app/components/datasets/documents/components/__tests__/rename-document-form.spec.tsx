@@ -51,11 +51,14 @@ it('submits the edited document name once while saving and reports completion', 
   await waitFor(() => expect(rename).toHaveBeenCalledOnce())
   await user.keyboard('{Enter}')
   expect(rename).toHaveBeenCalledOnce()
-  expect(rename).toHaveBeenCalledWith({
-    datasetId: 'dataset-1',
-    documentId: 'doc-1',
-    name: 'Updated document',
-  })
+  expect(rename).toHaveBeenCalledWith(
+    {
+      datasetId: 'dataset-1',
+      documentId: 'doc-1',
+      name: 'Updated document',
+    },
+    { silent: true },
+  )
   expect(props.onSaved).not.toHaveBeenCalled()
   expect(screen.getByRole('dialog')).toBeInTheDocument()
   await act(async () => pending.resolve(renamed))

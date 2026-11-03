@@ -4,7 +4,10 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
   zBillingOperationFailedError,
+  zBillingRequestInProgressError,
   zBillingUnavailableError,
+  zComplianceDocumentNotFoundError,
+  zComplianceDownloadForbiddenError,
   zComplianceRateLimitError,
 } from './zod.gen.ts'
 import { zGetComplianceDownloadQuery, zGetComplianceDownloadResponse } from './zod.gen.ts'
@@ -25,7 +28,10 @@ export const get = oc
   .output(zGetComplianceDownloadResponse)
   .errors({
     billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
     billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    compliance_document_not_found: { status: 404, data: zComplianceDocumentNotFoundError },
+    compliance_download_forbidden: { status: 403, data: zComplianceDownloadForbiddenError },
     compliance_rate_limit: { status: 429, data: zComplianceRateLimitError },
   })
 

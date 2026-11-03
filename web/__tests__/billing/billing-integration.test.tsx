@@ -14,7 +14,6 @@ import AnnotationFull from '@/app/components/billing/annotation-full'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import Billing from '@/app/components/billing/billing-page'
-import { NUM_INFINITE } from '@/app/components/billing/config'
 import PlanComp from '@/app/components/billing/plan'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import PriorityLabel from '@/app/components/billing/priority-label'
@@ -158,7 +157,7 @@ describe('Billing Page + Plan Integration', () => {
     it('should show "unlimited" for infinite quotas (professional API rate limit)', () => {
       setupBilling({
         billing: { subscription: { plan: 'professional' } },
-        api_rate_limit: { limit: NUM_INFINITE },
+        api_rate_limit: { limit: -1 },
       })
 
       render(<PlanComp loc="test" />)
@@ -463,9 +462,7 @@ describe('Capacity Full Components Integration', () => {
         <TriggerEventsLimitModal
           show={true}
           onClose={vi.fn()}
-          usage={18000}
-          total={20000}
-          resetInDays={5}
+          quota={{ usage: 18000, limit: 20000, resetInDays: 5 }}
         />,
       )
 
@@ -484,7 +481,13 @@ describe('Capacity Full Components Integration', () => {
       const onClose = vi.fn()
       setupBilling({ billing: { subscription: { plan: 'professional' } } })
 
-      render(<TriggerEventsLimitModal show={true} onClose={onClose} usage={20000} total={20000} />)
+      render(
+        <TriggerEventsLimitModal
+          show={true}
+          onClose={onClose}
+          quota={{ usage: 20000, limit: 20000 }}
+        />,
+      )
 
       const upgradeBtn = screen.getByText(/triggerLimitModal\.upgrade/i)
       await user.click(upgradeBtn)

@@ -1153,7 +1153,7 @@ class TestWorkflowCases:
 
         def resolve_access(tenant_id: str, account_id: str) -> AppAccessFilter:
             actors.append((tenant_id, account_id))
-            return AppAccessFilter(accessible_app_ids={app_id_1}, can_manage_own_apps=False)
+            return AppAccessFilter(accessible_app_ids={app_id_1})
 
         monkeypatch.setattr(workflow_module, "WorkflowService", WorkflowQueries)
         monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)

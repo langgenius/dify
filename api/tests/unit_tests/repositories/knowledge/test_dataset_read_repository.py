@@ -1,6 +1,7 @@
 """Behavioral and architecture regressions for explicit knowledge reads."""
 
 import ast
+import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
@@ -19,24 +20,37 @@ from fields.document_fields import DocumentResponse
 from graphon.file import helpers as file_helpers
 from models import dataset as dataset_module
 from models.dataset import (
+    ChildChunk,
     Dataset,
     DatasetMetadata,
     DatasetMetadataBinding,
+    DatasetProcessRule,
     DatasetQuery,
     Document,
     DocumentSegment,
     ExternalKnowledgeApis,
     ExternalKnowledgeBindings,
+    SegmentAttachmentBinding,
 )
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode
 from models.model import UploadFile
 from models.tools import ToolFile
-from repositories.knowledge.dataset_read_repository import get_external_api_bindings_batch
+from repositories.knowledge.dataset_read_repository import get_external_api_bindings_batch, load_segment_read_batch
 from repositories.knowledge.segment_read_adapter import sign_segment_content
 from services.knowledge.dataset_read_service import (
     get_dataset_queries,
     get_document_metadata_details,
     load_document_details,
+    load_segment_details,
+)
+
+_HIERARCHICAL_RULES = json.dumps(
+    {
+        "pre_processing_rules": [],
+        "segmentation": {"separator": "\n", "max_tokens": 500},
+        "parent_mode": "paragraph",
+        "subchunk_segmentation": {"separator": "\n", "max_tokens": 200},
+    }
 )
 
 
@@ -248,6 +262,135 @@ def test_document_page_load_is_bounded_and_serialization_performs_no_queries(sql
         responses = [DocumentResponse.model_validate(source, from_attributes=True).model_dump() for source in sources]
     assert len(responses) == 20
     assert serialization_queries == []
+
+
+def test_segment_page_load_is_bounded_for_hierarchical_documents(sqlite_session: Session) -> None:
+    rule = DatasetProcessRule(
+        dataset_id="dataset-1", mode=ProcessRuleMode.HIERARCHICAL, rules=_HIERARCHICAL_RULES, created_by="account-1"
+    )
+    document = _document()
+    sqlite_session.add_all([_dataset(), rule, document])
+    sqlite_session.flush()
+    document.dataset_process_rule_id = rule.id
+    segments = [
+        DocumentSegment(
+            tenant_id="tenant-1",
+            dataset_id="dataset-1",
+            document_id="document-1",
+            position=index,
+            content=f"segment {index}",
+            word_count=1,
+            tokens=1,
+            created_by="account-1",
+        )
+        for index in range(1, 21)
+    ]
+    sqlite_session.add_all(segments)
+    sqlite_session.flush()
+    for segment in segments:
+        upload = _upload()
+        sqlite_session.add(upload)
+        sqlite_session.flush()
+        sqlite_session.add_all(
+            [
+                ChildChunk(
+                    tenant_id="tenant-1",
+                    dataset_id="dataset-1",
+                    document_id="document-1",
+                    segment_id=segment.id,
+                    position=1,
+                    content="child",
+                    word_count=1,
+                    created_by="account-1",
+                ),
+                SegmentAttachmentBinding(
+                    tenant_id="tenant-1",
+                    dataset_id="dataset-1",
+                    document_id="document-1",
+                    segment_id=segment.id,
+                    attachment_id=upload.id,
+                ),
+            ]
+        )
+    sqlite_session.flush()
+    with _queries(sqlite_session) as single_queries:
+        load_segment_details(segments[:1], {}, session=sqlite_session)
+    with _queries(sqlite_session) as page_queries:
+        load_segment_details(segments, {}, session=sqlite_session)
+
+    assert len(page_queries) == len(single_queries)
+
+
+def test_segment_read_batch_assigns_relations_to_their_segments(sqlite_session: Session) -> None:
+    rule = DatasetProcessRule(
+        dataset_id="dataset-1", mode=ProcessRuleMode.HIERARCHICAL, rules=_HIERARCHICAL_RULES, created_by="account-1"
+    )
+    document = _document()
+    sqlite_session.add_all([_dataset(), rule, document])
+    sqlite_session.flush()
+    document.dataset_process_rule_id = rule.id
+
+    segment_a, segment_b = [
+        DocumentSegment(
+            tenant_id="tenant-1",
+            dataset_id="dataset-1",
+            document_id="document-1",
+            position=index,
+            content=f"segment {index}",
+            word_count=1,
+            tokens=1,
+            created_by="account-1",
+        )
+        for index in (1, 2)
+    ]
+    sqlite_session.add_all([segment_a, segment_b])
+    sqlite_session.flush()
+
+    for position in (2, 1):
+        sqlite_session.add(
+            ChildChunk(
+                tenant_id="tenant-1",
+                dataset_id="dataset-1",
+                document_id="document-1",
+                segment_id=segment_a.id,
+                position=position,
+                content=f"child {position}",
+                word_count=1,
+                created_by="account-1",
+            )
+        )
+        sqlite_session.flush()
+
+    upload_a = _upload()
+    upload_b = _upload()
+    upload_other_tenant = _upload("tenant-2")
+    sqlite_session.add_all([upload_a, upload_b, upload_other_tenant])
+    sqlite_session.flush()
+
+    sqlite_session.add_all(
+        [
+            SegmentAttachmentBinding(
+                tenant_id="tenant-1",
+                dataset_id="dataset-1",
+                document_id="document-1",
+                segment_id=segment.id,
+                attachment_id=upload.id,
+            )
+            for segment, upload in [
+                (segment_a, upload_a),
+                (segment_b, upload_b),
+                (segment_b, upload_other_tenant),
+            ]
+        ]
+    )
+    sqlite_session.flush()
+
+    batch = load_segment_read_batch([segment_a, segment_b], session=sqlite_session)
+
+    assert [chunk.position for chunk in batch.child_chunks[segment_a.id]] == [1, 2]
+    assert segment_b.id not in batch.child_chunks
+    assert [file.id for file in batch.attachments[segment_a.id]] == [upload_a.id]
+    assert [file.id for file in batch.attachments[segment_b.id]] == [upload_b.id]
 
 
 def test_external_api_bindings_are_batched_and_tenant_scoped(sqlite_session: Session) -> None:

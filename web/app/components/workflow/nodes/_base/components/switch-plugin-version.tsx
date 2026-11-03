@@ -3,6 +3,7 @@
 import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
 import type { FC, ReactNode } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -33,15 +34,14 @@ import Card from '@/app/components/plugins/card'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
+import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { marketplaceQuery } from '@/service/marketplace'
 import {
   normalizeInstalledPluginDetail,
   useUpdatePackageFromMarketPlace,
 } from '@/service/use-plugins'
-import { getMarketplaceUrl } from '@/utils/var'
 
 type PluginVersionSelection = {
   plugin: PluginDetail
@@ -64,6 +64,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const [installOpen, setInstallOpen] = useState(false)
   const [selection, setSelection] = useState<PluginVersionSelection>()
   const { canUpdatePlugin } = useWorkspacePluginInstallPermission()
+  const marketplace = useMarketplace()
   const pluginDetails = useQuery(
     consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
       input: pluginId ? { body: { plugin_ids: [pluginId] } } : skipToken,
@@ -80,17 +81,8 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const { formatDate } = useTimestamp()
   const dateFormat = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]!
 
-  const [organization, pluginName] = pluginId?.split('/') ?? []
-  const versionsQuery = useQuery(
-    marketplaceQuery.pluginVersions.queryOptions({
-      input:
-        organization && pluginName
-          ? { params: { organization, pluginName }, query: { page: 1, page_size: 100 } }
-          : skipToken,
-      enabled: requestedOpen && canUpdatePlugin,
-      retry: false,
-    }),
-  )
+  const canSwitchVersion = canUpdatePlugin && marketplace !== null
+  const versionsQuery = useMarketplacePluginVersions(pluginId, requestedOpen && canSwitchVersion)
   const loadingVersions = requestedOpen && versionsQuery.isPending
 
   return (
@@ -102,6 +94,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         <DialogContent className="w-140" finalFocus={triggerRef}>
           {selection && (
             <PluginVersionInstallConfirmation
+              marketplace={marketplace}
               selection={selection}
               onInstalled={(version) => {
                 void pluginDetails.refetch()
@@ -113,7 +106,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         </DialogContent>
       </Dialog>
       <Menu
-        open={requestedOpen && !!pluginDetail && canUpdatePlugin && !loadingVersions}
+        open={requestedOpen && !!pluginDetail && canSwitchVersion && !loadingVersions}
         onOpenChange={setRequestedOpen}
       >
         {pluginDetail && canUpdatePlugin && (
@@ -126,6 +119,8 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                     <Button
                       variant="ghost"
                       size="small"
+                      disabled={!canSwitchVersion}
+                      focusableWhenDisabled
                       loading={loadingVersions}
                       className="relative mx-1 h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.25 system-2xs-medium-uppercase text-text-tertiary"
                     >
@@ -134,7 +129,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                         {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}{' '}
                       </span>
                       <span>{pluginDetail.version}</span>
-                      {!loadingVersions && (
+                      {canSwitchVersion && !loadingVersions && (
                         <span aria-hidden className="i-ri-arrow-left-right-line size-3" />
                       )}
                     </Button>
@@ -186,9 +181,11 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
 }
 
 function PluginVersionInstallConfirmation({
+  marketplace,
   selection,
   onInstalled,
 }: {
+  marketplace: MarketplaceLinks | null
   selection: PluginVersionSelection
   onInstalled: (version: PluginVersionSelection['target']['version']) => void
 }) {
@@ -225,19 +222,22 @@ function PluginVersionInstallConfirmation({
         </div>
       </DialogBody>
       <DialogFooter>
-        <Link
-          className="me-auto flex items-center justify-center gap-1"
-          href={getMarketplaceUrl(
-            `/plugins/${selection.plugin.declaration.author}/${selection.plugin.declaration.name}`,
-          )}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <span className="system-xs-regular text-xs text-text-accent">
-            {t(($) => $['nodes.agent.installPlugin.changelog'], { ns: 'workflowAgent' })}
-          </span>
-          <span className="i-ri-external-link-line size-3 text-text-accent" />
-        </Link>
+        {marketplace && (
+          <Link
+            className="me-auto flex items-center justify-center gap-1"
+            href={marketplace.plugin({
+              org: selection.plugin.declaration.author,
+              name: selection.plugin.declaration.name,
+            })}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span className="system-xs-regular text-xs text-text-accent">
+              {t(($) => $['nodes.agent.installPlugin.changelog'], { ns: 'workflowAgent' })}
+            </span>
+            <span className="i-ri-external-link-line size-3 text-text-accent" />
+          </Link>
+        )}
         {!mutation.isPending && (
           <DialogClose render={<Button />}>
             {t(($) => $['nodes.agent.installPlugin.cancel'], { ns: 'workflowAgent' })}

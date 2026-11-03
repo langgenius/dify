@@ -30,7 +30,9 @@ const tPrefix = 'subscription.list.item.actions.deleteConfirm'
 export const DeleteConfirm = (props: Props) => {
   const { onClose, isShow, currentId, currentName, workflowsInUse } = props
   const { refetch } = useSubscriptionList()
-  const { mutate: deleteSubscription, isPending: isDeleting } = useDeleteTriggerSubscription()
+  const { mutate: deleteSubscription, isPending: isDeleting } = useDeleteTriggerSubscription({
+    silent: true,
+  })
   const { t } = useTranslation(['common', 'pluginTrigger'])
   const [inputName, setInputName] = useState('')
 

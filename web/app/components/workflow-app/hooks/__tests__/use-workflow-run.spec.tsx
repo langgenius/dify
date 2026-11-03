@@ -358,7 +358,7 @@ it.each([
     expect(api.post).toHaveBeenCalledWith(
       `/apps/app-1/workflows/draft/trigger/${url}`,
       expect.objectContaining({ body, signal: expect.any(AbortSignal) }),
-      { needAllResponseContent: true },
+      { needAllResponseContent: true, silent: true },
     )
     expect(store.getState().isListening).toBe(true)
     const request = api.post.mock.lastCall?.[1]

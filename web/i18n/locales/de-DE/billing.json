@@ -8,6 +8,9 @@
   "apps.fullTip2": "Limit erreicht",
   "apps.fullTip2des": "Es wird empfohlen, inaktive Anwendungen zu bereinigen, um Speicherplatz freizugeben, oder uns zu kontaktieren.",
   "buyPermissionDeniedTip": "Bitte kontaktieren Sie Ihren Unternehmensadministrator, um zu abonnieren",
+  "errors.operationFailed": "Diese Anfrage konnte nicht abgeschlossen werden. Bitte versuchen Sie es später erneut. Wenn das Problem weiterhin besteht, wenden Sie sich an den Support.",
+  "errors.requestInProgress": "Ihre vorherige Anfrage wird noch bearbeitet. Bitte versuchen Sie es gleich noch einmal.",
+  "errors.unavailable": "Dieser Dienst ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut.",
   "plans.community.btnText": "Beginnen Sie mit der Gemeinschaft",
   "plans.community.description": "Für Einzelbenutzer, kleine Teams oder nicht-kommerzielle Projekte",
   "plans.community.features": [

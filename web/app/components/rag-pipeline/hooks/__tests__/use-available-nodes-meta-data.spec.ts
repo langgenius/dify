@@ -16,7 +16,7 @@ vi.mock('@/features/agent-v2/feature-flag', () => ({
 it.each([true, false])('offers the pipeline node catalog with Agent v2 enabled=%s', (enabled) => {
   mockIsAgentV2Enabled.mockReturnValue(enabled)
   const { result } = renderHookWithConsoleQuery(() => useAvailableNodesMetaData(), {
-    knowledgeFsFeatures: { enabled: true },
+    features: { enable_knowledge_fs: true },
   })
   const { nodes, nodesMap } = result.current
   const types = nodes.map((node) => node.metaData.type)
@@ -56,7 +56,7 @@ it.each([true, false])('offers the pipeline node catalog with Agent v2 enabled=%
 
 it('hides Knowledge Retrieval V2 when KnowledgeFS is unavailable', () => {
   const { result } = renderHookWithConsoleQuery(() => useAvailableNodesMetaData(), {
-    knowledgeFsFeatures: { enabled: false },
+    features: { enable_knowledge_fs: false },
   })
   const types = result.current.nodes.map((node) => node.metaData.type)
   expect(types).not.toContain(BlockEnum.KnowledgeRetrievalV2)

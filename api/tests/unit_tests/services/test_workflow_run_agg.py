@@ -12,7 +12,7 @@ from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueWorkflowFailedEvent,
@@ -24,6 +24,7 @@ from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from graphon.engine_events import (
@@ -34,6 +35,7 @@ from graphon.engine_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import RuntimeState
@@ -54,6 +56,7 @@ from models.workflow import (
     WorkflowRun,
 )
 from models.workflow import WorkflowType as ModelWorkflowType
+from repositories.human_input_v2.form_repository import Form
 from services.agent.workspace_service import AgentWorkspaceService
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow_run_agg import WorkflowRunAgg
@@ -68,6 +71,7 @@ from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import (
 )
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_binding_resolver import _agent, _binding, _snapshot
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_session_store import _install_backend_client
+from tests.unit_tests.core.workflow.nodes.human_input_v2.test_node import form as _v2_form_fixture
 
 """Pipeline tool lifecycle through the real Engine and SQLAlchemy repositories."""
 
@@ -321,6 +325,7 @@ def make_workflow_runner(
         created_by=user_id,
     )
     entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id=str(uuid4()),
         app_config=WorkflowAppConfig(
             tenant_id=tenant_id, app_id=app_id, workflow_id=workflow_id, app_mode=AppMode.WORKFLOW
@@ -395,7 +400,9 @@ class TestWorkflowRunAggCases:
         monkeypatch.setattr(storage, "storage_runner", OpenDALStorage(scheme="fs", root=str(tmp_path)), raising=False)
         from core.app.apps import workflow_app_runner
 
-        monkeypatch.setattr(workflow_app_runner.dispatch_human_input_email_task, "apply_async", lambda **_kwargs: None)
+        monkeypatch.setattr(
+            workflow_app_runner.dispatch_human_input_form_delivery_task, "apply_async", lambda **_kwargs: None
+        )
 
     @staticmethod
     @pytest.mark.usefixtures("_local_storage")
@@ -1046,3 +1053,88 @@ class TestWorkflowRunAggCases:
         with Session(sqlite_engine) as session:
             assert session.scalar(select(WorkflowRun)) is None
             assert session.scalar(select(HumanInputForm)) is None
+
+
+v2_form = _v2_form_fixture
+
+
+@pytest.mark.parametrize("token", ["initiator-token", None])
+def test_v2_pause_persists_only_checkpoint_references_and_publishes_frozen_form(
+    sqlite_engine: Engine, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, token: str | None, v2_form: Form
+) -> None:
+    from dataclasses import replace
+
+    from pydantic import SecretStr
+
+    from core.human_input_v2.shared.values import TenantId
+    from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData as V2NodeData
+    from core.workflow.nodes.human_input_v2.runtime import PreparedForm
+    from models.workflow import WorkflowPauseReason
+
+    monkeypatch.setattr(storage, "storage_runner", OpenDALStorage(scheme="fs", root=str(tmp_path)), raising=False)
+    runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
+    entity = runner.application_generate_entity
+    graph = runner._workflow.graph_dict
+    graph["nodes"][1]["data"] = V2NodeData.model_validate(
+        {
+            "type": "human-input",
+            "version": "2",
+            "title": "Approval",
+            "form_content": "Changed content",
+            "recipients_spec": [],
+            "user_actions": [],
+            "message_template": {"subject": "Notice", "body": "[Request URL]"},
+            "debug_mode": {"enabled": False, "channels": []},
+        }
+    ).model_dump(mode="json")
+    runner._workflow.graph = json.dumps(graph)
+    source_form = v2_form
+    prepared_forms: list[PreparedForm] = []
+
+    def prepare(_runtime: object, *, node_execution_id: str, **_kwargs: object) -> PreparedForm:
+        prepared = PreparedForm(
+            replace(
+                source_form,
+                id=node_execution_id,
+                node_execution_id=node_execution_id,
+                tenant_id=TenantId(entity.app_config.tenant_id),
+                app_id=entity.app_config.app_id,
+                workflow_run_id=entity.workflow_execution_id,
+            ),
+            SecretStr(token) if token is not None else None,
+        )
+        prepared_forms.append(prepared)
+        return prepared
+
+    monkeypatch.setattr("services.human_input_v2.composition.WorkflowHumanInputRuntime.prepare_form", prepare)
+
+    def reject_legacy_lookup(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("V2 forms must not be loaded from the legacy repository")
+
+    monkeypatch.setattr(
+        "core.repositories.human_input_repository.HumanInputFormSubmissionRepository.get_by_form_ids",
+        reject_legacy_lookup,
+    )
+    WorkflowRunAgg.run(
+        runner, PauseStateLayerConfig(sqlite_engine, entity.user_id), workflow_repository, node_repository
+    )
+    events = [message.event for message in runner._queue_manager.listen()]
+    paused = events[-1]
+    assert isinstance(paused, QueueWorkflowPausedEvent), events
+    assert isinstance(paused.reasons[0], HumanInputRequired)
+    assert paused.reasons[0].form_version == "2"
+    assert paused.reasons[0].form_content == source_form.resolved_form.legacy_form_content
+    assert paused.human_input_v2_forms[prepared_forms[0].form.id] is prepared_forms[0]
+    with Session(sqlite_engine) as session:
+        pause = session.scalar(
+            select(WorkflowPause).where(WorkflowPause.workflow_run_id == entity.workflow_execution_id)
+        )
+        assert pause is not None
+        assert list(session.scalars(select(WorkflowPauseReason).where(WorkflowPauseReason.pause_id == pause.id))) == []
+        saved_state = storage.load(pause.state_object_key).decode()
+    context = WorkflowResumptionContext.loads(saved_state)
+    restored = RuntimeState.from_snapshot(context.serialized_graph_runtime_state)
+    assert isinstance(restored.graph_execution.pause_reasons[0], HitlRequired)
+    assert restored.graph_execution.pause_reasons[0].session_id == f"hitlv2:{prepared_forms[0].form.id}"
+    if token is not None:
+        assert token not in saved_state

@@ -3,7 +3,6 @@ from typing import Any
 
 from configs import dify_config
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler, print_text
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 
@@ -15,9 +14,6 @@ class DifyWorkflowCallbackHandler(DifyAgentCallbackHandler):
         tool_name: str,
         tool_inputs: Mapping[str, Any],
         tool_outputs: Iterable[ToolInvokeMessage],
-        message_id: str | None = None,
-        timer: Any | None = None,
-        trace_manager: TraceQueueManager | None = None,
     ) -> Generator[ToolInvokeMessage]:
         for tool_output in tool_outputs:
             if dify_config.DEBUG:

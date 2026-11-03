@@ -66,7 +66,7 @@ function renderDialog() {
   // KnowledgeFS spaces only show up in the scope picker when the workspace has KnowledgeFS.
   return renderWithConsoleQuery(<DatasetApiKeys />, {
     currentWorkspace: { id: 'workspace-1' },
-    knowledgeFsFeatures: { enabled: apiMocks.knowledgeFsEnabled },
+    features: { enable_knowledge_fs: apiMocks.knowledgeFsEnabled },
   })
 }
 

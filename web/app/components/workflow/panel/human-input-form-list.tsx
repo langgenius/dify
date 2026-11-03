@@ -7,6 +7,8 @@ import ContentWrapper from '@/app/components/base/chat/chat/answer/human-input-c
 import { UnsubmittedHumanInputContent } from '@/app/components/base/chat/chat/answer/human-input-content/unsubmitted'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
+import { ENABLE_HITL_IM } from '@/config'
+import { WorkflowHumanInputForm } from '@/features/human-input/form/loaded-form-content'
 
 type HumanInputFormListProps = {
   humanInputFormDataList: HumanInputFormData[]
@@ -18,6 +20,7 @@ const HumanInputFormList = ({
   onHumanInputFormSubmit,
 }: HumanInputFormListProps) => {
   const store = useStoreApi()
+  const FormContent = ENABLE_HITL_IM ? WorkflowHumanInputForm : UnsubmittedHumanInputContent
 
   const getHumanInputNodeData = useCallback(
     (nodeID: string) => {
@@ -80,9 +83,9 @@ const HumanInputFormList = ({
         <ContentWrapper
           key={formData.form_id}
           nodeTitle={formData.node_title}
-          className="bg-components-panel-bg"
+          className={ENABLE_HITL_IM ? 'bg-components-panel-bg shadow-xs' : 'bg-components-panel-bg'}
         >
-          <UnsubmittedHumanInputContent
+          <FormContent
             key={formData.form_id}
             formData={formData}
             showEmailTip={!!deliveryMethodsConfig[formData.node_id]?.showEmailTip}

@@ -37,7 +37,7 @@ type ConfigPopupProps = {
   policyError?: string
   policy?: AppTraceResponse
   onPolicyChange: (changes: Partial<AppTracePayload>) => Promise<void>
-  configs: Partial<Record<ConfigurableTracingProvider, TraceAppConfigResponse['tracing_config']>>
+  configs: Partial<Record<ConfigurableTracingProvider, TraceAppConfigResponse | null>>
 }
 
 export function ConfigPopup({
@@ -240,7 +240,7 @@ export function ConfigPopup({
                 <ProviderConfigModal
                   resource={resource}
                   type={provider}
-                  payload={configs[provider]}
+                  config={configs[provider]}
                   inUse={enabled && chosenProvider === provider}
                   firstInputRef={firstInputRef}
                   onSaved={closeConfig}

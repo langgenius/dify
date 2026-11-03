@@ -3,24 +3,83 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAlreadySubmittedError,
+  zExpiredError,
   zHumanInputFormExpiredError,
   zHumanInputFormSubmittedError,
   zInvalidFormDataError,
+  zInvalidInputError,
+  zWorkflowNotActiveError,
 } from './zod.gen.ts'
 import {
   zGetFormHumanInputByFormTokenPath,
   zGetFormHumanInputByFormTokenResponse,
+  zGetFormHumanInputV2ByFormTokenPath,
+  zGetFormHumanInputV2ByFormTokenResponse,
   zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
   zPostFormHumanInputByFormTokenResponse,
+  zPostFormHumanInputV2ByFormTokenBody,
+  zPostFormHumanInputV2ByFormTokenPath,
+  zPostFormHumanInputV2ByFormTokenResponse,
 } from './zod.gen.ts'
+
+/**
+ * Read a frozen v2 form using the current Account's Contact authorization.
+ */
+export const get = oc
+  .route({
+    description: "Read a frozen v2 form using the current Account's Contact authorization.",
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputV2ByFormToken',
+    path: '/form/human-input/v2/{form_token}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetFormHumanInputV2ByFormTokenPath }))
+  .output(zGetFormHumanInputV2ByFormTokenResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+  })
+
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2ByFormToken',
+    path: '/form/human-input/v2/{form_token}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputV2ByFormTokenBody,
+      params: zPostFormHumanInputV2ByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputV2ByFormTokenResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+    invalid_input: { status: 400, data: zInvalidInputError },
+    workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
+  })
+
+export const byFormToken = {
+  get,
+  post,
+}
+
+export const v2 = {
+  byFormToken,
+}
 
 /**
  * Get human input form definition by form token
  *
  * GET /console/api/form/human_input/<form_token>
  */
-export const get = oc
+export const get2 = oc
   .route({
     description: 'GET /console/api/form/human_input/<form_token>',
     inputStructure: 'detailed',
@@ -47,7 +106,7 @@ export const get = oc
  * "action": "Approve"
  * }
  */
-export const post = oc
+export const post2 = oc
   .route({
     description:
       'POST /console/api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
@@ -71,13 +130,14 @@ export const post = oc
     invalid_form_data: { status: 400, data: zInvalidFormDataError },
   })
 
-export const byFormToken = {
-  get,
-  post,
+export const byFormToken2 = {
+  get: get2,
+  post: post2,
 }
 
 export const humanInput = {
-  byFormToken,
+  v2,
+  byFormToken: byFormToken2,
 }
 
 export const form = {

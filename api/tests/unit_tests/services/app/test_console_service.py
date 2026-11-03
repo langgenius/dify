@@ -137,7 +137,7 @@ class Apps:
 @dataclass
 class Permissions:
     def filter_list(self, params: AppListParams) -> AppListParams:
-        return params.model_copy(update={"accessible_app_ids": ["app"], "include_own_apps": True})
+        return params.model_copy(update={"accessible_app_ids": ["app"]})
 
     def keys_for(self, app_ids: list[str]) -> dict[str, list[str]]:
         return {app_id: ["app.preview"] for app_id in app_ids}
@@ -332,7 +332,6 @@ def test_list_applies_visibility_and_enriches_materialized_records(ports: Ports)
     assert context == CONTEXT
     assert isinstance(filtered, AppListParams)
     assert filtered.accessible_app_ids == ["app"]
-    assert filtered.include_own_apps is True
     assert params.accessible_app_ids is None
     assert result.page == 2
     assert result.data[0].permission_keys == ["app.preview"]

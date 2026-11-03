@@ -1982,6 +1982,124 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /workspaces/{workspace_id}/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Words to match in the name, display name or description | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| tag | query | Only skills with every one of these tags; repeat to give several | No | [ string ] |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skills | **application/json**: [SkillListResponse](#skilllistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/skills/imports
+**Import never publishes**
+
+``draft_hash`` is the draft's ``updated_at`` in whole seconds,
+so an edit made in the same second as the export is not detected.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [SkillImportPayload](#skillimportpayload)<br>**multipart/form-data**: [SkillImportPayload](#skillimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Overwritten | **application/json**: [SkillImportResponse](#skillimportresponse)<br> |
+| 201 | Created | **application/json**: [SkillImportResponse](#skillimportresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/skills/{skill_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill | **application/json**: [SkillDescribeResponse](#skilldescriberesponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/skills/{skill_id}/archive
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Export this published version instead of the draft | No | string (uuid) |
+| skill_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Zip archive | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/skills/{skill_id}/versions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| skill_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Versions | **application/json**: [SkillVersionListResponse](#skillversionlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/skills/{skill_id}:publish
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillPublishPayload](#skillpublishpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published | **application/json**: [SkillPublishResponse](#skillpublishresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /workspaces/{workspace_id}/tool-providers/{provider}
 #### Parameters
 
@@ -2363,6 +2481,12 @@ mode is a closed enum of listable app types.
 | icon_type | string |  | No |
 | max_active_requests | integer |  | No |
 | name | string |  | Yes |
+
+#### BinaryFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BinaryFileResponse | string |  |  |
 
 #### ChatAppInfo
 
@@ -3648,6 +3772,127 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result. | Yes |
+
+#### SkillDescribeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| display_name | string |  | Yes |
+| draft_hash | string | Opaque; names the draft this was read from | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| icon | string |  | Yes |
+| id | string |  | Yes |
+| latest_published_version_id | string | Null while the skill has never been published | Yes |
+| latest_version | [SkillVersionRow](#skillversionrow) | Null while the skill has never been published | Yes |
+| name | string |  | Yes |
+| tags | [ string ] |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### SkillExportQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| version_id | string | Export this published version instead of the draft | No |
+
+#### SkillImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| draft_hash | string | From describe.skill; rejects the overwrite if the draft changed since | No |
+| files | object | The skill folder, one part per file; SKILL.md at its root | Yes |
+| skill_id | string | Overwrite this skill's draft; omit to create a new skill | No |
+
+#### SkillImportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| draft_hash | string | Opaque; names the draft this wrote | Yes |
+| file_count | integer |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### SkillListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string | Words to match in the name, display name or description | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| tag | [ string ] | Only skills with every one of these tags; repeat to give several | No |
+
+#### SkillListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillRow](#skillrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### SkillPublishPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| publish_note | string | Note for the new version | No |
+| version_name | string | Name for the new version | No |
+
+#### SkillPublishResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | string | Account id that published it | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| id | string |  | Yes |
+| publish_note | string |  | Yes |
+| version_name | string |  | Yes |
+| version_number | integer |  | Yes |
+
+#### SkillRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| display_name | string |  | Yes |
+| icon | string |  | Yes |
+| id | string |  | Yes |
+| latest_published_version_id | string | Null while the skill has never been published | Yes |
+| name | string |  | Yes |
+| tags | [ string ] |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### SkillVersionListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### SkillVersionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillVersionRow](#skillversionrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### SkillVersionRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | string | Account id that published it | Yes |
+| id | string |  | Yes |
+| publish_note | string |  | Yes |
+| version_name | string |  | Yes |
+| version_number | integer |  | Yes |
 
 #### SubjectType
 

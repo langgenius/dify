@@ -4,7 +4,7 @@ import type {
   ModelProviderSummaryResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useMemo } from 'react'
@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { consoleQuery } from '@/service/console'
 import { UpdateSettingDialog } from '../update-setting-dialog'
 import { ModelTypeEnum } from './declarations'
@@ -76,7 +76,6 @@ const ModelProviderPage = ({
   )
   const providers = providerSummary?.data ?? EMPTY_MODEL_PROVIDERS
   const modelProviderPlugins = providerSummary?.plugins ?? EMPTY_MODEL_PROVIDER_PLUGINS
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const marketplacePluginIds = useMemo(
     () =>
@@ -103,7 +102,7 @@ const ModelProviderPage = ({
     }
     return map
   }, [latestVersionData, modelProviderPlugins])
-  const enableMarketplace = systemFeatures.enable_marketplace
+  const marketplace = useMarketplace()
   const isDefaultModelLoading =
     isTextGenerationDefaultModelLoading ||
     isEmbeddingsDefaultModelLoading ||
@@ -201,7 +200,6 @@ const ModelProviderPage = ({
   const showConfiguredProviders = !isLoadingModelProviders && !!filteredConfiguredProviders?.length
   const showNotConfiguredProviders =
     !isLoadingModelProviders && !!filteredNotConfiguredProviders?.length
-  const showMarketplace = !isLoadingModelProviders && enableMarketplace
   const toolbar = (
     <div
       className={
@@ -263,8 +261,7 @@ const ModelProviderPage = ({
       showEmptyProvider={showEmptyProvider}
       showConfiguredProviders={showConfiguredProviders}
       showNotConfiguredProviders={showNotConfiguredProviders}
-      showMarketplace={showMarketplace}
-      enableMarketplace={enableMarketplace}
+      marketplace={marketplace}
       searchText={searchText}
       pluginSummaryMap={pluginSummaryMap}
       onOpenMarketplace={onOpenMarketplace}

@@ -1,4 +1,5 @@
 import type { ChatItem, WorkflowProcess } from '../../types'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useStore as useAtomStore } from 'jotai'
 import { use, useEffect, useState } from 'react'
@@ -65,7 +66,7 @@ const WorkflowProcessItem = ({
       className={cn(
         '-mx-1 rounded-xl px-2.5',
         collapse
-          ? 'border-l-[0.25px] border-components-panel-border py-1.75'
+          ? 'border-s-[0.25px] border-components-panel-border py-1.75'
           : 'border-[0.5px] border-components-panel-border-subtle px-1 pt-1.75 pb-1',
         running && !collapse && 'bg-background-section-burn',
         succeeded && !collapse && 'bg-state-success-hover',
@@ -80,7 +81,7 @@ const WorkflowProcessItem = ({
       <button
         type="button"
         className={cn(
-          'flex w-full cursor-pointer items-center border-0 bg-transparent p-0 text-left',
+          'flex w-full cursor-pointer items-center border-0 bg-transparent p-0 text-start',
           !collapse && 'px-1.5',
         )}
         aria-expanded={!collapse}
@@ -90,28 +91,28 @@ const WorkflowProcessItem = ({
           <span
             role="img"
             aria-label={statusLabel}
-            className="mr-1 i-ri-loader-2-line size-3.5 shrink-0 animate-spin text-text-tertiary"
+            className="me-1 i-ri-loader-2-line size-3.5 shrink-0 animate-spin text-text-tertiary"
           />
         )}
         {succeeded && (
           <span
             role="img"
             aria-label={statusLabel}
-            className="mr-1 i-custom-vender-solid-general-check-circle size-3.5 shrink-0 text-text-success"
+            className="me-1 i-custom-vender-solid-general-check-circle size-3.5 shrink-0 text-text-success"
           />
         )}
         {failed && (
           <span
             role="img"
             aria-label={statusLabel}
-            className="mr-1 i-ri-error-warning-fill size-3.5 shrink-0 text-text-destructive"
+            className="me-1 i-ri-error-warning-fill size-3.5 shrink-0 text-text-destructive"
           />
         )}
         {paused && (
           <span
             role="img"
             aria-label={statusLabel}
-            className="mr-1 i-ri-pause-circle-fill size-3.5 shrink-0 text-text-warning-secondary"
+            className="me-1 i-ri-pause-circle-fill size-3.5 shrink-0 text-text-warning-secondary"
           />
         )}
         <div
@@ -125,7 +126,7 @@ const WorkflowProcessItem = ({
         <span
           aria-hidden
           className={cn(
-            'ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary',
+            'ms-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary',
             !collapse && 'rotate-90',
           )}
         />
@@ -133,12 +134,9 @@ const WorkflowProcessItem = ({
       {!collapse && (
         <div className="mt-1.5">
           {failed && data.error && (
-            <div
-              role="alert"
-              className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-hover px-2 py-1.5 system-xs-regular text-text-destructive"
-            >
-              {localizedError}
-            </div>
+            <Alert type="error" className="mb-1.5">
+              <AlertTitle>{localizedError}</AlertTitle>
+            </Alert>
           )}
           {data.tracing.length > 0 && (
             <TracingPanel
