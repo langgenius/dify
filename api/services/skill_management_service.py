@@ -57,7 +57,7 @@ from graphon.model_runtime.entities.model_entities import ModelFeature, ModelTyp
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.nodes.llm.reasoning import split_reasoning
 from libs.archive_writer import is_os_junk
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from libs.helper import escape_like_pattern
 from models.account import Account
 from models.agent import (
@@ -1926,7 +1926,7 @@ class SkillManagementService:
                     details = {
                         "current_file_hash": current_file.hash,
                         "current_file_path": current_file.path,
-                        "current_file_updated_at": int(skill.updated_at.timestamp()),
+                        "current_file_updated_at": to_utc_timestamp(skill.updated_at),
                     }
                     if current_file.content_text is not None:
                         details["current_file_content"] = current_file.content_text
@@ -3073,7 +3073,7 @@ class SkillManagementService:
             latest_version = session.get(SkillVersion, skill.latest_published_version_id)
             if latest_version is not None:
                 latest_published_version_number = latest_version.version_number
-                latest_published_at = int(latest_version.created_at.timestamp())
+                latest_published_at = to_utc_timestamp(latest_version.created_at)
 
         return {
             "id": skill.id,
@@ -3092,8 +3092,8 @@ class SkillManagementService:
             "created_by_name": created_by_account.name if created_by_account else None,
             "updated_by": skill.updated_by,
             "updated_by_name": updated_by_account.name if updated_by_account else None,
-            "created_at": int(skill.created_at.timestamp()),
-            "updated_at": int(skill.updated_at.timestamp()),
+            "created_at": to_utc_timestamp(skill.created_at),
+            "updated_at": to_utc_timestamp(skill.updated_at),
         }
 
     @staticmethod
@@ -3165,7 +3165,7 @@ class SkillManagementService:
             "published_by": version.published_by,
             "published_by_name": published_by_account.name if published_by_account else None,
             "is_latest": latest_version_id == version.id,
-            "created_at": int(version.created_at.timestamp()),
+            "created_at": to_utc_timestamp(version.created_at),
         }
 
     @staticmethod
@@ -3578,7 +3578,7 @@ class SkillManagementService:
         file_stat: tuple[int, datetime | None],
     ) -> dict[str, Any]:
         file_count, latest_draft_updated_at = file_stat
-        latest_published_at = int(version.created_at.timestamp()) if version is not None else None
+        latest_published_at = to_utc_timestamp(version.created_at) if version is not None else None
         has_unpublished_draft = (
             version is None
             or latest_draft_updated_at is None
@@ -3602,7 +3602,7 @@ class SkillManagementService:
             "file_count": file_count,
             "latest_published_version_id": skill.latest_published_version_id,
             "latest_published_at": latest_published_at,
-            "updated_at": int(skill.updated_at.timestamp()),
+            "updated_at": to_utc_timestamp(skill.updated_at),
         }
 
     @staticmethod
@@ -3665,7 +3665,7 @@ class SkillManagementService:
     def _check_expected_updated_at(skill: Skill, expected_updated_at: int | None) -> None:
         if expected_updated_at is None:
             return
-        current_updated_at = int(skill.updated_at.timestamp())
+        current_updated_at = to_utc_timestamp(skill.updated_at)
         if current_updated_at != expected_updated_at:
             raise SkillManagementServiceError(
                 "skill_conflict",

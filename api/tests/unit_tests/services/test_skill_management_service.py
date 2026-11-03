@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import time
 import zipfile
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast, override
 from unittest.mock import patch
@@ -2546,6 +2549,81 @@ def test_apply_draft_file_operation_conflict_includes_current_file_version() -> 
     assert exc_info.value.details["current_file_path"] == "SKILL.md"
     assert exc_info.value.details["current_file_hash"] == skill_md["hash"]
     assert exc_info.value.details["current_file_content"] == skill_md["content"]
+
+
+@pytest.fixture
+def non_utc_host_timezone() -> Iterator[None]:
+    if not hasattr(time, "tzset"):
+        pytest.skip("tzset is only available on POSIX platforms")
+    previous = os.environ.get("TZ")
+    os.environ["TZ"] = "Asia/Tokyo"
+    time.tzset()
+    try:
+        yield
+    finally:
+        if previous is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = previous
+        time.tzset()
+
+
+@pytest.mark.usefixtures("non_utc_host_timezone")
+def test_serialized_skill_timestamps_are_read_as_utc() -> None:
+    """Persisted timestamps are naive UTC, so the host timezone must not shift them."""
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    published = service.publish_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillPublishPayload(publish_note="initial"),
+    )
+    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+
+    recorded_at = datetime(2024, 5, 1)
+    with session_factory.create_session() as session, session.begin():
+        session.execute(
+            update(Skill).where(Skill.id == created["id"]).values(created_at=recorded_at, updated_at=recorded_at)
+        )
+        session.execute(update(SkillVersion).where(SkillVersion.id == published["id"]).values(created_at=recorded_at))
+    expected = int(recorded_at.replace(tzinfo=UTC).timestamp())
+
+    detail = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    assert detail["created_at"] == expected
+    assert detail["updated_at"] == expected
+    assert detail["latest_published_at"] == expected
+
+    version = service.list_versions(tenant_id=TENANT, skill_id=created["id"])["data"][0]
+    assert version["created_at"] == expected
+
+    binding = service.list_agent_bindings(tenant_id=TENANT, agent_id=AGENT)["data"][0]
+    assert binding["updated_at"] == expected
+    assert binding["latest_published_at"] == expected
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.update_metadata(
+            tenant_id=TENANT,
+            user_id=USER,
+            skill_id=created["id"],
+            payload=SkillMetadataPayload(display_name="New", expected_updated_at=0),
+        )
+    assert exc_info.value.details["current_updated_at"] == expected
+
+    skill_md = next(file for file in created["files"] if file["path"] == "SKILL.md")
+    with pytest.raises(SkillManagementServiceError) as conflict_info:
+        service.apply_draft_file_operation(
+            tenant_id=TENANT,
+            user_id=USER,
+            skill_id=created["id"],
+            payload=SkillDraftFileOperationPayload(
+                operation="upsert_text",
+                path="SKILL.md",
+                content=skill_md["content"],
+                expected_updated_at=0,
+            ),
+        )
+    assert conflict_info.value.details["current_file_updated_at"] == expected
 
 
 def test_duplicate_skill_copies_current_draft_without_history() -> None:
