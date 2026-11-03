@@ -309,7 +309,7 @@ def _get_message_context_by_app(
 
 
 def _to_message_context(message: Message) -> MessageContext:
-    created_at = int(message.created_at.timestamp()) if message.created_at else 0
+    created_at = to_utc_timestamp(message.created_at) if message.created_at else 0
     return MessageContext(
         conversation_id=message.conversation_id,
         message_id=message.id,
@@ -479,7 +479,7 @@ def _build_workflow_started_event(
             id=workflow_run.id,
             workflow_id=workflow_run.workflow_id,
             inputs=workflow_run.inputs_dict or {},
-            created_at=int(workflow_run.created_at.timestamp()),
+            created_at=to_utc_timestamp(workflow_run.created_at),
             reason=WorkflowStartReason.INITIAL,
         ),
     )
@@ -506,7 +506,7 @@ def _build_node_started_event(
     snapshot: WorkflowNodeExecutionSnapshot,
     execution: WorkflowNodeExecutionModel | None,
 ) -> dict[str, Any]:
-    created_at = int(snapshot.created_at.timestamp()) if snapshot.created_at else 0
+    created_at = to_utc_timestamp(snapshot.created_at) if snapshot.created_at else 0
     response = NodeStartStreamResponse(
         task_id=task_id,
         workflow_run_id=workflow_run_id,
@@ -670,8 +670,8 @@ def _build_node_finished_event(
     snapshot: WorkflowNodeExecutionSnapshot,
     execution: WorkflowNodeExecutionModel | None,
 ) -> dict[str, Any]:
-    created_at = int(snapshot.created_at.timestamp()) if snapshot.created_at else 0
-    finished_at = int(snapshot.finished_at.timestamp()) if snapshot.finished_at else created_at
+    created_at = to_utc_timestamp(snapshot.created_at) if snapshot.created_at else 0
+    finished_at = to_utc_timestamp(snapshot.finished_at) if snapshot.finished_at else created_at
     response = NodeFinishStreamResponse(
         task_id=task_id,
         workflow_run_id=workflow_run_id,
@@ -764,7 +764,7 @@ def _build_pause_event(
             outputs=outputs,
             reasons=reasons,
             status=workflow_run.status,
-            created_at=int(workflow_run.created_at.timestamp()),
+            created_at=to_utc_timestamp(workflow_run.created_at),
             elapsed_time=float(workflow_run.elapsed_time or 0.0),
             total_tokens=int(workflow_run.total_tokens or 0),
             total_steps=int(workflow_run.total_steps or 0),
