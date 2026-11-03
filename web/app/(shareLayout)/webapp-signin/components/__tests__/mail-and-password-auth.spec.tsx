@@ -164,10 +164,13 @@ describe('MailAndPasswordAuth', () => {
     const passwordInput = screen.getByLabelText('login.password')
     expect(passwordInput).toHaveAttribute('type', 'password')
 
-    await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
+    const toggle = screen.getByRole('button', { name: 'login.showPassword' })
+    await user.click(toggle)
     expect(passwordInput).toHaveAttribute('type', 'text')
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
 
-    await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
+    await user.click(toggle)
     expect(passwordInput).toHaveAttribute('type', 'password')
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
   })
 })
