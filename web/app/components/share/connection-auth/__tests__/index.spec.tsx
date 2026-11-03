@@ -11,7 +11,7 @@ const render = (ui: ReactElement) =>
   renderWithConsoleQuery(ui, { accountProfile: null, currentWorkspace: null })
 
 const serviceRow = (name: string) => screen.getByRole('listitem', { name })
-const progress = () => screen.getByText(/share\.connections\.headless\.progress/)
+const progress = () => screen.getByText(/share\.connections\.headless\.(apiProgress|progress)/)
 const readyMessage = () => screen.getByText(/share\.connections\.headless\.allConnected/)
 
 async function connectServices(user: ReturnType<typeof userEvent.setup>) {
@@ -62,6 +62,8 @@ describe('ConnectionAuth', () => {
     expect(
       screen.queryByText(/share\.connections\.headless\.requestedFrom/),
     ).not.toBeInTheDocument()
+    expect(screen.getByText('share.connections.headless.closeTab')).toBeInTheDocument()
+    expect(screen.queryByText('share.connections.headless.closeWindow')).not.toBeInTheDocument()
   })
 
   it('keeps an invalid API key in the editor and selects the corrected key after saving', async () => {
@@ -213,14 +215,23 @@ describe('ConnectionAuth', () => {
 
   it('resets the mock session when the application changes and identifies Service API requests', async () => {
     const user = userEvent.setup()
-    const { rerender } = render(<ConnectionAuth appId="first-app" source="service-api" />)
+    const { rerender } = render(<ConnectionAuth appId="first-app" source="api" />)
     await user.click(within(serviceRow('Gmail')).getByRole('button', { name: connectLabel }))
     expect(progress()).toHaveTextContent('"connected":1')
     expect(screen.getByText(/share\.connections\.headless\.requestedFrom/)).toHaveTextContent(
-      'Service API',
+      'Acme Assistant',
+    )
+    expect(screen.getByText(/share\.connections\.headless\.signedInAs/)).toHaveTextContent(
+      'Feishu user •••1234',
+    )
+    expect(screen.getByText(/share\.connections\.headless\.apiProgress/)).toHaveTextContent(
+      'Acme Assistant',
+    )
+    expect(screen.getByText(/share\.connections\.headless\.security/)).toHaveTextContent(
+      'Acme Assistant',
     )
 
-    rerender(<ConnectionAuth appId="second-app" source="service-api" />)
+    rerender(<ConnectionAuth appId="second-app" source="api" />)
 
     expect(progress()).toHaveTextContent('"connected":0')
     expect(within(serviceRow('Gmail')).getByRole('button', { name: connectLabel })).toBeEnabled()
@@ -230,6 +241,19 @@ describe('ConnectionAuth', () => {
     await user.click(screen.getByRole('button', { name: finishLabel }))
     expect(
       screen.getByText(/share\.connections\.headless\.continuesAutomatically/),
-    ).toHaveTextContent('Service API')
+    ).toHaveTextContent('Acme Assistant')
+    expect(screen.getByText('share.connections.headless.closeWindow')).toBeInTheDocument()
+    expect(screen.queryByText('share.connections.headless.closeTab')).not.toBeInTheDocument()
+
+    rerender(<ConnectionAuth appId="second-app" source="cli" />)
+
+    expect(progress()).toHaveTextContent('"connected":0')
+    expect(screen.getByText(/share\.connections\.headless\.requestedFrom/)).toHaveTextContent(
+      'Dify CLI',
+    )
+    expect(screen.getByText(/share\.connections\.headless\.signedInAs/)).toHaveTextContent(
+      'al••••@northstar.io',
+    )
+    expect(screen.queryByText(/share\.connections\.headless\.apiProgress/)).not.toBeInTheDocument()
   })
 })

@@ -20,7 +20,17 @@ function ConnectionAuthSession({ source }: { source: ConnectionAuthSource }) {
   const titleId = useId()
   const { services, connectedCount, ready, ...actions } = useMockConnections()
   const [finished, setFinished] = useState(false)
-  const requester = mockRequest.sources[source]
+  const { requester, identity } = mockRequest.sources[source]
+  const progressOptions = {
+    ns: 'share' as const,
+    source: requester,
+    connected: connectedCount,
+    total: services.length,
+  }
+  const progressMessage =
+    source === 'api'
+      ? t(($) => $['connections.headless.apiProgress'], progressOptions)
+      : t(($) => $['connections.headless.progress'], progressOptions)
   useDocumentTitle(t(($) => $['connections.headless.title'], { ns: 'share' }))
 
   return (
@@ -57,7 +67,7 @@ function ConnectionAuthSession({ source }: { source: ConnectionAuthSource }) {
             </div>
           </div>
           {finished ? (
-            <ConnectionAuthCompletion services={services} source={requester} />
+            <ConnectionAuthCompletion services={services} source={source} requester={requester} />
           ) : (
             <>
               <div className="divide-y divide-divider-subtle overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg">
@@ -72,7 +82,7 @@ function ConnectionAuthSession({ source }: { source: ConnectionAuthSource }) {
                   iconClassName="i-ri-shield-user-line"
                   text={t(($) => $['connections.headless.signedInAs'], {
                     ns: 'share',
-                    identity: mockRequest.identity,
+                    identity,
                   })}
                 />
               </div>
@@ -87,12 +97,7 @@ function ConnectionAuthSession({ source }: { source: ConnectionAuthSource }) {
                           ns: 'share',
                           count: services.length,
                         })
-                      : t(($) => $['connections.headless.progress'], {
-                          ns: 'share',
-                          source: requester,
-                          connected: connectedCount,
-                          total: services.length,
-                        })}
+                      : progressMessage}
                   </p>
                 </div>
                 <RequiredServices services={services} {...actions} />

@@ -1,6 +1,6 @@
 import type { RequiredConnectionService } from '../connections/required-services'
 
-export type ConnectionAuthSource = 'cli' | 'service-api'
+export type ConnectionAuthSource = 'cli' | 'api'
 
 export const mockRequest = {
   app: {
@@ -10,9 +10,11 @@ export const mockRequest = {
     iconClassName: 'i-ri-asterisk',
     iconBackground: '#FF4405',
   },
-  identity: 'al••••@northstar.io',
   accountEmail: 'alex@northstar.io',
-  sources: { cli: 'Dify CLI', 'service-api': 'Service API' },
+  sources: {
+    cli: { requester: 'Dify CLI', identity: 'al••••@northstar.io' },
+    api: { requester: 'Acme Assistant', identity: 'Feishu user •••1234' },
+  },
 }
 
 export function createMockServices(): RequiredConnectionService[] {
