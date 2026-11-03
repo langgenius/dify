@@ -71,3 +71,20 @@ describe('Human Input V2 message body editor', () => {
     ).toHaveAttribute('contenteditable', 'false')
   })
 })
+
+it('connects validation and guidance to the actual Lexical textbox', () => {
+  render(
+    <MessageTemplateBody
+      nodeId="approval"
+      value="Review"
+      onChange={vi.fn()}
+      error="A request URL is required"
+    />,
+  )
+  const editor = screen.getByRole('textbox', { name: 'workflow.nodes.humanInputV2.template.body' })
+  expect(editor).toHaveAttribute('aria-invalid', 'true')
+  expect(editor).toHaveAccessibleDescription(expect.stringContaining('A request URL is required'))
+  expect(editor).toHaveAccessibleDescription(
+    expect.stringContaining('workflow.nodes.humanInputV2.template.requestURLHint'),
+  )
+})

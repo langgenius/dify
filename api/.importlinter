@@ -6,6 +6,7 @@ root_packages =
     context
     configs
     controllers
+    domain
     extensions
     factories
     fields
@@ -16,6 +17,26 @@ root_packages =
     tasks
     services
 include_external_packages = True
+
+[importlinter:contract:domain-boundary]
+name = Domain code depends on no application, persistence, framework, configuration, queue, transport, or legacy kernel code
+type = forbidden
+source_modules =
+    domain
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    enterprise
+    extensions
+    flask
+    models
+    repositories
+    services
+    sqlalchemy
+    tasks
+    werkzeug
 
 [importlinter:contract:backend-layers]
 name = Backend modules follow the transport, application, execution-kernel, and shared-library layers
@@ -1328,3 +1349,81 @@ forbidden_modules =
     sqlalchemy
     tasks
     werkzeug
+
+[importlinter:contract:tracing-application-boundary]
+name = Trace pipeline and Agent trace collection services and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.tracing.canonical
+    services.tracing.collection
+    services.tracing.collection_ports
+    services.tracing.delivery
+    services.tracing.errors
+    services.tracing.hierarchy
+    services.tracing.provider_configs
+    services.tracing.providers
+    services.tracing.records
+    services.tracing.recovery
+    services.tracing.scopes
+    services.tracing.service
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    enterprise
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+    services.tracing.adapters
+    services.tracing.egress
+    services.tracing.registry
+    services.tracing.request_log_protection
+    services.tracing.runtime_bridge
+
+[importlinter:contract:tracing-controller-boundary]
+name = Tracing handlers reach persistence and tracing adapters only through the composition root
+type = forbidden
+source_modules =
+    controllers.console.agent.tracing
+    controllers.console.agent.tracing_runs
+    controllers.console.app.ops_trace
+    controllers.inner_api.agent.tracing
+forbidden_modules =
+    extensions.ext_database
+    models.application_trace
+    models.model
+    repositories
+    sqlalchemy
+    services.tracing.adapters
+    services.tracing.registry
+    services.tracing.runtime_bridge
+    services.tracing.service
+    domain
+# The composition root (extensions.ext_application_services) wires repositories and
+# adapters, so only direct imports are checked here.
+allow_indirect_imports = True
+
+[importlinter:contract:tracing-repository-boundary]
+name = Tracing persistence adapters only depend on the tracing contracts they implement
+type = forbidden
+source_modules =
+    repositories.app.tracing_config_repository
+    repositories.application_trace_repository
+    repositories.trace_record_repository
+    repositories.tracing_store_errors
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    tasks
+    werkzeug
+    services.tracing.adapters
+    services.tracing.registry
+    services.tracing.runtime_bridge
+    services.tracing.service
+allow_indirect_imports = True

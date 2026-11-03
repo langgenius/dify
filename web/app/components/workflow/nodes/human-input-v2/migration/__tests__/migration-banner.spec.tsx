@@ -15,17 +15,13 @@ describe('Human Input migration banner', () => {
       />,
     )
 
-    expect(
-      screen.getByRole('complementary', {
-        name: 'workflow.nodes.humanInputMigration.banner.ariaLabel',
-      }),
-    ).toBeInTheDocument()
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
     expect(
       screen.getByText('workflow.nodes.humanInputMigration.banner.description'),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('link', {
-        name: 'workflow.nodes.humanInputMigration.banner.learnMore',
+        name: /workflow.nodes.humanInputMigration.banner.learnMore/,
       }),
     ).toHaveAttribute('href', 'https://docs.example/human-input')
 
