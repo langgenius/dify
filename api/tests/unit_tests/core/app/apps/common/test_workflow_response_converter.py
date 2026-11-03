@@ -1,4 +1,5 @@
 import json
+import time
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -1910,3 +1911,32 @@ def sqlite_pause_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatc
     """Bind pause-response queries to the shared SQLite session's database."""
     monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
     return sqlite_session
+
+
+class TestWorkflowResponseConverterUtcTimestamps:
+    """Stream timestamps are epoch seconds derived from UTC, never from host-local time."""
+
+    @staticmethod
+    @pytest.mark.skipif(not hasattr(time, "tzset"), reason="POSIX-only: cannot force the host timezone")
+    def test_workflow_start_created_at_ignores_the_host_timezone(monkeypatch: pytest.MonkeyPatch) -> None:
+        # ``naive_utc_now()`` yields naive UTC. Handing that to ``.timestamp()``
+        # reads it as host-local time and shifts the value by the host's UTC
+        # offset (8 hours under Asia/Shanghai), so the assertion window below
+        # fails as soon as the serialization goes back to ``.timestamp()``.
+        monkeypatch.setenv("TZ", "Asia/Shanghai")
+        time.tzset()
+        try:
+            converter = _workflow_response_converter_resumption_build_converter()
+            before = int(time.time())
+            response = converter.workflow_start_to_stream_response(
+                task_id="task-1",
+                workflow_run_id="run-1",
+                workflow_id="wf-1",
+                reason=WorkflowStartReason.INITIAL,
+            )
+            after = int(time.time())
+        finally:
+            monkeypatch.undo()
+            time.tzset()
+
+        assert before - 5 <= response.data.created_at <= after + 5
