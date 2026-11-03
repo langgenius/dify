@@ -14,6 +14,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.protocols import IndexingResultDict, Preview, PreviewItem, QaPreview
+from libs.datetime_utils import to_utc_timestamp
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus, SegmentStatus
 from services.vector_space_admission_service import VectorSpaceAdmissionService
@@ -193,7 +194,7 @@ class IndexProcessor:
             "batch": batch,
             "document_id": document_id,
             "document_name": document_name_value,
-            "created_at": created_at_value.timestamp(),
+            "created_at": float(to_utc_timestamp(created_at_value)),
             "display_status": "completed",
         }
         return result

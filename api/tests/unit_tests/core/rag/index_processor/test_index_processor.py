@@ -1,5 +1,8 @@
+import time
 import uuid
+from collections.abc import Iterator
 from contextlib import nullcontext
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
@@ -21,6 +24,19 @@ from extensions.ext_login import bind_account_loader
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
+
+
+@pytest.fixture
+def non_utc_host_timezone(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    if not hasattr(time, "tzset"):
+        pytest.skip("tzset is only available on POSIX platforms")
+    monkeypatch.setenv("TZ", "Asia/Shanghai")
+    time.tzset()
+    try:
+        yield
+    finally:
+        monkeypatch.undo()
+        time.tzset()
 
 
 class TestIndexingAccountLookup:
@@ -247,6 +263,28 @@ class TestIndexProcessor:
         )
         index_backend.index.assert_called_once_with(dataset, document, {}, sqlite_session)
         admission_service_class.assert_not_called()
+
+    @pytest.mark.usefixtures("non_utc_host_timezone")
+    def test_index_and_clean_reports_the_document_created_at_as_utc(self, sqlite_session: Session) -> None:
+        recorded_at = datetime(2024, 5, 1)
+        dataset, document = _persist_dataset_and_document(sqlite_session)
+        document.created_at = recorded_at
+        sqlite_session.flush()
+
+        with (
+            patch("core.rag.index_processor.index_processor.VectorSpaceAdmissionService"),
+            patch("core.rag.index_processor.index_processor.IndexProcessorFactory"),
+        ):
+            result = IndexProcessor().index_and_clean(
+                dataset_id=dataset.id,
+                document_id=document.id,
+                original_document_id="",
+                chunks={"general_chunks": ["content"]},
+                batch="batch-1",
+                session=sqlite_session,
+            )
+
+        assert result["created_at"] == recorded_at.replace(tzinfo=UTC).timestamp()
 
     def test_get_preview_output_scopes_document_to_dataset_owner(self, sqlite_session: Session) -> None:
         dataset, document = _persist_dataset_and_document(sqlite_session, indexing_technique=IndexTechniqueType.ECONOMY)
