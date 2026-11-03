@@ -160,6 +160,7 @@ from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.workflow_runtime import build_knowledge_fs_node_dependencies
 from services.message_feedback_service import MessageFeedbackService
 from services.message_file_preview_service import MessageFilePreviewService
@@ -876,7 +877,9 @@ def init_app(app: Flask) -> None:
     from extensions.ext_login import bind_account_loader
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
-    ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
+    # The Agent Knowledge Base tool cannot run without KnowledgeFS, so keep it out of tool lists when disabled.
+    if get_knowledge_fs_features().enabled:
+        ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
     ToolManager.configure_credential_resolver(resolve_tool_credentials)
     services = build_application_services(
         database_client=get_session_maker(),

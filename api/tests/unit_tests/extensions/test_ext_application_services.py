@@ -141,6 +141,8 @@ from services.knowledge.indexing.adapters.estimate import IndexingEstimateAdapte
 from services.knowledge.indexing.adapters.sources import NotionSourceResolver
 from services.knowledge.indexing.estimate import IndexingEstimateApplicationService
 from services.knowledge.segments.application import DatasetSegmentApplicationService
+from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
+from services.knowledge_fs.feature_service import KnowledgeFSFeatures
 from services.message_file_preview_service import MessageFilePreviewService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
@@ -280,6 +282,28 @@ def test_init_app_registers_services_for_the_current_app(
         creators = services.apps.console._creators
         assert isinstance(creators, CreatorsPlatformGateway)
         assert creators._oauth is services.oauth_server
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_init_app_registers_knowledge_fs_tool_only_when_knowledge_fs_is_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    enabled: bool,
+) -> None:
+    app = Flask(__name__)
+    monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
+    monkeypatch.setattr(
+        ext_application_services,
+        "get_knowledge_fs_features",
+        lambda: KnowledgeFSFeatures(enabled=enabled, upload_enabled=False, agent_enabled=False),
+    )
+    monkeypatch.setattr(ext_application_services.ToolManager, "_external_hardcoded_provider_classes", [])
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, INIT_PASSWORD="")
+
+    ext_application_services.init_app(app)
+
+    registered = ext_application_services.ToolManager._external_hardcoded_provider_classes
+    assert (KnowledgeFSProvider in registered) is enabled
 
 
 @pytest.mark.parametrize("enabled", [True, False])

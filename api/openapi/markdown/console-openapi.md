@@ -7159,7 +7159,7 @@ Get dataset indexing status
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base | **application/json**: [KnowledgeFSUpgradeDiscoveryResponse](#knowledgefsupgradediscoveryresponse)<br> |
+| 200 | Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base | **application/json**: [KnowledgeFSUpgradePreparationResponse](#knowledgefsupgradepreparationresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/knowledge-fs-upgrades
@@ -7170,11 +7170,18 @@ Get dataset indexing status
 | Idempotency-Key | header | Stable key used to make the Dataset upgrade safe to retry | Yes | string |
 | dataset_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSUpgradeStartPayload](#knowledgefsupgradestartpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted | **application/json**: [KnowledgeFSUpgradeJobResponse](#knowledgefsupgradejobresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsUpgradeModelsUnavailableError](#knowledgefsupgrademodelsunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}
@@ -30228,6 +30235,63 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | ---- | ---- | ----------- | -------- |
 | KnowledgeFSUpgradeJobStatus | string |  |  |
 
+#### KnowledgeFSUpgradeModelChoice
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| provider | string |  | Yes |
+
+#### KnowledgeFSUpgradeModelErrorDetailsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| issues | [ [KnowledgeFSUpgradeModelIssueResponse](#knowledgefsupgrademodelissueresponse) ] |  | Yes |
+
+#### KnowledgeFSUpgradeModelIssueResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| field | string, <br>**Available values:** "embedding", "reasoning", "rerank" | *Enum:* `"embedding"`, `"reasoning"`, `"rerank"` | Yes |
+| model | string |  | No |
+| provider | string |  | No |
+| reason | string, <br>**Available values:** "credential-removed", "deprecated", "disabled", "missing", "no-configure", "no-permission", "not_found", "quota-exceeded" | *Enum:* `"credential-removed"`, `"deprecated"`, `"disabled"`, `"missing"`, `"no-configure"`, `"no-permission"`, `"not_found"`, `"quota-exceeded"` | Yes |
+
+#### KnowledgeFSUpgradeModelRecommendationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available | boolean |  | Yes |
+| source | string, <br>**Available values:** "legacy", "workspace_default" |  | Yes |
+| unavailable_reason | string, <br>**Available values:** "credential-removed", "deprecated", "disabled", "missing", "no-configure", "no-permission", "not_found", "quota-exceeded" |  | No |
+| value | [KnowledgeFSUpgradeModelChoice](#knowledgefsupgrademodelchoice) |  | Yes |
+
+#### KnowledgeFSUpgradeModelRecommendationsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | [KnowledgeFSUpgradeModelRecommendationResponse](#knowledgefsupgrademodelrecommendationresponse) |  | Yes |
+| reasoning | [KnowledgeFSUpgradeModelRecommendationResponse](#knowledgefsupgrademodelrecommendationresponse) |  | Yes |
+| rerank | [KnowledgeFSUpgradeModelRecommendationResponse](#knowledgefsupgrademodelrecommendationresponse) |  | Yes |
+
+#### KnowledgeFSUpgradeModelsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | [KnowledgeFSUpgradeModelChoice](#knowledgefsupgrademodelchoice) |  | Yes |
+| reasoning | [KnowledgeFSUpgradeModelChoice](#knowledgefsupgrademodelchoice) |  | Yes |
+| rerank | [KnowledgeFSUpgradeModelChoice](#knowledgefsupgrademodelchoice) |  | Yes |
+
+#### KnowledgeFSUpgradePreparationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| block_reason | [KnowledgeFSUpgradeBlockReason](#knowledgefsupgradeblockreason) |  | No |
+| can_retry | boolean |  | Yes |
+| can_upgrade | boolean |  | Yes |
+| job | [KnowledgeFSUpgradeJobResponse](#knowledgefsupgradejobresponse) |  | No |
+| models | [KnowledgeFSUpgradeModelRecommendationsResponse](#knowledgefsupgrademodelrecommendationsresponse) |  | No |
+
 #### KnowledgeFSUpgradeRetryResponse
 
 | Name | Type | Description | Required |
@@ -30240,6 +30304,12 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | KnowledgeFSUpgradeStage | string |  |  |
+
+#### KnowledgeFSUpgradeStartPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| models | [KnowledgeFSUpgradeModelsPayload](#knowledgefsupgrademodelspayload) |  | No |
 
 #### KnowledgeFSUploadPartPresignPayload
 
@@ -30401,6 +30471,14 @@ Agent Knowledge Base was not found.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | KnowledgeFsSpaceNotFoundError |  | Agent Knowledge Base was not found. |  |
+
+#### KnowledgeFsUpgradeModelsUnavailableError
+
+One or more selected upgrade models are unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsUpgradeModelsUnavailableError |  | One or more selected upgrade models are unavailable. |  |
 
 #### KnowledgeFsUpstreamUnavailableError
 
