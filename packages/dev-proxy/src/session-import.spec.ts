@@ -108,6 +108,59 @@ describe('session import', () => {
     expect(await response.text()).toContain('Refresh failed with 401: Invalid refresh token')
   })
 
+  // Scenario: a successful refresh without cookies must not look like a completed import.
+  it('should show an error when refresh returns no cookies', async () => {
+    // Arrange
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response('{}', { status: 200 }))
+
+    // Act
+    const response = await createApp(fetchImpl).request(postInput('token'))
+
+    // Assert
+    expect(response.status).toBe(502)
+    expect(response.headers.get('location')).toBeNull()
+    expect(await response.text()).toContain('Refresh succeeded but returned no cookies.')
+  })
+
+  // Scenario: pasted text without the session cookie should be rejected before calling upstream.
+  it('should reject pasted text without the session cookie', async () => {
+    // Arrange
+    const fetchImpl = vi.fn<typeof fetch>()
+
+    // Act
+    const response = await createApp(fetchImpl).request(postInput('cookie: theme=dark'))
+
+    // Assert
+    expect(response.status).toBe(400)
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(await response.text()).toContain('No refresh_token cookie found in the pasted text.')
+  })
+
+  // Scenario: the import page should link to the upstream that the refresh route targets.
+  it('should serve the import page at the proxy root', async () => {
+    // Act
+    const response = await createApp(vi.fn<typeof fetch>()).request('http://localhost:5001/')
+
+    // Assert
+    expect(response.status).toBe(200)
+    expect(await response.text()).toContain('href="https://cloud.example.com"')
+  })
+
+  // Scenario: a refresh path outside every route is a config error.
+  it('should throw when no route matches the refresh path', () => {
+    // Assert
+    expect(() =>
+      createDevProxyApp({
+        routes: [{ paths: '/api', target: 'https://cloud.example.com' }],
+        sessionImport: {
+          refreshPath: '/console/api/refresh-token',
+          cookieName: 'refresh_token',
+          redirectTo: 'http://localhost:3000',
+        },
+      }),
+    ).toThrow('No dev proxy route matches session import path "/console/api/refresh-token".')
+  })
+
   // Scenario: other sites must not be able to plant a session through the local proxy.
   it('should reject cross-origin imports', async () => {
     // Arrange

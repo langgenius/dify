@@ -506,10 +506,19 @@ const registerSessionImportRoute = (
         502,
       )
 
+    const setCookieHeaders = getSetCookieHeaders(upstreamResponse.headers)
+    if (!setCookieHeaders.length)
+      return sessionImportPageResponse(
+        refreshUrl.origin,
+        'Refresh succeeded but returned no cookies.',
+        502,
+      )
+
     const headers = new Headers({ Location: config.redirectTo, 'Cache-Control': 'no-store' })
-    createUpstreamResponseHeaders(upstreamResponse, refreshUrl, null, 'local', route.cookieRewrite)
-      .getSetCookie()
-      .forEach((cookie) => headers.append('Set-Cookie', cookie))
+    const localSetCookieHeaders = route.cookieRewrite
+      ? rewriteSetCookieHeadersForLocal(setCookieHeaders, { ...route.cookieRewrite, localScopeKey })
+      : setCookieHeaders
+    localSetCookieHeaders.forEach((cookie) => headers.append('Set-Cookie', cookie))
     return new Response(null, { status: 303, headers })
   })
 }

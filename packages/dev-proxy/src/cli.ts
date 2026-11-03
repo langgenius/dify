@@ -13,7 +13,7 @@ import {
 } from './config'
 import { createDevProxyApp, createWebSocketUpgradeHandler } from './server'
 
-const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', '[::1]'])
+const LOCALHOST_ALIASES = new Set(['127.0.0.1', '::1', '[::1]', '0.0.0.0', '::', '[::]'])
 
 function printUsage() {
   console.log(`Usage:
@@ -82,7 +82,7 @@ const createDevProxyRuntime = (initialConfig: DevProxyConfig, cliOptions: DevPro
 
   console.log(`[dev-proxy] listening on http://${runtime.host}:${runtime.port}`)
   if (initialConfig.sessionImport) {
-    const sessionImportHost = LOOPBACK_HOSTS.has(runtime.host) ? 'localhost' : runtime.host
+    const sessionImportHost = LOCALHOST_ALIASES.has(runtime.host) ? 'localhost' : runtime.host
     console.log(`[dev-proxy] import session at http://${sessionImportHost}:${runtime.port}/`)
   }
 
