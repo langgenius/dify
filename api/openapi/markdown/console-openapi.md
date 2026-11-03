@@ -18055,6 +18055,10 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}
+**Return an icon for a tenant UUID and a supported icon type**
+
+Invalid path arguments fail before provider discovery or asset access.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
