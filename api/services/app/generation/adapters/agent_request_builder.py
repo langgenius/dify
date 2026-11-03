@@ -11,7 +11,7 @@ used by workflow runs.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from dify_agent.layers.execution_context import (
     DifyExecutionContextInvokeFrom,
@@ -35,7 +35,7 @@ from clients.agent_backend import (
     redact_for_agent_backend_log,
 )
 from configs import dify_config
-from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.app.llm.model_access import resolve_model_context_window, resolve_model_supports_vision
 from core.ops.base_trace_instance import application_tracing_hooks
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
@@ -193,8 +193,8 @@ class AgentAppRuntimeRequestBuilder:
                     agent_config_version_id=context.agent_config_snapshot_id,
                     agent_config_version_kind=context.agent_config_version_kind,
                     # Agent Files §1.3: real Dify access context + agent run mode.
-                    user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
-                    invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
+                    user_from=_execution_context_user_from(context.dify_context.user_from),
+                    invoke_from=_execution_context_invoke_from(context.dify_context.invoke_from),
                     agent_mode="agent_app",
                     trace_id=context.dify_context.trace_session_id,
                     tracing=tracing_hooks.prepare_agent_app(context) if tracing_hooks is not None else None,
@@ -219,7 +219,10 @@ class AgentAppRuntimeRequestBuilder:
                 metadata=metadata,
             )
         )
-        redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
+        redacted_payload = redact_for_agent_backend_log(request)
+        if not isinstance(redacted_payload, dict):
+            raise TypeError(f"Expected dict from redact_for_agent_backend_log, got {type(redacted_payload).__name__}")
+        redacted = redacted_payload
         return AgentAppRuntimeRequest(
             request=request,
             redacted_request=redacted,
@@ -308,8 +311,50 @@ def _build_user_image(
     )
 
 
+def _execution_context_user_from(user_from: UserFrom) -> DifyExecutionContextUserFrom:
+    match user_from:
+        case UserFrom.ACCOUNT:
+            return "account"
+        case UserFrom.END_USER:
+            return "end-user"
+
+
+def _execution_context_invoke_from(invoke_from: InvokeFrom) -> DifyExecutionContextInvokeFrom:
+    match invoke_from:
+        case InvokeFrom.SERVICE_API:
+            return "service-api"
+        case InvokeFrom.OPENAPI:
+            return "openapi"
+        case InvokeFrom.WEB_APP:
+            return "web-app"
+        case InvokeFrom.EXPLORE:
+            return "explore"
+        case InvokeFrom.DEBUGGER:
+            return "debugger"
+        case InvokeFrom.PUBLISHED_PIPELINE:
+            return "published"
+        case InvokeFrom.VALIDATION:
+            return "validation"
+        case InvokeFrom.TRIGGER:
+            return "trigger"
+
+
+def _user_prompt_file_type(file_type: FileType) -> DifyUserPromptFileType:
+    match file_type:
+        case FileType.IMAGE:
+            return "image"
+        case FileType.DOCUMENT:
+            return "document"
+        case FileType.AUDIO:
+            return "audio"
+        case FileType.VIDEO:
+            return "video"
+        case FileType.CUSTOM:
+            return "custom"
+
+
 def _build_user_download(file: File) -> DifyUserPromptDownloadConfig:
-    file_type = cast(DifyUserPromptFileType, file.type.value)
+    file_type = _user_prompt_file_type(file.type)
     if file.transfer_method == FileTransferMethod.REMOTE_URL:
         if file.remote_url is None:
             raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "Remote user file is missing its URL.")

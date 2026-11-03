@@ -4,7 +4,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import closing
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, overload, override, runtime_checkable
 
 from flask import current_app
 from pydantic import JsonValue
@@ -25,6 +25,7 @@ from core.model_manager import ModelInstance, QuotaManagedModelInstance
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 from core.plugin.impl.plugin import PluginInstaller
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolInvokeFrom
 from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
@@ -91,6 +92,7 @@ from services.tools.tools_transform_service import ToolTransformService
 from services.workflow.execution.ports import WorkflowRuntime
 
 
+@runtime_checkable
 class PollingLLMRuntimeProtocol(Protocol):
     """Runtime capability required by the workflow polling adapter."""
 
@@ -124,7 +126,6 @@ class _ToolUsageProvider(Protocol):
 
 
 if TYPE_CHECKING:
-    from core.tools.__base.tool import Tool
     from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
     from graphon.nodes.llm.file_saver import LLMFileSaver
     from graphon.nodes.tool.entities import ToolNodeData
@@ -227,7 +228,10 @@ class DifyPreparedLLM(LLMProtocol):
         return model_schema.model_copy(update={"features": [*model_schema.features, ModelFeature.STRUCTURED_OUTPUT]})
 
     def _get_provider_model_schema(self) -> AIModelEntity:
-        model_schema = cast(LargeLanguageModel, self._model_instance.model_type_instance).get_model_schema(
+        model_type_instance = self._model_instance.model_type_instance
+        if not isinstance(model_type_instance, LargeLanguageModel):
+            raise TypeError(f"Expected LargeLanguageModel, got {type(model_type_instance).__name__}")
+        model_schema = model_type_instance.get_model_schema(
             self._model_instance.model_name,
             self._model_instance.credentials,
         )
@@ -342,8 +346,13 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
 
     def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
         super().__init__(model_instance, request_metadata=request_metadata)
-        model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
-        self._polling_runtime = cast(PollingLLMRuntimeProtocol, model_type_instance.model_runtime)
+        model_type_instance = model_instance.model_type_instance
+        if not isinstance(model_type_instance, LargeLanguageModel):
+            raise TypeError(f"Expected LargeLanguageModel, got {type(model_type_instance).__name__}")
+        polling_runtime = model_type_instance.model_runtime
+        if not isinstance(polling_runtime, PollingLLMRuntimeProtocol):
+            raise TypeError("Model runtime does not implement PollingLLMRuntimeProtocol")
+        self._polling_runtime = polling_runtime
         self._polling_quota_reservation = None
 
     @override
@@ -828,7 +837,9 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
     def _binding_from_handle(tool_runtime: ToolRuntimeHandle) -> _WorkflowToolRuntimeBinding:
         if isinstance(tool_runtime.raw, _WorkflowToolRuntimeBinding):
             return tool_runtime.raw
-        return _WorkflowToolRuntimeBinding(tool=cast("Tool", tool_runtime.raw))
+        if not isinstance(tool_runtime.raw, Tool):
+            raise TypeError(f"Expected Tool or _WorkflowToolRuntimeBinding, got {type(tool_runtime.raw).__name__}")
+        return _WorkflowToolRuntimeBinding(tool=tool_runtime.raw)
 
     @staticmethod
     def _build_tool_runtime_spec(node_data: ToolNodeData) -> _WorkflowToolRuntimeSpec:
@@ -1119,5 +1130,10 @@ def build_dify_llm_file_saver(
 
 def build_knowledge_fs_node_dependencies() -> dict[str, object]:
     """Resolve retrieval capabilities registered by the application composition root."""
-    factory = cast(Callable[[], dict[str, object]], current_app.extensions["knowledge_fs_node_dependencies"])
-    return factory()
+    factory = current_app.extensions["knowledge_fs_node_dependencies"]
+    if not callable(factory):
+        raise TypeError("knowledge_fs_node_dependencies extension must be callable")
+    dependencies = factory()
+    if not isinstance(dependencies, Mapping):
+        raise TypeError("knowledge_fs_node_dependencies factory must return a mapping")
+    return dict(dependencies)

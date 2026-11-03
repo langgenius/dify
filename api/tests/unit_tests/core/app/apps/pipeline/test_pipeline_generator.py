@@ -3,7 +3,7 @@ import json
 from dataclasses import replace
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, create_autospec
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -17,6 +17,10 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.repositories.factory import (
+    WorkflowExecutionRepository,
+    WorkflowNodeExecutionRepository,
+)
 from graphon.variable_loader import VariableLoader
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DataSourceType, EndUserType
@@ -49,13 +53,23 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
         return dict(self.__dict__)
 
 
+def _stub_runtime_writers(runtime: WorkflowRuntime) -> WorkflowRuntime:
+    execution_writer = create_autospec(WorkflowExecutionRepository, instance=True)
+    node_writer = create_autospec(WorkflowNodeExecutionRepository, instance=True)
+    return replace(
+        runtime,
+        execution_writer=lambda **_kwargs: execution_writer,
+        node_writer=lambda **_kwargs: node_writer,
+    )
+
+
 @pytest.fixture
 def generator(mocker: MockerFixture, sqlite_engine: Engine, *, workflow_runtime: WorkflowRuntime):
     variable_loader = create_autospec(VariableLoader, instance=True, spec_set=True)
     draft_variable_saver = create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
     gen = module.PipelineGenerator(
-        draft_variable_loader=Mock(return_value=variable_loader),
-        draft_variable_saver=Mock(return_value=draft_variable_saver),
+        draft_variable_loader=lambda *_args, **_kwargs: variable_loader,
+        draft_variable_saver=lambda *_args, **_kwargs: draft_variable_saver,
         execution_driver=WorkflowRunAgg.run,
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
         datasource_providers=build_datasource_provider_service(
@@ -201,8 +215,7 @@ def test_generate_debugger_calls_generate(generator, mocker: MockerFixture, sqli
     )
     mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
-    generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
-    generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
+    generator._runtime = _stub_runtime_writers(generator._runtime)
 
     generate = mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
 
@@ -242,8 +255,7 @@ def test_generate_published_pipeline_creates_documents_and_delay(
     get_features = mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
     check_limits = mocker.patch("services.knowledge.dataset_service.DocumentService.check_document_creation_limits")
 
-    generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
-    generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
+    generator._runtime = _stub_runtime_writers(generator._runtime)
 
     task_proxy = MagicMock()
     mocker.patch.object(module, "RagPipelineTaskProxy", return_value=task_proxy)
@@ -325,8 +337,7 @@ def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture, sqli
     )
     mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
-    generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
-    generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
+    generator._runtime = _stub_runtime_writers(generator._runtime)
 
     generate = mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
 
@@ -543,8 +554,7 @@ def test_single_iteration_generate_success(
         "get_pipeline_config",
         return_value=SimpleNamespace(app_id="pipe", tenant_id="tenant"),
     )
-    generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
-    generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
+    generator._runtime = _stub_runtime_writers(generator._runtime)
 
     generate = mocker.patch.object(generator, "_generate", return_value={"ok": True})
 
@@ -573,8 +583,7 @@ def test_single_loop_generate_success(
         "get_pipeline_config",
         return_value=SimpleNamespace(app_id="pipe", tenant_id="tenant"),
     )
-    generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
-    generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
+    generator._runtime = _stub_runtime_writers(generator._runtime)
 
     generate = mocker.patch.object(generator, "_generate", return_value={"ok": True})
 

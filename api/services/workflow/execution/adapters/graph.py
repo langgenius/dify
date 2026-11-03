@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -17,7 +17,7 @@ from core.workflow.system_variables import (
 )
 from core.workflow.variable_pool_initializer import add_variables_to_pool
 from graphon.entities.base_node_data import BaseNodeData
-from graphon.entities.graph_config import NodeConfigDict
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.graph import Graph
 from graphon.graph.scoping import resolve_container_id
 from graphon.runtime import RuntimeState, VariablePool
@@ -62,7 +62,9 @@ class _WorkflowGraphNodeConfig(BaseModel):
         }
 
     def to_typed_node_config(self) -> NodeConfigDict:
-        return cast(NodeConfigDict, {**self.model_dump(mode="python", exclude={"data"}), "data": self.data})
+        return NodeConfigDictAdapter.validate_python(
+            {**self.model_dump(mode="python", exclude={"data"}), "data": self.data}
+        )
 
 
 class _WorkflowGraphEdgeConfig(BaseModel):
