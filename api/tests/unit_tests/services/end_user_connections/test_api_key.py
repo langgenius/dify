@@ -49,7 +49,7 @@ def test_api_key_crud_and_metadata_queries_never_expose_or_decrypt_secrets(harne
     service.update_connection(
         context,
         connection.id,
-        UpdateConnectionInput(credentials={"api_key": "replacement"}, connection_revision=harness.connection_revision),
+        UpdateConnectionInput(credentials={"api_key": "replacement"}),
     )
     checked = service.check_connection(context, connection.id, connection_revision=harness.connection_revision)
     assert checked.check.status == "valid"
@@ -75,9 +75,7 @@ def test_rejected_create_or_update_does_not_store_or_replace_credentials(
         harness.service.update_connection(
             harness.context,
             original.id,
-            UpdateConnectionInput(
-                credentials={"api_key": "rejected-secret"}, connection_revision=harness.connection_revision
-            ),
+            UpdateConnectionInput(credentials={"api_key": "rejected-secret"}),
         )
     after = harness.repository.find(harness.context, original.id)
     assert after == before

@@ -10,7 +10,6 @@ import {
   zConnectionNotFoundError,
   zConnectionOauthFailedError,
   zConnectionReauthorizationRequiredError,
-  zConnectionRevisionChangedError,
   zCredentialCheckUnavailableError,
 } from './zod.gen.ts'
 import {
@@ -21,18 +20,14 @@ import {
   zGetMeAppsQuery,
   zGetMeAppsResponse,
   zGetMeConnectionsByConnectionIdCredentialSchemaPath,
-  zGetMeConnectionsByConnectionIdCredentialSchemaQuery,
   zGetMeConnectionsByConnectionIdCredentialSchemaResponse,
   zGetMeConnectionsByConnectionIdPath,
   zGetMeConnectionsByConnectionIdResponse,
-  zGetMeConnectionsByConnectionIdRevisionPath,
-  zGetMeConnectionsByConnectionIdRevisionResponse,
   zGetMeConnectionsQuery,
   zGetMeConnectionsResponse,
   zPatchMeConnectionsByConnectionIdBody,
   zPatchMeConnectionsByConnectionIdPath,
   zPatchMeConnectionsByConnectionIdResponse,
-  zPostMeConnectionsByConnectionIdReauthorizeBody,
   zPostMeConnectionsByConnectionIdReauthorizePath,
   zPostMeConnectionsByConnectionIdReauthorizeResponse,
   zPutMeAppsByAppIdFavoritePath,
@@ -96,17 +91,12 @@ export const get2 = oc
     path: '/me/connections/{connection_id}/credential-schema',
     tags: ['console'],
   })
-  .input(
-    z.object({
-      params: zGetMeConnectionsByConnectionIdCredentialSchemaPath,
-      query: zGetMeConnectionsByConnectionIdCredentialSchemaQuery,
-    }),
-  )
+  .input(z.object({ params: zGetMeConnectionsByConnectionIdCredentialSchemaPath }))
   .output(zGetMeConnectionsByConnectionIdCredentialSchemaResponse)
   .errors({
     connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
     connection_not_found: { status: 404, data: zConnectionNotFoundError },
-    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
   })
 
@@ -122,15 +112,11 @@ export const post = oc
     path: '/me/connections/{connection_id}/reauthorize',
     tags: ['console'],
   })
-  .input(
-    z.object({
-      body: zPostMeConnectionsByConnectionIdReauthorizeBody,
-      params: zPostMeConnectionsByConnectionIdReauthorizePath,
-    }),
-  )
+  .input(z.object({ params: zPostMeConnectionsByConnectionIdReauthorizePath }))
   .output(zPostMeConnectionsByConnectionIdReauthorizeResponse)
   .errors({
     connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
     connection_credentials_unavailable: {
       status: 503,
       data: zConnectionCredentialsUnavailableError,
@@ -141,32 +127,11 @@ export const post = oc
       status: 409,
       data: zConnectionReauthorizationRequiredError,
     },
-    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
   })
 
 export const reauthorize = {
   post,
-}
-
-export const get3 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getMeConnectionsByConnectionIdRevision',
-    path: '/me/connections/{connection_id}/revision',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetMeConnectionsByConnectionIdRevisionPath }))
-  .output(zGetMeConnectionsByConnectionIdRevisionResponse)
-  .errors({
-    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
-    connection_not_found: { status: 404, data: zConnectionNotFoundError },
-    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
-  })
-
-export const revision = {
-  get: get3,
 }
 
 export const delete2 = oc
@@ -185,7 +150,7 @@ export const delete2 = oc
     connection_not_found: { status: 404, data: zConnectionNotFoundError },
   })
 
-export const get4 = oc
+export const get3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -221,20 +186,18 @@ export const patch = oc
       data: zConnectionCredentialsUnavailableError,
     },
     connection_not_found: { status: 404, data: zConnectionNotFoundError },
-    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
   })
 
 export const byConnectionId = {
   delete: delete2,
-  get: get4,
+  get: get3,
   patch,
   credentialSchema,
   reauthorize,
-  revision,
 }
 
-export const get5 = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -246,7 +209,7 @@ export const get5 = oc
   .output(zGetMeConnectionsResponse)
 
 export const connections = {
-  get: get5,
+  get: get4,
   byConnectionId,
 }
 

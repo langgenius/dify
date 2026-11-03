@@ -31,15 +31,7 @@ def _omit_schema_default(schema: dict[str, Any]) -> None:
 
 
 class ConnectionUpdatePayload(UpdateConnectionInput):
-    model_config = ConfigDict(
-        json_schema_extra={"minProperties": 1, "dependentRequired": {"credentials": ["connection_revision"]}}
-    )
-
-    connection_revision: ConnectionRevision | SkipJsonSchema[None] = Field(
-        default=None,
-        json_schema_extra=_omit_schema_default,
-        description="Provider revision required when replacing credentials.",
-    )
+    model_config = ConfigDict(json_schema_extra={"minProperties": 1})
     name: str | SkipJsonSchema[None] = Field(
         default=None,
         min_length=1,
@@ -123,6 +115,14 @@ class ConnectionReauthorizationHTTPError(BaseHTTPException):
     code = 409
     error_code = "connection_reauthorization_required"
     description = "The OAuth client changed or is unavailable. Start authorization again."
+
+
+def raise_connection_management_error(error: ConnectionError) -> NoReturn:
+    if isinstance(error, ConnectionRevisionChangedError):
+        raise ConnectionConflictHTTPError(
+            "Provider configuration changed during the operation. Retry the operation."
+        ) from None
+    raise_connection_error(error)
 
 
 def raise_connection_error(error: ConnectionError) -> NoReturn:

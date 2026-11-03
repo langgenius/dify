@@ -11174,7 +11174,7 @@ Called by /signin in the Account origin before showing a login form and after su
 | 302 | Redirect to OAuth completion page |  |
 | 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionOauthFailedError](#connectionoauthfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -11229,7 +11229,7 @@ Called by /signin in the Account origin before showing a login form and after su
 | 200 | Connection updated | **application/json**: [ConsumerConnectionResponse](#consumerconnectionresponse)<br> |
 | 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -11238,7 +11238,6 @@ Called by /signin in the Account origin before showing a login form and after su
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| connection_revision | query | Opaque revision issued for the current Web App or owned-Connection management context. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes | string (uuid) |
 | connection_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -11248,7 +11247,7 @@ Called by /signin in the Account origin before showing a login form and after su
 | 200 | API-key replacement schema | **application/json**: [ConsumerCredentialSchemaResponse](#consumercredentialschemaresponse)<br> |
 | 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -11259,12 +11258,6 @@ Called by /signin in the Account origin before showing a login form and after su
 | ---- | ---------- | ----------- | -------- | ------ |
 | connection_id | path |  | Yes | string (uuid) |
 
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ConsumerReauthorizePayload](#consumerreauthorizepayload)<br> |
-
 #### Responses
 
 | Code | Description | Schema |
@@ -11272,25 +11265,8 @@ Called by /signin in the Account origin before showing a login form and after su
 | 200 | OAuth reauthorization URL | **application/json**: [ConsumerOAuthResponse](#consumeroauthresponse)<br> |
 | 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionOauthFailedError](#connectionoauthfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /me/connections/{connection_id}/revision
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| connection_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Current Provider revision | **application/json**: [ConsumerConnectionRevisionResponse](#consumerconnectionrevisionresponse)<br> |
-| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /notification
@@ -23110,20 +23086,6 @@ The OAuth client changed or is unavailable. Start authorization again.
 | ---- | ---- | ----------- | -------- |
 | ConnectionReauthorizationRequiredError |  | The OAuth client changed or is unavailable. Start authorization again. |  |
 
-#### ConnectionRevisionChangeDetails
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| connection_revision | string |  | Yes |
-
-#### ConnectionRevisionChangedError
-
-The connection requirements changed. Refresh and confirm again.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| ConnectionRevisionChangedError |  | The connection requirements changed. Refresh and confirm again. |  |
-
 #### ConsoleDatasetListQuery
 
 | Name | Type | Description | Required |
@@ -23203,17 +23165,10 @@ The connection requirements changed. Refresh and confirm again.
 | provider | string |  | Yes |
 | updated_at | integer |  | Yes |
 
-#### ConsumerConnectionRevisionResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| connection_revision | string (uuid) | Provider revision scoped to this Web App, for operations on the owned Connection. | Yes |
-
 #### ConsumerConnectionUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| connection_revision | string (uuid) | Provider revision required when replacing credentials. | No |
 | credentials | object |  | No |
 | name | string |  | No |
 
@@ -23236,12 +23191,6 @@ The connection requirements changed. Refresh and confirm again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | authorization_url | string |  | Yes |
-
-#### ConsumerReauthorizePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| connection_revision | string (uuid) | Opaque revision issued for the current Web App or owned-Connection management context. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
 
 #### Conversation
 

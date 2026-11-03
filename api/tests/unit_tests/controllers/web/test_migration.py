@@ -562,9 +562,7 @@ def test_claimed_oauth_connection_refreshes_for_account_without_reauthorization(
     checked = harness.oauth.base.service.check_connection(
         harness.account,
         selected.id,
-        connection_revision=harness.oauth.base.service.get_connection_revision(
-            harness.account, selected.id
-        ).connection_revision,
+        connection_revision=harness.oauth.base.connection_revision,
     )
     assert checked.connection_id == selected.id
     assert checked.check.status == "valid"

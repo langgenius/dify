@@ -15,9 +15,8 @@ from controllers.common.end_user_connections import (
     ConnectionNotFoundHTTPError,
     ConnectionOAuthHTTPError,
     ConnectionReauthorizationHTTPError,
-    ConnectionRevisionChangedHTTPError,
     ConnectionSecretUnavailableHTTPError,
-    raise_connection_error,
+    raise_connection_management_error,
 )
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
@@ -29,7 +28,6 @@ from libs.helper import dump_response
 from models.model import App, EndUser
 from services.end_user_connection_identity import connection_context_from_web_passport
 from services.end_user_connections.contracts import (
-    ConnectionContractInput,
     ConnectionOAuthStart,
     StartConnectionOAuthInput,
 )
@@ -41,15 +39,11 @@ class EndUserConnectionOAuthPayload(StartConnectionOAuthInput):
     pass
 
 
-class EndUserConnectionReauthorizePayload(ConnectionContractInput):
-    pass
-
-
 class EndUserConnectionOAuthResponse(ResponseModel):
     authorization_url: str
 
 
-register_schema_models(web_ns, EndUserConnectionOAuthPayload, EndUserConnectionReauthorizePayload)
+register_schema_models(web_ns, EndUserConnectionOAuthPayload)
 register_response_schema_models(web_ns, EndUserConnectionOAuthResponse)
 
 
@@ -74,7 +68,7 @@ class EndUserConnectionOAuthApi(WebApiResource):
     @error_responses(
         ConnectionLoginRequiredError,
         ConnectionConfigurationHTTPError,
-        ConnectionRevisionChangedHTTPError,
+        ConnectionConflictHTTPError,
         ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableHTTPError,
         ConnectionOAuthHTTPError,
@@ -92,19 +86,18 @@ class EndUserConnectionOAuthApi(WebApiResource):
         except ValidationError:
             raise ValueError("Invalid connection payload.") from None
         except ConnectionError as error:
-            raise_connection_error(error)
+            raise_connection_management_error(error)
         # response-contract:ignore cookie-bearing Flask response
         return _authorization_response(result)
 
 
 @web_ns.route("/connections/<uuid:connection_id>/reauthorize")
 class EndUserConnectionReauthorizeApi(WebApiResource):
-    @web_ns.expect(web_ns.models[EndUserConnectionReauthorizePayload.__name__])
     @web_ns.response(200, "OAuth reauthorization URL", web_ns.models[EndUserConnectionOAuthResponse.__name__])
     @error_responses(
         ConnectionLoginRequiredError,
         ConnectionConfigurationHTTPError,
-        ConnectionRevisionChangedHTTPError,
+        ConnectionConflictHTTPError,
         ConnectionNotFoundHTTPError,
         ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableHTTPError,
@@ -113,17 +106,13 @@ class EndUserConnectionReauthorizeApi(WebApiResource):
     )
     def post(self, app_model: App, end_user: EndUser, connection_id: UUID):
         try:
-            payload = EndUserConnectionReauthorizePayload.model_validate(web_ns.payload or {})
             result = application_services().end_user_connection_oauth.reauthorize_oauth(
                 connection_context_from_web_passport(app=app_model, end_user=end_user),
                 str(connection_id),
-                connection_revision=payload.connection_revision,
                 callback_url=request.url_root.rstrip("/") + "/api/connections/oauth",
             )
-        except ValidationError:
-            raise ValueError("Invalid connection reauthorization payload.") from None
         except ConnectionError as error:
-            raise_connection_error(error)
+            raise_connection_management_error(error)
         # response-contract:ignore cookie-bearing Flask response
         return _authorization_response(result)
 
@@ -139,7 +128,6 @@ class EndUserConnectionOAuthCallbackApi(Resource):
         ConnectionOAuthHTTPError,
         ConnectionReauthorizationHTTPError,
         ConnectionSecretUnavailableHTTPError,
-        ConnectionRevisionChangedHTTPError,
         ConnectionCheckUnavailableHTTPError,
     )
     def get(self, provider: str):

@@ -20,7 +20,10 @@ from controllers.common.end_user_connections import (
     ConnectionUpdatePayload,
 )
 from controllers.common.end_user_connections import (
-    raise_connection_error as _raise_error,
+    raise_connection_error as _raise_configuration_error,
+)
+from controllers.common.end_user_connections import (
+    raise_connection_management_error as _raise_error,
 )
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
@@ -35,7 +38,6 @@ from models.model import App, EndUser
 from services.end_user_connection_identity import connection_context_from_web_passport
 from services.end_user_connections.contracts import (
     ConnectionInput,
-    ConnectionRevisionView,
     ConnectionSummary,
     ConnectionTargetInput,
     CreateApiKeyConnectionInput,
@@ -109,7 +111,7 @@ class ConnectionConfigurationApi(WebApiResource):
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.") from None
         except ConnectionError as error:
-            _raise_error(error)
+            _raise_configuration_error(error)
         return dump_response(ConnectionConfigurationResponse, result)
 
     @web_ns.expect(web_ns.models[ConnectionConfigurationPayload.__name__])
@@ -134,7 +136,7 @@ class ConnectionConfigurationApi(WebApiResource):
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.") from None
         except ConnectionError as error:
-            _raise_error(error)
+            _raise_configuration_error(error)
         return dump_response(ConnectionConfigurationResponse, result)
 
 
@@ -143,10 +145,6 @@ class EndUserConnectionCreatePayload(CreateApiKeyConnectionInput):
 
 
 class EndUserConnectionUpdatePayload(ConnectionUpdatePayload):
-    pass
-
-
-class EndUserConnectionRevisionResponse(ConnectionRevisionView, ResponseModel):
     pass
 
 
@@ -178,7 +176,6 @@ register_response_schema_models(
     web_ns,
     EndUserConnectionResponse,
     EndUserConnectionListResponse,
-    EndUserConnectionRevisionResponse,
     ConnectionCredentialSchemaResponse,
 )
 
@@ -191,7 +188,7 @@ class ConnectionCredentialSchemaApi(WebApiResource):
     @error_responses(
         ConnectionLoginRequiredError,
         ConnectionConfigurationHTTPError,
-        ConnectionRevisionChangedHTTPError,
+        ConnectionConflictHTTPError,
         ConnectionCheckUnavailableHTTPError,
     )
     def get(self, app_model: App, end_user: EndUser):
@@ -227,7 +224,7 @@ class EndUserConnectionListApi(WebApiResource):
     @error_responses(
         ConnectionLoginRequiredError,
         ConnectionConfigurationHTTPError,
-        ConnectionRevisionChangedHTTPError,
+        ConnectionConflictHTTPError,
         ConnectionCredentialsHTTPError,
         ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableHTTPError,
@@ -263,7 +260,6 @@ class EndUserConnectionApi(WebApiResource):
         ConnectionConfigurationHTTPError,
         ConnectionNotFoundHTTPError,
         ConnectionConflictHTTPError,
-        ConnectionRevisionChangedHTTPError,
         ConnectionCredentialsHTTPError,
         ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableHTTPError,
@@ -299,23 +295,3 @@ class EndUserConnectionApi(WebApiResource):
         except ConnectionError as error:
             _raise_error(error)
         return "", 204
-
-
-@web_ns.route("/connections/<uuid:connection_id>/revision")
-class EndUserConnectionRevisionApi(WebApiResource):
-    @web_ns.response(200, "Current Provider revision", web_ns.models[EndUserConnectionRevisionResponse.__name__])
-    @web_ns.doc(description="Read a Provider revision for an owned Connection, independently of published tool nodes.")
-    @error_responses(
-        ConnectionLoginRequiredError,
-        ConnectionNotFoundHTTPError,
-        ConnectionConfigurationHTTPError,
-        ConnectionCheckUnavailableHTTPError,
-    )
-    def get(self, app_model: App, end_user: EndUser, connection_id: UUID):
-        try:
-            result = application_services().end_user_connections.get_connection_revision(
-                connection_context_from_web_passport(app=app_model, end_user=end_user), str(connection_id)
-            )
-        except ConnectionError as error:
-            _raise_error(error)
-        return dump_response(EndUserConnectionRevisionResponse, result), 200, {"Cache-Control": "no-store"}

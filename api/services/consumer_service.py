@@ -15,7 +15,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from core.entities.provider_entities import ProviderConfig
 from services.end_user_connections.contracts import (
     ConnectionOAuthStart,
-    ConnectionRevisionView,
     ConnectionSummary,
     UpdateConnectionInput,
 )
@@ -243,16 +242,10 @@ class ConsumerService:
     def delete_connection(self, identity: ConsumerIdentity, connection_id: str) -> None:
         self._management.delete_connection(self.connection_context(identity, connection_id), connection_id)
 
-    def connection_revision(self, identity: ConsumerIdentity, connection_id: str) -> ConnectionRevisionView:
-        return self._management.get_connection_revision(self.connection_context(identity, connection_id), connection_id)
-
-    def credential_schema(
-        self, identity: ConsumerIdentity, connection_id: str, *, connection_revision: str
-    ) -> tuple[ProviderConfig, ...]:
+    def credential_schema(self, identity: ConsumerIdentity, connection_id: str) -> tuple[ProviderConfig, ...]:
         return self._management.get_owned_api_key_schema(
             self.connection_context(identity, connection_id),
             connection_id,
-            connection_revision=connection_revision,
         )
 
     def reauthorize(
@@ -260,12 +253,10 @@ class ConsumerService:
         identity: ConsumerIdentity,
         connection_id: str,
         *,
-        connection_revision: str,
         callback_url: str,
     ) -> ConnectionOAuthStart:
         return self._oauth.reauthorize_oauth(
             self.connection_context(identity, connection_id),
             connection_id,
-            connection_revision=connection_revision,
             callback_url=callback_url,
         )

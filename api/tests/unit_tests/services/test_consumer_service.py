@@ -126,7 +126,6 @@ def test_orphan_connection_can_be_repaired_and_deleted_without_app(harness: Cons
     owned = base.service.create_api_key(base.context, base.command())
     context = harness.service.connection_context(harness.identity, owned.id)
     assert isinstance(context, AccountConnectionContext)
-    revision = harness.service.connection_revision(harness.identity, owned.id).connection_revision
     with base.sessions.begin() as session:
         session.execute(sa.delete(EndUser).where(EndUser.id == base.context.end_user_id))
         session.execute(sa.delete(App).where(App.id == base.context.app_id))
@@ -137,7 +136,6 @@ def test_orphan_connection_can_be_repaired_and_deleted_without_app(harness: Cons
         UpdateConnectionInput(
             name="Repaired",
             credentials={"api_key": "replacement-secret"},
-            connection_revision=revision,
         ),
     )
     assert updated.name == "Repaired"
@@ -149,7 +147,6 @@ def test_orphan_connection_can_be_repaired_and_deleted_without_app(harness: Cons
 def test_changed_owner_during_external_check_cannot_overwrite_credentials(harness: ConsumerHarness) -> None:
     base = harness.oauth.base
     owned = base.service.create_api_key(base.context, base.command())
-    revision = harness.service.connection_revision(harness.identity, owned.id).connection_revision
 
     def change_owner() -> None:
         with base.sessions.begin() as session:
@@ -164,7 +161,6 @@ def test_changed_owner_during_external_check_cannot_overwrite_credentials(harnes
             owned.id,
             UpdateConnectionInput(
                 credentials={"api_key": "uncommitted-secret"},
-                connection_revision=revision,
             ),
         )
     with base.sessions() as session:
@@ -177,11 +173,9 @@ def test_account_oauth_reauthorization_survives_app_deletion_and_rejects_replay(
     oauth = harness.oauth
     base = oauth.base
     created = oauth.finish(oauth.start())
-    revision = harness.service.connection_revision(harness.identity, created.id).connection_revision
     start = harness.service.reauthorize(
         harness.identity,
         created.id,
-        connection_revision=revision,
         callback_url="https://console.example/me/oauth",
     )
     with base.sessions.begin() as session:

@@ -74,13 +74,13 @@ def test_http_connection_replacement_and_delete(client: FlaskClient, harness: Co
     response = client.get(path)
     assert response.status_code == 200
     assert isinstance(response.get_json()["connection"]["created_at"], int)
-    revision = client.get(path + "/revision").get_json()["connection_revision"]
-    schema = client.get(path + "/credential-schema", query_string={"connection_revision": revision})
+    assert client.get(path + "/revision").status_code == 404
+    schema = client.get(path + "/credential-schema")
     assert schema.status_code == 200
     assert schema.get_json()[0]["name"] == "api_key"
     updated = client.patch(
         path,
-        json={"name": "Renamed", "credentials": {"api_key": "replacement-secret"}, "connection_revision": revision},
+        json={"name": "Renamed", "credentials": {"api_key": "replacement-secret"}},
     )
     assert updated.status_code == 200
     assert updated.get_json()["name"] == "Renamed"
@@ -90,18 +90,15 @@ def test_http_connection_replacement_and_delete(client: FlaskClient, harness: Co
     assert client.get(path).status_code == 404
 
 
-@pytest.mark.parametrize("suffix", ["", "/revision", "/credential-schema"])
+@pytest.mark.parametrize("suffix", ["", "/credential-schema"])
 def test_foreign_connection_matches_unknown_http_id(client: FlaskClient, suffix: str) -> None:
     response = client.get(f"/console/api/me/connections/{uuid4()}{suffix}")
-    # Schema parsing precedes the ownership lookup only when its required revision is absent.
-    assert response.status_code == (400 if suffix == "/credential-schema" else 404)
-    assert response.get_json()["code"] == (
-        "invalid_param" if suffix == "/credential-schema" else "connection_not_found"
-    )
+    assert response.status_code == 404
+    assert response.get_json()["code"] == "connection_not_found"
 
 
 @pytest.mark.parametrize(
-    "payload", [{"name": None}, {"credentials": {"api_key": "secret"}}, {"account_id": "secret"}, {}]
+    "payload", [{"name": None}, {"credentials": {}}, {"account_id": "secret"}, {"connection_revision": "secret"}, {}]
 )
 def test_invalid_connection_payloads_are_safe(
     client: FlaskClient, harness: ConsumerHarness, payload: dict[str, object]
@@ -126,8 +123,7 @@ def test_oauth_start_and_callback_use_account_origin(client: FlaskClient, harnes
     oauth = harness.oauth
     created = oauth.finish(oauth.start())
     path = f"/console/api/me/connections/{created.id}"
-    revision = client.get(path + "/revision").get_json()["connection_revision"]
-    response = client.post(path + "/reauthorize", json={"connection_revision": revision})
+    response = client.post(path + "/reauthorize")
     assert response.status_code == 200
     assert "HttpOnly" in response.headers["Set-Cookie"]
     from urllib.parse import parse_qs, urlsplit

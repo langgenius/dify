@@ -19,10 +19,9 @@ from controllers.common.end_user_connections import (
     ConnectionNotFoundHTTPError,
     ConnectionOAuthHTTPError,
     ConnectionReauthorizationHTTPError,
-    ConnectionRevisionChangedHTTPError,
     ConnectionSecretUnavailableHTTPError,
     ConnectionUpdatePayload,
-    raise_connection_error,
+    raise_connection_management_error,
 )
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -35,8 +34,6 @@ from libs.helper import dump_response
 from libs.token import check_csrf_token, extract_console_cookie_token
 from services.consumer_service import ConsumerApp, ConsumerAppNotFoundError, ConsumerAppsQuery, ConsumerIdentity
 from services.end_user_connections.contracts import (
-    ConnectionContractInput,
-    ConnectionRevisionView,
     ConnectionSummary,
     ListConnectionsInput,
 )
@@ -67,7 +64,7 @@ def _errors() -> Generator[None]:
     except WebAppAccessUnavailableError:
         raise ServiceUnavailable("App access is temporarily unavailable.") from None
     except ConnectionError as error:
-        raise_connection_error(error)
+        raise_connection_management_error(error)
 
 
 class ConsumerAppResponse(ConsumerApp, ResponseModel):
@@ -107,19 +104,7 @@ class ConsumerConnectionsQuery(ListConnectionsInput):
     limit: int = Field(default=20, ge=1, le=100, strict=False)
 
 
-class ConsumerConnectionRevisionResponse(ConnectionRevisionView, ResponseModel):
-    pass
-
-
 class ConsumerConnectionUpdatePayload(ConnectionUpdatePayload):
-    pass
-
-
-class ConsumerConnectionRevisionQuery(ConnectionContractInput):
-    pass
-
-
-class ConsumerReauthorizePayload(ConnectionContractInput):
     pass
 
 
@@ -134,7 +119,6 @@ class ConsumerOAuthResponse(ResponseModel):
 register_schema_models(
     console_ns,
     ConsumerConnectionUpdatePayload,
-    ConsumerReauthorizePayload,
 )
 register_response_schema_models(
     console_ns,
@@ -143,7 +127,6 @@ register_response_schema_models(
     ConsumerConnectionResponse,
     ConsumerConnectionDetailResponse,
     ConsumerConnectionsResponse,
-    ConsumerConnectionRevisionResponse,
     ConsumerCredentialSchemaResponse,
     ConsumerOAuthResponse,
 )
@@ -212,7 +195,6 @@ class ConsumerConnectionApi(Resource):
         ConnectionConfigurationHTTPError,
         ConnectionConflictHTTPError,
         ConnectionCredentialsHTTPError,
-        ConnectionRevisionChangedHTTPError,
         ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableHTTPError,
     )
@@ -232,51 +214,34 @@ class ConsumerConnectionApi(Resource):
         return "", 204
 
 
-@console_ns.route("/me/connections/<uuid:connection_id>/revision")
-class ConsumerConnectionRevisionApi(Resource):
-    @console_ns.response(
-        200, "Current Provider revision", console_ns.models[ConsumerConnectionRevisionResponse.__name__]
-    )
-    @error_responses(ConnectionNotFoundHTTPError, ConnectionConfigurationHTTPError, ConnectionCheckUnavailableHTTPError)
-    def get(self, connection_id: UUID):
-        identity = _identity()
-        with _errors():
-            result = application_services().consumer.connection_revision(identity, str(connection_id))
-        return dump_response(ConsumerConnectionRevisionResponse, result), 200, {"Cache-Control": "no-store"}
-
-
 @console_ns.route("/me/connections/<uuid:connection_id>/credential-schema")
 class ConsumerCredentialSchemaApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ConsumerConnectionRevisionQuery))
     @console_ns.response(
         200, "API-key replacement schema", console_ns.models[ConsumerCredentialSchemaResponse.__name__]
     )
     @error_responses(
         ConnectionNotFoundHTTPError,
         ConnectionConfigurationHTTPError,
-        ConnectionRevisionChangedHTTPError,
+        ConnectionConflictHTTPError,
         ConnectionCheckUnavailableHTTPError,
     )
     def get(self, connection_id: UUID):
         identity = _identity()
         with _errors():
-            query = ConsumerConnectionRevisionQuery.model_validate(request.args.to_dict(flat=True))
             result = application_services().consumer.credential_schema(
                 identity,
                 str(connection_id),
-                connection_revision=query.connection_revision,
             )
         return dump_response(ConsumerCredentialSchemaResponse, result), 200, {"Cache-Control": "no-store"}
 
 
 @console_ns.route("/me/connections/<uuid:connection_id>/reauthorize")
 class ConsumerReauthorizeApi(Resource):
-    @console_ns.expect(console_ns.models[ConsumerReauthorizePayload.__name__])
     @console_ns.response(200, "OAuth reauthorization URL", console_ns.models[ConsumerOAuthResponse.__name__])
     @error_responses(
         ConnectionNotFoundHTTPError,
         ConnectionConfigurationHTTPError,
-        ConnectionRevisionChangedHTTPError,
+        ConnectionConflictHTTPError,
         ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableHTTPError,
         ConnectionOAuthHTTPError,
@@ -285,11 +250,9 @@ class ConsumerReauthorizeApi(Resource):
     def post(self, connection_id: UUID):
         identity = _identity()
         with _errors():
-            command = ConsumerReauthorizePayload.model_validate(console_ns.payload or {})
             result = application_services().consumer.reauthorize(
                 identity,
                 str(connection_id),
-                connection_revision=command.connection_revision,
                 callback_url=request.url_root.rstrip("/") + "/console/api/me/connections/oauth",
             )
         response = make_response(dump_response(ConsumerOAuthResponse, result))
@@ -316,7 +279,6 @@ class ConsumerOAuthCallbackApi(Resource):
         ConnectionOAuthHTTPError,
         ConnectionReauthorizationHTTPError,
         ConnectionSecretUnavailableHTTPError,
-        ConnectionRevisionChangedHTTPError,
         ConnectionCheckUnavailableHTTPError,
     )
     def get(self, provider: str):

@@ -4,7 +4,7 @@ from flask import redirect, request
 from werkzeug import Response
 
 from configs import dify_config
-from controllers.common.end_user_connections import raise_connection_error
+from controllers.common.end_user_connections import raise_connection_management_error
 from extensions.ext_application_services import application_services
 from services.end_user_connections.entities import AccountConnectionContext
 from services.end_user_connections.errors import ConnectionError
@@ -17,7 +17,7 @@ def redirect_end_user_connection_oauth(provider: str) -> Response | None:
     try:
         callback_url = application_services().end_user_connection_oauth.callback_url(states[0], provider)
     except ConnectionError as error:
-        raise_connection_error(error)
+        raise_connection_management_error(error)
     if callback_url is None:
         return None
     # The Web and Console API may have different hosts. Return to the initiating
@@ -34,7 +34,7 @@ def complete_end_user_connection_oauth(provider: str, context_id: str) -> Respon
         attempt = service.consume_attempt(context_id, provider=provider)
         connection = service.complete_oauth(attempt, query_string=request.query_string)
     except ConnectionError as error:
-        raise_connection_error(error)
+        raise_connection_management_error(error)
     origin = (
         dify_config.CONSOLE_WEB_URL
         if isinstance(attempt.context, AccountConnectionContext)

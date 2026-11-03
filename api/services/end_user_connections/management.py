@@ -12,7 +12,6 @@ from services.end_user_connections.contracts import (
     ConnectionCheckOutcome,
     ConnectionCheckView,
     ConnectionPage,
-    ConnectionRevisionView,
     ConnectionSummary,
     ConnectionTargetInput,
     ConnectionTargetResolver,
@@ -156,25 +155,13 @@ class ConnectionService:
     def get_connection(self, context: ConnectionManagementContext, connection_id: str) -> ConnectionSummary:
         return self._load(context, connection_id).summary
 
-    def get_connection_revision(
-        self, context: ConnectionManagementContext, connection_id: str
-    ) -> ConnectionRevisionView:
-        record = self._load(context, connection_id)
-        source = record.access.oauth_client.source if record.access.oauth_client is not None else None
-        return ConnectionRevisionView(
-            connection_revision=self._revisions.resolve(
-                context,
-                record.access.provider,
-                oauth_client_source=source,
-            )
-        )
-
     def get_owned_api_key_schema(
-        self, context: ConnectionManagementContext, connection_id: str, *, connection_revision: str
+        self, context: ConnectionManagementContext, connection_id: str
     ) -> tuple[ProviderConfig, ...]:
         record = self._load(context, connection_id)
         self._require_api_key(record)
-        admitted = self._revisions.require(context, record.access.provider, connection_revision)
+        revision = self._revisions.resolve(context, record.access.provider)
+        admitted = self._revisions.require(context, record.access.provider, revision)
         return self._credentials.get_schema(
             context.tenant_id, record.access.provider, plugin_unique_identifier=admitted.plugin_unique_identifier
         )
@@ -189,7 +176,8 @@ class ConnectionService:
             credential_type=ConnectionCredentialType.API_KEY,
             target=target,
         )
-        admitted = self._revisions.require(context, target.provider, command.connection_revision)
+        revision = self._revisions.resolve(context, target.provider)
+        admitted = self._revisions.require(context, target.provider, revision)
         credentials = self._credentials.validate_format(
             context.tenant_id,
             target.provider,
@@ -202,7 +190,14 @@ class ConnectionService:
             )
         )
         target = self._targets.resolve(context, command)
-        admitted = self._revisions.require(context, target.provider, command.connection_revision)
+        require_creation_target(
+            context,
+            workflow_id=target.workflow_id,
+            node_id=command.node_id,
+            credential_type=ConnectionCredentialType.API_KEY,
+            target=target,
+        )
+        admitted = self._revisions.require(context, target.provider, revision)
         ciphertext = self._cipher.encrypt(context.tenant_id, credentials)
         return self._store.create_api_key(
             context,
@@ -210,9 +205,7 @@ class ConnectionService:
             provider=target.provider,
             name=command.name,
             encrypted_credentials=ciphertext,
-            revision_acceptance=self._revisions.acceptance(
-                context, target.provider, command.connection_revision, admitted
-            ),
+            revision_acceptance=self._revisions.acceptance(context, target.provider, revision, admitted),
         )
 
     def get_api_key_schema(
@@ -227,7 +220,8 @@ class ConnectionService:
             credential_type=ConnectionCredentialType.API_KEY,
             target=target,
         )
-        admitted = self._revisions.require(context, target.provider, reference.connection_revision)
+        revision = self._revisions.resolve(context, target.provider)
+        admitted = self._revisions.require(context, target.provider, revision)
         return self._credentials.get_schema(
             context.tenant_id, target.provider, plugin_unique_identifier=admitted.plugin_unique_identifier
         )
@@ -242,8 +236,8 @@ class ConnectionService:
         acceptance = None
         if command.credentials is not None:
             self._require_api_key(record)
-            assert command.connection_revision is not None
-            admitted = self._revisions.require(context, record.access.provider, command.connection_revision)
+            revision = self._revisions.resolve(context, record.access.provider)
+            admitted = self._revisions.require(context, record.access.provider, revision)
             credentials = self._credentials.validate_format(
                 context.tenant_id,
                 record.access.provider,
@@ -258,10 +252,8 @@ class ConnectionService:
                     plugin_unique_identifier=admitted.plugin_unique_identifier,
                 )
             )
-            admitted = self._revisions.require(context, record.access.provider, command.connection_revision)
-            acceptance = self._revisions.acceptance(
-                context, record.access.provider, command.connection_revision, admitted
-            )
+            admitted = self._revisions.require(context, record.access.provider, revision)
+            acceptance = self._revisions.acceptance(context, record.access.provider, revision, admitted)
             ciphertext = self._cipher.encrypt(context.tenant_id, credentials)
             status = ConnectionCredentialStatus.CONNECTED
         updated = self._store.update(

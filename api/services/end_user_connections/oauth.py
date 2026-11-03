@@ -168,22 +168,18 @@ class OAuthConnectionService:
             target.provider,
             client,
             callback_url=callback_url,
-            target=ConnectionTargetInput(connection_revision=command.connection_revision, node_id=command.node_id),
+            target=ConnectionTargetInput(node_id=command.node_id),
             target_workflow_id=target.workflow_id,
             name=command.name,
             guard=None,
-            connection_revision=command.connection_revision,
         )
 
     def reauthorize_oauth(
-        self, context: ConnectionManagementContext, connection_id: str, *, callback_url: str, connection_revision: str
+        self, context: ConnectionManagementContext, connection_id: str, *, callback_url: str
     ) -> ConnectionOAuthStart:
         record = self._load(context, connection_id)
         reference = record.access.oauth_client
         assert reference is not None
-        self._revisions.require(
-            context, record.access.provider, connection_revision, oauth_client_source=reference.source
-        )
         client = self._gateway.resolve_client(context.tenant_id, record.access.provider, reference.source)
         return self._start(
             context,
@@ -194,7 +190,6 @@ class OAuthConnectionService:
             target_workflow_id=None,
             name=None,
             guard=connection_mutation_guard(context, record.access),
-            connection_revision=connection_revision,
         )
 
     def _start(
@@ -208,8 +203,8 @@ class OAuthConnectionService:
         target_workflow_id: str | None,
         name: str | None,
         guard: ConnectionMutationGuard | None,
-        connection_revision: str,
     ) -> ConnectionOAuthStart:
+        connection_revision = self._revisions.resolve(context, provider, oauth_client_source=client.snapshot.source)
         admitted = self._revisions.require(
             context, provider, connection_revision, oauth_client_source=client.snapshot.source
         )
@@ -278,7 +273,7 @@ class OAuthConnectionService:
                 raise ConnectionOAuthError()
             target = self._targets.resolve(context, attempt.target)
             if target.provider != attempt.provider or target.oauth_client_source != attempt.client.source:
-                raise ConnectionConfigurationError()
+                raise ConnectionRevisionChangedError()
             require_creation_target(
                 context,
                 workflow_id=target.workflow_id,

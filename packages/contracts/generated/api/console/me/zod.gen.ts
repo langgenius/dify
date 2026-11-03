@@ -91,13 +91,6 @@ export const zCredentialCheckUnavailableError = zErrorResponse.and(
 )
 
 /**
- * ConsumerReauthorizePayload
- */
-export const zConsumerReauthorizePayload = z.object({
-  connection_revision: z.uuid(),
-})
-
-/**
  * ConsumerOAuthResponse
  */
 export const zConsumerOAuthResponse = z.object({
@@ -127,13 +120,6 @@ export const zConnectionReauthorizationRequiredError = zErrorResponse.and(
     status: z.literal(409),
   }),
 )
-
-/**
- * ConsumerConnectionRevisionResponse
- */
-export const zConsumerConnectionRevisionResponse = z.object({
-  connection_revision: z.uuid(),
-})
 
 /**
  * ConsumerAppResponse
@@ -166,7 +152,6 @@ export const zJsonValue = z.unknown()
  * ConsumerConnectionUpdatePayload
  */
 export const zConsumerConnectionUpdatePayload = z.object({
-  connection_revision: z.uuid().optional(),
   credentials: z.record(z.string(), zJsonValue).optional(),
   name: z.string().min(1).max(100).optional(),
 })
@@ -218,26 +203,6 @@ export const zConsumerConnectionsResponse = z.object({
   has_more: z.boolean(),
   next_cursor: z.string().nullable(),
 })
-
-/**
- * ConnectionRevisionChangeDetails
- */
-export const zConnectionRevisionChangeDetails = z.object({
-  connection_revision: z.uuid().nullable(),
-})
-
-/**
- * ConnectionRevisionChangedError
- *
- * The connection requirements changed. Refresh and confirm again.
- */
-export const zConnectionRevisionChangedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('connection_revision_changed'),
-    details: zConnectionRevisionChangeDetails.optional(),
-    status: z.literal(409),
-  }),
-)
 
 /**
  * I18nObject
@@ -393,17 +358,11 @@ export const zGetMeConnectionsByConnectionIdCredentialSchemaPath = z.object({
   connection_id: z.uuid(),
 })
 
-export const zGetMeConnectionsByConnectionIdCredentialSchemaQuery = z.object({
-  connection_revision: z.uuid(),
-})
-
 /**
  * API-key replacement schema
  */
 export const zGetMeConnectionsByConnectionIdCredentialSchemaResponse =
   zConsumerCredentialSchemaResponse
-
-export const zPostMeConnectionsByConnectionIdReauthorizeBody = zConsumerReauthorizePayload
 
 export const zPostMeConnectionsByConnectionIdReauthorizePath = z.object({
   connection_id: z.uuid(),
@@ -413,12 +372,3 @@ export const zPostMeConnectionsByConnectionIdReauthorizePath = z.object({
  * OAuth reauthorization URL
  */
 export const zPostMeConnectionsByConnectionIdReauthorizeResponse = zConsumerOAuthResponse
-
-export const zGetMeConnectionsByConnectionIdRevisionPath = z.object({
-  connection_id: z.uuid(),
-})
-
-/**
- * Current Provider revision
- */
-export const zGetMeConnectionsByConnectionIdRevisionResponse = zConsumerConnectionRevisionResponse

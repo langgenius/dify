@@ -42,7 +42,6 @@ export type ConsumerConnectionDetailResponse = {
 }
 
 export type ConsumerConnectionUpdatePayload = {
-  connection_revision?: string
   credentials?: {
     [key: string]: JsonValue
   }
@@ -72,12 +71,6 @@ export type ConnectionCredentialsInvalidError = ErrorResponse & {
   status: 400
 }
 
-export type ConnectionRevisionChangedError = ErrorResponse & {
-  code: 'connection_revision_changed'
-  details?: ConnectionRevisionChangeDetails
-  status: 409
-}
-
 export type ConnectionCredentialsUnavailableError = ErrorResponse & {
   code: 'connection_credentials_unavailable'
   status: 503
@@ -89,10 +82,6 @@ export type CredentialCheckUnavailableError = ErrorResponse & {
 }
 
 export type ConsumerCredentialSchemaResponse = Array<ProviderConfig>
-
-export type ConsumerReauthorizePayload = {
-  connection_revision: string
-}
 
 export type ConsumerOAuthResponse = {
   authorization_url: string
@@ -106,10 +95,6 @@ export type ConnectionOauthFailedError = ErrorResponse & {
 export type ConnectionReauthorizationRequiredError = ErrorResponse & {
   code: 'connection_reauthorization_required'
   status: 409
-}
-
-export type ConsumerConnectionRevisionResponse = {
-  connection_revision: string
 }
 
 export type ConsumerAppResponse = {
@@ -130,10 +115,6 @@ export type JsonValue = unknown
 export type ConnectionCredentialStatus = 'connected' | 'invalid' | 'reconnect_required'
 
 export type ConnectionCredentialType = 'api-key' | 'oauth2'
-
-export type ConnectionRevisionChangeDetails = {
-  connection_revision: string | null
-}
 
 export type ProviderConfig = {
   default?: number | string | number | boolean | null
@@ -337,7 +318,7 @@ export type PatchMeConnectionsByConnectionIdData = {
 export type PatchMeConnectionsByConnectionIdErrors = {
   400: ConnectionConfigurationInvalidError | ConnectionCredentialsInvalidError | ErrorResponse
   404: ConnectionNotFoundError | ErrorResponse
-  409: ConnectionConflictError | ConnectionRevisionChangedError | ErrorResponse
+  409: ConnectionConflictError | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -357,16 +338,14 @@ export type GetMeConnectionsByConnectionIdCredentialSchemaData = {
   path: {
     connection_id: string
   }
-  query: {
-    connection_revision: string
-  }
+  query?: never
   url: '/me/connections/{connection_id}/credential-schema'
 }
 
 export type GetMeConnectionsByConnectionIdCredentialSchemaErrors = {
   400: ConnectionConfigurationInvalidError | ErrorResponse
   404: ConnectionNotFoundError | ErrorResponse
-  409: ConnectionRevisionChangedError | ErrorResponse
+  409: ConnectionConflictError | ErrorResponse
   503: CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -382,7 +361,7 @@ export type GetMeConnectionsByConnectionIdCredentialSchemaResponse =
   GetMeConnectionsByConnectionIdCredentialSchemaResponses[keyof GetMeConnectionsByConnectionIdCredentialSchemaResponses]
 
 export type PostMeConnectionsByConnectionIdReauthorizeData = {
-  body: ConsumerReauthorizePayload
+  body?: never
   path: {
     connection_id: string
   }
@@ -393,7 +372,7 @@ export type PostMeConnectionsByConnectionIdReauthorizeData = {
 export type PostMeConnectionsByConnectionIdReauthorizeErrors = {
   400: ConnectionConfigurationInvalidError | ConnectionOauthFailedError | ErrorResponse
   404: ConnectionNotFoundError | ErrorResponse
-  409: ConnectionReauthorizationRequiredError | ConnectionRevisionChangedError | ErrorResponse
+  409: ConnectionConflictError | ConnectionReauthorizationRequiredError | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -407,29 +386,3 @@ export type PostMeConnectionsByConnectionIdReauthorizeResponses = {
 
 export type PostMeConnectionsByConnectionIdReauthorizeResponse =
   PostMeConnectionsByConnectionIdReauthorizeResponses[keyof PostMeConnectionsByConnectionIdReauthorizeResponses]
-
-export type GetMeConnectionsByConnectionIdRevisionData = {
-  body?: never
-  path: {
-    connection_id: string
-  }
-  query?: never
-  url: '/me/connections/{connection_id}/revision'
-}
-
-export type GetMeConnectionsByConnectionIdRevisionErrors = {
-  400: ConnectionConfigurationInvalidError | ErrorResponse
-  404: ConnectionNotFoundError | ErrorResponse
-  503: CredentialCheckUnavailableError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type GetMeConnectionsByConnectionIdRevisionError =
-  GetMeConnectionsByConnectionIdRevisionErrors[keyof GetMeConnectionsByConnectionIdRevisionErrors]
-
-export type GetMeConnectionsByConnectionIdRevisionResponses = {
-  200: ConsumerConnectionRevisionResponse
-}
-
-export type GetMeConnectionsByConnectionIdRevisionResponse =
-  GetMeConnectionsByConnectionIdRevisionResponses[keyof GetMeConnectionsByConnectionIdRevisionResponses]

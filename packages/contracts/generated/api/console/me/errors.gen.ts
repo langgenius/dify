@@ -74,29 +74,16 @@ const zConnectionReauthorizationRequiredError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-const zConnectionRevisionChangeDetails = /* @__PURE__ */ (() =>
-  z.object({
-    connection_revision: z.uuid().nullable(),
-  }))()
-
-const zConnectionRevisionChangedError = /* @__PURE__ */ (() =>
-  zErrorResponse.and(
-    z.object({
-      code: z.literal('connection_revision_changed'),
-      details: zConnectionRevisionChangeDetails.optional(),
-      status: z.literal(409),
-    }),
-  ))()
-
 export const get2Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+  connection_conflict: { status: 409, data: zConnectionConflictError },
   connection_not_found: { status: 404, data: zConnectionNotFoundError },
-  connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
   credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
 }
 
 export const postErrors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+  connection_conflict: { status: 409, data: zConnectionConflictError },
   connection_credentials_unavailable: { status: 503, data: zConnectionCredentialsUnavailableError },
   connection_not_found: { status: 404, data: zConnectionNotFoundError },
   connection_oauth_failed: { status: 400, data: zConnectionOauthFailedError },
@@ -104,13 +91,6 @@ export const postErrors = {
     status: 409,
     data: zConnectionReauthorizationRequiredError,
   },
-  connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
-  credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
-}
-
-export const get3Errors = {
-  connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
-  connection_not_found: { status: 404, data: zConnectionNotFoundError },
   credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
 }
 
@@ -119,7 +99,7 @@ export const delete2Errors = {
   connection_not_found: { status: 404, data: zConnectionNotFoundError },
 }
 
-export const get4Errors = { connection_not_found: { status: 404, data: zConnectionNotFoundError } }
+export const get3Errors = { connection_not_found: { status: 404, data: zConnectionNotFoundError } }
 
 export const patchErrors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
@@ -127,6 +107,5 @@ export const patchErrors = {
   connection_credentials_invalid: { status: 400, data: zConnectionCredentialsInvalidError },
   connection_credentials_unavailable: { status: 503, data: zConnectionCredentialsUnavailableError },
   connection_not_found: { status: 404, data: zConnectionNotFoundError },
-  connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
   credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
 }
