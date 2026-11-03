@@ -159,6 +159,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSInitialWebsiteSourcePreviewPayload,
     KnowledgeFSJWKSResponse,
     KnowledgeFSLogicalDocumentDeletePayload,
+    KnowledgeFSLogicalDocumentListQuery,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSMembersReplacePayload,
@@ -1652,7 +1653,7 @@ class KnowledgeFSSpaceOverviewHealthApi(Resource):
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents")
 class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
     @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
-    @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSLogicalDocumentListQuery))
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base logical documents",
@@ -1664,12 +1665,15 @@ class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
     @_knowledge_fs_errors
     def get(self, control_space_id: str):
         actor_id, tenant_id = _actor()
-        query = KnowledgeFSCursorQuery.model_validate(request.args.to_dict())
+        query = KnowledgeFSLogicalDocumentListQuery.model_validate(request.args.to_dict())
         result = _console_services().facade.list_logical_documents(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
             cursor=query.cursor,
+            limit=query.limit,
+            query=query.query,
+            status=query.status,
         )
         return dump_response(KnowledgeFSLogicalDocumentListResponse, result)
 

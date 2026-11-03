@@ -56,6 +56,7 @@ from services.message_suggested_questions_service import (
     SuggestedQuestionsInvokeFrom,
 )
 from tests.helpers.unit.core.model_fixtures import make_model_instance
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 
 @dataclass(frozen=True)
@@ -197,7 +198,9 @@ def harness(
             message,
             sqlite_session_factory,
             queries,
-            MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()),
+            MessageSuggestedQuestionsService(
+                queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
+            ),
             read_sessions,
             scoped_sessions,
         )
@@ -440,7 +443,7 @@ def test_advanced_chat_debugger_uses_draft_while_explore_uses_published_workflow
                 type=WorkflowType.CHAT,
                 version=version,
                 graph='{"nodes":[],"edges":[]}',
-                features=json.dumps({"suggested_questions_after_answer": {"enabled": True, "prompt": prompt}}),
+                _features=json.dumps({"suggested_questions_after_answer": {"enabled": True, "prompt": prompt}}),
                 created_by=harness.account.id,
             )
             session.add(workflow)
@@ -809,7 +812,7 @@ def test_workflow_compatibility_normalization_does_not_dirty_or_write_rows(
             type=WorkflowType.CHAT,
             version="published",
             graph='{"nodes":[],"edges":[]}',
-            features=features,
+            _features=features,
             created_by=harness.account.id,
         )
         session.add(workflow)

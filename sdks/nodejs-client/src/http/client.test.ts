@@ -57,6 +57,37 @@ describe('HttpClient', () => {
     vi.unstubAllGlobals()
   })
 
+  it('keeps string limits for queries, other body fields, and requests without an exemption', async () => {
+    const fetchMock = stubFetch()
+    const client = new HttpClient({ apiKey: 'test' })
+    const longText = 'x'.repeat(10001)
+    await expect(
+      client.requestRaw({
+        method: 'POST',
+        path: '/document',
+        data: { text: longText },
+        query: { text: longText },
+        unboundedBodyStringFields: ['text'],
+      }),
+    ).rejects.toBeInstanceOf(ValidationError)
+    await expect(
+      client.requestRaw({
+        method: 'POST',
+        path: '/document',
+        data: { text: longText, name: longText },
+        unboundedBodyStringFields: ['text'],
+      }),
+    ).rejects.toBeInstanceOf(ValidationError)
+    await expect(
+      client.requestRaw({
+        method: 'POST',
+        path: '/document',
+        data: { text: longText },
+      }),
+    ).rejects.toBeInstanceOf(ValidationError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('builds requests with auth headers and JSON content type', async () => {
     const fetchMock = stubFetch()
     fetchMock.mockResolvedValueOnce(

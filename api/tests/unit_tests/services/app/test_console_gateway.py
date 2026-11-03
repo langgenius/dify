@@ -99,12 +99,12 @@ def test_copy_preserves_shared_roster_bindings_and_clones_owned_inline_agents(
             id=workflow_id,
             tenant_id=tenant_id,
             app_id=app_id,
-            type=WorkflowType.from_app_mode(mode).value,
+            type=WorkflowType.from_app_mode(mode),
             version=Workflow.VERSION_DRAFT,
             graph=json.dumps(graph),
-            features=json.dumps({}),
-            environment_variables=[],
-            conversation_variables=[],
+            _features=json.dumps({}),
+            _environment_variables=[],
+            _conversation_variables=[],
             created_by=actor_id,
         )
         roster = Agent(
@@ -551,7 +551,7 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
                     type=WorkflowType.WORKFLOW,
                     version=Workflow.VERSION_DRAFT,
                     graph='{"nodes":[],"edges":[]}',
-                    features="{}",
+                    _features="{}",
                     created_by=actor,
                 )
             )
@@ -715,7 +715,7 @@ def test_console_package_import_forwards_archive_and_closes_it(
         return Import(id="import-1", status=status)
 
     monkeypatch.setattr(AppDslService, "import_app", import_app)
-    with AppPackageService().export(dsl=dsl, name="Example") as exported:
+    with AppPackageService().export(dsl=dsl, name="Example", workflow_tools=[]) as exported:
         result = app_services.console.import_app(context, AppImportParams(mode="yaml-content"), source=exported.archive)
     assert result.status == status
     assert len(archives) == 1
@@ -942,3 +942,38 @@ def test_console_package_export_forwards_roster_options(
     monkeypatch.setattr(AppPackageService, "export_app", export_app)
     app_services.console.export(context, app_id, AppExportOptions(format="ifpkg", preserve_agent_bindings=True))
     assert captured["preserve_agent_bindings"] is True
+
+
+@pytest.mark.parametrize("outcome", ["disabled", "write_error", "false_result"])
+def test_inherit_access_preserves_copy_contract(
+    monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain, outcome: str
+) -> None:
+    from services.enterprise.enterprise_service import EnterpriseRequest
+    from services.errors.enterprise import EnterpriseServiceError
+
+    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: outcome != "disabled")
+    calls: list[str] = []
+    error = EnterpriseServiceError("write failed")
+
+    def request(method: str, endpoint: str, **kwargs: object) -> dict[str, object]:
+        calls.append(method)
+        if method == "GET":
+            assert endpoint == "/webapp/access-mode/id"
+            assert kwargs["params"] == {"appId": "source"}
+            return {"accessMode": "private_all"}
+        assert method == "POST"
+        assert endpoint == "/webapp/access-mode"
+        assert kwargs["json"] == {"appId": "target", "accessMode": "private_all"}
+        if outcome == "write_error":
+            raise error
+        return {"result": False}
+
+    monkeypatch.setattr(EnterpriseRequest, "send_request", request)
+    gateway = EnterpriseConsoleAppAccess(members=rbac_domain.rbac.members)
+    if outcome == "write_error":
+        with pytest.raises(EnterpriseServiceError) as raised:
+            gateway.inherit_access("source", "target")
+        assert raised.value is error
+    else:
+        assert gateway.inherit_access("source", "target") is None
+    assert calls == ([] if outcome == "disabled" else ["GET", "POST"])

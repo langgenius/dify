@@ -23,6 +23,7 @@ from yarl import URL
 
 from configs import dify_config
 from constants import HEADER_NAME_APP_CODE, HEADER_NAME_PASSPORT
+from controllers.console.wraps import _is_setup_completed
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl import base as plugin_base
@@ -211,6 +212,9 @@ def scenario(
         headers,
         provider.id,
     )
+    if console:
+        # Keep the legacy bootstrap query outside the generation-session observations.
+        assert _is_setup_completed()
     db.session.remove()
     return result
 

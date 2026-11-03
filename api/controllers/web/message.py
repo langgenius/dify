@@ -4,10 +4,10 @@ from typing import Literal
 from uuid import UUID
 
 from flask import Response
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.errors import InternalServerError, NotFoundError
+from controllers.common.errors import InternalServerError, MessageFeedbackRatingRequiredError, NotFoundError
 from controllers.common.fields import GeneratedAppResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
@@ -26,9 +26,8 @@ from controllers.web.error import (
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
-from fields.conversation_fields import MessageResponseSource, ResultResponse
-from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
+from fields.conversation_fields import ResultResponse
+from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.exception import BaseHTTPException
@@ -42,6 +41,7 @@ from services.errors.app import MoreLikeThisDisabledError
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
+    FeedbackRatingRequiredError,
     FirstMessageNotExistsError,
     MessageActorNotFoundError,
     MessageNotExistsError,
@@ -51,7 +51,6 @@ from services.message_more_like_this_service import (
     MoreLikeThisConfigNotFoundError,
     MoreLikeThisNotCompletionError,
 )
-from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)
 
@@ -74,49 +73,49 @@ register_response_schema_models(
 
 @web_ns.route("/messages")
 class MessageListApi(WebApiResource):
-    @error_responses(NotChatAppError)
+    @error_responses(AppUnavailableError, NotChatAppError)
     @web_ns.doc("Get Message List")
     @web_ns.doc(description="Retrieve paginated list of messages from a conversation in a chat application.")
     @web_ns.doc(params=query_params_from_model(MessageListQuery))
     @web_ns.doc(
         responses={
-            200: "Success",
-            400: "Bad Request",
-            401: "Unauthorized",
-            404: "Conversation Not Found or Not a Chat App",
-            500: "Internal Server Error",
+            HTTPStatus.OK: "Success",
+            HTTPStatus.BAD_REQUEST: "Bad Request - Not a chat app or app unavailable",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.NOT_FOUND: "Conversation, First Message, or End User Not Found",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[WebMessageInfiniteScrollPagination.__name__])
+    @web_ns.response(HTTPStatus.OK, "Success", web_ns.models[WebMessageInfiniteScrollPagination.__name__])
     @model_validate(MessageListQuery)
-    def get(self, query: MessageListQuery, app_model: App, end_user: EndUser):
+    def get(self, query: MessageListQuery, app_model: App, end_user: EndUser) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         try:
-            session = db.session()
-            pagination = MessageService.pagination_by_first_id(
-                app_model, end_user, query.conversation_id, query.first_id, query.limit, session=session
+            pagination = application_services().message_queries.get_page(
+                app_id=app_model.id,
+                app_owner_tenant_id=app_model.tenant_id,
+                actor=MessageEndUser(end_user_id=end_user.id),
+                conversation_id=query.conversation_id,
+                first_id=query.first_id,
+                limit=query.limit,
             )
-            adapter = TypeAdapter(WebMessageListItem)
-            items = [
-                adapter.validate_python(MessageResponseSource(message, session=session), from_attributes=True)
-                for message in pagination.data
-            ]
-            return WebMessageInfiniteScrollPagination(
-                limit=pagination.limit,
-                has_more=pagination.has_more,
-                data=items,
-            ).model_dump(mode="json")
-        except ConversationNotExistsError as caught_error:
-            raise NotFoundError("Conversation Not Exists.") from caught_error
-        except FirstMessageNotExistsError as caught_error:
-            raise NotFoundError("First Message Not Exists.") from caught_error
+            return helper.dump_response(WebMessageInfiniteScrollPagination, pagination)
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except MessageActorNotFoundError as error:
+            raise NotFoundError("End user not found") from error
+        except ConversationNotExistsError as error:
+            raise NotFoundError("Conversation Not Exists.") from error
+        except FirstMessageNotExistsError as error:
+            raise NotFoundError("First Message Not Exists.") from error
 
 
 @web_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(WebApiResource):
+    @error_responses(AppUnavailableError, MessageFeedbackRatingRequiredError)
     @web_ns.doc("Create Message Feedback")
     @web_ns.doc(description="Submit feedback (like/dislike) for a specific message.")
     @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
@@ -133,32 +132,44 @@ class MessageFeedbackApi(WebApiResource):
     )
     @web_ns.doc(
         responses={
-            200: "Feedback submitted successfully",
-            400: "Bad Request",
-            401: "Unauthorized",
-            404: "Message Not Found",
-            500: "Internal Server Error",
+            HTTPStatus.OK: "Feedback submitted successfully",
+            HTTPStatus.BAD_REQUEST: (
+                "`message_feedback_rating_required`: Cannot revoke feedback that does not exist. "
+                "`app_unavailable`: App is no longer available."
+            ),
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden",
+            HTTPStatus.NOT_FOUND: "Message Not Found",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Feedback submitted successfully", web_ns.models[ResultResponse.__name__])
+    @web_ns.response(HTTPStatus.OK, "Feedback submitted successfully", web_ns.models[ResultResponse.__name__])
     @web_ns.expect(web_ns.models[MessageFeedbackPayload.__name__])
     @model_validate(MessageFeedbackPayload)
-    def post(self, payload: MessageFeedbackPayload, app_model: App, end_user: EndUser, message_id: UUID):
+    def post(
+        self, payload: MessageFeedbackPayload, app_model: App, end_user: EndUser, message_id: UUID
+    ) -> dict[str, object]:
         message_id_str = str(message_id)
 
         try:
-            MessageService.create_feedback(
-                app_model=app_model,
+            application_services().message_feedbacks.set_feedback(
+                app_id=app_model.id,
+                app_owner_tenant_id=app_model.tenant_id,
                 message_id=message_id_str,
-                user=end_user,
+                actor=MessageEndUser(end_user_id=end_user.id),
                 rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
-                session=db.session(),
             )
-        except MessageNotExistsError as caught_error:
-            raise NotFoundError("Message Not Exists.") from caught_error
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except MessageActorNotFoundError as error:
+            raise NotFoundError("End user not found") from error
+        except MessageNotExistsError as error:
+            raise NotFoundError("Message Not Exists.") from error
+        except FeedbackRatingRequiredError as error:
+            raise MessageFeedbackRatingRequiredError() from error
 
-        return ResultResponse(result="success").model_dump(mode="json")
+        return helper.dump_response(ResultResponse, {"result": "success"})
 
 
 @web_ns.route("/messages/<uuid:message_id>/more-like-this")

@@ -51,36 +51,8 @@ describe('AnnotationCtrlButton', () => {
     api.addAnnotation.mockResolvedValue({ id: 'annotation-1' })
   })
 
-  it('should call onEdit when edit button is clicked', async () => {
-    const user = userEvent.setup()
-    const onEdit = vi.fn()
-    render(
-      <AnnotationCtrlButton
-        appId="test-app"
-        cached={true}
-        query="test query"
-        answer="test answer"
-        onAdded={vi.fn()}
-        onEdit={onEdit}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
-
-    expect(onEdit).toHaveBeenCalled()
-  })
-
   it('should not render any button when not cached and no answer', () => {
-    render(
-      <AnnotationCtrlButton
-        appId="test-app"
-        cached={false}
-        query="test query"
-        answer=""
-        onAdded={vi.fn()}
-        onEdit={vi.fn()}
-      />,
-    )
+    render(<AnnotationCtrlButton appId="test-app" query="test query" answer="" onAdded={vi.fn()} />)
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
@@ -92,11 +64,9 @@ describe('AnnotationCtrlButton', () => {
       <AnnotationCtrlButton
         appId="test-app"
         messageId="msg-1"
-        cached={false}
         query="test query"
         answer="test answer"
         onAdded={onAdded}
-        onEdit={vi.fn()}
       />,
     )
 
@@ -118,11 +88,9 @@ describe('AnnotationCtrlButton', () => {
     render(
       <AnnotationCtrlButton
         appId="test-app"
-        cached={false}
         query="test query"
         answer="test answer"
         onAdded={vi.fn()}
-        onEdit={vi.fn()}
       />,
     )
 

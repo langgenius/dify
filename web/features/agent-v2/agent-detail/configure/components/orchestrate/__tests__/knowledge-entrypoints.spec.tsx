@@ -9,9 +9,10 @@ import {
   renderWithConsoleQuery as render,
   seedKnowledgeFsFeatures,
 } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { AgentOrchestratePanel } from '../index'
 
-// Keep the panel, prompt editor, KnowledgeFS dialog, prompt commands and action registration real.
+// Keep the panel, prompt editor, shared knowledge dialog, prompt commands and action registration real.
 // Independent sections are outside this entry-point contract.
 vi.mock('../model-config/field', () => ({ AgentModelField: () => null }))
 vi.mock('../skills', () => ({ AgentSkills: () => null }))
@@ -26,6 +27,15 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.tools.api.get': emptyToolList,
+      'datasets.get': async () => ({
+        data: [createDatasetFixture()],
+        page: 1,
+        limit: 100,
+        total: 1,
+        has_more: false,
+      }),
+      'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
+      'workspaces.current.defaultModel.get': async () => ({ data: null }),
       'workspaces.current.tools.builtin.get': emptyToolList,
       'workspaces.current.tools.mcp.get': emptyToolList,
       'workspaces.current.tools.workflow.get': emptyToolList,
@@ -120,8 +130,8 @@ function setup({
 }
 
 async function confirmSpace(user: ReturnType<typeof userEvent.setup>) {
-  const dialog = await screen.findByRole('dialog', { name: /knowledgeFs.title/ })
-  await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+  const dialog = await screen.findByRole('dialog', { name: /knowledgeRetrieval.dialog.title/ })
+  await user.click(within(dialog).getByRole('option', { name: /Product manual/ }))
   await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
 }
@@ -133,15 +143,17 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
       const user = userEvent.setup()
       setup({ workflow })
 
-      expect(await screen.findByRole('heading', { name: /knowledgeFs.title/ })).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: /knowledgeFs.add/ }))
+      expect(
+        await screen.findByRole('heading', { name: /knowledgeRetrieval.label/ }),
+      ).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /knowledgeRetrieval.add/ }))
       await confirmSpace(user)
 
       expect(screen.getByText('Product manual')).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: /knowledgeFs.add/ }))
-      const dialog = await screen.findByRole('dialog', { name: /knowledgeFs.title/ })
-      expect(within(dialog).getByRole('checkbox', { name: 'Product manual' })).toHaveAttribute(
-        'aria-checked',
+      await user.click(screen.getByRole('button', { name: /knowledgeRetrieval.add/ }))
+      const dialog = await screen.findByRole('dialog', { name: /knowledgeRetrieval.dialog.title/ })
+      expect(within(dialog).getByRole('option', { name: /Product manual/ })).toHaveAttribute(
+        'aria-selected',
         'true',
       )
     },
@@ -152,8 +164,16 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
     setup()
 
     await user.click(screen.getByRole('button', { name: /prompt.insert.label/ }))
-    await user.click(screen.getByRole('button', { name: /knowledgeRetrieval.label/ }))
-    await user.click(screen.getByRole('button', { name: /knowledgeRetrieval.add/ }))
+    await user.click(
+      within(screen.getByRole('dialog', { name: /prompt.insert.label/ })).getByRole('button', {
+        name: /knowledgeRetrieval.label/,
+      }),
+    )
+    await user.click(
+      within(screen.getByRole('dialog', { name: /prompt.insert.label/ })).getByRole('button', {
+        name: /knowledgeRetrieval.add/,
+      }),
+    )
     await confirmSpace(user)
 
     expect(
@@ -164,29 +184,59 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
     expect(screen.getAllByText('Product manual')).toHaveLength(2)
   })
 
+  it('adds Classic knowledge from the prompt menu when KnowledgeFS is disabled', async () => {
+    const user = userEvent.setup()
+    setup({ enabled: false })
+    await user.click(screen.getByRole('button', { name: /prompt.insert.label/ }))
+    const menu = screen.getByRole('dialog', { name: /prompt.insert.label/ })
+    await user.click(within(menu).getByRole('button', { name: /knowledgeRetrieval.label/ }))
+    await user.click(within(menu).getByRole('button', { name: /knowledgeRetrieval.add/ }))
+    const dialog = await screen.findByRole('dialog', { name: /knowledgeRetrieval.dialog.title/ })
+    await user.click(await within(dialog).findByRole('option', { name: /^Test Dataset/ }))
+    await user.click(within(dialog).getByRole('button', { name: /advancedSettings.label/ }))
+    const name = within(dialog).getByRole('textbox', { name: /dialog.nameLabel/ })
+    await user.clear(name)
+    await user.type(name, 'Classic search')
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(
+      within(screen.getByRole('textbox', { name: /prompt.label/ })).getByText('Classic search'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('hides unavailable knowledge and follows capability updates without losing bindings', async () => {
     const user = userEvent.setup()
     const { queryClient } = setup({ enabled: false, configured: true })
 
     expect(screen.queryByText('Product manual')).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /knowledgeFs.title/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /knowledgeFs.add/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /knowledgeRetrieval.label/ })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /prompt.insert.label/ }))
     expect(
-      screen.queryByRole('button', { name: /knowledgeRetrieval.label/ }),
-    ).not.toBeInTheDocument()
+      within(screen.getByRole('dialog', { name: /prompt.insert.label/ })).getByRole('button', {
+        name: /knowledgeRetrieval.label/,
+      }),
+    ).toBeInTheDocument()
+    await user.click(
+      within(screen.getByRole('dialog', { name: /prompt.insert.label/ })).getByRole('button', {
+        name: /knowledgeRetrieval.label/,
+      }),
+    )
+    const menu = screen.getByRole('dialog', { name: /prompt.insert.label/ })
+    expect(within(menu).queryByText('Product manual')).not.toBeInTheDocument()
+    expect(within(menu).getByRole('button', { name: /knowledgeRetrieval.add/ })).toBeInTheDocument()
 
     act(() => {
       seedKnowledgeFsFeatures(queryClient, { agent_enabled: true })
     })
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /knowledgeFs.add/ })).toBeEnabled(),
+      expect(within(menu).getByRole('button', { name: /knowledgeRetrieval.add/ })).toBeEnabled(),
     )
     expect(
-      await screen.findByRole('button', { name: /knowledgeRetrieval.label/ }),
+      await within(menu).findByRole('button', { name: /knowledgeRetrieval.add/ }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Product manual')).toBeInTheDocument()
+    expect(within(menu).getByRole('button', { name: 'Product manual' })).toBeInTheDocument()
   })
 
   it('keeps Classic Knowledge Base references available when KnowledgeFS is disabled', async () => {
@@ -197,15 +247,17 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
     const menu = screen.getByRole('dialog', { name: /prompt.insert.label/ })
     await user.click(within(menu).getByRole('button', { name: /knowledgeRetrieval.label/ }))
     expect(screen.getByRole('button', { name: 'Classic Docs' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /knowledgeRetrieval.add/ })).not.toBeInTheDocument()
+    expect(within(menu).getByRole('button', { name: /knowledgeRetrieval.add/ })).toBeInTheDocument()
   })
 
   it('shows a bound knowledge space without editing controls in a read-only Workflow panel', async () => {
     setup({ workflow: true, readOnly: true, configured: true })
 
-    expect(await screen.findByRole('heading', { name: /knowledgeFs.title/ })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: /knowledgeRetrieval.label/ }),
+    ).toBeInTheDocument()
     expect(screen.getByText('Product manual')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /knowledgeFs.add/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /knowledgeRetrieval.add/ })).toBeDisabled()
     expect(
       screen.queryByRole('button', { name: /knowledgeRetrieval.edit/ }),
     ).not.toBeInTheDocument()

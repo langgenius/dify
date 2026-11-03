@@ -5,10 +5,15 @@ from services.knowledge_fs.product_dto import KnowledgeFSPublicFailureResponse
 
 
 class _KnowledgeFSFailureHTTPError(BaseHTTPException):
+    details_model = KnowledgeFSPublicFailureResponse
+
     def __init__(self, failure: KnowledgeFSPublicFailureResponse | None = None) -> None:
         super().__init__(failure.message if failure else None)
         if failure is not None and self.data is not None:
-            self.data["failure"] = failure.model_dump(by_alias=True, exclude_none=True)
+            details = failure.model_dump(by_alias=True, exclude_none=True)
+            self.data["details"] = details
+            # Keep the legacy field for clients that do not consume the documented error details.
+            self.data["failure"] = details
 
 
 class KnowledgeFSSpaceNotFoundHTTPError(_KnowledgeFSFailureHTTPError):

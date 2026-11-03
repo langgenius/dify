@@ -9,8 +9,10 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AuthCategory, Authorized, usePluginAuth } from '@/app/components/plugins/plugin-auth'
@@ -19,10 +21,10 @@ import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import useTheme from '@/hooks/use-theme'
 import { usePluginManifestInfo } from '@/service/use-plugins'
 import { Theme } from '@/types/app'
-import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { useAgentOrchestrateReadOnly } from '../../read-only-context'
 
 function ProviderIcon({
@@ -213,6 +215,7 @@ const ProviderToolActionItem = memo(
     onRemoveAction: (actionId: string) => void
   }) => {
     const { t } = useTranslation(['agentV2'])
+    const { t: tCommon } = useTranslation(['common'])
     const readOnly = useAgentOrchestrateReadOnly()
     const handleConfigureAction = useCallback(() => {
       onConfigureAction({ actionId: action.id, toolId: tool.id })
@@ -231,26 +234,37 @@ const ProviderToolActionItem = memo(
         </div>
         {!readOnly && (
           <div className="hidden shrink-0 items-center gap-1 px-0.5 group-focus-within:flex group-hover:flex">
-            <button
-              type="button"
-              aria-label={t(($) => $['agentDetail.configure.tools.editAction'], {
-                name: action.name,
-              })}
-              onClick={handleConfigureAction}
-              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-            </button>
-            <button
-              type="button"
-              aria-label={t(($) => $['agentDetail.configure.tools.removeAction'], {
-                name: action.name,
-              })}
-              onClick={handleRemoveAction}
-              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              <span aria-hidden className="i-ri-delete-bin-line size-4" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['agentDetail.configure.tools.editAction'], {
+                      name: action.name,
+                    })}
+                    onClick={handleConfigureAction}
+                  >
+                    <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+                  </IconButton>
+                }
+              />
+              <TooltipContent>{tCommon(($) => $['operation.edit'])}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['agentDetail.configure.tools.removeAction'], {
+                      name: action.name,
+                    })}
+                    tone="destructive"
+                    onClick={handleRemoveAction}
+                  >
+                    <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                  </IconButton>
+                }
+              />
+              <TooltipContent>{tCommon(($) => $['operation.remove'])}</TooltipContent>
+            </Tooltip>
           </div>
         )}
       </div>
@@ -295,7 +309,7 @@ export const AgentProviderToolItem = memo(
     const configuredIcon = theme === Theme.dark && tool.iconDark ? tool.iconDark : tool.icon
     const icon =
       configuredIcon ??
-      (pluginManifest && tool.pluginId ? getIconFromMarketPlace(tool.pluginId) : undefined)
+      (pluginManifest && tool.pluginId ? getMarketplacePluginIconUrl(tool.pluginId) : undefined)
     const installInfo = tool.pluginUniqueIdentifier ?? pluginManifest?.latest_package_identifier
     const installIdentifiers = [tool.pluginId, tool.id].filter((identifier): identifier is string =>
       Boolean(identifier),
@@ -325,12 +339,18 @@ export const AgentProviderToolItem = memo(
           </CollapsibleTrigger>
           {!readOnly && (
             <Menu modal={false}>
-              <MenuTrigger className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover">
-                <span className="sr-only">
-                  {t(($) => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}
-                </span>
-                <span aria-hidden className="i-ri-more-fill size-4" />
-              </MenuTrigger>
+              <MenuTrigger
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['agentDetail.configure.tools.moreActions'], {
+                      name: tool.name,
+                    })}
+                    className="shrink-0 data-popup-open:bg-state-base-hover"
+                  >
+                    <span aria-hidden className="i-ri-more-fill size-4" />
+                  </IconButton>
+                }
+              />
               <MenuContent align="end" className="w-44">
                 <MenuItem variant="destructive" className="gap-2" onClick={onRemoveProvider}>
                   <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />

@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { getTagManagePermissionKey } from '../utils'
 import { TagItemEditor } from './tag-item-editor'
@@ -44,7 +45,9 @@ export const TagManagementModal = ({
       enabled: show && canManageTags,
     }),
   )
-  const createTagMutation = useMutation(consoleQuery.tags.post.mutationOptions())
+  const createTagMutation = useMutation(
+    consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
+  )
   const [name, setName] = useState<string>('')
 
   const createNewTag = () => {
@@ -64,8 +67,8 @@ export const TagManagementModal = ({
           toast.success(t(($) => $['tag.created'], { ns: 'common' }))
           setName('')
         },
-        onError: () => {
-          toast.error(t(($) => $['tag.failed'], { ns: 'common' }))
+        onError: (error) => {
+          toast.error(getErrorMessage(error) ?? t(($) => $['tag.failed'], { ns: 'common' }))
         },
       },
     )

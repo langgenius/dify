@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Sequence
 from contextlib import AbstractContextManager, closing
 from dataclasses import replace
 from typing import BinaryIO, Literal, Protocol
@@ -33,9 +35,14 @@ from services.entities.dsl_entities import (
     AppImportPackage,
     AppImportParams,
     CheckDependenciesResult,
+    DslImportWarning,
     Import,
     ImportStatus,
+    PackagedWorkflowTool,
 )
+from services.workflow_tool_references import WorkflowToolTarget, retarget_workflow_tool_dsl
+
+logger = logging.getLogger(__name__)
 
 
 class ConsoleAppNotFoundError(Exception):
@@ -150,6 +157,14 @@ class AppTransfers(Protocol):
 
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult: ...
 
+    def plan_workflow_tools(
+        self, context: RequestContext, tools: Sequence[PackagedWorkflowTool], *, creates_root_app: bool
+    ) -> dict[str, WorkflowToolTarget]: ...
+
+    def create_workflow_tool(
+        self, context: RequestContext, *, app_id: str, tool: PackagedWorkflowTool, target: WorkflowToolTarget
+    ) -> None: ...
+
     def export_dsl(self, context: RequestContext, app_id: str, options: AppExportOptions) -> str: ...
 
     def export_app_package(
@@ -259,6 +274,8 @@ class ConsoleAppService:
         package = self._transfers.read_app_package(source)
         if package is not None:
             with closing(package):
+                if package.workflow_tools:
+                    return self._import_with_workflow_tools(context, params, package)
                 return self._import_dsl(
                     context,
                     params.model_copy(update={"mode": "yaml-content", "yaml_content": package.dsl, "yaml_url": None}),
@@ -269,6 +286,84 @@ class ConsoleAppService:
             raise InvalidRosterAgentPackageError("Roster Agent package import does not support overwriting an App")
         result = self._transfers.import_agent_package(context, source)
         return self._import_agent_result(result)
+
+    def _import_with_workflow_tools(
+        self, context: RequestContext, params: AppImportParams, package: AppImportPackage
+    ) -> Import:
+        """Create the workflows a package calls as Workflow Tools, then import the App that calls them.
+
+        Workflow Tools already in the workspace are reused. New tools get their ids up front, so a DSL can
+        reference a tool that is created after it and workflows that call each other need no order. Apps
+        created before a failure are deleted.
+        """
+        self._access.require_import(context, "dsl")
+        targets = self._transfers.plan_workflow_tools(
+            context, package.workflow_tools, creates_root_app=not params.app_id
+        )
+        created_app_ids: list[str] = []
+        warnings: list[DslImportWarning] = []
+        try:
+            for tool in package.workflow_tools:
+                target = targets[tool.provider_id]
+                if not target.create:
+                    continue
+                with closing(package.open_workflow_tool(tool)) as workflow_package:
+                    imported = self._import_dsl(
+                        context,
+                        AppImportParams(
+                            mode="yaml-content",
+                            yaml_content=retarget_workflow_tool_dsl(workflow_package.dsl, targets),
+                        ),
+                        package=workflow_package,
+                    )
+                if imported.app_id and imported.app_created:
+                    created_app_ids.append(imported.app_id)
+                if (
+                    imported.status not in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}
+                    or not imported.app_id
+                ):
+                    raise InvalidRosterAgentPackageError(
+                        f"Workflow tool {tool.name!r} could not be imported: {imported.error}"
+                    )
+                try:
+                    self._transfers.create_workflow_tool(context, app_id=imported.app_id, tool=tool, target=target)
+                except ValueError as exc:
+                    # Publishing validates the workflow against this workspace, e.g. its Knowledge Bases.
+                    raise InvalidRosterAgentPackageError(
+                        f"Workflow tool {tool.name!r} could not be created: {exc}"
+                    ) from exc
+                warnings.extend(
+                    warning.model_copy(update={"path": f"workflow_tools.{tool.id}.{warning.path}"})
+                    for warning in imported.warnings
+                )
+            result = self._import_dsl(
+                context,
+                params.model_copy(
+                    update={
+                        "mode": "yaml-content",
+                        "yaml_content": retarget_workflow_tool_dsl(package.dsl, targets),
+                        "yaml_url": None,
+                    }
+                ),
+                package=package,
+            )
+        except Exception:
+            self._discard_imported_apps(context, created_app_ids)
+            raise
+        if result.status == ImportStatus.FAILED:
+            self._discard_imported_apps(context, created_app_ids)
+            return result
+        result.warnings = [*warnings, *result.warnings]
+        if result.warnings and result.status == ImportStatus.COMPLETED:
+            result.status = ImportStatus.COMPLETED_WITH_WARNINGS
+        return result
+
+    def _discard_imported_apps(self, context: RequestContext, app_ids: list[str]) -> None:
+        for app_id in reversed(app_ids):
+            try:
+                self.delete(context, app_id)
+            except Exception:
+                logger.exception("Failed to delete App %s left by a failed package import", app_id)
 
     def _import_agent_result(self, result: ImportedAppPackage) -> Import:
         return Import(

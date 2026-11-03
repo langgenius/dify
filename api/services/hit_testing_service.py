@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import ModelConfig
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -145,9 +146,9 @@ class HitTestingService:
             if metadata_condition and not document_ids_filter:
                 return cls.compact_retrieve_response(query, [], session=session)
         all_documents = RetrievalService.retrieve(
-            retrieval_method=RetrievalMethod(
-                resolved_retrieval_model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH)
-            ),
+            retrieval_method=RetrievalMethod.KEYWORD_SEARCH
+            if dataset.indexing_technique == IndexTechniqueType.ECONOMY
+            else RetrievalMethod(resolved_retrieval_model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH)),
             dataset_id=dataset.id,
             query=query,
             attachment_ids=attachment_ids,

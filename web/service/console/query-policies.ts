@@ -353,6 +353,144 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       workspaces: {
         current: {
+          humanInput: {
+            v2: {
+              contacts: {
+                platform: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    },
+                  },
+                },
+                byContactId: {
+                  imBindings: {
+                    put: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                  },
+                  imOverride: {
+                    put: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                  },
+                },
+                external: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    },
+                  },
+                  byContactId: {
+                    patch: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                  },
+                },
+                remove: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    },
+                  },
+                },
+              },
+              imSyncRuns: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (data, _variables, _onMutateResult, context) => {
+                      context.client.setQueryData(
+                        consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.get.queryKey(),
+                        data,
+                      )
+                      return context.client.resetQueries({
+                        queryKey:
+                          consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.results.key(),
+                      })
+                    },
+                  },
+                },
+              },
+              channels: {
+                email: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                    },
+                  },
+                  byChannelId: {
+                    put: {
+                      mutationOptions: {
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                      },
+                    },
+                  },
+                },
+                im: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                    },
+                  },
+                  byChannelId: {
+                    put: {
+                      mutationOptions: {
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                      },
+                    },
+                    replacement: {
+                      post: {
+                        mutationOptions: {
+                          onSettled: (_data, _error, _variables, _onMutateResult, context) =>
+                            invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           members: {
             byMemberId: {
               delete: {
@@ -371,6 +509,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     void context.client.invalidateQueries({
                       queryKey: consoleQuery.workspaces.current.members.get.key(),
                     })
+                    void invalidateHumanInputContactQueries(consoleQuery, context.client)
                   },
                 },
               },
@@ -977,6 +1116,54 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
+          annotations: {
+            byAnnotationId: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.annotations.key({
+                        input: { params: { app_id: variables.params.app_id } },
+                      }),
+                    })
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.apps.byAppId.annotations.key({
+                          input: { params: { app_id: variables.params.app_id } },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.features.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.annotations.key({
+                        input: { params: { app_id: variables.params.app_id } },
+                      }),
+                    }),
+                    context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() }),
+                  ])
+                },
+              },
+            },
+          },
           traceRuns: {
             bySourceKind: {
               bySourceId: {
@@ -1627,6 +1814,10 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 void context.client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
               },
             },
+          },
+          // The upgrade dialog reports start failures, including model issues, inline.
+          knowledgeFsUpgrades: {
+            post: { mutationOptions: { context: { silent: true } } },
           },
           get: {
             queryOptions: {
@@ -2823,6 +3014,32 @@ function invalidateAgentAccessQueries(
     query.agent.get.key(),
     query.agent.inviteOptions.get.key(),
     query.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+  ])
+}
+
+function invalidateHumanInputContactQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+) {
+  return invalidateQueryKeys(client, [
+    query.workspaces.current.humanInput.v2.contacts.key(),
+    query.workspaces.current.humanInput.v2.contactOptions.key(),
+    query.workspaces.current.humanInput.v2.imIdentities.key(),
+    query.workspaces.current.humanInput.v2.organizationCandidates.key(),
+  ])
+}
+
+function invalidateHumanInputChannelQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+) {
+  return Promise.all([
+    invalidateHumanInputContactQueries(query, client),
+    invalidateQueryKeys(client, [
+      query.workspaces.current.humanInput.v2.channels.key(),
+      query.workspaces.current.humanInput.v2.imIdentities.key(),
+      query.workspaces.current.humanInput.v2.imSyncRuns.key(),
+    ]),
   ])
 }
 

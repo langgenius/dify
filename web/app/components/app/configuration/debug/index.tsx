@@ -176,10 +176,10 @@ const Debug: FC<IDebug> = ({
         return res
       },
     ) // compatible with old version
-    requiredVars.forEach(({ key, name }) => {
+    requiredVars.forEach(({ key, name, type }) => {
       if (hasEmptyInput) return
 
-      if (!inputs[key]) hasEmptyInput = name
+      if (!inputs[key] && !(type === 'number' && inputs[key] === 0)) hasEmptyInput = name
     })
 
     if (hasEmptyInput) {
@@ -492,7 +492,7 @@ const Debug: FC<IDebug> = ({
                 )}
 
                 {varList.length > 0 && (
-                  <div className="relative mr-2 ml-1">
+                  <div className="relative ms-1 me-2">
                     <Tooltip>
                       <TooltipTrigger
                         render={
@@ -514,7 +514,7 @@ const Debug: FC<IDebug> = ({
                       </TooltipContent>
                     </Tooltip>
                     {expanded && (
-                      <div className="absolute right-1.25 -bottom-3.5 z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
+                      <div className="absolute inset-e-1.25 -bottom-3.5 z-10 h-3 w-3 rotate-45 border-s-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg rtl:-rotate-45" />
                     )}
                   </div>
                 )}

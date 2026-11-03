@@ -13,7 +13,6 @@ from pydantic import (
     PositiveInt,
     computed_field,
     field_validator,
-    model_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -426,6 +425,23 @@ class EndpointConfig(BaseSettings):
 
     TRIGGER_URL: str = Field(description="Template url for triggers", default="http://localhost:5001")
 
+    BILLING_API_URL: str = Field(
+        description="Internal billing and SaaS API base URL, including the API version path; Cloud edition only. "
+        "Only services.billing_client may read it",
+        default="",
+    )
+
+    BILLING_API_SECRET_KEY: str = Field(
+        description="Shared secret sent to the billing and SaaS APIs. Only services.billing_client may read it",
+        default="",
+    )
+
+    BILLING_QUOTA_API_URL: str = Field(
+        description="Optional billing API base URL for quota requests; falls back to BILLING_API_URL. "
+        "Only services.billing_client may read it",
+        default="",
+    )
+
     NETWORK_ACCESS_API_URL: str = Field(
         description="Optional internal SaaS API base URL for network access policy requests; "
         "falls back to BILLING_API_URL",
@@ -538,6 +554,11 @@ class FileUploadConfig(BaseSettings):
     AGENT_PACKAGE_MAX_ENTRIES: PositiveInt = Field(
         description="Maximum number of entries in an Agent package",
         default=5000,
+    )
+
+    APP_PACKAGE_MAX_WORKFLOW_TOOLS: PositiveInt = Field(
+        description="Maximum number of Workflow Tool workflows bundled into one App package",
+        default=20,
     )
 
     BATCH_UPLOAD_LIMIT: NonNegativeInt = Field(
@@ -1416,6 +1437,11 @@ class MultiModalTransferConfig(BaseSettings):
 
 
 class OpsTraceConfig(BaseSettings):
+    OPS_TRACE_QUEUE: str = Field(
+        default="ops_trace_v2",
+        pattern=r"^[A-Za-z0-9_.-]+$",
+        description="Celery queue for tracing and sandbox metering; isolate new workers during rolling upgrades.",
+    )
     OPS_AGENT_TRACE_ENABLED: bool = Field(
         default=False, description="Enable application-scoped Agent tracing collection and delivery."
     )
@@ -1441,36 +1467,10 @@ class OpsTraceConfig(BaseSettings):
         default=7, description="Retention of trace payloads and encrypted destination snapshots."
     )
 
-    OPS_TRACE_UNIFIED_ENABLED: bool = Field(
-        description="Enable unified ops tracing for providers registered in the unified registry.",
-        default=False,
+    OPS_TRACE_EXPORT_MAX_ATTEMPTS: PositiveInt = Field(
+        default=6,
+        description="Attempts to send one trace to its provider when the provider is temporarily unavailable.",
     )
-
-    # Include scheduling and export grace after the parent workflow's maximum execution time.
-    # Recommended: max_retries >= ceil((WORKFLOW_MAX_EXECUTION_TIME + grace_seconds) / delay_seconds).
-    OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
-        description="Maximum retry attempts for transient ops trace provider dispatch failures.",
-        default=780,
-    )
-
-    OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS: PositiveInt = Field(
-        description="Delay in seconds between transient ops trace provider dispatch retry attempts.",
-        default=5,
-    )
-
-    OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS: PositiveInt = Field(
-        description="Retention in seconds for unified tracing parent contexts.",
-        default=3900,
-    )
-
-    @model_validator(mode="after")
-    def validate_parent_context_retention(self) -> "OpsTraceConfig":
-        if not self.OPS_TRACE_UNIFIED_ENABLED:
-            return self
-        retry_window = self.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES * self.OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS
-        if retry_window > self.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS:
-            raise ValueError("OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS must cover the retry window")
-        return self
 
 
 class CeleryBeatConfig(BaseSettings):
@@ -1481,6 +1481,10 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_TRACE_PAYLOAD_SWEEP_TASK: bool = Field(
+        description="Enable the daily cleanup of trace payloads that an interrupted delivery left in storage",
+        default=True,
+    )
     ENABLE_APPLICATION_TRACE_RECONCILE_TASK: bool = Field(
         description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
         default=True,
