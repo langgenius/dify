@@ -1485,12 +1485,12 @@ export const channels = {
 }
 
 /**
- * Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.
+ * Resolve Contact IDs persisted in workflow recipient configuration. Include effective IM providers for each Contact. Contacts unavailable in the current workspace are omitted.
  */
 export const get16 = oc
   .route({
     description:
-      'Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.',
+      'Resolve Contact IDs persisted in workflow recipient configuration. Include effective IM providers for each Contact. Contacts unavailable in the current workspace are omitted.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2ContactOptionsBatch',
@@ -1505,12 +1505,12 @@ export const batch = {
 }
 
 /**
- * List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.
+ * List editor-safe Contact options for static recipient selection. The projection includes effective IM providers and omits binding details and management metadata; unavailable Contacts are omitted.
  */
 export const get17 = oc
   .route({
     description:
-      'List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.',
+      'List editor-safe Contact options for static recipient selection. The projection includes effective IM providers and omits binding details and management metadata; unavailable Contacts are omitted.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2ContactOptions',
@@ -6265,12 +6265,19 @@ export const switch3 = {
   post: post95,
 }
 
+/**
+ * Return an icon for a tenant UUID and a supported icon type
+ *
+ * Invalid path arguments fail before provider discovery or asset access.
+ */
 export const get134 = oc
   .route({
+    description: 'Invalid path arguments fail before provider discovery or asset access.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLang',
     path: '/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}',
+    summary: 'Return an icon for a tenant UUID and a supported icon type',
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangPath }))

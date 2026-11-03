@@ -139,7 +139,7 @@ export function CreateSnippetDialog({
                 id={nameInputId}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder={t(($) => $['snippet.namePlaceholder'], { ns: 'workflow' }) || ''}
+                placeholder={t(($) => $['snippet.namePlaceholder'], { ns: 'workflow' })}
                 disabled={isSubmitting}
               />
             </div>
@@ -156,9 +156,7 @@ export function CreateSnippetDialog({
                 className="resize-none"
                 value={description}
                 onValueChange={(value) => setDescription(value)}
-                placeholder={
-                  t(($) => $['snippet.descriptionPlaceholder'], { ns: 'workflow' }) || ''
-                }
+                placeholder={t(($) => $['snippet.descriptionPlaceholder'], { ns: 'workflow' })}
                 disabled={isSubmitting}
               />
             </div>
