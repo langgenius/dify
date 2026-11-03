@@ -85,6 +85,7 @@ def test_full_preflight_requires_no_body_and_reports_unready_nodes(app: Flask, m
     )
     with app.test_request_context("/preflight", method="POST"):
         result = controller.TestCredentialPreflightApi().post(app_id=SCOPE.app_id)
+    assert isinstance(result, dict)
     assert result["ready"] is False
     assert len(result["credentials"]) == 2
     assert "draft_hash" not in result

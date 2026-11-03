@@ -3,8 +3,6 @@
 from collections.abc import Mapping
 from typing import Any, Protocol
 
-from pydantic import ValidationError
-
 from constants.end_user_connections import ConnectionCredentialType, OAuthClientSource
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.provider_ids import ToolProviderID
@@ -125,5 +123,5 @@ class PublishedPreflightRequirements:
                     )
                 )
             return workflow_id, revision, tuple(requirements)
-        except (KeyError, TypeError, ValueError, ValidationError):
+        except (KeyError, TypeError, ValueError):
             raise ConnectionConfigurationError() from None

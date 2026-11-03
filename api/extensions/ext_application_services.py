@@ -26,6 +26,7 @@ from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
 from extensions.application_services.app import AppServices, build_app_api_key_service, build_app_services
+from extensions.application_services.consumer import build_consumer_service
 from extensions.application_services.data_sources import (
     DataSourceServices,
     build_data_source_credentials,
@@ -147,6 +148,7 @@ from services.app_tracing_config_service import AppTracingConfigService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.consumer_service import ConsumerService
 from services.conversation_command_service import ConversationCommandService
 from services.conversation_name_generator import DefaultModelConversationNameGenerator
 from services.conversation_name_service import ConversationNameService
@@ -328,6 +330,7 @@ class ApplicationServices:
     annotation_imports: AnnotationImportService
     annotation_queries: AnnotationQuery
     annotation_reply: AnnotationReplyService
+    consumer: ConsumerService
     rbac: RBACServices
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
@@ -649,6 +652,7 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
     )
     end_user_connections = build_end_user_connections(database_client=database_client)
+    end_user_connection_oauth = build_end_user_connection_oauth(database_client=database_client)
     end_user_connection_preflight = build_end_user_connection_preflight(
         database_client=database_client, connections=end_user_connections
     )
@@ -685,6 +689,15 @@ def build_application_services(
         now=lambda: datetime.now(UTC),
         access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
     )
+    installed_apps = build_installed_app_services(
+        conversation_queries=conversation_queries,
+        conversation_names=conversation_names,
+        conversation_commands=conversation_commands,
+        database_client=database_client,
+        webapp_access=webapp_access,
+        get_workspace_role=workspace_repository.get_account_role,
+        webapp_auth_enabled=webapp_auth_enabled,
+    )
     return ApplicationServices(
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
@@ -711,6 +724,14 @@ def build_application_services(
             jobs=RedisAnnotationReplyJobRepository(redis=redis),
             enable_task=enable_annotation_reply_task.delay,
             disable_task=disable_annotation_reply_task.delay,
+        ),
+        consumer=build_consumer_service(
+            database_client=database_client,
+            access=installed_apps.access,
+            shared_apps_enabled=webapp_auth_enabled,
+            management=end_user_connections,
+            identities=web_identity,
+            tokens=web_passport_tokens,
         ),
         rbac=rbac,
         conversation_names=conversation_names,
@@ -805,15 +826,7 @@ def build_application_services(
             audit=LoggingWebAuthenticationAuditGateway(logger=logging.getLogger("controllers.web.login")),
             private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
         ),
-        installed_apps=build_installed_app_services(
-            conversation_queries=conversation_queries,
-            conversation_names=conversation_names,
-            conversation_commands=conversation_commands,
-            database_client=database_client,
-            webapp_access=webapp_access,
-            get_workspace_role=workspace_repository.get_account_role,
-            webapp_auth_enabled=webapp_auth_enabled,
-        ),
+        installed_apps=installed_apps,
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
             file_service=file_service,
@@ -963,7 +976,7 @@ def build_application_services(
         ),
         end_user_connections=end_user_connections,
         end_user_connection_preflight=end_user_connection_preflight,
-        end_user_connection_oauth=build_end_user_connection_oauth(database_client=database_client),
+        end_user_connection_oauth=end_user_connection_oauth,
         web_passport=web_passport,
         api_based_extensions=APIBasedExtensionApplicationService(
             extensions=APIBasedExtensionRepository(session_factory=database_client),

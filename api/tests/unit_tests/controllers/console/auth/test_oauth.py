@@ -389,6 +389,7 @@ def test_callback_retry_keeps_end_user_mode_and_web_app_return_target(
         headers={"Cookie": "account_oauth_github_browser-nonce=browser-nonce"},
     ):
         response = OAuthCallback().get("github")
+    assert isinstance(response, Response)
     destination = urlsplit(response.headers["Location"])
     assert destination.netloc == "console.example.com"
     assert destination.path == "/signin"

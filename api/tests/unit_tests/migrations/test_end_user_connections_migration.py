@@ -22,6 +22,7 @@ from tests.helpers.end_user_connection_contract import ConnectionPersistenceTest
 
 FEATURE_MIGRATION = "2026_10_26_1300-f3a6b9c2d108_add_connection_revision_contracts.py"
 CONFIGURATION_MIGRATION = "2026_10_29_1200-a91d5e7c3b20_save_connection_authorizations.py"
+CONSUMER_INDEX_MIGRATION = "2026_11_03_1200-4f2a90b8c317_index_consumer_connection_groups.py"
 TABLE_NAMES = {
     "end_user_connections",
     "app_connections",
@@ -61,6 +62,7 @@ def connection_session() -> Iterator[Session]:
         load_migration(connection).upgrade()
         load_migration(connection, FEATURE_MIGRATION).upgrade()
         load_migration(connection, CONFIGURATION_MIGRATION).upgrade()
+        load_migration(connection, CONSUMER_INDEX_MIGRATION).upgrade()
         connection.commit()
         with Session(connection) as session:
             yield session
@@ -69,6 +71,26 @@ def connection_session() -> Iterator[Session]:
 
 class TestMigratedConnections(ConnectionPersistenceTests):
     """Exercise deployed constraints as well as ORM-created tables."""
+
+
+def test_consumer_index_upgrade_and_downgrade_preserve_connections(connection_session: Session) -> None:
+    record = new_connection()
+    connection_session.add(record)
+    connection_session.flush()
+    connection = connection_session.connection()
+    migration = load_migration(connection, CONSUMER_INDEX_MIGRATION)
+    migration.downgrade()
+    assert "end_user_connection_consumer_idx" not in {
+        index["name"] for index in sa.inspect(connection).get_indexes("end_user_connections")
+    }
+    migration.upgrade()
+    index = next(
+        item
+        for item in sa.inspect(connection).get_indexes("end_user_connections")
+        if item["name"] == "end_user_connection_consumer_idx"
+    )
+    assert index["column_names"] == ["account_id", "provider", "credential_type", "id"]
+    assert connection_session.scalar(sa.select(sa.func.count()).select_from(type(record))) == 1
 
 
 def test_migration_schema_matches_models(connection_session: Session) -> None:

@@ -270,6 +270,52 @@ export const zConnectionRevisionChangeDetails = z.object({
 })
 
 /**
+ * ConsumerAppResponse
+ */
+export const zConsumerAppResponse = z.object({
+  app_code: z.string(),
+  description: z.string(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: z.string().nullable(),
+  id: z.string(),
+  is_favorite: z.boolean(),
+  last_used_at: z.int().nullable(),
+  mode: z.string(),
+  name: z.string(),
+})
+
+/**
+ * ConsumerAppsResponse
+ */
+export const zConsumerAppsResponse = z.object({
+  data: z.array(zConsumerAppResponse),
+  has_more: z.boolean(),
+  next_cursor: z.string().nullable(),
+})
+
+/**
+ * ConsumerConnectionResponse
+ */
+export const zConsumerConnectionResponse = z.object({
+  account_label: z.string().nullable(),
+  connection_type: zConnectionCredentialType,
+  key: z.uuid(),
+  name: z.string(),
+  provider: z.string(),
+  webapps_count: z.int().gte(0),
+})
+
+/**
+ * ConsumerConnectionsResponse
+ */
+export const zConsumerConnectionsResponse = z.object({
+  data: z.array(zConsumerConnectionResponse),
+  has_more: z.boolean(),
+  next_cursor: z.string().nullable(),
+})
+
+/**
  * ConversationListQuery
  */
 export const zConversationListQuery = z.object({
@@ -3273,6 +3319,70 @@ export const zGetLoginStatusResponse = zLoginStatusResponse
  * Logout successful
  */
 export const zPostLogoutResponse = zSimpleResultResponse
+
+export const zGetMeAppsQuery = z.object({
+  cursor: z.string().max(2048).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  name: z.string().max(255).optional(),
+  view: z.enum(['favorites', 'recent', 'shared']).optional().default('recent'),
+})
+
+/**
+ * Accessible personal Apps
+ */
+export const zGetMeAppsResponse = zConsumerAppsResponse
+
+export const zDeleteMeAppsByAppIdFavoritePath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App unfavorited
+ */
+export const zDeleteMeAppsByAppIdFavoriteResponse = z.void()
+
+export const zPutMeAppsByAppIdFavoritePath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App favorited
+ */
+export const zPutMeAppsByAppIdFavoriteResponse = z.void()
+
+export const zGetMeConnectionsQuery = z.object({
+  cursor: z.string().min(1).max(1024).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  provider: z.string().min(1).max(255).optional(),
+})
+
+/**
+ * Account Connections
+ */
+export const zGetMeConnectionsResponse = zConsumerConnectionsResponse
+
+export const zDeleteMeConnectionsByConnectionKeyPath = z.object({
+  connection_key: z.uuid(),
+})
+
+/**
+ * Connection group disconnected
+ */
+export const zDeleteMeConnectionsByConnectionKeyResponse = z.void()
+
+export const zGetMeConnectionsByConnectionKeyAppsPath = z.object({
+  connection_key: z.uuid(),
+})
+
+export const zGetMeConnectionsByConnectionKeyAppsQuery = z.object({
+  cursor: z.uuid().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Associated WebApps
+ */
+export const zGetMeConnectionsByConnectionKeyAppsResponse = zConsumerAppsResponse
 
 export const zGetMessagesQuery = z.object({
   conversation_id: z.string(),

@@ -2057,6 +2057,7 @@ class EndUser(UserMixin, TypeBase):
         sa.Index("end_user_session_id_idx", "session_id", "type"),
         sa.Index("end_user_tenant_session_id_idx", "tenant_id", "session_id", "type"),
         sa.UniqueConstraint("tenant_id", "app_id", "type", "account_id", name="end_user_app_account_key"),
+        sa.Index("end_user_account_apps_idx", "account_id", "type", "tenant_id", "app_id", "id"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
