@@ -33,6 +33,22 @@ from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 
 
+def _persist_app(session: Session, *, tenant_id: str = "tenant-1") -> App:
+    app = App(
+        id="app-1",
+        tenant_id=tenant_id,
+        name="Agent tool gateway test app",
+        description="",
+        mode=AppMode.AGENT_CHAT,
+        enable_site=False,
+        enable_api=False,
+        max_active_requests=None,
+    )
+    session.add(app)
+    session.commit()
+    return app
+
+
 def _request() -> AgentToolInvokeRequest:
     return AgentToolInvokeRequest.model_validate(
         {
@@ -68,22 +84,6 @@ class _FakeTool:
     """Stands in for the resolved agent tool; only its runtime is mutated by the service."""
 
     runtime: ToolRuntime = field(default_factory=lambda: ToolRuntime(tenant_id="tenant-1"))
-
-
-def _persist_app(session: Session, *, tenant_id: str = "tenant-1") -> App:
-    app = App(
-        id="app-1",
-        tenant_id=tenant_id,
-        name="Agent tool gateway test app",
-        description="",
-        mode=AppMode.AGENT_CHAT,
-        enable_site=False,
-        enable_api=False,
-        max_active_requests=None,
-    )
-    session.add(app)
-    session.commit()
-    return app
 
 
 def _messages() -> Generator[ToolInvokeMessage]:
@@ -414,12 +414,6 @@ def test_invoke_maps_runtime_lookup_errors_to_service_error_codes(
 
 # These ordinary boundary tests execute the real ToolEngine, Tool casts and
 # PluginTool converter. Only provider dispatch and durable file storage are doubled.
-TENANT_ID = "11111111-1111-1111-1111-111111111111"
-
-
-USER_ID = "33333333-3333-3333-3333-333333333333"
-
-
 def _ordinary_plugin(parameters: list[ToolParameter], runtime_parameters: dict[str, JsonValue]) -> PluginTool:
     from core.app.entities.app_invoke_entities import InvokeFrom
     from core.tools.__base.tool_runtime import ToolRuntime
@@ -435,15 +429,15 @@ def _ordinary_plugin(parameters: list[ToolParameter], runtime_parameters: dict[s
             parameters=parameters,
         ),
         runtime=ToolRuntime(
-            tenant_id=TENANT_ID,
-            user_id=USER_ID,
+            tenant_id="tenant-1",
+            user_id="user-1",
             tool_id="selected-tool",
             invoke_from=InvokeFrom.SERVICE_API,
             tool_invoke_from=ToolInvokeFrom.AGENT,
             credentials={"api_key": "synthetic-only"},
             runtime_parameters=runtime_parameters,
         ),
-        tenant_id=TENANT_ID,
+        tenant_id="tenant-1",
         icon="icon.svg",
         plugin_unique_identifier="langgenius/search:synthetic",
     )
@@ -485,13 +479,10 @@ def test_actual_plugin_cast_frontend_and_converter_preserve_file_wire(
     assert parameter.init_frontend_parameter(value) == expected
     tool = _ordinary_plugin([parameter], {})
     with patch("core.tools.plugin_tool.tool.PluginToolManager.invoke", return_value=_messages()) as dispatch:
-        message = list(tool.invoke(sqlite_session, USER_ID, {"input": value}))[0].message
+        message = list(tool.invoke(sqlite_session, "user-1", {"input": value}))[0].message
         assert isinstance(message, ToolInvokeMessage.TextMessage)
         assert message.text == "ok"
     assert dispatch.call_args.kwargs["tool_parameters"] == {"input": expected}
-
-
-APP_ID = "44444444-4444-4444-4444-444444444444"
 
 
 @pytest.mark.parametrize("provider_type", ["plugin", "builtin"])
@@ -533,10 +524,10 @@ def test_ordinary_plugin_service_preserves_prepared_live_values_and_cached_runti
     sent = dispatch.call_args.kwargs
     assert sent["tool_parameters"] == request.tool.tool_parameters
     assert sent["credentials"] == {"api_key": "synthetic-only"}
-    assert sent["tenant_id"] == TENANT_ID
-    assert sent["user_id"] == USER_ID
+    assert sent["tenant_id"] == "tenant-1"
+    assert sent["user_id"] == "user-1"
     assert sent["tool_provider"] == tool.entity.identity.provider
-    assert sent["app_id"] == APP_ID
+    assert sent["app_id"] == "app-1"
     assert sent["conversation_id"] == "conversation-1"
     assert sent["confirmed_dispatch_headers"] is None
     assert lookup.call_args.kwargs["agent_tool"].credential_id == "credential-1"
@@ -545,21 +536,37 @@ def test_ordinary_plugin_service_preserves_prepared_live_values_and_cached_runti
     assert tool.runtime.runtime_parameters is cached_parameters
 
 
+@pytest.mark.parametrize(
+    ("selection", "expected"),
+    [
+        (["a"], ["a"]),
+        ("a", ["a"]),
+        (" a , b ", ["a", "b"]),
+    ],
+)
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_ordinary_plugin_service_multiple_select_uses_actual_full_declaration(
+    selection: JsonValue,
+    expected: list[str],
     sqlite_session: sqlalchemy.orm.Session,
 ) -> None:
+    """Declared options normalize to lists; invalid options never reach provider dispatch."""
     _persist_app(sqlite_session)
-    parameter = _parameter("selection", "select", multiple=True, options=[{"value": "a", "label": {"en_US": "A"}}])
+    parameter = _parameter(
+        "selection",
+        "select",
+        multiple=True,
+        options=[{"value": "a", "label": {"en_US": "A"}}, {"value": "b", "label": {"en_US": "B"}}],
+    )
     tool = _ordinary_plugin([parameter], {})
     request = _request()
-    request.tool.tool_parameters = {"selection": ["a"]}
+    request.tool.tool_parameters = {"selection": selection}
     with (
         patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=tool),
         patch("core.tools.plugin_tool.tool.PluginToolManager.invoke", return_value=_messages()) as dispatch,
     ):
         AgentToolInnerService().invoke(request, session=sqlite_session)
-        assert dispatch.call_args.kwargs["tool_parameters"]["selection"] == ["a"]
+        assert dispatch.call_args.kwargs["tool_parameters"]["selection"] == expected
         request.tool.tool_parameters = {"selection": ["invalid"]}
         with pytest.raises(AgentToolInnerServiceError, match="not in options"):
             AgentToolInnerService().invoke(request, session=sqlite_session)
@@ -568,19 +575,20 @@ def test_ordinary_plugin_service_multiple_select_uses_actual_full_declaration(
 
 @pytest.mark.parametrize("multiple", [False, True])
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_api_multiple_metadata_exposes_existing_agent_select_wire_gap(
+def test_api_select_list_repr_is_not_decoded_as_an_array(
     multiple: bool, sqlite_session: sqlalchemy.orm.Session
 ) -> None:
+    """Scalar text stays intact; multiple select rejects undeclared text before dispatch."""
     parameter = _parameter("selection", "select", multiple=multiple, options=[{"value": "a", "label": {"en_US": "A"}}])
     tool = _ordinary_plugin([parameter], {})
     with patch("core.tools.plugin_tool.tool.PluginToolManager.invoke", return_value=_messages()) as dispatch:
         if multiple:
-            with pytest.raises(ValueError, match="must be a list"):
-                list(tool.invoke(sqlite_session, USER_ID, {"selection": "['a']"}))
+            with pytest.raises(ValueError, match="not in options"):
+                list(tool.invoke(sqlite_session, "user-1", {"selection": "['a']"}))
             dispatch.assert_not_called()
             assert parameter.init_frontend_parameter(["a"]) == ["a"]
         else:
-            list(tool.invoke(sqlite_session, USER_ID, {"selection": "['a']"}))
+            list(tool.invoke(sqlite_session, "user-1", {"selection": "['a']"}))
             assert dispatch.call_args.kwargs["tool_parameters"]["selection"] == "['a']"
             assert parameter.init_frontend_parameter("a") == "a"
 
@@ -627,9 +635,10 @@ def test_non_plugin_runtime_keeps_existing_configured_precedence(
         ("text", "text", "text output"),
         ("json", "json", '{"answer": 2}'),
         ("link", "link", "result link: https://example.test/result. please tell user to check it."),
-        ("image", "image_link", "image has been created and sent to user already"),
-        ("blob", "binary_link", "/files/tools/output-id.txt"),
-        ("file", "link", "/files/tools/output-id.txt"),
+        # Tool-file media is observed as a read_media handle for the committed ToolFile (main a2b34dea72).
+        ("image", "image_link", "Tool generated media file: "),
+        ("blob", "binary_link", "Tool generated media file: "),
+        ("file", "link", "Tool generated media file: "),
         ("file_mapping", None, ""),
     ],
 )
@@ -679,14 +688,17 @@ def test_api_output_observation_and_file_messages_use_existing_owners(
         )
     tool = _ordinary_plugin([], {})
     stored = ToolFile(
-        user_id="user",
-        tenant_id="tenant",
+        user_id="user-1",
+        tenant_id="tenant-1",
         conversation_id=None,
         file_key="file",
         name="sample.png" if output_kind == "image" else "sample.txt",
         mimetype="image/png" if output_kind == "image" else "text/plain",
     )
     stored.id = "output-id"
+    # The observation reads committed ToolFile metadata in its own tenant-scoped session.
+    sqlite_session.add(stored)
+    sqlite_session.commit()
     with (
         patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=tool),
         patch("core.tools.plugin_tool.tool.PluginToolManager.invoke", return_value=iter([message])),
@@ -701,12 +713,15 @@ def test_api_output_observation_and_file_messages_use_existing_owners(
     assert download.call_count == (output_kind == "image")
     assert upload.call_count == (output_kind == "blob")
     for call in download.call_args_list + upload.call_args_list:
-        assert call.kwargs["tenant_id"] == TENANT_ID
-        assert call.kwargs["user_id"] == USER_ID
+        assert call.kwargs["tenant_id"] == "tenant-1"
+        assert call.kwargs["user_id"] == "user-1"
         assert call.kwargs["conversation_id"] == "conversation-1"
     if output_kind in {"image", "blob", "file"}:
         meta = response.messages[0]["meta"]
         assert isinstance(meta, dict)
         assert meta["tool_file_id"] == "output-id"
+        summary = json.loads(response.observation.split("Tool generated media file: ")[1].split(" (call")[0])
+        assert resolve_file_record_id(summary["reference"]) == "output-id"
+        assert summary["filename"] == stored.name
     if output_kind == "file_mapping":
         assert response.observation == ""  # A raw JSON file meta mapping is not an API graphon File.
