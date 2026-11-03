@@ -25,9 +25,10 @@ from controllers.console.human_input_form import (
     _jsonify_form_definition,
 )
 from core.rbac import RBACPermission, RBACResourceScope
+from core.repositories.human_input_repository import HumanInputFormRecord
 from core.workflow.human_input_policy import HumanInputSurface
-from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
-from core.workflow.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.entities import FormDefinition, SelectInputConfig, StringListSource
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -37,6 +38,7 @@ from models.workflow import WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from services.enterprise.rbac_service import RBACService
 from services.entities.app_entities import AppAgentBinding
+from services.human_input_service import Form
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app
 from tests.helpers.unit.rbac_fakes import RBACDomain
@@ -99,14 +101,45 @@ def test_jsonify_form_definition() -> None:
     assert payload["expiration_time"] == int(expiration.timestamp())
 
 
+def _form(expiration_time: datetime) -> Form:
+    """Build the real form wrapper so the stored record, not a test double, drives the response."""
+    return Form(
+        HumanInputFormRecord(
+            form_id="form-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            tenant_id="t1",
+            app_id="app-1",
+            form_kind=HumanInputFormKind.RUNTIME,
+            definition=FormDefinition(
+                form_content="Approve the request",
+                rendered_content="<p>Approve the request</p>",
+                expiration_time=expiration_time,
+            ),
+            rendered_content="<p>Approve the request</p>",
+            created_at=expiration_time,
+            expiration_time=expiration_time,
+            status=HumanInputFormStatus.WAITING,
+            selected_action_id=None,
+            submitted_data=None,
+            submitted_at=None,
+            submission_user_id=None,
+            submission_end_user_id=None,
+            completed_by_recipient_id=None,
+            recipient_id="recipient-1",
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
+            access_token="token-1",
+        )
+    )
+
+
 def test_jsonify_form_definition_reads_a_naive_expiration_time_as_utc(monkeypatch: pytest.MonkeyPatch) -> None:
     """Stored expiration times are naive UTC, so the host timezone must not shift them."""
     if not hasattr(time, "tzset"):
         pytest.skip("tzset is only available on POSIX platforms")
 
     recorded_at = datetime(2024, 1, 1)
-    definition = SimpleNamespace(model_dump=lambda: {"fields": []})
-    form = SimpleNamespace(get_definition=lambda: definition, expiration_time=recorded_at)
+    form = _form(recorded_at)
 
     monkeypatch.setenv("TZ", "Asia/Shanghai")
     time.tzset()
