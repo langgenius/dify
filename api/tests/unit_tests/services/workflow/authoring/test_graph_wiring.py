@@ -334,3 +334,34 @@ def test_child_position_does_not_suppress_top_level_layout() -> None:
 
     assert "position" in graph["nodes"][0]
     assert child["position"] == {"x": 5, "y": 6}
+
+
+def test_null_handles_count_as_no_handles() -> None:
+    graph = {
+        "nodes": [_node("start", BuiltinNodeTypes.START), _node("end", BuiltinNodeTypes.END)],
+        "edges": [{"source": "start", "sourceHandle": None, "target": "end", "targetHandle": None}],
+    }
+
+    fill_graph_wiring(graph)
+
+    edge = _at(graph, "edges", 0)
+    assert isinstance(edge, dict)
+    assert (edge["sourceHandle"], edge["targetHandle"]) == (SOURCE_HANDLE, "target")
+    assert edge["id"] == "start-source-end-target"
+
+
+def test_a_branch_source_with_a_null_handle_gets_no_id() -> None:
+    graph = {
+        "nodes": [
+            _node("branch", BuiltinNodeTypes.IF_ELSE, cases=[{"case_id": "case-1"}]),
+            _node("end", BuiltinNodeTypes.END),
+        ],
+        "edges": [{"source": "branch", "sourceHandle": None, "target": "end"}],
+    }
+
+    fill_graph_wiring(graph)
+
+    edge = _at(graph, "edges", 0)
+    assert isinstance(edge, dict)
+    assert edge["sourceHandle"] is None
+    assert "id" not in edge
