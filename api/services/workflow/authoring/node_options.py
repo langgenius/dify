@@ -18,6 +18,7 @@ from libs.i18n_text import localized
 from models import AppMode
 from models.agent import WorkflowAgentBindingType
 from services.tools.tool_sources import TOOL_NODE_VERSION, ToolNodeIdentity, ToolSource
+from services.workflow.authoring.canvas_defaults import with_canvas_defaults
 from services.workflow.authoring.canvas_notes import COVERS_KEY, NOTE_DATA_TYPE, TEXT_KEY, NoteField, NoteTheme
 from services.workflow.authoring.plugins import references_for
 from services.workflow.graph_check import CANVAS_NOTE_TYPE, refused_node_types
@@ -88,7 +89,7 @@ def _block(node_type: str, node_class: type[Node]) -> NodeOption:
         version=version,
         label=node_type,
         description=None,
-        seed={"type": node_type, "version": version, "title": node_type},
+        seed=with_canvas_defaults({"type": node_type, "version": version, "title": node_type}),
     )
 
 
