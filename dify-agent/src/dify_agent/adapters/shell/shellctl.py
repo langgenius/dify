@@ -34,6 +34,7 @@ _SHELLCTL_OUTPUT_LIMIT_BYTES = 16 * 1024
 
 class ShellctlJobResult(Protocol):
     job_id: str
+
     @property
     def status(self) -> object: ...
 
@@ -42,14 +43,17 @@ class ShellctlJobResult(Protocol):
     offset: int
     truncated: bool
     exit_code: int | None
+
     @property
     def output_path(self) -> str | None: ...
 
 
 class ShellctlJobStatus(Protocol):
     job_id: str
+
     @property
     def status(self) -> object: ...
+
     done: bool
     offset: int
     exit_code: int | None
