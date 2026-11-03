@@ -410,11 +410,9 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
                     value={localeData.config?.keywords || ''}
                     onValueChange={handleDataKeywordsChange}
                     className="size-full resize-none pb-8"
-                    placeholder={
-                      t(($) => $['feature.moderation.modal.keywords.placeholder'], {
-                        ns: 'appDebug',
-                      }) || ''
-                    }
+                    placeholder={t(($) => $['feature.moderation.modal.keywords.placeholder'], {
+                      ns: 'appDebug',
+                    })}
                   />
                   <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 system-2xs-medium-uppercase text-text-quaternary">
                     <span>
@@ -465,9 +463,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
               </LabeledDivider>
               <ModerationContent
                 key={`inputs-${localeData.type}-${localeData.config?.inputs_config?.preset_response ?? ''}`}
-                title={
-                  t(($) => $['feature.moderation.modal.content.input'], { ns: 'appDebug' }) || ''
-                }
+                title={t(($) => $['feature.moderation.modal.content.input'], { ns: 'appDebug' })}
                 config={localeData.config?.inputs_config || { enabled: false, preset_response: '' }}
                 onConfigChange={(config) => handleDataContentChange('inputs_config', config)}
                 info={
@@ -479,9 +475,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
               />
               <ModerationContent
                 key={`outputs-${localeData.type}-${localeData.config?.outputs_config?.preset_response ?? ''}`}
-                title={
-                  t(($) => $['feature.moderation.modal.content.output'], { ns: 'appDebug' }) || ''
-                }
+                title={t(($) => $['feature.moderation.modal.content.output'], { ns: 'appDebug' })}
                 config={
                   localeData.config?.outputs_config || { enabled: false, preset_response: '' }
                 }
