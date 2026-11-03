@@ -230,6 +230,9 @@ class Workflow(TypeBase):
     marked_name: Mapped[str] = mapped_column(String(255), default="")
     marked_comment: Mapped[str] = mapped_column(String(255), default="")
     graph: Mapped[str] = mapped_column(LongText, default=None)
+    draft_client_save_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
+    draft_client_save_account_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
+    draft_client_save_hash: Mapped[str | None] = mapped_column(String(64), default=None)
     _features: Mapped[Any] = mapped_column("features", LongText, default=None)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
     created_at: Mapped[datetime] = mapped_column(

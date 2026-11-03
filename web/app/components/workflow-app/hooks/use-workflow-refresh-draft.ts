@@ -130,7 +130,11 @@ export const useWorkflowRefreshDraft = () => {
                   if (!canApply()) return 'superseded'
                   // The socket may already have accepted a newer committed draft.
                   // Read matching metadata before applying either graph or hash.
-                  if (synced.hash !== response.hash) continue
+                  if (
+                    synced.hash !== response.hash ||
+                    (synced.client_save_id ?? null) !== (response.client_save_id ?? null)
+                  )
+                    continue
                   graph = {
                     ...graph,
                     nodes: collaborationManager.getNodes(),
@@ -145,7 +149,7 @@ export const useWorkflowRefreshDraft = () => {
                 })
                 if (!applied) return 'failed'
                 // The hash is a baseline for this graph, never for a metadata-only refresh.
-                setSyncWorkflowDraftHash(response.hash, response.graph)
+                setSyncWorkflowDraftHash(response.hash, response.graph, response.client_save_id)
               }
               setEnvSecrets(
                 (response.environment_variables || [])

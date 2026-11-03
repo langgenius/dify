@@ -90,6 +90,7 @@ const events = {
   cursors: new Set<Parameters<Manager['onCursorUpdate']>[0]>(),
   ready: new Set<Parameters<Manager['onGraphReadyChange']>[0]>(),
   applied: new Set<Parameters<Manager['onServerDraftApplied']>[0]>(),
+  baseline: new Set<Parameters<Manager['onDraftBaseline']>[0]>(),
 }
 const initialNodes = [
   createStartNode({ id: 'start', data: { title: 'Workflow entry', variables: [] } }),
@@ -144,6 +145,12 @@ beforeEach(() => {
     events.applied.add(handler)
     return () => {
       events.applied.delete(handler)
+    }
+  })
+  vi.spyOn(collaborationManager, 'onDraftBaseline').mockImplementation((handler) => {
+    events.baseline.add(handler)
+    return () => {
+      events.baseline.delete(handler)
     }
   })
   vi.spyOn(collaborationManager, 'canPersistLocalGraph').mockReturnValue(true)
@@ -422,6 +429,166 @@ it('saves the trusted graph on a directed request and acknowledges the persisted
     expect.anything(),
   )
   expect(collaborationManager.refreshGraphSynchronously).toHaveBeenCalled()
+})
+
+it('uses the latest save receipt after a trusted follower becomes the saver without a graph change', async () => {
+  vi.mocked(collaborationManager.getIsLeader).mockReturnValue(false)
+  api.saveDraft.mockImplementationOnce(async ({ body }) => ({
+    result: 'success',
+    hash: 'shared-hash',
+    updated_at: 3,
+    client_save_id: body.client_save_id,
+  }))
+  const latestClientSaveId = '00000000-0000-4000-8000-000000000002'
+  const { store } = await renderMain({
+    initialStoreState: {
+      syncWorkflowDraftHash: 'shared-hash',
+      syncWorkflowDraftSaveId: '00000000-0000-4000-8000-000000000001',
+      syncWorkflowDraftIsEmpty: false,
+    },
+  })
+  act(() => {
+    vi.mocked(collaborationManager.getIsLeader).mockReturnValue(true)
+    events.baseline.forEach((handler) =>
+      handler({ hash: 'shared-hash', client_save_id: latestClientSaveId }),
+    )
+  })
+  expect(store.getState()).toMatchObject({
+    syncWorkflowDraftHash: 'shared-hash',
+    syncWorkflowDraftSaveId: latestClientSaveId,
+    syncWorkflowDraftIsEmpty: false,
+    lastSavedWorkflowDraft: null,
+  })
+  const acknowledge = vi.fn()
+  act(() => {
+    events.sync.forEach((handler) => handler({ requestId: 'promoted-save', acknowledge }))
+  })
+  await waitFor(() => expect(acknowledge).toHaveBeenCalledOnce())
+
+  expect(api.saveDraft.mock.lastCall?.[0].body).toMatchObject({
+    hash: 'shared-hash',
+    base_client_save_id: latestClientSaveId,
+    graph: { nodes: [expect.objectContaining({ id: 'start' })] },
+  })
+  expect(acknowledge).toHaveBeenCalledWith({
+    success: true,
+    hash: 'shared-hash',
+    updatedAt: 3,
+    clientSaveId: api.saveDraft.mock.lastCall?.[0].body.client_save_id,
+  })
+})
+
+it('does not borrow a promoted saver baseline for a different graph', async () => {
+  const localClientSaveId = '00000000-0000-4000-8000-000000000001'
+  const { store } = await renderMain({
+    initialStoreState: {
+      syncWorkflowDraftHash: 'local-hash',
+      syncWorkflowDraftSaveId: localClientSaveId,
+    },
+  })
+  act(() => {
+    events.baseline.forEach((handler) =>
+      handler({
+        hash: 'different-server-hash',
+        client_save_id: '00000000-0000-4000-8000-000000000002',
+      }),
+    )
+  })
+  expect(store.getState()).toMatchObject({
+    syncWorkflowDraftHash: 'local-hash',
+    syncWorkflowDraftSaveId: localClientSaveId,
+    lastSavedWorkflowDraft: null,
+  })
+  const acknowledge = vi.fn()
+  act(() => {
+    events.sync.forEach((handler) => handler({ requestId: 'old-graph-save', acknowledge }))
+  })
+  await waitFor(() => expect(acknowledge).toHaveBeenCalledOnce())
+  expect(api.saveDraft.mock.lastCall?.[0].body).toMatchObject({
+    hash: 'local-hash',
+    base_client_save_id: localClientSaveId,
+  })
+})
+
+it('keeps the in-flight local save baseline when a promotion receipt arrives', async () => {
+  const pending = createDeferred<Awaited<ReturnType<typeof api.saveDraft>>>()
+  api.saveDraft.mockReturnValueOnce(pending.promise)
+  const { store } = await renderMain({
+    initialStoreState: {
+      syncWorkflowDraftHash: 'shared-hash',
+      syncWorkflowDraftSaveId: '00000000-0000-4000-8000-000000000001',
+    },
+  })
+  const acknowledge = vi.fn()
+  act(() => {
+    events.sync.forEach((handler) => handler({ requestId: 'old-save', acknowledge }))
+  })
+  await waitFor(() => expect(api.saveDraft).toHaveBeenCalledOnce())
+  const latestClientSaveId = '00000000-0000-4000-8000-000000000002'
+  await act(async () => {
+    events.baseline.forEach((handler) =>
+      handler({ hash: 'shared-hash', client_save_id: latestClientSaveId }),
+    )
+    expect(store.getState().syncWorkflowDraftSaveId).toBe('00000000-0000-4000-8000-000000000001')
+    pending.resolve({
+      result: 'success',
+      hash: 'local-save-hash',
+      updated_at: 2,
+      client_save_id: api.saveDraft.mock.lastCall?.[0].body.client_save_id,
+    })
+  })
+  const localClientSaveId = api.saveDraft.mock.lastCall?.[0].body.client_save_id
+  await waitFor(() =>
+    expect(acknowledge).toHaveBeenCalledWith({
+      success: true,
+      hash: 'local-save-hash',
+      updatedAt: 2,
+      clientSaveId: localClientSaveId,
+    }),
+  )
+  expect(store.getState()).toMatchObject({
+    syncWorkflowDraftHash: 'local-save-hash',
+    syncWorkflowDraftSaveId: localClientSaveId,
+    hasWorkflowDraftConflict: false,
+  })
+})
+
+it('keeps an unacknowledged local save baseline when a promotion receipt arrives', async () => {
+  api.saveDraft.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  const originalClientSaveId = '00000000-0000-4000-8000-000000000001'
+  const { store } = await renderMain({
+    initialStoreState: {
+      syncWorkflowDraftHash: 'shared-hash',
+      syncWorkflowDraftSaveId: originalClientSaveId,
+    },
+  })
+  const acknowledge = vi.fn()
+  act(() => {
+    events.sync.forEach((handler) => handler({ requestId: 'unacknowledged-save', acknowledge }))
+  })
+  await waitFor(() => expect(acknowledge).toHaveBeenCalledWith({ success: false }))
+  const unacknowledgedClientSaveId = api.saveDraft.mock.lastCall?.[0].body.client_save_id
+  act(() => {
+    events.baseline.forEach((handler) =>
+      handler({
+        hash: 'shared-hash',
+        client_save_id: '00000000-0000-4000-8000-000000000002',
+      }),
+    )
+  })
+  expect(store.getState().syncWorkflowDraftSaveId).toBe(originalClientSaveId)
+  const retryAcknowledge = vi.fn()
+  act(() => {
+    events.sync.forEach((handler) =>
+      handler({ requestId: 'retry-save', acknowledge: retryAcknowledge }),
+    )
+  })
+  await waitFor(() => expect(retryAcknowledge).toHaveBeenCalledOnce())
+  expect(api.saveDraft.mock.lastCall?.[0].body).toMatchObject({
+    hash: 'shared-hash',
+    base_client_save_id: originalClientSaveId,
+    predecessor_saves: [{ client_save_id: unacknowledgedClientSaveId }],
+  })
 })
 
 it('replaces the canvas from a workflow update and records its revision', async () => {

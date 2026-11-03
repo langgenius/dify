@@ -10,6 +10,7 @@ from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, Mock
+from uuid import UUID, uuid4
 
 import pytest
 from flask import Flask
@@ -422,7 +423,9 @@ class TestWorkflowCases:
         graph: dict[str, list[dict[str, str]]],
         confirmation: dict[str, bool],
     ) -> None:
-        workflow = SimpleNamespace(unique_hash="next-hash", updated_at=None, created_at=datetime(2024, 1, 1))
+        workflow = SimpleNamespace(
+            unique_hash="next-hash", draft_client_save_id=None, updated_at=None, created_at=datetime(2024, 1, 1)
+        )
         sync_draft_workflow = Mock(return_value=workflow)
         monkeypatch.setattr(
             workflow_module,
@@ -579,6 +582,52 @@ class TestWorkflowCases:
                     "graph": {},
                     "features": {},
                     "environment_variables": [],
+                }
+            )
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "save_fields",
+        [
+            {"client_save_id": "not-a-uuid"},
+            {"base_client_save_id": "not-a-uuid"},
+            {"client_save_id": str(uuid4()), "predecessor_saves": [{"client_save_id": "not-a-uuid"}]},
+            {"predecessor_saves": [{"client_save_id": str(uuid4())}]},
+        ],
+        ids=["invalid-save-id", "invalid-base-id", "invalid-predecessor-id", "missing-save-id"],
+    )
+    def test_sync_draft_workflow_rejects_invalid_save_receipt(save_fields: dict[str, object]) -> None:
+        with pytest.raises(ValidationError):
+            workflow_module.SyncDraftWorkflowPayload.model_validate({"graph": {}, "features": {}, **save_fields})
+
+    @staticmethod
+    def test_sync_draft_workflow_accepts_pending_predecessor_ids() -> None:
+        save_id = uuid4()
+        predecessor_ids = [uuid4(), uuid4()]
+        payload = workflow_module.SyncDraftWorkflowPayload.model_validate(
+            {
+                "graph": {},
+                "features": {},
+                "client_save_id": str(save_id).upper(),
+                "predecessor_saves": [{"client_save_id": str(save_id)} for save_id in predecessor_ids],
+            }
+        )
+        assert payload.client_save_id == save_id
+        assert isinstance(payload.client_save_id, UUID)
+        assert [predecessor.client_save_id for predecessor in payload.predecessor_saves] == predecessor_ids
+
+    @staticmethod
+    @pytest.mark.parametrize("duplicate", [False, True], ids=["self-reference", "duplicate"])
+    def test_sync_draft_workflow_rejects_ambiguous_predecessor_order(duplicate: bool) -> None:
+        save_id, predecessor_id = str(uuid4()), str(uuid4())
+        predecessor_ids = [predecessor_id, predecessor_id] if duplicate else [save_id]
+        with pytest.raises(ValidationError, match="must be unique and differ"):
+            workflow_module.SyncDraftWorkflowPayload.model_validate(
+                {
+                    "graph": {},
+                    "features": {},
+                    "client_save_id": save_id,
+                    "predecessor_saves": [{"client_save_id": predecessor_id} for predecessor_id in predecessor_ids],
                 }
             )
 

@@ -113,6 +113,7 @@ const draftResponse = {
     edges: [],
   },
   hash: 'server-hash',
+  client_save_id: '00000000-0000-4000-8000-000000000001',
   created_at: 0,
   created_by: { id: '', name: '', email: '' },
   updated_at: 1,
@@ -193,6 +194,7 @@ describe('useWorkflowInit', () => {
       }),
     )
     expect(store.getState().syncWorkflowDraftHash).toBe('new-workflow-hash')
+    expect(store.getState().syncWorkflowDraftSaveId).toBe(draftResponse.client_save_id)
     expect(store.getState().syncWorkflowDraftIsEmpty).toBe(true)
   })
 
@@ -242,6 +244,7 @@ describe('useWorkflowInit', () => {
 
     const { result, store } = renderHook(() => useWorkflowInit(), {
       syncWorkflowDraftHash: 'stale-hash',
+      syncWorkflowDraftSaveId: '00000000-0000-4000-8000-000000000002',
     })
 
     await waitFor(() => {
@@ -258,6 +261,7 @@ describe('useWorkflowInit', () => {
       conversationVariables: [],
       isWorkflowDataLoaded: true,
       syncWorkflowDraftHash: '',
+      syncWorkflowDraftSaveId: null,
       syncWorkflowDraftIsEmpty: true,
     })
     expect(result.current.data?.graph.viewport).toBeUndefined()
@@ -352,6 +356,7 @@ describe('useWorkflowInit', () => {
       isWorkflowDataLoaded: true,
       nodesDefaultConfigs: { start: { title: 'Start Config' } },
       syncWorkflowDraftHash: 'server-hash',
+      syncWorkflowDraftSaveId: draftResponse.client_save_id,
       draftUpdatedAt: 9000,
       toolPublished: true,
       lastPublishedHasUserInput: true,

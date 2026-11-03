@@ -1,4 +1,9 @@
-import type { AppMode, WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppMode,
+  SyncDraftWorkflowPayload,
+  SyncDraftWorkflowResponse,
+  WorkflowResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { Features } from '@/app/components/base/features/types'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { Edge, Node } from '@/app/components/workflow/types'
@@ -44,7 +49,13 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   },
 }))
 
-const mockSyncWorkflowDraft = vi.fn()
+const mockSyncWorkflowDraft =
+  vi.fn<
+    (request: {
+      url: string
+      params: SyncDraftWorkflowPayload
+    }) => Promise<Omit<SyncDraftWorkflowResponse, 'result'>>
+  >()
 const mockFetchWorkflowDraft = vi.fn()
 // Stand in for the draft sync request at the client boundary. Calls are recorded as the
 // request they send (endpoint and body), and rejections pass through the console link's
@@ -61,7 +72,10 @@ vi.mock('@/service/console', async (importOriginal) => {
       path: ['apps', 'byAppId', 'workflows', 'draft', 'get'],
       next: () => mockFetchWorkflowDraft(input),
     })
-  const post = (input: { params: { app_id: string }; body: unknown }, options?: unknown) => {
+  const post = (
+    input: { params: { app_id: string }; body: SyncDraftWorkflowPayload },
+    options?: unknown,
+  ) => {
     mockDraftRequestContext(options)
     return validate({
       context: {},
@@ -197,6 +211,22 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('payload', () => {
+    it('saves drafts when randomUUID is unavailable in the hosting context', async () => {
+      vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) })
+      try {
+        const { result } = renderUseNodesSyncDraft()
+        await act(async () => {
+          await result.current.doSyncWorkflowDraft()
+        })
+        expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+        expect(mockSyncWorkflowDraft.mock.calls[0]?.[0].params.client_save_id).toMatch(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+        )
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    })
+
     it.each(['draft sync', 'page close'] as const)(
       'removes Workflow LLM memory from %s without changing the canvas nodes',
       async (savePath) => {
@@ -355,6 +385,7 @@ describe('useNodesSyncDraft', () => {
           },
           conversation_variables: conversationVariables,
           hash: 'latest-hash',
+          client_save_id: expect.any(String),
         }),
       )
       expect(store.getState()).toMatchObject({
@@ -895,6 +926,75 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('failures and skipped saves', () => {
+    it.each([400, 408, 429])(
+      'preserves earlier uncertain patches while handling a later HTTP %s rejection',
+      async (status) => {
+        mockSyncWorkflowDraft
+          .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+          .mockRejectedValueOnce(
+            createHttpError(new Response(null, { status }), { code: 'save_rejected', status }),
+          )
+        const earlierVariables: EnvironmentVariablePatch['environmentVariables'] = [
+          {
+            id: 'earlier',
+            name: 'earlier',
+            value_type: 'string',
+            value: 'Earlier edit',
+            description: '',
+          },
+        ]
+        const latestVariables: EnvironmentVariablePatch['environmentVariables'] = [
+          {
+            id: 'latest',
+            name: 'latest',
+            value_type: 'string',
+            value: 'Latest edit',
+            description: '',
+          },
+        ]
+        const { result, store } = renderUseNodesSyncDraft()
+        await act(async () => {
+          await result.current.doSyncWorkflowDraft(false, undefined, {
+            environmentVariablePatch: {
+              environmentVariables: earlierVariables,
+              deletedEnvironmentVariableIds: [],
+            },
+          })
+          await result.current.doSyncWorkflowDraft(false, undefined, {
+            environmentVariablePatch: {
+              environmentVariables: latestVariables,
+              deletedEnvironmentVariableIds: [],
+            },
+          })
+          await result.current.doSyncWorkflowDraft()
+        })
+        expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(3)
+        const retry = mockSyncWorkflowDraft.mock.calls[2]?.[0].params
+        expect(retry?.predecessor_saves).toEqual([
+          {
+            client_save_id: mockSyncWorkflowDraft.mock.calls[0]?.[0].params.client_save_id,
+            environment_variable_patch: {
+              environment_variables: earlierVariables,
+              deleted_environment_variable_ids: [],
+            },
+          },
+          {
+            client_save_id: mockSyncWorkflowDraft.mock.calls[1]?.[0].params.client_save_id,
+            ...(status === 400
+              ? {}
+              : {
+                  environment_variable_patch: {
+                    environment_variables: latestVariables,
+                    deleted_environment_variable_ids: [],
+                  },
+                }),
+          },
+        ])
+        expect(retry?.environment_variable_patch).toBeUndefined()
+        expect(store.getState().hasWorkflowDraftConflict).toBe(false)
+      },
+    )
+
     it.each([
       {
         scenario: 'an out-of-date draft',
@@ -1241,8 +1341,14 @@ describe('useNodesSyncDraft', () => {
       },
     )
 
-    it('waits for the leader save result when the current user is a follower', async () => {
+    it('adopts the leader receipt before this follower saves locally', async () => {
       useCollaborationSession({ connected: true, leader: false })
+      const leaderClientSaveId = '00000000-0000-4000-8000-000000000001'
+      mockCollaborationRequestWorkflowSync.mockResolvedValue({
+        hash: 'remote-hash',
+        updatedAt: 2,
+        clientSaveId: leaderClientSaveId,
+      })
       const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
       const { result, store } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
 
@@ -1254,11 +1360,24 @@ describe('useNodesSyncDraft', () => {
       expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
       expect(store.getState()).toMatchObject({
         syncWorkflowDraftHash: 'remote-hash',
+        syncWorkflowDraftSaveId: leaderClientSaveId,
         draftUpdatedAt: 2000,
       })
       expect(callbacks.onSuccess).toHaveBeenCalledOnce()
       expect(callbacks.onError).not.toHaveBeenCalled()
       expect(callbacks.onSettled).toHaveBeenCalledOnce()
+      useCollaborationSession({ connected: true, leader: true })
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        draftRequest(
+          expect.objectContaining({
+            hash: 'remote-hash',
+            base_client_save_id: leaderClientSaveId,
+          }),
+        ),
+      )
     })
 
     it('reports a failed leader save to the follower caller', async () => {
@@ -1279,10 +1398,22 @@ describe('useNodesSyncDraft', () => {
 
     it('saves a directed sync request locally even before leader status arrives', async () => {
       useCollaborationSession({ connected: true, leader: false })
+      mockSyncWorkflowDraft.mockImplementationOnce(async ({ params }) => ({
+        hash: 'directed-save',
+        updated_at: 1,
+        client_save_id: params.client_save_id,
+      }))
       const { result } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
 
       await act(async () => {
-        await result.current.doSyncWorkflowDraft(false, undefined, { forceLocal: true })
+        const saved = await result.current.doSyncWorkflowDraft(false, undefined, {
+          forceLocal: true,
+        })
+        expect(saved).toEqual({
+          hash: 'directed-save',
+          updatedAt: 1,
+          clientSaveId: mockSyncWorkflowDraft.mock.calls[0]?.[0].params.client_save_id,
+        })
       })
 
       expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
@@ -1372,7 +1503,7 @@ describe('useNodesSyncDraft', () => {
     it.each(['success', 'conflict'] as const)(
       'ignores a stale %s response after a newer draft reload',
       async (outcome) => {
-        const pending = createDeferred<{ hash: string; updated_at: number }>()
+        const pending = createDeferred<Omit<SyncDraftWorkflowResponse, 'result'>>()
         mockSyncWorkflowDraft.mockReturnValueOnce(pending.promise)
         const { result, store } = renderUseNodesSyncDraft()
         const onSuccess = vi.fn()
@@ -1382,11 +1513,17 @@ describe('useNodesSyncDraft', () => {
         store.getState().invalidateWorkflowDraftSync()
         store.getState().setSyncWorkflowDraftHash('reloaded-hash')
         await act(async () => {
-          if (outcome === 'success') pending.resolve({ hash: 'old-save', updated_at: 1 })
+          if (outcome === 'success')
+            pending.resolve({
+              hash: 'old-save',
+              updated_at: 1,
+              client_save_id: mockSyncWorkflowDraft.mock.calls[0]?.[0].params.client_save_id,
+            })
           else pending.reject(draftNotSyncError())
           expect(await saving).toBeNull()
         })
         expect(store.getState().syncWorkflowDraftHash).toBe('reloaded-hash')
+        expect(store.getState().syncWorkflowDraftSaveId).toBeNull()
         expect(store.getState().hasWorkflowDraftConflict).toBe(false)
         expect(onSuccess).not.toHaveBeenCalled()
         expect(onError).not.toHaveBeenCalled()
@@ -1396,19 +1533,35 @@ describe('useNodesSyncDraft', () => {
     it.each(['generation', 'hash'] as const)(
       'does not lend an external %s to a queued old graph',
       async (change) => {
-        const { result, store } = renderUseNodesSyncDraft()
+        const { result, store } = renderUseNodesSyncDraft({
+          initialStoreState: { syncWorkflowDraftSaveId: '00000000-0000-4000-8000-000000000001' },
+        })
         const saving = result.current.doSyncWorkflowDraft()
         if (change === 'generation') store.getState().invalidateWorkflowDraftSync()
         store.getState().setSyncWorkflowDraftHash('external-hash')
         expect(await saving).toBeNull()
         expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+        await act(async () => {
+          await result.current.doSyncWorkflowDraft()
+        })
+        expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+        expect(mockSyncWorkflowDraft.mock.calls[0]?.[0].params.hash).toBe('external-hash')
+        expect(mockSyncWorkflowDraft.mock.calls[0]?.[0].params.base_client_save_id).toBeUndefined()
       },
     )
 
-    it('shares successful queued saves and hashes across hook instances', async () => {
+    it('shares successful queued saves, hashes, and receipts across hook instances', async () => {
       mockSyncWorkflowDraft
-        .mockResolvedValueOnce({ hash: 'saved-1', updated_at: 1 })
-        .mockResolvedValueOnce({ hash: 'saved-2', updated_at: 2 })
+        .mockImplementationOnce(async ({ params }) => ({
+          hash: 'saved-1',
+          updated_at: 1,
+          client_save_id: params.client_save_id,
+        }))
+        .mockImplementationOnce(async ({ params }) => ({
+          hash: 'saved-2',
+          updated_at: 2,
+          client_save_id: params.client_save_id,
+        }))
       const { result, store, setCanvas } = renderSyncDraft(
         () => [useNodesSyncDraft(), useNodesSyncDraft()] as const,
       )
@@ -1423,11 +1576,15 @@ describe('useNodesSyncDraft', () => {
         expect.objectContaining({
           params: expect.objectContaining({
             hash: 'saved-1',
+            base_client_save_id: mockSyncWorkflowDraft.mock.calls[0]?.[0].params.client_save_id,
             graph: expect.objectContaining({ nodes: [expect.objectContaining({ id: 'latest' })] }),
           }),
         }),
       )
       expect(store.getState().syncWorkflowDraftHash).toBe('saved-2')
+      expect(store.getState().syncWorkflowDraftSaveId).toBe(
+        mockSyncWorkflowDraft.mock.calls[1]?.[0].params.client_save_id,
+      )
     })
 
     it('blocks normal and keepalive saves while a draft is being applied', async () => {
@@ -1453,6 +1610,41 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('save and refresh ordering', () => {
+    it('uses a refreshed hash and receipt instead of an earlier save receipt', async () => {
+      const refreshedClientSaveId = '00000000-0000-4000-8000-000000000002'
+      mockSyncWorkflowDraft.mockImplementationOnce(async ({ params }) => ({
+        hash: 'saved-locally',
+        updated_at: 1,
+        client_save_id: params.client_save_id,
+      }))
+      const { result, store } = renderUseNodesSyncDraft()
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+      expect(store.getState().syncWorkflowDraftSaveId).toBe(
+        mockSyncWorkflowDraft.mock.calls[0]?.[0].params.client_save_id,
+      )
+      await act(async () => {
+        store.getState().invalidateWorkflowDraftSync()
+        store
+          .getState()
+          .setSyncWorkflowDraftHash(
+            'saved-remotely',
+            { nodes: [startNode], edges: [] },
+            refreshedClientSaveId,
+          )
+        await result.current.doSyncWorkflowDraft()
+      })
+      expect(mockSyncWorkflowDraft).toHaveBeenLastCalledWith(
+        draftRequest(
+          expect.objectContaining({
+            hash: 'saved-remotely',
+            base_client_save_id: refreshedClientSaveId,
+          }),
+        ),
+      )
+    })
+
     it('preserves an accepted variable patch queued after a background refresh request', async () => {
       const pending = createDeferred<{ hash: string; updated_at: number }>()
       mockSyncWorkflowDraft.mockReturnValueOnce(pending.promise)
@@ -1525,9 +1717,10 @@ describe('useNodesSyncDraft', () => {
 
     it('drains an accepted keepalive save before starting a background full read', async () => {
       const pending = createDeferred<{ hash: string; updated_at: number }>()
+      const unloading = createDeferred<{ hash: string; updated_at: number }>()
       mockSyncWorkflowDraft
         .mockReturnValueOnce(pending.promise)
-        .mockResolvedValueOnce({ hash: 'latest-saved-hash', updated_at: 3 })
+        .mockReturnValueOnce(unloading.promise)
       mockFetchDraft.mockResolvedValue({
         hash: 'latest-saved-hash',
         graph: { nodes: [startNode], edges: [] },
@@ -1542,6 +1735,7 @@ describe('useNodesSyncDraft', () => {
       setCanvas({ nodes: [createNode({ id: 'latest-local-edit' })] })
       store.getState().markWorkflowDraftDirty()
       result.current.save.syncWorkflowDraftWhenPageClose()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
       const reading = result.current.refresh.handleRefreshWorkflowDraft(false, {
         background: true,
         preserveViewport: true,
@@ -1550,13 +1744,20 @@ describe('useNodesSyncDraft', () => {
       await act(async () => {
         pending.resolve({ hash: 'first-saved-hash', updated_at: 2 })
         await saving
+      })
+      expect(mockFetchDraft).not.toHaveBeenCalled()
+      await act(async () => {
+        unloading.resolve({ hash: 'latest-saved-hash', updated_at: 3 })
         await reading
       })
       expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
       expect(mockSyncWorkflowDraft).toHaveBeenLastCalledWith(
         expect.objectContaining({
           params: expect.objectContaining({
-            hash: 'first-saved-hash',
+            hash: 'hash-123',
+            predecessor_saves: [
+              { client_save_id: mockSyncWorkflowDraft.mock.calls[0]?.[0].params.client_save_id },
+            ],
             graph: expect.objectContaining({
               nodes: [expect.objectContaining({ id: 'latest-local-edit' })],
             }),
@@ -1571,24 +1772,25 @@ describe('useNodesSyncDraft', () => {
       expect(store.getState().hasWorkflowDraftConflict).toBe(false)
     })
 
-    it('queues a keepalive snapshot behind the current save and uses its acknowledged hash', async () => {
+    it('dispatches the final keepalive snapshot before the pending save completes or the hook unmounts', async () => {
       const pending = createDeferred<{ hash: string; updated_at: number }>()
       mockSyncWorkflowDraft.mockReturnValueOnce(pending.promise)
-      const { result, setCanvas } = renderUseNodesSyncDraft()
+      const { result, setCanvas, unmount } = renderUseNodesSyncDraft()
       const saving = result.current.doSyncWorkflowDraft()
       await waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
       setCanvas({ nodes: [createNode({ id: 'latest-local-edit' })] })
-      result.current.syncWorkflowDraftWhenPageClose()
-      expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
-      await act(async () => {
-        pending.resolve({ hash: 'first-saved-hash', updated_at: 2 })
-        await saving
+      act(() => {
+        result.current.syncWorkflowDraftWhenPageClose()
       })
-      await waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2))
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
       expect(mockSyncWorkflowDraft).toHaveBeenLastCalledWith(
         expect.objectContaining({
           params: expect.objectContaining({
-            hash: 'first-saved-hash',
+            hash: 'hash-123',
+            client_save_id: expect.any(String),
+            predecessor_saves: [
+              { client_save_id: mockSyncWorkflowDraft.mock.calls[0]?.[0].params.client_save_id },
+            ],
             graph: expect.objectContaining({
               nodes: [expect.objectContaining({ id: 'latest-local-edit' })],
             }),
@@ -1598,6 +1800,322 @@ describe('useNodesSyncDraft', () => {
       expect(mockDraftRequestContext).toHaveBeenLastCalledWith({
         context: { silent: true, keepalive: true },
       })
+      unmount()
+      await act(async () => {
+        pending.resolve({ hash: 'first-saved-hash', updated_at: 2 })
+        await saving
+      })
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+    })
+
+    it.each([
+      { firstResponse: 'autosave', autosaveOutcome: 'success' },
+      { firstResponse: 'unload', autosaveOutcome: 'success' },
+      { firstResponse: 'autosave', autosaveOutcome: 'conflict' },
+      { firstResponse: 'unload', autosaveOutcome: 'conflict' },
+    ] as const)(
+      'keeps the final save when $firstResponse responds first and autosave returns $autosaveOutcome',
+      async ({ firstResponse, autosaveOutcome }) => {
+        const autosave = createDeferred<{ hash: string; updated_at: number }>()
+        const unload = createDeferred<{ hash: string; updated_at: number }>()
+        mockSyncWorkflowDraft
+          .mockReturnValueOnce(autosave.promise)
+          .mockReturnValueOnce(unload.promise)
+        const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
+        const { result, store, setCanvas } = renderSyncDraft(
+          () => [useNodesSyncDraft(), useNodesSyncDraft()] as const,
+        )
+        const saving = result.current[0].doSyncWorkflowDraft(false, callbacks)
+        await waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+        setCanvas({ nodes: [createNode({ id: 'final-edit' })] })
+        result.current[1].syncWorkflowDraftWhenPageClose()
+        expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+
+        const finishAutosave = () => {
+          if (autosaveOutcome === 'success') autosave.resolve({ hash: 'older-save', updated_at: 2 })
+          else autosave.reject(draftNotSyncError())
+        }
+        if (firstResponse === 'autosave') {
+          await act(async () => {
+            finishAutosave()
+            await saving
+          })
+          expect(store.getState().hasWorkflowDraftConflict).toBe(false)
+        }
+        await act(async () => {
+          unload.resolve({ hash: 'final-save', updated_at: 3 })
+        })
+        await waitFor(() => expect(store.getState().syncWorkflowDraftHash).toBe('final-save'))
+        if (firstResponse === 'unload') {
+          await act(async () => {
+            finishAutosave()
+            await saving
+          })
+        }
+
+        expect(store.getState()).toMatchObject({
+          syncWorkflowDraftHash: 'final-save',
+          draftUpdatedAt: 3000,
+          hasWorkflowDraftConflict: false,
+        })
+        expect(callbacks.onError).not.toHaveBeenCalled()
+        expect(callbacks.onSettled).toHaveBeenCalledOnce()
+      },
+    )
+
+    it('keeps a real conflict from the final keepalive save despite an older successful response', async () => {
+      const autosave = createDeferred<{ hash: string; updated_at: number }>()
+      const unload = createDeferred<{ hash: string; updated_at: number }>()
+      mockSyncWorkflowDraft
+        .mockReturnValueOnce(autosave.promise)
+        .mockReturnValueOnce(unload.promise)
+      const { result, store, setCanvas } = renderUseNodesSyncDraft()
+      const saving = result.current.doSyncWorkflowDraft()
+      await waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+      setCanvas({ nodes: [createNode({ id: 'unsaved-local-edit' })] })
+      result.current.syncWorkflowDraftWhenPageClose()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+
+      await act(async () => {
+        unload.reject(draftNotSyncError())
+      })
+      await waitFor(() => expect(store.getState().hasWorkflowDraftConflict).toBe(true))
+      await act(async () => {
+        autosave.resolve({ hash: 'older-save', updated_at: 2 })
+        await saving
+      })
+
+      expect(store.getState().hasWorkflowDraftConflict).toBe(true)
+      expect(await result.current.doSyncWorkflowDraft()).toBeNull()
+      expect(mockFetchDraft).not.toHaveBeenCalled()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+    })
+
+    it('includes pending variable patches in the final snapshot without replaying queued older graphs', async () => {
+      const pending = createDeferred<{ hash: string; updated_at: number }>()
+      const unloading = createDeferred<{ hash: string; updated_at: number }>()
+      mockSyncWorkflowDraft
+        .mockReturnValueOnce(pending.promise)
+        .mockReturnValueOnce(unloading.promise)
+      const firstVariables: EnvironmentVariablePatch['environmentVariables'] = [
+        { id: 'edited', name: 'edited', value_type: 'string', value: 'old', description: '' },
+        { id: 'removed', name: 'removed', value_type: 'string', value: 'old', description: '' },
+      ]
+      const latestVariables: EnvironmentVariablePatch['environmentVariables'] = [
+        { id: 'edited', name: 'edited', value_type: 'string', value: 'latest', description: '' },
+        {
+          id: 'restored',
+          name: 'restored',
+          value_type: 'string',
+          value: 'restored',
+          description: '',
+        },
+      ]
+      const { result, setCanvas, store } = renderSyncDraft(
+        () => [useNodesSyncDraft(), useNodesSyncDraft()] as const,
+      )
+      const saving = result.current[0].doSyncWorkflowDraft(false, undefined, {
+        environmentVariablePatch: {
+          environmentVariables: firstVariables,
+          deletedEnvironmentVariableIds: ['restored'],
+        },
+      })
+      await waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+      setCanvas({ nodes: [createNode({ id: 'queued-old-graph' })] })
+      const queued = result.current[0].doSyncWorkflowDraft(false, undefined, {
+        environmentVariablePatch: {
+          environmentVariables: latestVariables,
+          deletedEnvironmentVariableIds: ['removed'],
+        },
+      })
+      setCanvas({ nodes: [createNode({ id: 'final-edit' })] })
+      result.current[1].syncWorkflowDraftWhenPageClose()
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+      expect(mockSyncWorkflowDraft).toHaveBeenLastCalledWith(
+        draftRequest(
+          expect.objectContaining({
+            hash: 'hash-123',
+            predecessor_saves: [
+              {
+                client_save_id: mockSyncWorkflowDraft.mock.calls[0]?.[0].params.client_save_id,
+                environment_variable_patch: {
+                  environment_variables: firstVariables,
+                  deleted_environment_variable_ids: ['restored'],
+                },
+              },
+              {
+                client_save_id: expect.any(String),
+                environment_variable_patch: {
+                  environment_variables: latestVariables,
+                  deleted_environment_variable_ids: ['removed'],
+                },
+              },
+            ],
+            graph: expect.objectContaining({
+              nodes: [expect.objectContaining({ id: 'final-edit' })],
+            }),
+          }),
+        ),
+      )
+      expect(
+        mockSyncWorkflowDraft.mock.calls[1]?.[0].params.environment_variable_patch,
+      ).toBeUndefined()
+      await act(async () => {
+        unloading.resolve({ hash: 'final-save', updated_at: 3 })
+        pending.reject(draftNotSyncError())
+        await Promise.all([saving, queued])
+        await store.getState().enqueueWorkflowDraftOperation(async () => undefined)
+      })
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+      expect(store.getState().syncWorkflowDraftHash).toBe('final-save')
+      expect(store.getState().hasWorkflowDraftConflict).toBe(false)
+    })
+
+    it('retains each predecessor patch once across repeated unload saves', async () => {
+      const pending = createDeferred<Omit<SyncDraftWorkflowResponse, 'result'>>()
+      const unloading = createDeferred<Omit<SyncDraftWorkflowResponse, 'result'>>()
+      const finalUnload = createDeferred<Omit<SyncDraftWorkflowResponse, 'result'>>()
+      mockSyncWorkflowDraft
+        .mockReturnValueOnce(pending.promise)
+        .mockReturnValueOnce(unloading.promise)
+        .mockReturnValueOnce(finalUnload.promise)
+      const variables: EnvironmentVariablePatch['environmentVariables'] = [
+        { id: 'env-1', name: 'topic', value_type: 'string', value: 'Local edit', description: '' },
+      ]
+      const { result, store, setCanvas } = renderUseNodesSyncDraft()
+      const saving = result.current.doSyncWorkflowDraft(false, undefined, {
+        environmentVariablePatch: {
+          environmentVariables: variables,
+          deletedEnvironmentVariableIds: ['removed'],
+        },
+      })
+      await waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+      const firstClientSaveId = mockSyncWorkflowDraft.mock.calls[0]?.[0].params.client_save_id
+      result.current.syncWorkflowDraftWhenPageClose()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+      const unloadingClientSaveId = mockSyncWorkflowDraft.mock.calls[1]?.[0].params.client_save_id
+      await act(async () => {
+        pending.resolve({ hash: 'first-save', updated_at: 1, client_save_id: firstClientSaveId })
+        await saving
+      })
+      setCanvas({ nodes: [createNode({ id: 'final-edit' })] })
+      result.current.syncWorkflowDraftWhenPageClose()
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(3)
+      const finalRequest = mockSyncWorkflowDraft.mock.calls[2]?.[0].params
+      expect(finalRequest).toMatchObject({
+        hash: 'hash-123',
+        predecessor_saves: [
+          {
+            client_save_id: firstClientSaveId,
+            environment_variable_patch: {
+              environment_variables: variables,
+              deleted_environment_variable_ids: ['removed'],
+            },
+          },
+          { client_save_id: unloadingClientSaveId },
+        ],
+        graph: expect.objectContaining({ nodes: [expect.objectContaining({ id: 'final-edit' })] }),
+      })
+      expect(finalRequest?.environment_variable_patch).toBeUndefined()
+      expect(finalRequest?.predecessor_saves?.[1]?.environment_variable_patch).toBeUndefined()
+      await act(async () => {
+        finalUnload.resolve({
+          hash: 'final-save',
+          updated_at: 3,
+          client_save_id: finalRequest?.client_save_id,
+        })
+        unloading.reject(draftNotSyncError())
+        await store.getState().enqueueWorkflowDraftOperation(async () => undefined)
+      })
+      expect(store.getState()).toMatchObject({
+        syncWorkflowDraftHash: 'final-save',
+        syncWorkflowDraftSaveId: finalRequest?.client_save_id,
+        hasWorkflowDraftConflict: false,
+      })
+    })
+
+    it('retries queued variable changes with the latest graph after an unload transport failure', async () => {
+      const pending = createDeferred<Omit<SyncDraftWorkflowResponse, 'result'>>()
+      const unloading = createDeferred<Omit<SyncDraftWorkflowResponse, 'result'>>()
+      mockSyncWorkflowDraft
+        .mockReturnValueOnce(pending.promise)
+        .mockReturnValueOnce(unloading.promise)
+        .mockImplementationOnce(async ({ params }) => ({
+          hash: 'recovered-save',
+          updated_at: 3,
+          client_save_id: params.client_save_id,
+        }))
+      const variables: Shape['environmentVariables'] = [
+        { id: 'env-1', name: 'topic', value_type: 'string', value: 'Queued edit', description: '' },
+      ]
+      const { result, store, setCanvas } = renderUseNodesSyncDraft()
+      const saving = result.current.doSyncWorkflowDraft()
+      await waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+      store.getState().setEnvironmentVariables(variables)
+      const queued = result.current.doSyncWorkflowDraft(false, undefined, {
+        environmentVariablePatch: {
+          environmentVariables: variables,
+          deletedEnvironmentVariableIds: ['removed'],
+        },
+      })
+      setCanvas({ nodes: [createNode({ id: 'unload-edit' })] })
+      result.current.syncWorkflowDraftWhenPageClose()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+      const unloadRequest = mockSyncWorkflowDraft.mock.calls[1]?.[0].params
+      expect(unloadRequest?.predecessor_saves).toEqual([
+        { client_save_id: mockSyncWorkflowDraft.mock.calls[0]?.[0].params.client_save_id },
+        {
+          client_save_id: expect.any(String),
+          environment_variable_patch: {
+            environment_variables: variables,
+            deleted_environment_variable_ids: ['removed'],
+          },
+        },
+      ])
+      await act(async () => {
+        unloading.reject(new TypeError('Failed to fetch'))
+        pending.resolve({
+          hash: 'older-save',
+          updated_at: 1,
+          client_save_id: mockSyncWorkflowDraft.mock.calls[0]?.[0].params.client_save_id,
+        })
+        await Promise.all([saving, queued])
+        await store.getState().enqueueWorkflowDraftOperation(async () => undefined)
+      })
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+      expect(store.getState().hasWorkflowDraftConflict).toBe(false)
+      setCanvas({ nodes: [createNode({ id: 'latest-retry-edit' })] })
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(3)
+      const retryRequest = mockSyncWorkflowDraft.mock.calls[2]?.[0].params
+      expect(retryRequest).toMatchObject({
+        predecessor_saves: [
+          ...(unloadRequest?.predecessor_saves ?? []),
+          { client_save_id: unloadRequest?.client_save_id },
+        ],
+        graph: {
+          nodes: [expect.objectContaining({ id: 'latest-retry-edit' })],
+        },
+      })
+      expect(retryRequest?.environment_variable_patch).toBeUndefined()
+      expect(store.getState()).toMatchObject({
+        syncWorkflowDraftHash: 'recovered-save',
+        syncWorkflowDraftSaveId: retryRequest?.client_save_id,
+        environmentVariables: variables,
+        hasWorkflowDraftConflict: false,
+      })
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(4)
+      const nextRequest = mockSyncWorkflowDraft.mock.calls[3]?.[0].params
+      expect(nextRequest?.base_client_save_id).toBe(retryRequest?.client_save_id)
+      expect(nextRequest?.predecessor_saves).toBeUndefined()
     })
 
     it.each(['autosave', 'builder'] as const)(

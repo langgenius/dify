@@ -1321,6 +1321,7 @@ export type DefaultBlockConfigResponse = {
 }
 
 export type WorkflowResponse = {
+  client_save_id?: string | null
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
   created_by?: SimpleAccountResponse | null
@@ -1350,6 +1351,8 @@ export type DraftWorkflowNotExistError = ErrorResponse & {
 
 export type SyncDraftWorkflowPayload = {
   _is_collaborative?: boolean
+  base_client_save_id?: string | null
+  client_save_id?: string | null
   conversation_variables?: Array<{
     [key: string]: unknown
   }>
@@ -1362,9 +1365,11 @@ export type SyncDraftWorkflowPayload = {
     [key: string]: unknown
   }
   hash?: string | null
+  predecessor_saves?: Array<PredecessorDraftSavePayload>
 }
 
 export type SyncDraftWorkflowResponse = {
+  client_save_id?: string | null
   hash: string
   result: string
   updated_at: number
@@ -2641,6 +2646,11 @@ export type SyncEnvironmentVariablePatchPayload = {
   environment_variables?: Array<{
     [key: string]: unknown
   }>
+}
+
+export type PredecessorDraftSavePayload = {
+  client_save_id: string
+  environment_variable_patch?: SyncEnvironmentVariablePatchPayload | null
 }
 
 export type ConversationVariableItemPayload = {

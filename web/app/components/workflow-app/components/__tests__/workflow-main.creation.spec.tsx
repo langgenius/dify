@@ -92,6 +92,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
     createServerDraftUpdate: vi.fn(),
     onServerDraftRequest: () => () => {},
     onServerDraftApplied: () => () => {},
+    onDraftBaseline: () => () => {},
     onGraphReadyChange: (listener: (ready: boolean) => void) => {
       mocks.graphReadyListener = listener
       // Before the collaboration connection starts, graph editing is still allowed.

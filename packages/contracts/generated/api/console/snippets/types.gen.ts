@@ -57,6 +57,7 @@ export type SnippetWorkflowPaginationResponse = {
 export type DefaultBlockConfigsResponse = Array<DefaultBlockConfigItemResponse>
 
 export type SnippetWorkflowResponse = {
+  client_save_id?: string | null
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
   created_by?: SimpleAccountResponse | null

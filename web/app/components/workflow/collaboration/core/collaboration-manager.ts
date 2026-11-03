@@ -13,6 +13,7 @@ import type {
   OnlineUser,
   RestoreCompleteData,
   RestoreIntentData,
+  WorkflowDraftBaseline,
   WorkflowSyncAcknowledgement,
   WorkflowSyncRequest,
   WorkflowSyncResult,
@@ -1098,6 +1099,7 @@ export class CollaborationManager {
               success?: unknown
               hash?: unknown
               updatedAt?: unknown
+              clientSaveId?: unknown
               error?: unknown
               msg?: unknown
             }
@@ -1116,7 +1118,13 @@ export class CollaborationManager {
               return
             }
 
-            pendingRequest.resolve({ hash: response.hash, updatedAt: response.updatedAt })
+            pendingRequest.resolve({
+              hash: response.hash,
+              updatedAt: response.updatedAt,
+              ...(typeof response.clientSaveId === 'string' || response.clientSaveId === null
+                ? { clientSaveId: response.clientSaveId }
+                : {}),
+            })
           },
           onUnauthorized: this.handleSessionUnauthorized,
         },
@@ -1238,6 +1246,10 @@ export class CollaborationManager {
 
   onLeaderChange(callback: (isLeader: boolean) => void): () => void {
     return this.eventEmitter.on('leaderChange', callback)
+  }
+
+  onDraftBaseline(callback: (baseline: WorkflowDraftBaseline) => void): () => void {
+    return this.eventEmitter.on('draftBaseline', callback)
   }
 
   onCommentsUpdate(callback: (update: { appId: string; timestamp: number }) => void): () => void {
@@ -1999,7 +2011,7 @@ export class CollaborationManager {
       }
     })
 
-    socket.on('status', (data: { isLeader: boolean }) => {
+    socket.on('status', (data: { isLeader: boolean; draftBaseline?: WorkflowDraftBaseline }) => {
       try {
         if (!data || typeof data.isLeader !== 'boolean') {
           console.warn('Invalid status data:', data)
@@ -2009,6 +2021,8 @@ export class CollaborationManager {
         const wasLeader = this.isLeader
         const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
         this.isLeader = data.isLeader
+        if (this.isLeader && data.draftBaseline)
+          this.eventEmitter.emit('draftBaseline', data.draftBaseline)
 
         if (
           this.isLeader &&

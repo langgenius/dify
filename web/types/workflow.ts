@@ -1,6 +1,7 @@
 import type {
   WorkflowDraftVariableResponse,
   WorkflowDraftVariableWithoutValueResponse,
+  WorkflowResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { RefObject } from 'react'
 import type { Viewport } from 'reactflow'
@@ -127,7 +128,7 @@ type VersionEnvironment = {
   name: string
 }
 
-export type FetchWorkflowDraftResponse = {
+export type FetchWorkflowDraftResponse = Pick<WorkflowResponse, 'client_save_id'> & {
   id: string
   graph: {
     nodes: Node[]

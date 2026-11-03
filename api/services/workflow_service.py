@@ -182,6 +182,15 @@ HumanInputNode = _DebugHumanInputNode
 _file_access_controller = DatabaseFileAccessController()
 
 
+@dataclass(frozen=True)
+class DraftSavePredecessor:
+    """A pending editor save and its environment patch, ordered before the new save."""
+
+    client_save_id: str
+    environment_variable_upserts: Sequence[VariableBase] = ()
+    deleted_environment_variable_ids: Sequence[str] = ()
+
+
 def _merge_environment_variable_patch(
     current_variables: Sequence[VariableBase],
     environment_variable_upserts: Sequence[VariableBase],
@@ -472,6 +481,9 @@ class WorkflowService:
         sync_agent_bindings: bool = True,
         graph_only: bool = False,
         require_empty_graph_confirmation: bool = False,
+        client_save_id: str | None = None,
+        base_client_save_id: str | None = None,
+        predecessor_saves: Sequence[DraftSavePredecessor] = (),
     ) -> Workflow:
         """
         Sync draft workflow.
@@ -495,17 +507,69 @@ class WorkflowService:
         Builder repair/rollback clears; public force=true uses the same overload.
         Neither overload bypasses the existing draft hash check.
 
+        An unload save may supersede its own pending predecessor without waiting
+        for the predecessor response. The locked draft must still be the exact
+        result of a named save by this account. A changed graph or another save
+        invalidates that receipt. Untagged saves receive a server ID; receipt and graph
+        commit together, after Agent bindings have materialized the final graph.
+        Inherited environment patches through the matched predecessor are already
+        committed and must not be replayed over dedicated variable edits. Without
+        a matching predecessor, tagged saves require the unchanged base receipt,
+        including when undo or variable-only edits restore the same graph hash.
+
         :raises WorkflowHashNotEqualError
         :raises EmptyWorkflowConfirmationRequiredError
         """
         if environment_variable_upserts is None and deleted_environment_variable_ids:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
+        if predecessor_saves and client_save_id is None:
+            raise ValueError("predecessor_saves requires client_save_id")
 
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow_for_creation(app_model=app_model, session=session)
 
-        if workflow and workflow.unique_hash != unique_hash:
-            raise WorkflowHashNotEqualError()
+        committed_predecessor_index = -1
+        if workflow:
+            current_hash = workflow.unique_hash
+            if workflow.draft_client_save_account_id == account.id and workflow.draft_client_save_hash == current_hash:
+                committed_predecessor_index = next(
+                    (
+                        index
+                        for index, predecessor in enumerate(predecessor_saves)
+                        if predecessor.client_save_id == workflow.draft_client_save_id
+                    ),
+                    -1,
+                )
+            if current_hash != unique_hash and committed_predecessor_index < 0:
+                raise WorkflowHashNotEqualError()
+            if (
+                committed_predecessor_index < 0
+                and client_save_id is not None
+                and workflow.draft_client_save_id != base_client_save_id
+            ):
+                raise WorkflowHashNotEqualError()
+
+        pending_predecessors = predecessor_saves[committed_predecessor_index + 1 :]
+        if any(
+            predecessor.environment_variable_upserts or predecessor.deleted_environment_variable_ids
+            for predecessor in pending_predecessors
+        ):
+            combined_upserts: dict[str, VariableBase] = {}
+            combined_deletions: set[str] = set()
+            patches = [
+                (predecessor.environment_variable_upserts, predecessor.deleted_environment_variable_ids)
+                for predecessor in pending_predecessors
+            ]
+            patches.append((environment_variable_upserts or (), deleted_environment_variable_ids))
+            for upserts, deleted_ids in patches:
+                for variable in upserts:
+                    combined_upserts[variable.id] = variable
+                    combined_deletions.discard(variable.id)
+                for variable_id in deleted_ids:
+                    combined_upserts.pop(variable_id, None)
+                    combined_deletions.add(variable_id)
+            environment_variable_upserts = list(combined_upserts.values())
+            deleted_environment_variable_ids = sorted(combined_deletions)
 
         if require_empty_graph_confirmation and graph.get("nodes") == [] and graph.get("edges") == []:
             previous_graph = workflow.graph_dict if workflow is not None else None
@@ -577,6 +641,11 @@ class WorkflowService:
                 session=session,
                 draft_workflow=workflow,
             )
+
+        workflow.draft_client_save_id = client_save_id or str(uuid.uuid4())
+        workflow.draft_client_save_account_id = account.id
+        workflow.draft_client_save_hash = workflow.unique_hash
+        workflow.updated_at = naive_utc_now()
 
         coordination_id = coordination_id or str(uuid.uuid4())
         WorkflowDraftCoordinationService.stage(

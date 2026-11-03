@@ -3,6 +3,7 @@ import logging
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, Literal, NotRequired, Self, TypedDict
+from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
@@ -105,7 +106,12 @@ from services.errors.llm import InvokeRateLimitError
 from services.errors.workflow_service import DuplicateDraftWorkflowError, EmptyWorkflowConfirmationRequiredError
 from services.workflow.webhook_policy import WorkflowWebhookLimitError
 from services.workflow_ref_service import WorkflowRefService
-from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from services.workflow_service import (
+    DraftSavePredecessor,
+    DraftWorkflowDeletionError,
+    WorkflowInUseError,
+    WorkflowService,
+)
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
 
 logger = logging.getLogger(__name__)
@@ -148,18 +154,43 @@ class SyncEnvironmentVariablePatchPayload(BaseModel):
         return self
 
 
+class PredecessorDraftSavePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    client_save_id: UUID
+    environment_variable_patch: SyncEnvironmentVariablePatchPayload | None = None
+
+
 class SyncDraftWorkflowPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     graph: dict[str, Any]
     features: dict[str, Any]
     hash: str | None = None
+    client_save_id: UUID | None = Field(default=None, description="Unique ID for this editor save attempt.")
+    base_client_save_id: UUID | None = Field(
+        default=None, description="Receipt ID returned with the editor's base draft."
+    )
+    predecessor_saves: list[PredecessorDraftSavePayload] = Field(
+        default_factory=list,
+        description="Pending saves in editor order, including inherited patches; requires client_save_id.",
+    )
     force: bool = Field(default=False, strict=True, description="Explicitly confirm saving an empty workflow graph.")
     is_collaborative: bool = Field(default=False, alias="_is_collaborative")
     environment_variable_patch: SyncEnvironmentVariablePatchPayload | None = None
     conversation_variables: list[dict[str, Any]] = Field(
         default_factory=list,
     )
+
+    @model_validator(mode="after")
+    def validate_predecessor_saves(self) -> Self:
+        """Require a receipt for any save that supersedes pending editor requests."""
+        if self.predecessor_saves and self.client_save_id is None:
+            raise ValueError("predecessor_saves requires client_save_id")
+        predecessor_ids = [predecessor.client_save_id for predecessor in self.predecessor_saves]
+        if len(set(predecessor_ids)) != len(predecessor_ids) or self.client_save_id in predecessor_ids:
+            raise ValueError("predecessor save ids must be unique and differ from client_save_id")
+        return self
 
 
 class BaseWorkflowRunPayload(BaseModel):
@@ -325,6 +356,9 @@ class WorkflowResponse(ResponseModel):
         validation_alias=AliasChoices("features_dict", "features"),
     )
     hash: str = Field(validation_alias=AliasChoices("unique_hash", "hash"))
+    client_save_id: UUID | None = Field(
+        default=None, validation_alias=AliasChoices("draft_client_save_id", "client_save_id")
+    )
     version: str
     # NULL for drafts and for versions published before numbering was introduced; those
     # render as "Untitled Version" instead of `#N`. Never 0, so clients must test for null.
@@ -416,6 +450,7 @@ class WorkflowPublishResponse(ResponseModel):
 class SyncDraftWorkflowResponse(ResponseModel):
     result: str
     hash: str
+    client_save_id: UUID | None = None
     updated_at: int
 
 
@@ -692,6 +727,25 @@ class DraftWorkflowApi(Resource):
                 variable_factory.build_conversation_variable_from_mapping(obj)
                 for obj in args_model.conversation_variables
             ]
+            predecessor_saves = []
+            for predecessor in args_model.predecessor_saves:
+                predecessor_patch = predecessor.environment_variable_patch
+                predecessor_saves.append(
+                    DraftSavePredecessor(
+                        client_save_id=str(predecessor.client_save_id),
+                        environment_variable_upserts=[
+                            variable_factory.build_environment_variable_from_mapping(obj)
+                            for obj in Workflow.normalize_environment_variable_mappings(
+                                predecessor_patch.environment_variables
+                            )
+                        ]
+                        if predecessor_patch is not None
+                        else (),
+                        deleted_environment_variable_ids=predecessor_patch.deleted_environment_variable_ids
+                        if predecessor_patch is not None
+                        else (),
+                    )
+                )
             # Keep this accepted snapshot while the post-commit handoff may wait.
             with session_factory.create_session() as write_session:
                 workflow = workflow_service.sync_draft_workflow(
@@ -699,6 +753,11 @@ class DraftWorkflowApi(Resource):
                     graph=args_model.graph,
                     features=args_model.features,
                     unique_hash=args_model.hash,
+                    client_save_id=str(args_model.client_save_id) if args_model.client_save_id is not None else None,
+                    base_client_save_id=str(args_model.base_client_save_id)
+                    if args_model.base_client_save_id is not None
+                    else None,
+                    predecessor_saves=predecessor_saves,
                     account=current_user,
                     environment_variables=[],
                     conversation_variables=conversation_variables,
@@ -725,6 +784,7 @@ class DraftWorkflowApi(Resource):
             {
                 "result": "success",
                 "hash": workflow.unique_hash,
+                "client_save_id": workflow.draft_client_save_id,
                 "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
             },
         )

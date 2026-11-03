@@ -2,6 +2,7 @@ import base64
 import json
 from datetime import datetime
 from unittest.mock import Mock, patch
+from uuid import uuid4
 
 import pytest
 import pytest_mock
@@ -29,6 +30,7 @@ def workflow() -> Workflow:
         created_by="u-1",
         graph=json.dumps({"nodes": [{"id": "new"}], "edges": []}),
         _features="{}",
+        draft_client_save_id=str(uuid4()),
     )
     row.updated_at = datetime(2026, 9, 20, 12, 0, 0)
     return row
@@ -50,6 +52,7 @@ def setup(
     change = ServerDraftChange(
         revision="revision-2",
         hash=workflow.unique_hash,
+        client_save_id=workflow.draft_client_save_id,
         updated_at=2,
         graph=workflow.graph_dict,
         previous_graph={"nodes": [{"id": "old"}], "edges": []},
@@ -97,8 +100,11 @@ def test_broadcasts_one_accepted_update_including_the_writer_and_replays_it_on_r
     first, status = service.sync("follower", session=session)
     assert status == 200
     assert first["update"] == b"accepted-update"
+    assert first["client_save_id"] == change.client_save_id
+    assert repository.announce.call_args.args[1].client_save_id == change.client_save_id
     socketio.emit.assert_called_once_with("server_draft_update", first, room="app-1")
     assert socketio.call.call_args.kwargs["to"] == "leader"
+    assert socketio.call.call_args.args[1]["client_save_id"] == change.client_save_id
     assert len(session.info["completed_transactions"]) == 1
     assert not session.in_transaction()
 
@@ -205,6 +211,7 @@ def test_notification_carries_a_version_and_preserves_the_patch_baseline(workflo
     assert change.previous_graph == before
     assert change.graph == workflow.graph_dict
     assert change.hash == workflow.unique_hash
+    assert change.client_save_id == workflow.draft_client_save_id
     socketio.emit.assert_called_once_with("server_draft_changed", {"revision": change.revision}, room="app-1")
 
 
