@@ -55,6 +55,17 @@ class _Roster:
         }
 
 
+class _EndlessEmptyRoster:
+    """Claims more agents on every page but never serves one."""
+
+    def __init__(self) -> None:
+        self.pages: list[int] = []
+
+    def list_invite_options(self, *, page: int, **_kwargs: object) -> dict[str, object]:
+        self.pages.append(page)
+        return {"data": [], "page": page, "limit": 100, "total": 1, "has_more": True}
+
+
 class _NoRoster:
     def list_invite_options(self, **_kwargs: object) -> dict[str, object]:
         raise AssertionError("the roster is not read for this kind")
@@ -96,6 +107,7 @@ def _options(
     keyword: str | None = None,
     accessible_agent_ids: Sequence[str] | None = None,
     roster: AgentInviteOptions | None = None,
+    language: str | None = None,
 ) -> list[NodeOption]:
     return list_node_options(
         ctx=CTX,
@@ -104,6 +116,7 @@ def _options(
         keyword=keyword,
         accessible_agent_ids=accessible_agent_ids,
         roster=roster if roster is not None else _Roster(),
+        language=language,
     )
 
 
@@ -162,6 +175,24 @@ def test_tool_rows_include_builtin_current_time(tools: list[ToolSource]) -> None
 
 
 @pytest.mark.usefixtures("tools")
+def test_tool_rows_read_labels_in_the_given_language() -> None:
+    [row] = _options(kind=NodeOptionKind.TOOL, roster=_NoRoster(), language="zh-Hans")
+
+    assert (row.label, row.seed["tool_label"], row.description) == (
+        "获取当前时间",
+        "获取当前时间",
+        "一个用于获取当前时间的工具。",
+    )
+
+
+@pytest.mark.usefixtures("tools")
+def test_keyword_matches_the_label_in_the_given_language() -> None:
+    rows = _options(kind=NodeOptionKind.TOOL, keyword="当前", roster=_NoRoster(), language="zh-Hans")
+
+    assert [r.label for r in rows] == ["获取当前时间"]
+
+
+@pytest.mark.usefixtures("tools")
 def test_a_tool_seed_is_completed_by_fill() -> None:
     [row] = _options(kind=NodeOptionKind.TOOL, roster=_NoRoster())
     raw = copy.deepcopy(dict(row.seed))
@@ -198,6 +229,14 @@ def test_agents_are_read_page_by_page_until_none_are_left() -> None:
 
     assert [c["page"] for c in roster.calls] == [1, 2]
     assert {c["tenant_id"] for c in roster.calls} == {CTX.tenant_id}
+
+
+def test_agents_stop_at_an_empty_page_even_when_more_are_claimed() -> None:
+    roster = _EndlessEmptyRoster()
+
+    rows = _options(kind=NodeOptionKind.AGENT, roster=roster)
+
+    assert (rows, roster.pages) == ([], [1])
 
 
 def test_agents_are_limited_to_the_accessible_ones() -> None:

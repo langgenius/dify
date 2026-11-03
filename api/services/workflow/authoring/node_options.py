@@ -25,8 +25,6 @@ if TYPE_CHECKING:
     from services.workflow.authoring import FillContext
 
 _ROSTER_PAGE_SIZE: Final = 100
-# No account language reaches here; plugin text is read in its fallback language.
-_LANGUAGE: Final = None
 
 
 class AgentInviteOptions(Protocol):
@@ -57,6 +55,7 @@ class _Request:
     keyword: str | None
     accessible_agent_ids: Sequence[str] | None
     roster: AgentInviteOptions
+    language: str | None
 
 
 def _latest_nodes() -> Iterator[tuple[str, type[Node]]]:
@@ -93,23 +92,22 @@ def _tools(request: _Request) -> Iterable[NodeOption]:
     for source in ToolSource:
         for provider in source.list_providers(tenant_id=request.ctx.tenant_id, user_id=request.ctx.account_id):
             for tool in provider.tools:
-                identity = ToolNodeIdentity.of(provider, tool, _LANGUAGE)
+                identity = ToolNodeIdentity.of(provider, tool, request.language)
                 names = {key: value for key, value in asdict(identity).items() if value is not None}
                 yield NodeOption(
                     kind=NodeOptionKind.TOOL,
                     type=node_type,
                     version=version,
                     label=identity.tool_label,
-                    description=localized(tool.description, _LANGUAGE),
+                    description=localized(tool.description, request.language),
                     seed={"type": node_type, **names, "tool_node_version": TOOL_NODE_VERSION},
                 )
 
 
 def _roster_agents(request: _Request) -> Iterator[Mapping[str, Any]]:
-    """Every invite option the roster serves, read page by page until it reports no more."""
+    """Every invite option the roster serves, read page by page until it reports no more or serves an empty page."""
     page = 1
-    has_more = True
-    while has_more:
+    while True:
         result = request.roster.list_invite_options(
             tenant_id=request.ctx.tenant_id,
             page=page,
@@ -117,8 +115,12 @@ def _roster_agents(request: _Request) -> Iterator[Mapping[str, Any]]:
             keyword=request.keyword,
             accessible_agent_ids=request.accessible_agent_ids,
         )
-        yield from result["data"]
-        has_more = bool(result["has_more"])
+        agents = result["data"]
+        yield from agents
+        if not agents:
+            return
+        if not result["has_more"]:
+            return
         page += 1
 
 
@@ -184,14 +186,18 @@ def list_node_options(
     keyword: str | None,
     accessible_agent_ids: Sequence[str] | None,
     roster: AgentInviteOptions,
+    language: str | None = None,
 ) -> list[NodeOption]:
     """Every option an app of `mode` can add, of `kind` or of every kind when None, sorted by kind then label.
 
-    `keyword` keeps the options whose label contains it, ignoring case. Types `mode` refuses are never offered.
+    Plugin text is read in `language`, else its fallback language. `keyword` keeps the options whose label contains
+    it, ignoring case. Types `mode` refuses are never offered.
     Agents are read from `roster` page by page until none are left, limited to `accessible_agent_ids` when given.
     Reads only; a failing tool source or roster raises its own error.
     """
-    request = _Request(ctx=ctx, keyword=keyword, accessible_agent_ids=accessible_agent_ids, roster=roster)
+    request = _Request(
+        ctx=ctx, keyword=keyword, accessible_agent_ids=accessible_agent_ids, roster=roster, language=language
+    )
     refused = refused_node_types(mode)
     kinds = [kind] if kind is not None else list(NodeOptionKind)
     options = [

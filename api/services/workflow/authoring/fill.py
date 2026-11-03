@@ -41,6 +41,17 @@ class FilledPackage:
     # The root app's document as `archive` holds it; None when there is no `app.yaml` or it is not a YAML mapping.
     document: dict[str, Any] | None
 
+    @property
+    def app_name(self) -> str | None:
+        """The root app's name; None when the document has none that is text."""
+        if self.document is None:
+            return None
+        app = self.document.get("app")
+        if not isinstance(app, dict):
+            return None
+        name = app.get("name")
+        return name if isinstance(name, str) else None
+
 
 @dataclass(frozen=True)
 class _App:

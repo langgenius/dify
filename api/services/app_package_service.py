@@ -63,8 +63,16 @@ from services.skill_management_service import SkillManagementService
 from services.workflow_tool_references import iter_workflow_tool_references
 
 _COPY_CHUNK_SIZE = 1024 * 1024
+_SLUG_MAX_LENGTH = 80
+_FALLBACK_SLUG = "app"
 
 _AGENT_ID_KEY = "agent_id"
+
+
+def package_filename(app_name: str | None) -> str:
+    """The `.ifpkg` file an app's package downloads as: the app name as a slug, else `app.ifpkg`."""
+    slug = re.sub(r"[^a-z0-9]+", "-", (app_name or "").lower()).strip("-")[:_SLUG_MAX_LENGTH] or _FALLBACK_SLUG
+    return f"{slug}.ifpkg"
 
 
 class AppPackageManifest(BaseModel):
@@ -656,8 +664,7 @@ class AppPackageService(RosterAgentPackageReader):
             if validated is None:
                 raise InvalidRosterAgentPackageError("Expected an App package")
             validated.close()
-            slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:80] or "app"
-            return RosterAgentPackageExport(archive=archive, filename=f"{slug}.ifpkg", size=size)
+            return RosterAgentPackageExport(archive=archive, filename=package_filename(name), size=size)
         except Exception:
             archive.close()
             raise

@@ -68,6 +68,8 @@ class FolderUpload:
             max_bytes=lambda: self.max_bytes() + multipart_header_allowance(self.parts()), max_parts=self.parts
         )
 
+    def limits(self) -> ArchiveLimits:
+        return ArchiveLimits(max_entries=self.max_entries(), max_bytes=self.max_bytes())
+
     def archive(self, folder: UploadParts) -> ArchiveResult:
-        limits = ArchiveLimits(max_entries=self.max_entries(), max_bytes=self.max_bytes())
-        return build_folder_archive(folder, limits=limits, rejections=self.rejections)
+        return build_folder_archive(folder, limits=self.limits(), rejections=self.rejections)
