@@ -10,7 +10,7 @@ export const getHumanInputFormDependencySelectors = (inputs: FormInputItem[]): V
   return inputs.flatMap((input) => {
     if (
       isParagraphFormInput(input) &&
-      input.default.type === 'variable' &&
+      input.default?.type === 'variable' &&
       input.default.selector.length > 0
     )
       return [input.default.selector]

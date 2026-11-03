@@ -38,6 +38,15 @@ it('renders actual markdown variables and input notes with node names and closes
   expect(onClose).toHaveBeenCalledTimes(1)
 })
 
+it('renders an omitted paragraph default without crashing the form preview', async () => {
+  renderPreview({
+    type: InputVarType.paragraph,
+    output_variable_name: 'field_1',
+  } as FormInputItem)
+  expect(await screen.findByText('{{Classifier/answer}}')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
+})
+
 it('resolves the variable supplying select options in an input note', async () => {
   renderPreview({
     type: InputVarType.select,
