@@ -301,4 +301,3 @@ def test_the_note_row_names_every_theme_and_fabricates_no_theme_or_author() -> N
     assert row.description is not None
     assert all(theme in row.description for theme in ("blue", "cyan", "green", "yellow", "pink", "violet"))
     assert {"theme", "author"}.isdisjoint(row.seed["data"])
-
