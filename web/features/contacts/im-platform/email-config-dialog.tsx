@@ -295,7 +295,7 @@ export function ContactEmailConfigContent({
               </div>
               <Input
                 disabled={credentialsDisabled}
-                autoComplete="new-password"
+                autoComplete="off"
                 placeholder={
                   canRetainSecret ? '••••••••' : t(($) => $['imPlatform.email.apiKeyPlaceholder'])
                 }

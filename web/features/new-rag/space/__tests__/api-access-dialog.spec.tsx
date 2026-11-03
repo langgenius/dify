@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { KnowledgeFsApiAccessDialog } from '../api-access-dialog'
 
@@ -10,20 +11,21 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.apiKeys.get': async () => ({
+        data: [
+          {
+            id: 'workspace-key',
+            token: 'dataset-existing-secret',
+            created_at: 1710000000,
+            last_used_at: null,
+            type: 'dataset',
+            dataset_ids: [],
+            knowledge_space_ids: [],
+          },
+        ],
+      }),
       'datasets.apiBaseInfo.get': async () => ({ api_base_url: 'https://api.example.com/v1/' }),
     }),
-  }
-})
-
-// The key manager owns its own list and mutations; this suite only proves the hand-off.
-vi.mock('@/app/components/api-key/dataset-api-key-dialog-content', async () => {
-  const { DialogContent, DialogTitle } = await import('@langgenius/dify-ui/dialog')
-  return {
-    DatasetApiKeyDialogContent: (props: { canManage: boolean }) => (
-      <DialogContent>
-        <DialogTitle>workspace-dataset-api-keys:{String(props.canManage)}</DialogTitle>
-      </DialogContent>
-    ),
   }
 })
 
@@ -54,19 +56,35 @@ describe('KnowledgeFsApiAccessDialog', () => {
   it('opens the shared workspace Dataset API key manager', async () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
-    renderDialog({
-      status: 'active',
-      knowledgeSpaceId: 'space-1',
-      open: true,
-      onOpenChange,
-    })
+    function Viewer() {
+      const [open, setOpen] = useState(true)
+      return (
+        <KnowledgeFsApiAccessDialog
+          status="active"
+          knowledgeSpaceId="space-1"
+          open={open}
+          onOpenChange={(next) => {
+            onOpenChange(next)
+            setOpen(next)
+          }}
+        />
+      )
+    }
+    renderWithConsoleQuery(<Viewer />, { workspacePermissionKeys: ['dataset.api_key.manage'] })
 
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' }))
 
     expect(onOpenChange).toHaveBeenCalledWith(false)
     expect(
-      await screen.findByRole('dialog', { name: 'workspace-dataset-api-keys:true' }),
+      await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' }),
     ).toBeInTheDocument()
+    expect(await screen.findByText('datas...cret')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByLabelText('knowledgeSpace.apiAgentAccess')).not.toBeInTheDocument(),
+    )
+    expect(
+      screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+    ).toBeEnabled()
   })
 
   it('does not expose API key management while Service API access is disabled', async () => {
@@ -83,7 +101,7 @@ describe('KnowledgeFsApiAccessDialog', () => {
     ).not.toBeInTheDocument()
     await waitFor(() =>
       expect(
-        screen.queryByRole('dialog', { name: /workspace-dataset-api-keys/ }),
+        screen.queryByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' }),
       ).not.toBeInTheDocument(),
     )
   })
