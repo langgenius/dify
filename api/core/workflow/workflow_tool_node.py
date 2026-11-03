@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping
-from typing import Any, Protocol, cast, override
+from typing import Any, Protocol, override, runtime_checkable
 
 from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
 from graphon.enums import (
@@ -23,6 +23,7 @@ from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle
 from graphon.variables.segments import StringSegment
 
 
+@runtime_checkable
 class WorkflowToolContainerRuntime(Protocol):
     def build_workflow_tool_container_payload(
         self,
@@ -81,7 +82,9 @@ class DifyWorkflowToolNode(ToolNode):
             for_log=True,
         )
         try:
-            container_runtime = cast(WorkflowToolContainerRuntime, self._runtime)
+            if not isinstance(self._runtime, WorkflowToolContainerRuntime):
+                raise TypeError(f"Expected WorkflowToolContainerRuntime, got {type(self._runtime).__name__}")
+            container_runtime = self._runtime
             payload = container_runtime.build_workflow_tool_container_payload(
                 tool_runtime=tool_runtime,
                 tool_parameters=parameters,

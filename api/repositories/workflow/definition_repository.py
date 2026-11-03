@@ -680,7 +680,6 @@ def workflow_snapshot(workflow: Workflow) -> WorkflowSnapshot:
         created_at=workflow.created_at,
         updated_by=workflow.updated_by,
         updated_at=workflow.updated_at or workflow.created_at,
-        execution_id=getattr(workflow, "execution_id", None),
     )
 
 
