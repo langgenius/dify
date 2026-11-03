@@ -22,6 +22,11 @@ function renderRoster({
   )
 }
 
+async function openActions(user: ReturnType<typeof userEvent.setup>, name: string) {
+  const card = screen.getByRole('listitem', { name })
+  await user.click(within(card).getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
+}
+
 describe('ExternalRoster', () => {
   it('combines status, connected-by-me and search filters with a recoverable empty state', async () => {
     const user = userEvent.setup()
@@ -135,6 +140,155 @@ describe('ExternalRoster', () => {
     expect(
       screen.queryByRole('button', { name: 'agentRoster.external.connect' }),
     ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /agentRoster\.roster\.moreActions/ }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Contract Review Agent' })).toBeInTheDocument()
+  })
+
+  it('discards canceled edits and updates the card only after saving the reopened draft', async () => {
+    const user = userEvent.setup()
+    renderRoster()
+    await openActions(user, 'Contract Review Agent')
+    await user.click(await screen.findByRole('menuitem', { name: 'agentRoster.external.editInfo' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'agentRoster.external.editInfo' })
+    const name = within(dialog).getByRole('textbox', {
+      name: 'agentRoster.roster.createForm.nameLabel',
+    })
+    await user.clear(name)
+    await user.type(name, 'Unsaved name')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('heading', { name: 'Contract Review Agent' })).toBeInTheDocument()
+
+    await openActions(user, 'Contract Review Agent')
+    await user.click(await screen.findByRole('menuitem', { name: 'agentRoster.external.editInfo' }))
+    const reopened = await screen.findByRole('dialog', { name: 'agentRoster.external.editInfo' })
+    const reopenedName = within(reopened).getByRole('textbox', {
+      name: 'agentRoster.roster.createForm.nameLabel',
+    })
+    expect(reopenedName).toHaveValue('Contract Review Agent')
+    await user.clear(reopenedName)
+    await user.type(reopenedName, ' Contract Analyzer ')
+    const role = within(reopened).getByRole('textbox', {
+      name: /agentRoster\.roster\.createForm\.roleLabel/,
+    })
+    await user.clear(role)
+    await user.type(role, ' Legal operations ')
+    const description = within(reopened).getByRole('textbox', {
+      name: 'agentRoster.roster.createForm.descriptionLabel',
+    })
+    await user.clear(description)
+    await user.type(description, ' Reviews purchase agreements. ')
+    await user.click(within(reopened).getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const updated = screen.getByRole('listitem', { name: 'Contract Analyzer' })
+    expect(within(updated).getByText('Legal operations')).toBeInTheDocument()
+    expect(within(updated).getByText('Reviews purchase agreements.')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Contract Review Agent' })).not.toBeInTheDocument()
+  })
+
+  it('changes status counts and filtered results only after enabling or disabling is confirmed', async () => {
+    const user = userEvent.setup()
+    renderRoster({ searchParams: '?external_status=disabled' })
+    await openActions(user, 'Vendor Screening Agent')
+    expect(
+      screen.queryByRole('menuitem', { name: 'agentRoster.external.disable' }),
+    ).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('menuitem', { name: 'agentRoster.external.enable' }))
+
+    const enableDialog = await screen.findByRole('alertdialog', {
+      name: 'agentRoster.external.enableDialog.title',
+    })
+    await user.click(within(enableDialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.external.filters.enabled 1' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Vendor Screening Agent' })).toBeInTheDocument()
+
+    await openActions(user, 'Vendor Screening Agent')
+    await user.click(await screen.findByRole('menuitem', { name: 'agentRoster.external.enable' }))
+    const confirmedEnable = await screen.findByRole('alertdialog', {
+      name: 'agentRoster.external.enableDialog.title',
+    })
+    await user.click(
+      within(confirmedEnable).getByRole('button', { name: 'agentRoster.external.enable' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('status')).toHaveTextContent('agentRoster.external.emptySearch')
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.external.filters.disabled 0' }),
+    ).toBeChecked()
+    await user.click(screen.getByRole('radio', { name: 'agentRoster.external.filters.enabled 2' }))
+
+    await openActions(user, 'Vendor Screening Agent')
+    expect(
+      screen.queryByRole('menuitem', { name: 'agentRoster.external.enable' }),
+    ).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('menuitem', { name: 'agentRoster.external.disable' }))
+    const disableDialog = await screen.findByRole('alertdialog', {
+      name: 'agentRoster.external.disableDialog.title',
+    })
+    await user.click(
+      within(disableDialog).getByRole('button', { name: 'agentRoster.external.disable' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+
+    expect(
+      screen.queryByRole('heading', { name: 'Vendor Screening Agent' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Contract Review Agent' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.external.filters.enabled 1' }),
+    ).toBeChecked()
+    expect(
+      screen.getByRole('radio', { name: 'agentRoster.external.filters.disabled 1' }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps canceled deletions and restores usable focus after deleting a card and the last card', async () => {
+    const user = userEvent.setup()
+    renderRoster()
+    await openActions(user, 'Vendor Screening Agent')
+    await user.click(await screen.findByRole('menuitem', { name: 'agentRoster.external.delete' }))
+
+    const canceled = await screen.findByRole('alertdialog', {
+      name: 'agentRoster.external.deleteDialog.title',
+    })
+    await user.click(within(canceled).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('heading', { name: 'Vendor Screening Agent' })).toBeInTheDocument()
+
+    await openActions(user, 'Vendor Screening Agent')
+    await user.click(await screen.findByRole('menuitem', { name: 'agentRoster.external.delete' }))
+    const confirmed = await screen.findByRole('alertdialog', {
+      name: 'agentRoster.external.deleteDialog.title',
+    })
+    await user.click(within(confirmed).getByRole('button', { name: 'agentRoster.external.delete' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(
+      screen.queryByRole('heading', { name: 'Vendor Screening Agent' }),
+    ).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Contract Review Agent' })).toHaveFocus(),
+    )
+
+    await openActions(user, 'Contract Review Agent')
+    await user.click(await screen.findByRole('menuitem', { name: 'agentRoster.external.delete' }))
+    const lastCard = await screen.findByRole('alertdialog', {
+      name: 'agentRoster.external.deleteDialog.title',
+    })
+    await user.click(within(lastCard).getByRole('button', { name: 'agentRoster.external.delete' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+
+    expect(screen.getByRole('status')).toHaveTextContent('agentRoster.external.empty')
+    await waitFor(() =>
+      expect(
+        screen.getByRole('searchbox', { name: 'agentRoster.roster.searchLabel' }),
+      ).toHaveFocus(),
+    )
   })
 })

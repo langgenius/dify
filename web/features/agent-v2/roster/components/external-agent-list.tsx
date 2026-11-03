@@ -1,7 +1,10 @@
 'use client'
 
+import type { ExternalAgentActionRequest } from './external-agent-actions'
 import type { AppIconProps } from '@/app/components/base/app-icon'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import {
   Popover,
   PopoverContent,
@@ -16,12 +19,13 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useId } from 'react'
+import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import CornerLabel from '@/app/components/base/corner-label'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 
 export type ExternalAgentListItem = {
   key: string
@@ -39,20 +43,40 @@ export type ExternalAgentListItem = {
 type ExternalAgentListProps = {
   agents: readonly ExternalAgentListItem[]
   filtered: boolean
+  onAction?: (request: ExternalAgentActionRequest) => void
 }
 
-function ExternalAgentCard({ agent }: { agent: ExternalAgentListItem }) {
+function ExternalAgentCard({
+  agent,
+  onAction,
+}: {
+  agent: ExternalAgentListItem
+  onAction: ExternalAgentListProps['onAction']
+}) {
   const { t } = useTranslation(['agentRoster'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const nameId = useId()
   const descriptionId = useId()
   const statusId = useId()
+  const itemRef = useRef<HTMLLIElement>(null)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const requestAction = (kind: ExternalAgentActionRequest['kind']) => {
+    onAction?.({
+      kind,
+      agent,
+      trigger: menuTriggerRef.current,
+      adjacentFocusTargets: getAdjacentFocusTargets(itemRef.current, (sibling) =>
+        sibling.querySelector<HTMLButtonElement>('button'),
+      ),
+    })
+  }
 
   return (
     <li
+      ref={itemRef}
       aria-labelledby={nameId}
       className={cn(
-        'group relative flex h-36.5 min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow hover:bg-components-card-bg-alt hover:shadow-md motion-reduce:transition-none',
+        'group relative flex h-36.5 min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow focus-within:bg-components-card-bg-alt hover:bg-components-card-bg-alt hover:shadow-md has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md motion-reduce:transition-none',
         !agent.enabled && 'opacity-60',
       )}
     >
@@ -102,6 +126,47 @@ function ExternalAgentCard({ agent }: { agent: ExternalAgentListItem }) {
           />
         </span>
       )}
+      {onAction && (
+        <div className="pointer-events-none absolute inset-e-[-0.5px] top-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 rtl:bg-[linear-gradient(293deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] [@media(hover:none)]:opacity-100">
+          <div className="pointer-events-none rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
+            <Menu modal={false}>
+              <MenuTrigger
+                render={
+                  <IconButton
+                    ref={menuTriggerRef}
+                    size="lg"
+                    aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
+                    className="data-popup-open:bg-state-base-hover"
+                  >
+                    <span aria-hidden className="i-ri-more-fill size-4.5" />
+                  </IconButton>
+                }
+              />
+              <MenuContent align="end" className="min-w-40">
+                <MenuItem className="gap-2" onClick={() => requestAction('edit')}>
+                  <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
+                  {t(($) => $['external.editInfo'])}
+                </MenuItem>
+                <MenuItem className="gap-2" onClick={() => requestAction('toggle')}>
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'size-4 text-text-tertiary',
+                      agent.enabled ? 'i-ri-pause-circle-line' : 'i-ri-play-circle-line',
+                    )}
+                  />
+                  {agent.enabled ? t(($) => $['external.disable']) : t(($) => $['external.enable'])}
+                </MenuItem>
+                <MenuSeparator />
+                <MenuItem className="gap-2" onClick={() => requestAction('delete')}>
+                  <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
+                  {t(($) => $['external.delete'])}
+                </MenuItem>
+              </MenuContent>
+            </Menu>
+          </div>
+        </div>
+      )}
       <div className="flex h-9 min-w-0 shrink-0 items-center gap-1.5 ps-4 pe-3 pt-2 pb-3 system-xs-regular text-text-tertiary">
         <Popover>
           <PopoverTrigger className="-m-1 flex h-6 shrink-0 items-center gap-1 rounded-md p-1 hover:bg-state-base-hover data-popup-open:bg-state-base-hover">
@@ -145,7 +210,7 @@ function ExternalAgentCard({ agent }: { agent: ExternalAgentListItem }) {
   )
 }
 
-export function ExternalAgentList({ agents, filtered }: ExternalAgentListProps) {
+export function ExternalAgentList({ agents, filtered, onAction }: ExternalAgentListProps) {
   const { t } = useTranslation(['agentRoster'])
 
   return (
@@ -158,7 +223,7 @@ export function ExternalAgentList({ agents, filtered }: ExternalAgentListProps) 
               className={cn(MAIN_NAV_APP_CARD_GRID_CLASS_NAME, 'gap-2.5')}
             >
               {agents.map((agent) => (
-                <ExternalAgentCard key={agent.key} agent={agent} />
+                <ExternalAgentCard key={agent.key} agent={agent} onAction={onAction} />
               ))}
             </ul>
           ) : (

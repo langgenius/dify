@@ -1,5 +1,6 @@
 'use client'
 
+import type { ExternalAgentActionRequest } from './components/external-agent-actions'
 import type { ExternalAgentListItem } from './components/external-agent-list'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
@@ -14,24 +15,33 @@ import {
 } from '@langgenius/dify-ui/select'
 import { useAtomValue } from 'jotai'
 import { useQueryStates } from 'nuqs'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { ConnectExternalAgent } from './components/connect-external-agent'
+import { ExternalAgentActions } from './components/external-agent-actions'
 import { ExternalAgentList } from './components/external-agent-list'
 import { createExternalRosterPreview } from './external-roster-preview'
 import { externalRosterQueryParsers } from './query-params'
 
 type ExternalRosterProps = {
-  agents?: readonly ExternalAgentListItem[]
+  initialAgents?: readonly ExternalAgentListItem[]
 }
 
-export function ExternalRoster({ agents: suppliedAgents }: ExternalRosterProps) {
+export function ExternalRoster({ initialAgents }: ExternalRosterProps) {
   const { t } = useTranslation(['agentRoster'])
-  const [previewAgents] = useState(createExternalRosterPreview)
-  const agents = suppliedAgents ?? previewAgents
-  const canConnect = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const [agents, setAgents] = useState(() =>
+    initialAgents ? [...initialAgents] : createExternalRosterPreview(),
+  )
+  const [actionRequest, setActionRequest] = useState<ExternalAgentActionRequest>()
+  const [actionOpen, setActionOpen] = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const requestAction = (request: ExternalAgentActionRequest) => {
+    setActionRequest(request)
+    setActionOpen(true)
+  }
+  const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [filters, setFilters] = useQueryStates(externalRosterQueryParsers)
   const sortLabelId = useId()
   const enabledCount = agents.filter((agent) => agent.enabled).length
@@ -94,6 +104,7 @@ export function ExternalRoster({ agents: suppliedAgents }: ExternalRosterProps) 
           ))}
         </SegmentedControl>
         <SearchInput
+          ref={searchRef}
           aria-label={t(($) => $['roster.searchLabel'])}
           placeholder={t(($) => $['external.searchPlaceholder'])}
           value={filters.external_keyword}
@@ -143,17 +154,47 @@ export function ExternalRoster({ agents: suppliedAgents }: ExternalRosterProps) 
               ))}
             </SelectContent>
           </Select>
-          {canConnect && <ConnectExternalAgent />}
+          {canManage && <ConnectExternalAgent />}
         </div>
       </div>
       <div className="min-h-0 flex-1 max-md:min-h-64">
         <ExternalAgentList
           agents={filteredAgents}
+          onAction={canManage ? requestAction : undefined}
           filtered={Boolean(
             keyword || filters.external_status !== 'all' || filters.external_connected_by_me,
           )}
         />
       </div>
+      <ExternalAgentActions
+        request={actionRequest}
+        open={actionOpen}
+        onOpenChange={setActionOpen}
+        onRequest={requestAction}
+        fallbackFocus={searchRef}
+        onEdit={(key, fields) => {
+          const updatedAt = Date.now()
+          setAgents((current) =>
+            current.map((agent) =>
+              agent.key === key ? { ...agent, ...fields, updatedAt } : agent,
+            ),
+          )
+          setActionOpen(false)
+        }}
+        onToggle={(key) => {
+          const updatedAt = Date.now()
+          setAgents((current) =>
+            current.map((agent) =>
+              agent.key === key ? { ...agent, enabled: !agent.enabled, updatedAt } : agent,
+            ),
+          )
+          setActionOpen(false)
+        }}
+        onDelete={(key) => {
+          setAgents((current) => current.filter((agent) => agent.key !== key))
+          setActionOpen(false)
+        }}
+      />
     </>
   )
 }
