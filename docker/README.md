@@ -165,15 +165,44 @@ These optional overrides do not need to be added to `.env.example`.
 
 ### Select a database or vector store
 
-Set `DB_TYPE` or `VECTOR_STORE` and the provider's connection settings in the
-appropriate override file. In root `.env`, update `COMPOSE_PROFILES` to select the
-matching bundled services. Omit a service's profile when that service runs
-externally. Starting a different database does not migrate existing data.
+In root `.env`, set `VECTOR_STORE` and update `COMPOSE_PROFILES` to select the
+matching bundled vector store. Compose supplies its connection defaults to the
+API, workers and Beat automatically. For example, Qdrant with PostgreSQL uses:
+
+```dotenv
+VECTOR_STORE=qdrant
+COMPOSE_PROFILES=qdrant,postgresql,collaboration
+```
+
+To customize the connection, copy the provider's `.defaults` file under
+`envs/vectorstores/` to its `.env` path and edit the copy. Elasticsearch's two
+selectors use `elasticsearch.env`. Existing provider `.env` and `shared.env`
+overrides remain supported. Keep `VECTOR_STORE` in root `.env`, since Compose
+selects the defaults file before reading service files.
+
+For an external vector store, omit its bundled profile and provide its connection
+settings and credentials. The bundled defaults describe the bundled server;
+changing client credentials does not change an existing database user's password.
+Starting a different database or vector store does not migrate existing data.
 
 For example, the default deployment selects PostgreSQL and Weaviate with
 `COMPOSE_PROFILES=weaviate,postgresql,collaboration`. The `collaboration` profile
-starts the WebSocket API. See the [database](envs/databases/) and
+starts the WebSocket API. Set `DB_TYPE` and the SQL database's connection settings
+when changing that provider. See the [database](envs/databases/) and
 [vector store](envs/vectorstores/) files for provider-specific settings.
+
+### Configure sandbox credentials
+
+Set `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` only in root `.env`, using the secret
+generated during setup. Compose supplies it to both the Agent backend and its
+local sandbox. Move any existing copy of this token from `dify-agent.env` to root
+`.env` and remove the duplicate; keep the same secret during the move.
+
+The separate Code sandbox uses two settings that must match: `SANDBOX_API_KEY`
+in `envs/core-services/sandbox.env` and `CODE_EXECUTION_API_KEY` in
+`envs/security.env` (copied from `security.env.example`). Use the same generated
+secret in both files, then run `docker compose up -d` to apply both changes.
+You can also set both variables to the same value in root `.env`.
 
 ### Understand which value takes effect
 
@@ -214,7 +243,7 @@ not application readiness.
 | A service still uses its old value | Run `docker compose up -d`. Check for a higher-priority value in root `.env`, the shell, or an explicit Compose `environment` entry. |
 | A port or profile change has no effect | Put the setting in root `.env`; these settings cannot be supplied through a service env file. |
 | Service overrides resolve unexpectedly | Check that Docker Compose is v2.35.0 or later and that container-variable mapping expressions are intact. |
-| Python sandbox code returns `operation not permitted` | Check the network-setting note in [sandbox.defaults](envs/core-services/sandbox.defaults). On sandbox 0.2.15/ARM64, requests with networking disabled can trigger a runtime syscall restriction. |
+| Python sandbox code returns `operation not permitted` | Check the network-setting note in [sandbox.defaults](envs/core-services/sandbox.defaults). Sandbox 0.2.15 restricts the `epoll_pwait` syscall when networking is disabled on both ARM64 and AMD64. The runtime failure has been reproduced on ARM64. |
 
 ## Review configuration after an upgrade
 

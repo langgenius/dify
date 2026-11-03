@@ -123,6 +123,286 @@ class ComposeEnvironmentTests(unittest.TestCase):
         self.assertNotIn("QDRANT_NOFILE_SOFT", services["qdrant"]["environment"])
         self.assertNotIn("QDRANT_NOFILE_HARD", services["qdrant"]["environment"])
 
+    def test_agent_sandbox_token_is_a_root_input_for_both_consumers(self):
+        template = (DOCKER_DIR / "envs/core-services/dify-agent.defaults").read_text()
+        self.assertNotRegex(template, r"(?m)^DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=")
+        self.copy_template(
+            "envs/core-services/dify-agent.defaults",
+            "envs/core-services/dify-agent.env",
+        )
+        local = self.project / "envs/core-services/dify-agent.env"
+        local.write_text(local.read_text() + "\nDIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=service-only-token\n")
+        root = self.project / ".env"
+        original = root.read_text()
+        for setting, expected in (
+            ("DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=root-token", "root-token"),
+            (
+                "DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=\nDIFY_AGENT_SHELLCTL_AUTH_TOKEN=legacy-token",
+                "legacy-token",
+            ),
+            ("DIFY_AGENT_SHELLCTL_AUTH_TOKEN=legacy-token", "legacy-token"),
+            ("DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=", ""),
+        ):
+            with self.subTest(setting=setting):
+                root.write_text(
+                    re.sub(
+                        r"(?m)^DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=.*$",
+                        setting,
+                        original,
+                    )
+                )
+                services = self.render()
+                self.assertEqual(
+                    services["agent_backend"]["environment"]["DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN"],
+                    expected,
+                )
+                self.assertEqual(
+                    services["local_sandbox"]["environment"]["SHELLCTL_AUTH_TOKEN"],
+                    expected,
+                )
+
+    def test_bundled_vector_defaults_and_isolated_overrides(self):
+        cases = {
+            "weaviate": {"WEAVIATE_ENDPOINT": "http://weaviate:8080"},
+            "qdrant": {
+                "QDRANT_URL": "http://qdrant:6333",
+                "QDRANT_API_KEY": "difyai123456",
+            },
+            "oceanbase": {
+                "OCEANBASE_VECTOR_HOST": "oceanbase",
+                "OCEANBASE_VECTOR_USER": "root@test",
+                "OCEANBASE_VECTOR_PASSWORD": "difyai123456",
+                "OCEANBASE_VECTOR_DATABASE": "test",
+            },
+            "seekdb": {
+                "OCEANBASE_VECTOR_HOST": "seekdb",
+                "OCEANBASE_VECTOR_USER": "root",
+                "OCEANBASE_VECTOR_PASSWORD": "difyai123456",
+                "OCEANBASE_VECTOR_DATABASE": "test",
+            },
+            "couchbase": {
+                "COUCHBASE_CONNECTION_STRING": "couchbase://couchbase-server",
+                "COUCHBASE_USER": "Administrator",
+                "COUCHBASE_PASSWORD": "password",
+                "COUCHBASE_BUCKET_NAME": "Embeddings",
+                "COUCHBASE_SCOPE_NAME": "_default",
+            },
+            "pgvector": {
+                "PGVECTOR_HOST": "pgvector",
+                "PGVECTOR_PORT": "5432",
+                "PGVECTOR_USER": "postgres",
+                "PGVECTOR_PASSWORD": "difyai123456",
+                "PGVECTOR_DATABASE": "dify",
+            },
+            "pgvecto-rs": {
+                "PGVECTO_RS_HOST": "pgvecto-rs",
+                "PGVECTO_RS_PORT": "5432",
+                "PGVECTO_RS_USER": "postgres",
+                "PGVECTO_RS_PASSWORD": "difyai123456",
+                "PGVECTO_RS_DATABASE": "dify",
+            },
+            "vastbase": {
+                "VASTBASE_HOST": "vastbase",
+                "VASTBASE_PORT": "5432",
+                "VASTBASE_USER": "dify",
+                "VASTBASE_PASSWORD": "Difyai123456",
+                "VASTBASE_DATABASE": "dify",
+            },
+            "chroma": {
+                "CHROMA_HOST": "chroma",
+                "CHROMA_AUTH_CREDENTIALS": "difyai123456",
+                "CHROMA_AUTH_PROVIDER": "chromadb.auth.token_authn.TokenAuthClientProvider",
+            },
+            "iris": {"IRIS_HOST": "iris"},
+            "oracle": {
+                "ORACLE_DSN": "oracle:1521/FREEPDB1",
+                "ORACLE_USER": "dify",
+                "ORACLE_PASSWORD": "dify",
+            },
+            "milvus": {
+                "MILVUS_URI": "http://milvus-standalone:19530",
+                "MILVUS_USER": "root",
+                "MILVUS_PASSWORD": "Milvus",
+                "MILVUS_DATABASE": "default",
+            },
+            "opensearch": {
+                "OPENSEARCH_HOST": "opensearch",
+                "OPENSEARCH_USER": "admin",
+                "OPENSEARCH_PASSWORD": "Qazwsxedc!@#123",
+                "OPENSEARCH_SECURE": "true",
+                "OPENSEARCH_VERIFY_CERTS": "false",
+            },
+            "opengauss": {
+                "OPENGAUSS_HOST": "opengauss",
+                "OPENGAUSS_USER": "postgres",
+                "OPENGAUSS_PASSWORD": "Dify@123",
+                "OPENGAUSS_DATABASE": "dify",
+            },
+            "myscale": {
+                "MYSCALE_HOST": "myscale",
+                "MYSCALE_PORT": "8123",
+                "MYSCALE_USER": "default",
+                "MYSCALE_PASSWORD": "",
+                "MYSCALE_DATABASE": "dify",
+            },
+            "matrixone": {
+                "MATRIXONE_HOST": "matrixone",
+                "MATRIXONE_PORT": "6001",
+                "MATRIXONE_USER": "dump",
+                "MATRIXONE_PASSWORD": "111",
+                "MATRIXONE_DATABASE": "dify",
+            },
+            "elasticsearch": {
+                "ELASTICSEARCH_HOST": "elasticsearch",
+                "ELASTICSEARCH_PASSWORD": "elastic",
+            },
+            "elasticsearch-ja": {
+                "ELASTICSEARCH_HOST": "elasticsearch",
+                "ELASTICSEARCH_PASSWORD": "elastic",
+            },
+        }
+        consumers = (
+            "api",
+            "api_websocket",
+            "worker",
+            "worker_knowledge_fs_upgrade",
+            "worker_beat",
+        )
+        root = self.project / ".env"
+        original = root.read_text()
+        for provider, expected in cases.items():
+            with self.subTest(provider=provider):
+                root.write_text(original)
+                self.override_root(
+                    {
+                        "VECTOR_STORE": provider,
+                        "COMPOSE_PROFILES": f"{provider},postgresql,collaboration",
+                    }
+                )
+                selected = root.read_text()
+                template = "elasticsearch" if provider == "elasticsearch-ja" else provider
+                source = f"envs/vectorstores/{template}.defaults"
+                target = f"envs/vectorstores/{template}.env"
+                key = next(iter(expected))
+                try:
+                    baseline = self.render()
+                    for name in consumers:
+                        for variable, value in expected.items():
+                            self.assertEqual(
+                                baseline[name]["environment"].get(variable),
+                                value,
+                                f"{name}.{variable}",
+                            )
+                        server = {
+                            "milvus": "milvus-standalone",
+                            "couchbase": "couchbase-server",
+                            "elasticsearch-ja": "elasticsearch",
+                        }.get(provider, provider)
+                        self.assertTrue(
+                            set(baseline[name]["networks"]) & set(baseline[server]["networks"]),
+                            name,
+                        )
+
+                    # Change only the root file, then restore it before exercising the provider file.
+                    self.override_root({key: "root-only"})
+                    root_only = self.render()
+                    for name in consumers:
+                        self.assertEqual(root_only[name]["environment"][key], "root-only", name)
+                    root.write_text(selected)
+
+                    self.copy_template(source, target)
+                    copied = self.render()
+                    for name in consumers:
+                        for variable, value in expected.items():
+                            self.assertEqual(
+                                copied[name]["environment"][variable],
+                                value,
+                                f"copy: {name}.{variable}",
+                            )
+                    self.copy_template(source, target, {key: "provider-only"})
+                    customized = self.render()
+                    for name in consumers:
+                        self.assertEqual(customized[name]["environment"][key], "provider-only", name)
+
+                    self.override_root({key: "root-wins"})
+                    overridden = self.render()
+                    for name in consumers:
+                        self.assertEqual(overridden[name]["environment"][key], "root-wins", name)
+                finally:
+                    (self.project / target).unlink(missing_ok=True)
+                    root.write_text(original)
+
+    def test_selected_vector_defaults_preserve_credentials_and_existing_overrides(self):
+        root = self.project / ".env"
+        original = root.read_text()
+        cases = (
+            (
+                "pgvector",
+                "PGVECTOR_POSTGRES_PASSWORD",
+                "PGVECTOR_PASSWORD",
+                "pgvector",
+                "POSTGRES_PASSWORD",
+            ),
+            (
+                "pgvecto-rs",
+                "PGVECTOR_POSTGRES_PASSWORD",
+                "PGVECTO_RS_PASSWORD",
+                "pgvecto-rs",
+                "POSTGRES_PASSWORD",
+            ),
+            (
+                "chroma",
+                "CHROMA_SERVER_AUTHN_CREDENTIALS",
+                "CHROMA_AUTH_CREDENTIALS",
+                "chroma",
+                "CHROMA_SERVER_AUTHN_CREDENTIALS",
+            ),
+            (
+                "opensearch",
+                "OPENSEARCH_INITIAL_ADMIN_PASSWORD",
+                "OPENSEARCH_PASSWORD",
+                "opensearch",
+                "OPENSEARCH_INITIAL_ADMIN_PASSWORD",
+            ),
+        )
+        for provider, key, client_key, server, server_key in cases:
+            with self.subTest(provider=provider):
+                root.write_text(original)
+                self.override_root({"VECTOR_STORE": provider})
+                target = f"envs/vectorstores/{provider}.env"
+                try:
+                    self.copy_template(
+                        f"envs/vectorstores/{provider}.defaults",
+                        target,
+                        {key: "provider-password"},
+                    )
+                    for value in ("provider-password", "root-password"):
+                        if value == "root-password":
+                            self.override_root({key: value})
+                        services = self.render()
+                        for name in ("api", "worker", "worker_beat"):
+                            self.assertEqual(services[name]["environment"][client_key], value, name)
+                        self.assertEqual(services[server]["environment"][server_key], value)
+                finally:
+                    (self.project / target).unlink(missing_ok=True)
+                    root.write_text(original)
+
+        self.override_root({"VECTOR_STORE": "qdrant"})
+        legacy = self.project / "envs/core-services/shared.env"
+        legacy.write_text("QDRANT_URL=http://existing-qdrant:6333\nQDRANT_API_KEY=\n")
+        services = self.render()
+        for name in ("api", "worker", "worker_beat"):
+            values = services[name]["environment"]
+            self.assertEqual(values["QDRANT_URL"], "http://existing-qdrant:6333")
+            self.assertEqual(values["QDRANT_API_KEY"], "")
+            self.assertNotIn("WEAVIATE_ENDPOINT", values)
+            self.assertNotIn("PGVECTOR_HOST", values)
+
+        # External providers have no bundled defaults file and keep their explicit connection settings.
+        root.write_text(original)
+        self.override_root({"VECTOR_STORE": "relyt", "RELYT_HOST": "external-relyt"})
+        self.assertEqual(self.render()["api"]["environment"]["RELYT_HOST"], "external-relyt")
+
     def test_copying_defaults_without_changes_preserves_service_values(self):
         baseline = self.render()
         for source in (DOCKER_DIR / "envs").rglob("*.defaults"):
@@ -283,7 +563,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
                 {"OCEANBASE_VECTOR_HOST": ("custom-oceanbase", "root-oceanbase")},
             ),
             ("vectorstores/pgvector.defaults", vector_clients, {"PGVECTOR_MIN_CONNECTION": ("2", "3")}),
-            ("vectorstores/milvus.env.example", vector_clients, {"MILVUS_DATABASE": ("custom_dify", "root_dify")}),
+            ("vectorstores/milvus.defaults", vector_clients, {"MILVUS_DATABASE": ("custom_dify", "root_dify")}),
         ]
         root = self.project / ".env"
         initial_root = root.read_text()
