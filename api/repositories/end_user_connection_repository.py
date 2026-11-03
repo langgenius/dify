@@ -33,8 +33,9 @@ from models.enums import AppStatus, ConversationFromSource, ConversationStatus, 
 from models.model import App, AppMode, Conversation, EndUser, Site
 from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
+from models.types import StringUUID
 from models.workflow import Workflow
-from services.consumer_service import ConsumerIdentity
+from services.consumer_service import ConsumerConnectionGroup, ConsumerConnectionKey, ConsumerIdentity
 from services.end_user_connections.claim import ConnectionClaimSource
 from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary, ListConnectionsInput
 from services.end_user_connections.entities import (
@@ -89,46 +90,92 @@ class EndUserConnectionRepository:
             self._require_management_context(session, context, lock=False)
             return context
 
-    def account_connections(
-        self, identity: ConsumerIdentity, *, provider: str | None, after: str | None, limit: int
-    ) -> tuple[ConnectionSummary, ...]:
-        """Discover an Account's own resources across tenant namespaces without secrets.
-
-        This is an explicit Account-wide query, independent of memberships. Each
-        mutation subsequently resolves and revalidates the resource's tenant.
-        """
+    def account_connection_groups(
+        self, identity: ConsumerIdentity, *, provider: str | None, after: ConsumerConnectionKey | None, limit: int
+    ) -> tuple[ConsumerConnectionGroup, ...]:
+        """Page complete Account-owned groups before loading their App associations."""
+        label = sa.func.coalesce(sa.func.nullif(EndUserConnection.account_label, ""), "").label("account_label")
+        id_text = sa.cast(EndUserConnection.id, sa.String(36))
+        connection_id = sa.case((label == "", id_text), else_="").label("connection_id")
+        columns = (EndUserConnection.provider, EndUserConnection.credential_type, label, connection_id)
+        # PostgreSQL UUIDs need text conversion for MIN and the empty-label discriminator.
+        grouped = sa.select(*columns, sa.func.min(id_text).label("representative_id")).where(
+            EndUserConnection.account_id == identity.account_id,
+            EndUserConnection.end_user_id.is_(None),
+        )
+        if provider is not None:
+            grouped = grouped.where(EndUserConnection.provider == provider)
+        if after is not None:
+            grouped = grouped.where(
+                sa.tuple_(*columns)
+                > (
+                    after.provider,
+                    after.connection_type,
+                    after.account_label or "",
+                    str(after.connection_id) if after.connection_id else "",
+                )
+            )
+        groups = grouped.group_by(*columns).order_by(*columns).limit(limit).subquery()
+        stmt = (
+            sa.select(
+                groups.c.provider,
+                groups.c.credential_type,
+                groups.c.account_label,
+                groups.c.connection_id,
+                EndUserConnection.name,
+            )
+            .join(EndUserConnection, EndUserConnection.id == sa.cast(groups.c.representative_id, StringUUID()))
+            .order_by(groups.c.provider, groups.c.credential_type, groups.c.account_label, groups.c.connection_id)
+        )
         with self._sessions() as session:
-            stmt = (
-                sa.select(EndUserConnection)
-                .options(
-                    load_only(
-                        EndUserConnection.id,
-                        EndUserConnection.name,
-                        EndUserConnection.provider,
-                        EndUserConnection.credential_type,
-                        EndUserConnection.status,
-                        EndUserConnection.oauth_client_fingerprint,
-                        EndUserConnection.oauth_plugin_unique_identifier,
-                        EndUserConnection.account_label,
-                        EndUserConnection.expires_at,
-                        EndUserConnection.created_at,
-                        EndUserConnection.updated_at,
-                        EndUserConnection.last_active_at,
-                        raiseload=True,
-                    )
-                )
-                .where(
-                    EndUserConnection.account_id == identity.account_id,
-                    EndUserConnection.end_user_id.is_(None),
-                )
-            )
-            if provider is not None:
-                stmt = stmt.where(EndUserConnection.provider == provider)
-            if after is not None:
-                stmt = stmt.where(EndUserConnection.id > str(UUID(after)))
             return tuple(
-                self._summary(row) for row in session.scalars(stmt.order_by(EndUserConnection.id).limit(limit))
+                ConsumerConnectionGroup(
+                    key=ConsumerConnectionKey(
+                        provider=provider_,
+                        connection_type=type_,
+                        account_label=label_ or None,
+                        connection_id=UUID(id_) if id_ else None,
+                    ),
+                    name=name,
+                )
+                for provider_, type_, label_, id_, name in session.execute(stmt)
             )
+
+    def account_group_connections(
+        self, identity: ConsumerIdentity, keys: Sequence[ConsumerConnectionKey]
+    ) -> Mapping[ConsumerConnectionKey, tuple[str, ...]]:
+        if not keys:
+            return {}
+        label = sa.func.nullif(EndUserConnection.account_label, "")
+        filters = [
+            sa.and_(
+                EndUserConnection.provider == key.provider,
+                EndUserConnection.credential_type == key.connection_type,
+                label == key.account_label
+                if key.account_label is not None
+                else sa.and_(label.is_(None), EndUserConnection.id == str(key.connection_id)),
+            )
+            for key in keys
+        ]
+        stmt = (
+            sa.select(
+                EndUserConnection.id,
+                sa.case(*[(predicate, index) for index, predicate in enumerate(filters)], else_=-1),
+            )
+            .where(
+                EndUserConnection.account_id == identity.account_id,
+                EndUserConnection.end_user_id.is_(None),
+                sa.or_(*filters),
+            )
+            .order_by(EndUserConnection.id)
+        )
+        with self._sessions() as session:
+            result: dict[ConsumerConnectionKey, list[str]] = {}
+            for id_, index in session.execute(stmt):
+                # Use the same database equality as GROUP BY, including configured collations.
+                key = keys[index]
+                result.setdefault(key, []).append(id_)
+            return {key: tuple(ids) for key, ids in result.items()}
 
     def account_connection_apps(
         self, identity: ConsumerIdentity, connection_ids: Sequence[str]

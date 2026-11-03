@@ -860,7 +860,7 @@ List accessible Chatflow and Workflow Apps using the WebApp Account login cookie
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /me/connections
-List the signed-in Account's personal Connections using the WebApp login cookie.
+List personal Connections grouped by Provider, account label and Connection type. Connections without an account label form individual groups. WebApp counts include only accessible Apps.
 
 #### Parameters
 
@@ -877,22 +877,41 @@ List the signed-in Account's personal Connections using the WebApp login cookie.
 | 200 | Account Connections | **application/json**: [ConsumerConnectionsResponse](#consumerconnectionsresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [DELETE] /me/connections/{connection_id}
-Disconnect an owned Connection. Cookie-authenticated browser mutations require the configured WebApp Origin.
+### [DELETE] /me/connections/{connection_key}
+Disconnect all owned Connections matching a group key returned by /me/connections. Cookie-authenticated browser mutations require the configured WebApp Origin.
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| connection_id | path |  | Yes | string (uuid) |
+| connection_key | path |  | Yes | string |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 204 | Connection disconnected |  |
+| 204 | Connection group disconnected |  |
 | 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/connections/{connection_key}/apps
+List accessible WebApps associated with a Connection group returned by /me/connections.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string (uuid) |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| connection_key | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Associated WebApps | **application/json**: [ConsumerAppsResponse](#consumerappsresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages
@@ -1852,33 +1871,22 @@ The connection requirements changed. Refresh and confirm again.
 | has_more | boolean |  | Yes |
 | next_cursor | string |  | Yes |
 
-#### ConsumerConnectionDetailResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| apps | [ [ConsumerAppResponse](#consumerappresponse) ] |  | Yes |
-| connection | [ConsumerConnectionResponse](#consumerconnectionresponse) |  | Yes |
-
 #### ConsumerConnectionResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | account_label | string |  | Yes |
-| created_at | integer |  | Yes |
-| credential_status | [ConnectionCredentialStatus](#connectioncredentialstatus) |  | Yes |
-| credential_type | [ConnectionCredentialType](#connectioncredentialtype) |  | Yes |
-| expires_at | integer |  | Yes |
-| id | string |  | Yes |
-| last_active_at | integer |  | Yes |
-| name | string |  | Yes |
+| connection_type | [ConnectionCredentialType](#connectioncredentialtype) |  | Yes |
+| key | string | Opaque group key for associated WebApp queries and disconnect. | Yes |
+| name | string | Name of the group member with the smallest Connection ID. | Yes |
 | provider | string |  | Yes |
-| updated_at | integer |  | Yes |
+| webapps_count | integer | Number of distinct accessible WebApps associated with this group. | Yes |
 
 #### ConsumerConnectionsResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [ConsumerConnectionDetailResponse](#consumerconnectiondetailresponse) ] |  | Yes |
+| data | [ [ConsumerConnectionResponse](#consumerconnectionresponse) ] |  | Yes |
 | has_more | boolean |  | Yes |
 | next_cursor | string |  | Yes |
 

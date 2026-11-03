@@ -12,7 +12,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from constants import COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from controllers.web import bp, me
-from tests.helpers.consumer import ConsumerHarness, make_consumer_harness, new_consumer_run
+from models.end_user_connection import AppConnection
+from tests.helpers.consumer import ConsumerHarness, consumer_connection_key, make_consumer_harness, new_consumer_run
+from tests.helpers.end_user_connection_contract import new_connection
 
 
 @pytest.fixture
@@ -54,26 +56,74 @@ def test_http_app_views_favorites_and_timestamps(client: FlaskClient, harness: C
 def test_connections_support_only_query_and_disconnect(client: FlaskClient, harness: ConsumerHarness) -> None:
     base = harness.oauth.base
     created = base.service.create_api_key(base.context, base.command())
-    path = f"/api/me/connections/{created.id}"
     listed = client.get("/api/me/connections?limit=1")
     assert listed.status_code == 200
-    listed_connection = listed.get_json()["data"][0]["connection"]
-    assert listed_connection["id"] == created.id
-    assert isinstance(listed_connection["created_at"], int)
+    listed_connection = listed.get_json()["data"][0]
+    assert listed_connection == {
+        "key": consumer_connection_key(created),
+        "provider": created.provider,
+        "connection_type": "api-key",
+        "name": created.name,
+        "account_label": None,
+        "webapps_count": 0,
+    }
+    path = f"/api/me/connections/{listed_connection['key']}"
     assert "encrypted_credentials" not in listed.get_data(as_text=True)
     assert client.get(path).status_code == 405
     assert client.patch(path, json={"name": "Renamed"}).status_code == 405
     assert client.get(path + "/credential-schema").status_code == 404
     assert client.post(path + "/reauthorize").status_code == 404
     assert client.get(path + "/revision").status_code == 404
+    assert client.get(path + "/apps").get_json()["data"] == []
     assert client.delete(path).status_code == 204
+    assert client.get(path + "/apps").status_code == 404
     assert client.get("/api/me/connections").get_json()["data"] == []
 
 
 def test_foreign_connection_matches_unknown_http_id(client: FlaskClient) -> None:
-    response = client.delete(f"/api/me/connections/{uuid4()}")
+    response = client.delete(f"/api/me/connections/{consumer_connection_key(new_connection())}")
     assert response.status_code == 404
     assert response.get_json()["code"] == "connection_not_found"
+
+
+def test_connection_group_routes_reuse_the_list_key(client: FlaskClient, harness: ConsumerHarness) -> None:
+    base = harness.oauth.base
+    connections = [harness.oauth.finish(harness.oauth.start()) for _ in range(2)]
+    with base.sessions.begin() as session:
+        session.add_all(
+            AppConnection(
+                tenant_id=base.context.tenant_id,
+                app_id=base.context.app_id,
+                workflow_id=base.workflow_id,
+                node_id=f"node-{index}",
+                end_user_id=base.context.end_user_id,
+                provider=connection.provider,
+                connection_id=connection.id,
+            )
+            for index, connection in enumerate(connections)
+        )
+    listed = client.get("/api/me/connections").get_json()
+    assert len(listed["data"]) == 1
+    group = listed["data"][0]
+    assert group["webapps_count"] == 1
+    assert group["connection_type"] == "oauth2"
+    assert "apps" not in group
+    path = f"/api/me/connections/{group['key']}"
+    apps = client.get(path + "/apps?limit=1")
+    assert apps.status_code == 200
+    assert [app["id"] for app in apps.get_json()["data"]] == [base.context.app_id]
+    assert apps.get_json()["has_more"] is False
+    assert client.get(path + "/apps?cursor=invalid").status_code == 400
+    assert client.get(path + "/apps?limit=0").status_code == 400
+    assert client.delete(path).status_code == 204
+    assert len(base.auth.revocations) == 2
+    assert client.get("/api/me/connections").get_json()["data"] == []
+
+
+def test_malformed_connection_group_key_returns_bad_request(client: FlaskClient) -> None:
+    path = "/api/me/connections/invalid"
+    assert client.get(path + "/apps").status_code == 400
+    assert client.delete(path).status_code == 400
 
 
 @pytest.mark.parametrize("source", [None, "webapp", "webapp_account", "webapp_login_token", "unknown"])

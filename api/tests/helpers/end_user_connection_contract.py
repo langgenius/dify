@@ -7,7 +7,7 @@ from uuid import UUID
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.exc import DataError, IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from libs.uuid_utils import uuidv7
 from models.end_user_connection import (
@@ -18,6 +18,8 @@ from models.end_user_connection import (
     OAuthClientSource,
     SessionConnection,
 )
+from repositories.end_user_connection_repository import EndUserConnectionRepository
+from services.consumer_service import ConsumerIdentity
 from services.end_user_connection_labels import mask_account_label
 
 
@@ -63,6 +65,34 @@ def new_session_selection(connection: EndUserConnection) -> SessionConnection:
 
 
 class ConnectionPersistenceTests:
+    def test_consumer_groups_page_and_resolve_all_owned_members(self, connection_session: Session) -> None:
+        api_key = new_connection()
+        assert api_key.account_id is not None
+        oauth = replace(
+            api_key,
+            credential_type=ConnectionCredentialType.OAUTH2,
+            oauth_client_source=OAuthClientSource.WORKSPACE,
+            account_label="al***@example.com",
+        )
+        duplicate = replace(oauth, tenant_id=str(UUID(int=10)))
+        foreign = replace(oauth, account_id=str(UUID(int=11)))
+        connection_session.add_all([api_key, oauth, duplicate, foreign])
+        connection_session.commit()
+        repository = EndUserConnectionRepository(
+            session_factory=sessionmaker(bind=connection_session.get_bind(), expire_on_commit=False)
+        )
+        identity = ConsumerIdentity(api_key.account_id)
+        first = repository.account_connection_groups(identity, provider=None, after=None, limit=1)
+        assert len(first) == 1
+        assert first[0].key.connection_id == UUID(api_key.id)
+        second = repository.account_connection_groups(identity, provider=None, after=first[0].key, limit=1)
+        assert len(second) == 1
+        assert second[0].key.account_label == oauth.account_label
+        assert repository.account_group_connections(identity, (second[0].key,))[second[0].key] == tuple(
+            sorted((oauth.id, duplicate.id))
+        )
+        assert repository.account_connection_groups(identity, provider=None, after=second[0].key, limit=1) == ()
+
     @pytest.mark.parametrize("account_owned", [True, False])
     def test_multiple_connections_per_owner_and_provider(
         self, connection_session: Session, account_owned: bool

@@ -5,15 +5,19 @@ the existing deployment access policy, including Apps referenced by Connections.
 Ports return detached, non-secret values and own short transactions.
 """
 
+import base64
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Protocol
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from services.end_user_connections.contracts import ConnectionSummary
+from constants.end_user_connections import ConnectionCredentialType
 from services.end_user_connections.entities import AccountConnectionContext
+from services.end_user_connections.errors import ConnectionNotFoundError
 from services.end_user_connections.management import ConnectionService
 from services.web_identity_service import WebIdentityError, WebIdentityService
 from services.web_passport_service import WebPassportTokenGateway
@@ -57,9 +61,63 @@ class ConsumerAppsPage(BaseModel):
     next_cursor: str | None
 
 
+class ConsumerConnectionKey(BaseModel):
+    """Stable group selector; ownership is rechecked independently on every use."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    provider: str = Field(min_length=1, max_length=255)
+    connection_type: ConnectionCredentialType
+    account_label: str | None = Field(min_length=1)
+    connection_id: UUID | None
+
+    @model_validator(mode="after")
+    def require_one_group_identity(self) -> "ConsumerConnectionKey":
+        if (self.account_label is None) == (self.connection_id is None):
+            raise ValueError("A group requires either an account label or a Connection ID.")
+        return self
+
+    def encode(self) -> str:
+        payload = [
+            self.provider,
+            self.connection_type,
+            self.account_label,
+            str(self.connection_id) if self.connection_id else None,
+        ]
+        return base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode().rstrip("=")
+
+    @classmethod
+    def decode(cls, value: str) -> "ConsumerConnectionKey":
+        try:
+            provider, connection_type, account_label, connection_id = json.loads(
+                base64.b64decode(value + "=" * (-len(value) % 4), altchars=b"-_", validate=True)
+            )
+            key = cls(
+                provider=provider,
+                connection_type=connection_type,
+                account_label=account_label,
+                connection_id=connection_id,
+            )
+            if key.encode() != value:
+                raise ValueError
+            return key
+        except (ValueError, TypeError):
+            raise ValueError("Invalid Connection group key.") from None
+
+
+@dataclass(frozen=True, slots=True)
+class ConsumerConnectionGroup:
+    key: ConsumerConnectionKey
+    name: str
+
+
 class ConsumerConnection(BaseModel):
-    connection: ConnectionSummary
-    apps: tuple[ConsumerApp, ...]
+    key: str = Field(description="Opaque group key for associated WebApp queries and disconnect.")
+    provider: str
+    connection_type: ConnectionCredentialType
+    name: str = Field(description="Name of the group member with the smallest Connection ID.")
+    account_label: str | None
+    webapps_count: int = Field(ge=0, description="Number of distinct accessible WebApps associated with this group.")
 
 
 class ConsumerConnectionsPage(BaseModel):
@@ -95,9 +153,13 @@ class ConsumerAppsStore(Protocol):
 
 
 class ConsumerConnectionsStore(Protocol):
-    def account_connections(
-        self, identity: ConsumerIdentity, *, provider: str | None, after: str | None, limit: int
-    ) -> tuple[ConnectionSummary, ...]: ...
+    def account_connection_groups(
+        self, identity: ConsumerIdentity, *, provider: str | None, after: ConsumerConnectionKey | None, limit: int
+    ) -> tuple[ConsumerConnectionGroup, ...]: ...
+
+    def account_group_connections(
+        self, identity: ConsumerIdentity, keys: Sequence[ConsumerConnectionKey]
+    ) -> Mapping[ConsumerConnectionKey, tuple[str, ...]]: ...
 
     def account_connection_context(
         self, identity: ConsumerIdentity, connection_id: str
@@ -187,26 +249,74 @@ class ConsumerService:
     def list_connections(
         self, identity: ConsumerIdentity, *, provider: str | None, cursor: str | None, limit: int
     ) -> ConsumerConnectionsPage:
-        rows = self._connections.account_connections(identity, provider=provider, after=cursor, limit=limit + 1)
-        data = self._with_apps(identity, rows[:limit])
+        after = ConsumerConnectionKey.decode(cursor) if cursor is not None else None
+        if after is not None and provider is not None and after.provider != provider:
+            raise ValueError("Invalid Connection group cursor.")
+        rows = self._connections.account_connection_groups(identity, provider=provider, after=after, limit=limit + 1)
+        members = self._connections.account_group_connections(identity, tuple(row.key for row in rows[:limit]))
+        apps = self._group_apps(identity, members)
+        data = tuple(
+            ConsumerConnection(
+                key=row.key.encode(),
+                provider=row.key.provider,
+                connection_type=row.key.connection_type,
+                name=row.name,
+                account_label=row.key.account_label,
+                webapps_count=len(apps.get(row.key, ())),
+            )
+            for row in rows[:limit]
+        )
         more = len(rows) > limit
-        return ConsumerConnectionsPage(data=data, has_more=more, next_cursor=data[-1].connection.id if more else None)
+        return ConsumerConnectionsPage(data=data, has_more=more, next_cursor=data[-1].key if more else None)
 
-    def _with_apps(
-        self, identity: ConsumerIdentity, rows: Sequence[ConnectionSummary]
-    ) -> tuple[ConsumerConnection, ...]:
-        associations = self._connections.account_connection_apps(identity, tuple(row.id for row in rows))
+    def _group_apps(
+        self, identity: ConsumerIdentity, members: Mapping[ConsumerConnectionKey, tuple[str, ...]]
+    ) -> Mapping[ConsumerConnectionKey, tuple[ConsumerApp, ...]]:
+        connection_ids = tuple(id_ for ids in members.values() for id_ in ids)
+        associations = self._connections.account_connection_apps(identity, connection_ids)
         app_ids = tuple(dict.fromkeys(app_id for ids in associations.values() for app_id in ids))
         apps = {app.id: app for app in self._visible(identity, self._apps.by_ids(identity, app_ids))}
-        return tuple(
-            ConsumerConnection(
-                connection=row, apps=tuple(apps[id_] for id_ in associations.get(row.id, ()) if id_ in apps)
+        return {
+            key: tuple(
+                apps[id_]
+                for id_ in sorted(
+                    {
+                        app_id
+                        for connection_id in members.get(key, ())
+                        for app_id in associations.get(connection_id, ())
+                        if app_id in apps
+                    }
+                )
             )
-            for row in rows
-        )
+            for key in members
+        }
+
+    def list_connection_apps(
+        self, identity: ConsumerIdentity, connection_key: str, *, cursor: str | None, limit: int
+    ) -> ConsumerAppsPage:
+        key = ConsumerConnectionKey.decode(connection_key)
+        members = self._connections.account_group_connections(identity, (key,))
+        if not members.get(key):
+            raise ConnectionNotFoundError()
+        apps = self._group_apps(identity, members)[key]
+        if cursor is not None:
+            after = str(UUID(cursor))
+            apps = tuple(app for app in apps if app.id > after)
+        more = len(apps) > limit
+        data = apps[:limit]
+        return ConsumerAppsPage(data=data, has_more=more, next_cursor=data[-1].id if more else None)
 
     def connection_context(self, identity: ConsumerIdentity, connection_id: str) -> AccountConnectionContext:
         return self._connections.account_connection_context(identity, connection_id)
 
-    def delete_connection(self, identity: ConsumerIdentity, connection_id: str) -> None:
-        self._management.delete_connection(self.connection_context(identity, connection_id), connection_id)
+    def delete_connection(self, identity: ConsumerIdentity, connection_key: str) -> None:
+        key = ConsumerConnectionKey.decode(connection_key)
+        members = self._connections.account_group_connections(identity, (key,)).get(key, ())
+        if not members:
+            raise ConnectionNotFoundError()
+        for connection_id in members:
+            try:
+                self._management.delete_connection(self.connection_context(identity, connection_id), connection_id)
+            except ConnectionNotFoundError:
+                # Another disconnect may already have removed a member of the snapshot.
+                continue

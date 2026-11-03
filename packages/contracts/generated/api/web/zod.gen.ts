@@ -299,30 +299,18 @@ export const zConsumerAppsResponse = z.object({
  */
 export const zConsumerConnectionResponse = z.object({
   account_label: z.string().nullable(),
-  created_at: z.int(),
-  credential_status: zConnectionCredentialStatus,
-  credential_type: zConnectionCredentialType,
-  expires_at: z.int().nullable(),
-  id: z.string(),
-  last_active_at: z.int(),
+  connection_type: zConnectionCredentialType,
+  key: z.string(),
   name: z.string(),
   provider: z.string(),
-  updated_at: z.int(),
-})
-
-/**
- * ConsumerConnectionDetailResponse
- */
-export const zConsumerConnectionDetailResponse = z.object({
-  apps: z.array(zConsumerAppResponse),
-  connection: zConsumerConnectionResponse,
+  webapps_count: z.int().gte(0),
 })
 
 /**
  * ConsumerConnectionsResponse
  */
 export const zConsumerConnectionsResponse = z.object({
-  data: z.array(zConsumerConnectionDetailResponse),
+  data: z.array(zConsumerConnectionResponse),
   has_more: z.boolean(),
   next_cursor: z.string().nullable(),
 })
@@ -2934,14 +2922,28 @@ export const zGetMeConnectionsQuery = z.object({
  */
 export const zGetMeConnectionsResponse = zConsumerConnectionsResponse
 
-export const zDeleteMeConnectionsByConnectionIdPath = z.object({
-  connection_id: z.uuid(),
+export const zDeleteMeConnectionsByConnectionKeyPath = z.object({
+  connection_key: z.string(),
 })
 
 /**
- * Connection disconnected
+ * Connection group disconnected
  */
-export const zDeleteMeConnectionsByConnectionIdResponse = z.void()
+export const zDeleteMeConnectionsByConnectionKeyResponse = z.void()
+
+export const zGetMeConnectionsByConnectionKeyAppsPath = z.object({
+  connection_key: z.string(),
+})
+
+export const zGetMeConnectionsByConnectionKeyAppsQuery = z.object({
+  cursor: z.uuid().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Associated WebApps
+ */
+export const zGetMeConnectionsByConnectionKeyAppsResponse = zConsumerAppsResponse
 
 export const zGetMessagesQuery = z.object({
   conversation_id: z.string(),

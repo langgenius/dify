@@ -8,7 +8,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import Field, ValidationError, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_serializer
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
@@ -25,8 +25,14 @@ from libs.datetime_utils import to_utc_timestamp
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.token import extract_webapp_cookie_token
-from services.consumer_service import ConsumerApp, ConsumerAppNotFoundError, ConsumerAppsQuery, ConsumerIdentity
-from services.end_user_connections.contracts import ConnectionSummary, ListConnectionsInput
+from services.consumer_service import (
+    ConsumerApp,
+    ConsumerAppNotFoundError,
+    ConsumerAppsQuery,
+    ConsumerConnection,
+    ConsumerIdentity,
+)
+from services.end_user_connections.contracts import ListConnectionsInput
 from services.end_user_connections.errors import ConnectionError
 from services.web_identity_service import WebIdentityError
 from services.web_passport_service import WebPassportUnauthorizedError
@@ -94,23 +100,12 @@ class ConsumerAppsResponse(ResponseModel):
     next_cursor: str | None
 
 
-class ConsumerConnectionResponse(ConnectionSummary, ResponseModel):
-    @field_serializer("created_at", "updated_at", "last_active_at")
-    def serialize_time(self, value: datetime) -> int:
-        return to_utc_timestamp(value)
-
-    @field_serializer("expires_at")
-    def serialize_expiration(self, value: datetime | None) -> int | None:
-        return to_utc_timestamp(value) if value is not None else None
-
-
-class ConsumerConnectionDetailResponse(ResponseModel):
-    connection: ConsumerConnectionResponse
-    apps: list[ConsumerAppResponse]
+class ConsumerConnectionResponse(ConsumerConnection, ResponseModel):
+    pass
 
 
 class ConsumerConnectionsResponse(ResponseModel):
-    data: list[ConsumerConnectionDetailResponse]
+    data: list[ConsumerConnectionResponse]
     has_more: bool
     next_cursor: str | None
 
@@ -119,12 +114,18 @@ class ConsumerConnectionsQuery(ListConnectionsInput):
     limit: int = Field(default=20, ge=1, le=100, strict=False)
 
 
+class ConsumerConnectionAppsQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    cursor: UUID | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+
+
 register_response_schema_models(
     web_ns,
     ConsumerAppResponse,
     ConsumerAppsResponse,
     ConsumerConnectionResponse,
-    ConsumerConnectionDetailResponse,
     ConsumerConnectionsResponse,
 )
 
@@ -165,7 +166,10 @@ class ConsumerFavoriteApi(Resource):
 
 @web_ns.route("/me/connections")
 class ConsumerConnectionsApi(Resource):
-    @web_ns.doc(description="List the signed-in Account's personal Connections using the WebApp login cookie.")
+    @web_ns.doc(
+        description="List personal Connections grouped by Provider, account label and Connection type. "
+        "Connections without an account label form individual groups. WebApp counts include only accessible Apps."
+    )
     @web_ns.doc(params=query_params_from_model(ConsumerConnectionsQuery))
     @web_ns.response(200, "Account Connections", web_ns.models[ConsumerConnectionsResponse.__name__])
     def get(self):
@@ -181,16 +185,32 @@ class ConsumerConnectionsApi(Resource):
         return dump_response(ConsumerConnectionsResponse, result)
 
 
-@web_ns.route("/me/connections/<uuid:connection_id>")
+@web_ns.route("/me/connections/<string:connection_key>/apps")
+class ConsumerConnectionAppsApi(Resource):
+    @web_ns.doc(description="List accessible WebApps associated with a Connection group returned by /me/connections.")
+    @web_ns.doc(params=query_params_from_model(ConsumerConnectionAppsQuery))
+    @web_ns.response(200, "Associated WebApps", web_ns.models[ConsumerAppsResponse.__name__])
+    @error_responses(ConnectionNotFoundHTTPError)
+    def get(self, connection_key: str):
+        identity = _identity()
+        with _errors():
+            query = ConsumerConnectionAppsQuery.model_validate(request.args.to_dict(flat=True))
+            result = application_services().consumer.list_connection_apps(
+                identity, connection_key, cursor=str(query.cursor) if query.cursor else None, limit=query.limit
+            )
+        return dump_response(ConsumerAppsResponse, result)
+
+
+@web_ns.route("/me/connections/<string:connection_key>")
 class ConsumerConnectionApi(Resource):
-    @web_ns.response(204, "Connection disconnected")
+    @web_ns.response(204, "Connection group disconnected")
     @web_ns.doc(
-        description="Disconnect an owned Connection. "
+        description="Disconnect all owned Connections matching a group key returned by /me/connections. "
         "Cookie-authenticated browser mutations require the configured WebApp Origin."
     )
     @error_responses(ConnectionNotFoundHTTPError, ConnectionConflictHTTPError)
-    def delete(self, connection_id: UUID):
+    def delete(self, connection_key: str):
         identity = _identity()
         with _errors():
-            application_services().consumer.delete_connection(identity, str(connection_id))
+            application_services().consumer.delete_connection(identity, connection_key)
         return "", 204

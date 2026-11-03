@@ -14,11 +14,15 @@ from models.enums import CreatorUserRole, CustomizeTokenStrategy, EndUserType, W
 from models.model import App, AppMode, AppStar, EndUser, Site
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.web_passport_repository import WebPassportRepository
-from services.consumer_service import ConsumerAppNotFoundError, ConsumerAppsQuery, ConsumerIdentity
+from services.consumer_service import (
+    ConsumerAppNotFoundError,
+    ConsumerAppsQuery,
+    ConsumerIdentity,
+)
 from services.end_user_connections.entities import AccountConnectionContext
 from services.end_user_connections.errors import ConnectionNotFoundError
 from services.web_identity_service import WebIdentityError
-from tests.helpers.consumer import ConsumerHarness, make_consumer_harness, new_consumer_run
+from tests.helpers.consumer import ConsumerHarness, consumer_connection_key, make_consumer_harness, new_consumer_run
 from tests.helpers.end_user_api_key import make_harness
 from tests.helpers.end_user_connection_contract import new_connection
 
@@ -186,15 +190,22 @@ def test_connection_queries_do_not_decrypt_or_expose_foreign_and_guest_credentia
             )
         )
     result = harness.service.list_connections(harness.identity, provider=None, cursor=None, limit=20)
-    assert [entry.connection.id for entry in result.data] == [owned.id]
-    assert [app.id for app in result.data[0].apps] == [base.context.app_id]
+    assert [entry.key for entry in result.data] == [consumer_connection_key(owned)]
+    assert result.data[0].webapps_count == 1
+    apps = harness.service.list_connection_apps(harness.identity, result.data[0].key, cursor=None, limit=20)
+    assert [app.id for app in apps.data] == [base.context.app_id]
     assert "original-secret" not in result.model_dump_json()
-    for id_ in (foreign.id, guest.id, str(uuid4())):
+    for connection in (foreign, guest, new_connection()):
         with pytest.raises(ConnectionNotFoundError):
-            harness.service.delete_connection(harness.identity, id_)
+            harness.service.delete_connection(harness.identity, consumer_connection_key(connection))
+        with pytest.raises(ConnectionNotFoundError):
+            harness.service.list_connection_apps(
+                harness.identity, consumer_connection_key(connection), cursor=None, limit=20
+            )
     harness.access.denied.add(base.context.app_id)
     result = harness.service.list_connections(harness.identity, provider=None, cursor=None, limit=20)
-    assert result.data[0].apps == ()
+    assert result.data[0].webapps_count == 0
+    assert not harness.service.list_connection_apps(harness.identity, result.data[0].key, cursor=None, limit=20).data
 
 
 def test_orphan_connection_can_be_disconnected_without_app(harness: ConsumerHarness) -> None:
@@ -206,8 +217,8 @@ def test_orphan_connection_can_be_disconnected_without_app(harness: ConsumerHarn
         session.execute(sa.delete(EndUser).where(EndUser.id == base.context.end_user_id))
         session.execute(sa.delete(App).where(App.id == base.context.app_id))
     result = harness.service.list_connections(harness.identity, provider=None, cursor=None, limit=20)
-    assert [entry.connection.id for entry in result.data] == [owned.id]
-    harness.service.delete_connection(harness.identity, owned.id)
+    assert [entry.key for entry in result.data] == [consumer_connection_key(owned)]
+    harness.service.delete_connection(harness.identity, consumer_connection_key(owned))
     with base.sessions() as session:
         assert session.get(EndUserConnection, owned.id) is None
 
@@ -218,7 +229,7 @@ def test_disconnect_rejects_foreign_connections_without_calling_revoke(harness: 
         foreign = replace(new_connection(), tenant_id=base.context.tenant_id, account_id=str(uuid4()))
         session.add(foreign)
     with pytest.raises(ConnectionNotFoundError):
-        harness.service.delete_connection(harness.identity, foreign.id)
+        harness.service.delete_connection(harness.identity, consumer_connection_key(foreign))
     assert base.auth.revocations == []
 
 
@@ -228,7 +239,7 @@ def test_disconnect_oauth_connection_revokes_original_grant_without_app(harness:
     with base.sessions.begin() as session:
         session.execute(sa.delete(App).where(App.id == base.context.app_id))
         session.execute(sa.delete(EndUser).where(EndUser.id == base.context.end_user_id))
-    harness.service.delete_connection(harness.identity, connection.id)
+    harness.service.delete_connection(harness.identity, consumer_connection_key(connection))
     with base.sessions() as session:
         assert session.get(EndUserConnection, connection.id) is None
     assert len(base.auth.revocations) == 1
@@ -298,4 +309,4 @@ def test_connections_paginate_across_tenants_without_merging_provider_names(harn
     assert first.has_more
     assert len(second.data) == 1
     assert not second.has_more
-    assert {row.connection.id for row in (*first.data, *second.data)} == {row.id for row in rows}
+    assert {row.key for row in (*first.data, *second.data)} == {consumer_connection_key(row) for row in rows}
