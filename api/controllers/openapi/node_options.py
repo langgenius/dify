@@ -19,10 +19,12 @@ from services.workflow.authoring.node_options import list_node_options
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/node-options")
 class NodeOptionListApi(Resource):
-    """Every node an app of ``app_mode`` can add: blocks, tools and roster Agents, sorted by kind then label.
+    """Every node an app of ``app_mode`` can add: blocks, tools, roster Agents and a canvas note, sorted by kind
+    then label.
 
     Each row's ``seed`` is the smallest node data that names the option; copy it into the graph, then fill
-    and check the package. For the node's schema, call describe.node_type with its ``type``.
+    and check the package. For the node's schema, call describe.node_type with its ``type``. A note is no
+    registered node: its seed is the whole node, and its description says what to set.
     """
 
     @endpoint(

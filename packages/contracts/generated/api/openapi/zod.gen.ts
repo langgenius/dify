@@ -1576,7 +1576,7 @@ export const zNodeChange = z.object({
  *
  * Where a node option comes from; a kind other than block seeds the nodes whose data is its `seeded_model`.
  */
-export const zNodeOptionKind = z.enum(['agent', 'block', 'tool'])
+export const zNodeOptionKind = z.enum(['agent', 'block', 'note', 'tool'])
 
 /**
  * NodeOptionQuery
@@ -4150,7 +4150,7 @@ export const zGetWorkspacesByWorkspaceIdNodeOptionsPath = z.object({
 export const zGetWorkspacesByWorkspaceIdNodeOptionsQuery = z.object({
   app_mode: z.enum(['advanced-chat', 'workflow']),
   keyword: z.string().optional(),
-  kind: z.enum(['agent', 'block', 'tool']).optional(),
+  kind: z.enum(['agent', 'block', 'note', 'tool']).optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
 })
