@@ -1,8 +1,8 @@
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it } from 'vite-plus/test'
+import { page as screen, userEvent } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
 import RadioCard from '../index'
 
 type ExampleMode = 'standard' | 'advanced'
@@ -46,18 +46,25 @@ function SelectableCards() {
 }
 
 describe('RadioCard', () => {
+  beforeEach(async () => {
+    await screen.viewport(800, 600)
+  })
   it('connects card selection to the controlled group', async () => {
-    const user = userEvent.setup()
-    render(<SelectableCards />)
+    await render(<SelectableCards />)
     const advanced = screen.getByRole('radio', { name: /Advanced/ })
-    expect(advanced).not.toBeChecked()
-    await user.click(advanced)
-    expect(advanced).toBeChecked()
-    expect(screen.getByRole('radio', { name: /Standard/ })).not.toBeChecked()
+    await expect.element(advanced).not.toBeChecked()
+    await expect.element(screen.getByText('Advanced config')).not.toBeVisible()
+    await advanced.click()
+    await expect.element(advanced).toBeChecked()
+    await expect.element(screen.getByText('Advanced config')).toBeVisible()
+    await expect.element(screen.getByRole('radio', { name: /Standard/ })).not.toBeChecked()
+    await userEvent.keyboard('{ArrowLeft}')
+    await expect.element(screen.getByRole('radio', { name: /Standard/ })).toBeChecked()
+    await expect.element(screen.getByText('Advanced config')).not.toBeVisible()
   })
 
-  it('should render noRadio card as static content without radio role', () => {
-    render(
+  it('should render noRadio card as static content without radio role', async () => {
+    await render(
       <RadioCard
         noRadio
         icon={<span>i</span>}
@@ -67,8 +74,8 @@ describe('RadioCard', () => {
       />,
     )
 
-    expect(screen.getByText('No Radio')).toBeInTheDocument()
-    expect(screen.getByText('Static config')).toBeInTheDocument()
-    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+    await expect.element(screen.getByText('No Radio')).toBeInTheDocument()
+    await expect.element(screen.getByText('Static config')).toBeInTheDocument()
+    await expect.element(screen.getByRole('radio')).not.toBeInTheDocument()
   })
 })
