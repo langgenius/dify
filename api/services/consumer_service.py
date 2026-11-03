@@ -62,7 +62,7 @@ class ConsumerAppsPage(BaseModel):
 
 
 class ConsumerConnectionKey(BaseModel):
-    """Stable group selector; ownership is rechecked independently on every use."""
+    """Internal group selector and pagination position, independent of the public member ID."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -108,11 +108,12 @@ class ConsumerConnectionKey(BaseModel):
 @dataclass(frozen=True, slots=True)
 class ConsumerConnectionGroup:
     key: ConsumerConnectionKey
+    representative_id: UUID
     name: str
 
 
 class ConsumerConnection(BaseModel):
-    key: str = Field(description="Opaque group key for associated WebApp queries and disconnect.")
+    key: UUID = Field(description="Representative Connection ID for associated WebApp queries and disconnect.")
     provider: str
     connection_type: ConnectionCredentialType
     name: str = Field(description="Name of the group member with the smallest Connection ID.")
@@ -160,6 +161,10 @@ class ConsumerConnectionsStore(Protocol):
     def account_group_connections(
         self, identity: ConsumerIdentity, keys: Sequence[ConsumerConnectionKey]
     ) -> Mapping[ConsumerConnectionKey, tuple[str, ...]]: ...
+
+    def account_connection_group(self, identity: ConsumerIdentity, connection_id: str) -> ConsumerConnectionKey:
+        """Resolve an owned member ID into its current group without loading credentials."""
+        ...
 
     def account_connection_context(
         self, identity: ConsumerIdentity, connection_id: str
@@ -257,7 +262,7 @@ class ConsumerService:
         apps = self._group_apps(identity, members)
         data = tuple(
             ConsumerConnection(
-                key=row.key.encode(),
+                key=row.representative_id,
                 provider=row.key.provider,
                 connection_type=row.key.connection_type,
                 name=row.name,
@@ -267,7 +272,9 @@ class ConsumerService:
             for row in rows[:limit]
         )
         more = len(rows) > limit
-        return ConsumerConnectionsPage(data=data, has_more=more, next_cursor=data[-1].key if more else None)
+        return ConsumerConnectionsPage(
+            data=data, has_more=more, next_cursor=rows[limit - 1].key.encode() if more else None
+        )
 
     def _group_apps(
         self, identity: ConsumerIdentity, members: Mapping[ConsumerConnectionKey, tuple[str, ...]]
@@ -292,9 +299,9 @@ class ConsumerService:
         }
 
     def list_connection_apps(
-        self, identity: ConsumerIdentity, connection_key: str, *, cursor: str | None, limit: int
+        self, identity: ConsumerIdentity, connection_key: UUID, *, cursor: str | None, limit: int
     ) -> ConsumerAppsPage:
-        key = ConsumerConnectionKey.decode(connection_key)
+        key = self._connections.account_connection_group(identity, str(connection_key))
         members = self._connections.account_group_connections(identity, (key,))
         if not members.get(key):
             raise ConnectionNotFoundError()
@@ -309,8 +316,8 @@ class ConsumerService:
     def connection_context(self, identity: ConsumerIdentity, connection_id: str) -> AccountConnectionContext:
         return self._connections.account_connection_context(identity, connection_id)
 
-    def delete_connection(self, identity: ConsumerIdentity, connection_key: str) -> None:
-        key = ConsumerConnectionKey.decode(connection_key)
+    def delete_connection(self, identity: ConsumerIdentity, connection_key: UUID) -> None:
+        key = self._connections.account_connection_group(identity, str(connection_key))
         members = self._connections.account_group_connections(identity, (key,)).get(key, ())
         if not members:
             raise ConnectionNotFoundError()

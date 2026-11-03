@@ -884,7 +884,7 @@ Disconnect all owned Connections matching a group key returned by /me/connection
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| connection_key | path |  | Yes | string |
+| connection_key | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -904,7 +904,7 @@ List accessible WebApps associated with a Connection group returned by /me/conne
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string (uuid) |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| connection_key | path |  | Yes | string |
+| connection_key | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -1877,7 +1877,7 @@ The connection requirements changed. Refresh and confirm again.
 | ---- | ---- | ----------- | -------- |
 | account_label | string |  | Yes |
 | connection_type | [ConnectionCredentialType](#connectioncredentialtype) |  | Yes |
-| key | string | Opaque group key for associated WebApp queries and disconnect. | Yes |
+| key | string (uuid) | Representative Connection ID for associated WebApp queries and disconnect. | Yes |
 | name | string | Name of the group member with the smallest Connection ID. | Yes |
 | provider | string |  | Yes |
 | webapps_count | integer | Number of distinct accessible WebApps associated with this group. | Yes |

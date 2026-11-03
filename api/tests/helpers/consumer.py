@@ -15,7 +15,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
-from services.consumer_service import ConsumerConnectionKey, ConsumerIdentity, ConsumerService
+from services.consumer_service import ConsumerIdentity, ConsumerService
 from services.end_user_connections.contracts import ConnectionSummary
 from services.web_identity_service import WebIdentityService
 from services.web_passport_gateways import PassportTokenGateway
@@ -24,13 +24,8 @@ from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
-def consumer_connection_key(connection: EndUserConnection | ConnectionSummary) -> str:
-    return ConsumerConnectionKey(
-        provider=connection.provider,
-        connection_type=connection.credential_type,
-        account_label=connection.account_label or None,
-        connection_id=None if connection.account_label else UUID(connection.id),
-    ).encode()
+def consumer_connection_key(connection: EndUserConnection | ConnectionSummary) -> UUID:
+    return UUID(connection.id)
 
 
 def new_consumer_run(base: ConnectionHarness, *, created_at: datetime) -> WorkflowRun:

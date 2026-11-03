@@ -300,7 +300,7 @@ export const zConsumerAppsResponse = z.object({
 export const zConsumerConnectionResponse = z.object({
   account_label: z.string().nullable(),
   connection_type: zConnectionCredentialType,
-  key: z.string(),
+  key: z.uuid(),
   name: z.string(),
   provider: z.string(),
   webapps_count: z.int().gte(0),
@@ -2923,7 +2923,7 @@ export const zGetMeConnectionsQuery = z.object({
 export const zGetMeConnectionsResponse = zConsumerConnectionsResponse
 
 export const zDeleteMeConnectionsByConnectionKeyPath = z.object({
-  connection_key: z.string(),
+  connection_key: z.uuid(),
 })
 
 /**
@@ -2932,7 +2932,7 @@ export const zDeleteMeConnectionsByConnectionKeyPath = z.object({
 export const zDeleteMeConnectionsByConnectionKeyResponse = z.void()
 
 export const zGetMeConnectionsByConnectionKeyAppsPath = z.object({
-  connection_key: z.string(),
+  connection_key: z.uuid(),
 })
 
 export const zGetMeConnectionsByConnectionKeyAppsQuery = z.object({

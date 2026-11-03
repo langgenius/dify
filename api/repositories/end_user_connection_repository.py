@@ -122,6 +122,7 @@ class EndUserConnectionRepository:
                 groups.c.credential_type,
                 groups.c.account_label,
                 groups.c.connection_id,
+                groups.c.representative_id,
                 EndUserConnection.name,
             )
             .join(EndUserConnection, EndUserConnection.id == sa.cast(groups.c.representative_id, StringUUID()))
@@ -136,9 +137,32 @@ class EndUserConnectionRepository:
                         account_label=label_ or None,
                         connection_id=UUID(id_) if id_ else None,
                     ),
+                    representative_id=UUID(representative_id),
                     name=name,
                 )
-                for provider_, type_, label_, id_, name in session.execute(stmt)
+                for provider_, type_, label_, id_, representative_id, name in session.execute(stmt)
+            )
+
+    def account_connection_group(self, identity: ConsumerIdentity, connection_id: str) -> ConsumerConnectionKey:
+        stmt = sa.select(
+            EndUserConnection.provider,
+            EndUserConnection.credential_type,
+            EndUserConnection.account_label,
+        ).where(
+            EndUserConnection.id == connection_id,
+            EndUserConnection.account_id == identity.account_id,
+            EndUserConnection.end_user_id.is_(None),
+        )
+        with self._sessions() as session:
+            row = session.execute(stmt).one_or_none()
+            if row is None:
+                raise ConnectionNotFoundError()
+            provider, type_, account_label = row
+            return ConsumerConnectionKey(
+                provider=provider,
+                connection_type=type_,
+                account_label=account_label or None,
+                connection_id=None if account_label else UUID(connection_id),
             )
 
     def account_group_connections(

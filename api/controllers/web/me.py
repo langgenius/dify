@@ -185,13 +185,13 @@ class ConsumerConnectionsApi(Resource):
         return dump_response(ConsumerConnectionsResponse, result)
 
 
-@web_ns.route("/me/connections/<string:connection_key>/apps")
+@web_ns.route("/me/connections/<uuid:connection_key>/apps")
 class ConsumerConnectionAppsApi(Resource):
     @web_ns.doc(description="List accessible WebApps associated with a Connection group returned by /me/connections.")
     @web_ns.doc(params=query_params_from_model(ConsumerConnectionAppsQuery))
     @web_ns.response(200, "Associated WebApps", web_ns.models[ConsumerAppsResponse.__name__])
     @error_responses(ConnectionNotFoundHTTPError)
-    def get(self, connection_key: str):
+    def get(self, connection_key: UUID):
         identity = _identity()
         with _errors():
             query = ConsumerConnectionAppsQuery.model_validate(request.args.to_dict(flat=True))
@@ -201,7 +201,7 @@ class ConsumerConnectionAppsApi(Resource):
         return dump_response(ConsumerAppsResponse, result)
 
 
-@web_ns.route("/me/connections/<string:connection_key>")
+@web_ns.route("/me/connections/<uuid:connection_key>")
 class ConsumerConnectionApi(Resource):
     @web_ns.response(204, "Connection group disconnected")
     @web_ns.doc(
@@ -209,7 +209,7 @@ class ConsumerConnectionApi(Resource):
         "Cookie-authenticated browser mutations require the configured WebApp Origin."
     )
     @error_responses(ConnectionNotFoundHTTPError, ConnectionConflictHTTPError)
-    def delete(self, connection_key: str):
+    def delete(self, connection_key: UUID):
         identity = _identity()
         with _errors():
             application_services().consumer.delete_connection(identity, connection_key)

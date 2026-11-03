@@ -60,7 +60,7 @@ def test_connections_support_only_query_and_disconnect(client: FlaskClient, harn
     assert listed.status_code == 200
     listed_connection = listed.get_json()["data"][0]
     assert listed_connection == {
-        "key": consumer_connection_key(created),
+        "key": str(consumer_connection_key(created)),
         "provider": created.provider,
         "connection_type": "api-key",
         "name": created.name,
@@ -120,10 +120,10 @@ def test_connection_group_routes_reuse_the_list_key(client: FlaskClient, harness
     assert client.get("/api/me/connections").get_json()["data"] == []
 
 
-def test_malformed_connection_group_key_returns_bad_request(client: FlaskClient) -> None:
+def test_malformed_connection_group_key_does_not_match_routes(client: FlaskClient) -> None:
     path = "/api/me/connections/invalid"
-    assert client.get(path + "/apps").status_code == 400
-    assert client.delete(path).status_code == 400
+    assert client.get(path + "/apps").status_code == 404
+    assert client.delete(path).status_code == 404
 
 
 @pytest.mark.parametrize("source", [None, "webapp", "webapp_account", "webapp_login_token", "unknown"])

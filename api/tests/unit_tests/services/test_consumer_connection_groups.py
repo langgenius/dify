@@ -11,7 +11,6 @@ from constants.end_user_connections import ConnectionCredentialType, OAuthClient
 from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from models.enums import CustomizeTokenStrategy
 from models.model import App, Site
-from services.consumer_service import ConsumerConnectionKey
 from services.end_user_connections.errors import ConnectionNotFoundError
 from tests.helpers.consumer import ConsumerHarness, consumer_connection_key, make_consumer_harness
 from tests.helpers.end_user_api_key import ConnectionHarness, make_harness
@@ -87,15 +86,17 @@ def test_groups_merge_across_tenants_and_deduplicate_accessible_webapps(harness:
 
     page = harness.service.list_connections(harness.identity, provider=None, cursor=None, limit=20)
     assert len(page.data) == 5
-    key = consumer_connection_key(first)
+    representative = min((first, duplicate, cross_tenant), key=lambda row: row.id)
+    key = consumer_connection_key(representative)
     group = next(item for item in page.data if item.key == key)
     assert group.webapps_count == 2
-    assert group.name == min((first, duplicate, cross_tenant), key=lambda row: row.id).name
+    assert group.name == representative.name
     assert group.connection_type == ConnectionCredentialType.OAUTH2
     assert group.account_label == first.account_label
     for connection in without_label:
         assert consumer_connection_key(connection) in {item.key for item in page.data}
-        assert ConsumerConnectionKey.decode(consumer_connection_key(connection)).connection_id is not None
+        assert base.repository.account_connection_group(harness.identity, connection.id).connection_id is not None
+    assert all(len(str(item.key)) == 36 for item in page.data)
 
     app_ids = sorted((base.context.app_id, other.context.app_id))
     apps = harness.service.list_connection_apps(harness.identity, key, cursor=None, limit=1)
@@ -141,8 +142,8 @@ def test_group_disconnect_removes_all_members_and_revokes_each_owned_oauth_grant
         session.add_all([duplicate, foreign, guest])
     key = consumer_connection_key(created)
     page = harness.service.list_connections(harness.identity, provider=None, cursor=None, limit=20)
-    assert [item.key for item in page.data] == [key]
-    harness.service.delete_connection(harness.identity, key)
+    assert [str(item.key) for item in page.data] == [min(created.id, duplicate.id)]
+    harness.service.delete_connection(harness.identity, consumer_connection_key(duplicate))
     with base.sessions() as session:
         assert set(session.scalars(sa.select(EndUserConnection.id))) == {foreign.id, guest.id}
     assert len(base.auth.revocations) == 2
@@ -151,31 +152,31 @@ def test_group_disconnect_removes_all_members_and_revokes_each_owned_oauth_grant
         harness.service.list_connection_apps(harness.identity, key, cursor=None, limit=20)
 
 
-def test_group_key_survives_representative_deletion_and_rejects_changed_selector(harness: ConsumerHarness) -> None:
+def test_any_owned_member_resolves_the_group_and_refresh_replaces_a_deleted_key(harness: ConsumerHarness) -> None:
     base = harness.oauth.base
     members = [_oauth_row(harness, tenant_id=base.context.tenant_id, label="al***") for _ in range(2)]
+    members.sort(key=lambda row: row.id)
     with base.sessions.begin() as session:
         session.add_all(members)
     key = consumer_connection_key(members[0])
+    assert (
+        harness.service.list_connection_apps(
+            harness.identity, consumer_connection_key(members[1]), cursor=None, limit=20
+        ).data
+        == ()
+    )
     with base.sessions.begin() as session:
         session.execute(sa.delete(EndUserConnection).where(EndUserConnection.id == min(row.id for row in members)))
     page = harness.service.list_connections(harness.identity, provider=None, cursor=None, limit=20)
-    assert [item.key for item in page.data] == [key]
-    for changes in (
-        {"provider": "vendor/other/calendar"},
-        {"account_label": "bo***"},
-        {"connection_type": ConnectionCredentialType.API_KEY},
-    ):
-        changed = ConsumerConnectionKey.decode(key).model_copy(update=changes).encode()
-        with pytest.raises(ConnectionNotFoundError):
-            harness.service.delete_connection(harness.identity, changed)
+    assert [item.key for item in page.data] == [consumer_connection_key(members[1])]
+    with pytest.raises(ConnectionNotFoundError):
+        harness.service.delete_connection(harness.identity, key)
+    cursor = base.repository.account_connection_group(harness.identity, members[1].id).encode()
     with pytest.raises(ValueError, match="cursor"):
-        harness.service.list_connections(harness.identity, provider="vendor/other/calendar", cursor=key, limit=20)
+        harness.service.list_connections(harness.identity, provider="vendor/other/calendar", cursor=cursor, limit=20)
 
 
 @pytest.mark.parametrize("key", ["invalid", "W10", "bnVsbA", "e30", "Li4vLi4v", ""])
-def test_malformed_group_keys_cannot_query_or_disconnect(harness: ConsumerHarness, key: str) -> None:
+def test_malformed_group_cursors_cannot_query_connections(harness: ConsumerHarness, key: str) -> None:
     with pytest.raises(ValueError, match="group key"):
-        harness.service.delete_connection(harness.identity, key)
-    with pytest.raises(ValueError, match="group key"):
-        harness.service.list_connection_apps(harness.identity, key, cursor=None, limit=20)
+        harness.service.list_connections(harness.identity, provider=None, cursor=key, limit=20)

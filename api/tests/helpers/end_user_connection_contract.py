@@ -21,6 +21,7 @@ from models.end_user_connection import (
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.consumer_service import ConsumerIdentity
 from services.end_user_connection_labels import mask_account_label
+from services.end_user_connections.errors import ConnectionNotFoundError
 
 
 def new_connection() -> EndUserConnection:
@@ -85,9 +86,13 @@ class ConnectionPersistenceTests:
         first = repository.account_connection_groups(identity, provider=None, after=None, limit=1)
         assert len(first) == 1
         assert first[0].key.connection_id == UUID(api_key.id)
+        assert first[0].representative_id == UUID(api_key.id)
         second = repository.account_connection_groups(identity, provider=None, after=first[0].key, limit=1)
         assert len(second) == 1
         assert second[0].key.account_label == oauth.account_label
+        assert repository.account_connection_group(identity, duplicate.id) == second[0].key
+        with pytest.raises(ConnectionNotFoundError):
+            repository.account_connection_group(identity, foreign.id)
         assert repository.account_group_connections(identity, (second[0].key,))[second[0].key] == tuple(
             sorted((oauth.id, duplicate.id))
         )
