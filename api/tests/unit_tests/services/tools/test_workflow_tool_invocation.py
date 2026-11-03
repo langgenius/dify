@@ -5,7 +5,7 @@ from unittest.mock import create_autospec
 import pytest
 from sqlalchemy.orm import Session
 
-from core.app.apps.workflow_app_runner import WorkflowRunDriver
+from services.workflow.execution.contracts import WorkflowRunDriver
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
