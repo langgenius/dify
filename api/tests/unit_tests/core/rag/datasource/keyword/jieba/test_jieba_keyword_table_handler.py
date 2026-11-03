@@ -4,10 +4,9 @@ from collections.abc import Callable
 from typing import override
 
 import pytest
-from jieba.analyse import TFIDF
-
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
+from jieba.analyse import TFIDF
 
 
 class _RecordingTFIDF(TFIDF):
