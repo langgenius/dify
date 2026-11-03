@@ -428,7 +428,7 @@ def test_workflow_file_variable_remote_url() -> None:
 
 @pytest.mark.parametrize("existing_row", [False, True])
 @pytest.mark.parametrize("transfer_method", [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL])
-def test_mixed_array_files_survive_draft_persistence_and_response(
+def test_mixed_array_file_json_survives_draft_persistence_and_response(
     existing_row: bool, transfer_method: FileTransferMethod
 ) -> None:
     file = File(
@@ -467,5 +467,42 @@ def test_mixed_array_files_survive_draft_persistence_and_response(
 
     assert response["value"] == value
     assert json.loads(restored.value) == value
-    assert restored.get_value().value[1].remote_url == file.remote_url
-    assert restored.get_value().value[2]["files"][0].remote_url == file.remote_url
+    assert restored.get_value().to_object() == value
+
+
+@pytest.mark.parametrize("existing_row", [False, True])
+def test_mixed_array_preserves_public_file_json(existing_row: bool) -> None:
+    file = File(
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://example.com/report.pdf",
+        related_id="upload-id",
+        filename="report.pdf",
+    )
+    with patch.object(File, "generate_url", return_value=file.remote_url):
+        file_data = file.to_dict()
+    value = [None, file_data, {"files": [file_data]}]
+    serialized = json.dumps(value)
+    with patch.object(File, "generate_url", side_effect=AssertionError("Must not resolve public file JSON")):
+        if not existing_row:
+            saved = WorkflowDraftVariable.new_node_variable(
+                app_id=_TEST_APP_ID,
+                node_id="test_node",
+                name="mixed",
+                value=build_segment(value),
+                node_execution_id=_TEST_NODE_EXEC_ID,
+            )
+            serialized = saved.value
+        restored = WorkflowDraftVariable(
+            app_id=_TEST_APP_ID,
+            node_id="test_node",
+            name="mixed",
+            selector=json.dumps(["test_node", "mixed"]),
+            value_type=SegmentType.ARRAY_ANY,
+            value=serialized,
+        )
+        response = dump_response(WorkflowDraftVariableResponse, restored)
+
+    assert json.loads(serialized) == value
+    assert response["value"] == value
+    assert restored.get_value().to_object() == value

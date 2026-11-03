@@ -1,4 +1,5 @@
 import contextlib
+import contextvars
 import json
 from datetime import datetime
 from types import SimpleNamespace
@@ -13,8 +14,12 @@ from sqlalchemy.orm import Session, sessionmaker
 import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.file_access import get_current_file_access_scope
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables.factory import build_segment
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DataSourceType, EndUserType
 from models.model import EndUser
@@ -23,6 +28,7 @@ from repositories.knowledge.document_repository import SQLAlchemyDocumentReposit
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
+from tests.helpers.unit.model_factories import make_account, make_upload_file
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 PIPELINE_ID = "00000000-0000-0000-0000-000000000002"
@@ -529,6 +535,67 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture, sq
 
     assert result == "converted"
     worker_thread.join.assert_called_once_with(timeout=300)
+
+
+@pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.PUBLISHED_PIPELINE])
+@pytest.mark.parametrize("same_tenant", [False, True])
+def test_generate_checks_nested_file_ownership_in_worker(
+    generator,
+    mocker: MockerFixture,
+    sqlite_session: Session,
+    invoke_from: InvokeFrom,
+    same_tenant: bool,
+) -> None:
+    pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
+    user = make_account(account_id=USER_ID)
+    upload = make_upload_file(tenant_id=TENANT_ID if same_tenant else "other-tenant", created_by="another-account")
+    sqlite_session.add(upload)
+    sqlite_session.commit()
+    file = File(
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference=upload.id,
+    )
+    value = build_segment(["metadata", {"files": [file]}]).value
+    mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
+    mocker.patch.object(module, "PipelineQueueManager")
+    thread_factory = mocker.patch.object(module.threading, "Thread")
+    thread = thread_factory.return_value
+    thread.is_alive.return_value = False
+
+    def read_file() -> None:
+        converter = WorkflowRuntimeTypeConverter()
+        if same_tenant:
+            result = converter.to_json_encodable({"result": value})
+            assert f"/files/{upload.id}/file-preview?" in result["result"][1]["files"][0]["url"]
+        else:
+            with pytest.raises(ValueError, match=f"Upload file {upload.id} not found"):
+                converter.to_json_encodable({"result": value})
+
+    thread.start.side_effect = lambda: thread_factory.call_args.kwargs["kwargs"]["context"].run(read_file)
+    mocker.patch.object(generator, "_get_draft_var_saver_factory")
+    mocker.patch.object(generator, "_handle_response", return_value={})
+    mocker.patch.object(module.WorkflowAppGenerateResponseConverter, "convert", return_value={})
+
+    assert get_current_file_access_scope() is None
+    generator._generate(
+        session=sqlite_session,
+        flask_app=MagicMock(),
+        context=contextvars.copy_context(),
+        pipeline=pipeline,
+        workflow_id=workflow.id,
+        user=user,
+        application_generate_entity=FakeRagPipelineGenerateEntity(
+            task_id="task",
+            user_id=user.id,
+            invoke_from=invoke_from,
+        ),
+        invoke_from=invoke_from,
+        workflow_execution_repository=MagicMock(),
+        workflow_node_execution_repository=MagicMock(),
+    )
+    thread.start.assert_called_once()
+    assert get_current_file_access_scope() is None
 
 
 def test_single_iteration_generate_validates_inputs(generator, sqlite_session: Session):

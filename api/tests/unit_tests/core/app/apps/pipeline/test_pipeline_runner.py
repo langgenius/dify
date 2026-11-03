@@ -20,22 +20,35 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.app.apps.pipeline.pipeline_runner as module
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
-from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowFailedEvent
+from core.app.entities.queue_entities import AppQueueEvent, QueueNodeSucceededEvent, QueueWorkflowFailedEvent
+from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
+from core.datasource.datasource_manager import DatasourceManager
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
-from graphon.engine_events import EngineEvent, GraphRunFailedEvent
+from graphon.engine_events import EngineEvent, GraphRunFailedEvent, NodeRunSucceededEvent
+from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.graph import Graph
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.dataset import Dataset, Document, Pipeline
 from models.enums import DocumentCreatedFrom
 from models.model import AppMode, EndUser
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
-from tests.helpers.unit.model_factories import make_dataset, make_document, make_end_user, make_workflow
+from tests.helpers.unit.model_factories import (
+    make_account,
+    make_dataset,
+    make_document,
+    make_end_user,
+    make_upload_file,
+    make_workflow,
+)
 
 
 def _pipeline(*, tenant_id: str = "tenant", pipeline_id: str = "pipe") -> Pipeline:
@@ -462,3 +475,107 @@ def test_run_normal_path_builds_graph(monkeypatch: pytest.MonkeyPatch, sqlite_se
     input_variable = graph_engine.runtime_state.variable_pool.get(["start", "input1"])
     assert input_variable is not None
     assert input_variable.value == "v1"
+
+
+def test_crawl_metadata_preserves_file_json_through_output_conversion(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
+) -> None:
+    monkeypatch.setattr(DatasourceManager, "get_icon_url", lambda **_kwargs: "icon")
+    pipeline, _, workflow = _persist_scope(
+        sqlite_session,
+        workflow=_workflow(
+            graph={
+                "nodes": [
+                    {
+                        "id": "source",
+                        "data": {
+                            "type": "datasource",
+                            "title": "Source",
+                            "plugin_id": "plugin",
+                            "provider_name": "web",
+                            "provider_type": "website_crawl",
+                            "datasource_name": "crawl",
+                        },
+                    },
+                    {
+                        "id": "end",
+                        "data": {
+                            "type": "end",
+                            "title": "End",
+                            "outputs": [{"variable": "result", "value_selector": ["source", "payload"]}],
+                        },
+                    },
+                ],
+                "edges": [{"source": "source", "target": "end"}],
+            }
+        ),
+    )
+    upload = make_upload_file(tenant_id="other-tenant", created_by="other-account")
+    sqlite_session.add(upload)
+    sqlite_session.commit()
+    file_json = File(
+        file_type=FileType.DOCUMENT, transfer_method=FileTransferMethod.LOCAL_FILE, reference=upload.id
+    ).model_dump(mode="json")
+    payload = ["metadata", {"files": [file_json]}]
+    entity = _build_app_generate_entity()
+    entity.user_from = UserFrom.ACCOUNT
+    entity.invoke_from = InvokeFrom.DEBUGGER
+    entity.inputs = {}
+    entity.document_id = None
+    entity.start_node_id = "source"
+    entity.datasource_type = "website_crawl"
+    entity.datasource_info = {"title": "Page", "payload": payload}
+    account = make_account(account_id=entity.user_id)
+    runner = _build_runner(entity, sqlite_engine, workflow)
+
+    with bind_file_access_scope(
+        FileAccessScope(
+            tenant_id=pipeline.tenant_id,
+            user_id=account.id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+    ):
+        prepared = runner.prepare()
+        events = list(prepared.entry.run())
+
+    terminal = next(event for event in events if isinstance(event, NodeRunSucceededEvent) and event.node_id == "end")
+    outputs = terminal.node_run_result.outputs
+    execution = WorkflowNodeExecution(
+        id=terminal.id,
+        workflow_id=workflow.id,
+        index=1,
+        node_id=terminal.node_id,
+        node_type=terminal.node_type,
+        title="End",
+        outputs=outputs,
+        created_at=terminal.start_at,
+    )
+    repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        sqlite_engine, pipeline.tenant_id, account, pipeline.id, WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN
+    )
+    assert get_current_file_access_scope() is None
+    row = repository._to_db_model(execution)
+    converter = WorkflowResponseConverter(application_generate_entity=entity, user=account, system_variables=[])
+    converter.workflow_start_to_stream_response(
+        task_id=entity.task_id,
+        workflow_run_id=entity.workflow_execution_id,
+        workflow_id=workflow.id,
+        reason=WorkflowStartReason.INITIAL,
+    )
+    response = converter.workflow_node_finish_to_stream_response(
+        task_id=entity.task_id,
+        event=QueueNodeSucceededEvent(
+            node_execution_id=terminal.id,
+            node_id=terminal.node_id,
+            node_type=terminal.node_type,
+            start_at=terminal.start_at,
+            outputs=outputs,
+        ),
+    )
+
+    assert outputs == {"result": payload}
+    assert row.outputs is not None
+    assert json.loads(row.outputs) == {"result": payload}
+    assert response is not None
+    assert response.data.outputs == {"result": payload}
