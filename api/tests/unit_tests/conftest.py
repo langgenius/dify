@@ -45,9 +45,7 @@ def _patch_redis_clients_on_loaded_modules():
     # Restricting the scan avoids triggering __getattr__ on third-party packages
     # (e.g. transformers 5.5+ lazily imports model sub-modules on attribute access,
     # which can raise ModuleNotFoundError for torch when torch is not installed).
-    _disallowed_prefixes = (
-        "transformers"
-    )
+    _disallowed_prefixes = "transformers"
 
     for name, module in list(sys.modules.items()):
         if module is None:

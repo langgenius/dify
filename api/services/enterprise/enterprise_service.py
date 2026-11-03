@@ -99,7 +99,6 @@ def try_join_default_workspace(account_id: str) -> None:
 
 
 class EnterpriseService:
-
     @classmethod
     @ttl_cache(ttl=5)
     def get_info(cls):

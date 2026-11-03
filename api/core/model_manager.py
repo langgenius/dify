@@ -505,8 +505,8 @@ class ModelManager:
 
         if cred_cache_key in self._credentials_cache:
             return ModelInstance(
-                provider_model_bundle, 
-                model, 
+                provider_model_bundle,
+                model,
                 deepcopy(self._credentials_cache[cred_cache_key]),
             )
 
