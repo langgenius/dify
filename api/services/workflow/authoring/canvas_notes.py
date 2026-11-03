@@ -1,7 +1,7 @@
 """Canvas notes an agent writes: plain text becomes the editor's text, and a note sits under the nodes it covers."""
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Final, Self, TypeGuard
@@ -12,6 +12,8 @@ COVERS_KEY: Final = "covers"
 TEXT_KEY: Final = "text"
 POSITION_KEY: Final = "position"
 _PARENT_KEY: Final = "parentId"
+# The data type the canvas writes for a note: a note runs nothing, so it names no node type.
+NOTE_DATA_TYPE: Final = ""
 
 # The web's NODE_WIDTH, for a node the file gives no measured width.
 NODE_WIDTH: Final = 240
@@ -32,6 +34,40 @@ class NoteTheme(StrEnum):
     YELLOW = "yellow"
     PINK = "pink"
     VIOLET = "violet"
+
+
+def _is_theme(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    return value in NoteTheme
+
+
+def _is_text(value: object) -> bool:
+    return isinstance(value, str)
+
+
+def _is_flag(value: object) -> bool:
+    return isinstance(value, bool)
+
+
+class NoteField(StrEnum):
+    """A note field only the web gives a value (operator/hooks.ts), so fill never writes it; with what the canvas
+    can read there.
+    """
+
+    accepts: Callable[[object], bool]
+    requirement: str
+
+    def __new__(cls, value: str, accepts: Callable[[object], bool], requirement: str) -> Self:
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.accepts = accepts
+        member.requirement = requirement
+        return member
+
+    THEME = ("theme", _is_theme, f"a theme, one of {', '.join(NoteTheme)}")
+    AUTHOR = ("author", _is_text, "an author, as text that may be empty")
+    SHOW_AUTHOR = ("showAuthor", _is_flag, "showAuthor, true or false")
 
 
 class NoteSize(StrEnum):
@@ -122,6 +158,18 @@ def json_object(text: str) -> dict[str, Any] | None:
     except ValueError:
         return None
     return value if isinstance(value, dict) else None
+
+
+def text_loads(data: Mapping[str, Any]) -> bool:
+    """Whether the canvas can open the note's text: none, plain text, which fill converts, or editor JSON."""
+    text = data.get(TEXT_KEY)
+    if text is None:
+        return True
+    if not isinstance(text, str):
+        return False
+    if json_object(text) is None:
+        return True
+    return is_lexical(text)
 
 
 def is_lexical(text: str) -> bool:
@@ -229,14 +277,15 @@ def _box(node: Mapping[str, Any]) -> _Box | None:
     box: dict[NoteSize, _Extent] = {}
     for size in NoteSize:
         start = position.get(size.axis)
-        if not _is_number(start):
+        if not is_number(start):
             return None
         length = node.get(size)
-        box[size] = _Extent(start, length if _is_number(length) else size.node_default)
+        box[size] = _Extent(start, length if is_number(length) else size.node_default)
     return box
 
 
-def _is_number(value: object) -> TypeGuard[float]:
+def is_number(value: object) -> TypeGuard[float]:
+    """A JSON number; a bool is not one."""
     if isinstance(value, bool):
         return False
     return isinstance(value, int | float)

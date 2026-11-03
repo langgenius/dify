@@ -18,13 +18,22 @@ from libs.i18n_text import localized
 from models import AppMode
 from models.agent import WorkflowAgentBindingType
 from services.tools.tool_sources import TOOL_NODE_VERSION, ToolNodeIdentity, ToolSource
+from services.workflow.authoring.canvas_notes import COVERS_KEY, NOTE_DATA_TYPE, TEXT_KEY, NoteField, NoteTheme
 from services.workflow.authoring.plugins import references_for
-from services.workflow.graph_check import refused_node_types
+from services.workflow.graph_check import CANVAS_NOTE_TYPE, refused_node_types
 
 if TYPE_CHECKING:
     from services.workflow.authoring import FillContext
 
 _ROSTER_PAGE_SIZE: Final = 100
+# A note is no registered node, so it has no version.
+_NOTE_VERSION: Final = ""
+_NOTE_DESCRIPTION: Final = (
+    f"A canvas note that explains the nodes it is drawn under. List their top-level node ids in data.{COVERS_KEY}, "
+    f"and fill sizes and places the note. Write data.{TEXT_KEY} as plain text. "
+    f"Set data.{NoteField.THEME} to one of {', '.join(NoteTheme)}, and data.{NoteField.AUTHOR} to the name shown "
+    "on the note."
+)
 
 
 class AgentInviteOptions(Protocol):
@@ -145,6 +154,21 @@ def _agents(request: _Request) -> Iterable[NodeOption]:
         )
 
 
+def _notes(request: _Request) -> Iterable[NodeOption]:
+    """The one note option; its seed is a whole node, since a note is told apart by its wrapper type."""
+    data = {"type": NOTE_DATA_TYPE, TEXT_KEY: "", NoteField.SHOW_AUTHOR.value: True, COVERS_KEY: []}
+    return [
+        NodeOption(
+            kind=NodeOptionKind.NOTE,
+            type=CANVAS_NOTE_TYPE,
+            version=_NOTE_VERSION,
+            label=CANVAS_NOTE_TYPE,
+            description=_NOTE_DESCRIPTION,
+            seed={"type": CANVAS_NOTE_TYPE, "data": data},
+        )
+    ]
+
+
 class NodeOptionKind(StrEnum):
     """Where a node option comes from; a kind other than block seeds the nodes whose data is its `seeded_model`."""
 
@@ -163,6 +187,7 @@ class NodeOptionKind(StrEnum):
     BLOCK = ("block", None, _blocks)
     TOOL = ("tool", ToolNodeData, _tools)
     AGENT = ("agent", DifyAgentNodeData, _agents)
+    NOTE = ("note", None, _notes)
 
     @property
     def seeded_node(self) -> tuple[str, str]:

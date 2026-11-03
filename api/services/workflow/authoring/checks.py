@@ -12,6 +12,16 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, Self
 from graphon.enums import NodeExecutionType
 from libs.archive_writer import ArchiveEntry, ArchiveLimits
 from machinery.context import RequestContext
+from services.workflow.authoring.canvas_notes import (
+    COVERS_KEY,
+    TEXT_KEY,
+    NoteField,
+    NoteSize,
+    coverable_nodes,
+    is_note,
+    is_number,
+    text_loads,
+)
 from services.workflow.authoring.fill import SubmittedRoot, document_graph, filled_package, graph_mode
 from services.workflow.authoring.node_spec import (
     FieldHint,
@@ -57,6 +67,10 @@ class AuthoringIssueCode(StrEnum):
     PLUGIN_PARAMETER_MISSING = ("plugin_parameter_missing", IssueSeverity.ERROR)
     MANIFEST_STALE = ("manifest_stale", IssueSeverity.ERROR, True)
     MANIFEST_MISSING = ("manifest_missing", IssueSeverity.ERROR, True)
+    NOTE_TEXT_INVALID = ("note_text_invalid", IssueSeverity.ERROR)
+    NOTE_FIELD_MISSING = ("note_field_missing", IssueSeverity.ERROR)
+    NOTE_COVER_UNKNOWN = ("note_cover_unknown", IssueSeverity.ERROR)
+    NOTE_TOO_SMALL = ("note_too_small", IssueSeverity.WARNING)
 
 
 @dataclass(frozen=True)
@@ -320,6 +334,103 @@ def _value_at(data: Mapping[str, Any], loc: Sequence[str]) -> object:
             return None
         value = value.get(key)
     return value
+
+
+def _notes(document: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """The canvas notes of a workflow or chatflow graph that have an id the DSL check accepts."""
+    return [node for node in _graph_nodes(document) if is_note(node) if isinstance(node.get("id"), str)]
+
+
+class NoteTextInvalid(Check):
+    """A note's text is plain text or editor JSON; the canvas shows other JSON as an empty note, or fails to open."""
+
+    code = AuthoringIssueCode.NOTE_TEXT_INVALID
+
+    def run(self, target: CheckTarget) -> Iterable[AuthoringIssue]:
+        return [
+            self.issue(
+                f"Note {note['id']!r} has {TEXT_KEY} the note editor cannot load: write plain text, or editor JSON "
+                "with a root that holds a list of children",
+                node_id=note["id"],
+                loc=data_loc(note["id"], TEXT_KEY),
+            )
+            for note in _notes(target.document)
+            if not text_loads(note["data"])
+        ]
+
+
+class NoteFieldMissing(Check):
+    """Each field only the web gives a note has a value the canvas can read; without a theme the canvas fails."""
+
+    code = AuthoringIssueCode.NOTE_FIELD_MISSING
+
+    def run(self, target: CheckTarget) -> Iterable[AuthoringIssue]:
+        return [
+            self.issue(
+                f"Note {note['id']!r} needs {field.requirement}",
+                node_id=note["id"],
+                loc=data_loc(note["id"], field.value),
+            )
+            for note in _notes(target.document)
+            for field in NoteField
+            if not field.accepts(note["data"].get(field))
+        ]
+
+
+class NoteCoverUnknown(Check):
+    """Each id a note covers names a top-level node of the graph, so fill can place the note under it."""
+
+    code = AuthoringIssueCode.NOTE_COVER_UNKNOWN
+
+    def run(self, target: CheckTarget) -> Iterable[AuthoringIssue]:
+        coverable = coverable_nodes(_graph_nodes(target.document))
+        return [
+            self.issue(
+                f"Note {note['id']!r} covers what is not a top-level node of the graph, so fill cannot place it",
+                node_id=note["id"],
+                loc=data_loc(note["id"], *loc),
+            )
+            for note in _notes(target.document)
+            for loc in _unknown_covers(note["data"].get(COVERS_KEY), coverable)
+        ]
+
+
+def _unknown_covers(covers: object, coverable: Mapping[str, object]) -> list[Loc]:
+    if covers is None:
+        return []
+    if not isinstance(covers, list):
+        return [(COVERS_KEY,)]
+    return [(COVERS_KEY, index) for index, node_id in enumerate(covers) if not _names_node(node_id, coverable)]
+
+
+def _names_node(node_id: object, coverable: Mapping[str, object]) -> bool:
+    if not isinstance(node_id, str):
+        return False
+    return node_id in coverable
+
+
+class NoteTooSmall(Check):
+    """A note is at least as large as the canvas resizer lets a user make it."""
+
+    code = AuthoringIssueCode.NOTE_TOO_SMALL
+
+    def run(self, target: CheckTarget) -> Iterable[AuthoringIssue]:
+        return [
+            self.issue(
+                f"Note {note['id']!r} has a {size} below the canvas minimum of {size.minimum}",
+                node_id=note["id"],
+                loc=data_loc(note["id"], size.value),
+            )
+            for note in _notes(target.document)
+            for size in NoteSize
+            if _below_minimum(note["data"].get(size), size)
+        ]
+
+
+def _below_minimum(value: object, size: NoteSize) -> bool:
+    if not is_number(value):
+        return False
+    return value < size.minimum
 
 
 def check_package(

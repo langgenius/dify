@@ -277,7 +277,28 @@ def test_blocks_never_offer_a_type_another_kind_seeds() -> None:
             assert kind.seeded_model.model_fields["type"].default not in blocks
 
 
-def test_only_non_block_kinds_declare_a_seeded_model() -> None:
+def test_only_kinds_seeding_a_registered_node_declare_a_seeded_model() -> None:
     assert NodeOptionKind.BLOCK.seeded_model is None
+    assert NodeOptionKind.NOTE.seeded_model is None
     assert NodeOptionKind.TOOL.seeded_model is ToolNodeData
     assert NodeOptionKind.AGENT.seeded_model is DifyAgentNodeData
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_a_note_row_is_offered_in_both_graph_modes(mode: AppMode) -> None:
+    [row] = _options(mode, kind=NodeOptionKind.NOTE, roster=_NoRoster())
+
+    assert (row.kind, row.type, row.version, row.label) == (NodeOptionKind.NOTE, "custom-note", "", "custom-note")
+    assert row.seed == {
+        "type": "custom-note",
+        "data": {"type": "", "text": "", "showAuthor": True, "covers": []},
+    }
+
+
+def test_the_note_row_names_every_theme_and_fabricates_no_theme_or_author() -> None:
+    [row] = _options(kind=NodeOptionKind.NOTE, roster=_NoRoster())
+
+    assert row.description is not None
+    assert all(theme in row.description for theme in ("blue", "cyan", "green", "yellow", "pink", "violet"))
+    assert {"theme", "author"}.isdisjoint(row.seed["data"])
+
