@@ -33,8 +33,7 @@ import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 const WebAppsSection = lazy(() => import('./components/web-apps-section'))
 
 export function MainNav({ className, initialPlatform }: MainNavProps) {
-  const { t } = useTranslation(['common', 'navigation'])
-  const { t: tContacts } = useTranslation(['contacts'])
+  const { t } = useTranslation(['common', 'navigation', 'contacts'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
@@ -71,8 +70,8 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
         const label =
           'label' in route
             ? route.label
-            : route.key === 'contacts'
-              ? tContacts(($) => $['directory.title'])
+            : 'ns' in route
+              ? t(($) => $[route.labelKey], { ns: route.ns })
               : t(($) => $[route.labelKey], { ns: 'navigation' })
 
         return {
@@ -92,7 +91,6 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
       isCurrentWorkspaceManager,
       marketplaceEnabled,
       t,
-      tContacts,
     ],
   )
 

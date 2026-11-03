@@ -153,7 +153,7 @@ class WorkflowRunAgg:
             ),
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
-            trace_manager=prepared.generate_entity.trace_manager,
+            trace_scope=prepared.generate_entity.trace_scope,
         )
         application_layers: list[Layer] = [
             self._persistence_layer,

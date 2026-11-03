@@ -81,7 +81,7 @@ async function setup(ids: string[]) {
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <NuqsTestingAdapter>
-        <NewKnowledgeList view="agent" onViewChange={vi.fn()} />
+        <NewKnowledgeList />
       </NuqsTestingAdapter>
     </QueryClientTestProvider>,
   )

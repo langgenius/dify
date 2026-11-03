@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 
 from sqlalchemy import event
@@ -391,7 +391,7 @@ def _dump(dataset: Dataset, *, session: Session) -> dict[str, object]:
 
 
 @contextmanager
-def _count_selects(session: Session) -> Iterator[list[str]]:
+def _count_selects(session: Session) -> Generator[list[str]]:
     """Record every SELECT issued against the session's engine."""
     statements: list[str] = []
     engine = session.get_bind()

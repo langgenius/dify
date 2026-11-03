@@ -25,10 +25,8 @@ def test_binding_file_download_timeout_rejects_non_positive_values() -> None:
 
 def test_binding_file_timeout_docker_settings_use_their_service_env_files() -> None:
     root_env_example = (_REPOSITORY_ROOT / "docker/.env.example").read_text(encoding="utf-8")
-    api_env_example = (_REPOSITORY_ROOT / "docker/envs/core-services/api.env.example").read_text(encoding="utf-8")
-    agent_env_example = (_REPOSITORY_ROOT / "docker/envs/core-services/dify-agent.env.example").read_text(
-        encoding="utf-8"
-    )
+    api_env_example = (_REPOSITORY_ROOT / "docker/envs/core-services/api.defaults").read_text(encoding="utf-8")
+    agent_env_example = (_REPOSITORY_ROOT / "docker/envs/core-services/dify-agent.defaults").read_text(encoding="utf-8")
     compose_template = (_REPOSITORY_ROOT / "docker/docker-compose-template.yaml").read_text(encoding="utf-8")
 
     assert f"{_API_TIMEOUT_ENV}=" not in root_env_example
