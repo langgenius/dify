@@ -156,7 +156,7 @@ const InstallForm = () => {
                 autoComplete="email"
                 spellCheck={false}
                 required
-                placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+                placeholder={t(($) => $.emailPlaceholder, { ns: 'login' })}
               />
               <FieldError>{t(($) => $['error.emailInValid'], { ns: 'login' })}</FieldError>
             </Field>
@@ -175,7 +175,7 @@ const InstallForm = () => {
                 autoComplete="name"
                 required
                 maxLength={30}
-                placeholder={t(($) => $.namePlaceholder, { ns: 'login' }) || ''}
+                placeholder={t(($) => $.namePlaceholder, { ns: 'login' })}
               />
               <FieldError>{t(($) => $['error.nameEmpty'], { ns: 'login' })}</FieldError>
             </Field>
@@ -195,7 +195,7 @@ const InstallForm = () => {
                   autoComplete="new-password"
                   required
                   minLength={8}
-                  placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
+                  placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
                 />
                 <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
               </PasswordField>

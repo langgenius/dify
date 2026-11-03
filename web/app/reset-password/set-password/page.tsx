@@ -137,7 +137,7 @@ const ChangePasswordForm = () => {
                       if (confirmPasswordRef.current?.value)
                         formActionsRef.current?.validate('confirmPassword')
                     }}
-                    placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
+                    placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
                   />
                   <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
                 </PasswordField>
@@ -182,7 +182,7 @@ const ChangePasswordForm = () => {
                     required
                     autoComplete="new-password"
                     ref={confirmPasswordRef}
-                    placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
+                    placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' })}
                   />
                   <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
                 </PasswordField>
