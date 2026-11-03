@@ -63,6 +63,9 @@ const getTargetOnlyClipPath = ({ height, left, top, width }: StepByStepTourTarge
   return `polygon(evenodd,0% 0%,100% 0%,100% 100%,0% 100%,0% 0%,${left}px ${top}px,${left}px ${bottom}px,${right}px ${bottom}px,${right}px ${top}px,${left}px ${top}px)`
 }
 
+const isRectInViewport = ({ height, left, top, width }: StepByStepTourTargetRect) =>
+  top < window.innerHeight && top + height > 0 && left < window.innerWidth && left + width > 0
+
 const useStepGliding = (stepKey: string | undefined) => {
   const [glide, setGlide] = useState({ gliding: false, stepKey })
   if (glide.stepKey !== stepKey) setGlide({ gliding: Boolean(glide.stepKey && stepKey), stepKey })
@@ -144,16 +147,17 @@ export function StepByStepTourCoachmark({
         }
       : undefined
 
-  const [awaitingTarget, setAwaitingTarget] = useState(!targetElement)
+  const [awaitingTarget, setAwaitingTarget] = useState(true)
   if (!targetElement && !awaitingTarget) setAwaitingTarget(true)
-  if (currentOverlay && awaitingTarget) setAwaitingTarget(false)
+  if (currentOverlay && awaitingTarget && isRectInViewport(currentOverlay.highlightRect))
+    setAwaitingTarget(false)
 
   useLayoutEffect(() => {
     if (currentOverlay) lastOverlayRef.current = currentOverlay
   })
 
   const overlay = currentOverlay ?? lastOverlayRef.current
-  const open = Boolean(targetElement && !awaitingTarget && overlay)
+  const open = Boolean(!awaitingTarget && overlay)
   const gliding = useStepGliding(open ? overlay?.guide.id : undefined)
   const isActionGuide = overlay ? getStepByStepTourGuideKind(overlay.guide) === 'action' : false
   const overlayPlacement = overlay?.placement
@@ -277,7 +281,7 @@ export function StepByStepTourCoachmark({
               initialFocus={() => primaryActionRef.current ?? popupRef.current}
               finalFocus={false}
               className={cn(
-                'relative flex w-88 max-w-[calc(100vw-16px)] flex-col rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[5px]',
+                'relative flex w-88 max-w-[calc(100vw-16px)] flex-col rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[5px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
                 isActionGuide ? 'min-h-29.5' : 'min-h-39.5',
               )}
             >

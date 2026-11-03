@@ -17,11 +17,10 @@ import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
-import { getMarketplaceUrl } from '@/utils/var'
 import Badge from '../../base/badge'
 import Verified from '../base/badges/verified'
 import Description from '../card/base/description'
@@ -107,10 +106,7 @@ const PluginItem: FC<Props> = ({
   const title = getValueFromI18nObject(label)
   const titleId = React.useId()
   const descriptionText = getValueFromI18nObject(description)
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
   const iconFileName = theme === 'dark' && icon_dark ? icon_dark : icon
   const iconSrc = iconFileName
     ? iconFileName.startsWith('http')
@@ -263,10 +259,10 @@ const PluginItem: FC<Props> = ({
               </a>
             </>
           )}
-          {source === PluginSource.marketplace && enable_marketplace && (
+          {source === PluginSource.marketplace && marketplace && (
             <>
               <a
-                href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })}
+                href={marketplace.plugin({ org: author, name }, { theme })}
                 target="_blank"
                 className="relative z-20 flex items-center gap-0.5"
               >
@@ -298,7 +294,7 @@ const PluginItem: FC<Props> = ({
           )}
         </div>
         {/* Deprecated */}
-        {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
+        {source === PluginSource.marketplace && marketplace && isDeprecated && (
           <div className="flex shrink-0 items-center gap-x-2 system-2xs-medium-uppercase">
             <span className="text-text-tertiary">·</span>
             <span className="text-text-warning">{t(($) => $.deprecated, { ns: 'plugin' })}</span>
@@ -306,7 +302,7 @@ const PluginItem: FC<Props> = ({
         )}
       </div>
       {/* BG Effect for Deprecated Plugin */}
-      {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
+      {source === PluginSource.marketplace && marketplace && isDeprecated && (
         <div className="absolute -right-11.25 -bottom-17.75 z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]" />
       )}
     </div>
