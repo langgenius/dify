@@ -85,10 +85,10 @@ def _fill_edge(edge: dict[str, Any], *, nodes_by_id: Mapping[str, Mapping[str, A
     if source is not None:
         handles = branch_handles(source["data"])
         if handles is None or SOURCE_HANDLE in handles:
-            edge.setdefault("sourceHandle", SOURCE_HANDLE)
-    edge.setdefault("targetHandle", TARGET_HANDLE)
+            _fill_absent(edge, "sourceHandle", SOURCE_HANDLE)
+    _fill_absent(edge, "targetHandle", TARGET_HANDLE)
     if _has_id_parts(edge):
-        edge.setdefault("id", editor_edge_id(edge))
+        _fill_absent(edge, "id", editor_edge_id(edge))
     if source is None:
         return
     if target is None:
@@ -96,5 +96,11 @@ def _fill_edge(edge: dict[str, Any], *, nodes_by_id: Mapping[str, Mapping[str, A
     editor_edge_data(edge, nodes_by_id=nodes_by_id)
 
 
+def _fill_absent(edge: dict[str, Any], key: str, value: str) -> None:
+    """A null field is one the caller did not write, so it is filled as an absent one is."""
+    if edge.get(key) is None:
+        edge[key] = value
+
+
 def _has_id_parts(edge: Mapping[str, Any]) -> bool:
-    return all(key in edge for key in _EDGE_ID_KEYS)
+    return all(edge.get(key) is not None for key in _EDGE_ID_KEYS)
