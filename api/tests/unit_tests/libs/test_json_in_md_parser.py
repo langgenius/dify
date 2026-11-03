@@ -124,3 +124,29 @@ def test_parse_json_markdown_backtick_in_surrounding_prose() -> None:
 def test_parse_json_markdown_fenced_scalar_still_supported() -> None:
     """Fenced content without brackets still parses via the fence fallback."""
     assert parse_json_markdown('```json\n"hello"\n```') == "hello"
+
+
+def test_parse_and_check_json_markdown_rejects_non_dict() -> None:
+    """Non-dict JSON values must raise OutputParserError, not TypeError or pass silently.
+
+    Regression test for https://github.com/langgenius/dify/issues/45224:
+    a fenced scalar (42, null, true) escaped a TypeError from the `key not in json_obj`
+    membership check, and a fenced JSON string passed validation via substring match.
+    """
+    cases = [
+        "```json\n42\n```",
+        "```json\nnull\n```",
+        "```json\ntrue\n```",
+        '```json\n"the generated prompt text"\n```',
+        "```json\n[1, 2]\n```",
+        "```json\n[]\n```",
+    ]
+    for src in cases:
+        with pytest.raises(OutputParserError, match="got invalid return object"):
+            parse_and_check_json_markdown(src, ["prompt"])
+
+
+def test_parse_and_check_json_markdown_still_accepts_dicts() -> None:
+    """Dict results and single-element dict lists keep working."""
+    assert parse_and_check_json_markdown('```json\n{"prompt": "hi"}\n```', ["prompt"]) == {"prompt": "hi"}
+    assert parse_and_check_json_markdown('```json\n[{"prompt": "hi"}]\n```', ["prompt"]) == {"prompt": "hi"}
