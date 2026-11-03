@@ -7,7 +7,7 @@ import time
 import types
 import uuid
 from collections.abc import Generator, Mapping
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import override
@@ -110,6 +110,22 @@ pytest_plugins = ("tests.helpers.unit.core.workflow.nodes.parameter_extractor.fi
 
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
+
+
+@dataclass
+class _CallSpy:
+    return_value: object = None
+    calls: list[object] = field(default_factory=list)
+
+    def __call__(self, arg: object) -> object:
+        self.calls.append(arg)
+        return self.return_value
+
+    def assert_called_once_with(self, arg: object) -> None:
+        assert self.calls == [arg]
+
+    def assert_not_called(self) -> None:
+        assert self.calls == []
 
 
 def init_llm_node(config: dict[str, object]) -> LLMNode:
@@ -1924,7 +1940,7 @@ class TestNodeRuntimeCases:
 
     @staticmethod
     def test_dify_retriever_attachment_loader_builds_graph_files(monkeypatch: pytest.MonkeyPatch) -> None:
-        load_attachments = MagicMock(return_value=[_attachment_record()])
+        load_attachments = _CallSpy(return_value=[_attachment_record()])
         monkeypatch.setattr(node_runtime, "sign_upload_file_url", lambda *, upload_file_id: f"signed:{upload_file_id}")
         loader = DifyRetrieverAttachmentLoader(load_attachments=load_attachments)
 
@@ -1973,7 +1989,7 @@ class TestNodeRuntimeCases:
     @staticmethod
     def test_dify_retriever_attachment_loader_honors_the_scoped_attachment_reader() -> None:
         segment_id = str(uuid4())
-        load_attachments = MagicMock(return_value=[])
+        load_attachments = _CallSpy(return_value=[])
         loader = DifyRetrieverAttachmentLoader(load_attachments=load_attachments)
         scope = FileAccessScope(
             tenant_id="tenant-id",
@@ -1990,7 +2006,7 @@ class TestNodeRuntimeCases:
 
     @staticmethod
     def test_dify_retriever_attachment_loader_skips_ungranted_segment_for_end_user() -> None:
-        load_attachments = MagicMock(return_value=[_attachment_record()])
+        load_attachments = _CallSpy(return_value=[_attachment_record()])
         loader = DifyRetrieverAttachmentLoader(load_attachments=load_attachments)
         scope = FileAccessScope(
             tenant_id="tenant-id",
@@ -2008,8 +2024,8 @@ class TestNodeRuntimeCases:
     @staticmethod
     def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker() -> None:
         segment_id = str(uuid4())
-        load_attachments = MagicMock(return_value=[_attachment_record()])
-        segment_access_checker = MagicMock(return_value=False)
+        load_attachments = _CallSpy(return_value=[_attachment_record()])
+        segment_access_checker = _CallSpy(return_value=False)
         loader = DifyRetrieverAttachmentLoader(
             load_attachments=load_attachments,
             segment_access_checker=segment_access_checker,
