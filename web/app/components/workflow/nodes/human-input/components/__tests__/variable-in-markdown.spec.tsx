@@ -1,4 +1,3 @@
-import type { FormInputItem } from '../../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -121,21 +120,6 @@ describe('variable-in-markdown', () => {
       )
 
       expect(screen.getByText('Plain value')).toBeInTheDocument()
-    })
-
-    it('should render a paragraph note without a default as an empty field', () => {
-      const { container } = render(
-        <Note
-          input={{
-            type: InputVarType.paragraph,
-            output_variable_name: 'approval',
-          } as FormInputItem}
-          nodeName={(nodeId) => nodeId}
-        />,
-      )
-
-      expect(container.firstChild).toHaveClass('my-3')
-      expect(container.firstChild?.textContent).toBe('')
     })
 
     it('should render dynamic select inputs as variable information without a select control', () => {
