@@ -1,4 +1,5 @@
 import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type {
   ParametersSchema,
   PluginMeta,
@@ -6,7 +7,7 @@ import type {
   SupportedCreationMethods,
   TriggerEvent,
 } from '../../plugins/types'
-import type { Collection, Event } from '../../tools/types'
+import type { Collection, CollectionProviderType, Event } from '../../tools/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 export const TabType = {
@@ -29,6 +30,13 @@ export const ToolType = {
 
 export type ToolType = (typeof ToolType)[keyof typeof ToolType]
 
+export const ViewType = {
+  flat: 'flat',
+  tree: 'tree',
+} as const
+
+export type ViewType = (typeof ViewType)[keyof typeof ViewType]
+
 export const BlockClassification = {
   Default: '-',
   QuestionUnderstand: 'question-understand',
@@ -41,7 +49,7 @@ export type BlockClassification = (typeof BlockClassification)[keyof typeof Bloc
 
 type PluginCommonDefaultValue = {
   provider_id: string
-  provider_type: string
+  provider_type: CollectionProviderType
   provider_name: string
 }
 
@@ -78,9 +86,9 @@ export type ToolDefaultValue = PluginCommonDefaultValue & {
   plugin_unique_identifier?: string
 }
 
-export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id'> & {
+export type DataSourceDefaultValue = {
+  provider_type: RagPipelineDatasourceProviderResponse['declaration']['provider_type']
   plugin_id: string
-  provider_type: string
   provider_name: string
   datasource_name: string
   datasource_label: string
@@ -130,40 +138,6 @@ export type ToolValue = {
   extra?: { description?: string } & Record<string, unknown>
   credential_id?: string
   type?: string
-}
-
-export type DataSourceItem = {
-  plugin_id: string
-  plugin_unique_identifier: string
-  provider: string
-  declaration: {
-    credentials_schema: unknown[]
-    provider_type: string
-    identity: {
-      author: string
-      description: TypeWithI18N
-      icon: string | { background: string; content: string }
-      label: TypeWithI18N
-      name: string
-      tags: string[]
-    }
-    datasources: {
-      description: TypeWithI18N
-      identity: {
-        author: string
-        icon?: string | { background: string; content: string }
-        label: TypeWithI18N
-        name: string
-        provider: string
-      }
-      parameters: unknown[]
-      output_schema?: {
-        type: string
-        properties: Record<string, unknown>
-      }
-    }[]
-  }
-  is_authorized: boolean
 }
 
 type TriggerCredentialField = {
@@ -230,7 +204,7 @@ export const TriggerCredentialType = {
 export type TriggerCredentialType =
   (typeof TriggerCredentialType)[keyof typeof TriggerCredentialType]
 
-type TriggerSubscriptionStructure = {
+export type TriggerSubscription = {
   id: string
   name: string
   provider: string
@@ -242,9 +216,7 @@ type TriggerSubscriptionStructure = {
   workflows_in_use: number
 }
 
-export type TriggerSubscription = TriggerSubscriptionStructure
-
-export type TriggerSubscriptionBuilder = TriggerSubscriptionStructure
+export type TriggerSubscriptionBuilder = TriggerSubscription
 
 // OAuth configuration types
 export type TriggerOAuthConfig = {

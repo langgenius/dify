@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  AgentIconType,
-  AgentReferencingWorkflowResponse,
-} from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentReferencingWorkflowResponse } from '@dify/contracts/api/console/agent/types.gen'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -24,7 +21,7 @@ export function AgentPublishImpactDetails({
   agentName,
   references,
 }: AgentPublishImpactDetailsProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const titleId = useId()
 
   return (
@@ -54,7 +51,7 @@ export function AgentPublishImpactDetails({
         <div className="flex min-h-6 items-center system-sm-medium text-text-secondary">
           {t(($) => $['agentDetail.configure.publishImpact.affectedWorkflows'])}
         </div>
-        <div className="flex max-h-[123px] flex-col gap-px overflow-y-auto rounded-xl border border-components-panel-border p-1">
+        <div className="flex max-h-30.75 flex-col gap-px overflow-y-auto rounded-xl border border-components-panel-border p-1">
           {references.map((reference) => (
             <ReferenceLink
               key={`${reference.app_id}-${reference.workflow_id}`}
@@ -69,14 +66,6 @@ export function AgentPublishImpactDetails({
 
 function ReferenceLink({ reference }: { reference: AgentReferencingWorkflowResponse }) {
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const imageUrl =
-    reference.app_icon_type === 'image' || reference.app_icon_type === 'link'
-      ? reference.app_icon
-      : undefined
-  const iconType = (imageUrl ? 'image' : reference.app_icon_type) as
-    | AgentIconType
-    | null
-    | undefined
   const updatedAt =
     reference.app_updated_at == null ? null : formatTimeFromNow(reference.app_updated_at * 1000)
 
@@ -90,10 +79,12 @@ function ReferenceLink({ reference }: { reference: AgentReferencingWorkflowRespo
       <span aria-hidden className="shrink-0">
         <AppIcon
           size="tiny"
-          iconType={iconType}
-          icon={reference.app_icon ?? undefined}
-          background={reference.app_icon_background}
-          imageUrl={imageUrl}
+          icon={{
+            icon_type: reference.app_icon_type,
+            icon: reference.app_icon,
+            icon_url: reference.app_icon,
+            icon_background: reference.app_icon_background,
+          }}
         />
       </span>
       <span className="min-w-0 flex-1 truncate">{reference.app_name}</span>

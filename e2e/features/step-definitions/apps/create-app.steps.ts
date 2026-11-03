@@ -1,8 +1,9 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
+import { zPostAppsResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { expect } from '@playwright/test'
-import { openBlankAppCreation } from '../../../support/apps'
-import { createE2EResourceName } from '../../../support/naming'
+import { openBlankAppCreation } from '../../../support/apps.ts'
+import { createE2EResourceName } from '../../../support/naming.ts'
 
 const appModeByType: Record<string, string> = {
   Agent: 'agent-chat',
@@ -17,6 +18,10 @@ const getLatestCreatedAppId = (world: DifyWorld) => {
   if (!appId) throw new Error('No created app ID was recorded from the UI response.')
 
   return appId
+}
+
+const expectAppEditorContent = async (world: DifyWorld) => {
+  await expect(world.getPage().getByRole('link', { name: 'Orchestrate' })).toBeVisible()
 }
 
 When('I start creating a blank app', async function (this: DifyWorld) {
@@ -43,7 +48,7 @@ When('I confirm app creation', async function (this: DifyWorld) {
 
   const response = await responsePromise
   expect(response.ok()).toBe(true)
-  const createdApp = (await response.json()) as { id?: string; mode?: string }
+  const createdApp = zPostAppsResponse.parse(await response.json())
   if (!createdApp.id) throw new Error('Create app response did not include an app ID.')
 
   const expectedMode = this.lastSelectedAppType
@@ -77,14 +82,17 @@ Then('I should land on the app editor', async function (this: DifyWorld) {
   await expect(this.getPage()).toHaveURL(
     new RegExp(`/app/${appId}/(workflow|configuration)(?:\\?.*)?$`),
   )
+  await expectAppEditorContent(this)
 })
 
 Then('I should land on the workflow editor', async function (this: DifyWorld) {
   const appId = getLatestCreatedAppId(this)
   await expect(this.getPage()).toHaveURL(new RegExp(`/app/${appId}/workflow(?:\\?.*)?$`))
+  await expectAppEditorContent(this)
 })
 
 Then('I should land on the app configuration page', async function (this: DifyWorld) {
   const appId = getLatestCreatedAppId(this)
   await expect(this.getPage()).toHaveURL(new RegExp(`/app/${appId}/configuration(?:\\?.*)?$`))
+  await expectAppEditorContent(this)
 })

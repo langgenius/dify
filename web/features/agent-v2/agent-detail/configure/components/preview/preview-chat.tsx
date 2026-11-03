@@ -1,57 +1,46 @@
 'use client'
 
 import type { AgentChatRuntimeEmptyStateProps, AgentChatRuntimeProps } from './chat-runtime'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { consoleQuery } from '@/service/console'
 import { AgentChatRuntime } from './chat-runtime'
+import { sendPreviewChatMessage } from './preview-chat-request'
+import { AgentUnconfiguredNotice } from './unconfigured-notice'
 
-type AgentPreviewChatProps = Omit<AgentChatRuntimeProps, 'inputPlaceholder' | 'renderEmptyState'>
+type AgentPreviewChatProps = Omit<
+  AgentChatRuntimeProps,
+  'draftType' | 'inputPlaceholder' | 'renderEmptyState' | 'sendMessage'
+>
 
 function AgentPreviewChatEmptyState({
-  agentIcon,
-  agentIconBackground,
-  agentIconType,
-  agentName,
-  hasInstructions,
-  inputNode,
-}: AgentChatRuntimeEmptyStateProps) {
-  const { t } = useTranslation('agentV2')
-  const imageUrl = agentIconType === 'image' || agentIconType === 'link' ? agentIcon : undefined
-  const iconType = imageUrl ? 'image' : agentIconType
+  agentId,
+  showUnconfiguredNotice,
+}: AgentChatRuntimeEmptyStateProps & { agentId: AgentChatRuntimeProps['agentId'] }) {
+  const { t } = useTranslation(['agentV2'])
+  const { data: agent } = useQuery(
+    consoleQuery.agent.byAgentId.get.queryOptions({
+      input: { params: { agent_id: agentId } },
+    }),
+  )
 
   return (
-    <div className="flex h-full items-center justify-center">
-      <div className="flex w-full max-w-150 flex-col items-start p-3 text-left">
-        <AppIcon
-          size="xxl"
-          rounded
-          iconType={iconType}
-          icon={agentIcon ?? undefined}
-          background={agentIconBackground}
-          imageUrl={imageUrl}
-          className="bg-background-default"
-        />
-        <div className="mt-3 max-w-full truncate system-md-medium text-text-secondary">
-          {t(($) => $['agentDetail.configure.preview.empty.title'], {
-            name: agentName || t(($) => $['agentDetail.configure.preview.empty.defaultAgentName']),
-          })}
-        </div>
-        <p className="mt-1 max-w-full body-md-regular text-text-tertiary">
-          {t(($) => $['agentDetail.configure.preview.empty.description'])}
-        </p>
-        {!hasInstructions && (
-          <p className="mt-1 max-w-full body-md-regular text-text-tertiary">
-            {t(($) => $['agentDetail.configure.preview.empty.noInstructionsDescription'])}
-          </p>
-        )}
-        {inputNode}
+    <>
+      <AppIcon size="xxl" className="bg-background-default" shape="circle" icon={agent} />
+      <div className="mt-3 max-w-full truncate system-md-medium text-text-secondary">
+        {agent?.name || t(($) => $['agentDetail.configure.preview.empty.defaultAgentName'])}
       </div>
-    </div>
+      <p className="mt-1 max-w-full body-md-regular text-text-tertiary">
+        {t(($) => $['agentDetail.configure.preview.empty.description'])}
+      </p>
+      <AgentUnconfiguredNotice visible={showUnconfiguredNotice} />
+    </>
   )
 }
 
 export function AgentPreviewChat(props: AgentPreviewChatProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const agentName =
     props.agentName || t(($) => $['agentDetail.configure.preview.empty.defaultAgentName'])
 
@@ -61,7 +50,10 @@ export function AgentPreviewChat(props: AgentPreviewChatProps) {
       inputPlaceholder={t(($) => $['agentDetail.configure.preview.inputPlaceholder'], {
         name: agentName,
       })}
-      renderEmptyState={(emptyStateProps) => <AgentPreviewChatEmptyState {...emptyStateProps} />}
+      sendMessage={sendPreviewChatMessage}
+      renderEmptyState={(emptyStateProps) => (
+        <AgentPreviewChatEmptyState {...emptyStateProps} agentId={props.agentId} />
+      )}
     />
   )
 }

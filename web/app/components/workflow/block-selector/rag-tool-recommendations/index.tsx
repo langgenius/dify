@@ -1,15 +1,18 @@
 'use client'
-import type { ViewType } from '@/app/components/workflow/block-selector/view-type-select'
+import type { ViewType } from '@/app/components/workflow/block-selector/types'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import { selectRAGRecommendedPlugins } from '@/app/components/tools/utils/query-select'
 import { useRAGRecommendationsCollapsed } from '@/app/components/workflow/block-selector/storage'
+import { useMarketplace } from '@/features/marketplace/client'
 import Link from '@/next/link'
-import { useRAGRecommendedPlugins } from '@/service/use-tools'
-import { getMarketplaceUrl } from '@/utils/var'
+import { consoleQuery } from '@/service/console'
 import List from './list'
 
 type RAGToolRecommendationsProps = {
@@ -23,14 +26,20 @@ export function RAGToolRecommendations({
   onSelect,
   onLoadMore,
 }: RAGToolRecommendationsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pipeline'])
   const [isCollapsed, setIsCollapsed] = useRAGRecommendationsCollapsed()
+  const marketplace = useMarketplace()
 
   const {
     data: ragRecommendedPlugins,
     isLoading: isLoadingRAGRecommendedPlugins,
     isFetching: isFetchingRAGRecommendedPlugins,
-  } = useRAGRecommendedPlugins('tool')
+  } = useQuery(
+    consoleQuery.rag.pipelines.recommendedPlugins.get.queryOptions({
+      input: { query: { type: 'tool' } },
+      select: selectRAGRecommendedPlugins,
+    }),
+  )
 
   const recommendedPlugins = useMemo(() => {
     if (ragRecommendedPlugins) return ragRecommendedPlugins.installed_recommended_plugins
@@ -47,7 +56,7 @@ export function RAGToolRecommendations({
     <div className="flex flex-col p-1">
       <button
         type="button"
-        className="flex w-full items-center rounded-md px-3 pt-1 pb-0.5 text-left text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        className="flex w-full items-center rounded-md px-3 pt-1 pb-0.5 text-left text-text-tertiary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
         aria-expanded={!isCollapsed}
         onClick={() => setIsCollapsed((prev) => !prev)}
       >
@@ -67,10 +76,11 @@ export function RAGToolRecommendations({
           {/* For first time loading, show loading */}
           {isLoadingRAGRecommendedPlugins && (
             <div className="py-2">
-              <Loading type="app" />
+              <LoadingPlaceholder className="h-full" />
             </div>
           )}
-          {!isFetchingRAGRecommendedPlugins &&
+          {marketplace &&
+            !isFetchingRAGRecommendedPlugins &&
             recommendedPlugins.length === 0 &&
             unInstalledPlugins.length === 0 && (
               <p className="px-3 py-1 system-xs-regular text-text-tertiary">
@@ -83,7 +93,7 @@ export function RAGToolRecommendations({
                         className="text-text-accent"
                         target="_blank"
                         rel="noopener noreferrer"
-                        href={getMarketplaceUrl('', { tags: 'rag' })}
+                        href={marketplace.page('', { tags: 'rag' })}
                       />
                     ),
                   }}
@@ -98,12 +108,13 @@ export function RAGToolRecommendations({
                 onSelect={onSelect}
                 viewType={viewType}
               />
-              <button
-                type="button"
-                className="flex w-full items-center gap-x-2 rounded-md py-1 pr-2 pl-3 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              <Button
+                variant="ghost"
+                size="medium"
+                className="w-full justify-start pr-2 pl-3 text-left focus-visible:ring-inset"
                 onClick={onLoadMore}
               >
-                <div className="px-1">
+                <div className="pl-1">
                   <span
                     aria-hidden="true"
                     className="i-ri-more-line block size-4 text-text-tertiary"
@@ -112,7 +123,7 @@ export function RAGToolRecommendations({
                 <div className="system-xs-regular text-text-tertiary">
                   {t(($) => $['operation.more'], { ns: 'common' })}
                 </div>
-              </button>
+              </Button>
             </>
           )}
         </>

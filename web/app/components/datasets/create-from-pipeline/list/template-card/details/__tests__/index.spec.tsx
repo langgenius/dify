@@ -1,298 +1,74 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { PipelineTemplateDetailResponse } from '@dify/contracts/api/console/rag/types.gen'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { ChunkingMode } from '@/models/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import Details from '../index'
 
-// Mock WorkflowPreview
-vi.mock('@/app/components/workflow/workflow-preview', () => ({
-  default: ({ className }: { className?: string }) => (
-    <div data-testid="workflow-preview" className={className}>
-      WorkflowPreview
-    </div>
-  ),
-}))
-
-const mockUsePipelineTemplateById = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  usePipelineTemplateById: (...args: unknown[]) => mockUsePipelineTemplateById(...args),
-}))
-
-const createPipelineTemplateInfo = (overrides = {}) => ({
-  name: 'Test Pipeline',
-  description: 'This is a test pipeline',
-  icon_info: {
-    icon_type: 'emoji',
-    icon: '📊',
-    icon_background: '#FFF4ED',
-    icon_url: '',
-  },
-  created_by: 'Test User',
-  chunk_structure: 'text',
-  graph: {
-    nodes: [],
-    edges: [],
-    viewport: { x: 0, y: 0, zoom: 1 },
-  },
-  export_data: '',
-  ...overrides,
-})
-
-const createImageIconPipelineInfo = () => ({
-  ...createPipelineTemplateInfo(),
-  icon_info: {
-    icon_type: 'image',
-    icon: 'file-id-123',
-    icon_background: '',
-    icon_url: 'https://example.com/icon.png',
-  },
-})
-
-// Details Component Tests
-
-describe('Details', () => {
-  const defaultProps = {
-    id: 'pipeline-1',
-    type: 'customized' as const,
-    onApplyTemplate: vi.fn(),
-    onClose: vi.fn(),
+const getTemplate = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipeline.templates.byTemplateId.get': getTemplate,
+    }),
   }
+})
+// Graph rendering has its own workflow suite; this dialog owns metadata and template actions.
+vi.mock('@/app/components/workflow/workflow-preview', () => ({ default: () => null }))
+const template: PipelineTemplateDetailResponse = {
+  id: 'pipeline-1',
+  name: 'Test Pipeline',
+  description: 'Process documents',
+  export_data: '',
+  chunk_structure: ChunkingMode.text,
+  icon_info: { icon_type: 'emoji', icon: '📊', icon_background: '#FFF4ED', icon_url: '' },
+  graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+}
+const show = (onApplyTemplate = vi.fn()) =>
+  render(
+    <Dialog defaultOpen>
+      <DialogContent>
+        <Details
+          id="pipeline-1"
+          type="customized"
+          name="Loading Pipeline"
+          onApplyTemplate={onApplyTemplate}
+        />
+      </DialogContent>
+    </Dialog>,
+  )
 
-  beforeEach(() => {
-    vi.clearAllMocks()
+it('keeps a pending template named and closable', async () => {
+  const user = userEvent.setup()
+  getTemplate.mockReturnValue(new Promise(() => {}))
+  show()
+  expect(screen.getByRole('dialog', { name: 'Loading Pipeline' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+})
+
+it.each([
+  [ChunkingMode.text, 'General'],
+  [ChunkingMode.parentChild, 'Parent-Child'],
+  [ChunkingMode.qa, 'Q&A'],
+])('loads %s template details before applying it', async (chunk_structure, structureLabel) => {
+  const user = userEvent.setup()
+  const pending = createDeferred<PipelineTemplateDetailResponse>()
+  getTemplate.mockReturnValue(pending.promise)
+  const apply = vi.fn()
+  show(apply)
+  await act(async () => pending.resolve({ ...template, chunk_structure }))
+  expect(await screen.findByRole('dialog', { name: 'Test Pipeline' })).toBeInTheDocument()
+  expect(screen.getByText(structureLabel)).toBeInTheDocument()
+  expect(getTemplate).toHaveBeenCalledWith({
+    params: { template_id: 'pipeline-1' },
+    query: { type: 'customized' },
   })
-
-  // Loading State Tests
-  describe('Loading State', () => {
-    it('should show loading when data is not available', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: null,
-      })
-
-      render(<Details {...defaultProps} />)
-      // Loading component should be rendered
-      expect(screen.queryByText('Test Pipeline')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Rendering', () => {
-    it('should render pipeline name', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
-    })
-
-    it('should render pipeline description', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.getByText('This is a test pipeline')).toBeInTheDocument()
-    })
-
-    it('should render created by when available', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.getByText(/details\.createdBy/i)).toBeInTheDocument()
-    })
-
-    it('should not render created by when not available', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo({ created_by: '' }),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.queryByText(/details\.createdBy/i)).not.toBeInTheDocument()
-    })
-
-    it('should render use template button', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.getByText(/operations\.useTemplate/i)).toBeInTheDocument()
-    })
-
-    it('should render structure section', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.getByText(/details\.structure/i)).toBeInTheDocument()
-    })
-
-    it('should render close button', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      const { container } = render(<Details {...defaultProps} />)
-      const closeButton = container.querySelector('button[type="button"]')
-      expect(closeButton).toBeInTheDocument()
-    })
-
-    it('should render workflow preview', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.getByTestId('workflow-preview')).toBeInTheDocument()
-    })
-
-    it('should render tooltip for structure', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      render(<Details {...defaultProps} />)
-      // Tooltip component should be present
-      expect(screen.getByText(/details\.structure/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onClose when close button is clicked', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      const { container } = render(<Details {...defaultProps} />)
-      const closeButton = container.querySelector('button[type="button"]')
-      fireEvent.click(closeButton!)
-
-      expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onApplyTemplate when use template button is clicked', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      render(<Details {...defaultProps} />)
-      const useButton = screen.getByText(/operations\.useTemplate/i).closest('button')
-      fireEvent.click(useButton!)
-
-      expect(defaultProps.onApplyTemplate).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // Icon Types Tests
-  describe('Icon Types', () => {
-    it('should handle emoji icon type', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
-    })
-
-    it('should handle image icon type', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createImageIconPipelineInfo(),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
-    })
-
-    it('shows the loading state when template data is absent', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: null,
-      })
-
-      render(<Details {...defaultProps} />)
-
-      expect(screen.queryByText('Test Pipeline')).not.toBeInTheDocument()
-    })
-  })
-
-  // API Call Tests
-  describe('API Call', () => {
-    it('should call usePipelineTemplateById with correct params', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      render(<Details {...defaultProps} />)
-
-      expect(mockUsePipelineTemplateById).toHaveBeenCalledWith(
-        { template_id: 'pipeline-1', type: 'customized' },
-        true,
-      )
-    })
-
-    it('should call usePipelineTemplateById with built-in type', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      render(<Details {...defaultProps} type="built-in" />)
-
-      expect(mockUsePipelineTemplateById).toHaveBeenCalledWith(
-        { template_id: 'pipeline-1', type: 'built-in' },
-        true,
-      )
-    })
-  })
-
-  // Chunk Structure Tests
-  describe('Chunk Structure', () => {
-    it('should render chunk structure card for text mode', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo({ chunk_structure: 'text' }),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.getByText(/details\.structure/i)).toBeInTheDocument()
-    })
-
-    it('should render chunk structure card for parent-child mode', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo({ chunk_structure: 'hierarchical' }),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.getByText(/details\.structure/i)).toBeInTheDocument()
-    })
-
-    it('should render chunk structure card for qa mode', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo({ chunk_structure: 'qa' }),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.getByText(/details\.structure/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('Layout', () => {
-    it('should have fixed width sidebar', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      const { container } = render(<Details {...defaultProps} />)
-      const sidebar = container.querySelector('[class*="w-[360px]"]')
-      expect(sidebar).toBeInTheDocument()
-    })
-
-    it('should have workflow preview container with grow class', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      const { container } = render(<Details {...defaultProps} />)
-      const previewContainer = container.querySelector('[class*="grow"]')
-      expect(previewContainer).toBeInTheDocument()
-    })
-  })
+  await user.click(screen.getByRole('button', { name: 'datasetPipeline.operations.useTemplate' }))
+  expect(apply).toHaveBeenCalledOnce()
 })

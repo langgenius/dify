@@ -38,9 +38,9 @@ if __name__ == "__main__":
     parsed = parse_file_sections(source)
     assert "main" in parsed.sections
 
-    markdown = '```snippet {path="/examples/agenton/agenton_examples/session_snapshot.py"}\n```'
+    markdown = '```snippet {path="/examples/dify_agent/dify_agent_examples/run_server_consumer.py"}\n```'
     rendered = inject_snippets(markdown, PROJECT_ROOT / "docs")
 
-    assert rendered.startswith('```py {title="examples/agenton/agenton_examples/session_snapshot.py"}')
+    assert rendered.startswith('```py {title="examples/dify_agent/dify_agent_examples/run_server_consumer.py"}')
     assert "async def main() -> None:" in rendered
     assert "asyncio.run(main())" in rendered

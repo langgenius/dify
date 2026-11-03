@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { BlockDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import NodeSelector from '@/app/components/workflow/block-selector'
+import BlockSelector from '@/app/components/workflow/block-selector'
 import { TabType } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import StartNodeOption from './start-node-option'
@@ -17,7 +17,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
   onSelectUserInput,
   onSelectTrigger,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [showTriggerSelector, setShowTriggerSelector] = useState(false)
 
   const handleTriggerSelect = useCallback(
@@ -41,21 +41,19 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
         onClick={onSelectUserInput}
       />
 
-      <NodeSelector
+      <BlockSelector
         open={showTriggerSelector}
         onOpenChange={setShowTriggerSelector}
         onSelect={handleTriggerSelect}
-        placement="right"
-        offset={-200}
-        noBlocks={true}
-        showStartTab={true}
-        defaultActiveTab={TabType.Start}
+        side="bottom"
+        align="end"
+        standalonePanel={TabType.Start}
         availableBlocksTypes={[
           BlockEnum.TriggerSchedule,
           BlockEnum.TriggerWebhook,
           BlockEnum.TriggerPlugin,
         ]}
-        trigger={() => (
+        trigger={
           <StartNodeOption
             icon={
               <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
@@ -66,7 +64,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
             description={t(($) => $['onboarding.triggerDescription'], { ns: 'workflow' })}
             onClick={() => setShowTriggerSelector(true)}
           />
-        )}
+        }
       />
     </div>
   )

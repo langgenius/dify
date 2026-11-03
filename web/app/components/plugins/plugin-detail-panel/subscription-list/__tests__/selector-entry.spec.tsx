@@ -1,52 +1,9 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { SubscriptionSelectorEntry } from '../selector-entry'
-
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const React = await import('react')
-  const PopoverContext = React.createContext({
-    open: false,
-    setOpen: (_open: boolean) => {},
-  })
-
-  const Popover = ({
-    children,
-    open: controlledOpen,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => {
-    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
-    const isControlled = controlledOpen !== undefined
-    const open = isControlled ? !!controlledOpen : uncontrolledOpen
-    const setOpen = (nextOpen: boolean) => {
-      if (!isControlled) setUncontrolledOpen(nextOpen)
-      onOpenChange?.(nextOpen)
-    }
-
-    return <PopoverContext.Provider value={{ open, setOpen }}>{children}</PopoverContext.Provider>
-  }
-
-  const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
-    const { open, setOpen } = React.useContext(PopoverContext)
-    return <div onClick={() => setOpen(!open)}>{render}</div>
-  }
-
-  const PopoverContent = ({ children }: { children: React.ReactNode }) => {
-    const { open } = React.useContext(PopoverContext)
-    return open ? <div data-testid="popover-content">{children}</div> : null
-  }
-
-  return {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-  }
-})
 
 let mockSubscriptions: TriggerSubscription[] = []
 const mockRefetch = vi.fn()
@@ -59,10 +16,6 @@ vi.mock('../use-subscription-list', () => ({
   }),
 }))
 
-vi.mock('../../../store', () => ({
-  usePluginStore: () => ({ detail: undefined }),
-}))
-
 vi.mock('@/service/use-triggers', () => ({
   useTriggerProviderInfo: () => ({ data: { supported_creation_methods: [] } }),
   useTriggerOAuthConfig: () => ({ data: undefined, refetch: vi.fn() }),
@@ -70,7 +23,8 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: Object.assign(vi.fn(), {
     success: vi.fn(),
     error: vi.fn(),
@@ -101,22 +55,6 @@ beforeEach(() => {
 })
 
 describe('SubscriptionSelectorEntry', () => {
-  it('should render empty state label when no selection and closed', () => {
-    render(<SubscriptionSelectorEntry selectedId={undefined} onSelect={vi.fn()} />)
-
-    expect(
-      screen.getByText('pluginTrigger.subscription.noSubscriptionSelected'),
-    ).toBeInTheDocument()
-  })
-
-  it('should render placeholder when open without selection', () => {
-    render(<SubscriptionSelectorEntry selectedId={undefined} onSelect={vi.fn()} />)
-
-    fireEvent.click(screen.getByRole('button'))
-
-    expect(screen.getByText('pluginTrigger.subscription.selectPlaceholder')).toBeInTheDocument()
-  })
-
   it('should show selected subscription name when id matches', () => {
     render(<SubscriptionSelectorEntry selectedId="sub-1" onSelect={vi.fn()} />)
 
@@ -129,18 +67,25 @@ describe('SubscriptionSelectorEntry', () => {
     expect(screen.getByText('pluginTrigger.subscription.subscriptionRemoved')).toBeInTheDocument()
   })
 
-  it('should call onSelect and close the list after selection', () => {
+  it('should call onSelect and close the list after selection', async () => {
+    const user = userEvent.setup()
     const onSelect = vi.fn()
 
     render(<SubscriptionSelectorEntry selectedId={undefined} onSelect={onSelect} />)
 
-    fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
+    await user.click(
+      screen.getByRole('button', { name: 'pluginTrigger.subscription.noSubscriptionSelected' }),
+    )
+    expect(
+      await screen.findByText('pluginTrigger.subscription.selectPlaceholder'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Subscription One' }))
 
     expect(onSelect).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'sub-1', name: 'Subscription One' }),
       expect.any(Function),
     )
-    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

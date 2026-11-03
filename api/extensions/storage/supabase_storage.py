@@ -53,13 +53,46 @@ class SupabaseStorage(BaseStorage):
     @override
     def exists(self, filename):
         result = self.client.storage.from_(self.bucket_name).list(path=filename)
-        if len(result) > 0:
-            return True
-        return False
+        return len(result) > 0
 
     @override
     def delete(self, filename: str):
         self.client.storage.from_(self.bucket_name).remove([filename])
+
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        bucket = self.client.storage.from_(self.bucket_name)
+        # Supabase lists only immediate children, with offset pagination.
+        root = path.rstrip("/") if path.endswith("/") else path.rpartition("/")[0]
+        pending = [root]
+        keys: list[str] = []
+        page_size = 100
+        while pending:
+            folder = pending.pop()
+            offset = 0
+            while True:
+                page = bucket.list(
+                    path=folder,
+                    options={
+                        "limit": page_size,
+                        "offset": offset,
+                        "sortBy": {"column": "name", "order": "asc"},
+                    },
+                )
+                for entry in page:
+                    key = f"{folder}/{entry['name']}" if folder else entry["name"]
+                    if entry.get("id") is None:
+                        directory_key = key + "/"
+                        if directory_key.startswith(path) or path.startswith(directory_key):
+                            pending.append(key)
+                            if directory_key.startswith(path):
+                                keys.append(directory_key)
+                    elif key.startswith(path):
+                        keys.append(key)
+                if len(page) < page_size:
+                    break
+                offset += page_size
+        return self._filter_scan_keys(keys, files, directories)
 
     def bucket_exists(self):
         buckets = self.client.storage.list_buckets()

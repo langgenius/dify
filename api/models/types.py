@@ -1,10 +1,11 @@
 import enum
 import json
 import uuid
-from typing import Any, cast, override
+import warnings
+from typing import Any, cast, overload, override
 
 import sqlalchemy as sa
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import CHAR, TEXT, VARCHAR, LargeBinary, TypeDecorator
 from sqlalchemy.dialects.mysql import LONGBLOB, LONGTEXT
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB, UUID
@@ -70,7 +71,19 @@ class LongText(TypeDecorator[str | None]):
 
 
 class JSONModelColumn[T: BaseModel](TypeDecorator[T | None]):
-    """Store a Pydantic model as dialect-adjusted LongText JSON."""
+    """Store coercible Pydantic model input as dialect-adjusted LongText JSON.
+
+    New model-only columns should use ``FrozenPydanticModelColumn``. Existing
+    uses must not be replaced mechanically because they may depend on:
+
+    - historical ``dict`` or JSON string writes;
+    - non-strict validation and coercion;
+    - Pydantic models that are not frozen;
+    - compatibility with dirty or otherwise non-canonical stored data.
+
+    Audit both callers and persisted values before migrating an existing
+    column.
+    """
 
     impl = TEXT
     cache_ok = True
@@ -78,6 +91,13 @@ class JSONModelColumn[T: BaseModel](TypeDecorator[T | None]):
     _model_class: type[T]
 
     def __init__(self, model_class: type[T]):
+        # Existing persisted columns remain supported until their data and callers are audited.
+        warnings.warn(
+            "JSONModelColumn is a legacy coercing TEXT-backed type. "
+            "Use FrozenPydanticModelColumn for new model-only persistence.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if not issubclass(model_class, BaseModel):
             raise TypeError(f"{model_class.__module__}.{model_class.__name__} must be a Pydantic BaseModel subclass")
         self._model_class = model_class
@@ -169,6 +189,118 @@ class AdjustedJSON(TypeDecorator[dict | list | None]):
         self, value: dict[str, Any] | list[Any] | None, dialect: Dialect
     ) -> dict[str, Any] | list[Any] | None:
         return value
+
+
+class FrozenPydanticModelColumn[T: BaseModel](TypeDecorator[T]):
+    """Persist a frozen Pydantic model as JSON in a dialect-adjusted text column.
+
+    Binding serializes the accepted model directly with
+    ``model_dump_json(warnings="error")``. Loading validates the stored JSON in
+    strict mode and lets Pydantic validation errors propagate to the caller.
+    Pass a concrete model class for concrete models. For discriminated unions,
+    pass a ``TypeAdapter`` together with every allowed concrete model class.
+
+    The backing type is ``TEXT`` on PostgreSQL and SQLite and ``LONGTEXT`` on
+    MySQL. This is intentional: ``model_dump_json`` already returns JSON text,
+    while passing that string through SQLAlchemy's ``JSON`` type would encode it
+    again and persist a JSON string scalar instead of the model's JSON object.
+
+    SQLAlchemy does not track in-place changes made inside a Pydantic model, so
+    this type only accepts models configured with ``frozen=True``. Persisted
+    values must be updated by constructing a new model and assigning it to the
+    ORM attribute as a whole, for example ``record.payload = PayloadModel(...)``.
+    Otherwise the attribute may not be marked dirty and the change may not be
+    persisted.
+
+    Pydantic freezing is shallow: nested mutable containers such as ``dict`` and
+    ``list`` can still be changed in place. Callers must treat nested values as
+    immutable too instead of mutating paths such as
+    ``record.payload.root["key"]``. Supporting nested in-place mutation would
+    require SQLAlchemy's Mutable extension or explicit deep change tracking,
+    which this type does not provide.
+    """
+
+    impl = TEXT
+    cache_ok = True
+
+    _model_type: type[T] | None
+    _adapter: TypeAdapter[T] | None
+    model_types: tuple[type[BaseModel], ...]
+
+    @overload
+    def __init__(
+        self,
+        model_type: type[T],
+        /,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        adapter: TypeAdapter[T],
+        /,
+        *,
+        model_types: tuple[type[BaseModel], ...],
+    ) -> None: ...
+
+    def __init__(
+        self,
+        schema: type[T] | TypeAdapter[T],
+        /,
+        *,
+        model_types: tuple[type[BaseModel], ...] | None = None,
+    ) -> None:
+        if isinstance(schema, TypeAdapter):
+            if model_types is None:
+                raise TypeError("model_types is required when schema is a TypeAdapter")
+            if not model_types:
+                raise ValueError("model_types must not be empty")
+            self._model_type = None
+            self._adapter = schema
+            self.model_types = model_types
+        else:
+            if model_types is not None:
+                raise TypeError("model_types must not be provided for a concrete model")
+            self._model_type = schema
+            self._adapter = None
+            self.model_types = (schema,)
+
+        for allowed_model_type in self.model_types:
+            if not isinstance(allowed_model_type, type) or not issubclass(allowed_model_type, BaseModel):
+                raise TypeError("model_types must contain only Pydantic BaseModel classes")
+            model_name = f"{allowed_model_type.__module__}.{allowed_model_type.__qualname__}"
+            if allowed_model_type.model_config.get("frozen") is not True:
+                raise TypeError(f"{model_name} must configure frozen=True")
+            if allowed_model_type.model_config.get("strict") is not True:
+                raise TypeError(f"{model_name} must configure strict=True")
+        super().__init__()
+
+    @override
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
+        if dialect.name == "mysql":
+            return dialect.type_descriptor(LONGTEXT())
+        return dialect.type_descriptor(TEXT())
+
+    @override
+    def process_bind_param(self, value: object | None, dialect: Dialect) -> str | None:
+        del dialect
+        if value is None:
+            return None
+        if not isinstance(value, BaseModel) or not isinstance(value, self.model_types):
+            allowed_model_names = ", ".join(model_type.__name__ for model_type in self.model_types)
+            raise TypeError(f"value must be one of these Pydantic models: {allowed_model_names}")
+        return value.model_dump_json(warnings="error")
+
+    @override
+    def process_result_value(self, value: str | bytes | bytearray | None, dialect: Dialect) -> T | None:
+        del dialect
+        if value is None:
+            return None
+        if self._model_type is not None:
+            return self._model_type.model_validate_json(value, strict=True)
+        if self._adapter is None:
+            raise RuntimeError("Pydantic JSON validator is not configured")
+        return self._adapter.validate_json(value, strict=True)
 
 
 class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):

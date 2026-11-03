@@ -1,4 +1,5 @@
-import type { Locale } from '@/i18n-config'
+import type { AppMode } from '@dify/contracts/api/web/types.gen'
+import type { Locale } from '@/i18n'
 import type { AppIconType } from '@/types/app'
 
 export type ConversationItem = {
@@ -36,6 +37,7 @@ export type AppMeta = {
 export type CustomConfigValueType = string | number | boolean | null | undefined
 export type AppData = {
   app_id: string
+  mode?: AppMode
   can_replace_logo?: boolean
   custom_config: Record<string, CustomConfigValueType> | null
   enable_site?: boolean

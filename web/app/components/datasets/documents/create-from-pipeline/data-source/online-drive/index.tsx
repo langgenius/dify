@@ -1,17 +1,21 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
-import { useGetDataSourceAuth } from '@/service/use-datasource'
+import { consoleQuery } from '@/service/console'
 import Header from '../base/header'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import FileList from './file-list'
@@ -35,7 +39,7 @@ const OnlineDrive = ({
   const docLink = useDocLink()
   const [isInitialMount, setIsInitialMount] = useState(true)
   const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const {
     nextPageParameters,
     breadcrumbs,
@@ -61,10 +65,11 @@ const OnlineDrive = ({
   const [isLoading, setIsLoading] = useState(false)
   const isLoadingRef = useRef(false)
 
-  const { data: dataSourceAuth } = useGetDataSourceAuth({
-    pluginId: nodeData.plugin_id,
-    provider: nodeData.provider_name,
-  })
+  const { data: dataSourceAuth } = useQuery(
+    consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
+      input: { params: { provider_id: `${nodeData.plugin_id}/${nodeData.provider_name}` } },
+    }),
+  )
 
   const datasourceNodeRunURL = !isInPipeline
     ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
@@ -202,10 +207,8 @@ const OnlineDrive = ({
   )
 
   const handleSetting = useCallback(() => {
-    openIntegrationsSetting({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('data-source')
+  }, [setSettingsDestination])
 
   return (
     <div className="flex flex-col gap-y-2">

@@ -15,7 +15,7 @@ const nodeDefault: NodeDefault<AnswerNodeType> = {
     variables: [],
     answer: '',
   },
-  checkValid(payload: AnswerNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: AnswerNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     const { answer } = payload
     if (!answer)

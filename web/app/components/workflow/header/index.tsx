@@ -1,8 +1,8 @@
 import type { HeaderInNormalProps } from './header-in-normal'
 import type { HeaderInRestoringProps } from './header-in-restoring'
 import type { HeaderInHistoryProps } from './header-in-view-history'
-import dynamic from '@/next/dynamic'
-import { useWorkflowMode } from '../hooks'
+import dynamic from 'next/dynamic'
+import { useWorkflowMode } from '../hooks/use-workflow-mode'
 import HeaderInNormal from './header-in-normal'
 
 const HeaderInHistory = dynamic(() => import('./header-in-view-history'), {

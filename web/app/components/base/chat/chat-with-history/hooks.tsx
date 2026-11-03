@@ -1,22 +1,22 @@
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ExtraContent } from '../chat/type'
-import type { Callback, ChatConfig, ChatItem, Feedback } from '../types'
-import type { InstalledApp } from '@/models/explore'
+import type { Callback, ChatConfig, ChatItem, OnFeedback } from '../types'
 import type { AppData, ConversationItem } from '@/models/share'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  useConversationIdInfo,
+  useConversationSelection,
   useWebAppSidebarCollapseState,
 } from '@/app/components/base/chat/storage'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { InputVarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
-import { changeLanguage } from '@/i18n-config/client'
+import { changeLanguage } from '@/i18n/client'
 import {
   AppSourceType,
   delConversation,
@@ -26,11 +26,13 @@ import {
   updateFeedback,
 } from '@/service/share'
 import {
+  EnvironmentConversationNotFoundError,
   useInvalidateShareConversations,
   useShareChatList,
   useShareConversationName,
   useShareConversations,
 } from '@/service/use-share'
+import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { enrichSubmittedHumanInputFormData } from '../chat/answer/human-input-content/submitted-utils'
@@ -76,7 +78,7 @@ function getFormattedChatList(messages: any[]) {
     const humanInputFormDataList: HumanInputFormData[] = []
     const humanInputFilledFormDataList: HumanInputFilledFormData[] = []
     let workflowRunId = ''
-    item.extra_contents?.forEach((content: ExtraContent) => {
+    item.extra_contents?.forEach((content: ExtraContent, contentIndex: number) => {
       if (content.type !== 'human_input') return
 
       const formDefinition = 'form_definition' in content ? content.form_definition : undefined
@@ -88,16 +90,17 @@ function getFormattedChatList(messages: any[]) {
       }
 
       if (!('form_submission_data' in content) || !content.form_submission_data) return
-      const currentFormIndex = humanInputFormDataList.findIndex(
-        (item) => item.node_id === content.form_submission_data.node_id,
-      )
-      const requiredFormData =
-        formDefinition ||
-        (currentFormIndex > -1 ? humanInputFormDataList[currentFormIndex] : undefined)
-      if (currentFormIndex > -1) humanInputFormDataList.splice(currentFormIndex, 1)
+      // Legacy submissions without a definition expose no form ID, so give their
+      // cards a history-only identity.
+      const formId =
+        formDefinition?.form_id ??
+        `${content.workflow_run_id ?? item.id}:${content.form_submission_data.node_id}:${contentIndex}`
       workflowRunId = content.workflow_run_id || workflowRunId
       humanInputFilledFormDataList.push(
-        enrichSubmittedHumanInputFormData(content.form_submission_data, requiredFormData),
+        enrichSubmittedHumanInputFormData(
+          { ...content.form_submission_data, form_id: formId },
+          formDefinition,
+        ),
       )
     })
     newChatList.push({
@@ -128,7 +131,7 @@ function getFormattedChatList(messages: any[]) {
   })
   return newChatList
 }
-export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
+export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const appInfo = useWebAppStore((s) => s.appInfo)
@@ -150,7 +153,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           title: app.name,
           description: app.description,
           icon_type: app.icon_type,
-          icon: app.icon,
+          icon: app.icon ?? undefined,
           icon_background: app.icon_background,
           icon_url: app.icon_url,
           prompt_public: false,
@@ -158,13 +161,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           show_workflow_steps: true,
           use_icon_as_answer_icon: app.use_icon_as_answer_icon,
         },
-        plan: 'basic',
         custom_config: null,
-      } as AppData
+      } satisfies AppData
     }
     return appInfo
   }, [isInstalledApp, installedAppInfo, appInfo])
   const appId = useMemo(() => appData?.app_id, [appData])
+  const conversationScopeId = getWebAppConversationScopeId(resolveWebAppAddress(), appId)
   const [userId, setUserId] = useState<string>()
   useEffect(() => {
     getProcessedSystemVariablesFromUrlParams().then(({ user_id }) => {
@@ -186,27 +189,10 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     },
     [appId, setStoredSidebarCollapseState],
   )
-  const [conversationIdInfo, setConversationIdInfo] = useConversationIdInfo()
-  const currentConversationId = useMemo(
-    () => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '',
-    [appId, conversationIdInfo, userId],
-  )
-  const handleConversationIdInfoChange = useCallback(
-    (changeConversationId: string) => {
-      if (appId) {
-        let prevValue = conversationIdInfo?.[appId || '']
-        if (typeof prevValue === 'string') prevValue = {}
-        setConversationIdInfo({
-          ...conversationIdInfo,
-          [appId || '']: {
-            ...prevValue,
-            [userId || 'DEFAULT']: changeConversationId,
-          },
-        })
-      }
-    },
-    [appId, conversationIdInfo, setConversationIdInfo, userId],
-  )
+  const { currentConversationId, handleConversationIdInfoChange } = useConversationSelection({
+    scopeId: isInstalledApp || appData?.end_user_id ? conversationScopeId : '',
+    userId: isInstalledApp ? userId : appData?.end_user_id,
+  })
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''
@@ -239,7 +225,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         refetchOnReconnect: false,
       },
     )
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList(
+  const {
+    data: appChatListData,
+    error: appChatListError,
+    isLoading: appChatListDataLoading,
+  } = useShareChatList(
     {
       conversationId: chatShouldReloadKey,
       appSourceType,
@@ -254,6 +244,15 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
+  useEffect(() => {
+    if (!(appChatListError instanceof EnvironmentConversationNotFoundError)) return
+
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A missing Environment conversation resets the active conversation.
+    setNewConversationId('')
+    handleConversationIdInfoChange('')
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A missing Environment conversation must clear the rendered chat.
+    setClearChatList(true)
+  }, [appChatListError, handleConversationIdInfoChange])
   const appPrevChatTree = useMemo(
     () =>
       currentConversationId && appChatListData?.data.length
@@ -265,7 +264,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const pinnedConversationList = useMemo(() => {
     return appPinnedConversationData?.data || []
   }, [appPinnedConversationData])
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'share'])
   const newConversationInputsRef = useRef<Record<string, any>>({})
   const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any>>({})
   const [initInputs, setInitInputs] = useState<Record<string, any>>({})
@@ -290,18 +289,24 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           }
         }
         if (item.number) {
-          const convertedNumber = Number(initInputs[item.number.variable])
+          const rawNumber = initInputs[item.number.variable]
+          const convertedNumber =
+            rawNumber === undefined || rawNumber === null || rawNumber === ''
+              ? Number.NaN
+              : Number(rawNumber)
           return {
             ...item.number,
-            default: convertedNumber || item.default || item.number.default,
+            default: Number.isNaN(convertedNumber)
+              ? (item.default ?? item.number.default)
+              : convertedNumber,
             type: 'number',
           }
         }
         if (item.checkbox) {
-          const preset = initInputs[item.checkbox.variable] === true
+          const preset = initInputs[item.checkbox.variable]
           return {
             ...item.checkbox,
-            default: preset || item.default || item.checkbox.default,
+            default: typeof preset === 'boolean' ? preset : (item.default ?? item.checkbox.default),
             type: 'checkbox',
           }
         }
@@ -358,7 +363,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   useEffect(() => {
     const conversationInputs: Record<string, any> = {}
     inputsForms.forEach((item: any) => {
-      conversationInputs[item.variable] = item.default || null
+      conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
     })
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
@@ -434,7 +439,14 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         requiredVars.forEach(({ variable, label, type }) => {
           if (hasEmptyInput) return
           if (fileIsUploading) return
-          if (!newConversationInputsRef.current[variable] && !silent)
+          const inputValue = newConversationInputsRef.current[variable]
+          if (
+            (inputValue === undefined ||
+              inputValue === null ||
+              inputValue === '' ||
+              (Array.isArray(inputValue) && inputValue.length === 0)) &&
+            !silent
+          )
             hasEmptyInput = label as string
           if (
             (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -467,7 +479,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     [inputsForms, t, allInputsHidden],
   )
   const handleStartChat = useCallback(
-    (callback: any) => {
+    (callback?: () => void) => {
       if (checkInputsRequired()) {
         setShowNewConversationItemInList(true)
         callback?.()
@@ -490,12 +502,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const handleNewConversation = useCallback(async () => {
     currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
-    handleChangeConversation('')
     const conversationInputs: Record<string, any> = {}
     inputsForms.forEach((item: any) => {
-      conversationInputs[item.variable] = item.default || null
+      conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
     })
     handleNewConversationInputsChange(conversationInputs)
+    handleChangeConversation('')
     setClearChatList(true)
   }, [
     handleChangeConversation,
@@ -539,7 +551,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       handleUpdateConversationList()
     },
     [
-      isInstalledApp,
+      appSourceType,
       appId,
       t,
       handleUpdateConversationList,
@@ -559,7 +571,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       setConversationRenaming(true)
       try {
         await renameConversation(appSourceType, appId, conversationId, newName)
-        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         setOriginConversationList(
           produce((draft) => {
             const index = originConversationList.findIndex((item) => item.id === conversationId)
@@ -575,7 +586,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         setConversationRenaming(false)
       }
     },
-    [isInstalledApp, appId, t, conversationRenaming, originConversationList],
+    [appSourceType, appId, t, conversationRenaming, originConversationList],
   )
   const handleNewConversationCompleted = useCallback(
     (newConversationId: string) => {
@@ -586,19 +597,18 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     },
     [handleConversationIdInfoChange, invalidateShareConversations],
   )
-  const handleFeedback = useCallback(
-    async (messageId: string, feedback: Feedback) => {
+  const handleFeedback: OnFeedback = useCallback(
+    async (messageId, feedback) => {
       await updateFeedback(
         {
-          url: `/messages/${messageId}/feedbacks`,
+          messageId,
           body: { rating: feedback.rating, content: feedback.content },
         },
         appSourceType,
         appId,
       )
-      toast.success(t(($) => $['api.success'], { ns: 'common' }))
     },
-    [appSourceType, appId, t],
+    [appSourceType, appId],
   )
   return {
     isInstalledApp,

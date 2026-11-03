@@ -5,6 +5,9 @@ import { SOCKET_URL } from '@/config'
 
 type AckArgs = unknown[]
 
+export const isDefaultSocketUrl = (socketUrl = SOCKET_URL) =>
+  socketUrl === 'ws://localhost' || socketUrl === 'ws://localhost:5001'
+
 const isUnauthorizedAck = (...ackArgs: AckArgs): boolean => {
   const [first, second] = ackArgs
 

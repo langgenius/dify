@@ -8,6 +8,20 @@ export type OAuthDataSourceBindingResponse = {
   result: string
 }
 
+export type ErrorMessageResponse = {
+  error: string
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type OAuthDataSourceResponse = {
   data: string
 }
@@ -30,6 +44,7 @@ export type OAuthProviderAppResponse = {
   app_label: {
     [key: string]: unknown
   }
+  auto_authorize: boolean
   scope: string
 }
 
@@ -39,10 +54,12 @@ export type OAuthClientPayload = {
 
 export type OAuthProviderAccountResponse = {
   avatar?: string | null
+  created_at: number
   email: string
-  interface_language: string
+  id: string
+  interface_language: string | null
   name: string
-  timezone: string
+  timezone: string | null
 }
 
 export type OAuthProviderAuthorizeResponse = {
@@ -77,8 +94,12 @@ export type GetOauthDataSourceBindingByProviderData = {
 }
 
 export type GetOauthDataSourceBindingByProviderErrors = {
-  400: unknown
+  400: ErrorMessageResponse | ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetOauthDataSourceBindingByProviderError =
+  GetOauthDataSourceBindingByProviderErrors[keyof GetOauthDataSourceBindingByProviderErrors]
 
 export type GetOauthDataSourceBindingByProviderResponses = {
   200: OAuthDataSourceBindingResponse
@@ -97,9 +118,13 @@ export type GetOauthDataSourceByProviderData = {
 }
 
 export type GetOauthDataSourceByProviderErrors = {
-  400: unknown
-  403: unknown
+  400: ErrorMessageResponse | ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetOauthDataSourceByProviderError =
+  GetOauthDataSourceByProviderErrors[keyof GetOauthDataSourceByProviderErrors]
 
 export type GetOauthDataSourceByProviderResponses = {
   200: OAuthDataSourceResponse
@@ -119,8 +144,12 @@ export type GetOauthDataSourceByProviderByBindingIdSyncData = {
 }
 
 export type GetOauthDataSourceByProviderByBindingIdSyncErrors = {
-  400: unknown
+  400: ErrorMessageResponse | ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetOauthDataSourceByProviderByBindingIdSyncError =
+  GetOauthDataSourceByProviderByBindingIdSyncErrors[keyof GetOauthDataSourceByProviderByBindingIdSyncErrors]
 
 export type GetOauthDataSourceByProviderByBindingIdSyncResponses = {
   200: OAuthDataSourceSyncResponse
@@ -136,9 +165,17 @@ export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlData = {
   }
   query?: {
     credential_id?: string
+    visibility?: string
   }
   url: '/oauth/plugin/{provider_id}/datasource/get-authorization-url'
 }
+
+export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlErrors = {
+  default: ErrorResponse
+}
+
+export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlError =
+  GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlErrors[keyof GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlErrors]
 
 export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponses = {
   200: PluginOAuthAuthorizationUrlResponse
@@ -152,9 +189,18 @@ export type GetOauthPluginByProviderToolAuthorizationUrlData = {
   path: {
     provider: string
   }
-  query?: never
+  query?: {
+    visibility?: 'all_team_members' | 'only_me'
+  }
   url: '/oauth/plugin/{provider}/tool/authorization-url'
 }
+
+export type GetOauthPluginByProviderToolAuthorizationUrlErrors = {
+  default: ErrorResponse
+}
+
+export type GetOauthPluginByProviderToolAuthorizationUrlError =
+  GetOauthPluginByProviderToolAuthorizationUrlErrors[keyof GetOauthPluginByProviderToolAuthorizationUrlErrors]
 
 export type GetOauthPluginByProviderToolAuthorizationUrlResponses = {
   200: PluginOAuthAuthorizationUrlResponse
@@ -170,6 +216,12 @@ export type PostOauthProviderData = {
   url: '/oauth/provider'
 }
 
+export type PostOauthProviderErrors = {
+  default: ErrorResponse
+}
+
+export type PostOauthProviderError = PostOauthProviderErrors[keyof PostOauthProviderErrors]
+
 export type PostOauthProviderResponses = {
   200: OAuthProviderAppResponse
 }
@@ -182,6 +234,13 @@ export type PostOauthProviderAccountData = {
   query?: never
   url: '/oauth/provider/account'
 }
+
+export type PostOauthProviderAccountErrors = {
+  default: ErrorResponse
+}
+
+export type PostOauthProviderAccountError =
+  PostOauthProviderAccountErrors[keyof PostOauthProviderAccountErrors]
 
 export type PostOauthProviderAccountResponses = {
   200: OAuthProviderAccountResponse
@@ -197,6 +256,13 @@ export type PostOauthProviderAuthorizeData = {
   url: '/oauth/provider/authorize'
 }
 
+export type PostOauthProviderAuthorizeErrors = {
+  default: ErrorResponse
+}
+
+export type PostOauthProviderAuthorizeError =
+  PostOauthProviderAuthorizeErrors[keyof PostOauthProviderAuthorizeErrors]
+
 export type PostOauthProviderAuthorizeResponses = {
   200: OAuthProviderAuthorizeResponse
 }
@@ -210,6 +276,13 @@ export type PostOauthProviderTokenData = {
   query?: never
   url: '/oauth/provider/token'
 }
+
+export type PostOauthProviderTokenErrors = {
+  default: ErrorResponse
+}
+
+export type PostOauthProviderTokenError =
+  PostOauthProviderTokenErrors[keyof PostOauthProviderTokenErrors]
 
 export type PostOauthProviderTokenResponses = {
   200: OAuthProviderTokenResponse

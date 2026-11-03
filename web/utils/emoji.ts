@@ -1,11 +1,9 @@
-import type { Emoji } from '@emoji-mart/data'
-import { SearchIndex } from 'emoji-mart'
+import legacyEmojis from './emoji-legacy.json'
 
-export async function searchEmoji(value: string) {
-  const emojis: Emoji[] = (await SearchIndex.search(value)) || []
-
-  const results = emojis.map((emoji) => {
-    return emoji.skins[0]!.native
-  })
-  return results
+/** Resolve persisted emoji-mart IDs (including aliases) without loading picker data. */
+export function resolveEmoji(value?: string | null): string {
+  if (!value) return '🤖'
+  const id = value.replace(/^:|:$/g, '')
+  if (Object.hasOwn(legacyEmojis, id)) return legacyEmojis[id as keyof typeof legacyEmojis]
+  return value
 }

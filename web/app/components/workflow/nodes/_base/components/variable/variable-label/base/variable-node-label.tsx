@@ -13,10 +13,7 @@ const VariableNodeLabel = ({ nodeType, nodeTitle }: VariableNodeLabelProps) => {
     <>
       <VarBlockIcon type={nodeType} className="shrink-0 text-text-secondary" />
       {nodeTitle && (
-        <div
-          className="max-w-[60px] truncate system-xs-medium text-text-secondary"
-          title={nodeTitle}
-        >
+        <div className="max-w-15 truncate system-xs-medium text-text-secondary" title={nodeTitle}>
           {nodeTitle}
         </div>
       )}

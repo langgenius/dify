@@ -6,10 +6,11 @@ export type DocumentContextValue = {
   documentId?: string
   docForm?: ChunkingMode
   parentMode?: ParentMode
+  canEdit?: boolean
 }
 
 export const DocumentContext = createContext<DocumentContextValue>({})
 
-export const useDocumentContext = (selector: (value: DocumentContextValue) => any) => {
+export const useDocumentContext = <T>(selector: (value: DocumentContextValue) => T) => {
   return useContextSelector(DocumentContext, selector)
 }

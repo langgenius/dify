@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import Countdown from '../countdown'
@@ -6,18 +7,13 @@ import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../storage'
 
 describe('Countdown', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
-    localStorage.clear()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    localStorage.removeItem(COUNT_DOWN_KEY)
   })
 
   afterEach(() => {
     vi.useRealTimers()
-  })
-
-  it('shows the stored remaining time', () => {
-    localStorage.setItem(COUNT_DOWN_KEY, '30000')
-    render(<Countdown />)
-    expect(screen.getByText('30s')).toBeInTheDocument()
+    vi.restoreAllMocks()
   })
 
   it('restores the stored time after hydrating server markup', async () => {
@@ -25,27 +21,62 @@ describe('Countdown', () => {
     localStorage.setItem(COUNT_DOWN_KEY, '30000')
     const container = document.createElement('div')
     container.innerHTML = renderToString(<Countdown />)
-    const root = hydrateRoot(container, <Countdown />)
+    expect(container).toHaveTextContent('login.checkCode.didNotReceiveCode')
+    expect(container).not.toHaveTextContent('30s')
+    expect(container.querySelector('button')).toBeNull()
 
-    await waitFor(() => expect(container).toHaveTextContent('30s'))
-    act(() => root.unmount())
+    const onRecoverableError = vi.fn()
+    const root = hydrateRoot(container, <Countdown />, { onRecoverableError })
+
+    try {
+      await waitFor(() => expect(container).toHaveTextContent('30s'))
+      expect(onRecoverableError).not.toHaveBeenCalled()
+    } finally {
+      act(() => root.unmount())
+    }
   })
 
-  it('removes the stored time when the countdown ends', () => {
+  it('enables resending when the stored countdown expires', () => {
     localStorage.setItem(COUNT_DOWN_KEY, '1000')
     render(<Countdown />)
     act(() => vi.advanceTimersByTime(2000))
-    expect(localStorage.removeItem).toHaveBeenCalledWith(COUNT_DOWN_KEY)
+    expect(screen.getByRole('button', { name: 'login.checkCode.resend' })).toBeEnabled()
+    expect(Number(localStorage.getItem(COUNT_DOWN_KEY))).toBe(0)
   })
 
-  it('resets the countdown and invokes the callback when resent', () => {
+  it('resets the countdown and invokes the callback when resent', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     localStorage.setItem(COUNT_DOWN_KEY, '0')
     const onResend = vi.fn()
     render(<Countdown onResend={onResend} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'login.checkCode.resend' }))
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.resend' }))
 
-    expect(localStorage.setItem).toHaveBeenCalledWith(COUNT_DOWN_KEY, String(COUNT_DOWN_TIME_MS))
+    expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe(String(COUNT_DOWN_TIME_MS))
+    expect(onResend).toHaveBeenCalledOnce()
+  })
+
+  it('does not restart the countdown while resend is disabled', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    localStorage.setItem(COUNT_DOWN_KEY, '0')
+    const onResend = vi.fn()
+    render(<Countdown onResend={onResend} resendDisabled />)
+
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.resend' }))
+
+    expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe('0')
+    expect(onResend).not.toHaveBeenCalled()
+  })
+
+  it('lets the caller defer restarting the countdown until resend succeeds', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    localStorage.setItem(COUNT_DOWN_KEY, '0')
+    const onResend = vi.fn()
+    render(<Countdown onResend={onResend} restartOnResend={false} />)
+
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.resend' }))
+
+    expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe('0')
     expect(onResend).toHaveBeenCalledOnce()
   })
 })

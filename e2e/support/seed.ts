@@ -1,6 +1,7 @@
+import type { ConsoleClient } from './api/console-client.ts'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { e2eDir } from '../scripts/common'
+import { e2eDir } from '../scripts/common.ts'
 
 export type SeedStatus = 'blocked' | 'created' | 'skipped' | 'updated' | 'verified'
 
@@ -18,6 +19,7 @@ export type SeedResult = {
 }
 
 export type SeedContext = {
+  consoleClient: ConsoleClient
   dryRun: boolean
   resources: Map<string, SeedResource>
 }

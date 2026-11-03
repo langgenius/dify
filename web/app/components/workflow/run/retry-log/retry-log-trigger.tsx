@@ -8,7 +8,7 @@ type RetryLogTriggerProps = {
   onShowRetryResultList: (detail: NodeTracing[]) => void
 }
 const RetryLogTrigger = ({ nodeInfo, onShowRetryResultList }: RetryLogTriggerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { retryDetail } = nodeInfo
 
   const handleShowRetryResultList = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -25,7 +25,10 @@ const RetryLogTrigger = ({ nodeInfo, onShowRetryResultList }: RetryLogTriggerPro
     >
       <div className="flex items-center">
         <RiRestartFill className="mr-0.5 size-4 shrink-0 text-components-button-tertiary-text" />
-        {t(($) => $['nodes.common.retry.retries'], { ns: 'workflow', num: retryDetail?.length })}
+        {t(($) => $['nodes.common.retry.retries'], {
+          ns: 'workflow',
+          num: retryDetail?.length ?? 0,
+        })}
       </div>
       <RiArrowRightSLine className="size-4 shrink-0 text-components-button-tertiary-text" />
     </Button>

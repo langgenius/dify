@@ -10,6 +10,7 @@ import {
   $getSelection,
   $isDecoratorNode,
   $isNodeSelection,
+  $isRangeSelection,
   COMMAND_PRIORITY_LOW,
   KEY_BACKSPACE_COMMAND,
   KEY_DELETE_COMMAND,
@@ -38,13 +39,12 @@ export const useSelectOrDelete: UseSelectOrDeleteHandler = (
   const handleDelete = useCallback(
     (event: KeyboardEvent) => {
       const selection = $getSelection()
-      const nodes = selection?.getNodes()
+      const selectedNode = selection?.getNodes().find((node) => node.getKey() === nodeKey)
       if (
-        !isSelected &&
-        nodes?.length === 1 &&
-        (($isContextBlockNode(nodes[0]) && command === DELETE_CONTEXT_BLOCK_COMMAND) ||
-          ($isHistoryBlockNode(nodes[0]) && command === DELETE_HISTORY_BLOCK_COMMAND) ||
-          ($isQueryBlockNode(nodes[0]) && command === DELETE_QUERY_BLOCK_COMMAND))
+        $isRangeSelection(selection) &&
+        (($isContextBlockNode(selectedNode) && command === DELETE_CONTEXT_BLOCK_COMMAND) ||
+          ($isHistoryBlockNode(selectedNode) && command === DELETE_HISTORY_BLOCK_COMMAND) ||
+          ($isQueryBlockNode(selectedNode) && command === DELETE_QUERY_BLOCK_COMMAND))
       ) {
         editor.dispatchCommand(command, undefined)
       }
@@ -68,7 +68,7 @@ export const useSelectOrDelete: UseSelectOrDeleteHandler = (
   const handleSelect = useCallback(
     (e: MouseEvent) => {
       if (!e.metaKey && !e.ctrlKey) {
-        e.stopPropagation()
+        // Keep the click available to React handlers on the block (for example, a canvas jump).
         clearSelection()
         setSelected(true)
       }
@@ -140,14 +140,19 @@ type TriggerFn = (text: string, editor: LexicalEditor) => MenuTextMatch | null
 const escapeForCharacterClass = (value: string) => value.replace(/[[\]\\^-]/g, '\\$&')
 export function useBasicTypeaheadTriggerMatch(
   trigger: string,
-  { minLength = 1, maxLength = 75 }: { minLength?: number; maxLength?: number },
+  {
+    minLength = 1,
+    maxLength = 75,
+    requireTriggerBoundary = false,
+  }: { minLength?: number; maxLength?: number; requireTriggerBoundary?: boolean },
 ): TriggerFn {
   return useCallback(
     (text: string) => {
       const escapedTrigger = escapeForCharacterClass(trigger)
       const validChars = `[^${escapedTrigger}\\n\\r]`
+      const triggerPrefix = requireTriggerBoundary ? '(^|\\s)' : '(.*)'
       const TypeaheadTriggerRegex = new RegExp(
-        '(.*)(' + `[${escapedTrigger}]` + `((?:${validChars}){0,${maxLength}})` + ')$',
+        `${triggerPrefix}([${escapedTrigger}]((?:${validChars}){0,${maxLength}}))$`,
       )
       const match = TypeaheadTriggerRegex.exec(text)
       if (match !== null) {
@@ -163,6 +168,6 @@ export function useBasicTypeaheadTriggerMatch(
       }
       return null
     },
-    [maxLength, minLength, trigger],
+    [maxLength, minLength, requireTriggerBoundary, trigger],
   )
 }

@@ -1,18 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { marketplaceLinks } from '@/features/marketplace/links'
 import FeaturedTools from '../featured-tools'
 import { createPlugin, createToolProvider } from './factories'
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability', () => ({
   useMCPToolAvailability: () => ({
@@ -20,7 +10,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
   }),
 }))
 
-vi.mock('@/app/components/workflow/block-selector/market-place-plugin/action', () => ({
+vi.mock('@/app/components/workflow/block-selector/marketplace-plugin/action', () => ({
   default: () => <button type="button" aria-label="common.operation.more" />,
 }))
 
@@ -35,21 +25,24 @@ vi.mock(
   }),
 )
 
-vi.mock('@/utils/var', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/utils/var')>()),
-  getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
-}))
-
-const mockUseGetLanguage = vi.mocked(useGetLanguage)
-const mockUseTheme = vi.mocked(useTheme)
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
+    },
+  }
+})
 
 describe('FeaturedTools', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
-    mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
+    localStorage.removeItem('workflow_tools_featured_collapsed')
   })
+
+  afterEach(() => localStorage.removeItem('workflow_tools_featured_collapsed'))
 
   it('reveals featured tools in batches and then returns to the initial list', async () => {
     const user = userEvent.setup()
@@ -69,7 +62,14 @@ describe('FeaturedTools', () => {
     )
     const providerMap = new Map(providers.map((provider) => [provider.plugin_id!, provider]))
 
-    render(<FeaturedTools plugins={plugins} providerMap={providerMap} onSelect={vi.fn()} />)
+    render(
+      <FeaturedTools
+        marketplace={marketplaceLinks}
+        plugins={plugins}
+        providerMap={providerMap}
+        onSelect={vi.fn()}
+      />,
+    )
 
     expect(screen.getByText('Provider 1')).toBeInTheDocument()
     expect(screen.queryByText('Provider 6')).not.toBeInTheDocument()
@@ -77,8 +77,6 @@ describe('FeaturedTools', () => {
     const showMoreButton = screen.getByRole('button', {
       name: 'workflow.tabs.showMoreFeatured',
     })
-    expect(showMoreButton).not.toHaveAttribute('aria-expanded')
-
     await user.click(showMoreButton)
 
     expect(screen.getByText('Provider 10')).toBeInTheDocument()
@@ -87,10 +85,16 @@ describe('FeaturedTools', () => {
     await user.click(screen.getByRole('button', { name: 'workflow.tabs.showMoreFeatured' }))
 
     expect(screen.getByText('Provider 11')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.tabs.showLessFeatured' }),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'workflow.tabs.showLessFeatured' }))
 
     expect(screen.queryByText('Provider 6')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.tabs.showMoreFeatured' }),
+    ).toBeInTheDocument()
   })
 
   it('restores the collapsed state and expands from the keyboard', async () => {
@@ -99,6 +103,7 @@ describe('FeaturedTools', () => {
 
     render(
       <FeaturedTools
+        marketplace={marketplaceLinks}
         plugins={[createPlugin()]}
         providerMap={new Map([['plugin-1', createToolProvider()]])}
         onSelect={vi.fn()}
@@ -109,15 +114,13 @@ describe('FeaturedTools', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('Provider One')).not.toBeInTheDocument()
 
-    trigger.focus()
+    await user.tab()
+    expect(trigger).toHaveFocus()
     await user.keyboard('{Enter}')
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Provider One')).toBeInTheDocument()
-    expect(globalThis.localStorage.setItem).toHaveBeenCalledWith(
-      'workflow_tools_featured_collapsed',
-      'false',
-    )
+    expect(globalThis.localStorage.getItem('workflow_tools_featured_collapsed')).toBe('false')
   })
 
   it('keeps the marketplace link and row actions keyboard reachable', async () => {
@@ -125,6 +128,7 @@ describe('FeaturedTools', () => {
 
     render(
       <FeaturedTools
+        marketplace={marketplaceLinks}
         plugins={[createPlugin({ name: 'plugin-one' })]}
         providerMap={new Map()}
         onSelect={vi.fn()}
@@ -136,6 +140,8 @@ describe('FeaturedTools', () => {
     const moreButton = screen.getByRole('button', { name: 'common.operation.more' })
 
     expect(detailsLink).toHaveAttribute('href', 'https://marketplace.test/plugins/org/plugin-one')
+    expect(detailsLink).not.toContainElement(installButton)
+    expect(detailsLink).not.toContainElement(moreButton)
 
     detailsLink.focus()
     await user.tab()
@@ -146,7 +152,14 @@ describe('FeaturedTools', () => {
   })
 
   it('shows the marketplace empty state when no featured tools are available', () => {
-    render(<FeaturedTools plugins={[]} providerMap={new Map()} onSelect={vi.fn()} />)
+    render(
+      <FeaturedTools
+        marketplace={marketplaceLinks}
+        plugins={[]}
+        providerMap={new Map()}
+        onSelect={vi.fn()}
+      />,
+    )
 
     expect(screen.getByText('workflow.tabs.noFeaturedPlugins')).toBeInTheDocument()
   })

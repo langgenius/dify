@@ -1,39 +1,16 @@
-import type { useLocalFileUploader } from '../hooks'
-import type { ImageFile, VisionSettings } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import type { VisionSettings } from '@/types/app'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Resolution, TransferMethod } from '@/types/app'
 import TextGenerationImageUploader from '../text-generation-image-uploader'
+import { imageUpload } from '../utils'
 
-type LocalUploaderArgs = Parameters<typeof useLocalFileUploader>[0]
-
-const mocks = vi.hoisted(() => ({
-  files: [] as ImageFile[],
-  onUpload: vi.fn<(imageFile: ImageFile) => void>(),
-  onRemove: vi.fn<(imageFileId: string) => void>(),
-  onImageLinkLoadError: vi.fn<(imageFileId: string) => void>(),
-  onImageLinkLoadSuccess: vi.fn<(imageFileId: string) => void>(),
-  onReUpload: vi.fn<(imageFileId: string) => void>(),
-  handleLocalFileUpload: vi.fn<(file: File) => void>(),
-  localUploaderArgs: undefined as LocalUploaderArgs | undefined,
+vi.mock('../utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../utils')>()),
+  imageUpload: vi.fn(),
 }))
-
-vi.mock('../hooks', () => ({
-  useImageFiles: () => ({
-    files: mocks.files,
-    onUpload: mocks.onUpload,
-    onRemove: mocks.onRemove,
-    onImageLinkLoadError: mocks.onImageLinkLoadError,
-    onImageLinkLoadSuccess: mocks.onImageLinkLoadSuccess,
-    onReUpload: mocks.onReUpload,
-  }),
-  useLocalFileUploader: (args: LocalUploaderArgs) => {
-    mocks.localUploaderArgs = args
-    return {
-      handleLocalFileUpload: mocks.handleLocalFileUpload,
-    }
-  },
-}))
+const upload = vi.mocked(imageUpload)
+beforeEach(() => vi.resetAllMocks())
 
 const createSettings = (overrides: Partial<VisionSettings> = {}): VisionSettings => ({
   enabled: true,
@@ -44,188 +21,119 @@ const createSettings = (overrides: Partial<VisionSettings> = {}): VisionSettings
   ...overrides,
 })
 
-describe('TextGenerationImageUploader', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.files = []
-    mocks.localUploaderArgs = undefined
-  })
+it.each([
+  [
+    TransferMethod.local_file,
+    'common.imageUploader.uploadFromComputer',
+    'common.imageUploader.pasteImageLink',
+  ],
+  [
+    TransferMethod.remote_url,
+    'common.imageUploader.pasteImageLink',
+    'common.imageUploader.uploadFromComputer',
+  ],
+])('offers the configured upload method %s', (method, visible, hidden) => {
+  render(
+    <TextGenerationImageUploader
+      settings={createSettings({ transfer_methods: [method] })}
+      onFilesChange={vi.fn()}
+    />,
+  )
+  expect(screen.getByText(visible)).toBeInTheDocument()
+  expect(screen.queryByText(hidden)).not.toBeInTheDocument()
+})
 
-  describe('Rendering', () => {
-    it('should render local upload action for local_file transfer method', () => {
-      const onFilesChange = vi.fn()
-      const settings = createSettings({
-        transfer_methods: [TransferMethod.local_file],
-      })
+it('uploads through the real local hook and publishes completed files', async () => {
+  const user = userEvent.setup()
+  const onFilesChange = vi.fn()
+  render(<TextGenerationImageUploader settings={createSettings()} onFilesChange={onFilesChange} />)
+  const file = new File(['image'], 'sample.png', { type: 'image/png' })
+  await user.upload(screen.getByTestId('local-file-input'), file)
+  await waitFor(() => expect(upload).toHaveBeenCalledOnce())
+  expect(upload.mock.calls[0]![0].file).toBe(file)
+  act(() => upload.mock.calls[0]![0].onSuccessCallback({ id: 'uploaded-image' }))
+  await waitFor(() =>
+    expect(onFilesChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({
+        file,
+        fileId: 'uploaded-image',
+        type: TransferMethod.local_file,
+        progress: 100,
+      }),
+    ]),
+  )
+})
 
-      render(<TextGenerationImageUploader settings={settings} onFilesChange={onFilesChange} />)
+it('rejects images above a numeric string size limit without uploading', async () => {
+  const user = userEvent.setup()
+  const onFilesChange = vi.fn()
+  render(
+    <TextGenerationImageUploader
+      settings={createSettings({ image_file_size_limit: '1' })}
+      onFilesChange={onFilesChange}
+    />,
+  )
+  const file = new File([new Uint8Array(1024 * 1024 + 1)], 'large.png', { type: 'image/png' })
+  await user.upload(screen.getByTestId('local-file-input'), file)
+  expect(upload).not.toHaveBeenCalled()
+  expect(onFilesChange).toHaveBeenLastCalledWith([])
+})
 
-      expect(screen.getByText('common.imageUploader.uploadFromComputer')).toBeInTheDocument()
-      expect(screen.queryByText('common.imageUploader.pasteImageLink')).not.toBeInTheDocument()
-    })
-
-    it('should render URL upload action for remote_url transfer method', () => {
-      const settings = createSettings({
-        transfer_methods: [TransferMethod.remote_url],
-      })
-
-      render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} />)
-
-      expect(screen.getByText('common.imageUploader.pasteImageLink')).toBeInTheDocument()
-      expect(screen.queryByText('common.imageUploader.uploadFromComputer')).not.toBeInTheDocument()
-    })
-
-    it('should render two-column grid when two transfer methods are enabled', () => {
-      const settings = createSettings({
-        transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-      })
-      render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} />)
-
-      const grid = screen.getByTestId('upload-actions')
-      expect(grid).toHaveClass('grid-cols-2')
-    })
-
-    it('should render single-column grid when one transfer method is enabled', () => {
-      const settings = createSettings({
-        transfer_methods: [TransferMethod.local_file],
-      })
-      render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} />)
-
-      const grid = screen.getByTestId('upload-actions')
-      expect(grid).toHaveClass('grid-cols-1')
-    })
-
-    it('should render no upload action for unsupported transfer method value', () => {
-      const settings = createSettings({
-        transfer_methods: [TransferMethod.all],
-      })
-
-      render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} />)
-
-      expect(screen.queryByText('common.imageUploader.uploadFromComputer')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.imageUploader.pasteImageLink')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should pass numeric image size limit to local uploader hook', () => {
-      const settings = createSettings({
-        image_file_size_limit: '15',
-        transfer_methods: [TransferMethod.local_file],
-      })
-
-      render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} />)
-
-      expect(mocks.localUploaderArgs?.limit).toBe(15)
-    })
-
-    it('should disable local uploader when disabled prop is true', () => {
-      const settings = createSettings({
-        transfer_methods: [TransferMethod.local_file],
-      })
-      render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} disabled />)
-
-      const fileInput = screen.getByTestId('local-file-input')
-      expect(fileInput).toBeDisabled()
-      expect(mocks.localUploaderArgs?.disabled).toBe(true)
-    })
-
-    it('should disable upload actions when file count reaches number limit', async () => {
-      const user = userEvent.setup()
-      const settings = createSettings({
+it('publishes remote image load state, enforces the limit, and re-enables uploads after removal', async () => {
+  const user = userEvent.setup()
+  const onFilesChange = vi.fn()
+  render(
+    <TextGenerationImageUploader
+      settings={createSettings({
         number_limits: 1,
         transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-      })
-      mocks.files = [
-        {
-          type: TransferMethod.remote_url,
-          _id: 'file-1',
-          fileId: 'id-1',
-          progress: 100,
-          url: 'https://example.com/image.png',
-        },
-      ]
-      render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} />)
+      })}
+      onFilesChange={onFilesChange}
+    />,
+  )
+  await user.click(screen.getByText('common.imageUploader.pasteImageLink'))
+  await user.type(
+    await screen.findByPlaceholderText('common.imageUploader.pasteImageLinkInputPlaceholder'),
+    'https://example.com/image.png',
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+  await waitFor(() =>
+    expect(onFilesChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({
+        type: TransferMethod.remote_url,
+        url: 'https://example.com/image.png',
+        progress: 0,
+      }),
+    ]),
+  )
+  expect(screen.getByTestId('local-file-input')).toBeDisabled()
+  await user.click(screen.getByText('common.imageUploader.pasteImageLink'))
+  expect(
+    screen.queryByPlaceholderText('common.imageUploader.pasteImageLinkInputPlaceholder'),
+  ).not.toBeInTheDocument()
+  // Native image load/error events are supplied by the browser, not user input.
+  const image = screen.getByRole('presentation')
+  fireEvent.error(image)
+  expect(onFilesChange).toHaveBeenLastCalledWith([expect.objectContaining({ progress: -1 })])
+  await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+  expect(onFilesChange).toHaveBeenLastCalledWith([])
+  expect(screen.getByTestId('local-file-input')).toBeEnabled()
+})
 
-      const fileInput = screen.getByTestId('local-file-input')
-      expect(fileInput).toBeDisabled()
-      expect(mocks.localUploaderArgs?.disabled).toBe(true)
-
-      await user.click(screen.getByText('common.imageUploader.pasteImageLink'))
-      expect(
-        screen.queryByPlaceholderText('common.imageUploader.pasteImageLinkInputPlaceholder'),
-      ).not.toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call handleLocalFileUpload when a local file is selected', async () => {
-      const user = userEvent.setup()
-      const settings = createSettings({
-        transfer_methods: [TransferMethod.local_file],
-      })
-      render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} />)
-      const fileInput = screen.getByTestId('local-file-input')
-      const file = new File(['content'], 'sample.png', { type: 'image/png' })
-      await user.upload(fileInput as HTMLInputElement, file)
-
-      expect(mocks.handleLocalFileUpload).toHaveBeenCalledWith(file)
-    })
-
-    it('should open paste link popover and upload remote url', async () => {
-      const user = userEvent.setup()
-      const settings = createSettings({
-        transfer_methods: [TransferMethod.remote_url],
-      })
-
-      render(<TextGenerationImageUploader settings={settings} onFilesChange={vi.fn()} />)
-
-      await user.click(screen.getByText('common.imageUploader.pasteImageLink'))
-      const input = await screen.findByPlaceholderText(
-        'common.imageUploader.pasteImageLinkInputPlaceholder',
-      )
-      await user.type(input, 'https://example.com/remote.png')
-      await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
-
-      expect(mocks.onUpload).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: TransferMethod.remote_url,
-          url: 'https://example.com/remote.png',
-          progress: 0,
-        }),
-      )
-
-      await waitFor(() => {
-        expect(
-          screen.queryByPlaceholderText('common.imageUploader.pasteImageLinkInputPlaceholder'),
-        ).not.toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Files Effect', () => {
-    it('should call onFilesChange when files value changes', () => {
-      const onFilesChange = vi.fn()
-      const settings = createSettings()
-
-      const { rerender } = render(
-        <TextGenerationImageUploader settings={settings} onFilesChange={onFilesChange} />,
-      )
-      expect(onFilesChange).toHaveBeenCalledWith([])
-
-      const updatedFiles: ImageFile[] = [
-        {
-          type: TransferMethod.remote_url,
-          _id: 'new-file',
-          fileId: '',
-          progress: 0,
-          url: 'https://example.com/new.png',
-        },
-      ]
-      mocks.files = updatedFiles
-      rerender(<TextGenerationImageUploader settings={settings} onFilesChange={onFilesChange} />)
-
-      expect(onFilesChange).toHaveBeenCalledWith(updatedFiles)
-    })
-  })
+it('blocks both upload entry points when disabled', async () => {
+  const user = userEvent.setup()
+  render(
+    <TextGenerationImageUploader
+      disabled
+      settings={createSettings({
+        transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+      })}
+      onFilesChange={vi.fn()}
+    />,
+  )
+  expect(screen.getByTestId('local-file-input')).toBeDisabled()
+  await user.click(screen.getByText('common.imageUploader.pasteImageLink'))
+  expect(
+    screen.queryByPlaceholderText('common.imageUploader.pasteImageLinkInputPlaceholder'),
+  ).not.toBeInTheDocument()
 })

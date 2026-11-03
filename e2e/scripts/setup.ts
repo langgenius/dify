@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { waitForUrl } from '../support/process'
+import { waitForUrl } from '../support/process.ts'
 import {
   apiDir,
   apiEnvExampleFile,
@@ -26,11 +26,13 @@ import {
   runForegroundProcess,
   waitForCondition,
   webDir,
-} from './common'
+} from './common.ts'
+import './env-register.ts'
 
 const buildIdPath = path.join(webDir, '.next', 'BUILD_ID')
 const webBuildStampPath = path.join(webDir, '.next', 'e2e-web-build.sha256')
-const apiHost = '127.0.0.1'
+const apiLoopbackHost = '127.0.0.1'
+const apiBindHost = '0.0.0.0'
 const apiPort = 5001
 const agentBackendHost = '127.0.0.1'
 const agentBackendBindHost = '0.0.0.0'
@@ -41,6 +43,7 @@ const shellctlContainerName = process.env.E2E_SHELLCTL_CONTAINER_NAME || 'dify-a
 const shellctlImage = process.env.E2E_SHELLCTL_IMAGE || 'dify-agent-local-sandbox:e2e'
 const shellctlUrl = `http://${shellctlHost}:${shellctlPort}`
 const agentStubApiBaseUrl = `http://host.docker.internal:${agentBackendPort}/agent-stub`
+const sandboxFilesBaseUrl = `http://host.docker.internal:${apiPort}`
 const defaultPluginDaemonKey = 'lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi'
 const defaultInnerApiKeyForPlugin = 'QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1'
 const defaultAgentServerSecretKey = 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY'
@@ -103,9 +106,38 @@ function getAgentBackendBaseUrl() {
   return undefined
 }
 
-const getAgentBackendEnvironment = async () => {
+export const getManagedSandboxEnvironment = () => {
+  const externalSandbox =
+    process.env.DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT?.trim() ||
+    process.env.DIFY_AGENT_SHELLCTL_ENTRYPOINT?.trim() ||
+    process.env.E2E_SHELLCTL_URL?.trim()
+  const token =
+    process.env.E2E_SHELLCTL_AUTH_TOKEN ||
+    process.env.DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN ||
+    process.env.DIFY_AGENT_SHELLCTL_AUTH_TOKEN ||
+    (externalSandbox ? '' : randomBytes(32).toString('hex'))
+
+  if (!token.trim()) {
+    throw new Error(
+      'A nonblank sandbox auth token (E2E_SHELLCTL_AUTH_TOKEN or the Agent sandbox token) is required for an existing sandbox or when explicitly configured.',
+    )
+  }
+
+  return {
+    E2E_SHELLCTL_AUTH_TOKEN: token,
+    DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: token,
+    DIFY_AGENT_SHELLCTL_AUTH_TOKEN: token,
+  }
+}
+
+export const getAgentBackendEnvironment = async () => {
   const apiEnv = await getApiEnvironment()
   const redisPassword = process.env.REDIS_PASSWORD || apiEnv.REDIS_PASSWORD || 'difyai123456'
+  const sandboxToken =
+    process.env.E2E_SHELLCTL_AUTH_TOKEN ||
+    process.env.DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN ||
+    process.env.DIFY_AGENT_SHELLCTL_AUTH_TOKEN ||
+    ''
 
   return {
     DIFY_AGENT_INNER_API_KEY:
@@ -115,7 +147,9 @@ const getAgentBackendEnvironment = async () => {
       apiEnv.INNER_API_KEY_FOR_PLUGIN ||
       defaultInnerApiKeyForPlugin,
     DIFY_AGENT_INNER_API_URL:
-      process.env.DIFY_AGENT_INNER_API_URL || `http://${apiHost}:${apiPort}`,
+      process.env.DIFY_AGENT_INNER_API_URL || `http://${apiLoopbackHost}:${apiPort}`,
+    DIFY_AGENT_SANDBOX_FILES_BASE_URL:
+      process.env.DIFY_AGENT_SANDBOX_FILES_BASE_URL || sandboxFilesBaseUrl,
     DIFY_AGENT_SERVER_SECRET_KEY:
       process.env.DIFY_AGENT_SERVER_SECRET_KEY || defaultAgentServerSecretKey,
     DIFY_AGENT_STUB_API_BASE_URL: process.env.DIFY_AGENT_STUB_API_BASE_URL || agentStubApiBaseUrl,
@@ -131,8 +165,8 @@ const getAgentBackendEnvironment = async () => {
     DIFY_AGENT_REDIS_PREFIX: process.env.DIFY_AGENT_REDIS_PREFIX || 'dify-agent-e2e',
     DIFY_AGENT_REDIS_URL:
       process.env.DIFY_AGENT_REDIS_URL || `redis://:${redisPassword}@127.0.0.1:6379/0`,
-    DIFY_AGENT_SHELLCTL_AUTH_TOKEN:
-      process.env.DIFY_AGENT_SHELLCTL_AUTH_TOKEN || process.env.E2E_SHELLCTL_AUTH_TOKEN || '',
+    DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: sandboxToken,
+    DIFY_AGENT_SHELLCTL_AUTH_TOKEN: sandboxToken,
     DIFY_AGENT_SHELLCTL_ENTRYPOINT:
       process.env.DIFY_AGENT_SHELLCTL_ENTRYPOINT || process.env.E2E_SHELLCTL_URL || shellctlUrl,
   }
@@ -303,12 +337,12 @@ export const startWeb = async () => {
 }
 
 export const startApi = async () => {
-  if (await isTcpPortReachable(apiHost, apiPort)) {
+  if (await isTcpPortReachable(apiLoopbackHost, apiPort)) {
     const listenerDescription = await getTcpPortListenerDescription(apiPort)
     const listenerMessage = listenerDescription ? `\n\nPort listener:\n${listenerDescription}` : ''
 
     throw new Error(
-      `Cannot start the E2E API server because ${apiHost}:${apiPort} is already in use.${listenerMessage}`,
+      `Cannot start the E2E API server because ${apiLoopbackHost}:${apiPort} is already in use.${listenerMessage}`,
     )
   }
 
@@ -331,7 +365,7 @@ export const startApi = async () => {
       'flask',
       'run',
       '--host',
-      apiHost,
+      apiBindHost,
       '--port',
       String(apiPort),
     ],
@@ -395,6 +429,8 @@ const ensureShellctlSandboxImage = async () => {
 }
 
 export const startShellctlSandbox = async () => {
+  const { E2E_SHELLCTL_AUTH_TOKEN: token } = getManagedSandboxEnvironment()
+
   if (await isTcpPortReachable(shellctlHost, shellctlPort)) {
     const listenerDescription = await getTcpPortListenerDescription(shellctlPort)
     const listenerMessage = listenerDescription ? `\n\nPort listener:\n${listenerDescription}` : ''
@@ -423,12 +459,12 @@ export const startShellctlSandbox = async () => {
       ...(process.platform === 'linux' ? ['--add-host', 'host.docker.internal:host-gateway'] : []),
       '-p',
       `${shellctlHost}:${shellctlPort}:5004`,
-      ...(process.env.E2E_SHELLCTL_AUTH_TOKEN
-        ? ['-e', `SHELLCTL_AUTH_TOKEN=${process.env.E2E_SHELLCTL_AUTH_TOKEN}`]
-        : []),
+      '-e',
+      'SHELLCTL_AUTH_TOKEN',
       shellctlImage,
     ],
     cwd: rootDir,
+    env: { SHELLCTL_AUTH_TOKEN: token },
   })
 }
 
@@ -564,7 +600,7 @@ export const startMiddleware = async () => {
 
 const printUsage = () => {
   console.log(
-    'Usage: tsx ./scripts/setup.ts <reset|middleware-up|middleware-down|shellctl-sandbox|agent-backend|api|celery [--queues queues]|web>',
+    'Usage: node ./scripts/setup.ts <reset|middleware-up|middleware-down|shellctl-sandbox|agent-backend|api|celery [--queues queues]|web|web-build>',
   )
 }
 
@@ -597,6 +633,9 @@ const main = async () => {
       return
     case 'web':
       await startWeb()
+      return
+    case 'web-build':
+      await ensureWebBuild()
       return
     default:
       printUsage()

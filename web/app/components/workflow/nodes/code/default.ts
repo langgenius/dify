@@ -21,7 +21,7 @@ const nodeDefault: NodeDefault<CodeNodeType> = {
     variables: [],
     outputs: {},
   },
-  checkValid(payload: CodeNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: CodeNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
     const { code, variables } = payload
     if (!errorMessages && variables.filter((v) => !v.variable).length > 0)

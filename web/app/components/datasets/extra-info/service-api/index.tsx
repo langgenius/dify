@@ -1,74 +1,74 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useAtomValue } from 'jotai'
-import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
+import { DatasetApiKeyDialogContent } from '@/app/components/api-key/dataset-api-key-dialog-content'
+import { useDatasetApiKeyMutations } from '@/app/components/api-key/use-dataset-api-key-mutations'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
-import Card from './card'
+import { ServiceApiCard } from './card'
 
 type ServiceApiProps = {
   apiBaseUrl: string
+  apiReferenceUrl?: string
 }
 
-const ServiceApi = ({ apiBaseUrl }: ServiceApiProps) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
+export function ServiceApi({ apiBaseUrl, apiReferenceUrl }: ServiceApiProps) {
+  const { t } = useTranslation(['dataset', 'appApi'])
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canManageSecretKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
-
-  const handleOpenSecretKeyModal = useCallback(() => {
-    setIsSecretKeyModalVisible(true)
-  }, [])
-
-  const handleCloseSecretKeyModal = useCallback(() => {
-    setIsSecretKeyModalVisible(false)
-  }, [])
+  const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
+  const mutations = useDatasetApiKeyMutations()
 
   return (
     <div className="flex items-center">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          render={
-            <button type="button" className="w-full border-none bg-transparent p-0 text-left">
-              <div
+      <Dialog
+        onOpenChange={(open, details) => {
+          if (!open && mutations.pending) details.cancel()
+        }}
+      >
+        <Popover>
+          <PopoverTrigger
+            ref={triggerRef}
+            render={(props) => (
+              <button
+                {...props}
+                type="button"
                 className={cn(
-                  'relative flex h-6 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary',
-                  open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+                  'relative flex h-6 w-full cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-md border-none bg-transparent px-1.5 py-1 text-left text-text-tertiary hover:bg-state-base-hover data-popup-open:bg-state-base-hover',
+                  props.className,
                 )}
               >
-                <StatusDot className={cn('shrink-0')} status={apiBaseUrl ? 'success' : 'warning'} />
+                <StatusDot className="shrink-0" status={apiBaseUrl ? 'success' : 'warning'} />
                 <div className="px-0.5 system-xs-medium">
                   {t(($) => $['serviceApi.title'], { ns: 'dataset' })}
                 </div>
-              </div>
-            </button>
-          }
-        />
-        <PopoverContent
-          placement="top-start"
-          sideOffset={4}
-          alignOffset={-4}
-          popupClassName="border-none bg-transparent shadow-none"
-        >
-          <Card
-            apiBaseUrl={apiBaseUrl}
-            onOpenSecretKeyModal={handleOpenSecretKeyModal}
-            canManageSecretKey={canManageSecretKey}
+              </button>
+            )}
           />
-        </PopoverContent>
-      </Popover>
-      <SecretKeyModal
-        isShow={isSecretKeyModalVisible}
-        onClose={handleCloseSecretKeyModal}
-        canManage={canManageSecretKey}
-      />
+          <PopoverContent
+            side="top"
+            align="start"
+            sideOffset={4}
+            alignOffset={-4}
+            className="border-none bg-transparent shadow-none"
+          >
+            <ServiceApiCard
+              apiBaseUrl={apiBaseUrl}
+              apiReferenceUrl={apiReferenceUrl}
+              canManageApiKey={canManageApiKey}
+            />
+          </PopoverContent>
+        </Popover>
+        <DatasetApiKeyDialogContent
+          canManage={canManageApiKey}
+          mutations={mutations}
+          finalFocus={triggerRef}
+        />
+      </Dialog>
     </div>
   )
 }
-
-export default React.memo(ServiceApi)

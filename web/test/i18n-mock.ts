@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 
 type TranslationMap = Record<string, string | string[]>
 type TranslationNamespace = string | readonly string[]
@@ -103,6 +103,16 @@ export function withSelectorKeyProps<Props extends object, Result>(
   }
 }
 
+function interpolateTranslation(value: string | string[], options?: Record<string, unknown>) {
+  if (typeof value !== 'string') return value
+
+  return value.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, paramName: string) => {
+    const paramValue = options?.[paramName]
+
+    return paramValue === undefined ? match : String(paramValue)
+  })
+}
+
 /**
  * Create a t function with optional custom translations
  * Checks translations[key] first, then translations[ns.key], then returns ns.key as fallback
@@ -130,7 +140,7 @@ function createTFunction<Ns extends TranslationNamespace>(
     )
 
     // Check custom translations first (without namespace)
-    if (translations[key] !== undefined) return translations[key]
+    if (translations[key] !== undefined) return interpolateTranslation(translations[key], options)
 
     const ns =
       keyNamespace ??
@@ -141,7 +151,8 @@ function createTFunction<Ns extends TranslationNamespace>(
     const fullKey = ns ? `${ns}.${key}` : key
 
     // Check custom translations with namespace
-    if (translations[fullKey] !== undefined) return translations[fullKey]
+    if (translations[fullKey] !== undefined)
+      return interpolateTranslation(translations[fullKey], options)
 
     // Serialize params (excluding ns) for test assertions
     const params = { ...options }
@@ -192,6 +203,13 @@ function createUseTranslationMock(translations: TranslationMap = {}) {
  */
 function createTransMock(translations: TranslationMap = {}) {
   return {
+    Translation: ({
+      ns,
+      children,
+    }: {
+      ns?: TranslationNamespace
+      children: (t: ReturnType<typeof createTFunction>) => React.ReactNode
+    }) => children(createTFunction(translations, ns)),
     Trans: <Ns extends TranslationNamespace>({
       i18nKey,
       ns,
@@ -238,17 +256,6 @@ export function createI18nextMock(translations: TranslationMap = {}) {
       includeDefaultNamespace: false,
       includeOptionNamespace: false,
       includeInterpolationOptions: false,
-    }),
-  }
-}
-
-export function createReactI18nextLanguageMock(language: string) {
-  const mock = createReactI18nextMock()
-  return {
-    ...mock,
-    getI18n: () => ({
-      ...mock.getI18n(),
-      language,
     }),
   }
 }

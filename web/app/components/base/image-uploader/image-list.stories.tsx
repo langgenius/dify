@@ -122,7 +122,7 @@ const ImageUploaderPlayground = ({ readonly }: Story['args']) => {
   }
 
   return (
-    <div className="flex w-[360px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
+    <div className="flex w-90 flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
       <div className="flex flex-col gap-2">
         <span className="text-xs font-medium tracking-[0.18em] text-text-tertiary uppercase">
           Add images

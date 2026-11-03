@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiDeleteBinLine, RiNodeTree, RiUploadCloud2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
+import { toast } from '@/app/notifications'
 import { formatFileSize } from '@/utils/format'
 
 type Props = Readonly<{
@@ -15,7 +15,7 @@ type Props = Readonly<{
   className?: string
 }>
 const Uploader: FC<Props> = ({ file, updateFile, className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'datasetCreation'])
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
@@ -120,16 +120,19 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
               <span className="font-inter max-w-[calc(100%-30px)] overflow-hidden text-[12px] leading-4 font-medium text-ellipsis whitespace-nowrap text-text-secondary">
                 {file.name}
               </span>
-              <div className="font-inter flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase">
+              <div className="font-inter flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase">
                 <span>PIPELINE</span>
                 <span className="text-text-quaternary">·</span>
                 <span>{formatFileSize(file.size)}</span>
               </div>
             </div>
             <div className="hidden items-center pr-3 group-hover:flex">
-              <ActionButton onClick={removeFile}>
-                <RiDeleteBinLine className="size-4 text-text-tertiary" />
-              </ActionButton>
+              <IconButton
+                aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+                onClick={removeFile}
+              >
+                <RiDeleteBinLine aria-hidden="true" className="size-4 text-text-tertiary" />
+              </IconButton>
             </div>
           </div>
         )}

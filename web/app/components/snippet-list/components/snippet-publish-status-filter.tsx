@@ -1,18 +1,17 @@
 'use client'
 
+import type { SnippetPublishStatus } from '../query-params'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-
-export type SnippetPublishStatus = 'all' | 'published' | 'draft'
 
 type SnippetPublishStatusFilterProps = {
   value: SnippetPublishStatus
@@ -20,15 +19,10 @@ type SnippetPublishStatusFilterProps = {
 }
 
 const chipClassName =
-  'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
-const snippetPublishStatusValues: SnippetPublishStatus[] = ['all', 'published', 'draft']
-
-const isSnippetPublishStatus = (value: string): value is SnippetPublishStatus => {
-  return snippetPublishStatusValues.includes(value as SnippetPublishStatus)
-}
+  'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 transition-colors'
 
 const SnippetPublishStatusFilter = ({ value, onChange }: SnippetPublishStatusFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'snippet', 'workflow'])
 
   const options = useMemo(
     () =>
@@ -46,8 +40,8 @@ const SnippetPublishStatusFilter = ({ value, onChange }: SnippetPublishStatusFil
   const triggerLabel = isSelected ? activeOption?.text : defaultLabel
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <button
             type="button"
@@ -62,21 +56,25 @@ const SnippetPublishStatusFilter = ({ value, onChange }: SnippetPublishStatusFil
       >
         <span className="px-1 text-text-tertiary">{triggerLabel}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" popupClassName="w-[220px]">
-        <DropdownMenuRadioGroup
+      </MenuTrigger>
+      <MenuContent align="start" className="w-55">
+        <MenuRadioGroup<SnippetPublishStatus>
           value={value}
-          onValueChange={(nextValue) => isSnippetPublishStatus(nextValue) && onChange(nextValue)}
+          onValueChange={(nextValue) => onChange(nextValue)}
         >
           {options.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={option.value} closeOnClick>
+            <MenuRadioItem<SnippetPublishStatus>
+              key={option.value}
+              value={option.value}
+              closeOnClick
+            >
               <span>{option.text}</span>
-              <DropdownMenuRadioItemIndicator />
-            </DropdownMenuRadioItem>
+              <MenuRadioItemIndicator />
+            </MenuRadioItem>
           ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

@@ -1,0 +1,20 @@
+# Rule Catalog - Repositories Abstraction
+
+## Scope
+- Covers: reaching persistence through consumer-owned ports, reusing existing repositories, and preserving dependency direction between application services and persistence adapters.
+- Does NOT cover: SQLAlchemy session lifecycle and query-shape specifics (handled by the [SQLAlchemy guide](BACKEND_SQLALCHEMY.md)), table/schema/migration design (handled by the [database schema guide](BACKEND_DATABASE_SCHEMA.md)), and the overall slice pattern (handled by the [backend architecture guide](BACKEND_ARCHITECTURE.md)).
+
+## Rules
+
+### Reach persistence only through consumer-owned ports
+- Category: maintainability
+- Description: Application services never query tables or hold persistence models. Each service declares the persistence it needs as a port in its own module, and a repository implements that port. When a table already has a repository, extend it or let it implement the new port instead of adding a parallel query path.
+- Domain boundary: Aggregates, entities, value objects, and domain services under `api/domain/<business_area>/` never call repositories, including through abstract ports. Application services load the required facts and save the results. Repository implementations may import domain types for mapping and invoke pure domain behavior when atomic evaluation is needed; they must not duplicate the business policy or depend on application orchestration. See [backend architecture](BACKEND_ARCHITECTURE.md#domain-model-and-purity).
+- Suggested fix:
+  - First check `api/repositories`, `api/core/repositories`, and `api/extensions/*/repositories/` for an existing repository. If one exists, add the missing operation there and depend on it through the consumer's port.
+  - Otherwise, declare the port next to the service that needs it and implement it in a repository outside migration-only `api/core/`. The repository owns its sessions, filters by the complete owner chain, and is wired only in the composition root. Query ports return plain records; aggregate repository ports, in slices that adopt aggregates, accept and return whole aggregates. Neither returns persistence models or sessions.
+- Example:
+  - Bad: a service opens a session, queries a table, changes the loaded persistence model, and commits.
+  - Good: the service calls an operation on a port it declares, passing the owner identifiers. The repository behind that port performs the scoped write in one bounded transaction and reports a missing target with an application error.
+  - Bad: filters, joins, and pagination for one business area are repeated across several services.
+  - Good: the services share one port for that area's reads, and a single repository implements it.

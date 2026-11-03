@@ -1,9 +1,33 @@
+class AppDiscoveryNotFoundError(Exception):
+    pass
+
+
+class PermittedAppsUnavailableError(Exception):
+    pass
+
+
+class AppQuotaCheckError(Exception):
+    """The app quota could not be determined because its lookup failed."""
+
+
 class MoreLikeThisDisabledError(Exception):
     pass
 
 
+class AppAbnormalStatusError(Exception):
+    """The app is not in its normal operating state."""
+
+
+class AppApiDisabledError(Exception):
+    """The app owner has disabled Service API access."""
+
+
 class WorkflowHashNotEqualError(Exception):
     pass
+
+
+class DraftChangedError(Exception):
+    """The draft no longer matches the export an overwrite is based on."""
 
 
 class IsDraftWorkflowError(Exception):
@@ -16,6 +40,21 @@ class WorkflowNotFoundError(Exception):
 
 class WorkflowIdFormatError(Exception):
     pass
+
+
+TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE = "trigger_workflow_service_mode_unavailable"
+TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE = (
+    "This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP."
+)
+
+
+class TriggerWorkflowServiceModeUnavailableError(Exception):
+    """Raised when a trigger-entry Workflow is invoked through a manual service surface."""
+
+    error_code = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE
+
+    def __init__(self) -> None:
+        super().__init__(TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE)
 
 
 class QuotaExceededError(ValueError):

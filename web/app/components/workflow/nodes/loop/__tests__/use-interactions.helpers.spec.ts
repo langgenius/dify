@@ -1,4 +1,4 @@
-import type { Node } from '@/app/components/workflow/types'
+import { createNode as createWorkflowNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   buildLoopChildCopy,
@@ -8,15 +8,12 @@ import {
   getRestrictedLoopPosition,
 } from '../use-interactions.helpers'
 
-const createNode = (overrides: Record<string, unknown> = {}) => ({
-  id: 'node',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  width: 100,
-  height: 80,
-  data: { type: BlockEnum.Code, title: 'Code', desc: '' },
-  ...overrides,
-})
+const createNode = (overrides: Parameters<typeof createWorkflowNode>[0] = {}) =>
+  createWorkflowNode({
+    width: 100,
+    height: 80,
+    ...overrides,
+  })
 
 describe('loop interaction helpers', () => {
   it('calculates bounds and container resize from overflowing children', () => {
@@ -25,10 +22,10 @@ describe('loop interaction helpers', () => {
       createNode({ id: 'b', position: { x: 120, y: 60 }, width: 50, height: 30 }),
     ]
 
-    const bounds = getContainerBounds(children as Node[])
+    const bounds = getContainerBounds(children)
     expect(bounds.rightNode?.id).toBe('b')
     expect(bounds.bottomNode?.id).toBe('b')
-    expect(getContainerResize(createNode({ width: 120, height: 80 }) as Node, bounds)).toEqual({
+    expect(getContainerResize(createNode({ width: 120, height: 80 }), bounds)).toEqual({
       width: 186,
       height: 110,
     })
@@ -40,9 +37,10 @@ describe('loop interaction helpers', () => {
 
   it('restricts loop positions only for loop children and filters loop-start nodes', () => {
     const parent = createNode({ id: 'parent', width: 200, height: 180 })
-    expect(
-      getRestrictedLoopPosition(createNode({ data: { isInLoop: false } }) as Node, parent as Node),
-    ).toEqual({ x: undefined, y: undefined })
+    expect(getRestrictedLoopPosition(createNode({ data: { isInLoop: false } }), parent)).toEqual({
+      x: undefined,
+      y: undefined,
+    })
     expect(
       getRestrictedLoopPosition(
         createNode({
@@ -51,7 +49,7 @@ describe('loop interaction helpers', () => {
           height: 40,
           data: { isInLoop: true },
         }),
-        parent as Node,
+        parent,
       ),
     ).toEqual({ x: 16, y: 120 })
     expect(
@@ -62,7 +60,7 @@ describe('loop interaction helpers', () => {
           height: 30,
           data: { isInLoop: true },
         }),
-        parent as Node,
+        parent,
       ),
     ).toEqual({ x: 144, y: 65 })
     expect(
@@ -71,7 +69,7 @@ describe('loop interaction helpers', () => {
           createNode({ id: 'child', parentId: 'loop-1' }),
           createNode({ id: 'start', parentId: 'loop-1', type: 'custom-loop-start' }),
           createNode({ id: 'other', parentId: 'other-loop' }),
-        ] as Node[],
+        ],
         'loop-1',
       ).map((item) => item.id),
     ).toEqual(['child'])
@@ -87,9 +85,9 @@ describe('loop interaction helpers', () => {
     })
 
     const result = buildLoopChildCopy({
-      child: child as Node,
+      child,
       childNodeType: BlockEnum.Code,
-      defaultValue: { title: 'Code', desc: '', type: BlockEnum.Code } as Node['data'],
+      defaultValue: { title: 'Code', desc: '', type: BlockEnum.Code },
       nodesWithSameTypeCount: 2,
       newNodeId: 'loop-2',
       index: 3,

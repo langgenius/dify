@@ -1,149 +1,102 @@
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { withSelectorKey } from '@/test/i18n-mock'
+import type { UserAction } from '../../types'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { UserActionButtonType } from '../../types'
 import UserActionItem from '../user-action'
 
-const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockNotify = vi.hoisted(() => vi.fn())
+vi.mock('@/app/notifications', () => ({ toast: { error: mockNotify } }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-}))
+const prefix = 'workflowHumanInput.nodes.humanInput.userActions'
+const action: UserAction = {
+  id: 'approve',
+  title: 'Approve',
+  button_style: UserActionButtonType.Primary,
+}
 
-vi.mock('@/app/components/base/input', () => ({
-  __esModule: true,
-  default: (props: {
-    value: string
-    placeholder?: string
-    disabled?: boolean
-    onChange: (event: { target: { value: string } }) => void
-  }) => (
-    <input
-      data-testid={props.placeholder}
-      value={props.value}
-      disabled={props.disabled}
-      onChange={(e) => props.onChange({ target: { value: e.target.value } })}
+function Harness({
+  onChange,
+  onDelete = vi.fn(),
+  readonly = false,
+}: {
+  onChange: (action: UserAction) => void
+  onDelete?: (id: string) => void
+  readonly?: boolean
+}) {
+  const [data, setData] = useState(action)
+  return (
+    <UserActionItem
+      data={data}
+      onChange={(next) => {
+        setData(next)
+        onChange(next)
+      }}
+      onDelete={onDelete}
+      readonly={readonly}
     />
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: (props: { children?: ReactNode; onClick?: () => void }) => (
-    <button type="button" onClick={props.onClick}>
-      {props.children}
-    </button>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  __esModule: true,
-  toast: {
-    success: (message: string) => mockNotify({ type: 'success', message }),
-    error: (message: string) => mockNotify({ type: 'error', message }),
-    warning: (message: string) => mockNotify({ type: 'warning', message }),
-    info: (message: string) => mockNotify({ type: 'info', message }),
-  },
-}))
-
-vi.mock('../button-style-dropdown', () => ({
-  __esModule: true,
-  default: (props: { onChange: (type: UserActionButtonType) => void }) => (
-    <button type="button" onClick={() => props.onChange(UserActionButtonType.Ghost)}>
-      change-style
-    </button>
-  ),
-}))
+  )
+}
 
 describe('UserActionItem', () => {
-  const onChange = vi.fn()
-  const onDelete = vi.fn()
-  const action = {
-    id: 'approve',
-    title: 'Approve',
-    button_style: UserActionButtonType.Primary,
-  }
+  it('sanitizes pasted identifiers, rejects invalid ones, and preserves edits when changing the title', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<Harness onChange={onChange} />)
+    const identifier = screen.getByRole('textbox', { name: `${prefix}.actionNamePlaceholder` })
+    await user.clear(identifier)
+    await user.paste('Approve action')
+    expect(identifier).toHaveValue('Approve_action')
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseTranslation.mockReturnValue({
-      t: withSelectorKey((key: string) => key),
+    await user.clear(identifier)
+    onChange.mockClear()
+    await user.paste('1invalid')
+    expect(onChange).not.toHaveBeenCalled()
+    expect(identifier).toHaveValue('')
+    expect(mockNotify).toHaveBeenLastCalledWith(`${prefix}.actionIdFormatTip`)
+
+    await user.paste('averyveryveryverylongidentifier')
+    expect(identifier).toHaveValue('averyveryveryverylon')
+    expect(mockNotify).toHaveBeenLastCalledWith(`${prefix}.actionIdTooLong:{"maxLength":20}`)
+
+    const title = screen.getByRole('textbox', { name: `${prefix}.buttonTextPlaceholder` })
+    await user.clear(title)
+    await user.paste('Approve request')
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...action,
+      id: 'averyveryveryverylon',
+      title: 'Approve request',
     })
   })
 
-  it('should sanitize ids, enforce length limits, and update the button text', () => {
-    render(<UserActionItem data={action} onChange={onChange} onDelete={onDelete} />)
-
-    fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), {
-      target: { value: 'Approve action' },
+  it('keeps the edited identifier through style changes and deletes that action', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const onDelete = vi.fn()
+    const { rerender } = render(<Harness onChange={onChange} onDelete={onDelete} />)
+    const identifier = screen.getByRole('textbox', { name: `${prefix}.actionNamePlaceholder` })
+    await user.clear(identifier)
+    expect(identifier).toHaveValue('')
+    await user.paste('accept')
+    await user.click(screen.getByRole('button', { name: `Approve: ${prefix}.chooseStyle` }))
+    await user.click(
+      await screen.findByRole('radio', { name: `Approve, ${prefix}.buttonStyle.ghost` }),
+    )
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...action,
+      id: 'accept',
+      button_style: UserActionButtonType.Ghost,
     })
-    fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), {
-      target: { value: '1invalid' },
-    })
-    fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), {
-      target: { value: 'averyveryveryverylongidentifier' },
-    })
-    fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.buttonTextPlaceholder'), {
-      target: { value: 'card_visa_enterprise_001' },
-    })
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    expect(onDelete).toHaveBeenCalledWith('accept')
 
-    expect(onChange).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        id: 'Approve_action',
-      }),
-    )
-    expect(onChange).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        id: 'averyveryveryverylon',
-      }),
-    )
-    expect(onChange).toHaveBeenNthCalledWith(
-      3,
-      expect.objectContaining({
-        title: 'card_visa_enterprise_001',
-      }),
-    )
-    expect(mockNotify).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        type: 'error',
-        message: 'nodes.humanInput.userActions.actionIdFormatTip',
-      }),
-    )
-    expect(mockNotify).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        type: 'error',
-        message: 'nodes.humanInput.userActions.actionIdTooLong',
-      }),
-    )
-    expect(mockNotify).toHaveBeenCalledTimes(2)
-  })
-
-  it('should support clearing ids, updating button style, deleting, and readonly mode', () => {
-    const { rerender } = render(
-      <UserActionItem data={action} onChange={onChange} onDelete={onDelete} />,
-    )
-
-    fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), {
-      target: { value: '   ' },
-    })
-    fireEvent.click(screen.getByText('change-style'))
-    fireEvent.click(screen.getAllByRole('button')[1]!)
-
-    expect(onChange).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: '' }))
-    expect(onChange).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ button_style: UserActionButtonType.Ghost }),
-    )
-    expect(onDelete).toHaveBeenCalledWith('approve')
-
-    rerender(<UserActionItem data={action} onChange={onChange} onDelete={onDelete} readonly />)
-
-    expect(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'))!.toBeDisabled()
-    expect(screen.getByTestId('nodes.humanInput.userActions.buttonTextPlaceholder'))!.toBeDisabled()
-    expect(screen.getAllByRole('button')).toHaveLength(1)
+    rerender(<Harness onChange={onChange} onDelete={onDelete} readonly />)
+    expect(identifier).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: `${prefix}.buttonTextPlaceholder` })).toBeDisabled()
+    expect(screen.getByRole('button', { name: `Approve: ${prefix}.chooseStyle` })).toBeDisabled()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.delete' }),
+    ).not.toBeInTheDocument()
   })
 })

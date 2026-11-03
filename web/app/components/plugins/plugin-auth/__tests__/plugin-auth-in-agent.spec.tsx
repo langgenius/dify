@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react'
 import type { Credential, PluginPayload } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { render } from '@/test/console/render'
 import { AuthCategory, CredentialTypeEnum } from '../types'
 
 // ==================== Mock Setup ====================
@@ -31,10 +34,6 @@ vi.mock('@/service/use-plugins-auth', () => ({
   useGetPluginCredentialSchema: () => ({ data: undefined, isLoading: false }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useInvalidToolsByType: () => vi.fn(),
-}))
-
 const mockIsCurrentWorkspaceManager = vi.fn()
 const mockUserProfile = {
   id: 'test-user',
@@ -43,51 +42,21 @@ const mockUserProfile = {
   avatar_url: '',
 }
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     userProfile: mockUserProfile,
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: mockUserProfile,
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: mockUserProfile,
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: mockUserProfile,
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: mockUserProfile,
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/hooks/use-oauth', () => ({
@@ -96,21 +65,20 @@ vi.mock('@/hooks/use-oauth', () => ({
 
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({ data: { options: [] }, isLoading: false }),
-  useTriggerPluginDynamicOptionsInfo: () => ({ data: null, isLoading: false }),
-  useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
 
 // ==================== Test Utilities ====================
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
+      queries: { retry: false, gcTime: Infinity, staleTime: Infinity },
     },
   })
 
 const createWrapper = () => {
-  const testQueryClient = createTestQueryClient()
+  const testQueryClient = createConsoleQueryClient()
+  seedAccountProfileQuery(testQueryClient, mockUserProfile)
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
   )
@@ -159,14 +127,13 @@ describe('PluginAuthInAgent Component', () => {
     })
     const pluginPayload = createPluginPayload()
     render(<PluginAuthInAgent pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
-    expect(screen.getByRole('button'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeEnabled()
   })
 
   it('should render Authorized with workspace default when authorized', async () => {
     const PluginAuthInAgent = (await import('../plugin-auth-in-agent')).default
     const pluginPayload = createPluginPayload()
     render(<PluginAuthInAgent pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
-    expect(screen.getByRole('button'))!.toBeInTheDocument()
     expect(screen.getByText('plugin.auth.workspaceDefault'))!.toBeInTheDocument()
   })
 
@@ -220,22 +187,6 @@ describe('PluginAuthInAgent Component', () => {
     expect(button.textContent).toContain('plugin.auth.unavailable')
   })
 
-  it('should call onAuthorizationItemClick when item is clicked', async () => {
-    const PluginAuthInAgent = (await import('../plugin-auth-in-agent')).default
-    const onAuthorizationItemClick = vi.fn()
-    const pluginPayload = createPluginPayload()
-    render(
-      <PluginAuthInAgent
-        pluginPayload={pluginPayload}
-        onAuthorizationItemClick={onAuthorizationItemClick}
-      />,
-      { wrapper: createWrapper() },
-    )
-    const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0]!)
-    expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
-  })
-
   it('should trigger handleAuthorizationItemClick and close popup when item is clicked', async () => {
     const PluginAuthInAgent = (await import('../plugin-auth-in-agent')).default
     const onAuthorizationItemClick = vi.fn()
@@ -253,13 +204,13 @@ describe('PluginAuthInAgent Component', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const triggerButton = screen.getByRole('button')
-    fireEvent.click(triggerButton)
-    const workspaceDefaultItems = screen.getAllByText('plugin.auth.workspaceDefault')
-    const popupItem =
-      workspaceDefaultItems.length > 1 ? workspaceDefaultItems[1] : workspaceDefaultItems[0]
-    fireEvent.click(popupItem!)
-    expect(onAuthorizationItemClick).toHaveBeenCalledWith('')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.workspaceDefault' }))
+    await user.click(
+      within(await screen.findByRole('dialog')).getByText('plugin.auth.workspaceDefault'),
+    )
+    expect(onAuthorizationItemClick).toHaveBeenCalledExactlyOnceWith('')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('should call onAuthorizationItemClick with credential id when specific credential is clicked', async () => {
@@ -283,11 +234,10 @@ describe('PluginAuthInAgent Component', () => {
       />,
       { wrapper: createWrapper() },
     )
-    const triggerButton = screen.getByRole('button')
-    fireEvent.click(triggerButton)
-    const credentialItems = screen.getAllByText('Specific Credential')
-    const popupItem = credentialItems[credentialItems.length - 1]
-    fireEvent.click(popupItem!)
-    expect(onAuthorizationItemClick).toHaveBeenCalledWith('specific-cred-id')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.workspaceDefault' }))
+    await user.click(within(await screen.findByRole('dialog')).getByText('Specific Credential'))
+    expect(onAuthorizationItemClick).toHaveBeenCalledExactlyOnceWith('specific-cred-id')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

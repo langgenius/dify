@@ -1,12 +1,13 @@
 import type { ShortcutMapping } from './test-run-menu-helpers'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import {
   forwardRef,
   isValidElement,
@@ -16,15 +17,18 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { OptionRow, SingleOptionTrigger, useShortcutMenu } from './test-run-menu-helpers'
+import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
+import { handleShortcutMenuKeyDown, SingleOptionTrigger } from './test-run-menu-helpers'
 
-export enum TriggerType {
-  UserInput = 'user_input',
-  Schedule = 'schedule',
-  Webhook = 'webhook',
-  Plugin = 'plugin',
-  All = 'all',
-}
+export const TriggerType = {
+  UserInput: 'user_input',
+  Schedule: 'schedule',
+  Webhook: 'webhook',
+  Plugin: 'plugin',
+  All: 'all',
+} as const
+
+export type TriggerType = (typeof TriggerType)[keyof typeof TriggerType]
 
 export type TriggerOption = {
   id: string
@@ -50,6 +54,29 @@ type TestRunMenuProps = {
 
 export type TestRunMenuRef = {
   toggle: () => void
+}
+
+const OptionRow = ({
+  option,
+  shortcutKey,
+  onSelect,
+}: {
+  option: TriggerOption
+  shortcutKey?: string
+  onSelect: (option: TriggerOption) => void
+}) => {
+  return (
+    <MenuItem
+      className="h-auto gap-3 px-3 py-1.5 system-md-regular"
+      onClick={() => onSelect(option)}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex size-6 shrink-0 items-center justify-center">{option.icon}</div>
+        <span className="truncate">{option.name}</span>
+      </div>
+      {shortcutKey && <ShortcutKbd displayKey={shortcutKey} textColor="secondary" />}
+    </MenuItem>
+  )
 }
 
 const getEnabledOptions = (options: TestRunOptions) => {
@@ -82,7 +109,7 @@ const buildShortcutMappings = (options: TestRunOptions): ShortcutMapping[] => {
     mappings.push({ option: options.runAll, shortcutKey: String(numericShortcut++) })
 
   options.triggers.forEach((trigger) => {
-    if (trigger.enabled !== false)
+    if (trigger.enabled !== false && numericShortcut < 10)
       mappings.push({ option: trigger, shortcutKey: String(numericShortcut++) })
   })
 
@@ -92,7 +119,7 @@ const buildShortcutMappings = (options: TestRunOptions): ShortcutMapping[] => {
 // oxlint-disable-next-line eslint-react/no-forward-ref
 const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
   ({ options, onSelect, children }, ref) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
     const [open, setOpen] = useState(false)
     const shortcutMappings = useMemo(() => buildShortcutMappings(options), [options])
     const shortcutKeyById = useMemo(() => {
@@ -119,12 +146,6 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
     const runSoleOption = useCallback(() => {
       if (soleEnabledOption) handleSelect(soleEnabledOption)
     }, [handleSelect, soleEnabledOption])
-
-    useShortcutMenu({
-      open,
-      shortcutMappings,
-      handleSelect,
-    })
 
     useImperativeHandle(
       ref,
@@ -162,28 +183,27 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
     }
 
     return (
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <Menu open={open} onOpenChange={setOpen}>
         {isValidElement(children) ? (
-          <DropdownMenuTrigger render={children} style={{ userSelect: 'none' }} />
+          <MenuTrigger render={children} style={{ userSelect: 'none' }} />
         ) : (
-          <DropdownMenuTrigger style={{ userSelect: 'none' }}>{children}</DropdownMenuTrigger>
+          <MenuTrigger style={{ userSelect: 'none' }}>{children}</MenuTrigger>
         )}
-        <DropdownMenuContent
-          placement="bottom-start"
+        <MenuContent
+          onKeyDown={(event) => handleShortcutMenuKeyDown(event, shortcutMappings, handleSelect)}
+          align="start"
           sideOffset={8}
           alignOffset={-4}
-          popupClassName="w-[284px] p-1"
+          className="w-71"
         >
-          <DropdownMenuGroup>
-            <DropdownMenuLabel className="mb-1 px-3 pt-2 text-sm font-medium text-text-primary">
+          <MenuGroup className="flex flex-col gap-1">
+            <MenuGroupLabel className="pt-2 text-sm font-medium text-text-primary">
               {t(($) => $['common.chooseStartNodeToRun'], { ns: 'workflow' })}
-            </DropdownMenuLabel>
+            </MenuGroupLabel>
             <div>
               {hasUserInput && renderOption(options.userInput!)}
 
-              {(hasTriggers || hasRunAll) && hasUserInput && (
-                <DropdownMenuSeparator className="mx-3" />
-              )}
+              {(hasTriggers || hasRunAll) && hasUserInput && <MenuSeparator className="mx-3" />}
 
               {hasRunAll && renderOption(options.runAll!)}
 
@@ -192,9 +212,9 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
                   .filter((trigger) => trigger.enabled !== false)
                   .map((trigger) => renderOption(trigger))}
             </div>
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </MenuGroup>
+        </MenuContent>
+      </Menu>
     )
   },
 )

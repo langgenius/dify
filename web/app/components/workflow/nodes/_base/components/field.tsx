@@ -1,10 +1,10 @@
 'use client'
 import type { FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiArrowDownSLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { Infotip } from '@/app/components/base/infotip'
+import { useState } from 'react'
 
 type Props = Readonly<{
   className?: string
@@ -19,15 +19,6 @@ type Props = Readonly<{
   warningDot?: boolean
 }>
 
-const getTextFromNode = (node: ReactNode): string | undefined => {
-  if (typeof node === 'string' || typeof node === 'number') return `${node}`
-
-  if (Array.isArray(node)) return node.map(getTextFromNode).filter(Boolean).join(' ')
-
-  if (React.isValidElement<{ children?: ReactNode }>(node))
-    return getTextFromNode(node.props.children)
-}
-
 const Field: FC<Props> = ({
   className,
   title,
@@ -40,19 +31,19 @@ const Field: FC<Props> = ({
   required,
   warningDot,
 }) => {
-  const [fold, { toggle: toggleFold }] = useBoolean(true)
-  const tooltipLabel = tooltip
-    ? getTextFromNode(tooltip) || getTextFromNode(title) || 'Help'
-    : undefined
+  const titleId = React.useId()
+
+  const [fold, setFold] = useState(true)
 
   return (
     <div className={cn(className, inline && 'flex w-full items-center justify-between')}>
       <div
-        onClick={() => supportFold && toggleFold()}
+        onClick={() => supportFold && setFold((isFolded) => !isFolded)}
         className={cn('flex items-center justify-between', supportFold && 'cursor-pointer')}
       >
         <div className="flex h-6 items-center">
           <div
+            id={titleId}
             className={cn(
               'relative',
               isSubTitle
@@ -61,13 +52,22 @@ const Field: FC<Props> = ({
             )}
           >
             {warningDot && (
-              <span className="absolute top-1/2 left-[-9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+              <span
+                aria-hidden
+                className="absolute top-1/2 -left-2.25 size-1.25 -translate-y-1/2 rounded-full bg-text-warning-secondary"
+              />
             )}
-            {title} {required && <span className="text-text-destructive">*</span>}
+            {title}{' '}
+            {required && (
+              <span aria-hidden className="text-text-destructive">
+                *
+              </span>
+            )}
           </div>
-          {!!tooltip && !!tooltipLabel && (
-            <Infotip aria-label={tooltipLabel} className="ml-1">
-              {tooltip}
+          {!!tooltip && (
+            <Infotip>
+              <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
+              <InfotipContent aria-labelledby={titleId}>{tooltip}</InfotipContent>
             </Infotip>
           )}
         </div>

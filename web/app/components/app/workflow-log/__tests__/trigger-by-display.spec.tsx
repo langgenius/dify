@@ -1,6 +1,5 @@
-import type { TriggerMetadata } from '@/models/log'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import { Theme } from '@/types/app'
 import TriggerByDisplay from '../trigger-by-display'
@@ -39,7 +38,7 @@ describe('TriggerByDisplay', () => {
     render(
       <TriggerByDisplay
         triggeredFrom={WorkflowRunTriggeredFrom.PLUGIN}
-        triggerMetadata={{ event_name: 'Issue created' } as TriggerMetadata}
+        triggerMetadata={{ event_name: 'Issue created' }}
       />,
     )
 
@@ -51,7 +50,7 @@ describe('TriggerByDisplay', () => {
     render(
       <TriggerByDisplay
         triggeredFrom={WorkflowRunTriggeredFrom.PLUGIN}
-        triggerMetadata={{ icon: 'light.svg', icon_dark: 'dark.svg' } as TriggerMetadata}
+        triggerMetadata={{ icon: 'light.svg', icon_dark: 'dark.svg' }}
       />,
     )
 
@@ -59,12 +58,5 @@ describe('TriggerByDisplay', () => {
       'src',
       'dark.svg',
     )
-  })
-
-  it('can render an icon-only trigger label', () => {
-    render(<TriggerByDisplay triggeredFrom={WorkflowRunTriggeredFrom.PLUGIN} showText={false} />)
-
-    expect(screen.queryByText('appLog.triggerBy.plugin')).not.toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Default plugin trigger icon' })).toBeInTheDocument()
   })
 })

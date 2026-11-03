@@ -1,153 +1,23 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import Uploader from '../uploader'
 
-const { mockToast } = vi.hoisted(() => {
-  const mockToast = Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockToast }
-})
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: mockToast,
-}))
-
-const createMockFile = (name = 'test.pipeline', _size = 1024): File => {
-  return new File(['test content'], name, { type: 'application/octet-stream' })
-}
-
-// Uploader Component Tests
-
-describe('Uploader', () => {
-  const defaultProps = {
-    file: undefined,
-    updateFile: vi.fn(),
+it('selects a pipeline file, displays its name and removes it', async () => {
+  const user = userEvent.setup()
+  const Harness = () => {
+    const [file, setFile] = useState<File>()
+    return <Uploader file={file} updateFile={setFile} />
   }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Rendering Tests - No File
-  describe('Rendering - No File', () => {
-    it('should render upload prompt when no file', () => {
-      render(<Uploader {...defaultProps} />)
-      expect(screen.getByText(/dslUploader\.button/i)).toBeInTheDocument()
-    })
-
-    it('should render browse link when no file', () => {
-      render(<Uploader {...defaultProps} />)
-      expect(screen.getByRole('button', { name: /dslUploader\.browse/i })).toBeInTheDocument()
-    })
-
-    it('should render upload icon when no file', () => {
-      const { container } = render(<Uploader {...defaultProps} />)
-      const icon = container.querySelector('svg')
-      expect(icon).toBeInTheDocument()
-    })
-
-    it('should have hidden file input', () => {
-      render(<Uploader {...defaultProps} />)
-      const input = document.getElementById('fileUploader') as HTMLInputElement
-      expect(input).toBeInTheDocument()
-      expect(input.style.display).toBe('none')
-    })
-
-    it('should accept .pipeline files', () => {
-      render(<Uploader {...defaultProps} />)
-      const input = document.getElementById('fileUploader') as HTMLInputElement
-      expect(input.accept).toBe('.pipeline')
-    })
-  })
-
-  // Rendering Tests - With File
-  describe('Rendering - With File', () => {
-    it('should render file name when file is provided', () => {
-      const file = createMockFile('my-pipeline.pipeline')
-      render(<Uploader {...defaultProps} file={file} />)
-      expect(screen.getByText('my-pipeline.pipeline')).toBeInTheDocument()
-    })
-
-    it('should render PIPELINE label when file is provided', () => {
-      const file = createMockFile()
-      render(<Uploader {...defaultProps} file={file} />)
-      expect(screen.getByText('PIPELINE')).toBeInTheDocument()
-    })
-
-    it('should render delete button when file is provided', () => {
-      const file = createMockFile()
-      const { container } = render(<Uploader {...defaultProps} file={file} />)
-      const deleteButton = container.querySelector('[class*="group-hover:flex"]')
-      expect(deleteButton).toBeInTheDocument()
-    })
-
-    it('should render node tree icon when file is provided', () => {
-      const file = createMockFile()
-      const { container } = render(<Uploader {...defaultProps} file={file} />)
-      const icons = container.querySelectorAll('svg')
-      expect(icons.length).toBeGreaterThan(0)
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should open file dialog when browse is clicked', () => {
-      render(<Uploader {...defaultProps} />)
-      const input = document.getElementById('fileUploader') as HTMLInputElement
-      const clickSpy = vi.spyOn(input, 'click')
-
-      const browseLink = screen.getByRole('button', { name: /dslUploader\.browse/i })
-      fireEvent.click(browseLink)
-
-      expect(clickSpy).toHaveBeenCalled()
-    })
-
-    it('should call updateFile when file input changes', () => {
-      render(<Uploader {...defaultProps} />)
-      const input = document.getElementById('fileUploader') as HTMLInputElement
-      const file = createMockFile()
-
-      Object.defineProperty(input, 'files', {
-        value: [file],
-        writable: true,
-      })
-
-      fireEvent.change(input)
-
-      expect(defaultProps.updateFile).toHaveBeenCalledWith(file)
-    })
-
-    it('should call updateFile with undefined when delete is clicked', () => {
-      const file = createMockFile()
-      const { container } = render(<Uploader {...defaultProps} file={file} />)
-
-      const deleteButton = container.querySelector('[class*="group-hover:flex"] button')
-      if (deleteButton) fireEvent.click(deleteButton)
-
-      expect(defaultProps.updateFile).toHaveBeenCalledWith()
-    })
-  })
-
-  // Custom className Tests
-
-  describe('Layout', () => {
-    it('should have dropzone styling when no file', () => {
-      const { container } = render(<Uploader {...defaultProps} />)
-      const dropzone = container.querySelector('[class*="border-dashed"]')
-      expect(dropzone).toBeInTheDocument()
-    })
-
-    it('should have file card styling when file is provided', () => {
-      const file = createMockFile()
-      const { container } = render(<Uploader {...defaultProps} file={file} />)
-      const fileCard = container.querySelector('[class*="rounded-lg"]')
-      expect(fileCard).toBeInTheDocument()
-    })
-  })
+  render(<Harness />)
+  // The browser file-picker input is hidden and has no accessible label.
+  const input = document.getElementById('fileUploader') as HTMLInputElement
+  const file = new File(['pipeline content'], 'documents.pipeline')
+  await user.upload(input, file)
+  expect(screen.getByText('documents.pipeline')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'app.dslUploader.browse' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+  expect(screen.queryByText('documents.pipeline')).not.toBeInTheDocument()
+  expect(input).toHaveValue('')
+  expect(screen.getByRole('button', { name: 'app.dslUploader.browse' })).toBeInTheDocument()
 })

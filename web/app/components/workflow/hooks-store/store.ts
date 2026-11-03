@@ -1,14 +1,14 @@
+import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { FileUpload } from '../../base/features/types'
 import type {
   BlockEnum,
   Node,
   NodeDefault,
-  ToolWithProvider,
   ValueSelector,
+  WorkflowPluginCatalogs,
 } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
-import type { SchemaTypeDefinition } from '@/service/use-common'
-import type { FlowType } from '@/types/common'
+import type { EnvironmentVariablePatch } from '@/service/workflow'
 import type { VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
 import { use } from 'react'
@@ -24,6 +24,16 @@ export type SyncDraftCallback = {
   onSuccess?: () => void
   onError?: () => void
   onSettled?: () => void
+}
+
+export type SyncDraftResult = {
+  hash: string
+  updatedAt: number
+}
+
+export type SyncDraftOptions = {
+  environmentVariablePatch?: EnvironmentVariablePatch
+  forceLocal?: boolean
 }
 
 export type WorkflowAccessControl = {
@@ -44,9 +54,10 @@ type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: SyncDraftCallback,
-  ) => Promise<void>
+    options?: SyncDraftOptions,
+  ) => Promise<SyncDraftResult | null | void>
   syncWorkflowDraftWhenPageClose: () => void
-  handleRefreshWorkflowDraft: () => void
+  handleRefreshWorkflowDraft: (notUpdateCanvas?: boolean) => void
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
@@ -62,12 +73,13 @@ type CommonHooksFnMap = {
   availableNodesMetaData?: AvailableNodesMetaData
   getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
   exportCheck?: () => Promise<void>
-  handleExportDSL?: (include?: boolean, flowId?: string) => Promise<void>
+  handleExportDSL?: (include?: boolean, flowId?: string) => Promise<boolean>
+  isExporting: boolean
   fetchInspectVars: (params: {
     passInVars?: boolean
     vars?: VarInInspect[]
-    passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>
-    passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
+    passedInAllPluginInfoList?: WorkflowPluginCatalogs
+    passedInSchemaTypeDefinitions?: SchemaDefinitionItemResponse[]
   }) => Promise<void>
   hasNodeInspectVars: (nodeId: string) => boolean
   hasSetInspectVar: (
@@ -78,7 +90,7 @@ type CommonHooksFnMap = {
   ) => boolean
   fetchInspectVarValue: (
     selector: ValueSelector,
-    schemaTypeDefinitions: SchemaTypeDefinition[],
+    schemaTypeDefinitions: SchemaDefinitionItemResponse[],
   ) => Promise<void>
   editInspectVarValue: (nodeId: string, varId: string, value: any) => Promise<void>
   renameInspectVarName: (nodeId: string, oldName: string, newName: string) => Promise<void>
@@ -92,11 +104,7 @@ type CommonHooksFnMap = {
   resetConversationVar: (varId: string) => Promise<void>
   invalidateConversationVarValues: () => void
   accessControl: WorkflowAccessControl
-  configsMap?: {
-    flowId: string
-    flowType: FlowType
-    fileSettings: FileUpload
-  }
+  fileSettings?: FileUpload
 }
 
 export type Shape = {
@@ -104,7 +112,7 @@ export type Shape = {
 } & CommonHooksFnMap
 
 export const createHooksStore = ({
-  doSyncWorkflowDraft = async () => noop(),
+  doSyncWorkflowDraft = async () => null,
   syncWorkflowDraftWhenPageClose = noop,
   handleRefreshWorkflowDraft = noop,
   handleBackupDraft = noop,
@@ -127,7 +135,8 @@ export const createHooksStore = ({
     traceUrl: '',
   }),
   exportCheck = async () => noop(),
-  handleExportDSL = async () => noop(),
+  handleExportDSL = async () => false,
+  isExporting = false,
   fetchInspectVars = async () => noop(),
   hasNodeInspectVars = () => false,
   hasSetInspectVar = () => false,
@@ -143,7 +152,7 @@ export const createHooksStore = ({
   invalidateSysVarValues = noop,
   resetConversationVar = async () => noop(),
   invalidateConversationVarValues = noop,
-  configsMap,
+  fileSettings,
   accessControl = fullWorkflowAccessControl,
 }: Partial<Shape>) => {
   return createStore<Shape>((set) => ({
@@ -167,6 +176,7 @@ export const createHooksStore = ({
     getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
+    isExporting,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,
@@ -182,7 +192,7 @@ export const createHooksStore = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
-    configsMap,
+    fileSettings,
     accessControl,
   }))
 }

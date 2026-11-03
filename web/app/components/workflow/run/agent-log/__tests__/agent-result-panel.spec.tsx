@@ -1,6 +1,7 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import AgentResultPanel from '../agent-result-panel'
 
 const createLogItem = (
@@ -16,11 +17,14 @@ const createLogItem = (
   ...overrides,
 })
 
-describe('AgentResultPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
+describe('AgentResultPanel', () => {
   it('renders the real child items, shows the circular warning, and opens nested action logs', async () => {
     const user = userEvent.setup()
     const onShowAgentOrToolLog = vi.fn()

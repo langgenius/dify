@@ -1,8 +1,10 @@
 import json
-from typing import cast, override
+import logging
+from collections.abc import Callable
+from typing import assert_never, cast, override
 
 import flask_login
-from flask import Request, Response, request
+from flask import Flask, Request, Response, current_app, request
 from flask_login import user_loaded_from_request, user_logged_in
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,15 +13,31 @@ from werkzeug.exceptions import NotFound, Unauthorized
 from configs import dify_config
 from constants import HEADER_NAME_APP_CODE
 from core.db.session_factory import session_factory
+from core.logging.context import set_identity_context
 from dify_app import DifyApp
 from libs.passport import PassportService
-from libs.token import extract_access_token, extract_console_cookie_token, extract_webapp_passport
+from libs.token import (
+    extract_access_token,
+    extract_console_cookie_token,
+    extract_webapp_passport,
+    is_admin_api_key_request,
+)
 from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import AppMCPServer, EndUser
-from services.account_service import AccountService
+
+logger = logging.getLogger(__name__)
 
 type LoginUser = Account | EndUser
+type AccountLoader = Callable[[str], Account | None]
+
+
+def bind_account_loader(app: Flask, loader: AccountLoader) -> None:
+    app.extensions["account_identity_loader"] = loader
+
+
+def load_account(account_id: str) -> Account | None:
+    return cast(AccountLoader, current_app.extensions["account_identity_loader"])(account_id)
 
 
 class DifyLoginManager(flask_login.LoginManager):
@@ -62,23 +80,22 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
     auth_token = extract_access_token(request)
 
     # Check for admin API key authentication first
-    if dify_config.ADMIN_API_KEY_ENABLE and auth_token:
-        admin_api_key = dify_config.ADMIN_API_KEY
-        if admin_api_key and admin_api_key == auth_token:
-            workspace_id = request.headers.get("X-WORKSPACE-ID")
-            if workspace_id:
-                tenant_account_join = session.execute(
-                    select(Tenant, TenantAccountJoin)
-                    .where(Tenant.id == workspace_id)
-                    .where(TenantAccountJoin.tenant_id == Tenant.id)
-                    .where(TenantAccountJoin.role == "owner")
-                ).one_or_none()
-                if tenant_account_join:
-                    tenant, ta = tenant_account_join
-                    account = session.scalar(select(Account).where(Account.id == ta.account_id))
-                    if account:
-                        account.set_current_tenant_with_session(tenant, session=session)
-                        return account
+    if is_admin_api_key_request(request):
+        workspace_id = request.headers.get("X-WORKSPACE-ID")
+        if workspace_id:
+            tenant_account_join = session.execute(
+                select(Tenant, TenantAccountJoin).where(
+                    Tenant.id == workspace_id,
+                    TenantAccountJoin.tenant_id == Tenant.id,
+                    TenantAccountJoin.role == "owner",
+                )
+            ).one_or_none()
+            if tenant_account_join:
+                tenant, ta = tenant_account_join
+                account = session.scalar(select(Account).where(Account.id == ta.account_id))
+                if account:
+                    account.set_current_tenant_with_session(tenant, session=session)
+                    return account
 
     if request.blueprint in {"console", "inner_api"}:
         if not auth_token:
@@ -91,7 +108,7 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
         if not user_id:
             raise Unauthorized("Invalid Authorization token.")
 
-        logged_in_account = AccountService.load_logged_in_account(account_id=user_id, session=session)
+        logged_in_account = load_account(user_id)
         return logged_in_account
     elif request.blueprint == "openapi":
         # Account-branch device-flow approval routes (approve / deny /
@@ -110,7 +127,7 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
         source = decoded.get("token_source")
         if source or not user_id:
             return None
-        return AccountService.load_logged_in_account(account_id=user_id, session=session)
+        return load_account(user_id)
     elif request.blueprint == "web":
         app_code = request.headers.get(HEADER_NAME_APP_CODE)
         webapp_token = extract_webapp_passport(app_code, request) if app_code else None
@@ -156,13 +173,24 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
 @user_logged_in.connect
 @user_loaded_from_request.connect
 def on_user_logged_in(_sender: object, user: LoginUser) -> None:
-    """Called when a user logged in.
+    """Snapshot authenticated identity into the side-effect-free logging context.
 
-    Note: AccountService.load_logged_in_account will populate user.current_tenant_id
+    Note: AccountIdentityGateway.load_user will populate user.current_tenant_id
     through the load_user method, which calls account.set_tenant_id_with_session().
     """
-    # tenant_id context variable removed - using current_user.current_tenant_id directly
-    pass
+    set_identity_context()
+    try:
+        match user:
+            case Account():
+                set_identity_context(tenant_id=user.current_tenant_id, user_id=user.id, user_type="account")
+            case EndUser():
+                set_identity_context(tenant_id=user.tenant_id, user_id=user.id, user_type=user.type or "end_user")
+            case _ as unreachable:
+                assert_never(unreachable)
+    except Exception:
+        # Logging enrichment must never make authentication fail.
+        logger.exception("Failed to set logging identity context")
+        return
 
 
 @login_manager.unauthorized_handler
@@ -171,7 +199,7 @@ def unauthorized_handler() -> Response:
     # Keep this as a concrete `Response`; `DifyLoginManager.unauthorized()` narrows
     # Flask-Login's callback contract based on this override.
     return Response(
-        json.dumps({"code": "unauthorized", "message": "Unauthorized."}),
+        json.dumps({"code": "unauthorized", "message": "Unauthorized.", "status": 401}),
         status=401,
         content_type="application/json",
     )

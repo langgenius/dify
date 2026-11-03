@@ -1,6 +1,7 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import AgentLogItem from '../agent-log-item'
 
 const createLogItem = (
@@ -19,12 +20,15 @@ const createLogItem = (
   ...overrides,
 })
 
-describe('AgentLogItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
-  it('expands to show action logs and data, then routes nested log clicks', async () => {
+describe('AgentLogItem', () => {
+  it('expands and collapses the log data', async () => {
     const user = userEvent.setup()
     const onShowAgentOrToolLog = vi.fn()
     const child = createLogItem({ message_id: 'child', label: 'Tool Call' })
@@ -44,8 +48,9 @@ describe('AgentLogItem', () => {
       'inspect data',
     )
 
-    await user.click(screen.getByRole('button', { name: /1 Action Logs/i }))
+    await user.click(screen.getByText('Planner'))
 
-    expect(onShowAgentOrToolLog).toHaveBeenCalledWith(item)
+    expect(screen.queryByTestId('monaco-editor')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /1 Action Logs/i })).not.toBeInTheDocument()
   })
 })

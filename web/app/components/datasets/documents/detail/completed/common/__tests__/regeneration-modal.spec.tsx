@@ -1,272 +1,53 @@
-import type { ReactNode } from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import RegenerationModal from '../regeneration-modal'
 
-// Store emit function for triggering events in tests
-let emitFunction: ((v: string) => void) | null = null
-
-const EmitCapture = () => {
-  const { eventEmitter } = useEventEmitterContextContext()
-  emitFunction = eventEmitter?.emit?.bind(eventEmitter) || null
-  return null
-}
-
-// Custom wrapper that captures emit function
-const TestWrapper = ({ children }: { children: ReactNode }) => {
-  return (
-    <EventEmitterContextProvider>
-      <EmitCapture />
-      {children}
-    </EventEmitterContextProvider>
-  )
-}
-
-// Create a wrapper component with event emitter context
-const createWrapper = () => {
-  return ({ children }: { children: ReactNode }) => <TestWrapper>{children}</TestWrapper>
-}
-
-describe('RegenerationModal', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  const defaultProps = {
-    isShow: true,
-    onConfirm: vi.fn(),
-    onCancel: vi.fn(),
-    onClose: vi.fn(),
+function setup() {
+  let emit!: (event: string) => void
+  function CaptureEmitter() {
+    const { eventEmitter } = useEventEmitterContextContext()
+    emit = (event) => eventEmitter!.emit(event)
+    return null
   }
+  const props = { isShow: true, onConfirm: vi.fn(), onCancel: vi.fn(), onClose: vi.fn() }
+  render(
+    <EventEmitterContextProvider>
+      <CaptureEmitter />
+      <RegenerationModal {...props} />
+    </EventEmitterContextProvider>,
+  )
+  return { ...props, emit: (event: string) => act(() => emit(event)) }
+}
 
-  describe('Rendering', () => {
-    it('should not render content when isShow is false', () => {
-      render(<RegenerationModal {...defaultProps} isShow={false} />, { wrapper: createWrapper() })
+it('cancels regeneration without invoking the mutation', async () => {
+  const user = userEvent.setup()
+  const callbacks = setup()
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  expect(callbacks.onCancel).toHaveBeenCalledOnce()
+  expect(callbacks.onConfirm).not.toHaveBeenCalled()
+})
 
-      // Assert - Modal container might exist but content should not be visible
-      expect(screen.queryByText(/segment\.regenerationConfirmTitle/i)).not.toBeInTheDocument()
-    })
+it('blocks repeated confirmation while regenerating, permits retry after failure, and closes after success', async () => {
+  const user = userEvent.setup()
+  const callbacks = setup()
+  await user.click(screen.getByRole('button', { name: 'common.operation.regenerate' }))
+  expect(callbacks.onConfirm).toHaveBeenCalledOnce()
+  callbacks.emit('update-segment')
+  expect(screen.getByText('datasetDocuments.segment.regeneratingTitle')).toBeInTheDocument()
+  const regenerate = screen.getByRole('button', { name: 'common.operation.regenerate' })
+  expect(regenerate).toBeDisabled()
+  await user.click(regenerate)
+  expect(callbacks.onConfirm).toHaveBeenCalledOnce()
 
-    it('should render confirmation message', () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText(/segment\.regenerationConfirmMessage/i)).toBeInTheDocument()
-    })
-
-    it('should render cancel button in default state', () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
-    })
-
-    it('should render regenerate button in default state', () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText(/operation\.regenerate/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onCancel when cancel button is clicked', () => {
-      const mockOnCancel = vi.fn()
-      render(<RegenerationModal {...defaultProps} onCancel={mockOnCancel} />, {
-        wrapper: createWrapper(),
-      })
-
-      fireEvent.click(screen.getByText(/operation\.cancel/i))
-
-      expect(mockOnCancel).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onConfirm when regenerate button is clicked', () => {
-      const mockOnConfirm = vi.fn()
-      render(<RegenerationModal {...defaultProps} onConfirm={mockOnConfirm} />, {
-        wrapper: createWrapper(),
-      })
-
-      fireEvent.click(screen.getByText(/operation\.regenerate/i))
-
-      expect(mockOnConfirm).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // Modal content states - these would require event emitter manipulation
-  describe('Modal States', () => {
-    it('should show default content initially', () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText(/segment\.regenerationConfirmTitle/i)).toBeInTheDocument()
-      expect(screen.getByText(/operation\.cancel/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle toggling isShow prop', () => {
-      const { rerender } = render(<RegenerationModal {...defaultProps} isShow={true} />, {
-        wrapper: createWrapper(),
-      })
-      expect(screen.getByText(/segment\.regenerationConfirmTitle/i)).toBeInTheDocument()
-
-      rerender(
-        <TestWrapper>
-          <RegenerationModal {...defaultProps} isShow={false} />
-        </TestWrapper>,
-      )
-
-      expect(screen.queryByText(/segment\.regenerationConfirmTitle/i)).not.toBeInTheDocument()
-    })
-
-    it('should maintain handlers when rerendered', () => {
-      const mockOnConfirm = vi.fn()
-      const { rerender } = render(
-        <RegenerationModal {...defaultProps} onConfirm={mockOnConfirm} />,
-        { wrapper: createWrapper() },
-      )
-
-      rerender(
-        <TestWrapper>
-          <RegenerationModal {...defaultProps} onConfirm={mockOnConfirm} />
-        </TestWrapper>,
-      )
-      fireEvent.click(screen.getByText(/operation\.regenerate/i))
-
-      expect(mockOnConfirm).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Loading State', () => {
-    it('should show regenerating content when update-segment event is emitted', async () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      act(() => {
-        if (emitFunction) emitFunction('update-segment')
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText(/segment\.regeneratingTitle/i)).toBeInTheDocument()
-      })
-    })
-
-    it('should show regenerating message during loading', async () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      act(() => {
-        if (emitFunction) emitFunction('update-segment')
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText(/segment\.regeneratingMessage/i)).toBeInTheDocument()
-      })
-    })
-
-    it('should disable regenerate button during loading', async () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      act(() => {
-        if (emitFunction) emitFunction('update-segment')
-      })
-
-      await waitFor(() => {
-        const button = screen.getByText(/operation\.regenerate/i).closest('button')
-        expect(button).toBeDisabled()
-      })
-    })
-  })
-
-  // Success state
-  describe('Success State', () => {
-    it('should show success content when update-segment-success event is emitted followed by done', async () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Act - trigger loading then success then done
-      act(() => {
-        if (emitFunction) {
-          emitFunction('update-segment')
-          emitFunction('update-segment-success')
-          emitFunction('update-segment-done')
-        }
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText(/segment\.regenerationSuccessTitle/i)).toBeInTheDocument()
-      })
-    })
-
-    it('should show success message when completed', async () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      act(() => {
-        if (emitFunction) {
-          emitFunction('update-segment')
-          emitFunction('update-segment-success')
-          emitFunction('update-segment-done')
-        }
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText(/segment\.regenerationSuccessMessage/i)).toBeInTheDocument()
-      })
-    })
-
-    it('should show close button with countdown in success state', async () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      act(() => {
-        if (emitFunction) {
-          emitFunction('update-segment')
-          emitFunction('update-segment-success')
-          emitFunction('update-segment-done')
-        }
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText(/operation\.close/i)).toBeInTheDocument()
-      })
-    })
-
-    it('should call onClose when close button is clicked in success state', async () => {
-      const mockOnClose = vi.fn()
-      render(<RegenerationModal {...defaultProps} onClose={mockOnClose} />, {
-        wrapper: createWrapper(),
-      })
-
-      act(() => {
-        if (emitFunction) {
-          emitFunction('update-segment')
-          emitFunction('update-segment-success')
-          emitFunction('update-segment-done')
-        }
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText(/operation\.close/i)).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByText(/operation\.close/i))
-
-      expect(mockOnClose).toHaveBeenCalled()
-    })
-  })
-
-  // State transitions
-  describe('State Transitions', () => {
-    it('should return to default content when update fails (no success event)', async () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Act - trigger loading then done without success
-      act(() => {
-        if (emitFunction) {
-          emitFunction('update-segment')
-          emitFunction('update-segment-done')
-        }
-      })
-
-      // Assert - should show default content
-      await waitFor(() => {
-        expect(screen.getByText(/segment\.regenerationConfirmTitle/i)).toBeInTheDocument()
-      })
-    })
-  })
+  callbacks.emit('update-segment-done')
+  await user.click(screen.getByRole('button', { name: 'common.operation.regenerate' }))
+  expect(callbacks.onConfirm).toHaveBeenCalledTimes(2)
+  callbacks.emit('update-segment')
+  callbacks.emit('update-segment-success')
+  callbacks.emit('update-segment-done')
+  expect(screen.getByText('datasetDocuments.segment.regenerationSuccessTitle')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /common.operation.close/ }))
+  expect(callbacks.onClose).toHaveBeenCalledOnce()
 })

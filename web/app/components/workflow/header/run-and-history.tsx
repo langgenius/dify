@@ -2,14 +2,15 @@ import type { ViewHistoryProps } from './view-history'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodesReadOnly, useWorkflowStartRun } from '../hooks'
 import { useHooksStore } from '../hooks-store'
+import { useNodesReadOnly } from '../hooks/use-workflow'
+import { useWorkflowStartRun } from '../hooks/use-workflow-start-run'
 import Checklist from './checklist'
 import RunMode from './run-mode'
 import ViewHistory from './view-history'
 
 const PreviewMode = memo(({ disabled = false }: { disabled?: boolean }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { handleWorkflowStartRunInChatflow } = useWorkflowStartRun()
   const canRun = useHooksStore((s) => s.accessControl.canRun)
   const isDisabled = disabled || !canRun

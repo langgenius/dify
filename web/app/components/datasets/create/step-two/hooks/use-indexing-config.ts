@@ -1,19 +1,22 @@
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useDefaultModel,
-  useModelList,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { consoleQuery } from '@/service/console'
 import { RETRIEVE_METHOD } from '@/types/app'
 
-export enum IndexingType {
-  QUALIFIED = 'high_quality',
-  ECONOMICAL = 'economy',
-}
+export const IndexingType = {
+  QUALIFIED: 'high_quality',
+  ECONOMICAL: 'economy',
+} as const
+
+export type IndexingType = (typeof IndexingType)[keyof typeof IndexingType]
 
 const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,
@@ -52,7 +55,12 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   // Embedding model list
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
   const { data: defaultEmbeddingModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
 
   // Index type state
