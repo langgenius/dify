@@ -37,11 +37,12 @@ _GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
 def fill_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits: ArchiveLimits) -> bytes:
     """Write the package again with its root `app.yaml` filled and its manifest matching it.
 
-    Every other member is written byte for byte. `app.yaml` is rewritten only when fill changes its data, and the
-    manifest only when `app.yaml` changed (just `apps[0].size/sha256`) or when there is none. An `app.yaml` or
-    manifest fill cannot read keeps the package as written. Raises the archive writer's errors for an unsafe path
-    or a package over `limits`, `RosterAgentPackageTooLargeError` for an `app.yaml` or manifest over the reader's
-    size limits, and `PackageUnreadableError` for a member that cannot be read.
+    Every other member is written byte for byte. `app.yaml` is rewritten only when fill changes its data. The
+    manifest is rewritten only when its `apps[0].size/sha256` do not match the final `app.yaml` (just those two),
+    and built when there is none. A manifest fill cannot merge keeps `app.yaml` and the manifest as written.
+    Raises the archive writer's errors for an unsafe path or a package over `limits`,
+    `RosterAgentPackageTooLargeError` for an `app.yaml` or manifest over the reader's size limits, and
+    `PackageUnreadableError` for a member that cannot be read.
     """
     by_path = {entry.path: entry for entry in entries}
     if APP_PATH not in by_path:
@@ -59,15 +60,13 @@ def fill_package(entries: Sequence[ArchiveEntry], ctx: FillContext, *, limits: A
 
 def _filled(app: bytes, manifest: bytes | None, ctx: FillContext) -> tuple[bytes, bytes]:
     filled = _filled_app(app, ctx)
+    final = app if filled is None else filled
     if manifest is None:
-        final = app if filled is None else filled
         return final, new_manifest(final)
-    if filled is None:
-        return app, manifest
-    merged = merge_manifest(manifest, filled)
+    merged = merge_manifest(manifest, final)
     if merged is None:
         return app, manifest
-    return filled, merged
+    return final, merged
 
 
 def _filled_app(app: bytes, ctx: FillContext) -> bytes | None:

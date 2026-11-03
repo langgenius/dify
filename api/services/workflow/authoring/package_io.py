@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import lzma
 import zipfile
 import zlib
 from collections.abc import Iterator, Sequence
@@ -11,6 +12,7 @@ from typing import IO, Any, Final
 import yaml
 from pydantic import ValidationError
 
+from configs import dify_config
 from libs.archive_writer import (
     ArchiveCompression,
     ArchiveEntry,
@@ -31,7 +33,15 @@ MANIFEST_PATH: Final = "manifest.yaml"
 _APP_PACKAGE_FORMAT: Final = "dify.app"
 _FIRST_FORMAT_VERSION: Final = 1
 _CHUNK_SIZE: Final = 1024 * 1024
-_ZIP_ERRORS: Final = (OSError, zipfile.BadZipFile, EOFError, RuntimeError, NotImplementedError, zlib.error)
+_ZIP_ERRORS: Final = (
+    OSError,
+    zipfile.BadZipFile,
+    EOFError,
+    RuntimeError,
+    NotImplementedError,
+    zlib.error,
+    lzma.LZMAError,
+)
 YAML_ERRORS: Final = (UnicodeDecodeError, yaml.YAMLError, ValueError, RecursionError)
 
 
@@ -43,15 +53,16 @@ def read_package_entries(source: IO[bytes]) -> list[ArchiveEntry]:
     """Every file of a zip, sub-folder paths kept and directory entries skipped.
 
     Members are read from `source` when an entry is opened, so `source` must stay open until the entries are
-    written. Raises `PackageUnreadableError` for a bad zip or an unsafe path, and when a member cannot be read.
+    written. Raises `PackageUnreadableError` for a bad zip or an unsafe path, and when a member cannot be read;
+    `RosterAgentPackageTooLargeError` when the members' declared sizes add up past the package reader's limit.
     """
     try:
         archive = zipfile.ZipFile(source)
-        entries = [
-            ArchiveEntry(info.filename, _member_chunks(archive, info))
-            for info in archive.infolist()
-            if not info.is_dir()
-        ]
+        infos = [info for info in archive.infolist() if not info.is_dir()]
+        # A member never inflates past its declared size, so the declared total bounds what fill reads.
+        if sum(info.file_size for info in infos) > dify_config.AGENT_PACKAGE_MAX_BYTES:
+            raise RosterAgentPackageTooLargeError("App package uncompressed size exceeds the limit")
+        entries = [ArchiveEntry(info.filename, _member_chunks(archive, info)) for info in infos]
         return list(StrictPathPolicy().admit(entries))
     except ArchiveError as exc:
         raise PackageUnreadableError(str(exc)) from exc
@@ -94,7 +105,9 @@ def new_manifest(app: bytes) -> bytes:
 
 
 def merge_manifest(manifest: bytes, app: bytes) -> bytes | None:
-    """The manifest with only `apps[0].size` and `sha256` rewritten for `app`; None when it cannot be read."""
+    """The manifest for `app`: kept byte for byte when `apps[0]` already describes it, else with only
+    `apps[0].size` and `sha256` rewritten; None when it cannot be read or the rewrite is not a valid manifest.
+    """
     try:
         data = yaml.load(manifest, Loader=PackageYamlLoader)  # noqa: S506
     except YAML_ERRORS:
@@ -103,6 +116,8 @@ def merge_manifest(manifest: bytes, app: bytes) -> bytes | None:
     if root is None:
         return None
     resource = _app(app)
+    if (root.get("size"), root.get("sha256")) == (resource.size, resource.sha256):
+        return manifest
     root.update(size=resource.size, sha256=resource.sha256)
     try:
         AppPackageManifest.model_validate(data)

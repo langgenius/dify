@@ -21,6 +21,7 @@ from machinery.context import RequestContext
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.model import AppMode, IconType
 from models.workflow import Workflow
+from services.agent.errors import RosterAgentPackageTooLargeError
 from services.app_package_service import AppPackageService
 from services.entities.dsl_entities import AppImportParams, ImportStatus
 from services.workflow.authoring import FillContext, fill_package
@@ -253,6 +254,69 @@ def test_filling_twice_gives_the_same_members() -> None:
     assert _members(_fill(once)) == _members(once)
 
 
+def test_filling_a_resource_package_twice_gives_the_same_members(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
+    once = _fill(_resource_package(sqlite_session, monkeypatch, sqlite_engine))
+
+    assert _members(_fill(once)) == _members(once)
+
+
+def test_an_edited_app_yaml_gets_a_manifest_that_matches_it() -> None:
+    exported = _members(_exported((FIXTURES / "simple_passthrough_workflow.yml").read_text()))
+    edited = exported[APP].replace(b"name: echo", b"name: echo edited by the agent", 1)
+    assert edited != exported[APP]
+
+    filled = _fill(_zip({**exported, APP: edited}))
+
+    assert _members(filled)[APP] == edited
+    prepared = AppPackageService().read_package(io.BytesIO(filled))
+    assert prepared is not None
+    prepared.close()
+
+
+def _manifest_for(app: bytes, **overrides: object) -> bytes:
+    entry = {"path": APP, "size": len(app), "sha256": hashlib.sha256(app).hexdigest()}
+    return yaml.safe_dump({"format": "dify.app", "format_version": 1, "apps": [entry], **overrides}).encode()
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    [
+        pytest.param(lambda _app: b"apps: [unclosed", id="bad-yaml"),
+        pytest.param(
+            lambda app: _manifest_for(app, apps=[{"path": "other.yaml", "size": 1, "sha256": "0" * 64}]),
+            id="root-app-elsewhere",
+        ),
+        pytest.param(lambda app: _manifest_for(app, format="dify.other"), id="invalid-manifest"),
+    ],
+)
+def test_a_manifest_that_cannot_be_merged_keeps_the_package_as_written(manifest: Callable[[bytes], bytes]) -> None:
+    app = _skeleton_dsl().encode()
+    written = {APP: app, MANIFEST: manifest(b"stale")}
+
+    filled = _members(_fill(_zip(written)))
+
+    assert filled == written
+
+
+def test_an_app_yaml_over_the_dsl_limit_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _skeleton_dsl().encode()
+    monkeypatch.setattr("services.workflow.authoring.fill.DSL_MAX_SIZE", len(app) - 1)
+
+    with pytest.raises(RosterAgentPackageTooLargeError):
+        _fill(_zip({APP: app}))
+
+
+def test_a_manifest_over_its_limit_is_refused(config_overrides: Callable[..., None]) -> None:
+    app = _skeleton_dsl().encode()
+    manifest = _manifest_for(app)
+    config_overrides(AGENT_PACKAGE_MAX_MANIFEST_BYTES=len(manifest) - 1)
+
+    with pytest.raises(RosterAgentPackageTooLargeError):
+        _fill(_zip({APP: app, MANIFEST: manifest}))
+
+
 def test_a_chat_app_passes_through_unchanged() -> None:
     dsl = yaml.safe_dump({"kind": "app", "app": {"mode": AppMode.CHAT.value, "name": "Chat"}, "model_config": {}})
     exported = _exported(dsl)
@@ -300,6 +364,35 @@ def test_reading_keeps_sub_folder_paths_and_skips_directories() -> None:
 def test_unreadable_packages_are_refused(content: bytes) -> None:
     with pytest.raises(PackageUnreadableError):
         read_package_entries(io.BytesIO(content))
+
+
+def test_a_package_inflating_past_the_limit_is_refused_before_reading(config_overrides: Callable[..., None]) -> None:
+    config_overrides(AGENT_PACKAGE_MAX_BYTES=1024 * 1024)
+    bomb = _zip({APP: b"kind: app\n", "zeros.bin": bytes(2 * 1024 * 1024)})
+    assert len(bomb) < 64 * 1024
+
+    with pytest.raises(RosterAgentPackageTooLargeError):
+        read_package_entries(io.BytesIO(bomb))
+
+
+def _corrupt_lzma_member() -> bytes:
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_LZMA) as archive:
+        archive.writestr("notes.txt", b"lzma notes " * 1000)
+    content = bytearray(output.getvalue())
+    with zipfile.ZipFile(io.BytesIO(bytes(content))) as archive:
+        info = archive.getinfo("notes.txt")
+    data_start = info.header_offset + 30 + len(info.filename) + len(info.extra)
+    for offset in range(data_start + 8, data_start + 40):
+        content[offset] ^= 0xFF
+    return bytes(content)
+
+
+def test_a_corrupt_lzma_member_cannot_be_read() -> None:
+    [entry] = read_package_entries(io.BytesIO(_corrupt_lzma_member()))
+
+    with pytest.raises(PackageUnreadableError):
+        b"".join(entry.open())
 
 
 def test_entries_are_written_with_deflate() -> None:
