@@ -678,6 +678,30 @@ describe('RetrievalTestPage', () => {
     await waitFor(() => expect(apiMock.streamQuery).toHaveBeenCalledOnce())
   })
 
+  it('starts a fast query when crypto.randomUUID is unavailable (non-secure HTTP origin)', async () => {
+    vi.stubGlobal('crypto', {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+    })
+    try {
+      const user = userEvent.setup()
+      await renderPage()
+
+      await user.type(
+        screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder'),
+        'Run a query without randomUUID',
+      )
+      await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
+
+      await waitFor(() => expect(apiMock.queryAdmission).toHaveBeenCalledOnce())
+      expect(apiMock.queryAdmission).toHaveBeenCalledWith({
+        body: { mode: 'fast', query: 'Run a query without randomUUID' },
+        params: { control_space_id: 'space-1' },
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('keeps retrieved evidence visible and retries a Research run that later fails', async () => {
     apiMock.createResearch.mockResolvedValueOnce({
       cost: {},

@@ -7,6 +7,7 @@ import type { RetrievalComposerImage } from './state/scoped'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
@@ -297,7 +298,7 @@ export function RetrievalRuntimeController() {
       queryAbortControllerRef.current?.abort()
       const controller = new AbortController()
       queryAbortControllerRef.current = controller
-      const id = crypto.randomUUID()
+      const id = uuid4()
       const startedAt = Date.now()
       setComposerDraft({ mode: runMode, query: cleanQuery })
       setLocalRun({

@@ -614,6 +614,32 @@ describe('QualityEvaluationPanel', () => {
     expect(new Set(keys).size).toBe(1)
   })
 
+  it('starts an evaluation when crypto.randomUUID is unavailable (non-secure HTTP origin)', async () => {
+    vi.stubGlobal('crypto', {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+    })
+    try {
+      const user = userEvent.setup()
+      renderPanel()
+
+      await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+      await user.click(
+        screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.evaluation.run' }),
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.evaluation.start' }),
+      )
+      await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(1))
+
+      const [request] = serviceMock.createReplay.mock.calls.map(([request]) => request)
+      expect(request.headers['Idempotency-Key']).toMatch(
+        /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i,
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('uses a new idempotency key after a definitive rejection or a changed mode', async () => {
     serviceMock.createReplay
       .mockRejectedValueOnce(

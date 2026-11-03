@@ -507,6 +507,75 @@ describe('shared knowledge binding dialog', () => {
     expect(snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions).toEqual(saved)
   })
 
+  it('binds a Classic dataset when crypto.randomUUID is unavailable (non-secure HTTP origin)', async () => {
+    vi.stubGlobal('crypto', {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+    })
+    try {
+      const user = userEvent.setup()
+      getDatasets.mockResolvedValue(datasetPage())
+      setup([binding])
+      const dialog = await open(user)
+      await user.click(
+        await within(dialog).findByRole('option', { name: optionName('Test Dataset') }),
+      )
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+      const set = snapshot().knowledge.sets[0]
+      expect(set).toMatchObject({
+        name: 'Test Dataset',
+        datasets: [{ id: 'dataset-1' }],
+      })
+      expect(set.id).toMatch(/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('backfills missing metadata condition row IDs when crypto.randomUUID is unavailable', async () => {
+    vi.stubGlobal('crypto', {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+    })
+    try {
+      const user = userEvent.setup()
+      getDataset.mockResolvedValue(
+        createDatasetFixture({
+          doc_metadata: ['topic'].map((name) => ({ id: name, name, type: 'string' })),
+        }),
+      )
+      const config = formStateToAgentSoulConfig({
+        formState: {
+          ...defaultAgentSoulConfigFormState,
+          knowledgeRetrievals: [
+            { id: 'classic', name: 'Imported search', datasetRefs: [{ id: 'dataset-1' }] },
+          ],
+        },
+      })
+      config.knowledge!.sets![0]!.metadata_filtering = {
+        mode: 'manual',
+        conditions: {
+          logical_operator: 'and',
+          conditions: [{ name: 'topic', comparison_operator: 'is', value: 'agents' }],
+        },
+      }
+      setup(agentSoulConfigToFormState(config).knowledgeRetrievals, { enabled: false })
+      const dialog = await open(user)
+      await advanced(user, dialog)
+      await user.click(
+        await within(dialog).findByRole('button', { name: /metadata.panel.conditions/ }),
+      )
+      expect(within(screen.getByRole('group', { name: 'topic' })).getByRole('textbox')).toHaveValue(
+        'agents',
+      )
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+      const saved = snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions
+      expect(saved).toEqual([
+        expect.objectContaining({ id: expect.any(String), name: 'topic', value: 'agents' }),
+      ])
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('blocks a mixed-index group without a required reranker and allows correcting the dataset selection', async () => {
     const user = userEvent.setup()
     const first = createDatasetFixture()

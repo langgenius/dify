@@ -99,6 +99,22 @@ describe('IpPolicyDialog', () => {
     expect(screen.getByPlaceholderText('10.0.0.0/8')).toHaveValue('203.0.113.42')
   })
 
+  it('adds an entry row when crypto.randomUUID is unavailable (non-secure HTTP origin)', async () => {
+    vi.stubGlobal('crypto', {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+    })
+    try {
+      const user = userEvent.setup()
+      render(<DialogHarness />)
+
+      await user.click(screen.getByRole('button', { name: 'Add' }))
+
+      expect(screen.getAllByPlaceholderText('10.0.0.0/8')).toHaveLength(2)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('submits trimmed name and addresses', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
