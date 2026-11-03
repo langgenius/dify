@@ -3,7 +3,6 @@ import logging
 import time
 from collections.abc import Generator
 from threading import Thread
-from typing import Any
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
