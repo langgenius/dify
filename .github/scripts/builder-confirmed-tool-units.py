@@ -855,7 +855,7 @@ a4_expected["tests.unit_tests.services.test_workflow_run_service"] = {
     "test_get_paginate_workflow_runs_should_forward_filters_and_parse_limit": 1,
     "test_get_pause_details_hides_private_scheduling_messages": 4,
     "test_get_pause_details_maps_human_input_and_token": 1,
-    "test_get_pause_details_rejects_unsupported_pause_reason": 1,
+    "test_get_pause_details_rejects_a_checkpoint_with_a_missing_human_input_form": 1,
     "test_get_pause_details_returns_empty_details_without_an_active_pause": 2,
     "test_get_pause_details_returns_none_when_run_is_not_found": 1,
     "test_get_workflow_run_node_executions_should_return_empty_list_when_run_not_found": 1,
