@@ -12,6 +12,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
+from sqlalchemy import Table
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden, Unauthorized
@@ -70,6 +71,12 @@ class AppDatabase:
             session.execute(table.delete().where(table.c.id == object_id))
 
 
+def _mapped_table(model: type[TypeBase]) -> Table:
+    table = model.__table__
+    assert isinstance(table, Table)
+    return table
+
+
 @pytest.fixture
 def flask_app() -> Flask:
     app = Flask(__name__)
@@ -82,10 +89,10 @@ def app_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[A
     """Create the minimal authentication schema and bind its database reference."""
 
     tables = [
-        Tenant.__table__,
-        Account.__table__,
-        TenantAccountJoin.__table__,
-        App.__table__,
+        _mapped_table(Tenant),
+        _mapped_table(Account),
+        _mapped_table(TenantAccountJoin),
+        _mapped_table(App),
     ]
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
     maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
@@ -139,7 +146,7 @@ def app_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[A
 
 
 @pytest.fixture
-def authenticated_controller(app_db: AppDatabase, monkeypatch: pytest.MonkeyPatch) -> Iterator[AppDatabase]:
+def authenticated_controller(app_db: AppDatabase, monkeypatch: pytest.MonkeyPatch) -> AppDatabase:
     """Patch only token validation and Flask login signaling around real ORM auth."""
 
     monkeypatch.setattr(
@@ -169,7 +176,7 @@ def test_get_parameters_queries_authenticated_app(
     )
 
     with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
-        response = AppParameterApi().get()
+        response = AppParameterApi().get(app_model=App())
 
     app_definitions.get_public_parameters.assert_called_once_with(authenticated_controller.app_id)
     assert response["opening_statement"] == "Hello"
@@ -199,14 +206,14 @@ def test_get_parameters_maps_query_errors(
 
     with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
         with pytest.raises(http_error):
-            AppParameterApi().get()
+            AppParameterApi().get(app_model=App())
 
 
 def test_get_meta_queries_authenticated_app(
     flask_app: Flask, authenticated_controller: AppDatabase, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app_definitions = Mock()
-    app_definitions.get_tool_icons.return_value = {}
+    app_definitions.get_tool_icons.return_value = dict[str, str]()
     monkeypatch.setattr(
         app_controller,
         "application_services",
@@ -214,7 +221,7 @@ def test_get_meta_queries_authenticated_app(
     )
 
     with flask_app.test_request_context("/meta", headers={"Authorization": "Bearer token"}):
-        response = AppMetaApi().get()
+        response = AppMetaApi().get(app_model=App())
 
     app_definitions.get_tool_icons.assert_called_once_with(authenticated_controller.app_id)
     assert response == {"tool_icons": {}}
@@ -234,7 +241,7 @@ def test_get_meta_maps_unavailable_definition_to_app_unavailable(
 
     with flask_app.test_request_context("/meta", headers={"Authorization": "Bearer token"}):
         with pytest.raises(AppUnavailableError) as raised:
-            AppMetaApi().get()
+            AppMetaApi().get(app_model=App())
 
     assert raised.value.data == {
         "code": "app_unavailable",
@@ -263,7 +270,7 @@ def test_get_info_queries_authenticated_app(
     )
 
     with flask_app.test_request_context("/info", headers={"Authorization": "Bearer token"}):
-        response = AppInfoApi().get()
+        response = AppInfoApi().get(app_model=App())
 
     app_definitions.get_summary.assert_called_once_with(authenticated_controller.app_id)
     assert response == {
@@ -290,7 +297,7 @@ def test_get_info_maps_unavailable_app(
 
     with flask_app.test_request_context("/info", headers={"Authorization": "Bearer token"}):
         with pytest.raises(AppUnavailableError):
-            AppInfoApi().get()
+            AppInfoApi().get(app_model=App())
 
 
 def test_get_site_configuration_queries_authenticated_app(
@@ -323,7 +330,7 @@ def test_get_site_configuration_queries_authenticated_app(
     )
 
     with flask_app.test_request_context("/site", headers={"Authorization": "Bearer token"}):
-        response = AppSiteApi().get()
+        response = AppSiteApi().get(app_model=App())
 
     app_definitions.get_site_configuration.assert_called_once_with(authenticated_controller.app_id)
     assert response["title"] == "Test Site"
@@ -346,7 +353,7 @@ def test_get_site_configuration_maps_missing_site_to_forbidden(
 
     with flask_app.test_request_context("/site", headers={"Authorization": "Bearer token"}):
         with pytest.raises(Forbidden):
-            AppSiteApi().get()
+            AppSiteApi().get(app_model=App())
 
 
 @pytest.mark.parametrize("state", ["missing", "disabled", "archived", "ownerless"])
@@ -364,9 +371,9 @@ def test_authentication_rejects_empty_or_invisible_database_state(
         authenticated_controller.update_tenant(status=TenantStatus.ARCHIVE)
     else:
         with authenticated_controller.session_maker.begin() as session:
-            session.execute(TenantAccountJoin.__table__.delete())
+            session.execute(_mapped_table(TenantAccountJoin).delete())
         expected_error = Unauthorized
 
     with flask_app.test_request_context("/info", headers={"Authorization": "Bearer token"}):
         with pytest.raises(expected_error):
-            AppInfoApi().get()
+            AppInfoApi().get(app_model=App())

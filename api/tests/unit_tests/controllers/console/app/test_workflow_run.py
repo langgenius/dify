@@ -152,7 +152,7 @@ class TestWorkflowPauseDetailsApiCases:
         assert workflow_run_module.WorkflowPauseDetailsResponse.__name__ in workflow_run_module.console_ns.models
 
 
-def _serialize_200_response(handler, payload: Any) -> Any:
+def _serialize_200_response(handler: Any, payload: Any) -> Any:
     response_doc = getattr(handler, "__apidoc__", {}).get("responses", {}).get("200")
     if response_doc is None:
         return payload
@@ -219,7 +219,7 @@ def _workflow_run_summary(session: Session, **overrides: object) -> WorkflowRun:
     workflow_run.created_at = created_at
     for name, value in overrides.items():
         setattr(workflow_run, name, value)
-    workflow_run.retry_index = 0
+    workflow_run.retry_index = 0  # pyrefly: ignore[missing-attribute]
     session.add(workflow_run)
     session.commit()
     return workflow_run
