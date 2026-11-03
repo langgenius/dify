@@ -1,7 +1,7 @@
 """Integration coverage for the console MCP provider HTTP endpoint."""
 
 import json
-from types import SimpleNamespace
+from dataclasses import dataclass
 from unittest.mock import ANY, call, patch
 
 import pytest
@@ -71,6 +71,12 @@ def client(flask_app_with_containers: Flask) -> FlaskClient:
     return flask_app_with_containers.test_client()
 
 
+@dataclass
+class _DbProvider:
+    authed: bool = False
+    tools: str = "[]"
+
+
 def test_create_mcp_provider_populates_tools(
     client: FlaskClient,
     db_session_with_containers: Session,
@@ -80,7 +86,7 @@ def test_create_mcp_provider_populates_tools(
     created_provider = _provider_entity()
     connected_provider = _provider_entity(tools=[_tool_payload()])
     reconnect = ReconnectResult(authed=True, tools=json.dumps([_tool_payload()]), encrypted_credentials="{}")
-    db_provider = SimpleNamespace(authed=False, tools="[]")
+    db_provider = _DbProvider()
 
     with patch("controllers.console.workspace.tool_providers.MCPToolManageService", autospec=True) as service_cls:
         service = service_cls.return_value

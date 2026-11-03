@@ -3,7 +3,6 @@
 from collections.abc import Generator, Sequence
 from datetime import datetime
 from decimal import Decimal
-from typing import cast
 from unittest.mock import create_autospec
 from uuid import uuid4
 
@@ -45,24 +44,22 @@ from tests.workflow_test_utils import build_test_graph_init_params
 @pytest.fixture
 def databases(monkeypatch: pytest.MonkeyPatch) -> Generator[sessionmaker[Session]]:
     engines: list[Engine] = [create_engine("sqlite://", poolclass=QueuePool) for _ in range(2)]
-    tables = cast(
-        list[Table],
-        [
-            model.__table__
-            for model in (
-                App,
-                Conversation,
-                Message,
-                MessageFile,
-                Dataset,
-                Document,
-                DocumentSegment,
-                SegmentAttachmentBinding,
-                UploadFile,
-                DatasourceProvider,
-            )
-        ],
-    )
+    tables: list[Table] = [
+        model.__table__
+        for model in (
+            App,
+            Conversation,
+            Message,
+            MessageFile,
+            Dataset,
+            Document,
+            DocumentSegment,
+            SegmentAttachmentBinding,
+            UploadFile,
+            DatasourceProvider,
+        )
+        if isinstance(model.__table__, Table)
+    ]
     for engine in engines:
         TypeBase.metadata.create_all(engine, tables=tables)
     session_makers: list[sessionmaker[Session]] = [sessionmaker(engine, expire_on_commit=False) for engine in engines]
@@ -165,7 +162,7 @@ def test_node_memory_reads_injected_history_and_releases_before_token_count(
 
     model_mock = create_autospec(ModelInstance, instance=True, spec_set=True)
     model_mock.get_llm_num_tokens.side_effect = count_tokens
-    model = cast(ModelInstance, model_mock)
+    model: ModelInstance = model_mock
 
     memory = factory(sessions, app_id=app_id, rebind=rebind, conversation_id="conversation")._build_memory_for_llm_node(
         node_data=llm_data(),
@@ -364,7 +361,7 @@ def test_agent_model_parameter_memory_uses_injected_history(
 
     model_mock = create_autospec(ModelInstance, instance=True, spec_set=True)
     model_mock.get_llm_num_tokens.side_effect = count_tokens
-    model = cast(ModelInstance, model_mock)
+    model: ModelInstance = model_mock
 
     support = AgentRuntimeSupport(workflow_runtime=build_workflow_execution_dependencies(sessions))
     monkeypatch.setattr(support, "fetch_model", lambda **_kwargs: (model, None))
