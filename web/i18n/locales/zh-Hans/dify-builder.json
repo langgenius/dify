@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "请先不带文件开始下一项任务，任务开始后可补充文件。",
   "attachments.consumed": "已加入上下文",
+  "attachments.paused": "请先继续任务，再发送文件。",
   "attachments.pending": "排队中",
   "attachments.rejected": "未使用",
   "attachments.superseded": "不再使用",

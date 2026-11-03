@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "Sonraki görevi dosya eklemeden başlatın. Başladıktan sonra dosya ekleyebilirsiniz.",
   "attachments.consumed": "Bağlama eklendi",
+  "attachments.paused": "Dosya göndermeden önce görevi sürdürün.",
   "attachments.pending": "Sırada",
   "attachments.rejected": "Kullanılmadı",
   "attachments.superseded": "Artık kullanılmıyor",

@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "Inicia la siguiente tarea sin archivos. Puedes añadirlos después de que comience.",
   "attachments.consumed": "Añadido al contexto",
+  "attachments.paused": "Reanuda la tarea antes de enviar archivos.",
   "attachments.pending": "En cola",
   "attachments.rejected": "No utilizado",
   "attachments.superseded": "Ya no se utiliza",

@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "Mulai tugas berikutnya tanpa file. Anda dapat menambahkan file setelah tugas dimulai.",
   "attachments.consumed": "Ditambahkan ke konteks",
+  "attachments.paused": "Lanjutkan tugas sebelum mengirim file.",
   "attachments.pending": "Dalam antrean",
   "attachments.rejected": "Tidak digunakan",
   "attachments.superseded": "Tidak lagi digunakan",

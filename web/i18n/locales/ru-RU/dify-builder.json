@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "Начните следующую задачу без файлов. Их можно добавить после её запуска.",
   "attachments.consumed": "Добавлено в контекст",
+  "attachments.paused": "Возобновите задачу перед отправкой файлов.",
   "attachments.pending": "В очереди",
   "attachments.rejected": "Не использовано",
   "attachments.superseded": "Больше не используется",

@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "Starte die nächste Aufgabe ohne Dateien. Du kannst Dateien hinzufügen, sobald sie gestartet ist.",
   "attachments.consumed": "Zum Kontext hinzugefügt",
+  "attachments.paused": "Setze die Aufgabe fort, bevor du Dateien sendest.",
   "attachments.pending": "In Warteschlange",
   "attachments.rejected": "Nicht verwendet",
   "attachments.superseded": "Nicht mehr verwendet",

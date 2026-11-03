@@ -60,7 +60,7 @@ export const isUnknownFixControl = (
 
 export const difyBuilderLifecycleControlAtom = atom<DifyBuilderLifecycleControl | null>(null)
 export const difyBuilderMaterialControlAtom = atom<{
-  phase: 'pending' | 'unknown' | 'accepted'
+  phase: 'pending' | 'unknown'
   clientTurnId: string
   attachments: DifyBuilderAttachmentPayload[]
   text: string

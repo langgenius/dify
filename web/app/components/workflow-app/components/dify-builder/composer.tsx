@@ -115,7 +115,7 @@ const DifyBuilderComposerAction = ({
   const canSendDraft = useAtomValue(difyBuilderCanSendDraftAtom)
   const canAddMaterial = useAtomValue(difyBuilderCanAddMaterialAtom)
   const canSend =
-    hasModel && filesReady && ((hasFiles && canAddMaterial) || (!attachmentsOnly && canSendDraft))
+    hasModel && filesReady && (hasFiles ? canAddMaterial : !attachmentsOnly && canSendDraft)
   const canControl = useAtomValue(difyBuilderCanControlTaskAtom)
   const operation = useAtomValue(difyBuilderTaskControlOperationAtom)
   const control = useAtomValue(difyBuilderTaskControlAtom)
@@ -146,6 +146,7 @@ const DifyBuilderComposerAction = ({
           variant="primary"
           disabled={!canSend}
           aria-label={t(($) => $.messageSend)}
+          aria-describedby={descriptionId}
         >
           <span aria-hidden className="i-ri-send-plane-2-fill size-4" />
         </IconButton>
@@ -251,6 +252,14 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
   const operation = useAtomValue(difyBuilderTaskControlOperationAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
   const controlStatusId = useId()
+  const attachmentStatusId = useId()
+  const attachmentStatus = files.length
+    ? view?.task_status === 'abandoned'
+      ? t(($) => $['attachments.abandoned'])
+      : view?.run_status === 'paused'
+        ? t(($) => $['attachments.paused'])
+        : null
+    : null
   const controlStatus =
     control?.phase === 'unknown'
       ? t(($) => $['taskControl.unknown'])
@@ -268,8 +277,13 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
                 : t(($) => $['taskControl.syncing'])
               : null
   const descriptionId =
-    [showStatus && statusId, controlStatus && controlStatusId].filter(Boolean).join(' ') ||
-    undefined
+    [
+      showStatus && statusId,
+      controlStatus && controlStatusId,
+      attachmentStatus && attachmentStatusId,
+    ]
+      .filter(Boolean)
+      .join(' ') || undefined
 
   if (attachmentsOnly && !canAddMaterial && !files.length) return null
 
@@ -279,6 +293,15 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
       {controlStatus && (
         <p id={controlStatusId} aria-live="polite" className="sr-only">
           {controlStatus}
+        </p>
+      )}
+      {attachmentStatus && (
+        <p
+          id={attachmentStatusId}
+          role="status"
+          className="mx-4 mb-2 system-xs-regular text-text-secondary"
+        >
+          {attachmentStatus}
         </p>
       )}
       <form
@@ -314,11 +337,7 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
         <div className="flex flex-col items-end justify-end p-1.5">
           {!!files.length && (
             <div className="max-h-36 w-full overflow-y-auto p-1">
-              <DraftFileList
-                files={files}
-                fileConfig={fileConfig}
-                editable={!material || material.phase === 'accepted'}
-              />
+              <DraftFileList files={files} fileConfig={fileConfig} editable={!material} />
             </div>
           )}
           {!attachmentsOnly && (
@@ -337,7 +356,7 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
               filesReady={filesReady}
               hasFiles={files.length > 0}
               attachmentsOnly={attachmentsOnly}
-              descriptionId={controlStatus ? controlStatusId : undefined}
+              descriptionId={descriptionId}
             />
           </div>
         </div>

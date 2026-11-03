@@ -18,6 +18,7 @@ import { DifyBuilderAttachmentScope } from '../attachments'
 import { difyBuilderSessionScopedAtoms } from '../session/state'
 import { useDifyBuilderSessionController } from '../session/use-session-controller'
 import { difyBuilderRuntimeAtom, difyBuilderScopedAtoms } from '../store'
+import { useDifyBuilderAttachmentDraft } from '../use-attachment-draft'
 import { DifyBuilderCanvasLockCleanup } from './canvas-sync'
 import { DifyBuilderCreationStart } from './creation-start'
 import { DifyBuilderSessionPersistence } from './session-persistence'
@@ -99,6 +100,7 @@ const DifyBuilderProviderContent = ({
   }, [])
 
   const runEvents = useDifyBuilderRunEvents(appId)
+  const attachmentDraft = useDifyBuilderAttachmentDraft()
   const store = useAtomStore()
   const onCanvasRefreshed = useCallback(() => {
     store.get(difyBuilderRuntimeAtom)?.session.onCanvasRefreshed()
@@ -108,6 +110,7 @@ const DifyBuilderProviderContent = ({
   const sessionEvents = useMemo<SessionRunEvents>(
     () => ({
       ...runEvents,
+      ...attachmentDraft,
       onCommandStarted: canvasRefresh.cancel,
       onSessionStateChanged: (state) => {
         canvasEvents.onSessionStateChanged(state)
@@ -128,7 +131,7 @@ const DifyBuilderProviderContent = ({
         canvasRefresh.reset()
       },
     }),
-    [canvasEvents, canvasRefresh, runEvents],
+    [attachmentDraft, canvasEvents, canvasRefresh, runEvents],
   )
   const session = useDifyBuilderSessionController(onSyncDraft, sessionEvents)
   const runtime = useMemo(
@@ -159,7 +162,7 @@ const DifyBuilderProviderContent = ({
   })
 
   return (
-    <DifyBuilderAttachmentScope>
+    <>
       <DifyBuilderCanvasLockCleanup />
       {children}
       {/* Install canvas and panel handlers before restoring or starting a session. */}
@@ -176,7 +179,7 @@ const DifyBuilderProviderContent = ({
         canStartCreation={canStartCreation}
         enabled={enabled}
       />
-    </DifyBuilderAttachmentScope>
+    </>
   )
 }
 
@@ -188,7 +191,9 @@ export const DifyBuilderProvider = (props: DifyBuilderProviderProps) => {
       atoms={[...difyBuilderSessionScopedAtoms, ...difyBuilderScopedAtoms]}
       name="DifyBuilder"
     >
-      <DifyBuilderProviderContent {...props} />
+      <DifyBuilderAttachmentScope>
+        <DifyBuilderProviderContent {...props} />
+      </DifyBuilderAttachmentScope>
     </ScopeProvider>
   )
 }

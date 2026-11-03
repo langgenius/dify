@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "अगला कार्य फ़ाइलों के बिना शुरू करें। शुरू होने के बाद आप फ़ाइलें जोड़ सकते हैं।",
   "attachments.consumed": "संदर्भ में जोड़ा गया",
+  "attachments.paused": "फ़ाइलें भेजने से पहले कार्य फिर से शुरू करें।",
   "attachments.pending": "कतार में",
   "attachments.rejected": "उपयोग नहीं हुआ",
   "attachments.superseded": "अब उपयोग नहीं होता",

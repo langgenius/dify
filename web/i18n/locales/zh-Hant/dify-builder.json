@@ -1,5 +1,7 @@
 {
+  "attachments.abandoned": "請先不附檔案開始下一項任務，任務開始後可補充檔案。",
   "attachments.consumed": "已加入上下文",
+  "attachments.paused": "請先繼續任務，再傳送檔案。",
   "attachments.pending": "排隊中",
   "attachments.rejected": "未使用",
   "attachments.superseded": "不再使用",
