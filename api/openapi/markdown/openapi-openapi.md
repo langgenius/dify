@@ -1565,7 +1565,7 @@ Upload a file to use as an input variable when running the app
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **multipart/form-data**: [AppPackageFillPayload](#apppackagefillpayload)<br> |
+| Yes | **application/json**: [AppPackageCheckPayload](#apppackagecheckpayload)<br>**multipart/form-data**: [AppPackageCheckPayload](#apppackagecheckpayload)<br> |
 
 #### Responses
 
@@ -2724,6 +2724,15 @@ mode is a closed enum of listable app types.
 | ---- | ---- | ----------- | -------- |
 | AppMode | string |  |  |
 
+#### AppPackageCheckPayload
+
+Request body for POST /workspaces/<workspace_id>/apps/packages:check.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string | Check against this existing app's mode, as an overwrite import would | No |
+| package | string<br>object | A .ifpkg file, or an unpacked package folder (one part per file) | Yes |
+
 #### AppPackageExportQuery
 
 Query parameters for GET /apps/<app_id>/package.
@@ -2736,7 +2745,7 @@ Query parameters for GET /apps/<app_id>/package.
 
 #### AppPackageFillPayload
 
-Request body for POST /workspaces/<workspace_id>/apps/packages:fill and :check.
+Request body for POST /workspaces/<workspace_id>/apps/packages:fill.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

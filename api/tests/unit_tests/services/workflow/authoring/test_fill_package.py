@@ -25,7 +25,7 @@ from services.agent.errors import RosterAgentPackageTooLargeError
 from services.app_package_service import AppPackageService
 from services.entities.dsl_entities import AppImportParams, ImportStatus
 from services.workflow.authoring import FillContext, fill_package
-from services.workflow.authoring.fill import FilledPackage, fill_graph_document
+from services.workflow.authoring.fill import FilledPackage, FilledRoot, SubmittedRoot, fill_graph_document
 from services.workflow.authoring.package_io import PackageUnreadableError, read_package_entries
 from services.workflow.graph_check import IssueCode, check_graph
 from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
@@ -433,4 +433,10 @@ def test_limits_bound_the_written_package() -> None:
 def test_a_filled_package_reads_its_app_name_only_when_it_is_text(
     document: dict[str, object] | None, name: str | None
 ) -> None:
-    assert FilledPackage(archive=b"", document=document, submitted=None).app_name == name
+    root = FilledRoot(app=b"", document=document, submitted=SubmittedRoot(app=b"", manifest=None))
+
+    assert FilledPackage(archive=b"", root=root).app_name == name
+
+
+def test_a_filled_package_without_an_app_yaml_has_no_app_name() -> None:
+    assert FilledPackage(archive=b"", root=None).app_name is None

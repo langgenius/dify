@@ -35,6 +35,7 @@ from controllers.openapi._models import (
     AppDslExportResponse,
     AppDslImportPayload,
     AppDslImportResponse,
+    AppPackageCheckPayload,
     AppPackageExportQuery,
     AppPackageFillPayload,
     AppPackageImportPayload,
@@ -78,7 +79,7 @@ from services.errors.app import (
     WorkflowNotFoundError,
 )
 from services.errors.base import NoPermissionError
-from services.workflow.authoring import FillContext, check_package
+from services.workflow.authoring import DslCheckRequest, FillContext, check_package
 from services.workflow.authoring.fill import filled_package
 from services.workflow.authoring.package_io import PackageUnreadableError, read_package_entries
 from services.workflow.dsl_import import (
@@ -113,6 +114,7 @@ _PACKAGE_UPLOAD: Final = FolderUpload(
     rejections=FolderRejections("package folder", AppPackageInvalid, AppPackageTooLarge),
 )
 _PACKAGE_FILL_UPLOAD: Final = replace(_PACKAGE_UPLOAD, payload=AppPackageFillPayload)
+_PACKAGE_CHECK_UPLOAD: Final = replace(_PACKAGE_UPLOAD, payload=AppPackageCheckPayload)
 # Fill writes the package again whether it came as a file or a folder.
 _FILLED_PACKAGE_REJECTIONS: Final = FolderRejections("package", AppPackageInvalid, AppPackageTooLarge)
 
@@ -174,6 +176,17 @@ def _package_source(package: UploadPart | UploadParts, upload: FolderUpload) -> 
         yield archive.file
     finally:
         archive.file.close()
+
+
+@contextmanager
+def _dsl_check_refusals() -> Generator[None]:
+    """Answer the refusals of `check.console_app.dsl`, which the package check makes too."""
+    try:
+        yield
+    except DslNotCheckableError as error:
+        raise BadRequest(str(error)) from error
+    except ConsoleAppNotFoundError as error:
+        raise NotFound(str(error)) from error
 
 
 @contextmanager
@@ -404,11 +417,14 @@ class AppPackageFillApi(Resource):
 class AppPackageCheckApi(Resource):
     """Fill an agent-built package, then check it without importing it.
 
-    ``valid`` is false while any issue is an error. ``refuses_import`` marks the issues the package import
-    refuses today; the others are what the app still needs to run. ``node_specs`` gives, for every node, its
-    data schema, its plugin's declared parameters and every field it has not written yet. Returns 400
-    ``app_package_invalid`` for a package that cannot be read or has no ``app.yaml`` mapping, and 413 for one
-    over this server's limits, as fill does.
+    The filled ``app.yaml`` gets every check ``check.console_app.dsl`` makes, missing credentials and models
+    included, then the package's own checks. Pass ``app_id`` to check against an existing app's mode, as an
+    overwrite import would. ``valid`` is false while any issue is an error. ``refuses_import`` marks the issues
+    the package import refuses today; the others are what the app still needs to run. ``node_specs`` gives, for
+    every node, its data schema, its plugin's declared parameters and every field it has not written yet.
+    Returns 400 ``app_package_invalid`` for a package that cannot be read or has no ``app.yaml`` mapping, and 413
+    for one over this server's limits, as fill does. Returns 400 for an ``app.yaml`` the DSL check cannot read,
+    and 404 for an ``app_id`` outside the workspace, as the DSL check does.
     """
 
     @endpoint(
@@ -421,14 +437,19 @@ class AppPackageCheckApi(Resource):
             Example(title="Check an unpacked package folder", input={"package": "./app/"}),
             Example(title="Check a .ifpkg file", input={"package": "./app.ifpkg"}),
         ),
-        requirements=(*_PACKAGE_IMPORT_GUARDS, _PACKAGE_FILL_UPLOAD.cap()),
-        body=AppPackageFillPayload,
+        requirements=(*_PACKAGE_IMPORT_GUARDS, _PACKAGE_CHECK_UPLOAD.cap()),
+        body=AppPackageCheckPayload,
         returns=(HTTPStatus.OK, PackageCheckResponse, "Check result"),
     )
-    def post(self, ctx: RequestContext, workspace_id: str, *, body: AppPackageFillPayload):
-        with _package_source(body.package, _PACKAGE_FILL_UPLOAD) as source, _authoring_refusals():
+    def post(self, ctx: RequestContext, workspace_id: str, *, body: AppPackageCheckPayload):
+        dsl = DslCheckRequest(service=application_services().apps.dsl_imports, context=ctx, app_id=body.app_id)
+        with (
+            _package_source(body.package, _PACKAGE_CHECK_UPLOAD) as source,
+            _authoring_refusals(),
+            _dsl_check_refusals(),
+        ):
             result = check_package(
-                read_package_entries(source), _fill_context(ctx), limits=_PACKAGE_FILL_UPLOAD.limits()
+                read_package_entries(source), _fill_context(ctx), limits=_PACKAGE_CHECK_UPLOAD.limits(), dsl=dsl
             )
         return PackageCheckResponse.of(result), HTTPStatus.OK
 
@@ -453,12 +474,8 @@ class AppDslCheckApi(Resource):
         returns=(HTTPStatus.OK, DslCheckResponse, "Check result"),
     )
     def post(self, ctx: RequestContext, workspace_id: str, *, body: DslCheckPayload):
-        try:
+        with _dsl_check_refusals():
             issues = application_services().apps.dsl_imports.check(ctx, body.yaml_content, body.app_id)
-        except DslNotCheckableError as error:
-            raise BadRequest(str(error)) from error
-        except ConsoleAppNotFoundError as error:
-            raise NotFound(str(error)) from error
         response = DslCheckResponse(
             valid=not any(i.code.severity is IssueSeverity.ERROR for i in issues),
             issues=[DslIssueRow.of(i) for i in issues],

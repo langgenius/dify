@@ -806,11 +806,14 @@ class AppDslImportResponse(Import, Hinted):
     """`Import` plus the server-built next step for a pending import."""
 
 
+_CHECKED_APP_DESCRIPTION: Final = "Check against this existing app's mode, as an overwrite import would"
+
+
 class DslCheckPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     yaml_content: str = Field(description="The DSL to check, as YAML text")
-    app_id: str | None = Field(None, description="Check against this existing app's mode, as an overwrite import would")
+    app_id: str | None = Field(None, description=_CHECKED_APP_DESCRIPTION)
 
 
 class DslIssueRow(BaseModel):
@@ -837,13 +840,19 @@ class DslCheckResponse(Hinted):
 
 
 class AppPackageFillPayload(BaseModel):
-    """Request body for POST /workspaces/<workspace_id>/apps/packages:fill and :check."""
+    """Request body for POST /workspaces/<workspace_id>/apps/packages:fill."""
 
     model_config = ConfigDict(extra="forbid")
 
     package: UploadPart | UploadParts = Field(
         description="A .ifpkg file, or an unpacked package folder (one part per file)"
     )
+
+
+class AppPackageCheckPayload(AppPackageFillPayload):
+    """Request body for POST /workspaces/<workspace_id>/apps/packages:check."""
+
+    app_id: str | None = Field(None, description=_CHECKED_APP_DESCRIPTION)
 
 
 def _omitted_without_default(description: str) -> Any:
