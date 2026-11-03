@@ -29,7 +29,7 @@ def test_graphs_stay_opaque_to_lua_and_round_trip_without_changing_values(
 
     _script, key_count, key, payload, _ttl = eval_script.call_args.args
     assert key_count == 1
-    assert key == "prefix:workflow_server_draft:app"
+    assert key == "prefix:workflow_server_draft:{app}"
     encoded = json.loads(payload)
     assert isinstance(encoded["graph"], str)
     assert encoded["previous_graph"] is None or isinstance(encoded["previous_graph"], str)
