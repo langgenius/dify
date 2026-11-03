@@ -3,7 +3,6 @@
 import json
 from collections.abc import Callable
 from copy import deepcopy
-from typing import cast
 
 import pytest
 
@@ -24,15 +23,16 @@ from services.dify_builder.preflight import new_preflight_problems, preflight_er
 from services.workflow_generation.graph_normalizers import derive_if_else_var_types
 from services.workflow_generation.runner import WorkflowGenerator
 from tests.helpers.unit.core.model_fixtures import make_model_instance
+from tests.unit_tests.services.dify_builder.typed_fixtures import dictionary, graph_node
 
 
-def http_graph(operator: str = "is", value: str = "private-expected-value") -> Graph:
+def http_graph(operator: str = "is", value: str = "private-expected-value") -> GraphDict:
     return {
         "nodes": [
-            {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
-            {
-                "id": "request",
-                "data": {
+            graph_node("start", {"type": "start", "title": "Start", "variables": []}),
+            graph_node(
+                "request",
+                {
                     "type": "http-request",
                     "title": "HTTP",
                     "version": "1",
@@ -43,10 +43,10 @@ def http_graph(operator: str = "is", value: str = "private-expected-value") -> G
                     "params": "",
                     "body": {"type": "none", "data": []},
                 },
-            },
-            {
-                "id": "branch",
-                "data": {
+            ),
+            graph_node(
+                "branch",
+                {
                     "type": "if-else",
                     "title": "Branch",
                     "cases": [
@@ -65,19 +65,20 @@ def http_graph(operator: str = "is", value: str = "private-expected-value") -> G
                         }
                     ],
                 },
-            },
-            {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+            ),
+            graph_node("end", {"type": "end", "title": "End", "outputs": []}),
         ],
         "edges": [
-            {"source": "start", "target": "request"},
-            {"source": "request", "target": "branch"},
-            {"source": "branch", "target": "end", "sourceHandle": "true"},
-            {"source": "branch", "target": "end", "sourceHandle": "false"},
+            {"id": "edge0", "type": "custom", "source": "start", "target": "request"},
+            {"id": "edge1", "type": "custom", "source": "request", "target": "branch"},
+            {"id": "edge2", "type": "custom", "source": "branch", "target": "end", "sourceHandle": "true"},
+            {"id": "edge3", "type": "custom", "source": "branch", "target": "end", "sourceHandle": "false"},
         ],
+        "viewport": {"x": 0, "y": 0, "zoom": 1},
     }
 
 
-def condition(graph: Graph) -> Graph:
+def condition(graph: GraphDict) -> Graph:
     return graph["nodes"][2]["data"]["cases"][0]["conditions"][0]
 
 
@@ -85,7 +86,7 @@ def test_preflight_refuses_a_known_numeric_status_with_a_string_operator_without
     graph = http_graph()
     original = deepcopy(graph)
 
-    errors = preflight_errors(graph)
+    errors = preflight_errors(dictionary(graph))
 
     assert len(errors) == 1
     assert "node 'branch' (if-else)" in errors[0]
@@ -101,8 +102,8 @@ def test_preflight_refuses_a_known_numeric_status_with_a_string_operator_without
 def test_touched_invalid_consumer_is_refused_but_an_untouched_existing_problem_is_exempt() -> None:
     graph = http_graph()
 
-    assert len(new_preflight_problems(graph, deepcopy(graph), ["branch"])) == 1
-    assert new_preflight_problems(graph, deepcopy(graph), ["start"]) == []
+    assert len(new_preflight_problems(dictionary(graph), dictionary(deepcopy(graph)), ["branch"])) == 1
+    assert new_preflight_problems(dictionary(graph), dictionary(deepcopy(graph)), ["start"]) == []
 
 
 def test_producer_change_that_establishes_numeric_status_creates_a_new_problem() -> None:
@@ -117,7 +118,7 @@ def test_producer_change_that_establishes_numeric_status_creates_a_new_problem()
     }
     after = http_graph()
 
-    assert len(new_preflight_problems(before, after, ["request"])) == 1
+    assert len(new_preflight_problems(dictionary(before), dictionary(after), ["request"])) == 1
 
 
 def test_candidate_vetting_rejects_the_entire_invalid_status_operator_batch() -> None:
@@ -127,7 +128,7 @@ def test_candidate_vetting_rejects_the_entire_invalid_status_operator_batch() ->
         args={"node_id": "branch", "path": "cases.0.conditions.0.comparison_operator", "value": "is"},
     )
 
-    vetted = vet_intents(graph, [intent])
+    vetted = vet_intents(dictionary(graph), [intent])
 
     assert len(vetted.rejections) == 1
     assert "status_code" in vetted.rejections[0]
@@ -140,7 +141,7 @@ def test_generator_refuses_proven_string_equality_on_native_numeric_status(opera
     graph = http_graph(operator)
     original = deepcopy(graph)
 
-    errors = WorkflowGenerator._validate_structure(graph=cast(GraphDict, graph), mode="workflow")
+    errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow")
 
     assert [(error["code"], error["node_id"]) for error in errors] == [("INVALID_SCHEMA", "branch")]
     assert "cases.0.conditions.0.comparison_operator" in errors[0]["detail"]
@@ -158,16 +159,14 @@ def test_native_numeric_unary_predicates_remain_valid_with_no_expected_literal(o
         condition(graph)["value"] = None
     original = deepcopy(graph)
 
-    assert WorkflowGenerator._validate_structure(graph=cast(GraphDict, graph), mode="workflow") == []
-    assert preflight_errors(graph) == []
+    assert WorkflowGenerator._validate_structure(graph=graph, mode="workflow") == []
+    assert preflight_errors(dictionary(graph)) == []
     assert graph == original
 
 
 @pytest.mark.parametrize("operator", ["=", "≠", ">", "<", "≥", "≤", "null", "not null", "future-operator"])
 def test_numeric_and_unknown_operator_validation_remains_with_native_dto(operator: str) -> None:
-    assert (
-        WorkflowGenerator._validate_structure(graph=cast(GraphDict, http_graph(operator, "200")), mode="workflow") == []
-    )
+    assert WorkflowGenerator._validate_structure(graph=http_graph(operator, "200"), mode="workflow") == []
 
 
 def test_legacy_if_conditions_are_checked_at_their_stable_path() -> None:
@@ -175,7 +174,7 @@ def test_legacy_if_conditions_are_checked_at_their_stable_path() -> None:
     data = graph["nodes"][2]["data"]
     data["conditions"] = data.pop("cases")[0]["conditions"]
 
-    errors = WorkflowGenerator._validate_structure(graph=cast(GraphDict, graph), mode="workflow")
+    errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow")
 
     semantic = [error for error in errors if "status_code" in error["detail"]]
     assert len(semantic) == 1
@@ -204,7 +203,7 @@ def test_only_native_active_if_conditions_establish_status_operator_problems(cas
         assert problems[0].location == ("conditions", "0", "comparison_operator")
     else:
         assert problems == ()
-        assert preflight_errors(graph) == []
+        assert preflight_errors(dictionary(graph)) == []
     assert graph == original
 
 
@@ -226,21 +225,21 @@ def test_unknown_versions_keep_generic_roots_and_response_alias_but_gain_no_nume
 
     assert derive_if_else_var_types(graph["nodes"]) == []
     assert "varType" not in condition(graph)
-    assert WorkflowGenerator._validate_structure(graph=cast(GraphDict, graph), mode="workflow") == []
+    assert WorkflowGenerator._validate_structure(graph=graph, mode="workflow") == []
     producer = graph["nodes"][1]
-    assert WorkflowGenerator._declares_variable(producer, "status_code")
-    assert WorkflowGenerator._aliased_output(producer, "response") == "body"
-    assert WorkflowGenerator._aliased_output(producer, "http_response_body") is None
+    assert WorkflowGenerator._declares_variable(dictionary(producer), "status_code")
+    assert WorkflowGenerator._aliased_output(dictionary(producer), "response") == "body"
+    assert WorkflowGenerator._aliased_output(dictionary(producer), "http_response_body") is None
 
 
 def test_duplicate_producer_ids_never_establish_a_numeric_hint_or_semantic_error() -> None:
     graph = http_graph()
-    graph["nodes"].append({"id": "request", "data": {"type": "tool"}})
+    graph["nodes"].append(graph_node("request", {"type": "tool"}))
     condition(graph).pop("varType")
 
     assert derive_if_else_var_types(graph["nodes"]) == []
     assert "varType" not in condition(graph)
-    errors = WorkflowGenerator._validate_structure(graph=cast(GraphDict, graph), mode="workflow")
+    errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow")
     assert [error["code"] for error in errors] == ["DUPLICATE_NODE_ID"]
 
 
@@ -584,17 +583,19 @@ def test_native_http_timeout_parser_and_selector_preserve_canonical_duration_sem
     raw_timeout: object, parsed_axes: dict[str, int | None] | None, effective_axes: dict[str, int]
 ) -> None:
     """Characterize the native boundary that discarded the confirmed10s maximum fields."""
+    from core.workflow.node_runtime import DifyFileReferenceFactory, DifyToolFileManager
+    from graphon.file.file_manager import file_manager
     from graphon.nodes.http_request.entities import HttpRequestNodeConfig, HttpRequestNodeData
     from graphon.nodes.http_request.node import HttpRequestNode
+    from graphon.runtime import RuntimeState, VariablePool
+    from tests.workflow_test_utils import build_test_graph_init_params
 
     raw_data = deepcopy(http_graph("=", "200")["nodes"][1]["data"])
     if raw_timeout != "MISSING":
         raw_data["timeout"] = deepcopy(raw_timeout)
     before = deepcopy(raw_data)
     parsed = HttpRequestNodeData.model_validate(raw_data)
-    # These are the actual qualified Local public defaults, not a10/10/10 stub.
-    owner = object.__new__(HttpRequestNode)
-    owner._http_request_config = HttpRequestNodeConfig(
+    http_request_config = HttpRequestNodeConfig(
         max_connect_timeout=10,
         max_read_timeout=600,
         max_write_timeout=600,
@@ -604,6 +605,17 @@ def test_native_http_timeout_parser_and_selector_preserve_canonical_duration_sem
         ssrf_default_max_retries=0,
     )
 
+    init_params = build_test_graph_init_params(graph_config={"nodes": [], "edges": []})
+    owner = HttpRequestNode(
+        node_id="request",
+        data=parsed,
+        init_params=init_params,
+        runtime_state=RuntimeState(workflow_id=init_params.workflow_id, variable_pool=VariablePool(), start_at=0.0),
+        http_request_config=http_request_config,
+        tool_file_manager_factory=lambda: DifyToolFileManager(init_params.run_context),
+        file_manager=file_manager,
+        file_reference_factory=DifyFileReferenceFactory(init_params.run_context),
+    )
     effective = HttpRequestNode._get_request_timeout(owner, parsed)
 
     assert (parsed.timeout.model_dump() if parsed.timeout is not None else None) == parsed_axes

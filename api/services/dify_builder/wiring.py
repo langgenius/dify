@@ -10,7 +10,7 @@ import logging
 import re
 import time
 from collections.abc import Callable, Generator, Iterator, Sequence
-from typing import Any, cast
+from typing import Any
 
 from flask import current_app
 from pydantic import TypeAdapter, ValidationError
@@ -84,9 +84,7 @@ _WORKFLOW_PAYLOAD_ADAPTER = TypeAdapter(WorkflowStreamPayload)
 
 
 def _enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
-    cast(Callable[..., Any], advance_session.delay)(
-        session_id, dataclasses.asdict(action), dataclasses.asdict(actor), token
-    )
+    advance_session.delay(session_id, dataclasses.asdict(action), dataclasses.asdict(actor), token)
 
 
 def _authorize_app(actor: Actor, app_id: str, access: AppAccess) -> None:

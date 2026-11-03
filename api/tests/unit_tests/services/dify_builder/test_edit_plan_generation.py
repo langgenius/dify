@@ -3,7 +3,6 @@
 import json
 from collections.abc import Sequence
 from copy import deepcopy
-from typing import cast
 
 import pytest
 
@@ -33,7 +32,9 @@ class RecordingModel:
         self.systems: list[str] = []
 
     def invoke_llm(self, **kwargs: object) -> Reply:
-        messages = cast(list[SystemPromptMessage | UserPromptMessage], kwargs["prompt_messages"])
+        messages = kwargs["prompt_messages"]
+        assert isinstance(messages, list)
+        assert all(isinstance(message, (SystemPromptMessage, UserPromptMessage)) for message in messages)
         assert isinstance(messages[1].content, str)
         assert isinstance(messages[0].content, str)
         self.systems.append(messages[0].content)

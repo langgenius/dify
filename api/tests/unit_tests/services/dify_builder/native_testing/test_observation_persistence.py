@@ -1,6 +1,6 @@
 """Actual persistence/domain/serializer/offload code with in-memory SQL/storage ports.
 
-No SQL engine or session is created. The ports acknowledge only this unit fixture,
+Real Sessions use explicit SQL boundary doubles. The ports acknowledge only this unit fixture,
 not durable writes; actual PostgreSQL/storage/observer qualification remains open.
 """
 
@@ -14,12 +14,12 @@ from collections.abc import AsyncIterator, Sequence
 from copy import deepcopy
 from datetime import datetime
 from types import ModuleType
-from typing import NoReturn, Self, cast, override
+from typing import NoReturn, Self, override
 
 import pytest
 from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from sqlalchemy import Select
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
@@ -49,13 +49,12 @@ from graphon.enums import WorkflowNodeExecutionStatus as Status
 from graphon.node_events import NodeRunResult
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from models import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, UploadFile
 from models.workflow import WorkflowNodeExecutionModel
 from services.dify_builder.native_testing.http_binding import build_native_http_profile
 from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
 from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
-from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from tests.helpers.unit.model_factories import make_account, make_upload_file
@@ -67,6 +66,11 @@ from tests.unit_tests.services.dify_builder.native_testing.test_observation_priv
 )
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import (
     result as private_result,
+)
+from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import (
+    SqlMethods,
+    checked_row,
+    sql_session_factory,
 )
 
 NOW = datetime(2026, 10, 16)
@@ -95,6 +99,18 @@ class MemorySQLPort:
         self.flushes = 0
         self.fail = False
 
+    def sql_methods(self) -> SqlMethods:
+        return {
+            "get": self.get,
+            "add": self.add,
+            "merge": self.merge,
+            "execute": self.execute,
+            "scalar": self.scalar,
+            "scalars": self.scalars,
+            "commit": self.commit,
+            "flush": self.flush,
+        }
+
     def __call__(self, **_kwargs: object) -> Self:
         return self
 
@@ -111,7 +127,8 @@ class MemorySQLPort:
         # Accept the real Session's locked reread shape; this unit port makes
         # no SQL isolation or durable-lock claim.
         del with_for_update
-        return cast(T | None, self.rows.get(identity))
+        row = self.rows.get(identity)
+        return checked_row(_model, row) if row is not None else None
 
     def add(self, model: MemoryRow) -> None:
         self.rows[model.id] = model
@@ -164,13 +181,14 @@ class UnitRunRepository(SQLAlchemyWorkflowExecutionRepository):
 
     def __init__(self) -> None:
         self.sql = MemorySQLPort()
-        self._session_factory = cast(sessionmaker[Session], self.sql)
-        self._tenant_id = "tenant"
-        self._app_id = "app"
-        self._creator_user_id = "actor"
-        self._creator_user_role = CreatorUserRole.ACCOUNT
-        self._triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
-        self._execution_cache = {}
+        patch = pytest.MonkeyPatch()
+        super().__init__(
+            sql_session_factory(patch, self.sql, self.sql.begin, methods=MemorySQLPort.sql_methods),
+            "tenant",
+            make_account(account_id="actor"),
+            "app",
+            WorkflowRunTriggeredFrom.DEBUGGING,
+        )
         self.saved: list[WorkflowExecution] = []
 
     @override
@@ -185,16 +203,16 @@ class UnitNodeRepository(SQLAlchemyWorkflowNodeExecutionRepository):
 
     def __init__(self) -> None:
         self.sql = MemorySQLPort()
-        self._session_factory = cast(sessionmaker[Session], self.sql)
-        self._tenant_id = "tenant"
-        self._app_id = "app"
-        self._creator_user_id = "actor"
-        self._creator_user_role = CreatorUserRole.ACCOUNT
-        self._triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
-        self._user = make_account(account_id="actor")
-        self._node_execution_cache = {}
+        patch = pytest.MonkeyPatch()
+        super().__init__(
+            sql_session_factory(patch, self.sql, self.sql.begin, methods=MemorySQLPort.sql_methods),
+            "tenant",
+            make_account(account_id="actor"),
+            "app",
+            WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
         self.files = MemoryFiles()
-        self._file_service = cast(FileService, self.files)
+        patch.setattr(self._file_service, "upload_file", self.files.upload_file)
         self.saved: list[WorkflowNodeExecution] = []
         self.loaded: list[WorkflowNodeExecution] = []
         self.load_calls = 0
@@ -230,7 +248,7 @@ class UnitNodeRepository(SQLAlchemyWorkflowNodeExecutionRepository):
 
 
 def make_layer(
-    *, guard: NativeObservationGuard | None = None, trace: object = None
+    *, guard: NativeObservationGuard | None = None, trace: TraceScope | None = None
 ) -> tuple[
     WorkflowPersistenceLayer,
     UnitRunRepository,
@@ -272,7 +290,7 @@ def make_layer(
         workflow_info=info,
         workflow_execution_repository=runs,
         workflow_node_execution_repository=nodes,
-        trace_scope=cast(TraceScope | None, trace),
+        trace_scope=trace,
         native_observation=guard,
     )
     layer.initialize(ReadOnlyRuntimeStateWrapper(runtime), command_channel=InMemoryChannel())
@@ -548,7 +566,8 @@ def test_native_resumption_refuses_before_old_row_load_or_cache_and_run_save() -
 class RejectRawTrace:
     """Trace queue boundary that must never receive marked persistence events."""
 
-    def emit(self, _task) -> NoReturn:
+    def emit(self, event: TraceEvent) -> NoReturn:
+        del event
         pytest.fail("raw trace enqueue")
 
 
@@ -557,7 +576,18 @@ def test_trace_owner_is_refused_before_marked_persistence_or_enqueues() -> None:
     module = adapters()
     guard = module.NativeObservationGuard(policy=policy(), on_failure=lambda: notices.append(1))
     with pytest.raises(module.NativeObservationError):
-        make_layer(guard=guard, trace=RejectRawTrace())
+        make_layer(
+            guard=guard,
+            trace=TraceScope(
+                RejectRawTrace(),
+                "tenant",
+                "app",
+                "actor",
+                TraceCorrelation(
+                    external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+                ),
+            ),
+        )
     assert guard.failed is True
     assert notices == [1]
 
@@ -570,7 +600,9 @@ def test_two_actual_observers_have_independent_diagnostic_caches() -> None:
         layer.on_event(GraphRunStartedEvent())
         layer.on_event(started())
         layer.on_event(event)
-    cast(dict[str, object], left[0]._node_execution_cache["execution"].outputs)["redacted"] = False
+    left_outputs = left[0]._node_execution_cache["execution"].outputs
+    assert isinstance(left_outputs, dict)
+    left_outputs["redacted"] = False
     right_outputs = right[0]._node_execution_cache["execution"].outputs
     assert right_outputs is not None
     assert right_outputs["redacted"] is True
@@ -765,7 +797,15 @@ def test_late_trace_owner_cannot_enqueue_after_marked_construction() -> None:
     guard = adapters().NativeObservationGuard(policy=policy(), on_failure=lambda: None)
     layer, _, _, _, entity, _ = make_layer(guard=guard)
     layer.on_event(GraphRunStartedEvent())
-    entity.trace_scope = cast(TraceScope, RejectRawTrace())
+    entity.trace_scope = TraceScope(
+        RejectRawTrace(),
+        "tenant",
+        "app",
+        "actor",
+        TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
     with pytest.raises(adapters().NativeObservationError):
         layer.on_event(GraphRunSucceededEvent())
     assert guard.failed is True

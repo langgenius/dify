@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import asdict
-from typing import TYPE_CHECKING, TypedDict, Unpack, cast
+from typing import TYPE_CHECKING, TypedDict, Unpack
 
 import pytest
 
@@ -57,6 +57,7 @@ from tests.unit_tests.services.dify_builder.test_advance_task import (
 )
 from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
+from tests.unit_tests.services.dify_builder.typed_fixtures import dictionaries, dictionary
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session as DatabaseSession
@@ -426,8 +427,8 @@ def test_interrupted_conflict_is_classified_before_working_handler_can_resume(
     assert not port.published
     recovered = events[-1][1]
     assert recovered["kind"] == "command_finished"
-    assert cast(dict[str, object], recovered["recovery"])["recovery_class"] == drift
-    actions = cast(list[dict[str, object]], recovered["actions"])
+    assert dictionary(recovered["recovery"])["recovery_class"] == drift
+    actions = dictionaries(recovered["actions"])
     if drift == "structural_invalidating":
         assert [action["id"] for action in actions] == ["restart"]
         with pytest.raises(BadRequestError):

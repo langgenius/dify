@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from copy import deepcopy
 from datetime import datetime, timezone
-from typing import Any, cast
+from typing import Any
 
 from core.app.entities import queue_entities as q
 from core.app.entities.app_invoke_entities import AppGenerateEntity
@@ -182,7 +182,7 @@ def project_native_queue_event[E: q.AppQueueEvent](
 
             validate_projection_host(host=native_host, guard=guard)
             event = native_host.diagnostic_event(event=event)
-        cls: type[q.AppQueueEvent] = type(event)
+        cls: type[E] = type(event)
         if cls not in _SUPPORTED or event.model_extra or event.event != cls.model_fields["event"].default:
             guard.fail()
         payload: Any = event
@@ -278,4 +278,4 @@ def project_native_queue_event[E: q.AppQueueEvent](
                 fields[name] = value
             else:
                 guard.fail()
-        return cast(E, cls.model_validate(fields))
+        return cls.model_validate(fields)

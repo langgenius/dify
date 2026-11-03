@@ -2,7 +2,8 @@
 
 from collections.abc import Callable, Generator, Iterator, Mapping
 from dataclasses import dataclass
-from typing import NoReturn, Protocol, cast, runtime_checkable
+from operator import methodcaller
+from typing import NoReturn, Protocol, runtime_checkable
 from unittest.mock import MagicMock
 
 import pytest
@@ -709,12 +710,13 @@ def test_native_owner_requires_explicit_actual_host(mocker: pytest_mock.MockerFi
     from services.dify_builder.native_testing.native_execution import DifyNativeWorkflowOwner
 
     with pytest.raises(NativeContextUnavailable, match="native_host_unavailable"):
-        DifyNativeWorkflowOwner(
+        methodcaller(
+            "__call__",
             session_factory=sessionmaker(),
             runtime=native_host_fixture(ResolvedNativeTestContext.model_validate(CONTEXT), mocker)[1],
             stream_owner=_StreamResultPort(),
-            native_host=cast(NativeHostLaunch, invalid_host),
-        )
+            native_host=invalid_host,
+        )(DifyNativeWorkflowOwner)
 
 
 def test_native_owner_rejects_foreign_host_before_sql_or_generator(mocker: pytest_mock.MockerFixture) -> None:

@@ -34,11 +34,15 @@ def test_legacy_config_route_refuses_native_header_before_read(app: Flask) -> No
     service.assert_not_called()
 
 
-def test_confirmed_config_route_validates_read_before_existing_service(app: Flask) -> None:
+def test_confirmed_config_route_validates_read_before_existing_service(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lineage, _, transport, _ = owner()
     original = lineage.backend.read_run_identity_sync
-    lineage.backend.read_run_identity_sync = lambda run_id, selection: original(run_id, selection).model_copy(
-        update={"native_test_profile": "confirmed"}
+    monkeypatch.setattr(
+        lineage.backend,
+        "read_run_identity_sync",
+        lambda run_id, selection: original(run_id, selection).model_copy(update={"native_test_profile": "confirmed"}),
     )
     app.extensions["native_agent_endpoint_lineage"] = lineage
     assert transport.parent_node is not None
@@ -66,11 +70,13 @@ def test_confirmed_config_route_validates_read_before_existing_service(app: Flas
     service.return_value.manifest.assert_called_once()
 
 
-def test_config_mutation_stays_closed_for_confirmed_runtime(app: Flask) -> None:
+def test_config_mutation_stays_closed_for_confirmed_runtime(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     lineage, _, transport, _ = owner()
     original = lineage.backend.read_run_identity_sync
-    lineage.backend.read_run_identity_sync = lambda run_id, selection: original(run_id, selection).model_copy(
-        update={"native_test_profile": "confirmed"}
+    monkeypatch.setattr(
+        lineage.backend,
+        "read_run_identity_sync",
+        lambda run_id, selection: original(run_id, selection).model_copy(update={"native_test_profile": "confirmed"}),
     )
     app.extensions["native_agent_endpoint_lineage"] = lineage
     headers = {

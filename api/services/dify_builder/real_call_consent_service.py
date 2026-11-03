@@ -51,7 +51,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from itertools import starmap
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypeGuard
 from uuid import UUID, uuid4
 
 from pydantic import ValidationError
@@ -136,9 +136,6 @@ _WORKING_STATE_FOR: dict[PcState, PcState] = {
     PcState.FIX_AWAIT_VERIFY: PcState.FIX_VERIFY,
     PcState.FIX_AWAIT_DECISION: PcState.FIX_VERIFY,
 }
-_STATES = frozenset(
-    {"prepared", "confirmed", "claimed", "completed", "failed", "unknown", "declined", "expired", "invalidated"}
-)
 _RETRYABLE = frozenset({"declined", "expired", "invalidated"})
 _FINAL_OUTCOMES = frozenset({"completed", "failed", "unknown"})
 _DIGEST = re.compile(r"[0-9a-f]{64}\Z")
@@ -161,7 +158,7 @@ def _refuse(reason: str) -> BuilderExecutionPolicyError:
     return BuilderExecutionPolicyError(reason)
 
 
-def _canonical_uuid(value: object) -> bool:
+def _canonical_uuid(value: object) -> TypeGuard[str]:
     if type(value) is not str or len(value) != 36:
         return False
     try:
@@ -173,7 +170,7 @@ def _canonical_uuid(value: object) -> bool:
 def _uuid(value: object, reason: str) -> str:
     if not _canonical_uuid(value):
         raise _refuse(reason)
-    return cast(str, value)
+    return value
 
 
 def _bounded(value: object, reason: str) -> str:
@@ -335,9 +332,20 @@ class StrandedObservation:
 
 
 def _state(row: DifyBuilderRealCallConsent) -> ConsentState:
-    if row.state not in _STATES:
+    state = row.state
+    if state not in (
+        "prepared",
+        "confirmed",
+        "claimed",
+        "completed",
+        "failed",
+        "unknown",
+        "declined",
+        "expired",
+        "invalidated",
+    ):
         raise _refuse("consent_record_invalid")
-    return cast(ConsentState, row.state)
+    return state
 
 
 def _stored_binding(row: DifyBuilderRealCallConsent) -> ConsentBinding:
@@ -1614,22 +1622,20 @@ class BuilderRealCallConsentService:
                         raise _refuse("refresh_conflict")
                     original, original_expiry = credential.encrypted_credentials, credential.expires_at
                     # Compare-and-set on the exact snapshot the revision bound under the row lock.
-                    result = cast(
-                        CursorResult,
-                        db.execute(
-                            update(BuiltinToolProvider)
-                            .where(
-                                BuiltinToolProvider.id == owned.credential_id,
-                                BuiltinToolProvider.tenant_id == actor.tenant_id,
-                                BuiltinToolProvider.encrypted_credentials.is_(None)
-                                if original is None
-                                else BuiltinToolProvider.encrypted_credentials == original,
-                                BuiltinToolProvider.expires_at == original_expiry,
-                            )
-                            .values(encrypted_credentials=encrypted_credentials, expires_at=expires_at)
-                            .execution_options(synchronize_session=False)
-                        ),
+                    result = db.execute(
+                        update(BuiltinToolProvider)
+                        .where(
+                            BuiltinToolProvider.id == owned.credential_id,
+                            BuiltinToolProvider.tenant_id == actor.tenant_id,
+                            BuiltinToolProvider.encrypted_credentials.is_(None)
+                            if original is None
+                            else BuiltinToolProvider.encrypted_credentials == original,
+                            BuiltinToolProvider.expires_at == original_expiry,
+                        )
+                        .values(encrypted_credentials=encrypted_credentials, expires_at=expires_at)
+                        .execution_options(synchronize_session=False)
                     )
+                    assert isinstance(result, CursorResult)
                     if result.rowcount != 1:
                         raise _refuse("refresh_conflict")
                     db.expire(credential)

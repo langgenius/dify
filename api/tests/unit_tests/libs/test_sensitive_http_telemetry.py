@@ -2,8 +2,9 @@
 
 import io
 import logging
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator, Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
 from threading import Barrier
 from typing import Never
@@ -67,7 +68,8 @@ def persisted(logs: tuple[io.StringIO, Path]) -> str:
     return logs[0].getvalue() + logs[1].read_text()
 
 
-def synthetic_client() -> httpx.Client:
+@contextmanager
+def synthetic_client() -> Generator[httpx.Client]:
     """Real HTTPX/HTTPTransport path; replace only the socket-owning httpcore pool."""
     transport = httpx.HTTPTransport()
     assert isinstance(transport._pool, httpcore.ConnectionPool)
@@ -76,8 +78,10 @@ def synthetic_client() -> httpx.Client:
         assert request.url.host == b"example.invalid"
         return httpcore.Response(200, content=b"ok")
 
-    transport._pool.handle_request = response
-    return httpx.Client(transport=transport, trust_env=False)
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(transport._pool, "handle_request", response)
+        with httpx.Client(transport=transport, trust_env=False) as client:
+            yield client
 
 
 def test_current_httpx_info_really_persists_full_query(

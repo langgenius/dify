@@ -16,7 +16,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from threading import Thread
 from types import ModuleType
-from typing import TYPE_CHECKING, Literal, Never, NoReturn, cast, override
+from typing import TYPE_CHECKING, Literal, Never, NoReturn, override
 from uuid import uuid4
 
 import pytest
@@ -85,7 +85,6 @@ from tests.unit_tests.services.dify_builder.test_real_call_consent_service impor
 )
 
 if TYPE_CHECKING:
-    from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
     from services.dify_builder.application.execution_policy import BuilderExecutionContext
     from services.dify_builder.dify_port import ConfirmedLaunchRecorder
     from services.dify_builder.real_call_consent_service import (
@@ -98,10 +97,8 @@ if TYPE_CHECKING:
 def as_env_collaborators(
     port: FakeDifyPort, agent: StubAgent, repo: "Repository | InMemoryRepository"
 ) -> tuple[DifyPort, DifyBuilderAgent, Repository]:
-    """The shared fakes (``fakes.py``, not a Task 6 owner) name parameters with a leading
-    underscore, so they are not structurally assignable to the Protocols; they implement
-    every member the engine calls. One explicit, local conversion instead of Any."""
-    return cast(DifyPort, port), cast(DifyBuilderAgent, agent), cast(Repository, repo)
+    """Expose the shared collaborators through their checked application protocols."""
+    return port, agent, repo
 
 
 # The internal reserved-command action kind; a literal here so this module never
@@ -1964,6 +1961,10 @@ def _drive_generator_draft_saving(
     from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
     from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
+    from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+    from core.repositories.sqlalchemy_workflow_node_execution_repository import (
+        SQLAlchemyWorkflowNodeExecutionRepository,
+    )
     from graphon.enums import BuiltinNodeTypes
     from models.account import Account
     from models.model import App, AppMode
@@ -2050,15 +2051,28 @@ def _drive_generator_draft_saving(
         call_depth=0,
         workflow_execution_id=str(uuid4()),
     )
-    native_execution_repository, native_node_repository = object(), object()
+    native_execution_repository = SQLAlchemyWorkflowExecutionRepository(
+        session_factory=owner.factory,
+        tenant_id=owner.actor.tenant_id,
+        user=account,
+        app_id=owner.app_id,
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+    )
+    native_node_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=owner.factory,
+        tenant_id=owner.actor.tenant_id,
+        user=account,
+        app_id=owner.app_id,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
     stream = generator._generate(
         app_model=app,
         workflow=workflow,
         user=account,
         application_generate_entity=entity,
         invoke_from=InvokeFrom.DEBUGGER,
-        workflow_execution_repository=cast("WorkflowExecutionRepository", native_execution_repository),
-        workflow_node_execution_repository=cast("WorkflowNodeExecutionRepository", native_node_repository),
+        workflow_execution_repository=native_execution_repository,
+        workflow_node_execution_repository=native_node_repository,
         streaming=True,
     )
     assert isinstance(stream, Iterator)

@@ -1,12 +1,12 @@
 """Native ApiTool envelopes stay distinct from controlled HTTP response fields."""
 
 from copy import deepcopy
-from typing import cast
 
 import pytest
 
-from core.workflow.generator.types import GraphDict, GraphNodeDict, WorkflowGenerateErrorDict
+from core.workflow.generator.types import GraphDict, WorkflowGenerateErrorDict
 from services.workflow_generation.runner import WorkflowGenerator
+from tests.unit_tests.services.dify_builder.typed_fixtures import dictionaries, graph_node, graph_payload, strings
 
 PROVIDER = "14076462-4152-4ef0-aad2-3eaea9369b1a"
 
@@ -29,45 +29,38 @@ def _graph(selector: list[str], **overrides: object) -> GraphDict:
         "output_schema": {},
     }
     tool.update(overrides)
-    return cast(
-        GraphDict,
-        {
-            "nodes": [
+    return graph_payload(
+        [
+            graph_node(
+                "node1",
                 {
-                    "id": "node1",
-                    "data": {
-                        "type": "start",
-                        "title": "Start",
-                        "variables": [{"variable": "keyword", "type": "text-input", "required": True}],
-                    },
+                    "type": "start",
+                    "title": "Start",
+                    "variables": [{"variable": "keyword", "type": "text-input", "required": True}],
                 },
-                {"id": "node2", "data": tool},
+            ),
+            graph_node("node2", tool),
+            graph_node(
+                "node3",
                 {
-                    "id": "node3",
-                    "data": {
-                        "type": "code",
-                        "title": "Project result",
-                        "code_language": "python3",
-                        "code": "def main(payload):\n    return {'result': payload}",
-                        "variables": [{"variable": "payload", "value_selector": selector}],
-                        "outputs": {"result": {"type": "array[object]"}},
-                    },
+                    "type": "code",
+                    "title": "Project result",
+                    "code_language": "python3",
+                    "code": "def main(payload):\n    return {'result': payload}",
+                    "variables": [{"variable": "payload", "value_selector": selector}],
+                    "outputs": {"result": {"type": "array[object]"}},
                 },
+            ),
+            graph_node(
+                "node4",
                 {
-                    "id": "node4",
-                    "data": {
-                        "type": "end",
-                        "title": "End",
-                        "outputs": [{"variable": "result", "value_selector": ["node3", "result"]}],
-                    },
+                    "type": "end",
+                    "title": "End",
+                    "outputs": [{"variable": "result", "value_selector": ["node3", "result"]}],
                 },
-            ],
-            "edges": [
-                {"source": "node1", "target": "node2"},
-                {"source": "node2", "target": "node3"},
-                {"source": "node3", "target": "node4"},
-            ],
-        },
+            ),
+        ],
+        [("node1", "node2"), ("node2", "node3"), ("node3", "node4")],
     )
 
 
@@ -77,7 +70,7 @@ def _process(graph: GraphDict) -> tuple[GraphDict, list[WorkflowGenerateErrorDic
 
 
 def _selector(graph: GraphDict) -> list[str]:
-    return cast(list[str], graph["nodes"][2]["data"]["variables"][0]["value_selector"])
+    return strings(graph["nodes"][2]["data"]["variables"][0]["value_selector"])
 
 
 @pytest.mark.parametrize("root", ["news", "result", "payload"])
@@ -204,7 +197,7 @@ def test_native_api_literal_selector_keys_are_not_reference_fields(container: st
     from services.dify_builder.native_api_output_contract import collect_native_api_selector_refs
 
     graph = _literal_graph(container)
-    nodes = cast(list[dict[str, object]], graph["nodes"])
+    nodes = dictionaries(graph["nodes"])
     assert collect_native_api_selector_refs(nodes, placeholder_pattern=WorkflowGenerator._VAR_REF_RE) == {
         ("node2", "json")
     }
@@ -250,7 +243,7 @@ def test_native_api_authoritative_refs_include_real_placeholders() -> None:
 
     graph = _graph(["node2", "json"])
     graph["nodes"][3]["data"]["response_template"] = "{{#node2.news#}} {{#node2.text.news#}} {{#node1.keyword#}}"
-    nodes = cast(list[dict[str, object]], graph["nodes"])
+    nodes = dictionaries(graph["nodes"])
     assert collect_native_api_selector_refs(nodes, placeholder_pattern=WorkflowGenerator._VAR_REF_RE) == {
         ("node2", "json"),
         ("node2", "news"),
@@ -351,20 +344,17 @@ def _runtime_graph(path: str, selector: list[str]) -> GraphDict:
     graph = _graph(["node2", "json"])
     consumer = _runtime_consumer(path, selector)
     consumer["title"] = "Runtime consumer"
-    graph["nodes"].append(cast(GraphNodeDict, {"id": "node5", "data": consumer}))
+    graph["nodes"].append(graph_node("node5", consumer))
     if path.startswith("iteration") or path == "loop-variable":
         consumer["start_node_id"] = "node6"
         graph["nodes"].append(
-            cast(
-                GraphNodeDict,
+            graph_node(
+                "node6",
                 {
-                    "id": "node6",
-                    "parentId": "node5",
-                    "data": {
-                        "type": "iteration-start" if path.startswith("iteration") else "loop-start",
-                        "title": "Inner start",
-                    },
+                    "type": "iteration-start" if path.startswith("iteration") else "loop-start",
+                    "title": "Inner start",
                 },
+                parent_id="node5",
             )
         )
     return graph
@@ -556,14 +546,9 @@ def _value_template_graph(path: str, template: object) -> GraphDict:
             parameter_name: {"query": {"type": "constant" if path == "agent-constant" else "mixed", "value": template}},
         }
     data["title"] = "Template consumer"
-    graph["nodes"].append(cast(GraphNodeDict, {"id": "node5", "data": data}))
+    graph["nodes"].append(graph_node("node5", data))
     if path.startswith("loop"):
-        graph["nodes"].append(
-            cast(
-                GraphNodeDict,
-                {"id": "node6", "parentId": "node5", "data": {"type": "loop-start", "title": "Inner start"}},
-            )
-        )
+        graph["nodes"].append(graph_node("node6", {"type": "loop-start", "title": "Inner start"}, parent_id="node5"))
     return graph
 
 
@@ -687,8 +672,8 @@ def test_native_api_model_context_and_vision_refs_follow_runtime_enabled_flags(
     )
     if enabled is not None:
         config["enabled"] = enabled
-    data = {"type": node_type, "title": "Model reference consumer", branch: config}
-    graph["nodes"].append(cast(GraphNodeDict, {"id": "node5", "data": data}))
+    data: dict[str, object] = {"type": node_type, "title": "Model reference consumer", branch: config}
+    graph["nodes"].append(graph_node("node5", data))
     processed, errors = _process(graph)
     unresolved = [error for error in errors if error["code"] == "UNRESOLVED_REFERENCE"]
 

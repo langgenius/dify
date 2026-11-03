@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Callable
 from copy import deepcopy
-from typing import Never, TypedDict, cast
+from operator import methodcaller
+from typing import Never, TypedDict
 
 import pytest
+from pydantic import TypeAdapter
 
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.http import HttpClientProtocol
@@ -114,7 +115,7 @@ def test_runtime_kwargs_deny_before_fixture_return_and_append_receipt(owned: Own
     assert isinstance(node, HttpRequestNode)
     client = node.http_client
     with pytest.raises(PolicyTransportError, match="execution_policy: http_request_arguments"):
-        cast(Callable[..., object], client.get)("https://sample.invalid/private", **kwargs)
+        methodcaller("get", "https://sample.invalid/private", **kwargs)(client)
     assert receipts(owned)[0]["kind"] == "effect_blocked"
     assert "private" not in json.dumps(receipts(owned))
 
@@ -273,14 +274,14 @@ def test_with_runtime_state_keeps_exact_policy_recorder_and_private_key(owned: O
     ],
 )
 def test_http_defaults_stay_bounded_scalar_and_known_keys(bad: dict[str, object]) -> None:
-    value = cast(RawGraph, graph(http=True))
+    value = TypeAdapter(RawGraph).validate_python(graph(http=True))
     value["nodes"][1]["data"]["default_value"] = [bad]
     with pytest.raises(BuilderExecutionPolicyError):
         admitted_node_bindings(snapshot(value))
 
 
 def test_fixed_utf8_header_and_scalar_defaults_are_admitted() -> None:
-    value = cast(RawGraph, graph(http=True))
+    value = TypeAdapter(RawGraph).validate_python(graph(http=True))
     value["nodes"][1]["data"].update(
         headers="Content-Type: application/json; charset=utf-8",
         default_value=[
@@ -349,7 +350,7 @@ def test_response_file_or_unknown_fixture_payload_is_rejected(raw: dict[str, obj
     "mutation", ["defaults_alias", "duplicate_defaults", "header_variable", "header_charset", "hidden_auth", "options"]
 )
 def test_unreviewed_raw_http_shapes_remain_unavailable(mutation: str) -> None:
-    value = cast(RawGraph, graph(http=True))
+    value = TypeAdapter(RawGraph).validate_python(graph(http=True))
     data = value["nodes"][1]["data"]
     if mutation == "defaults_alias":
         data["default_values"] = [{"key": "body", "type": "string", "value": "x"}]
@@ -360,7 +361,9 @@ def test_unreviewed_raw_http_shapes_remain_unavailable(mutation: str) -> None:
     elif mutation == "header_charset":
         data["headers"] = "Content-Type: text/plain; charset=latin-1"
     elif mutation == "hidden_auth":
-        cast(dict[str, object], data["authorization"])["config"] = {"type": "bearer", "api_key": "private"}
+        authorization = data["authorization"]
+        assert isinstance(authorization, dict)
+        authorization["config"] = {"type": "bearer", "api_key": "private"}
     else:
         data["method"] = "OPTIONS"
     with pytest.raises(BuilderExecutionPolicyError):

@@ -12,7 +12,7 @@ from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import NotRequired, Protocol, TypedDict, cast
+from typing import NotRequired, Protocol, TypedDict, runtime_checkable
 from uuid import uuid4
 
 import pytest
@@ -58,6 +58,7 @@ class _JsonSealCapture(TypedDict):
 FIXTURE = Path(__file__).parents[4] / "fixtures/workflow/builder_restricted/json_parse.yml"
 
 
+@runtime_checkable
 class ThreadTarget(Protocol):
     _target: Callable[..., object] | None
 
@@ -105,7 +106,8 @@ def test_json_caller_explicit_read_session_closes_before_native_spawn(
     def capture_spawn(thread: threading.Thread) -> None:
         from types import FunctionType, MethodType
 
-        target = cast(ThreadTarget, thread)._target
+        assert isinstance(thread, ThreadTarget)
+        target = thread._target
         if isinstance(target, (FunctionType, MethodType)) and target.__name__ == "_generate_worker":
             assert caller_session is not None
             at_spawn.append(caller_session.in_transaction())

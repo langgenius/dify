@@ -10,7 +10,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import TypeAdapter
 
@@ -112,8 +112,10 @@ def validated_task_summaries(values: object) -> list[TaskSummary]:
 def _test_evidence(run: Run | None) -> TaskTestEvidence:
     if run is None:
         return TaskTestEvidence()
-    status = run.status if run.status in {"running", "succeeded", "failed", "unknown", "stopped"} else "unknown"
-    result = TaskTestEvidence(run_id=run.id, native_run_id=run.dify_run_id, status=cast(TaskEvidenceStatus, status))
+    status: TaskEvidenceStatus = (
+        run.status if run.status in ("running", "succeeded", "failed", "unknown", "stopped") else "unknown"
+    )
+    result = TaskTestEvidence(run_id=run.id, native_run_id=run.dify_run_id, status=status)
     verification = run.verification
     if verification is not None:
         result.execution_revision = verification.execution_revision

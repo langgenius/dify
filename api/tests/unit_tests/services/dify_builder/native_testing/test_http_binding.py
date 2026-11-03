@@ -3,7 +3,7 @@
 from collections.abc import Callable, Generator
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
-from typing import NoReturn, cast
+from typing import NoReturn
 
 import httpx
 import pytest
@@ -19,17 +19,15 @@ from runtime_contracts.builder.native.contracts import DispatchPermit, EffectInt
 from runtime_contracts.builder.native.runtime_contracts import NativeStatePort
 from services.dify_builder.native_testing import http_binding as http_binding_module
 from services.dify_builder.native_testing.call_adapter import NativeCallAdapter, ScalarAuthorizationPort
+from services.dify_builder.native_testing.control import _NativeControlBoundary
 from services.dify_builder.native_testing.http_adapter import (
-    NativeHttpIntentPort,
     PreparedHttpBinding,
     PreparedHttpRequest,
-    ScalarCallPort,
 )
 from services.dify_builder.native_testing.http_binding import (
     DeferredNativeHttpClient,
     NativeHttpBindingProducer,
     NativeHttpBindingResolver,
-    NativeHttpPreparedObserver,
 )
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
@@ -59,6 +57,16 @@ class ConcreteHttpCase:
     prepared: list[PreparedHttpBinding] = field(default_factory=list)
     sent: list[httpx.Request] = field(default_factory=list)
     client: DeferredNativeHttpClient | None = None
+
+
+class UnusedHttpBoundary:
+    """Preparation-only tests must never ask for dispatch or binding authority."""
+
+    def call(self, **_kwargs: object) -> NoReturn:
+        raise AssertionError("preparation reached scalar dispatch")
+
+    def prepare(self, **_kwargs: object) -> NoReturn:
+        raise AssertionError("preparation reached intent authority")
 
 
 class NonCallableHttpCalls:
@@ -133,8 +141,8 @@ def test_offline_native_attestation_keeps_json_types_and_refuses_tamper() -> Non
     # Pure preparation only, with the accepted existing request owner.
     client = NativeHttpClient(
         ref=NativeTestContextRef(request_id="r", invocation_id="i", context_digest="a" * 64),
-        calls=cast(NativeCallAdapter, object()),
-        intents=cast(NativeHttpIntentPort, object()),
+        calls=UnusedHttpBoundary(),
+        intents=UnusedHttpBoundary(),
         max_redirect_hops=0,
         max_response_bytes=1048576,
     )
@@ -220,7 +228,9 @@ def concrete_case(monkeypatch: pytest.MonkeyPatch) -> ConcreteHttpCase:
         node_class=marked_native_node_class(HttpRequestNode, marked=True),
         runtime_state=runtime,
     )
-    node = cast(Callable[..., HttpRequestNode], association.node_class)(
+    node_class = association.node_class
+    assert issubclass(node_class, _NativeControlBoundary)
+    node = node_class(
         native_control_owner=bridge._boundary_owner,
         native_control_sink=bridge._control_sink,
         node_id="http",
@@ -233,6 +243,7 @@ def concrete_case(monkeypatch: pytest.MonkeyPatch) -> ConcreteHttpCase:
         tool_file_manager_factory=m.RefusingNativeHttpFiles(),
         file_reference_factory=m.RefusingNativeHttpFiles(),
     )
+    assert isinstance(node, HttpRequestNode)
     association.attach(node)
     loader = OwnedNativeTestLoader(
         sessionmaker(), actor=Actor(tenant_id="tenant", account_id="actor"), resolver=NativeHttpBindingResolver()
@@ -275,9 +286,12 @@ def concrete_case(monkeypatch: pytest.MonkeyPatch) -> ConcreteHttpCase:
     )
     monkeypatch.setattr(m, "validate_private_read", lambda *_args: authority)
     journal = NodeOperationJournal(state=state, authorization=auth)
-    producer = m.NativeHttpBindingProducer(
-        association=association, loader=loader, state_store=cast(NativeExecutionStateStore, state), journal=journal
-    )
+    store = NativeExecutionStateStore(loader)
+    monkeypatch.setattr(store, "load_context", state.load_context)
+    monkeypatch.setattr(store, "load_result", state.load_result)
+    monkeypatch.setattr(store, "store_result", state.store_result)
+    monkeypatch.setattr(store, "store_node_inputs", store_inputs)
+    producer = m.NativeHttpBindingProducer(association=association, loader=loader, state_store=store, journal=journal)
 
     def install(**_kw: object) -> None:
         events.append(("install",))
@@ -316,8 +330,8 @@ def test_actual_node_typed_input_ack_precedes_journal_and_install(concrete_case:
     args = http_binding_module.native_http_request(raw=c.raw, variable_pool=c.association.runtime_state.variable_pool)
     client = NativeHttpClient(
         ref=c.association.ref,
-        calls=cast(NativeCallAdapter, object()),
-        intents=cast(NativeHttpIntentPort, object()),
+        calls=UnusedHttpBoundary(),
+        intents=UnusedHttpBoundary(),
         max_redirect_hops=0,
         max_response_bytes=1048576,
     )
@@ -433,8 +447,8 @@ def test_disclosure_only_validated_origin_typed_lengths_and_opaque_notice(concre
     args = http_binding_module.native_http_request(raw=c.raw, variable_pool=c.association.runtime_state.variable_pool)
     request = NativeHttpClient(
         ref=c.association.ref,
-        calls=cast(NativeCallAdapter, object()),
-        intents=cast(NativeHttpIntentPort, object()),
+        calls=UnusedHttpBoundary(),
+        intents=UnusedHttpBoundary(),
         max_redirect_hops=0,
         max_response_bytes=1048576,
     )._prepare("POST", args.pop("url"), args)
@@ -471,14 +485,18 @@ def test_current_classification_does_not_echo_stored_flags(
     assert current != NativeBinding.model_validate(owned.bindings[operation_digest(key)])
 
 
-def test_actual_wait_exports_one_call_proposal_from_scope_expiry(physical_http: ConcreteHttpCase) -> None:
+def test_actual_wait_exports_one_call_proposal_from_scope_expiry(
+    physical_http: ConcreteHttpCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from datetime import UTC, datetime
 
     from runtime_contracts.builder.native.contracts import ApprovalWait
     from services.dify_builder.native_testing.control import NativeApprovalWait
 
     c = physical_http
-    c.producer.loader.load = lambda **_kw: replace(c.owned, expires_at=datetime(2030, 1, 1, tzinfo=UTC))
+    monkeypatch.setattr(
+        c.producer.loader, "load", lambda **_kw: replace(c.owned, expires_at=datetime(2030, 1, 1, tzinfo=UTC))
+    )
     c.auth.decisions[0] = ApprovalWait(pending_operation_id="pending")
     with pytest.raises(NativeApprovalWait):
         invoke_native_executor(c)
@@ -555,8 +573,8 @@ def test_literal_empty_text_and_scalar_json_keep_actual_native_semantics(
     assert args["json"] is json_value
     request = NativeHttpClient(
         ref=NativeTestContextRef(request_id="r", invocation_id="i", context_digest="a" * 64),
-        calls=cast(NativeCallAdapter, object()),
-        intents=cast(NativeHttpIntentPort, object()),
+        calls=UnusedHttpBoundary(),
+        intents=UnusedHttpBoundary(),
         max_redirect_hops=0,
         max_response_bytes=1048576,
     )._prepare("POST", args.pop("url"), args)
@@ -587,8 +605,8 @@ def test_known_destructive_binding_retains_existing_hard_denial(concrete_case: C
     )
     prepared = NativeHttpClient(
         ref=c.association.ref,
-        calls=cast(NativeCallAdapter, object()),
-        intents=cast(NativeHttpIntentPort, object()),
+        calls=UnusedHttpBoundary(),
+        intents=UnusedHttpBoundary(),
         max_redirect_hops=0,
         max_response_bytes=1048576,
     )._prepare("POST", arguments.pop("url"), arguments)
@@ -660,8 +678,8 @@ def test_identical_request_native_occurrences_have_independent_http_confirmation
 
         request = NativeHttpClient(
             ref=c.association.ref,
-            calls=cast(NativeCallAdapter, object()),
-            intents=cast(NativeHttpIntentPort, object()),
+            calls=UnusedHttpBoundary(),
+            intents=UnusedHttpBoundary(),
             max_redirect_hops=0,
             max_response_bytes=1048576,
         )._prepare("POST", arguments.pop("url"), arguments)
@@ -673,7 +691,9 @@ def test_identical_request_native_occurrences_have_independent_http_confirmation
     second = NativeNodePreparation(
         bridge=bridge, ref=c.association.ref, node_id="http", node_class=c.association.node_class, runtime_state=runtime
     )
-    node = cast(Callable[..., HttpRequestNode], second.node_class)(
+    node_class = second.node_class
+    assert issubclass(node_class, _NativeControlBoundary)
+    node = node_class(
         native_control_owner=bridge._boundary_owner,
         native_control_sink=bridge._control_sink,
         node_id="http",
@@ -688,12 +708,13 @@ def test_identical_request_native_occurrences_have_independent_http_confirmation
         tool_file_manager_factory=http_binding_module.RefusingNativeHttpFiles(),
         file_reference_factory=http_binding_module.RefusingNativeHttpFiles(),
     )
+    assert isinstance(node, HttpRequestNode)
     second.attach(node)
     node.bind_execution_id(str(uuid4()))
     producer = http_binding_module.NativeHttpBindingProducer(
         association=second,
         loader=c.producer.loader,
-        state_store=cast(NativeExecutionStateStore, c.state),
+        state_store=c.producer.store,
         journal=c.journal,
     )
     monkeypatch.setattr(producer, "_install", c.producer._install)
@@ -773,7 +794,7 @@ def test_host_seams_use_exact_factory_owners_and_actual_prepared_binding(
     assert invoke_native_executor(c).text == '{"ok":true}'
     assert len(created) == len(produced) == len(observed) == len(called) == len(c.sent) == 1
     assert set(created[0]) == {"state", "authorization", "journal", "max_result_bytes"}
-    assert created[0]["state"] is c.state
+    assert created[0]["state"] is c.producer.store
     assert created[0]["authorization"] is c.auth
     assert created[0]["journal"] is c.journal
     assert created[0]["max_result_bytes"] == 8388608
@@ -785,7 +806,9 @@ def test_host_seams_use_exact_factory_owners_and_actual_prepared_binding(
 
 
 @pytest.mark.parametrize("ack", [False, True, 0, "accepted", object()], ids=["false", "true", "zero", "text", "object"])
-def test_host_seams_prepared_observer_requires_actual_none(physical_http: ConcreteHttpCase, ack: object) -> None:
+def test_host_seams_prepared_observer_requires_actual_none(
+    physical_http: ConcreteHttpCase, ack: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.native_testing.control import NativePolicyStop
 
     c = physical_http
@@ -799,8 +822,9 @@ def test_host_seams_prepared_observer_requires_actual_none(physical_http: Concre
         producer=c.producer,
         authorization=c.auth,
         calls_factory=NativeCallAdapter,
-        on_prepared=cast(NativeHttpPreparedObserver, observe),
+        on_prepared=lambda **_kwargs: None,
     )
+    monkeypatch.setattr(c.client, "_on_prepared", observe)
     with pytest.raises(NativePolicyStop) as stopped:
         invoke_native_executor(c)
     assert stopped.value.reason_code == "native_http_attestation_invalid"
@@ -830,16 +854,19 @@ def test_host_seams_observer_exception_refuses_before_scalar_authority(physical_
 
 
 @pytest.mark.parametrize("malformed", [None, object(), NonCallableHttpCalls()], ids=["none", "object", "no-call"])
-def test_host_seams_invalid_factory_owner_has_no_fallback(physical_http: ConcreteHttpCase, malformed: object) -> None:
+def test_host_seams_invalid_factory_owner_has_no_fallback(
+    physical_http: ConcreteHttpCase, malformed: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.dify_builder.native_testing.control import NativePolicyStop
 
     c = physical_http
     c.client = http_binding_module.DeferredNativeHttpClient(
         producer=c.producer,
         authorization=c.auth,
-        calls_factory=lambda **_kwargs: cast(ScalarCallPort, malformed),
+        calls_factory=NativeCallAdapter,
         on_prepared=lambda **_kwargs: pytest.fail("invalid calls reached preparation"),
     )
+    monkeypatch.setattr(c.client, "_calls_factory", lambda **_kwargs: malformed)
     with pytest.raises(NativePolicyStop) as stopped:
         invoke_native_executor(c)
     assert stopped.value.reason_code == "native_http_calls_unavailable"

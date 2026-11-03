@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 from types import ModuleType
-from typing import Literal, NoReturn, Unpack, cast
+from typing import Literal, NoReturn, Unpack
 from uuid import uuid4
 
 import pytest
@@ -576,7 +576,7 @@ def test_all_handlers_persist_actual_server_stamp(
     port = FakeDifyPort()
     port.graph = graph(http=True)
     port.hash = revision
-    port.stamp_http_fixtures = dify_port.WorkflowServiceDifyPort().stamp_http_fixtures
+    monkeypatch.setattr(port, "stamp_http_fixtures", dify_port.WorkflowServiceDifyPort().stamp_http_fixtures)
     repo = InMemoryRepository()
     env = Env(dify=port, repo=repo, agent=StubAgent(), now=lambda: datetime.min)
     session = BuilderSession(
@@ -777,7 +777,9 @@ def test_native_rbac_agent_app_binding_precedes_maintainer_bypass(
     from services.enterprise.rbac_service import RBACService
 
     factory, actor, app, workflow, sid, tid = owned
-    cast(Table, Agent.__table__).create(factory.kw["bind"], checkfirst=True)
+    table = Agent.__table__
+    assert isinstance(table, Table)
+    table.create(factory.kw["bind"], checkfirst=True)
     with factory.begin() as db:
         row = db.get(App, app.id)
         assert row is not None

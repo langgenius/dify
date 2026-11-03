@@ -10,12 +10,10 @@ whole-run Graphon trace/privacy/driver activation.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Literal, NotRequired, Unpack, cast
+from typing import TYPE_CHECKING, Literal, NotRequired, Unpack
 
-from flask import Flask
 from pydantic import JsonValue
 from typing_extensions import TypedDict
-from werkzeug.local import LocalProxy
 
 from models.workflow import Workflow
 from runtime_contracts.builder.native.contracts import DispatchPermit, NativeTestContextRef
@@ -376,7 +374,7 @@ def test_real_http_snapshot_and_equal_install_preserve_other_entries(http_case: 
 def test_real_http_conflict_is_immutable_and_concurrent_merge_preserves_entries(http_case: HttpBindingCase) -> None:
     from threading import Barrier
 
-    from flask import current_app
+    from flask.globals import app_ctx
 
     c = http_case
     first = prepare(c)
@@ -390,7 +388,7 @@ def test_real_http_conflict_is_immutable_and_concurrent_merge_preserves_entries(
             intent=conflict,
         )
     assert bindings(c) == before
-    app = cast("LocalProxy[Flask]", current_app)._get_current_object()
+    app = app_ctx.app
     start = Barrier(2)
 
     def prepare_in_worker(_) -> PreparedHttpCase:

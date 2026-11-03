@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Callable, Generator
-from typing import Literal, cast
+from typing import Literal, Never
 
 import pytest
 import pytest_mock
@@ -15,7 +15,6 @@ from enums import DeploymentEdition
 from models.model import Account, App, AppMode
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
-from services.workflow_runtime.workflow_generator import BuilderExecutionAdmission
 from tests.unit_tests.installed_spies import installed_mock
 
 
@@ -33,6 +32,16 @@ class _RefusalAdmission:
 
     def on_refusal(self, error: Exception, *, preworker: bool = False) -> None:
         self.refusals.append((error, preworker))
+
+    def __call__(self, *_args: object, **_kwargs: object) -> Never:
+        raise AssertionError("Refusal path must not execute admission")
+
+    def admit_raw(self, workflow: Workflow, app: App) -> Never:
+        del workflow, app
+        raise AssertionError("Refusal path must not admit a raw workflow")
+
+    def on_worker_finished(self, **_kwargs: object) -> Never:
+        raise AssertionError("Refusal path must not start a worker")
 
 
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
@@ -144,7 +153,7 @@ def test_posted_live_mode_cannot_select_builder_policy(
                 session=session,
                 workflow_execution_mode="in_process",
                 builder_execution=policy,
-                builder_execution_admit=cast(BuilderExecutionAdmission, _RefusalAdmission()) if policy else None,
+                builder_execution_admit=_RefusalAdmission() if policy else None,
             )
             list(response)
         assert generate.call_args.kwargs["builder_execution"] is policy
@@ -174,7 +183,7 @@ def test_restricted_dispatch_rejects_other_modes_before_guardrails(
             session=session,
             workflow_execution_mode="in_process",
             builder_execution=context(),
-            builder_execution_admit=cast(BuilderExecutionAdmission, _RefusalAdmission()),
+            builder_execution_admit=_RefusalAdmission(),
         )
     guardrails.assert_not_called()
 
@@ -199,7 +208,7 @@ def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(mocker: p
             request_id="request",
             workflow_execution_mode="in_process",
             builder_execution=context(),
-            builder_execution_admit=cast(BuilderExecutionAdmission, _RefusalAdmission()),
+            builder_execution_admit=_RefusalAdmission(),
         )
     agent.assert_not_called()
 

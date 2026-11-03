@@ -7,9 +7,8 @@ request, credentials, native graph execution, or sandbox service is involved.
 
 import json
 import re
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from copy import deepcopy
-from typing import cast
 
 import pytest
 
@@ -21,7 +20,6 @@ from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from graphon.nodes.tool.entities import ToolNodeData
-from graphon.nodes.tool.tool_node import ToolNode
 from graphon.nodes.tool_runtime_entities import ToolRuntimeParameter
 from graphon.runtime import VariablePool
 from services.dify_builder import graph_ops
@@ -29,6 +27,7 @@ from services.dify_builder.agent import edit, fix
 from services.workflow_generation.runner import WorkflowGenerator
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import forbid_secret_and_business_calls
+from tests.unit_tests.services.dify_builder.typed_fixtures import dictionary, native_parameter_node
 
 
 @pytest.fixture(autouse=True)
@@ -40,33 +39,31 @@ def no_external_calls(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 # Representative declared tool contract. Production obtains the selected action
 # from the actor-scoped inventory; this fixture does not assert it is installed.
-_ENTRY = cast(
-    ToolCatalogueEntry,
-    {
-        "provider_name": "langgenius/github/github",
-        "provider_type": "builtin",
-        "plugin_id": "langgenius/github",
-        "tool_name": "list_issues",
-        "tool_label": "List Issues",
-        "description": "List repository issues",
-        "parameters": [
-            {
-                "name": "owner",
-                "type": "string",
-                "form": "llm",
-                "required": True,
-                "llm_description": "The repository owner (a user or organization), not a repository URL",
-            },
-            {
-                "name": "repo",
-                "type": "string",
-                "form": "llm",
-                "required": True,
-                "llm_description": "The repository name without its owner or URL",
-            },
-        ],
-    },
-)
+_ENTRY: ToolCatalogueEntry = {
+    "provider_name": "langgenius/github/github",
+    "provider_type": "builtin",
+    "plugin_id": "langgenius/github",
+    "tool_name": "list_issues",
+    "tool_label": "List Issues",
+    "description": "List repository issues",
+    "needs_credentials": True,
+    "parameters": [
+        {
+            "name": "owner",
+            "type": "string",
+            "form": "llm",
+            "required": True,
+            "llm_description": "The repository owner (a user or organization), not a repository URL",
+        },
+        {
+            "name": "repo",
+            "type": "string",
+            "form": "llm",
+            "required": True,
+            "llm_description": "The repository name without its owner or URL",
+        },
+    ],
+}
 _START_INPUT = {"variable": "repository", "label": "Repository (owner/repo or GitHub URL)", "type": "text-input"}
 # This is the deterministic model's generated Code response, not a production
 # normalizer. Production must generate such a transformation from the contract.
@@ -179,7 +176,7 @@ def _generate(monkeypatch: pytest.MonkeyPatch) -> tuple[Graph, dict[str, str]]:
         installed_tools={(_ENTRY["provider_name"], _ENTRY["tool_name"])},
     )
     assert result["error"] == "", result
-    return cast(Graph, result["graph"]), prompts
+    return dictionary(result["graph"]), prompts
 
 
 def _render(graph: Graph, repository: str) -> dict[str, object]:
@@ -192,16 +189,19 @@ def _render(graph: Graph, repository: str) -> dict[str, object]:
         item["variable"]: start_values[item["value_selector"][0]][item["value_selector"][1]]
         for item in configs["node2"]["variables"]
     }
-    outputs = cast(Callable[..., dict[str, str]], namespace["main"])(**arguments)
+    main = namespace["main"]
+    assert callable(main)
+    outputs = dictionary(main(**arguments))
+    assert all(isinstance(value, str) for value in outputs.values())
     assert set(outputs) == set(configs["node2"]["outputs"])
     pool = VariablePool()
     for name, value in outputs.items():
         pool.add(["node2", name], value)
-    # This real native method is pure; no Tool runtime lookup/invocation occurs.
-    return ToolNode.__new__(ToolNode)._generate_parameters(
+    node_data = ToolNodeData.model_validate(configs["node3"])
+    return native_parameter_node(node_data)._generate_parameters(
         tool_parameters=[ToolRuntimeParameter(name=name, required=True) for name in ("owner", "repo")],
         variable_pool=pool,
-        node_data=ToolNodeData.model_validate(configs["node3"]),
+        node_data=node_data,
     )
 
 

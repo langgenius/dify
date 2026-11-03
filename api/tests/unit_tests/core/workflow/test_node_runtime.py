@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import cast, override
+from typing import override
 from unittest.mock import MagicMock, Mock, patch, sentinel
 from uuid import uuid4
 
@@ -2999,13 +2999,14 @@ def test_failing_or_mismatched_factory_never_falls_through_to_ordinary_resolutio
     get_runtime.assert_not_called()
 
 
-def test_factory_returning_no_guard_refuses(mocker) -> None:
+def test_factory_returning_no_guard_refuses(mocker, monkeypatch: pytest.MonkeyPatch) -> None:
     get_runtime = mocker.patch.object(node_runtime.ToolManager, "get_workflow_tool_runtime")
 
-    def factory(_node_id: str, _node_execution_id: str) -> ConfirmedToolGuard:
-        return cast(ConfirmedToolGuard, None)
+    def factory(_node_id: str, _node_execution_id: str) -> None:
+        return None
 
-    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=factory)
+    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=_GuardFactory([]))
+    monkeypatch.setattr(runtime, "_confirmed_guard_factory", factory)
     with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="confirmed_guard_unavailable"):
         runtime.get_runtime(
             node_id="tool-node", node_data=_builtin_node_data(), variable_pool=None, node_execution_id="actual-exec-7"

@@ -4,7 +4,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import NoReturn, cast
+from typing import NoReturn
 from uuid import uuid4
 
 import pytest
@@ -23,6 +23,7 @@ from services.dify_builder.native_testing.control import (
     BoundaryOwnerState,
     NativeApprovalWait,
     NativePolicyStop,
+    _NativeControlBoundary,
     marked_native_node_class,
 )
 from services.dify_builder.native_testing.host_execution import NativeHostLaunch
@@ -37,7 +38,6 @@ from services.dify_builder.native_testing.sandbox.qualification import (
     NativeCodeCapability,
     NativeCodeQualification,
 )
-from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import (
     REF,
     Authorization,
@@ -68,6 +68,13 @@ class CodeExecutorCase:
     raw: dict[str, JsonValue]
     installed: list[dict[str, object]]
     owner: NativeCodeHostOwner
+
+
+def code_text(raw: dict[str, JsonValue]) -> str:
+    """Read the exact fixture source without coercing its JSON value."""
+    source = raw["code"]
+    assert isinstance(source, str)
+    return source
 
 
 def refuse_constructor_collaborators(**_kwargs: object) -> NoReturn:
@@ -126,7 +133,9 @@ def case(monkeypatch: pytest.MonkeyPatch) -> CodeExecutorCase:
         node_class=marked_native_node_class(CodeNode, marked=True),
         runtime_state=runtime,
     )
-    node = cast(Callable[..., CodeNode], association.node_class)(
+    node_class = association.node_class
+    assert issubclass(node_class, _NativeControlBoundary)
+    node = node_class(
         native_control_owner=bridge._boundary_owner,
         native_control_sink=bridge._control_sink,
         node_id="code",
@@ -136,6 +145,7 @@ def case(monkeypatch: pytest.MonkeyPatch) -> CodeExecutorCase:
         code_executor=object(),
         code_limits=module.code_limits(),
     )
+    assert isinstance(node, CodeNode)
     association.attach(node)
     api = _api()
     loader = api.loader
@@ -192,7 +202,7 @@ def case(monkeypatch: pytest.MonkeyPatch) -> CodeExecutorCase:
     producer = module.NativeCodeBindingProducer(
         association=association,
         loader=loader,
-        state_store=cast(NativeExecutionStateStore, state),
+        state_store=state,
         journal=journal,
         qualification=q,
     )
@@ -216,15 +226,15 @@ def case(monkeypatch: pytest.MonkeyPatch) -> CodeExecutorCase:
 
 def test_unbound_public_uuid_refuses_before_protected_input(case: CodeExecutorCase) -> None:
     with pytest.raises(Exception, match="native_execution_id_missing"):
-        case.producer.prepare(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={})
+        case.producer.prepare(language=CodeLanguage.PYTHON3, code=code_text(case.raw), inputs={})
     assert case.events == []
     assert case.installed == []
 
 
 def test_prepare_attests_actual_native_code_and_stable_reopened_intent(case: CodeExecutorCase) -> None:
     case.node.bind_execution_id(str(uuid4()))
-    a = case.producer.prepare(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={})
-    b = case.producer.prepare(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={})
+    a = case.producer.prepare(language=CodeLanguage.PYTHON3, code=code_text(case.raw), inputs={})
+    b = case.producer.prepare(language=CodeLanguage.PYTHON3, code=code_text(case.raw), inputs={})
     assert a.intent == b.intent
     assert a.spec == b.spec
     assert a.intent.key.occurrence_path == (case.node.execution_id,)
@@ -241,7 +251,7 @@ def test_producer_refuses_changed_protected_material(
     case: CodeExecutorCase, change: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     case.node.bind_execution_id(str(uuid4()))
-    code = cast(str, case.raw["code"])
+    code = code_text(case.raw)
     inputs: dict[str, JsonValue] = {}
     if change == "code":
         code = "changed"
@@ -284,10 +294,10 @@ def test_code_result_replay_has_zero_sdk_io_and_real_transformer(
     )
     owner = case.owner
     execute = NativeCodeExecutor(producer=case.producer, calls=calls, owner=owner, on_prepared=lambda: None)
-    assert execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={}) == {
+    assert execute.execute(language=CodeLanguage.PYTHON3, code=code_text(case.raw), inputs={}) == {
         "result": "actual parsed"
     }
-    assert execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={}) == {
+    assert execute.execute(language=CodeLanguage.PYTHON3, code=code_text(case.raw), inputs={}) == {
         "result": "actual parsed"
     }
     assert len(physical) == 1
@@ -311,7 +321,7 @@ def test_approval_wait_has_no_scope_and_exports_real_proposal(
     )
     execute = NativeCodeExecutor(producer=case.producer, calls=calls, owner=object(), on_prepared=lambda: None)
     with pytest.raises(NativeApprovalWait):
-        execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={})
+        execute.execute(language=CodeLanguage.PYTHON3, code=code_text(case.raw), inputs={})
     assert len(case.producer.approval_proposals()) == 1
     assert not execute.is_execution_error(NativePolicyStop(ref=REF, reason_code="test_stop"))
 
@@ -321,7 +331,7 @@ def test_non_json_input_error_never_contains_private_values(case: CodeExecutorCa
     with pytest.raises(BuilderExecutionPolicyError) as error:
         case.producer.prepare(
             language=CodeLanguage.PYTHON3,
-            code=cast(str, case.raw["code"]),
+            code=code_text(case.raw),
             inputs={"CANARY_PRIVATE": float("nan")},
         )
     assert "CANARY_PRIVATE" not in str(error.value)
@@ -363,7 +373,7 @@ def variable_case(case: CodeExecutorCase, value: bool | int) -> dict[str, JsonVa
 def test_typed_selector_input_does_not_conflate_boolean_and_integer(case: CodeExecutorCase) -> None:
     raw = variable_case(case, True)
     with pytest.raises(BuilderExecutionPolicyError):
-        case.producer.prepare(language=CodeLanguage.PYTHON3, code=cast(str, raw["code"]), inputs={"value": 1})
+        case.producer.prepare(language=CodeLanguage.PYTHON3, code=code_text(raw), inputs={"value": 1})
     assert case.installed == []
 
 
@@ -378,7 +388,14 @@ def test_current_selector_change_after_claim_refuses_before_transport(
         def call(self, *, dispatch: Callable[[DispatchPermit], JsonValue], **kw: object) -> JsonValue:
             del kw
             case.association.runtime_state.variable_pool.add(["start", "value"], 2)
-            return dispatch(cast(DispatchPermit, object()))
+            return dispatch(
+                DispatchPermit(
+                    permit_id="permit",
+                    attempt_id="attempt",
+                    operation_id="operation",
+                    expires_at="2030-01-01T00:00:00Z",
+                )
+            )
 
     monkeypatch.setattr(
         module,
@@ -392,7 +409,7 @@ def test_current_selector_change_after_claim_refuses_before_transport(
         on_prepared=lambda: None,
     )
     with pytest.raises(BuilderExecutionPolicyError):
-        execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, raw["code"]), inputs={"value": 1})
+        execute.execute(language=CodeLanguage.PYTHON3, code=code_text(raw), inputs={"value": 1})
 
 
 def test_wait_then_claim_preserves_logical_intent_and_replay_never_constructs_transport(
@@ -402,7 +419,7 @@ def test_wait_then_claim_preserves_logical_intent_and_replay_never_constructs_tr
     from services.dify_builder.native_testing.sandbox import executor as module
 
     case.node.bind_execution_id(str(uuid4()))
-    initial = case.producer.prepare(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={})
+    initial = case.producer.prepare(language=CodeLanguage.PYTHON3, code=code_text(case.raw), inputs={})
     physical: list[dict[str, object]] = []
 
     class Transport:
@@ -431,14 +448,10 @@ def test_wait_then_claim_preserves_logical_intent_and_replay_never_constructs_tr
     )
     case.auth.decisions[0] = ApprovalWait(pending_operation_id="pending")
     with pytest.raises(NativeApprovalWait):
-        execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={})
+        execute.execute(language=CodeLanguage.PYTHON3, code=code_text(case.raw), inputs={})
     assert not physical
     assert not case.auth.claimed
     del case.auth.decisions[0]
-    assert execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={}) == {
-        "result": "ok"
-    }
-    assert execute.execute(language=CodeLanguage.PYTHON3, code=cast(str, case.raw["code"]), inputs={}) == {
-        "result": "ok"
-    }
+    assert execute.execute(language=CodeLanguage.PYTHON3, code=code_text(case.raw), inputs={}) == {"result": "ok"}
+    assert execute.execute(language=CodeLanguage.PYTHON3, code=code_text(case.raw), inputs={}) == {"result": "ok"}
     assert len(physical) == 1

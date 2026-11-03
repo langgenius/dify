@@ -4,7 +4,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
 from sqlalchemy.orm import Session
 
@@ -461,7 +461,7 @@ class AppGenerateService:
                     payload_json = payload.model_dump_json()
 
                     def on_subscribe():
-                        cast(Callable[..., Any], workflow_based_app_execution_task.delay)(payload_json)
+                        workflow_based_app_execution_task.delay(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(
@@ -538,7 +538,7 @@ class AppGenerateService:
                     payload_json = payload.model_dump_json()
 
                     def on_subscribe():
-                        cast(Callable[..., Any], workflow_based_app_execution_task.delay)(payload_json)
+                        workflow_based_app_execution_task.delay(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(

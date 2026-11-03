@@ -6,13 +6,11 @@ fixture double; this suite proves no physical READY/Redis/Agent execution.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NotRequired, Unpack, cast
+from typing import TYPE_CHECKING, NotRequired, Unpack
 
 from dify_agent.protocol.native_testing import ReadAgentRuntimeIdentity
-from flask import Flask
 from pydantic import JsonValue
 from typing_extensions import TypedDict
-from werkzeug.local import LocalProxy
 
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
@@ -49,7 +47,7 @@ from dify_agent.protocol.native_testing import (
     AgentPrepareRunPayload,
     AgentRuntimeIdentity,
 )
-from flask import current_app
+from flask.globals import app_ctx
 from sqlalchemy import select
 
 from models.agent import AgentConfigSnapshot, AgentWorkingResourceStatus, AgentWorkspace
@@ -140,7 +138,7 @@ def test_real_pg_concurrent_initial_reservation_has_one_local_post_owner(
     association_case: _fixture_types_0.AgentAssociationCase,
 ) -> None:
     c = association_case
-    app = cast("LocalProxy[Flask]", current_app)._get_current_object()
+    app = app_ctx.app
 
     def attempt(_index) -> AgentCreateExisting | AgentCreateInserted:
         with app.app_context():

@@ -2,9 +2,10 @@
 
 import json
 from copy import deepcopy
-from typing import TypedDict, cast
+from typing import TypedDict
 
 import pytest
+from pydantic import TypeAdapter
 
 from core.workflow.generator.prompts.node_builder_prompts import (
     format_node_outputs_section,
@@ -46,7 +47,7 @@ class _LoopConfig(TypedDict):
 def _prompt_loop_config() -> _LoopConfig:
     prompt = get_node_builder_system_prompt("loop")
     config, _ = json.JSONDecoder().raw_decode(prompt.split("- loop:", 1)[1].lstrip())
-    return cast(_LoopConfig, config)
+    return TypeAdapter(_LoopConfig).validate_python(config)
 
 
 def test_loop_prompt_declares_native_state_instead_of_just_exit_conditions() -> None:

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import copy
 from functools import cache
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from domain.workflow.agent_node import is_dify_agent_node_data
 from graphon.entities.base_node_data import BaseNodeData
@@ -53,8 +53,9 @@ class _MockedRun:
     ) -> None:
         # Keep Graphon's lifecycle/data contract without constructing the native
         # node's clients, credential owners, or other execution resources.
+        assert isinstance(self, Node)
         Node.__init__(
-            cast(Node, self),
+            self,
             node_id=node_id,
             data=data,
             init_params=init_params,

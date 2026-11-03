@@ -674,7 +674,7 @@ def test_edit_gate_resolves_resource_choices_before_asking_for_plan(monkeypatch:
             title="Real model", input_summary="Input", output_summary="Output", items=["Use the selected model"]
         )
 
-    env.agent.propose_edit_plan = plan
+    monkeypatch.setattr(env.agent, "propose_edit_plan", plan)
     session = Session(
         id="s",
         app_id="app",
@@ -719,8 +719,10 @@ def test_missing_choice_returns_to_edit_form_instead_of_failed_task(monkeypatch:
     monkeypatch.setattr(env.agent, "resolve_edit_bindings", refuse, raising=False)
     from services.dify_builder.plan import WorkflowPlan
 
-    env.agent.propose_edit_plan = lambda *_a, **_k: WorkflowPlan(
-        title="Plan", input_summary="Input", output_summary="Output", items=["Change"]
+    monkeypatch.setattr(
+        env.agent,
+        "propose_edit_plan",
+        lambda *_a, **_k: WorkflowPlan(title="Plan", input_summary="Input", output_summary="Output", items=["Change"]),
     )
     session = Session(
         id="s",

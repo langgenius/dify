@@ -4,7 +4,7 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Literal, cast, override
+from typing import TYPE_CHECKING, Any, Literal, override
 
 from dify_agent.protocol import CancelRunRequest
 from dify_agent.protocol.snapshot import SessionSnapshot
@@ -70,7 +70,7 @@ from services.workflow_runtime.agent_binding import WorkflowAgentBindingError, W
 if TYPE_CHECKING:
     from graphon.runtime import InitParams, RuntimeState
     from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
-    from services.agent.workflow_run_recovery import AgentCreateRecoveryClient, WorkflowAgentRunRecovery
+    from services.agent.workflow_run_recovery import WorkflowAgentRunRecovery
     from services.dify_builder.native_testing.agent_preparation import AgentPreparationService
     from services.dify_builder.native_testing.confirmed_agent_commands import ConfirmedAgentCommands
 
@@ -619,7 +619,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     def _start_or_resume_confirmed(self, *, dify_context, session_scope, stored_session, process_data):
         from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
         from runtime_contracts.builder.native.agent_contracts import AgentCreateInserted, AgentParentNodeRef
-        from services.agent.workflow_run_recovery import AgentCreateAcknowledgementUnknown, AgentCreateScope
+        from services.agent.workflow_run_recovery import (
+            AgentCreateAcknowledgementUnknown,
+            AgentCreateRecoveryClient,
+            AgentCreateScope,
+        )
         from services.dify_builder.native_testing.agent_confirmed_workspace import (
             load_confirmed_agent_parent,
             prepare_confirmed_agent_request,
@@ -639,6 +643,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             execution_id=self.execution_id,
             workflow_binding_id=session_scope.workflow_agent_binding_id,
         )
+        client = self._agent_backend_client
+        assert isinstance(client, AgentCreateRecoveryClient)
         with _confirmed_node_phase(marker, "parent_restore"):
             parent = load_confirmed_agent_parent(
                 state_store=self._agent_preparation.state_store, ref=marker.ref, execution_id=self.execution_id
@@ -646,7 +652,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         with _confirmed_node_phase(marker, "recover_existing"):
             response = self._agent_run_recovery.recover_existing(
                 scope=scope,
-                client=cast("AgentCreateRecoveryClient", self._agent_backend_client),
+                client=client,
                 on_persisted=process_data.update,
             )
         if parent is not None:
@@ -702,7 +708,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             scope=scope,
             attempt=0,
             request=prepared.request,
-            client=cast("AgentCreateRecoveryClient", self._agent_backend_client),
+            client=client,
             on_persisted=process_data.update,
         )
         return response, parent, None

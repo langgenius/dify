@@ -4,10 +4,9 @@ import importlib
 import importlib.util
 from collections.abc import Generator, Iterator
 from types import ModuleType
-from typing import Literal, Never, cast
+from typing import Literal, Never
 
 import pytest
-from flask import Request as FlaskRequest
 from pydantic import JsonValue
 from sqlalchemy import Select
 from sqlalchemy.orm import Session
@@ -960,7 +959,9 @@ def test_endpoint_lineage_requires_exact_envelope_before_physical_owner_refusal(
         "caller": "native_endpoint_owner_mismatch",
     }[case]
     with Flask(__name__).test_request_context():
-        g.agent_runtime_request = cast("LocalProxy[FlaskRequest]", request)._get_current_object()
+        proxy: object = request
+        assert isinstance(proxy, LocalProxy)
+        g.agent_runtime_request = proxy._get_current_object()
 
         def claim_endpoint() -> None:
             g.agent_runtime_context = lineage.resolve(
@@ -1274,7 +1275,9 @@ def test_endpoint_typed_json_guard_precedes_physical_owner_refusal(
         lambda ref: claims.append(ref) or pytest.fail("Controller claimed"),
     )
     with app.test_request_context():
-        g.agent_runtime_request = cast("LocalProxy[FlaskRequest]", request)._get_current_object()
+        proxy: object = request
+        assert isinstance(proxy, LocalProxy)
+        g.agent_runtime_request = proxy._get_current_object()
         g.agent_runtime_context = context
         reason = "native_endpoint_dependency_unavailable" if matches else "native_endpoint_arguments_mismatch"
         with pytest.raises(BuilderExecutionPolicyError, match=reason):

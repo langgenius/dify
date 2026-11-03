@@ -12,7 +12,7 @@ from collections.abc import Generator, Sequence
 from contextlib import nullcontext
 from threading import Event, Thread, current_thread
 from time import monotonic
-from typing import Literal, NoReturn, cast, override
+from typing import Literal, NoReturn, override
 
 import pytest
 from flask import Flask
@@ -40,7 +40,7 @@ from services.dify_builder.native_testing.context_binding import NativeContextUn
 from services.dify_builder.native_testing.runtime_bridge import NativePreparedInputs, NativeRuntimeBridge
 from services.workflow_runtime.entry import WorkflowEntry
 from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
-from tests.unit_tests.services.dify_builder.native_testing.test_control import Effects, Factory, Sink, basic, permit
+from tests.unit_tests.services.dify_builder.native_testing.test_control import Effects, Factory, basic, permit
 from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import (
     LaunchCase,
     NoCheckpointLifecycle,
@@ -56,7 +56,7 @@ def runtime_for(case: LaunchCase) -> NativeRuntimeBridge:
     return NativeRuntimeBridge(
         state=case.state,
         boundary_owner=case.host.boundary_owner,
-        control_sink=cast(Sink, case.host.control_sink),
+        control_sink=case.host.control_sink,
         collaborators=unused,
         node_arguments=unused,
         prepare_inputs=lambda _context: NativePreparedInputs(
@@ -224,10 +224,12 @@ def test_owned_worker_preserves_bound_entity_and_reports_finally_on_actual_threa
     monkeypatch.setattr(case.host, "worker_finished", finished_port)
     from threading import Thread
 
+    def execute(runner: object, *_args: object) -> None:
+        assert isinstance(runner, RunnerPort)
+        runner.run()
+
     worker = Thread(
-        target=WorkflowAppGenerator(
-            execution_driver=lambda runner, *_args: cast(RunnerPort, runner).run()
-        )._generate_worker,
+        target=WorkflowAppGenerator(execution_driver=execute)._generate_worker,
         kwargs={
             "flask_app": Flask(__name__),
             "application_generate_entity": entity,
@@ -275,7 +277,7 @@ def test_entry_installs_actual_host_layer_first_and_disables_raw_observers(monke
         config=config,
         runtime=runtime,
         owner=case.host.boundary_owner,
-        sink=cast(Sink, case.host.control_sink),
+        sink=case.host.control_sink,
         effects=Effects(case.host.boundary_owner, permit()),
     )
     graph = Graph.init(graph_config=config, node_factory=factory, root_node_id="start")
@@ -496,6 +498,7 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
 ) -> None:
     from threading import Thread
 
+    from core.app.app_config.entities import WorkflowUIBasedAppConfig
     from core.app.apps.workflow.command_channels import CombinedCommandChannel
     from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime
     from services.workflow_runtime import workflow_runner as module
@@ -517,6 +520,8 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
         http_baseline=(1, 1, 1),
     )
     entity, queue, response_filter, workflow_repo, node_repo = generation_objects(case, monkeypatch)
+    entity = WorkflowAppGenerateEntity.model_validate_json(entity.model_dump_json())
+    assert type(entity.app_config) is WorkflowUIBasedAppConfig
     case.host.bind_generation(
         entity=entity,
         queue=queue,
@@ -566,21 +571,25 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
     def build_graph(**kwargs: object) -> Graph:
         from core.app.entities.app_invoke_entities import build_dify_run_context
 
+        user_from, invoke_from, runtime = kwargs["user_from"], kwargs["invoke_from"], kwargs["graph_runtime_state"]
+        assert isinstance(user_from, UserFrom)
+        assert isinstance(invoke_from, InvokeFrom)
+        assert isinstance(runtime, RuntimeState)
         run_context = build_dify_run_context(
             tenant_id=context.tenant_id,
             app_id=context.app_id,
             user_id=context.actor_id,
-            user_from=cast(UserFrom, kwargs["user_from"]),
-            invoke_from=cast(InvokeFrom, kwargs["invoke_from"]),
+            user_from=user_from,
+            invoke_from=invoke_from,
             native_test_required=True,
             native_test_ref=context.ref,
         )
         factory = Factory(
             config=config,
-            runtime=cast(RuntimeState, kwargs["graph_runtime_state"]),
+            runtime=runtime,
             run_context=run_context,
             owner=case.host.boundary_owner,
-            sink=cast(Sink, case.host.control_sink),
+            sink=case.host.control_sink,
             effects=Effects(case.host.boundary_owner, permit()),
         )
         factories.append(factory)

@@ -8,7 +8,7 @@ the native adapter repeats inspection and bounds all selected values and output.
 import math
 import re
 from collections.abc import Iterator, Mapping
-from typing import Any, NoReturn, cast, override
+from typing import Any, NoReturn, override
 
 from jinja2 import Environment, nodes
 
@@ -213,7 +213,8 @@ def validate_template_configuration(data: Mapping[str, Any]) -> None:
         ):
             _refuse("unsupported_template_selector")
         names.append(variable["variable"])
-    inspect_template(cast(str, template), _names(names))
+    assert isinstance(template, str)
+    inspect_template(template, _names(names))
 
 
 class _Evaluation:
@@ -239,7 +240,8 @@ class _Evaluation:
         if type(node) is nodes.TemplateData:
             return node.data
         if type(node) is nodes.Filter:
-            return _scalar_text(self.expression(cast(nodes.Expr, node.node))).strip()
+            assert node.node is not None
+            return _scalar_text(self.expression(node.node)).strip()
         if type(node) is nodes.Not:
             return not self.expression(node.node)
         if type(node) is nodes.And:

@@ -11,12 +11,12 @@ import json
 import socket
 import threading
 import time
-from collections.abc import Callable, Generator, Iterator
+from collections.abc import Generator, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import asdict, dataclass
-from typing import Literal, cast
+from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -66,14 +66,15 @@ type Enqueued = tuple[str, Action, Actor, str]
 @pytest.fixture(scope="module")
 def task_postgres_engine() -> Iterator[Engine]:
     """A disposable PostgreSQL database; never read local application DB config."""
-    container = PostgresContainer("postgres:14-alpine", tmpfs={"/var/lib/postgresql/data": "rw,size=256m"})
+    container = PostgresContainer("postgres:14-alpine").with_tmpfs_mount(
+        "/var/lib/postgresql/data", size="rw,size=256m"
+    )
     # Match the migration witnesses: Docker Desktop's empty HostPort mapping
-    # can accept and reset TCP connections. Bind an OS-selected IPv4 port.
+    # can accept and reset TCP connections. Bind an OS-selected host port.
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
         port = probe.getsockname()[1]
-    bind = cast(Callable[[int, tuple[str, int]], object], container.with_bind_ports)
-    bind(5432, ("127.0.0.1", port))
+    container.with_bind_ports(5432, port)
     container.waiting_for(
         ExecWaitStrategy(
             [

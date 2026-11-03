@@ -15,13 +15,14 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from types import ModuleType
-from typing import TYPE_CHECKING, Literal, Never, cast
+from typing import TYPE_CHECKING, Literal, Unpack
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import Table, event, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
 
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.input_schema import schema_hash, start_schema
@@ -231,10 +232,25 @@ def consent_owner(
     return Owner(factory, actor, app.id, workflow.id, session_id, test_input_id, credential_id, client_id, reads)
 
 
-def overrides(changes: dict[str, object]) -> dict[str, Never]:
-    # Refusal cases deliberately pass ill-typed values (bool versions, unknown decisions);
-    # the localized cast keeps the typed dataclass fields while allowing those cases.
-    return cast(dict[str, Never], changes)
+class PrepareChanges(TypedDict, total=False, closed=True):
+    actor: Actor
+    session_id: str
+    test_input_id: str
+    credential_id: str
+    base_app_revision: str
+    node_id: str
+    at_version: int
+    idempotency_key: str
+
+
+class DecisionChanges(TypedDict, total=False, closed=True):
+    actor: Actor
+    session_id: str
+    consent_id: str
+    scope_digest: str
+    at_version: int
+    decision: Literal["confirm", "decline"]
+    idempotency_key: str
 
 
 @dataclass(frozen=True)
@@ -260,10 +276,10 @@ class DecisionArgs:
     idempotency_key: str = "confirm-1"
 
 
-def prepare(owner: Owner, **changes: object) -> ConsentReceipt:
+def prepare(owner: Owner, **changes: Unpack[PrepareChanges]) -> ConsentReceipt:
     args = replace(
         PrepareArgs(owner.actor, owner.session_id, owner.test_input_id, owner.credential_id, owner.revision()),
-        **overrides(changes),
+        **changes,
     )
     return owner.service().prepare(
         actor=args.actor,
@@ -277,12 +293,12 @@ def prepare(owner: Owner, **changes: object) -> ConsentReceipt:
     )
 
 
-def decision_args(owner: Owner, receipt: ConsentReceipt, **changes: object) -> DecisionArgs:
+def decision_args(owner: Owner, receipt: ConsentReceipt, **changes: Unpack[DecisionChanges]) -> DecisionArgs:
     base = DecisionArgs(owner.actor, owner.session_id, receipt.consent_id, receipt.scope_digest, receipt.at_version)
-    return replace(base, **overrides(changes))
+    return replace(base, **changes)
 
 
-def confirm(owner: Owner, receipt: ConsentReceipt, **changes: object) -> ConsentReceipt:
+def confirm(owner: Owner, receipt: ConsentReceipt, **changes: Unpack[DecisionChanges]) -> ConsentReceipt:
     args = decision_args(owner, receipt, **changes)
     return owner.service().confirm(
         actor=args.actor,
@@ -295,8 +311,9 @@ def confirm(owner: Owner, receipt: ConsentReceipt, **changes: object) -> Consent
     )
 
 
-def reserve(owner: Owner, receipt: ConsentReceipt, **changes: object) -> tuple[ConsentReceipt, bool]:
-    args = decision_args(owner, receipt, **{"idempotency_key": "execute-1", **changes})
+def reserve(owner: Owner, receipt: ConsentReceipt, **changes: Unpack[DecisionChanges]) -> tuple[ConsentReceipt, bool]:
+    changes.setdefault("idempotency_key", "execute-1")
+    args = decision_args(owner, receipt, **changes)
     return owner.service().reserve_execution(
         actor=args.actor,
         session_id=args.session_id,
@@ -438,7 +455,8 @@ def test_counters_and_prepare_key_are_database_constrained(consent_owner: Owner)
     owner = consent_owner
     receipt = prepare(owner)
     model = consent_model()
-    table = cast(Table, model.__table__)
+    table = model.__table__
+    assert isinstance(table, Table)
 
     def write(**values: object) -> None:
         with owner.factory.begin() as db:
@@ -570,7 +588,8 @@ def test_prepare_replay_returns_saved_receipt_and_changed_body_conflicts(consent
     owner = consent_owner
     first = prepare(owner)
     assert prepare(owner) == first
-    for changes in ({"node_id": "end"}, {"at_version": 2}, {"base_app_revision": "0" * 64}):
+    variants: tuple[PrepareChanges, ...] = ({"node_id": "end"}, {"at_version": 2}, {"base_app_revision": "0" * 64})
+    for changes in variants:
         with pytest.raises(BuilderExecutionPolicyError, match="idempotency_conflict"):
             prepare(owner, **changes)
     assert owner.consents() == 1
@@ -600,7 +619,7 @@ def test_prepare_refusals_leave_no_row(
     consent_owner: Owner, monkeypatch: pytest.MonkeyPatch, change: str, reason: str
 ) -> None:
     owner = consent_owner
-    changes: dict[str, object] = {}
+    changes: PrepareChanges = {}
     if change == "stale_revision":
         changes["base_app_revision"] = "0" * 64
     elif change == "stale_version":
@@ -694,7 +713,10 @@ def test_identical_decision_replay_returns_saved_receipt_after_later_advancement
     assert owner.consent_row(prepared.consent_id).confirm_receipt == decision.model_dump(mode="json")
 
 
-def test_decision_conflicts_and_mismatches_do_not_mutate(consent_owner: Owner) -> None:
+@pytest.mark.parametrize("invalid_decision", ["approve"])
+def test_decision_conflicts_and_mismatches_do_not_mutate(
+    consent_owner: Owner, invalid_decision: Literal["confirm", "decline"]
+) -> None:
     owner = consent_owner
     prepared = prepare(owner)
     with pytest.raises(BuilderExecutionPolicyError, match="consent_scope_mismatch"):
@@ -702,7 +724,7 @@ def test_decision_conflicts_and_mismatches_do_not_mutate(consent_owner: Owner) -
     with pytest.raises(BuilderExecutionPolicyError, match="stale_consent_version"):
         confirm(owner, prepared, at_version=2)
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_decision"):
-        confirm(owner, prepared, decision="approve")
+        confirm(owner, prepared, decision=invalid_decision)
     with owner.factory.begin() as db:
         other = Account(name="Teammate", email="teammate@example.invalid")
         db.add(other)

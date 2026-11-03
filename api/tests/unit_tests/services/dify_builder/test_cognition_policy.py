@@ -120,7 +120,9 @@ def test_configuration_rejects_secret_fields_and_unconfigured_fallback(subject: 
         service.put(ACTOR, CognitionPolicy(True, (MODEL,), "primary", ("missing",), 0, "explicit"), expected_revision=0)
 
 
-def test_unknown_primary_metadata_does_not_claim_available_fallback(subject: Subject) -> None:
+def test_unknown_primary_metadata_does_not_claim_available_fallback(
+    subject: Subject, monkeypatch: pytest.MonkeyPatch
+) -> None:
     service, policies, models = subject
     policies.policy = CognitionPolicy(True, (MODEL, OTHER), "primary", ("fallback",), 1, "explicit")
 
@@ -130,7 +132,7 @@ def test_unknown_primary_metadata_does_not_claim_available_fallback(subject: Sub
             raise RuntimeError("metadata unavailable")
         return True
 
-    models.available = uncertain
+    monkeypatch.setattr(models, "available", uncertain)
     status = service.availability(ACTOR)
     assert status.health == {"primary": "unknown", "fallback": "configured"}
     assert not status.available
@@ -212,7 +214,9 @@ def test_absent_policy_keeps_valid_native_model_and_parameter_selection(
 
 
 @pytest.mark.parametrize("default_broken", [False, True])
-def test_requested_native_selection_does_not_need_a_workspace_default(subject: Subject, default_broken: bool) -> None:
+def test_requested_native_selection_does_not_need_a_workspace_default(
+    subject: Subject, default_broken: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
     service, _, models = subject
     default_reads: list[int] = []
 
@@ -223,7 +227,7 @@ def test_requested_native_selection_does_not_need_a_workspace_default(subject: S
             raise RuntimeError("default metadata unavailable")
         return None
 
-    models.workspace_default = missing_default
+    monkeypatch.setattr(models, "workspace_default", missing_default)
     selected = service.select(ACTOR, OTHER.config())
     assert selected.config() == OTHER.config()
     service.authorize_selected(ACTOR, selected)
@@ -231,7 +235,9 @@ def test_requested_native_selection_does_not_need_a_workspace_default(subject: S
 
 
 @pytest.mark.parametrize("reason", ["unconfigured", "disabled", "private_credential", "foreign_credential"])
-def test_absent_policy_refuses_native_unavailable_session_choice(subject: Subject, reason: str) -> None:
+def test_absent_policy_refuses_native_unavailable_session_choice(
+    subject: Subject, reason: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     service, _, models = subject
     inspected: list[str] = []
 
@@ -240,14 +246,16 @@ def test_absent_policy_refuses_native_unavailable_session_choice(subject: Subjec
         inspected.append(model.name)
         return False
 
-    models.available = unavailable
+    monkeypatch.setattr(models, "available", unavailable)
     requested = {**OTHER.config(), "name": reason}
     with pytest.raises(CognitionPolicyDeniedError, match="model_unavailable"):
         service.select(ACTOR, requested)
     assert inspected == [reason]
 
 
-def test_absent_policy_keeps_unknown_native_metadata_unknown_without_default_fallback(subject: Subject) -> None:
+def test_absent_policy_keeps_unknown_native_metadata_unknown_without_default_fallback(
+    subject: Subject, monkeypatch: pytest.MonkeyPatch
+) -> None:
     service, _, models = subject
     inspected: list[str] = []
 
@@ -256,7 +264,7 @@ def test_absent_policy_keeps_unknown_native_metadata_unknown_without_default_fal
         inspected.append(model.name)
         raise CognitionPolicyDeniedError("model_availability_unknown")
 
-    models.available = unknown
+    monkeypatch.setattr(models, "available", unknown)
     with pytest.raises(CognitionPolicyDeniedError, match="model_availability_unknown"):
         service.select(ACTOR, OTHER.config())
     assert inspected == [OTHER.name]
@@ -286,7 +294,7 @@ def test_absent_policy_rejects_untrusted_fields_before_native_lookup(
 @pytest.mark.parametrize("change", ["restrict", "disable", "membership"])
 @pytest.mark.parametrize("requested", [None, OTHER.config()])
 def test_metadata_cannot_outlive_new_explicit_policy_or_revoked_membership(
-    subject: Subject, change: str, requested: dict[str, object] | None
+    subject: Subject, change: str, requested: dict[str, object] | None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     service, policies, models = subject
     inspected: list[str] = []
@@ -301,7 +309,7 @@ def test_metadata_cannot_outlive_new_explicit_policy_or_revoked_membership(
             policies.policy = CognitionPolicy(change != "disable", models_allowed, "new", (), 1, "explicit")
         return True
 
-    models.available = changed
+    monkeypatch.setattr(models, "available", changed)
     reason = {"restrict": "model_not_allowed", "disable": "builder_disabled", "membership": "policy_permission_denied"}[
         change
     ]

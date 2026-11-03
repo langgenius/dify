@@ -12,7 +12,7 @@ import json
 import logging
 import time
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy import select, update
@@ -283,7 +283,8 @@ def _persist_ordinary_refresh(
     try:
         with Session(db.engine) as session, session.begin():
             result = session.execute(statement.execution_options(synchronize_session=False))
-            if cast(CursorResult[object], result).rowcount != 1:
+            assert isinstance(result, CursorResult)
+            if result.rowcount != 1:
                 raise ToolProviderCredentialValidationError("Tool credential changed during refresh.")
     except ToolProviderCredentialValidationError:
         raise

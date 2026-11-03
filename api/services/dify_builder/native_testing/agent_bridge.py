@@ -9,7 +9,7 @@ import json
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Literal, Protocol, cast
+from typing import Literal, Protocol
 
 from dify_agent.adapters.native_testing.client import AgentMaterialization, AgentPhysicalDispatchPayload
 from dify_agent.protocol.native_testing import (
@@ -26,7 +26,6 @@ from dify_agent.protocol.native_testing import (
 from flask import current_app
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.local import LocalProxy
 
 from core.dify_builder.models import Actor
 from extensions.ext_database import db
@@ -533,13 +532,10 @@ def claim_agent_endpoint(
     actual services must still revalidate and claim at dispatch. Other native
     boundaries remain unavailable. A controller never spends a permit.
     """
-    from flask import g, request
+    from flask import g
+    from flask.globals import request_ctx
 
-    context = (
-        g.get("agent_runtime_context")
-        if g.get("agent_runtime_request") is cast(LocalProxy, request)._get_current_object()
-        else None
-    )
+    context = g.get("agent_runtime_context") if g.get("agent_runtime_request") is request_ctx.request else None
     if context is None:
         if envelope is not None:
             raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
@@ -566,11 +562,12 @@ def claim_agent_endpoint(
 
 def require_agent_service_envelope(envelope: AgentPhysicalDispatchPayload | None) -> None:
     """A marked request cannot enter an ordinary service by omitting its envelope."""
-    from flask import g, has_request_context, request
+    from flask import g, has_request_context
+    from flask.globals import request_ctx
 
     if (
         has_request_context()
-        and g.get("agent_runtime_request") is cast(LocalProxy, request)._get_current_object()
+        and g.get("agent_runtime_request") is request_ctx.request
         and isinstance(g.get("agent_runtime_context"), NativeAgentEndpointContext)
         and envelope is None
     ):

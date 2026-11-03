@@ -263,12 +263,14 @@ def test_waiting_binding_retention_has_own_one_minute_schedule(enabled: bool, mo
 
 
 def test_waiting_binding_task_has_a_finite_wall_time_budget() -> None:
-    from typing import Protocol, cast
+    from typing import Protocol, runtime_checkable
 
+    @runtime_checkable
     class QueuedTask(Protocol):
         queue: str
 
     task = mod.retain_waiting_agent_bindings
     assert task.soft_time_limit == 45
     assert task.time_limit == 50
-    assert cast(QueuedTask, task).queue == "dify_builder"
+    assert isinstance(task, QueuedTask)
+    assert task.queue == "dify_builder"

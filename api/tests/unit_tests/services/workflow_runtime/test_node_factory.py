@@ -12,7 +12,7 @@ from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
-from typing import NoReturn, cast, override
+from typing import NoReturn, override
 from unittest.mock import MagicMock, patch, sentinel
 from uuid import uuid4
 
@@ -323,7 +323,9 @@ class TestGetNodeTypeClassesMappingCases:
 def memory_session_maker(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> sessionmaker[Session]:
     """Bind node memory lookup to an explicit SQLite session factory."""
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[cast(Table, Conversation.__table__)])
+    conversation_table = Conversation.__table__
+    assert isinstance(conversation_table, Table)
+    TypeBase.metadata.create_all(sqlite_engine, tables=[conversation_table])
     session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
     monkeypatch.setattr(node_factory.session_factory, "create_session", session_maker)
     return session_maker
@@ -1504,21 +1506,23 @@ class TestNodeConfigErrorsNameTheNode:
     }
 
     @pytest.fixture
-    def factory(self, mocker):
-        factory = object.__new__(node_factory.DifyNodeFactory)
-        factory.init_params = sentinel.init_params
-        factory._use_workflow_tool_containers = True
-        factory._native_runtime = None
-        factory.runtime_state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
-        mocker.patch.object(VariablePool, "get")
-        factory._dify_context = DifyRunContext(
+    def factory(self, monkeypatch: pytest.MonkeyPatch) -> DifyNodeFactory:
+        run_context = build_dify_run_context(
             tenant_id="tenant-id",
             app_id="app-id",
             user_id="user-id",
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
-            builder_execution=None,
         )
+        factory = DifyNodeFactory(
+            init_params=InitParams(workflow_id="workflow", graph_config={}, run_context=run_context, call_depth=0),
+            runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0),
+        )
+
+        def unexpected_human_input_runtime(*_args: object, **_kwargs: object) -> NoReturn:
+            raise AssertionError("Delivery validation must precede human-input runtime setup")
+
+        monkeypatch.setattr(factory, "_build_human_input_callback", unexpected_human_input_runtime)
         return factory
 
     def test_create_node_names_the_node_that_failed_validation(self, factory):
@@ -1529,8 +1533,7 @@ class TestNodeConfigErrorsNameTheNode:
         assert "body.data.1.type" in str(excinfo.value)
 
     def test_create_node_rejects_human_input_delivery_uuid_before_runtime_setup(self, factory):
-        # The factory has no callback/runtime/repository dependencies installed.
-        # Delivery refusal must happen in shared validation before any are used.
+        # The callback rejects runtime setup, so delivery validation must refuse first.
         node_config = {
             "id": "review",
             "data": {
@@ -1562,7 +1565,8 @@ class TestNodeConfigErrorsNameTheNode:
 
     def test_validate_node_config_accepts_the_same_node_once_the_value_is_a_string(self):
         healed = copy.deepcopy(self.ESQ1_303_IF_ELSE_NODE)
-        condition = cast(dict[str, object], healed["data"]["cases"][0]["conditions"][0])
+        condition = healed["data"]["cases"][0]["conditions"][0]
+        assert isinstance(condition, dict)
         condition["value"] = "60"
 
         data = node_factory.validate_node_config(healed)
@@ -1830,8 +1834,10 @@ class TestConfirmedToolFactory:
         _forbid_eager_effects(monkeypatch)
         factory, graph, _reserved, _run_id = _confirmed_factory(consent_owner)
         tool = copy.deepcopy(_tool_config(graph))
-        data = cast(dict[str, object], tool["data"])
-        parameters = cast(dict[str, object], data["tool_parameters"])
+        data = tool["data"]
+        assert isinstance(data, dict)
+        parameters = data["tool_parameters"]
+        assert isinstance(parameters, dict)
         changed_data = {
             **data,
             "tool_parameters": {**parameters, "message_id": {"type": "constant", "value": "other_1"}},

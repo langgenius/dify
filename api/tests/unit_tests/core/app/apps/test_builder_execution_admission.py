@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Never, cast
+from typing import Never
 
 import pytest
 import pytest_mock
 from _pytest.monkeypatch import MonkeyPatch
-from flask import Flask
+from flask.globals import app_ctx
 from sqlalchemy import Connection, Engine, Select
 from sqlalchemy.orm import Session
-from werkzeug.local import LocalProxy
 
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
@@ -535,7 +534,6 @@ def test_worker_readmission_rejects_reload_races_inside_queue_lifecycle(
     import threading
     from contextlib import contextmanager
 
-    from flask import current_app
     from sqlalchemy import delete
 
     import services.workflow_runtime.workflow_generator as module
@@ -609,7 +607,7 @@ def test_worker_readmission_rejects_reload_races_inside_queue_lifecycle(
     worker = threading.Thread(
         target=module.WorkflowAppGenerator(execution_driver=_forbidden_driver)._generate_worker,
         kwargs={
-            "flask_app": cast(LocalProxy[Flask], current_app)._get_current_object(),
+            "flask_app": app_ctx.app,
             "application_generate_entity": entity,
             "queue_manager": queue,
             "context": contextvars.copy_context(),
@@ -683,8 +681,6 @@ def test_worker_claims_once_and_shares_recorder_with_runner_and_completion(
     import contextvars
     from contextlib import nullcontext
 
-    from flask import current_app
-
     import services.workflow_runtime.workflow_generator as module
     from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
     from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
@@ -718,7 +714,7 @@ def test_worker_claims_once_and_shares_recorder_with_runner_and_completion(
 
     queue = workflow_queue
     module.WorkflowAppGenerator(execution_driver=record_driver)._generate_worker(
-        flask_app=cast(LocalProxy[Flask], current_app)._get_current_object(),
+        flask_app=app_ctx.app,
         application_generate_entity=entity,
         queue_manager=queue,
         context=contextvars.copy_context(),
@@ -798,10 +794,6 @@ def test_native_worker_outer_finally_acknowledges_context_entry_failure(
     import contextvars
     import threading
     from contextlib import contextmanager
-    from typing import cast
-
-    from flask import current_app
-    from werkzeug.local import LocalProxy
 
     import services.workflow_runtime.workflow_generator as module
     from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
@@ -820,7 +812,7 @@ def test_native_worker_outer_finally_acknowledges_context_entry_failure(
     entity = WorkflowAppGenerateEntity.model_construct(
         builder_execution=marker, workflow_execution_id="allocated", task_id="task"
     )
-    app = cast(LocalProxy[Flask], current_app)._get_current_object()
+    app = app_ctx.app
     errors: list[str] = []
 
     def target() -> None:

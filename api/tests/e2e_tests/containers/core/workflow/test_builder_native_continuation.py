@@ -7,12 +7,10 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator
 from multiprocessing.connection import Connection as ProcessConnection
-from typing import TYPE_CHECKING, Literal, Never, Unpack, cast, override
+from typing import TYPE_CHECKING, Literal, Never, Unpack, override
 
-from flask import Flask
 from pydantic import JsonValue
 from sqlalchemy import Engine
-from werkzeug.local import LocalProxy
 
 from models.workflow import Workflow
 from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit, EffectIntent, RecordedResult
@@ -2584,7 +2582,7 @@ def test_terminal_child_dispatch_stays_terminal_after_ancestor_recovery(
 def test_child_terminal_settlement_while_recovery_proof_is_held(
     continuation_case: ContinuationCase, status: Literal["completed", "stopped", "cancelled"]
 ) -> None:
-    from flask import current_app
+    from flask.globals import app_ctx
 
     c = continuation_case
     case = _root_with_child_dispatch(c, claimed=True)
@@ -2610,7 +2608,7 @@ def test_child_terminal_settlement_while_recovery_proof_is_held(
     c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=root_dispatch.dispatch_id)
     assert service.get_outcome(child_ref=child) is None
     assert c.store.load_context(ref=child).ref == child
-    app = cast("LocalProxy[Flask]", current_app)._get_current_object()
+    app = app_ctx.app
 
     def recover_child() -> None:
         with app.app_context():

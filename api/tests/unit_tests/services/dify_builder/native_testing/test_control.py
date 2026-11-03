@@ -7,12 +7,13 @@ from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
+from operator import methodcaller
 from threading import Barrier, Event, Thread, current_thread
 from types import TracebackType
-from typing import Literal, TypedDict, cast, override
+from typing import Literal, TypedDict, override
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
@@ -53,7 +54,10 @@ from services.dify_builder.native_testing.control import (
     NativeControlAccepted,
     NativeControlRecord,
     NativeControlRefused,
+    NativeControlSink,
+    NativeNodeOwnership,
     NativePolicyStop,
+    _NativeControlBoundary,
 )
 
 REF = NativeTestContextRef(request_id="request", invocation_id="invocation", context_digest="a" * 64)
@@ -111,7 +115,7 @@ def test_stop_preserves_typed_reason_without_disclosing_it_in_diagnostics() -> N
 def test_malformed_decision_is_private_stop_before_any_dispatch(decision: object) -> None:
     module = native_control
     with pytest.raises(module.NativePolicyStop) as caught:
-        module.NativeControlBridge.resolve(ref=REF, decision=cast(EffectDecision, decision))
+        methodcaller("resolve", ref=REF, decision=decision)(module.NativeControlBridge)
     assert caught.value.reason_code == "native_control_invalid_decision"
     assert "secret" not in str(caught.value)
 
@@ -170,8 +174,6 @@ class Sink:
             raise RuntimeError("secret callback configuration")
         if self.mode == "base-exception":
             raise SystemExit("secret callback configuration")
-        if self.mode == "malformed":
-            return cast(NativeControlAccepted | NativeControlRefused, True)
         if self.before_accept is not None:
             self.before_accept(record)
         return module.NativeControlAccepted(record=record)
@@ -234,33 +236,26 @@ class RawGraphConfig(TypedDict):
 
 
 @dataclass(frozen=True)
-class Factory:
+class Factory[S: NativeControlSink = NativeControlSink]:
     config: RawGraphConfig
     runtime: RuntimeState
     owner: BoundaryOwnerState
-    sink: Sink
+    sink: S
     effects: Effects
     marked: bool = True
     children: list[RuntimeState] = field(default_factory=list)
     run_context: Mapping[str, object] = field(default_factory=dict)
 
-    def with_runtime_state(self, runtime_state: RuntimeState) -> Factory:
+    def with_runtime_state(self, runtime_state: RuntimeState) -> Factory[S]:
         self.children.append(runtime_state)
-        return Factory(
-            self.config,
-            runtime_state,
-            self.owner,
-            self.sink,
-            self.effects,
-            self.marked,
-            self.children,
-            self.run_context,
-        )
-
-    def with_graph_config(self, graph_config: Mapping[str, object]) -> Factory:
         from dataclasses import replace
 
-        return replace(self, config=cast(RawGraphConfig, graph_config))
+        return replace(self, runtime=runtime_state)
+
+    def with_graph_config(self, graph_config: Mapping[str, object]) -> Factory[S]:
+        from dataclasses import replace
+
+        return replace(self, config=TypeAdapter(RawGraphConfig).validate_python(graph_config))
 
     def validate_node(self, node_config: NodeConfigDict) -> NodeExecutionType:
         raw = node_config["data"].model_dump(mode="python", exclude_unset=True)
@@ -272,17 +267,14 @@ class Factory:
         raw_data = node_config["data"].model_dump(mode="python", exclude_unset=True)
         original = next(cls for cls in ORIGINALS if cls.node_type == raw_data["type"])
         cls = native_control.marked_native_node_class(original, marked=self.marked)
-        kwargs: dict[str, object] = {
-            "node_id": node_config["id"],
-            "data": cls.validate_node_data(raw_data),
-            "init_params": InitParams(
-                workflow_id=self.runtime.graph_execution.workflow_id,
-                graph_config=self.config,
-                run_context=self.run_context,
-                call_depth=0,
-            ),
-            "runtime_state": self.runtime,
-        }
+        data = original.validate_node_data(raw_data)
+        init_params = InitParams(
+            workflow_id=self.runtime.graph_execution.workflow_id,
+            graph_config=self.config,
+            run_context=self.run_context,
+            call_depth=0,
+        )
+        kwargs: dict[str, object] = {}
         if original is TemplateTransformNode:
             kwargs["jinja2_template_renderer"] = Renderer(self.effects, node_config["id"])
         if original is CodeNode:
@@ -298,8 +290,19 @@ class Factory:
                 max_object_array_length=100,
             )
         if self.marked:
-            kwargs.update(native_control_owner=self.owner, native_control_sink=self.sink)
-        return cast(Callable[..., Node[BaseNodeData]], cls)(**kwargs)
+            assert issubclass(cls, _NativeControlBoundary)
+            result = cls(
+                node_id=node_config["id"],
+                data=data,
+                init_params=init_params,
+                runtime_state=self.runtime,
+                native_control_owner=self.owner,
+                native_control_sink=self.sink,
+                **kwargs,
+            )
+            assert isinstance(result, Node)
+            return result
+        return cls(node_id=node_config["id"], data=data, init_params=init_params, runtime_state=self.runtime, **kwargs)
 
 
 def node(node_id: str, kind: str, **data: object) -> RawNodeConfig:
@@ -338,8 +341,8 @@ def make_native(
     ref: NativeTestContextRef = REF,
     config: RawGraphConfig | None = None,
     runtime: RuntimeState | None = None,
-    ownership: Observations | None = None,
-) -> tuple[Engine, Factory]:
+    ownership: NativeNodeOwnership | None = None,
+) -> tuple[Engine, Factory[Sink]]:
     module = native_control
     owner = (
         module.BoundaryOwnerState(ref=ref)
@@ -426,8 +429,18 @@ def test_stop_records_owner_then_aborts_without_native_failure_policy(policy: di
 
 @pytest.mark.parametrize("mode", ["refuse", "exception", "base-exception", "malformed"])
 @pytest.mark.parametrize("policy", POLICIES)
-def test_sink_refusal_or_failure_is_nonresumable_abort_without_fallback(mode: str, policy: dict[str, object]) -> None:
+def test_sink_refusal_or_failure_is_nonresumable_abort_without_fallback(
+    mode: str, policy: dict[str, object], monkeypatch: pytest.MonkeyPatch
+) -> None:
     native, factory = make_native(mode=mode, policy=policy)
+    if mode == "malformed":
+        record_control = factory.sink.record_control
+
+        def malformed(*, record: NativeControlRecord) -> bool:
+            record_control(record=record)
+            return True
+
+        monkeypatch.setattr(factory.sink, "record_control", malformed)
     events = list(native.run())
     assert isinstance(events[-1], GraphRunAbortedEvent)
     assert factory.owner.status == "UNKNOWN_NONRESUMABLE"
@@ -522,11 +535,11 @@ def test_marked_class_cache_preserves_all_current_mappings_without_instance_cont
 def test_opt_in_rejects_non_boolean_marker_and_missing_trusted_sink() -> None:
     module = native_control
     with pytest.raises(ValueError, match="native_control_concrete_class_required"):
-        module.marked_native_node_class(TemplateTransformNode, marked=cast(bool, "client supplied truthy text"))
+        methodcaller("marked_native_node_class", TemplateTransformNode, marked="client supplied truthy text")(module)
     _, factory = make_native()
     cls = module.marked_native_node_class(TemplateTransformNode, marked=True)
     with pytest.raises(TypeError, match="native_control_sink"):
-        cast(Callable[..., Node[BaseNodeData]], cls)(native_control_owner=factory.owner)
+        methodcaller("__call__", native_control_owner=factory.owner)(cls)
 
 
 def test_independent_simultaneous_contexts_share_classes_but_never_host_ownership() -> None:
