@@ -716,7 +716,7 @@ class TestAppGenerateServiceCases(_RealSessionTest):
             side_effect=lambda value: value,
         )
         app = _make_app(AppMode.WORKFLOW)
-        session = MagicMock()
+        session = object()
 
         result = AppGenerateService.generate(
             app_model=app,

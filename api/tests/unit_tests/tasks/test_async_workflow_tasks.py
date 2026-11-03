@@ -17,7 +17,24 @@ from tasks import async_workflow_tasks
 from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 
 
-def _session_context(session: MagicMock) -> MagicMock:
+class _StubSession:
+    def __init__(self, items: list[object]) -> None:
+        self._items = iter(items)
+
+    def scalar(self, *args: object, **kwargs: object) -> object:
+        return next(self._items)
+
+    def commit(self) -> None:
+        pass
+
+    def rollback(self) -> None:
+        pass
+
+    def flush(self) -> None:
+        pass
+
+
+def _session_context(session: object) -> MagicMock:
     context = MagicMock()
     context.__enter__.return_value = session
     context.__exit__.return_value = False
@@ -47,8 +64,7 @@ def test_execute_workflow_projects_the_persisted_workflow_before_generation(
         status=None,
     )
 
-    session = MagicMock()
-    session.scalar.side_effect = [app, workflow_model]
+    session = _StubSession([app, workflow_model])
     task_session_factory = MagicMock()
     task_session_factory.create_session.return_value = _session_context(session)
     task_session_factory.get_session_maker.return_value = MagicMock()
@@ -121,8 +137,7 @@ def test_resume_workflow_projects_the_persisted_workflow_before_resuming(
     resumption_context.get_response_stream_filter.return_value = response_stream_filter
     graph_runtime_state = MagicMock()
 
-    session = MagicMock()
-    session.scalar.side_effect = [workflow_model, app]
+    session = _StubSession([workflow_model, app])
     resumed_session_factory = MagicMock()
     resumed_session_factory.return_value = _session_context(session)
     generator = MagicMock()
