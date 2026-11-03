@@ -17,9 +17,8 @@ from configs import dify_config
 
 if TYPE_CHECKING:
     from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-    from core.ops.base_trace_instance import AgentAppTracingContext
+    from core.ops.base_trace_instance import AgentAppTracingContext, WorkflowAgentTracingContext
     from core.ops.entities.trace_entity import BaseTraceInfo
-    from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
     from services.tracing.service import ApplicationTracingService
 
 logger = logging.getLogger(__name__)
@@ -94,7 +93,7 @@ def capture_agent_app_terminal(
 
 
 def prepare_workflow_agent(
-    context: WorkflowAgentRuntimeBuildContext, conversation_id: str | None
+    context: WorkflowAgentTracingContext, conversation_id: str | None
 ) -> ApplicationTracingContext | None:
     if not dify_config.OPS_AGENT_TRACE_ENABLED:
         return None
