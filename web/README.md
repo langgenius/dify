@@ -175,3 +175,5 @@ The Dify community can be found on [Discord community], where you can ask questi
 [vinext Node deployment]: https://vinext.dev/docs/deploying/other-platforms
 [vinext migration guide]: https://vinext.dev/docs/getting-started/migrating
 [vinext]: https://github.com/cloudflare/vinext
+
+<!-- temp: trigger web CI to verify per-flag codecov statuses; will be reverted -->
