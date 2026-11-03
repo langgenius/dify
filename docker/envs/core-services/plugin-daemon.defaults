@@ -3,6 +3,12 @@
 # Optional application settings are commented to retain their application defaults.
 
 DB_PLUGIN_DATABASE=${DB_PLUGIN_DATABASE:-dify_plugin}
+# plugin_daemon reads only the uppercase proxy variables. Map the lowercase
+# forms used by the api and sandbox containers so one shell export works
+# everywhere; an explicit uppercase value still wins (#18752).
+HTTP_PROXY=${HTTP_PROXY:-${http_proxy:-}}
+HTTPS_PROXY=${HTTPS_PROXY:-${https_proxy:-}}
+NO_PROXY=${NO_PROXY:-${no_proxy:-}}
 # PLUGIN_DAEMON_URL=http://plugin_daemon:5002
 PLUGIN_PPROF_ENABLED=${PLUGIN_PPROF_ENABLED:-false}
 PLUGIN_DIFY_INNER_API_URL=${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
