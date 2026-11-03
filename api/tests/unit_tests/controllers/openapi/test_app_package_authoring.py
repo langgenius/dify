@@ -41,6 +41,7 @@ from services.app_package_service import AppPackageService
 from services.entities.dsl_entities import ImportStatus
 from services.workflow.authoring.checks import AuthoringIssueCode
 from services.workflow.authoring.node_spec import FieldHint
+from services.workflow.authoring.package_io import new_manifest
 from services.workflow.authoring.plugins import NO_DEFAULT, DeclaredParameter
 from tests.helpers.unit.model_factories import make_workflow
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
@@ -199,7 +200,9 @@ def test_check_serializes_the_schema_under_its_name_and_leaves_out_absent_defaul
 
 
 def test_check_of_a_clean_package_is_valid(app: Flask) -> None:
-    response, _status = _check(app, _folder({_APP: _chain_dsl(_start(), _end())}))
+    dsl = _chain_dsl(_start(), _end())
+
+    response, _status = _check(app, _folder({_APP: dsl, _MANIFEST: new_manifest(dsl)}))
 
     assert response.valid is True
     assert all(issue.severity != "error" for issue in response.issues)
