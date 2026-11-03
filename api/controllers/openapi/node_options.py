@@ -44,7 +44,7 @@ class NodeOptionListApi(Resource):
             mode=query.app_mode,
             kind=query.kind,
             keyword=query.keyword,
-            accessible_agent_ids=account_agent_access(tenant_id, account_id).sorted_ids(),
+            accessible_agent_ids=lambda: account_agent_access(tenant_id, account_id).sorted_ids(),
             roster=AgentRosterService(ctx.session),
             language=ctx.account.interface_language,
         )

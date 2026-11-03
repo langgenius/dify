@@ -8,8 +8,10 @@ from werkzeug.test import TestResponse
 
 from controllers.common.agent_access import AgentAccessFilter
 from controllers.openapi import node_options as node_options_controller
+from core.tools.entities.api_entities import ToolProviderApiEntity
 from models import Account
 from services.agent.roster_service import AgentRosterService
+from services.tools.tool_sources import ToolSource
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 
@@ -109,3 +111,31 @@ def test_without_rbac_every_agent_is_listed(admitted_bearer: AdmittedWorld, monk
     assert seen == [None]
     [row] = response.get_json()["data"]
     assert (row["kind"], row["label"], row["description"]) == ("agent", "Writer", None)
+
+
+@pytest.mark.parametrize(
+    ("kind", "asks"), [("&kind=block", False), ("&kind=tool", False), ("&kind=agent", True), ("", True)]
+)
+def test_agent_access_is_read_only_when_agents_can_be_listed(
+    admitted_bearer: AdmittedWorld, monkeypatch: pytest.MonkeyPatch, kind: str, asks: bool
+) -> None:
+    asked: list[str] = []
+
+    def account_agent_access(tenant_id: str, _account_id: str) -> AgentAccessFilter:
+        asked.append(tenant_id)
+        return AgentAccessFilter.unrestricted()
+
+    def list_invite_options(_self: AgentRosterService, **_kwargs: object) -> dict[str, object]:
+        return {"data": [], "page": 1, "limit": 100, "total": 0, "has_more": False}
+
+    def no_tools(_self: ToolSource, **_kwargs: str) -> list[ToolProviderApiEntity]:
+        return []
+
+    monkeypatch.setattr(node_options_controller, "account_agent_access", account_agent_access)
+    monkeypatch.setattr(AgentRosterService, "list_invite_options", list_invite_options)
+    monkeypatch.setattr(ToolSource, "list_providers", no_tools)
+
+    response = _get(admitted_bearer, f"app_mode=workflow{kind}")
+
+    assert response.status_code == 200, response.get_json()
+    assert asked == ([admitted_bearer.workspace_id] if asks else [])

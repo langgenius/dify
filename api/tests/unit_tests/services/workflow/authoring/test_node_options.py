@@ -114,7 +114,7 @@ def _options(
         mode=mode,
         kind=kind,
         keyword=keyword,
-        accessible_agent_ids=accessible_agent_ids,
+        accessible_agent_ids=lambda: accessible_agent_ids,
         roster=roster if roster is not None else _Roster(),
         language=language,
     )
