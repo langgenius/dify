@@ -3137,3 +3137,74 @@ def test_prepare_logical_document_download_rejects_pending_document_without_acti
 
     assert facade.list_document_revisions_calls == []
     assert facade.get_document_calls == []
+
+
+def test_tidy_calls_use_fresh_scoped_capabilities_and_preserve_evidence() -> None:
+    from services.knowledge_fs.tidy_dto import (
+        KnowledgeFSTidyActionPayload,
+        KnowledgeFSTidyFindingQuery,
+        KnowledgeFSTidySettingsPayload,
+    )
+
+    class TidyRemote(RecordingRemote):
+        @override
+        def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, JsonValue]:
+            self.requests.append(request)
+            if request.operation_id in {"getTidySettings", "updateTidySettings"}:
+                return {"enabled": True, "revision": 1, "lastError": None, "updatedAt": "2026-11-03"}
+            if request.operation_id in {"listTidyFindings", "listTidyScans"}:
+                return {"items": [], "nextCursor": None}
+            if request.operation_id == "retryTidyScans":
+                return {"resumed": 1}
+            return {
+                "id": "f" * 64,
+                "kind": "conflict",
+                "left": {
+                    "documentId": "doc-a",
+                    "revision": 1,
+                    "title": "A",
+                    "chunkId": "chunk-a",
+                    "start": 0,
+                    "end": 3,
+                    "text": "十四天",
+                },
+                "right": {
+                    "documentId": "doc-b",
+                    "revision": 2,
+                    "title": "B",
+                    "chunkId": "chunk-b",
+                    "start": 0,
+                    "end": 2,
+                    "text": "七天",
+                },
+                "reason": "期限不同",
+                "similarity": None,
+                "status": "disabled",
+                "revision": 2,
+                "actionId": "action-1",
+                "createdAt": "2026-11-03",
+            }
+
+    remote = TidyRemote()
+    broker = RecordingBroker()
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)
+    common: _FacadeScope = {"tenant_id": "tenant-1", "account_id": "account-1", "control_space_id": "control-1"}
+    facade.get_tidy_settings(**common)
+    facade.update_tidy_settings(
+        **common, payload=KnowledgeFSTidySettingsPayload(enabled=True, expectedRevision=0, acknowledgeTokenUsage=True)
+    )
+    facade.list_tidy_findings(**common, query=KnowledgeFSTidyFindingQuery(status="open", cursor="a" * 64))
+    facade.list_tidy_scans(**common, cursor=None)
+    result = facade.act_on_tidy_finding(
+        **common,
+        finding_id="f" * 64,
+        payload=KnowledgeFSTidyActionPayload(action="disable_document", expectedRevision=1, documentId="doc-b"),
+    )
+    facade.retry_tidy_scans(**common)
+    assert result.left.text == "十四天"
+    assert result.right.text == "七天"
+    assert len(broker.calls) == 6
+    assert all(call["tenant_id"] == "tenant-1" and call["account_id"] == "account-1" for call in broker.calls)
+    assert remote.requests[1].payload == {"enabled": True, "expectedRevision": 0, "acknowledgeTokenUsage": True}
+    assert remote.requests[4].path.endswith(f"/tidy/findings/{'f' * 64}/actions")
+    assert remote.requests[4].payload == {"action": "disable_document", "expectedRevision": 1, "documentId": "doc-b"}

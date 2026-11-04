@@ -247,7 +247,7 @@ export default function InviteSettingsPage() {
                 required
                 value={name}
                 onValueChange={setName}
-                placeholder={t(($) => $.namePlaceholder, { ns: 'login' }) || ''}
+                placeholder={t(($) => $.namePlaceholder, { ns: 'login' })}
               />
               <FieldError>{t(($) => $.enterYourName, { ns: 'login' })}</FieldError>
             </Field>

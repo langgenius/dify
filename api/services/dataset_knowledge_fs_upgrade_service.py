@@ -167,14 +167,23 @@ class KnowledgeFSUpgradeModelResolver:
     def _unavailable_reason(
         self, model_type: ModelType, choice: KnowledgeFSUpgradeModelChoice
     ) -> KnowledgeFSUpgradeModelUnavailableReason | None:
+        """Map a configured model to its unavailable reason without changing provider state."""
         model = self._match(model_type, choice)
         if model is None:
             return "not_found"
-        if model.status != ModelStatus.ACTIVE:
-            return cast(KnowledgeFSUpgradeModelUnavailableReason, model.status.value)
-        if model.deprecated:
-            return "deprecated"
-        return None
+        match model.status:
+            case ModelStatus.ACTIVE:
+                return "deprecated" if model.deprecated else None
+            case ModelStatus.NO_CONFIGURE:
+                return "no-configure"
+            case ModelStatus.QUOTA_EXCEEDED:
+                return "quota-exceeded"
+            case ModelStatus.NO_PERMISSION:
+                return "no-permission"
+            case ModelStatus.CREDENTIAL_REMOVED:
+                return "credential-removed"
+            case _:
+                return "disabled"
 
     def _recommend(
         self,
@@ -217,12 +226,11 @@ class KnowledgeFSUpgradeModelResolver:
         """Resolve all three choices or report each unusable field without creating a job."""
         selected: dict[str, KnowledgeFSModelIntent] = {}
         issues: list[KnowledgeFSUpgradeModelIssueResponse] = []
-        for field, model_type in (
-            ("embedding", ModelType.TEXT_EMBEDDING),
-            ("rerank", ModelType.RERANK),
-            ("reasoning", ModelType.LLM),
+        for field, model_type, choice in (
+            ("embedding", ModelType.TEXT_EMBEDDING, models.embedding),
+            ("rerank", ModelType.RERANK, models.rerank),
+            ("reasoning", ModelType.LLM, models.reasoning),
         ):
-            choice = getattr(models, field)
             reason = self._unavailable_reason(model_type, choice)
             if reason is not None:
                 issues.append(
@@ -1650,8 +1658,9 @@ def _resolve_configuration(job: KnowledgeFSUpgradeJob) -> dict[str, object]:
 def _build_resolved_configuration(
     config_snapshot: Mapping[str, object], models: KnowledgeFSUpgradeResolvedModels
 ) -> dict[str, object]:
-    """Build a new-space profile from click-time retrieval settings and validated model identities."""
-    retrieval = cast(dict[str, Any], config_snapshot.get("retrieval_model") or {})
+    """Build a new-space profile from validated models without changing the click-time snapshot."""
+    retrieval_value = config_snapshot.get("retrieval_model")
+    retrieval = retrieval_value if isinstance(retrieval_value, dict) else {}
     threshold_enabled = bool(retrieval.get("score_threshold_enabled"))
     threshold_value = retrieval.get("score_threshold")
     profile = KnowledgeFSRetrievalProfileIntent(
