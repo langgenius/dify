@@ -1433,11 +1433,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/image-uploader/__tests__/uploader.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 4
-    }
-  },
   "web/app/components/base/image-uploader/__tests__/utils.spec.ts": {
     "typescript/no-deprecated": {
       "count": 1

@@ -56,7 +56,6 @@ def client(
         monkeypatch,
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
         LOGIN_DISABLED=False,
-        PAT_ENCRYPTION_KEY="ab" * 32,
         SECRET_KEY="test-only-browser-signing-key-32-bytes",
         CONSOLE_WEB_URL="http://localhost",
         CONSOLE_API_URL="http://localhost",
@@ -113,22 +112,22 @@ def test_created_pat_is_listed_without_exposing_its_secret(client: FlaskClient) 
     assert "secret_digest" not in row
 
 
-def test_holder_can_copy_the_same_complete_key_after_reloading_the_list(client: FlaskClient) -> None:
-    created = client.post(BASE, json={"name": "release-pipeline"}).get_json()
-    first = client.post(f"{BASE}/{created['id']}/secret")
-    assert first.status_code == 200, first.get_json()
-    secret = first.get_json()["secret"]
+def test_secret_is_returned_only_at_creation(client: FlaskClient) -> None:
+    response = client.post(BASE, json={"name": "release-pipeline"})
+    assert response.status_code == 201
+    created = response.get_json()
+    secret = created["secret"]
     assert secret.startswith("dpat_")
     assert secret.endswith(created["secret_last_four"])
-    assert first.headers["Cache-Control"] == "no-store"
-    assert client.get(BASE).status_code == 200
-    copied_again = client.post(f"{BASE}/{created['id']}/secret")
-    assert copied_again.get_json()["secret"] == secret
+    assert response.headers["Cache-Control"] == "no-store"
+    assert "secret" not in client.get(BASE).get_json()["data"][0]
+    assert "secret" not in client.get(f"{BASE}/{created['id']}").get_json()["token"]
+    assert client.post(f"{BASE}/{created['id']}/secret").status_code == 404
 
 
-def test_last_used_records_bearer_authentication_not_browser_copy(client: FlaskClient) -> None:
+def test_last_used_records_bearer_authentication_not_creation(client: FlaskClient) -> None:
     created = client.post(BASE, json={"name": "usage"}).get_json()
-    secret = client.post(f"{BASE}/{created['id']}/secret").get_json()["secret"]
+    secret = created["secret"]
     assert client.get(BASE).get_json()["data"][0]["last_used_at"] is None
     headers = {
         "Authorization": f"Bearer {secret}",
@@ -221,24 +220,32 @@ def test_csrf_is_required_to_create_a_pat(client: FlaskClient) -> None:
 
 def test_a_pat_cannot_manage_personal_tokens_without_a_browser_session(client: FlaskClient) -> None:
     token = client.post(BASE, json={"name": "business-only"}).get_json()
-    secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+    secret = token["secret"]
     with client.application.test_client() as automation:
         headers = {"Authorization": f"Bearer {secret}"}
         assert automation.get(BASE, headers=headers).status_code == 401
-        assert automation.post(f"{BASE}/{token['id']}/secret", headers=headers).status_code == 401
+        assert automation.get(f"{BASE}/{token['id']}", headers=headers).status_code == 401
         assert automation.delete(f"{BASE}/{token['id']}", headers=headers).status_code == 401
 
 
-def test_unconfigured_encryption_fails_without_creating_a_pat(
-    client: FlaskClient,
-    monkeypatch: pytest.MonkeyPatch,
+def test_created_pat_persists_only_the_secret_digest(
+    client: FlaskClient, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
-    apply_config_overrides(monkeypatch, PAT_ENCRYPTION_KEY="")
-    assert client.post(BASE, json={"name": "missing-key"}).status_code == 503
-    assert client.get(BASE).get_json()["data"] == []
+    import hashlib
+
+    from models.personal_access_token import PersonalAccessToken
+
+    response = client.post(BASE, json={"name": "digest-only"})
+    assert response.status_code == 201
+    token = response.get_json()
+    with sqlite_session_factory() as session:
+        stored = session.get(PersonalAccessToken, token["id"])
+        assert stored is not None
+        assert stored.secret_digest == hashlib.sha256(token["secret"].encode()).hexdigest()
+        assert stored.secret_ciphertext == b""
 
 
-def test_expired_pat_remains_visible_but_cannot_be_copied(
+def test_expired_pat_remains_visible_but_cannot_authenticate(
     client: FlaskClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -248,7 +255,11 @@ def test_expired_pat_remains_visible_but_cannot_be_copied(
     token = client.post(BASE, json={"name": "short-lived", "expiration": "30_days"}).get_json()
     assert datetime.fromisoformat(token["expires_at"]) == datetime(2026, 1, 31, tzinfo=UTC)
     monkeypatch.setattr(personal_access_token_service, "naive_utc_now", lambda: datetime(2026, 1, 31))
-    assert client.post(f"{BASE}/{token['id']}/secret").status_code == 403
+    headers = {
+        "Authorization": f"Bearer {token['secret']}",
+        CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
+    }
+    assert client.get("/openapi/v1/workspaces", headers=headers).status_code == 401
     listed = client.get(BASE).get_json()["data"]
     assert listed[0]["id"] == token["id"]
     assert listed[0]["status"] == "expired"
@@ -330,14 +341,19 @@ def test_pat_can_be_limited_to_one_owned_app(
 
 def test_edit_preserves_secret_expiry_and_rejects_a_stale_version(client: FlaskClient) -> None:
     created = client.post(BASE, json={"name": "before"}).get_json()
-    secret = client.post(f"{BASE}/{created['id']}/secret").get_json()["secret"]
+    secret = created["secret"]
     updated = client.patch(f"{BASE}/{created['id']}", json={"name": "after", "version": created["version"]})
     assert updated.status_code == 200, updated.get_json()
     token = updated.get_json()["token"]
     assert token["name"] == "after"
     assert token["expires_at"] == created["expires_at"]
     assert token["resource_scope_mode"] == token["workspace_scope_mode"] == "all"
-    assert client.post(f"{BASE}/{created['id']}/secret").get_json()["secret"] == secret
+    assert "secret" not in token
+    headers = {
+        "Authorization": f"Bearer {secret}",
+        CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
+    }
+    assert client.get("/openapi/v1/workspaces", headers=headers).status_code == 200
     stale = client.patch(f"{BASE}/{created['id']}", json={"name": "stale", "version": created["version"]})
     assert stale.status_code == 409
     assert client.get(f"{BASE}/{created['id']}").get_json()["token"]["name"] == "after"
@@ -462,7 +478,7 @@ def test_pat_authenticates_workspace_business_requests_and_revocation_rejects_ne
             ]
         )
     created = client.post(BASE, json={"name": "automation", "resource_scope": {"mode": "none"}}).get_json()
-    secret = client.post(f"{BASE}/{created['id']}/secret").get_json()["secret"]
+    secret = created["secret"]
     fingerprint = client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER]
     headers = {"Authorization": f"Bearer {secret}", CATALOG_HEADER: fingerprint}
     response = client.get("/openapi/v1/workspaces", headers=headers)
@@ -504,7 +520,7 @@ def test_app_scope_filters_discovery_and_workspace_scope_cannot_bypass_it(
             },
         },
     ).get_json()
-    secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+    secret = token["secret"]
     fingerprint = client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER]
     headers = {"Authorization": f"Bearer {secret}", CATALOG_HEADER: fingerprint}
     described = client.get(f"/openapi/v1/apps/{allowed.id}?fields=info", headers=headers)
@@ -546,7 +562,7 @@ def test_selected_workspace_permits_member_reads_only_in_that_workspace(
             "workspace_scope": {"mode": "selected", "workspace_ids": [first.id]},
         },
     ).get_json()
-    secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+    secret = token["secret"]
     headers = {
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
@@ -582,8 +598,8 @@ def test_authorized_pat_reaches_existing_business_request_validation(
                 ),
             ]
         )
-    token_id = client.post(BASE, json={"name": "business"}).get_json()["id"]
-    secret = client.post(f"{BASE}/{token_id}/secret").get_json()["secret"]
+    token = client.post(BASE, json={"name": "business"}).get_json()
+    secret = token["secret"]
     headers = {
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
@@ -642,8 +658,8 @@ def test_create_retry_after_membership_loss_returns_the_existing_pat_and_issue_s
     assert edited.get_json()["resources"][0]["available"] is False
 
 
-@pytest.mark.parametrize("mode", ["workflow", "advanced-chat", "chat", "completion"])
-def test_pat_with_app_access_can_stop_any_task_id_but_still_requires_app_access(
+@pytest.mark.parametrize("mode", ["chat", "agent-chat", "completion"])
+def test_pat_with_app_access_can_stop_message_tasks_but_still_requires_app_access(
     client: FlaskClient,
     sqlite_session_factory: sessionmaker[Session],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
@@ -678,7 +694,7 @@ def test_pat_with_app_access_can_stop_any_task_id_but_still_requires_app_access(
             "workspace_scope": {"mode": "none", "workspace_ids": []},
         },
     ).get_json()
-    secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+    secret = token["secret"]
     headers = {
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
@@ -771,7 +787,7 @@ def test_pat_can_read_its_own_form_but_cannot_read_or_submit_another_accounts_fo
                 )
             )
     token = client.post(BASE, json={"name": "forms"}).get_json()
-    secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+    secret = token["secret"]
     headers = {
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
@@ -873,7 +889,7 @@ def test_current_rbac_changes_affect_candidates_saved_status_and_the_next_busine
     )
     assert created.status_code == 201, created.get_json()
     token = created.get_json()
-    secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+    secret = token["secret"]
     headers = {
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
@@ -910,31 +926,28 @@ def test_current_rbac_changes_affect_candidates_saved_status_and_the_next_busine
     assert client.get(BASE).get_json()["data"][0]["status"] == "active"
 
 
-def test_lost_encryption_key_prevents_copy_but_does_not_break_digest_authentication(
-    client: FlaskClient,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    token = client.post(BASE, json={"name": "durable-auth"}).get_json()
-    secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+def test_creation_retry_does_not_reveal_secret_or_break_original_authentication(client: FlaskClient) -> None:
+    creation_headers = {"Idempotency-Key": str(uuid4())}
+    token = client.post(BASE, json={"name": "durable-auth"}, headers=creation_headers).get_json()
+    retried = client.post(BASE, json={"name": "durable-auth"}, headers=creation_headers)
+    assert retried.status_code == 201
+    assert retried.get_json()["id"] == token["id"]
+    assert retried.get_json()["secret"] is None
     headers = {
-        "Authorization": f"Bearer {secret}",
+        "Authorization": f"Bearer {token['secret']}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
     }
-    apply_config_overrides(monkeypatch, PAT_ENCRYPTION_KEY="cd" * 32)
-    assert client.post(f"{BASE}/{token['id']}/secret").status_code == 503
     assert client.get("/openapi/v1/workspaces", headers=headers).status_code == 200
-    apply_config_overrides(monkeypatch, PAT_ENCRYPTION_KEY="ab" * 32)
-    assert client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"] == secret
 
 
-def test_disabling_the_holder_rejects_bearer_requests_and_browser_secret_retrieval(
+def test_disabling_the_holder_rejects_bearer_requests_and_browser_token_access(
     client: FlaskClient,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     from models.account import Account, AccountStatus
 
     token = client.post(BASE, json={"name": "holder"}).get_json()
-    secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+    secret = token["secret"]
     headers = {
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
@@ -944,7 +957,7 @@ def test_disabling_the_holder_rejects_bearer_requests_and_browser_secret_retriev
         assert account is not None
         account.status = AccountStatus.BANNED
     assert client.get("/openapi/v1/workspaces", headers=headers).status_code == 401
-    assert client.post(f"{BASE}/{token['id']}/secret").status_code in {401, 403}
+    assert client.get(f"{BASE}/{token['id']}").status_code == 401
 
 
 @pytest.mark.parametrize(
@@ -1010,7 +1023,7 @@ def test_expiration_rejects_new_business_requests_at_the_exact_boundary(
 
     monkeypatch.setattr(personal_access_token_service, "naive_utc_now", lambda: datetime(2026, 1, 1))
     token = client.post(BASE, json={"name": "expires", "expiration": "30_days"}).get_json()
-    secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+    secret = token["secret"]
     headers = {
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
@@ -1046,7 +1059,7 @@ def test_enterprise_private_app_permission_is_rechecked_on_each_business_request
             ]
         )
     token = client.post(BASE, json={"name": "private-app"}).get_json()
-    secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+    secret = token["secret"]
     permission: dict[str, object] = {"allowed": True, "mode": "private"}
 
     def send(_method: str, endpoint: str, **_kwargs: object) -> dict[str, object]:
@@ -1228,14 +1241,14 @@ def test_multiple_pats_share_account_run_results_and_never_read_another_identity
     for name in ("first", "second"):
         token = client.post(BASE, json={"name": name}).get_json()
         tokens.append(token)
-        secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+        secret = token["secret"]
         headers = {"Authorization": f"Bearer {secret}", CATALOG_HEADER: fingerprint}
         headers_by_token.append(headers)
-        own = client.get(f"/openapi/v1/apps/{app.id}/tasks/{run_ids[0]}/events", headers=headers)
+        own = client.get(f"/openapi/v1/apps/{app.id}/runs/{run_ids[0]}/events", headers=headers)
         assert own.status_code == 200, own.get_data(as_text=True)
         assert "private result" in own.get_data(as_text=True)
         for hidden in run_ids[1:]:
-            assert client.get(f"/openapi/v1/apps/{app.id}/tasks/{hidden}/events", headers=headers).status_code == 404
+            assert client.get(f"/openapi/v1/apps/{app.id}/runs/{hidden}/events", headers=headers).status_code == 404
     edited = client.patch(
         f"{BASE}/{tokens[0]['id']}",
         json={
@@ -1246,12 +1259,12 @@ def test_multiple_pats_share_account_run_results_and_never_read_another_identity
         },
     )
     assert edited.status_code == 200, edited.get_json()
-    url = f"/openapi/v1/apps/{app.id}/tasks/{run_ids[0]}/events"
+    url = f"/openapi/v1/apps/{app.id}/runs/{run_ids[0]}/events"
     assert client.get(url, headers=headers_by_token[0]).status_code == 403
     assert client.get(url, headers=headers_by_token[1]).status_code == 200
 
 
-def test_reconnect_records_the_server_task_id_so_the_holder_can_stop_it(
+def test_reconnect_and_stop_use_the_persisted_workflow_run(
     client: FlaskClient,
     sqlite_session_factory: sessionmaker[Session],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
@@ -1265,10 +1278,15 @@ def test_reconnect_records_the_server_task_id_so_the_holder_can_stop_it(
     from redis.client import PubSub
 
     from extensions import ext_redis
+    from extensions.ext_database import db
     from graphon.enums import WorkflowExecutionStatus
     from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
     from models.model import AppMode
     from models.workflow import WorkflowRun, WorkflowType
+
+    with sqlite_session_factory() as session:
+        engine = session.get_bind()
+    monkeypatch.setattr(type(db), "engine", property(lambda _: engine))
 
     account = client.application.config["TEST_BROWSER_ACCOUNT"]
     workspace = make_tenant(tenant_id=str(uuid4()))
@@ -1287,6 +1305,7 @@ def test_reconnect_records_the_server_task_id_so_the_holder_can_stop_it(
                 ),
                 WorkflowRun(
                     id=run_id,
+                    task_id=task_id,
                     tenant_id=workspace.id,
                     app_id=app.id,
                     workflow_id=str(uuid4()),
@@ -1331,19 +1350,19 @@ def test_reconnect_records_the_server_task_id_so_the_holder_can_stop_it(
 
     redis_transport[1].side_effect = command
     token = client.post(BASE, json={"name": "reconnect"}).get_json()
-    secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+    secret = token["secret"]
     headers = {
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
     }
-    before = client.post(f"/openapi/v1/apps/{app.id}/tasks/{task_id}:stop", headers=headers)
-    assert before.status_code == 200
-    stream = client.get(f"/openapi/v1/apps/{app.id}/tasks/{run_id}/events", headers=headers)
+    before = client.post(f"/openapi/v1/apps/{app.id}/runs/{task_id}:stop", headers=headers)
+    assert before.status_code == 404
+    stream = client.get(f"/openapi/v1/apps/{app.id}/runs/{run_id}/events", headers=headers)
     assert stream.status_code == 200
     assert task_id in stream.get_data(as_text=True)
-    stopped = client.post(f"/openapi/v1/apps/{app.id}/tasks/{task_id}:stop", headers=headers)
+    stopped = client.post(f"/openapi/v1/apps/{app.id}/runs/{run_id}:stop", headers=headers)
     assert stopped.status_code == 200, stopped.get_json()
-    assert client.post(f"/openapi/v1/apps/{app.id}/tasks/{run_id}:stop", headers=headers).status_code == 404
+    assert client.post(f"/openapi/v1/apps/{app.id}/runs/{uuid4()}:stop", headers=headers).status_code == 404
 
 
 def test_pat_business_audit_attributes_success_and_denial_without_secrets(
@@ -1353,7 +1372,7 @@ def test_pat_business_audit_attributes_success_and_denial_without_secrets(
 
     caplog.set_level(logging.INFO, logger="controllers.openapi._audit")
     created = client.post(BASE, json={"name": "audit"}).get_json()
-    secret = client.post(f"{BASE}/{created['id']}/secret").get_json()["secret"]
+    secret = created["secret"]
     fingerprint = client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER]
     headers = {"Authorization": f"Bearer {secret}", CATALOG_HEADER: fingerprint}
     assert client.get("/openapi/v1/workspaces", headers=headers).status_code == 200
@@ -1379,7 +1398,7 @@ def test_pat_business_audit_includes_query_workspace_target(
 
     caplog.set_level(logging.INFO, logger="controllers.openapi._audit")
     created = client.post(BASE, json={"name": "audit target"}).get_json()
-    secret = client.post(f"{BASE}/{created['id']}/secret").get_json()["secret"]
+    secret = created["secret"]
     fingerprint = client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER]
     headers = {"Authorization": f"Bearer {secret}", CATALOG_HEADER: fingerprint}
     workspace_id = str(uuid4())
@@ -1453,11 +1472,12 @@ def test_resource_types_with_the_same_id_have_independent_authorization(
 
     account = client.application.config["TEST_BROWSER_ACCOUNT"]
     workspace = make_tenant(tenant_id=str(uuid4()))
+    private_workspace = make_tenant(tenant_id=str(uuid4()))
     resource_id = str(uuid4())
     app = make_app(app_id=resource_id, tenant_id=workspace.id, name="Visible app")
     dataset = make_dataset(
         dataset_id=resource_id,
-        tenant_id=workspace.id,
+        tenant_id=private_workspace.id,
         name="Private knowledge",
         created_by=str(uuid4()),
         permission=PermissionEnum.ONLY_ME,
@@ -1466,6 +1486,7 @@ def test_resource_types_with_the_same_id_have_independent_authorization(
         session.add_all(
             [
                 workspace,
+                private_workspace,
                 app,
                 dataset,
                 TenantAccountJoin(
@@ -1530,7 +1551,7 @@ def test_knowledge_scope_does_not_authorize_an_app_with_the_same_id(
         },
     )
     assert response.status_code == 201, response.get_json()
-    secret = client.post(f"{BASE}/{response.get_json()['id']}/secret").get_json()["secret"]
+    secret = response.get_json()["secret"]
     headers = {
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
@@ -1569,7 +1590,7 @@ def test_api_disabled_app_configuration_stays_active_but_does_not_admit_calls(
     assert response.status_code == 201, response.get_json()
     token = response.get_json()
     assert token["status"] == "active"
-    secret = client.post(f"{BASE}/{token['id']}/secret").get_json()["secret"]
+    secret = token["secret"]
     headers = {
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
@@ -1722,7 +1743,7 @@ def test_runner_scope_does_not_authorize_an_app_with_the_same_id(client, runner_
     responses[apps[0].id]["environment_deployments"][0]["deployment_id"] = apps[0].id
     created = client.post(BASE, json=_runner_payload(apps[0].id))
     assert created.status_code == 201, created.get_json()
-    secret = client.post(f"{BASE}/{created.get_json()['id']}/secret").get_json()["secret"]
+    secret = created.get_json()["secret"]
     headers = {
         "Authorization": f"Bearer {secret}",
         CATALOG_HEADER: client.get("/openapi/v1/_catalog").headers[CATALOG_HEADER],
@@ -1855,7 +1876,8 @@ def test_configuration_reuses_list_visibility_for_candidates_and_save(
         "unrestricted": visibility != "restricted",
         "resource_ids": [ids[0]] if visibility == "restricted" else [],
     }
-    expected = set() if visibility == "run_only" else {ids[0]} if visibility in {"override", "restricted"} else set(ids)
+    # Maintainers retain their own resources even with restricted whitelist or no preview grant.
+    expected = set(ids)
     if visibility == "run_only":
         domain.transport.response = {"allowed": True}
     candidates = client.get("/console/api/account/personal-access-token-resources")

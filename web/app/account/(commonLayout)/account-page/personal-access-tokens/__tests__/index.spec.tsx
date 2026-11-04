@@ -34,16 +34,10 @@ const token: PersonalAccessTokenResponse = {
   version: 1,
 }
 
-it('retries secret retrieval without creating a second token and clears the dialog session on close', async () => {
+it('shows the creation secret once and clears it when the dialog session closes', async () => {
   const user = userEvent.setup()
-  let secretAttempts = 0
   transport.call.mockImplementation(async (path: string[]) => {
-    if (path.includes('secret')) {
-      secretAttempts += 1
-      if (secretAttempts === 1) throw new Error('Key unavailable')
-      return { secret: 'dpat_retried_secret' }
-    }
-    if (path.at(-1) === 'post') return token
+    if (path.at(-1) === 'post') return { ...token, secret: 'dpat_created_secret' }
     return { data: [], page: 1, limit: 20, total: 0, has_more: false }
   })
   render(
@@ -60,14 +54,7 @@ it('retries secret retrieval without creating a second token and clears the dial
     'retry',
   )
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
-  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-    'accountSettings.personalAccessToken.secretUnavailable',
-  )
-  expect(
-    transport.call.mock.calls.find(([path]) => path.includes('secret'))?.[2].context.silent,
-  ).toBe(true)
-  await user.click(within(dialog).getByRole('button', { name: 'common.operation.retry' }))
-  expect(await within(dialog).findByDisplayValue('dpat_retried_secret')).toBeInTheDocument()
+  expect(await within(dialog).findByDisplayValue('dpat_created_secret')).toBeInTheDocument()
   expect(
     within(dialog).getByText('accountSettings.personalAccessToken.copyNow'),
   ).toBeInTheDocument()
@@ -96,32 +83,27 @@ it('retries secret retrieval without creating a second token and clears the dial
   expect(
     within(dialog).getByRole('textbox', { name: 'accountSettings.resourceAccessToken.name' }),
   ).toHaveValue('')
-  expect(within(dialog).queryByDisplayValue('dpat_retried_secret')).not.toBeInTheDocument()
+  expect(within(dialog).queryByDisplayValue('dpat_created_secret')).not.toBeInTheDocument()
 })
 
-it('retrieves the same full token for clipboard copy after remounting the list', async () => {
-  const user = userEvent.setup()
-  transport.call.mockImplementation(async (path: string[]) =>
-    path.includes('secret')
-      ? { secret: 'dpat_existing_secret' }
-      : { data: [token], page: 1, limit: 20, total: 1, has_more: false },
-  )
+it('never offers secret copying from the saved list, including after remounting', async () => {
+  transport.call.mockResolvedValue({ data: [token], page: 1, limit: 20, total: 1, has_more: false })
   const first = render(
     <QueryClientProvider client={createTestQueryClient()}>
       <PersonalAccessTokens />
     </QueryClientProvider>,
   )
-  await user.click(await screen.findByRole('button', { name: 'common.operation.copy' }))
-  await vi.waitFor(() => expect(copy).toHaveBeenCalledWith('dpat_existing_secret'))
+  expect(await screen.findByText('••••7f21')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'common.operation.copy' })).not.toBeInTheDocument()
   first.unmount()
   render(
     <QueryClientProvider client={createTestQueryClient()}>
       <PersonalAccessTokens />
     </QueryClientProvider>,
   )
-  await user.click(await screen.findByRole('button', { name: 'common.operation.copy' }))
-  await vi.waitFor(() => expect(copy).toHaveBeenCalledTimes(2))
-  expect(screen.queryByDisplayValue('dpat_existing_secret')).not.toBeInTheDocument()
+  expect(await screen.findByText('••••7f21')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'common.operation.copy' })).not.toBeInTheDocument()
+  expect(copy).not.toHaveBeenCalled()
 })
 
 it('duplicates an expired token configuration while excluding unavailable selections', async () => {
@@ -144,7 +126,6 @@ it('duplicates an expired token configuration while excluding unavailable select
     role: 'owner',
   }
   transport.call.mockImplementation(async (path: string[]) => {
-    if (path.includes('secret')) return { secret: 'dpat_new_secret' }
     if (path.includes('byTokenId'))
       return {
         token: old,
@@ -166,7 +147,7 @@ it('duplicates an expired token configuration while excluding unavailable select
           },
         ],
       }
-    if (path.at(-1) === 'post') return token
+    if (path.at(-1) === 'post') return { ...token, secret: 'dpat_new_secret' }
     if (path.includes('personalAccessTokenResources'))
       return { data: [allowed], next_cursor: null, has_more: false }
     return { data: [old], page: 1, limit: 20, total: 1, has_more: false }
@@ -269,7 +250,7 @@ it('edits saved scopes without changing expiry and submits the loaded version', 
   })
 })
 
-it('allows selecting resources and workspaces together while preventing both scopes being disabled', async () => {
+it('allows selecting resources and workspaces together and requires selections for selected scopes', async () => {
   const user = userEvent.setup()
   const workspace = {
     workspace_id: '019a0000-0000-7000-8000-000000000003',
@@ -297,8 +278,8 @@ it('allows selecting resources and workspaces together while preventing both sco
         next_cursor: null,
         has_more: false,
       }
-    if (path.includes('secret')) return { secret: 'dpat_test_complete_secret_7f21' }
-    if (path.at(-1) === 'post') return token
+
+    if (path.at(-1) === 'post') return { ...token, secret: 'dpat_test_complete_secret_7f21' }
     return { data: [], page: 1, limit: 20, total: 0, has_more: false }
   })
   render(
@@ -336,7 +317,7 @@ it('allows selecting resources and workspaces together while preventing both sco
   await user.click(
     within(workspaces).getByRole('radio', { name: 'accountSettings.personalAccessToken.none' }),
   )
-  expect(within(dialog).getByRole('button', { name: 'common.operation.create' })).toBeDisabled()
+  expect(within(dialog).getByRole('button', { name: 'common.operation.create' })).toBeEnabled()
   await user.click(
     within(workspaces).getByRole('radio', { name: 'accountSettings.personalAccessToken.selected' }),
   )
@@ -690,11 +671,10 @@ it.each([
   ).toBeInTheDocument()
 })
 
-it('creates a token with the chosen lifetime and only retrieves its secret after creation', async () => {
+it('creates a token with the chosen lifetime and displays the creation response secret', async () => {
   const user = userEvent.setup()
   transport.call.mockImplementation(async (path: string[]) => {
-    if (path.includes('secret')) return { secret: 'dpat_test_complete_secret_7f21' }
-    if (path.at(-1) === 'post') return token
+    if (path.at(-1) === 'post') return { ...token, secret: 'dpat_test_complete_secret_7f21' }
     return { data: [], page: 1, limit: 20, total: 0, has_more: false }
   })
   render(
@@ -719,7 +699,7 @@ it('creates a token with the chosen lifetime and only retrieves its secret after
     name: 'release',
     expiration: '90_days',
     resource_scope: { mode: 'all', resources: [] },
-    workspace_scope: { mode: 'all', workspace_ids: [] },
+    workspace_scope: { mode: 'none', workspace_ids: [] },
   })
 })
 
@@ -738,8 +718,8 @@ it('keeps selected apps across search and submits only the selected scope', asyn
     async (path: string[], input: { query?: { keyword?: string } }) => {
       if (path.includes('personalAccessTokenResources'))
         return { data: input.query?.keyword ? [] : [app], next_cursor: null, has_more: false }
-      if (path.includes('secret')) return { secret: 'dpat_test_complete_secret_7f21' }
-      if (path.at(-1) === 'post') return token
+
+      if (path.at(-1) === 'post') return { ...token, secret: 'dpat_test_complete_secret_7f21' }
       return { data: [], page: 1, limit: 20, total: 0, has_more: false }
     },
   )
@@ -848,8 +828,7 @@ it('shows clipboard failure on the created token and lets the user retry', async
   const user = userEvent.setup()
   vi.mocked(copy).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
   transport.call.mockImplementation(async (path: string[]) => {
-    if (path.includes('secret')) return { secret: 'dpat_copy_retry' }
-    if (path.at(-1) === 'post') return token
+    if (path.at(-1) === 'post') return { ...token, secret: 'dpat_copy_retry' }
     return { data: [], page: 1, limit: 20, total: 0, has_more: false }
   })
   render(
@@ -877,31 +856,23 @@ it('shows clipboard failure on the created token and lets the user retry', async
   expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
 })
 
-it('refreshes an expired token after secret retrieval is rejected', async () => {
-  const user = userEvent.setup()
-  let expired = false
-  transport.call.mockImplementation(async (path: string[]) => {
-    if (path.includes('secret')) {
-      expired = true
-      throw new ORPCError('FORBIDDEN', { status: 403 })
-    }
-    return {
-      data: [{ ...token, status: expired ? 'expired' : 'active' }],
-      page: 1,
-      limit: 20,
-      total: 1,
-      has_more: false,
-    }
+it('disables editing of an expired token and never offers secret copying', async () => {
+  transport.call.mockResolvedValue({
+    data: [{ ...token, status: 'expired' }],
+    page: 1,
+    limit: 20,
+    total: 1,
+    has_more: false,
   })
   render(
     <QueryClientProvider client={createTestQueryClient()}>
       <PersonalAccessTokens />
     </QueryClientProvider>,
   )
-  await user.click(await screen.findByRole('button', { name: 'common.operation.copy' }))
   expect(await screen.findByText('accountSettings.personalAccessToken.expired')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeDisabled()
+  expect(screen.queryByRole('button', { name: 'common.operation.copy' })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'common.operation.duplicate' })).toBeEnabled()
 })
 
 it('restores PAT pagination from the URL and writes navigation back to it', async () => {
@@ -971,11 +942,10 @@ it.each(['FORBIDDEN', 'SERVICE_UNAVAILABLE'] as const)(
     const user = userEvent.setup()
     let attempts = 0
     transport.call.mockImplementation(async (path: string[]) => {
-      if (path.includes('secret')) return { secret: 'dpat_retry' }
       if (path.at(-1) === 'post') {
         attempts += 1
         if (attempts === 1) throw new ORPCError(code, { message: 'Backend English message' })
-        return token
+        return { ...token, secret: 'dpat_retry' }
       }
       return { data: [], page: 1, limit: 20, total: 0, has_more: false }
     })
@@ -1006,32 +976,37 @@ it.each(['FORBIDDEN', 'SERVICE_UNAVAILABLE'] as const)(
   },
 )
 
-it('shows a localized retrieval failure at the copy action and retries successfully', async () => {
+it('explains when an idempotent creation response has no secret without offering retrieval or retry', async () => {
   const user = userEvent.setup()
-  let attempts = 0
   transport.call.mockImplementation(async (path: string[]) => {
-    if (path.includes('secret')) {
-      if (++attempts === 1)
-        throw new ORPCError('SERVICE_UNAVAILABLE', { message: 'English key error' })
-      return { secret: 'dpat_recovered' }
-    }
-    return { data: [token], page: 1, limit: 20, total: 1, has_more: false }
+    if (path.at(-1) === 'post') return { ...token, secret: null }
+    return { data: [], page: 1, limit: 20, total: 0, has_more: false }
   })
   render(
     <QueryClientProvider client={createTestQueryClient()}>
       <PersonalAccessTokens />
     </QueryClientProvider>,
   )
-  await user.click(await screen.findByRole('button', { name: 'common.operation.copy' }))
-  expect(await screen.findByRole('alert')).toHaveTextContent(
+  await user.click(
+    screen.getByRole('button', { name: 'accountSettings.personalAccessToken.createButton' }),
+  )
+  const dialog = await screen.findByRole('dialog')
+  await user.type(
+    within(dialog).getByRole('textbox', { name: 'accountSettings.resourceAccessToken.name' }),
+    'retry-safe',
+  )
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
     'accountSettings.personalAccessToken.secretUnavailable',
   )
   expect(
-    transport.call.mock.calls.find(([path]) => path.includes('secret'))?.[2].context.silent,
-  ).toBe(true)
-  await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
-  await vi.waitFor(() => expect(copy).toHaveBeenCalledWith('dpat_recovered'))
-  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    within(dialog).queryByRole('button', { name: 'common.operation.copy' }),
+  ).not.toBeInTheDocument()
+  expect(
+    within(dialog).queryByRole('button', { name: 'common.operation.retry' }),
+  ).not.toBeInTheDocument()
+  expect(transport.call.mock.calls.filter(([path]) => path.at(-1) === 'post')).toHaveLength(1)
+  expect(transport.call.mock.calls.some(([path]) => path.includes('secret'))).toBe(false)
 })
 
 it('keeps the delete confirmation open with localized feedback after failure', async () => {
@@ -1086,8 +1061,8 @@ it('selects a built-in app, knowledge base, and nested runner deployment with th
         next_cursor: null,
         has_more: false,
       }
-    if (path.includes('secret')) return { secret: 'dpat_mixed_resources' }
-    if (path.at(-1) === 'post') return token
+
+    if (path.at(-1) === 'post') return { ...token, secret: 'dpat_mixed_resources' }
     return { data: [], page: 1, limit: 20, total: 0, has_more: false }
   })
   render(
