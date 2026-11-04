@@ -363,43 +363,39 @@ def test_empty_list_skips_external_enrichment(ports: Ports) -> None:
     ],
 )
 def test_availability_filters_all_candidate_pages_before_pagination(
-    starred: bool, status: str, expected_total: int, expected_ids: list[str]
+    ports: Ports,
+    monkeypatch: pytest.MonkeyPatch,
+    starred: bool,
+    status: str,
+    expected_total: int,
+    expected_ids: list[str],
 ) -> None:
-    class CandidateApps(Apps):
-        @override
-        def list_apps(self, context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
-            self.calls.append(("list", context, params))
-            offset = (params.page - 1) * params.limit
-            return AppPage(
-                params.page,
-                params.limit,
-                len(self.records),
-                offset + params.limit < len(self.records),
-                self.records[offset : offset + params.limit],
-            )
+    service, candidates, _, _, _ = ports
+    candidates.records = [
+        replace(
+            RECORD,
+            id=str(i),
+            availability_plan=AppAvailabilityPlan(
+                "draft",
+                (AppAvailabilityIssue(AppAvailabilityIssueType.MODEL, "disabled"),) if i % 2 == 0 else (),
+                (),
+            ),
+        )
+        for i in range(205)
+    ]
 
-    candidates = CandidateApps(
-        records=[
-            replace(
-                RECORD,
-                id=str(i),
-                availability_plan=AppAvailabilityPlan(
-                    "draft",
-                    (AppAvailabilityIssue(AppAvailabilityIssueType.MODEL, "disabled"),) if i % 2 == 0 else (),
-                    (),
-                ),
-            )
-            for i in range(205)
-        ]
-    )
-    service = ConsoleAppService(
-        apps=cast(ConsoleApps, candidates),
-        access=Access(),
-        transfers=Transfers(),
-        creators=Creators(),
-        tracing=Tracing(),
-        lifecycle=Lifecycle(),
-    )
+    def list_apps(context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
+        candidates.calls.append(("list", context, params))
+        offset = (params.page - 1) * params.limit
+        return AppPage(
+            params.page,
+            params.limit,
+            len(candidates.records),
+            offset + params.limit < len(candidates.records),
+            candidates.records[offset : offset + params.limit],
+        )
+
+    monkeypatch.setattr(candidates, "list_apps", list_apps)
     params = (StarredAppListParams if starred else AppListParams).model_validate(
         {
             "page": 2,
