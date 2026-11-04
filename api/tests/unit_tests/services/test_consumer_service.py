@@ -8,6 +8,8 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.end_user_connections import ConnectionCredentialType, OAuthClientSource
+from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.account import Account, AccountStatus, TenantAccountJoin
 from models.account_webapp import AccountWebApp
 from models.end_user_connection import AppConnection, EndUserConnection
@@ -37,6 +39,82 @@ def test_account_authentication_does_not_provision_workspace(harness: ConsumerHa
     assert harness.service.authenticate(harness.token()) == harness.identity
     with harness.oauth.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(TenantAccountJoin)) == 0
+
+
+def test_provider_summary_counts_display_groups_across_owned_tenants(harness: ConsumerHarness) -> None:
+    base = harness.oauth.base
+    other = make_harness(base.sessions)
+    first = replace(new_connection(), account_id=harness.identity.account_id, tenant_id=base.context.tenant_id)
+    oauth = replace(
+        first,
+        credential_type=ConnectionCredentialType.OAUTH2,
+        oauth_client_source=OAuthClientSource.WORKSPACE,
+        account_label="al***@example.com",
+    )
+    with base.sessions.begin() as session:
+        session.add_all(
+            [
+                first,
+                replace(first),
+                oauth,
+                replace(oauth, tenant_id=other.context.tenant_id),
+                replace(oauth, account_label=""),
+                replace(oauth, account_label=None),
+                replace(first, provider="vendor/other/calendar"),
+                replace(first, provider="vendor/foreign/calendar", account_id=str(uuid4())),
+                replace(first, provider="vendor/guest/calendar", account_id=None, end_user_id=str(uuid4())),
+            ]
+        )
+    page = harness.service.list_connection_providers(harness.identity, cursor=None, limit=1)
+    assert page.has_more
+    assert page.next_cursor == first.provider
+    provider = page.data[0]
+    assert provider.provider == first.provider
+    assert provider.connections_count == 5
+    assert provider.connections_count == len(
+        harness.service.list_connections(harness.identity, provider=first.provider, cursor=None, limit=20).data
+    )
+    assert provider.label["en_US"] == "Calendar"
+    assert provider.description["en_US"] == "Calendar"
+    assert provider.icon is not None
+    rest = harness.service.list_connection_providers(harness.identity, cursor=page.next_cursor, limit=1)
+    assert not rest.has_more
+    assert rest.next_cursor is None
+    assert [row.provider for row in rest.data] == ["vendor/other/calendar"]
+    assert rest.data[0].connections_count == 1
+    assert rest.data[0].label == {"en_US": "vendor/other/calendar"}
+    assert rest.data[0].description == {"en_US": ""}
+    assert rest.data[0].icon is None
+    assert not harness.service.list_connection_providers(ConsumerIdentity(str(uuid4())), cursor=None, limit=20).data
+
+
+def test_provider_summary_uses_an_available_owned_tenant_without_loading_apps(
+    harness: ConsumerHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = harness.oauth.base
+    other = make_harness(base.sessions)
+    connection = replace(new_connection(), account_id=harness.identity.account_id, tenant_id=base.context.tenant_id)
+    with base.sessions.begin() as session:
+        session.add_all([connection, replace(connection, tenant_id=other.context.tenant_id)])
+    calls: list[str] = []
+    original = harness.oauth.providers.provider
+
+    def provider(tenant_id: str, name: str) -> PluginToolProviderController:
+        calls.append(tenant_id)
+        return original(tenant_id, name)
+
+    def unexpected(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("Provider summaries must not load Apps, associations or credentials")
+
+    monkeypatch.setattr(harness.oauth.providers, "provider", provider)
+    monkeypatch.setattr(base.repository, "account_connection_apps", unexpected)
+    monkeypatch.setattr(base.repository, "account_group_connections", unexpected)
+    monkeypatch.setattr(harness.apps, "by_ids", unexpected)
+    page = harness.service.list_connection_providers(harness.identity, cursor=None, limit=20)
+    assert page.data[0].connections_count == 2
+    assert page.data[0].label["en_US"] == "Calendar"
+    assert calls[-1] == base.context.tenant_id
+    assert set(calls).issubset({base.context.tenant_id, other.context.tenant_id})
 
 
 @pytest.mark.parametrize("source", [None, "webapp", "webapp_account", "webapp_login_token", "unknown"])

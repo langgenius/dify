@@ -127,6 +127,39 @@ class ConsumerConnectionsPage(BaseModel):
     next_cursor: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class ConsumerConnectionProviderGroup:
+    provider: str
+    connections_count: int
+    tenant_ids: tuple[str, ...]
+
+
+class ConsumerConnectionProviderMetadata(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    label: dict[str, str]
+    description: dict[str, str]
+    icon: str | None = Field(description="Public plugin icon URL; null if the Provider is unavailable.")
+    icon_dark: str | None = Field(description="Public dark icon URL; null if unavailable or not declared.")
+
+
+class ConsumerConnectionProvider(ConsumerConnectionProviderMetadata):
+    provider: str
+    connections_count: int = Field(ge=1, description="Number of personal Connection groups under this Provider.")
+
+
+class ConsumerConnectionProvidersPage(BaseModel):
+    data: tuple[ConsumerConnectionProvider, ...]
+    has_more: bool
+    next_cursor: str | None
+
+
+class ConsumerConnectionProviders(Protocol):
+    def metadata(self, *, tenant_id: str, provider: str) -> ConsumerConnectionProviderMetadata | None:
+        """Read public installed metadata; return None when missing or temporarily unavailable."""
+        ...
+
+
 class ConsumerAppNotFoundError(LookupError):
     """An unavailable and a foreign App have the same public result."""
 
@@ -160,6 +193,12 @@ class ConsumerAppsStore(Protocol):
 
 
 class ConsumerConnectionsStore(Protocol):
+    def account_connection_providers(
+        self, identity: ConsumerIdentity, *, after: str | None, limit: int
+    ) -> tuple[ConsumerConnectionProviderGroup, ...]:
+        """Page owned Providers and count complete Connection groups, excluding guests and secrets."""
+        ...
+
     def account_connection_groups(
         self, identity: ConsumerIdentity, *, provider: str | None, after: ConsumerConnectionKey | None, limit: int
     ) -> tuple[ConsumerConnectionGroup, ...]: ...
@@ -201,6 +240,7 @@ class ConsumerService:
         *,
         apps: ConsumerAppsStore,
         connections: ConsumerConnectionsStore,
+        providers: ConsumerConnectionProviders,
         access: ConsumerAppAccess,
         shared_apps: SharedConsumerApps,
         management: ConnectionService,
@@ -209,6 +249,7 @@ class ConsumerService:
     ) -> None:
         self._apps = apps
         self._connections = connections
+        self._providers = providers
         self._access = access
         self._shared_apps = shared_apps
         self._management = management
@@ -266,6 +307,38 @@ class ConsumerService:
 
     def remove_app(self, identity: ConsumerIdentity, app_id: str) -> None:
         self._apps.remove(identity, app_id)
+
+    def list_connection_providers(
+        self, identity: ConsumerIdentity, *, cursor: str | None, limit: int
+    ) -> ConsumerConnectionProvidersPage:
+        """Page an authenticated Account's Providers without loading Apps or credentials.
+
+        Counts match the existing Connection-group list. Metadata failures retain
+        owned groups with a Provider-ID label and empty description, so disconnect
+        remains possible after uninstall or a plugin outage. No state is mutated.
+        """
+        rows = self._connections.account_connection_providers(identity, after=cursor, limit=limit + 1)
+        data = tuple(self._connection_provider(row) for row in rows[:limit])
+        more = len(rows) > limit
+        return ConsumerConnectionProvidersPage(
+            data=data, has_more=more, next_cursor=data[-1].provider if more else None
+        )
+
+    def _connection_provider(self, row: ConsumerConnectionProviderGroup) -> ConsumerConnectionProvider:
+        """Resolve metadata only in owned tenant scopes, retaining counts on lookup failure."""
+        metadata = next(
+            (
+                result
+                for tenant_id in row.tenant_ids
+                if (result := self._providers.metadata(tenant_id=tenant_id, provider=row.provider)) is not None
+            ),
+            ConsumerConnectionProviderMetadata(
+                label={"en_US": row.provider}, description={"en_US": ""}, icon=None, icon_dark=None
+            ),
+        )
+        return ConsumerConnectionProvider(
+            provider=row.provider, connections_count=row.connections_count, **metadata.model_dump()
+        )
 
     def list_connections(
         self, identity: ConsumerIdentity, *, provider: str | None, cursor: str | None, limit: int
