@@ -12,7 +12,7 @@ import yaml
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from graphon.enums import BuiltinNodeTypes
-from libs.archive_writer import ArchiveLimits, entries_from_folder
+from libs.archive_writer import entries_from_folder
 from models.model import AppMode
 from services.workflow.authoring import FillContext, fill_package
 from services.workflow.authoring.canvas_notes import (
@@ -26,11 +26,11 @@ from services.workflow.authoring.canvas_notes import (
     text_loads,
 )
 from services.workflow.authoring.fill import fill_graph_document
+from services.workflow.authoring.package_io import APP_PATH
 from services.workflow.graph_check import CANVAS_NOTE_TYPE
+from tests.unit_tests.services.workflow.authoring.test_fill_package import LIMITS
 
 CTX = FillContext(tenant_id="tenant-1", account_id="account-1")
-LIMITS = ArchiveLimits(max_entries=8, max_bytes=1024 * 1024)
-APP = "app.yaml"
 FIXTURES = Path(__file__).parents[4] / "fixtures" / "workflow"
 NOTES_EXPORT = "book_translation_iteration_note_workflow.yml"
 # The fixture's yellow note: two lines with an empty one between them, all plain text.
@@ -94,9 +94,9 @@ def _filled(*extra: _Node) -> dict[str, _Node]:
 
 def _fill_app(app: bytes) -> bytes:
     """The `app.yaml` a package holding only `app` fills to."""
-    archive = fill_package(entries_from_folder({APP: io.BytesIO(app)}), CTX, limits=LIMITS)
+    archive = fill_package(entries_from_folder({APP_PATH: io.BytesIO(app)}), CTX, limits=LIMITS)
     with zipfile.ZipFile(io.BytesIO(archive)) as members:
-        return members.read(APP)
+        return members.read(APP_PATH)
 
 
 def _exported(app: bytes) -> bytes:
