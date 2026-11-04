@@ -2,9 +2,37 @@
 
 import httpx
 
+from core.plugin.plugin_service import PluginService
+from services.consumer_service import ConsumerConnectionProviderMetadata
+from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
+from services.end_user_connections.errors import ConnectionCheckUnavailableError, ConnectionConfigurationError
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.enterprise import EnterpriseServiceError
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+
+
+class PluginConsumerConnectionProviders:
+    def __init__(self, *, providers: PluginApiKeyCredentialGateway) -> None:
+        self._providers = providers
+
+    def metadata(self, *, tenant_id: str, provider: str) -> ConsumerConnectionProviderMetadata | None:
+        """Read only public declaration fields from an owned tenant's installed Provider.
+
+        Missing or unavailable plugins return None, preserving personal resource
+        discovery and disconnect. Credential schemas and values are never exposed.
+        """
+        try:
+            identity = self._providers.provider(tenant_id, provider).entity.identity
+        except (ConnectionConfigurationError, ConnectionCheckUnavailableError):
+            return None
+        return ConsumerConnectionProviderMetadata(
+            label=identity.label.model_dump(),
+            description=identity.description.model_dump(),
+            icon=PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=identity.icon),
+            icon_dark=PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=identity.icon_dark)
+            if identity.icon_dark
+            else None,
+        )
 
 
 class SharedConsumerAppDiscovery:

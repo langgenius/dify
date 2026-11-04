@@ -15,6 +15,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
+from services.consumer_adapters import PluginConsumerConnectionProviders
 from services.consumer_service import ConsumerIdentity, ConsumerService
 from services.end_user_connections.contracts import ConnectionSummary
 from services.web_identity_service import WebIdentityService
@@ -99,6 +100,7 @@ def make_consumer_harness(sessions: sessionmaker[Session], monkeypatch: pytest.M
         ConsumerService(
             apps=apps,
             connections=oauth.base.repository,
+            providers=PluginConsumerConnectionProviders(providers=oauth.providers),
             access=access,
             shared_apps=lambda: (oauth.base.context.app_id,),
             management=oauth.base.service,

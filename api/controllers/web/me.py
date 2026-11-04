@@ -30,9 +30,9 @@ from services.consumer_service import (
     ConsumerAppNotFoundError,
     ConsumerAppsQuery,
     ConsumerConnection,
+    ConsumerConnectionProvider,
     ConsumerIdentity,
 )
-from services.end_user_connections.contracts import ListConnectionsInput
 from services.end_user_connections.errors import ConnectionError
 from services.web_identity_service import WebIdentityError
 from services.web_passport_service import WebPassportUnauthorizedError
@@ -110,8 +110,28 @@ class ConsumerConnectionsResponse(ResponseModel):
     next_cursor: str | None
 
 
-class ConsumerConnectionsQuery(ListConnectionsInput):
-    limit: int = Field(default=20, ge=1, le=100, strict=False)
+class ConsumerConnectionProviderResponse(ConsumerConnectionProvider, ResponseModel):
+    pass
+
+
+class ConsumerConnectionProvidersResponse(ResponseModel):
+    data: list[ConsumerConnectionProviderResponse]
+    has_more: bool
+    next_cursor: str | None
+
+
+class ConsumerConnectionProvidersQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    cursor: str | None = Field(default=None, min_length=1, max_length=255)
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class ConsumerConnectionsQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    cursor: str | None = Field(default=None, min_length=1, max_length=2048)
+    limit: int = Field(default=20, ge=1, le=100)
 
 
 class ConsumerConnectionAppsQuery(BaseModel):
@@ -127,6 +147,8 @@ register_response_schema_models(
     ConsumerAppsResponse,
     ConsumerConnectionResponse,
     ConsumerConnectionsResponse,
+    ConsumerConnectionProviderResponse,
+    ConsumerConnectionProvidersResponse,
 )
 
 
@@ -179,6 +201,25 @@ class ConsumerFavoriteApi(Resource):
 
 
 @web_ns.route("/me/connections")
+class ConsumerConnectionProvidersApi(Resource):
+    @web_ns.doc(
+        description="List personal Connection Providers with localized labels, descriptions, public icons and "
+        "Connection-group counts across owned tenants. Guests are excluded. Unavailable Providers retain their "
+        "counts with a Provider-ID label, an empty description and null icons. No App associations are loaded."
+    )
+    @web_ns.doc(params=query_params_from_model(ConsumerConnectionProvidersQuery))
+    @web_ns.response(200, "Account Connection Providers", web_ns.models[ConsumerConnectionProvidersResponse.__name__])
+    def get(self):
+        identity = _identity()
+        with _errors():
+            query = ConsumerConnectionProvidersQuery.model_validate(request.args.to_dict(flat=True))
+            result = application_services().consumer.list_connection_providers(
+                identity, cursor=query.cursor, limit=query.limit
+            )
+        return dump_response(ConsumerConnectionProvidersResponse, result)
+
+
+@web_ns.route("/me/connections/providers/<path:provider>/connections")
 class ConsumerConnectionsApi(Resource):
     @web_ns.doc(
         description="List personal Connections grouped by Provider, account label and Connection type. "
@@ -186,13 +227,13 @@ class ConsumerConnectionsApi(Resource):
     )
     @web_ns.doc(params=query_params_from_model(ConsumerConnectionsQuery))
     @web_ns.response(200, "Account Connections", web_ns.models[ConsumerConnectionsResponse.__name__])
-    def get(self):
+    def get(self, provider: str):
         identity = _identity()
         with _errors():
             query = ConsumerConnectionsQuery.model_validate(request.args.to_dict(flat=True))
             result = application_services().consumer.list_connections(
                 identity,
-                provider=query.provider,
+                provider=provider,
                 cursor=query.cursor,
                 limit=query.limit,
             )
@@ -201,7 +242,7 @@ class ConsumerConnectionsApi(Resource):
 
 @web_ns.route("/me/connections/<uuid:connection_key>/apps")
 class ConsumerConnectionAppsApi(Resource):
-    @web_ns.doc(description="List accessible WebApps associated with a Connection group returned by /me/connections.")
+    @web_ns.doc(description="List accessible WebApps associated with a Connection group from a Provider's list.")
     @web_ns.doc(params=query_params_from_model(ConsumerConnectionAppsQuery))
     @web_ns.response(200, "Associated WebApps", web_ns.models[ConsumerAppsResponse.__name__])
     @error_responses(ConnectionNotFoundHTTPError)
@@ -219,7 +260,7 @@ class ConsumerConnectionAppsApi(Resource):
 class ConsumerConnectionApi(Resource):
     @web_ns.response(204, "Connection group disconnected")
     @web_ns.doc(
-        description="Disconnect all owned Connections matching a group key returned by /me/connections. "
+        description="Disconnect all owned Connections matching a group key from a Provider's list. "
         "Cookie-authenticated browser mutations require the configured WebApp Origin."
     )
     @error_responses(ConnectionNotFoundHTTPError, ConnectionConflictHTTPError)
