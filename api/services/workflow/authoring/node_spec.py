@@ -44,6 +44,8 @@ class FieldHint:
     required: bool
     default: object
     example: object | None = None
+    # One row per field of a list's object item, located relative to the item; an item row has none of its own.
+    items: tuple[FieldHint, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -137,18 +139,49 @@ def _options(root: Mapping[str, Any], node: Mapping[str, Any]) -> tuple[str, ...
     return tuple(dict.fromkeys(str(value) for value in values if value is not None))
 
 
-def _field_hint(schema: Mapping[str, Any], loc: Loc, *, required: bool) -> FieldHint:
-    found = schema_at(schema, loc)
+def _object(root: Mapping[str, Any], node: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    """`node` resolved to the first object schema that names its properties, through refs and branches."""
+    node = _resolved(root, node)
+    if isinstance(node.get("properties"), Mapping):
+        return node
+    return next((found for branch in _branches(node) if (found := _object(root, branch)) is not None), None)
+
+
+def _row(root: Mapping[str, Any], found: Mapping[str, Any] | None, loc: Loc, *, required: bool) -> FieldHint:
     if found is None:
         return FieldHint(loc=loc, type=None, options=(), description=None, required=required, default=NO_DEFAULT)
     description = found.get("description")
     return FieldHint(
         loc=loc,
-        type=_TYPE_SEPARATOR.join(_type_names(schema, found)) or None,
-        options=_options(schema, found),
+        type=_TYPE_SEPARATOR.join(_type_names(root, found)) or None,
+        options=_options(root, found),
         description=description if isinstance(description, str) else None,
         required=required,
         default=found.get("default", NO_DEFAULT),
+    )
+
+
+def _item_rows(root: Mapping[str, Any], item: Mapping[str, Any] | None) -> tuple[FieldHint, ...]:
+    item_object = None if item is None else _object(root, item)
+    if item_object is None:
+        return ()
+    required = item_object.get("required", ())
+    return tuple(
+        sorted(
+            (
+                _row(root, _resolved(root, child), (name,), required=name in required)
+                for name, child in item_object["properties"].items()
+                if isinstance(child, Mapping)
+            ),
+            key=_required_first,
+        )
+    )
+
+
+def _field_hint(schema: Mapping[str, Any], loc: Loc, *, required: bool) -> FieldHint:
+    return replace(
+        _row(schema, schema_at(schema, loc), loc, required=required),
+        items=_item_rows(schema, schema_at(schema, (*loc, 0))),
     )
 
 

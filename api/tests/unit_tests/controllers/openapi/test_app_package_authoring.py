@@ -358,6 +358,20 @@ def test_a_field_hint_sends_its_canvas_example_and_leaves_out_a_missing_one(
     assert {key: value for key, value in body.items() if key == "example"} == expected
 
 
+def test_a_field_hint_sends_its_item_fields_and_leaves_out_none() -> None:
+    item = FieldHint(loc=("variable",), type="string", options=(), description=None, required=True, default=NO_DEFAULT)
+    hint = FieldHint(
+        loc=("outputs",), type="array", options=(), description=None, required=True, default=NO_DEFAULT, items=(item,)
+    )
+
+    body = FieldHintRow.of(hint).model_dump(mode="json", by_alias=True)
+
+    assert body["items"] == [
+        {"loc": ["variable"], "type": "string", "options": [], "description": None, "required": True}
+    ]
+    assert "items" not in FieldHintRow.of(item).model_dump(mode="json", by_alias=True)
+
+
 @pytest.mark.parametrize(
     ("default", "expected"), [(None, {"default": None}), ("UTC", {"default": "UTC"}), (NO_DEFAULT, {})]
 )
