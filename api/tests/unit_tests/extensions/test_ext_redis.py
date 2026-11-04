@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
@@ -32,7 +34,7 @@ def _initialize_redis(
     pubsub_redis_url: str | None,
     pubsub_uses_clusters: bool = False,
     redis_host: str = "default-redis.example",
-) -> tuple[DifyApp, redis.Redis | RedisCluster, list[tuple[str, bool]]]:
+) -> tuple[DifyApp, redis.Redis[bytes] | RedisCluster[bytes], list[tuple[str, bool]]]:
     """Initialize Redis without network I/O and record dedicated PubSub client creation."""
     monkeypatch.setattr(dify_config, "REDIS_USE_SENTINEL", use_sentinel)
     monkeypatch.setattr(dify_config, "REDIS_USE_CLUSTERS", False)
@@ -57,7 +59,7 @@ def _initialize_redis(
 
     pubsub_calls: list[tuple[str, bool]] = []
 
-    def create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis:
+    def create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis[bytes]:
         pubsub_calls.append((pubsub_url, use_clusters))
         return redis.Redis.from_url(pubsub_url)
 
