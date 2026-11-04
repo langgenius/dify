@@ -33,6 +33,7 @@ from services.consumer_service import (
     ConsumerConnectionProvider,
     ConsumerIdentity,
 )
+from services.end_user_connection_labels import mask_account_label
 from services.end_user_connections.errors import ConnectionError
 from services.web_identity_service import WebIdentityError
 from services.web_passport_service import WebPassportUnauthorizedError
@@ -101,7 +102,10 @@ class ConsumerAppsResponse(ResponseModel):
 
 
 class ConsumerConnectionResponse(ConsumerConnection, ResponseModel):
-    pass
+    @field_serializer("account_label")
+    def serialize_account_label(self, value: str | None) -> str | None:
+        """Mask the persisted provider identity in the Consumer API."""
+        return mask_account_label(value)
 
 
 class ConsumerConnectionsResponse(ResponseModel):

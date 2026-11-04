@@ -40,13 +40,13 @@ def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.M
     return make_oauth_harness(sqlite_session_factory, monkeypatch)
 
 
-def test_authorization_persists_encrypted_grant_and_masked_identity_only(harness: OAuthHarness) -> None:
+def test_authorization_persists_encrypted_grant_and_original_identity(harness: OAuthHarness) -> None:
     started = harness.start()
     assert started.model_dump() == {"authorization_url": started.authorization_url}
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 0
     connection = harness.finish(started)
-    assert connection.account_label == "al***@example.com"
+    assert connection.account_label == "alice@example.com"
     assert connection.credential_status == ConnectionCredentialStatus.CONNECTED
     stored = harness.base.repository.find(harness.base.context, connection.id)
     assert stored is not None
@@ -58,7 +58,11 @@ def test_authorization_persists_encrypted_grant_and_masked_identity_only(harness
         "refresh_token": "refresh-secret",
     }
     assert "access-secret" not in connection.model_dump_json()
-    assert "alice@example.com" not in connection.model_dump_json()
+    with harness.base.sessions() as session:
+        assert (
+            session.scalar(sa.select(EndUserConnection.account_label).where(EndUserConnection.id == connection.id))
+            == "alice@example.com"
+        )
     assert "hidden-metadata" not in str(harness.redis_values)
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(AppConnection)) == 0
@@ -235,13 +239,18 @@ def test_reauthorization_preserves_id_and_name_and_replaces_grant(harness: OAuth
     assert updated.id == connection.id
     assert updated.name == connection.name
     assert updated.credential_status == ConnectionCredentialStatus.CONNECTED
-    assert updated.account_label == "x*"
+    assert updated.account_label == "xy"
     assert updated.expires_at is None
     stored = harness.base.repository.find(harness.base.context, connection.id)
     assert stored is not None
     assert stored.access.oauth_client is not None
     assert stored.access.revision == 2
     assert stored.access.oauth_client.client_id == "new-client"
+    with harness.base.sessions() as session:
+        assert (
+            session.scalar(sa.select(EndUserConnection.account_label).where(EndUserConnection.id == connection.id))
+            == "xy"
+        )
 
 
 @pytest.mark.parametrize("phase", ["before_exchange", "during_exchange"])
@@ -464,6 +473,48 @@ def test_missing_metadata_does_not_copy_credentials_into_label(harness: OAuthHar
     harness.handler.result = harness.handler.result.model_copy(update={"metadata": {"account": "unapproved-identity"}})
     connection = harness.finish(harness.start())
     assert connection.account_label is None
+
+
+@pytest.mark.parametrize(
+    ("metadata", "expected"),
+    [
+        ({"email": "alice@example.com", "name": "Alice"}, "alice@example.com"),
+        ({"email": "", "name": "Alice"}, "Alice"),
+        ({"email": 42, "name": "Alice"}, "Alice"),
+        ({"name": "Alice"}, "Alice"),
+        ({"email": "", "name": ""}, None),
+        ({}, None),
+    ],
+)
+def test_authorization_preserves_only_the_selected_identity(
+    harness: OAuthHarness, metadata: dict[str, object], expected: str | None
+) -> None:
+    harness.handler.result = harness.handler.result.model_copy(update={"metadata": metadata})
+    connection = harness.finish(harness.start())
+    assert connection.account_label == expected
+    with harness.base.sessions() as session:
+        assert (
+            session.scalar(sa.select(EndUserConnection.account_label).where(EndUserConnection.id == connection.id))
+            == expected
+        )
+
+
+def test_reauthorization_without_identity_clears_the_original_label(harness: OAuthHarness) -> None:
+    connection = harness.finish(harness.start())
+    started = harness.service.reauthorize_oauth(
+        harness.base.context,
+        connection.id,
+        callback_url="http://web-api.example/api/connections/oauth",
+        connection_revision=harness.base.connection_revision,
+    )
+    harness.handler.result = harness.handler.result.model_copy(update={"metadata": {}})
+    updated = harness.finish(started)
+    assert updated.account_label is None
+    with harness.base.sessions() as session:
+        assert (
+            session.scalar(sa.select(EndUserConnection.account_label).where(EndUserConnection.id == connection.id))
+            is None
+        )
 
 
 def test_oauth_operations_use_the_resolved_plugin_declaration(harness: OAuthHarness) -> None:

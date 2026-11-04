@@ -5,8 +5,6 @@ the existing deployment access policy, including Apps referenced by Connections.
 Ports return detached, non-secret values and own short transactions.
 """
 
-import base64
-import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -69,7 +67,7 @@ class ConsumerAppsPage(BaseModel):
 
 
 class ConsumerConnectionKey(BaseModel):
-    """Internal group selector and pagination position, independent of the public member ID."""
+    """Internal group selector, independent of the public member ID."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -83,33 +81,6 @@ class ConsumerConnectionKey(BaseModel):
         if (self.account_label is None) == (self.connection_id is None):
             raise ValueError("A group requires either an account label or a Connection ID.")
         return self
-
-    def encode(self) -> str:
-        payload = [
-            self.provider,
-            self.connection_type,
-            self.account_label,
-            str(self.connection_id) if self.connection_id else None,
-        ]
-        return base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode().rstrip("=")
-
-    @classmethod
-    def decode(cls, value: str) -> "ConsumerConnectionKey":
-        try:
-            provider, connection_type, account_label, connection_id = json.loads(
-                base64.b64decode(value + "=" * (-len(value) % 4), altchars=b"-_", validate=True)
-            )
-            key = cls(
-                provider=provider,
-                connection_type=connection_type,
-                account_label=account_label,
-                connection_id=connection_id,
-            )
-            if key.encode() != value:
-                raise ValueError
-            return key
-        except (ValueError, TypeError):
-            raise ValueError("Invalid Connection group key.") from None
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,7 +187,7 @@ class ConsumerConnectionsStore(Protocol):
         ...
 
     def account_connection_groups(
-        self, identity: ConsumerIdentity, *, provider: str | None, after: ConsumerConnectionKey | None, limit: int
+        self, identity: ConsumerIdentity, *, provider: str | None, after: UUID | None, limit: int
     ) -> tuple[ConsumerConnectionGroup, ...]: ...
 
     def account_group_connections(
@@ -372,9 +343,10 @@ class ConsumerService:
     def list_connections(
         self, identity: ConsumerIdentity, *, provider: str | None, cursor: str | None, limit: int
     ) -> ConsumerConnectionsPage:
-        after = ConsumerConnectionKey.decode(cursor) if cursor is not None else None
-        if after is not None and provider is not None and after.provider != provider:
-            raise ValueError("Invalid Connection group cursor.")
+        try:
+            after = UUID(cursor) if cursor is not None else None
+        except ValueError:
+            raise ValueError("Invalid Connection group cursor.") from None
         rows = self._connections.account_connection_groups(identity, provider=provider, after=after, limit=limit + 1)
         members = self._connections.account_group_connections(identity, tuple(row.key for row in rows[:limit]))
         apps = self._group_apps(identity, members)
@@ -391,7 +363,7 @@ class ConsumerService:
         )
         more = len(rows) > limit
         return ConsumerConnectionsPage(
-            data=data, has_more=more, next_cursor=rows[limit - 1].key.encode() if more else None
+            data=data, has_more=more, next_cursor=str(rows[limit - 1].representative_id) if more else None
         )
 
     def _group_apps(

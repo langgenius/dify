@@ -132,11 +132,14 @@ def test_connection_group_routes_reuse_the_list_key(client: FlaskClient, harness
         )
     providers = client.get("/api/me/connections").get_json()
     assert providers["data"][0]["connections_count"] == 1
-    listed = client.get(f"/api/me/connections/providers/{connections[0].provider}/connections").get_json()
+    response = client.get(f"/api/me/connections/providers/{connections[0].provider}/connections")
+    listed = response.get_json()
     assert len(listed["data"]) == 1
     group = listed["data"][0]
     assert group["webapps_count"] == 1
     assert group["connection_type"] == "oauth2"
+    assert group["account_label"] == "al***@example.com"
+    assert "alice@example.com" not in response.get_data(as_text=True)
     assert "apps" not in group
     path = f"/api/me/connections/{group['key']}"
     apps = client.get(path + "/apps?limit=1")
@@ -172,7 +175,7 @@ def test_provider_connection_list_filters_and_validates_cursors(client: FlaskCli
     assert {row["key"] for page in (first, second) for row in page["data"]} == {row.id for row in created}
     other_path = "/api/me/connections/providers/vendor/other/calendar/connections"
     assert client.get(other_path).get_json()["data"] == []
-    assert client.get(other_path, query_string={"cursor": first["next_cursor"]}).status_code == 400
+    assert client.get(other_path, query_string={"cursor": first["next_cursor"]}).get_json()["data"] == []
     assert client.get(path + "?cursor=invalid").status_code == 400
     assert client.get(path + "?provider=other").status_code == 400
 

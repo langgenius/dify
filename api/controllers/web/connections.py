@@ -34,6 +34,7 @@ from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
 from services.end_user_connection_identity import connection_context_from_web_passport
+from services.end_user_connection_labels import mask_account_label
 from services.end_user_connections.contracts import (
     ConnectionInput,
     ConnectionRevisionView,
@@ -61,6 +62,15 @@ class ConnectionConfigurationQuery(ConnectionInput):
 
 
 class EndUserConnectionResponse(ConnectionSummary, ResponseModel):
+    @field_serializer("account_label")
+    def serialize_account_label(self, value: str | None) -> str | None:
+        """Mask a stored provider identity on output without changing its source.
+
+        Missing or empty identities serialize as null. The same policy applies
+        to standalone, paginated and nested Connection responses.
+        """
+        return mask_account_label(value)
+
     @field_serializer("created_at", "updated_at", "last_active_at")
     def serialize_timestamp(self, value: datetime) -> int:
         return to_utc_timestamp(value)

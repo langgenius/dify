@@ -63,6 +63,7 @@ def test_check_refreshes_and_preserves_refresh_token_identity_and_activity(harne
     assert record.summary.expires_at == datetime(2033, 5, 18, 3, 33, 20)
     assert record.summary.last_active_at == before.summary.last_active_at
     assert record.summary.account_label == before.summary.account_label
+    assert record.summary.account_label == "alice@example.com"
     assert record.access.oauth_client == before.access.oauth_client
     assert harness.base.cipher.decrypt(harness.base.context.tenant_id, record.encrypted_credentials) == {
         "access_token": "new-access-secret",
@@ -136,7 +137,12 @@ def test_rotated_refresh_token_is_saved_even_when_check_temporarily_fails(harnes
     record = harness.base.repository.find(harness.base.context, connection_id)
     assert record is not None
     assert record.access.revision == 2
-    assert record.summary.account_label == "a*@example.com"
+    assert record.summary.account_label == "ab@example.com"
+    with harness.base.sessions() as session:
+        assert (
+            session.scalar(sa.select(EndUserConnection.account_label).where(EndUserConnection.id == connection_id))
+            == "ab@example.com"
+        )
     assert (
         harness.base.cipher.decrypt(harness.base.context.tenant_id, record.encrypted_credentials)["refresh_token"]
         == "rotated-refresh"

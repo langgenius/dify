@@ -144,31 +144,28 @@ class EndUserConnectionRepository:
             )
 
     def account_connection_groups(
-        self, identity: ConsumerIdentity, *, provider: str | None, after: ConsumerConnectionKey | None, limit: int
+        self, identity: ConsumerIdentity, *, provider: str | None, after: UUID | None, limit: int
     ) -> tuple[ConsumerConnectionGroup, ...]:
-        """Page complete Account-owned groups before loading their App associations."""
+        """Page complete Account-owned groups by their stable representative ID.
+
+        The cursor is the smallest Connection ID in the last returned group. It
+        cannot disclose the internal account-label grouping key.
+        """
         label = sa.func.coalesce(sa.func.nullif(EndUserConnection.account_label, ""), "").label("account_label")
         id_text = sa.cast(EndUserConnection.id, sa.String(36))
         connection_id = sa.case((label == "", id_text), else_="").label("connection_id")
         columns = (EndUserConnection.provider, EndUserConnection.credential_type, label, connection_id)
         # PostgreSQL UUIDs need text conversion for MIN and the empty-label discriminator.
-        grouped = sa.select(*columns, sa.func.min(id_text).label("representative_id")).where(
+        representative_id = sa.func.min(id_text)
+        grouped = sa.select(*columns, representative_id.label("representative_id")).where(
             EndUserConnection.account_id == identity.account_id,
             EndUserConnection.end_user_id.is_(None),
         )
         if provider is not None:
             grouped = grouped.where(EndUserConnection.provider == provider)
         if after is not None:
-            grouped = grouped.where(
-                sa.tuple_(*columns)
-                > (
-                    after.provider,
-                    after.connection_type,
-                    after.account_label or "",
-                    str(after.connection_id) if after.connection_id else "",
-                )
-            )
-        groups = grouped.group_by(*columns).order_by(*columns).limit(limit).subquery()
+            grouped = grouped.having(representative_id > str(after))
+        groups = grouped.group_by(*columns).order_by(representative_id).limit(limit).subquery()
         stmt = (
             sa.select(
                 groups.c.provider,
@@ -179,7 +176,7 @@ class EndUserConnectionRepository:
                 EndUserConnection.name,
             )
             .join(EndUserConnection, EndUserConnection.id == sa.cast(groups.c.representative_id, StringUUID()))
-            .order_by(groups.c.provider, groups.c.credential_type, groups.c.account_label, groups.c.connection_id)
+            .order_by(groups.c.representative_id)
         )
         with self._sessions() as session:
             return tuple(
