@@ -5,6 +5,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
@@ -157,9 +159,13 @@ class TestRagPipelineTaskProxyCases:
         mocker: MockerFixture, proxy, sqlite_engine: Engine, sqlite_session: Session
     ) -> None:
         storage = mocker.patch("services.file_service.storage")
-        mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", SimpleNamespace(engine=sqlite_engine))
-
-        result = proxy._upload_invoke_entities()
+        app = Flask(__name__)
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
+        database = SQLAlchemy(app)
+        mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", database)
+        with app.app_context():
+            mocker.patch.dict(database.engines, {None: sqlite_engine})
+            result = proxy._upload_invoke_entities()
 
         upload_file = sqlite_session.get(UploadFile, result)
         assert upload_file is not None
