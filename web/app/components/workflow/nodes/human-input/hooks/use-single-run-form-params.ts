@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
@@ -48,7 +48,7 @@ const useSingleRunFormParams = ({
   )
   const { t } = useTranslation(['workflow', 'workflowHumanInput', 'common'])
   const { inputs } = useNodeCrud<HumanInputSharedNodeType>(id, payload)
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const { doSyncWorkflowDraft } = useScheduleDraftSave()
   const generatedInputs = useMemo(() => {
     const formInputDependencyInputs = getHumanInputFormDependencySelectors(inputs.inputs).map(
       (selector) => `{{#${selector.join('.')}#}}`,

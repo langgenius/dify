@@ -64,13 +64,13 @@ import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import HelpLine from './help-line'
-import { HooksStoreContextProvider } from './hooks-store'
+import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
 import { useNodeKeyboardInteractions } from './hooks/use-node-keyboard-interactions'
 import { useNodesInteractions } from './hooks/use-nodes-interactions'
-import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
 import { usePanelInteractions } from './hooks/use-panel-interactions'
+import { useScheduleDraftSave } from './hooks/use-schedule-draft-save'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useSetWorkflowVarsWithValue } from './hooks/use-set-workflow-vars-with-value'
 import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './hooks/use-workflow'
@@ -252,10 +252,11 @@ export const Workflow: FC<WorkflowProps> = memo(
       })
     }, [t])
 
-    const { handleSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useNodesSyncDraft()
+    const { handleSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useScheduleDraftSave()
+    const canRefreshWorkflowDraft = useHooksStore((state) => state.canRefreshWorkflowDraft)
     const { workflowReadOnly } = useWorkflowReadOnly()
     const { nodesReadOnly } = useNodesReadOnly()
-    const { builderCanvasActive, handleViewportUserInteraction } = useWorkflowViewport()
+    const { canvasReadOnly, handleViewportUserInteraction } = useWorkflowViewport()
     const { eventEmitter } = useEventEmitterContextContext()
     const pendingComment = useStore((s) => s.pendingComment)
     const showUserCursors = useStore((s) => s.showUserCursors)
@@ -308,7 +309,7 @@ export const Workflow: FC<WorkflowProps> = memo(
 
       handleSyncWorkflowDraft(true, true, {
         onError: () => {
-          if (workflowStore.getState().hasWorkflowDraftConflict) return
+          if (!canRefreshWorkflowDraft()) return
           toast.error(
             t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
             {
@@ -336,9 +337,8 @@ export const Workflow: FC<WorkflowProps> = memo(
 
       if (document.visibilityState === 'visible') {
         collaborationManager.emitGraphViewState(true)
-        const { isListening, workflowRunningData, hasWorkflowDraftConflict } =
-          workflowStore.getState()
-        if (hasWorkflowDraftConflict) return
+        const { isListening, workflowRunningData } = workflowStore.getState()
+        if (!canRefreshWorkflowDraft()) return
         const status = workflowRunningData?.result?.status
         // Avoid resetting UI state when user comes back while a run is active or listening for triggers
         if (isListening || status === WorkflowRunningStatus.Running) return
@@ -361,15 +361,20 @@ export const Workflow: FC<WorkflowProps> = memo(
           )
         }
       }
-    }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
+    }, [
+      syncWorkflowDraftWhenPageClose,
+      handleRefreshWorkflowDraft,
+      workflowStore,
+      canRefreshWorkflowDraft,
+    ])
 
     // Also add beforeunload handler as additional safety net for tab close
     const handleBeforeUnload = useCallback(() => {
-      if (workflowStore.getState().hasWorkflowDraftConflict) return
+      if (!canRefreshWorkflowDraft()) return
       if (collaborationManager.canRestoreGraphFromCrdt())
         collaborationManager.refreshGraphSynchronously()
       syncWorkflowDraftWhenPageClose()
-    }, [syncWorkflowDraftWhenPageClose, workflowStore])
+    }, [syncWorkflowDraftWhenPageClose, canRefreshWorkflowDraft])
 
     useEffect(() => {
       document.addEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
@@ -540,7 +545,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         id="workflow-container"
         className={cn(
           'relative isolate h-full w-full min-w-240 overflow-hidden',
-          workflowReadOnly && !builderCanvasActive && 'workflow-panel-animation',
+          workflowReadOnly && !canvasReadOnly && 'workflow-panel-animation',
           nodeAnimation && 'workflow-node-animation',
           className,
         )}
@@ -598,7 +603,7 @@ export const Workflow: FC<WorkflowProps> = memo(
               if (event) handleViewportUserInteraction()
             }}
             onMoveEnd={(event) => {
-              // Loading a draft or focusing a Builder node is not a user edit.
+              // Programmatic viewport updates are not user edits.
               if (event) handleSyncWorkflowDraft()
             }}
             className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}

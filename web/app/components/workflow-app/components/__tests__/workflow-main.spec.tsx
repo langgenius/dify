@@ -12,13 +12,12 @@ import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { CollectionType } from '@/app/components/tools/types'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
-import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowComponent } from '@/app/components/workflow-app/__tests__/workflow-test-env'
+import { createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { createSocket } from '@/app/components/workflow/collaboration/core/__tests__/test-socket'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
@@ -237,6 +236,7 @@ async function renderMain({
   triggers?: TriggerWithProvider[]
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
+    features: { dify_builder_enabled: false },
     systemFeatures: { enable_marketplace: false },
   })
   seedAppDslVersion(queryClient)
@@ -1015,4 +1015,70 @@ it('imports a DSL file and replaces the graph through the real update event', as
   expect(api.importDSL).toHaveBeenCalledExactlyOnceWith({
     body: { mode: 'yaml-content', yaml_content: yaml, app_id: 'app-1' },
   })
+})
+
+it.each([false, true])(
+  'acknowledges a draft conflict to the requester (already paused: %s)',
+  async (alreadyPaused) => {
+    const { store } = await renderMain()
+    if (alreadyPaused) store.getState().setWorkflowDraftConflict(true)
+    else
+      api.saveDraft.mockImplementationOnce(async () => {
+        store.getState().setWorkflowDraftConflict(true)
+        throw new Error('draft_workflow_not_sync')
+      })
+    const acknowledge = vi.fn()
+    act(() => events.sync.forEach((handler) => handler({ requestId: 'conflict', acknowledge })))
+    await waitFor(() =>
+      expect(acknowledge).toHaveBeenCalledWith({
+        success: false,
+        error: 'draft_workflow_not_sync',
+      }),
+    )
+    expect(api.saveDraft).toHaveBeenCalledTimes(alreadyPaused ? 0 : 1)
+  },
+)
+
+it.each([false, true])(
+  'resaves an accepted server draft only when local edits remain (dirty: %s)',
+  async (dirty) => {
+    const { store } = await renderMain()
+    if (dirty) store.getState().markWorkflowDraftDirty()
+    act(() =>
+      events.applied.forEach((handler) =>
+        handler({
+          revision: 'revision-1',
+          hash: 'builder-hash',
+          updated_at: 3,
+          update: new Uint8Array(),
+        }),
+      ),
+    )
+    await act(async () => {
+      store.getState().flushPendingSync()
+    })
+    await waitFor(() => expect(api.saveDraft).toHaveBeenCalledTimes(dirty ? 1 : 0))
+    if (dirty)
+      expect(api.saveDraft).toHaveBeenCalledWith(
+        expect.objectContaining({ body: expect.objectContaining({ hash: 'builder-hash' }) }),
+        expect.anything(),
+      )
+    else expect(store.getState().syncWorkflowDraftHash).toBe('builder-hash')
+  },
+)
+
+it('does not apply an incoming workflow reload after the editor unmounts', async () => {
+  const pending = createDeferred<FetchWorkflowDraftResponse>()
+  const { store, unmount } = await renderMain()
+  const originalHash = store.getState().syncWorkflowDraftHash
+  api.fetchDraft.mockReturnValueOnce(pending.promise)
+  const refresh = updateWorkflow()
+  await waitFor(() => expect(api.fetchDraft).toHaveBeenCalledOnce())
+  unmount()
+  await act(async () => {
+    pending.resolve(draft({ hash: 'late-hash' }))
+    await refresh
+  })
+  expect(store.getState().syncWorkflowDraftHash).toBe(originalHash)
+  expect(collaborationManager.requestServerDraftSync).not.toHaveBeenCalled()
 })

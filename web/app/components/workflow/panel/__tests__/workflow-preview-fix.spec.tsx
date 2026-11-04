@@ -41,7 +41,7 @@ const createLiveRun = (result: Partial<WorkflowRunningData['result']> = {}): Wor
     },
   })
 
-describe('WorkflowPreview Fix', () => {
+describe('WorkflowPreview failure actions', () => {
   beforeEach(() => {
     getTraceRun.mockImplementation(async ({ params }) => ({
       status: 'not_collected',
@@ -50,41 +50,53 @@ describe('WorkflowPreview Fix', () => {
     }))
   })
 
-  it('opens Fix for the latest live run from Detail and hides it on other tabs', async () => {
+  it('opens failure actions for the latest live run from Detail and hides it on other tabs', async () => {
     const user = userEvent.setup()
     const onFixRun = vi.fn()
     const { store } = renderWorkflowComponent(
       <ReactFlowProvider>
-        <WorkflowPreview onFixRun={onFixRun} />
+        <WorkflowPreview
+          renderFailureActions={(runId) => (
+            <button type="button" onClick={() => onFixRun(runId)}>
+              Recover run
+            </button>
+          )}
+        />
       </ReactFlowProvider>,
       { initialStoreState: { workflowRunningData: createLiveRun() } },
     )
 
-    await user.click(await screen.findByRole('button', { name: 'difyBuilder.fixRun' }))
+    await user.click(await screen.findByRole('button', { name: 'Recover run' }))
     expect(onFixRun).toHaveBeenLastCalledWith('live-run-1')
 
     await user.click(screen.getByRole('button', { name: 'runLog.result' }))
-    expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Recover run' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
-    expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Recover run' })).not.toBeInTheDocument()
 
     act(() => store.setState({ workflowRunningData: createLiveRun({ id: 'live-run-2' }) }))
-    await user.click(await screen.findByRole('button', { name: 'difyBuilder.fixRun' }))
+    await user.click(await screen.findByRole('button', { name: 'Recover run' }))
     expect(onFixRun).toHaveBeenLastCalledWith('live-run-2')
     expect(onFixRun).toHaveBeenCalledTimes(2)
   })
 
-  it('prevents Fix when the Builder integration disables the entry', async () => {
+  it('preserves the disabled state of supplied failure actions', async () => {
     const user = userEvent.setup()
     const onFixRun = vi.fn()
     renderWorkflowComponent(
       <ReactFlowProvider>
-        <WorkflowPreview onFixRun={onFixRun} fixWithBuilderDisabled />
+        <WorkflowPreview
+          renderFailureActions={(runId) => (
+            <button type="button" disabled onClick={() => onFixRun(runId)}>
+              Recover run
+            </button>
+          )}
+        />
       </ReactFlowProvider>,
       { initialStoreState: { workflowRunningData: createLiveRun() } },
     )
 
-    const button = await screen.findByRole('button', { name: 'difyBuilder.fixRun' })
+    const button = await screen.findByRole('button', { name: 'Recover run' })
     expect(button).toBeDisabled()
     await user.click(button)
     expect(onFixRun).not.toHaveBeenCalled()
@@ -94,16 +106,16 @@ describe('WorkflowPreview Fix', () => {
     { status: WorkflowRunningStatus.Running },
     { status: WorkflowRunningStatus.Succeeded },
     { id: undefined },
-  ])('does not offer Fix for an ineligible live result: %j', async (result) => {
+  ])('does not offer recovery actions for an ineligible live result: %j', async (result) => {
     const user = userEvent.setup()
     renderWorkflowComponent(
       <ReactFlowProvider>
-        <WorkflowPreview onFixRun={vi.fn()} />
+        <WorkflowPreview renderFailureActions={() => <button type="button">Recover run</button>} />
       </ReactFlowProvider>,
       { initialStoreState: { workflowRunningData: createLiveRun(result) } },
     )
 
     await user.click(screen.getByRole('button', { name: 'runLog.detail' }))
-    expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Recover run' })).not.toBeInTheDocument()
   })
 })

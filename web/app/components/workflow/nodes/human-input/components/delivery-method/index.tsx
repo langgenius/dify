@@ -4,7 +4,7 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodesSyncDraft } from '../../../../hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '../../../../hooks/use-schedule-draft-save'
 import MethodItem from './method-item'
 import MethodSelector from './method-selector'
 import { UpgradeModal } from './upgrade-modal'
@@ -35,7 +35,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
   const deliveryLabelId = React.useId()
 
   const { t } = useTranslation(['workflowHumanInput'])
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
 
   const handleMethodChange = (target: DeliveryMethod) => {
     const newMethods = produce(value, (draft) => {

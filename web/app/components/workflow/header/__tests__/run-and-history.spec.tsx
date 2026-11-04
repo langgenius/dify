@@ -7,6 +7,35 @@ import RunAndHistory from '../run-and-history'
 vi.mock('../view-history', () => ({ default: () => null }))
 vi.mock('../checklist', () => ({ default: () => null }))
 
+it('uses supplied run access for both custom runs and previews', async () => {
+  const user = userEvent.setup()
+  const startPreview = vi.fn()
+  const CustomRunMode = ({ text, disabled }: { text?: string; disabled?: boolean }) => (
+    <button type="button" disabled={disabled}>
+      {text}
+    </button>
+  )
+  renderWorkflowComponent(
+    <RunAndHistory
+      showRunButton
+      showPreviewButton
+      runButtonText="Run"
+      components={{ RunMode: CustomRunMode }}
+    />,
+    {
+      hooksStoreProps: {
+        handleWorkflowStartRunInChatflow: startPreview,
+        accessControl: { ...fullWorkflowAccessControl, canRun: false },
+      },
+    },
+  )
+  expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
+  const preview = screen.getByRole('button', { name: 'workflow.common.debugAndPreview' })
+  expect(preview).toBeDisabled()
+  await user.click(preview)
+  expect(startPreview).not.toHaveBeenCalled()
+})
+
 it('passes denied run permission to a custom run control', async () => {
   const user = userEvent.setup()
   const startRun = vi.fn()

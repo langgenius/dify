@@ -14,7 +14,7 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAutoGenerateWebhookUrl } from '../../hooks/use-auto-generate-webhook-url'
-import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '../../hooks/use-schedule-draft-save'
 
 const getTriggerPluginNodeData = (
   triggerConfig: TriggerDefaultValue,
@@ -52,7 +52,7 @@ const Panel: FC<NodePanelProps<CommonNodeType>> = ({ id }) => {
   )
   const reactFlowStore = useStoreApi()
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
 
   const handleSelectStartNode = useCallback(
     (nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
