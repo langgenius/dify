@@ -44,10 +44,19 @@ def bind_account_only_loader(app: Flask, loader: AccountLoader) -> None:
 
 
 def _console_account_loader() -> AccountLoader:
+    """Select the account loader from the registered view's admission metadata.
+
+    Requires a Flask request context. Only explicitly marked resource handlers
+    use account-only lookup; missing views or metadata retain workspace admission.
+    Inherited handlers follow the resource class's method resolution order.
+    """
     view = current_app.view_functions.get(request.endpoint or "")
-    resource = getattr(view, "view_class", None)
-    handler = getattr(resource, request.method.lower(), None)
-    if getattr(handler, ACCOUNT_ONLY_ADMISSION_ATTR, False):
+    resource = view.__dict__.get("view_class") if view is not None else None
+    if not isinstance(resource, type):
+        return load_account
+    method = request.method.lower()
+    handler = next((base.__dict__[method] for base in resource.__mro__ if method in base.__dict__), None)
+    if handler is not None and handler.__dict__.get(ACCOUNT_ONLY_ADMISSION_ATTR, False):
         return cast(AccountLoader, current_app.extensions["account_only_identity_loader"])
     return load_account
 

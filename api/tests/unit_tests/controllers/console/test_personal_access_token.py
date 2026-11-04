@@ -31,7 +31,10 @@ BASE = "/console/api/account/personal-access-tokens"
 
 @pytest.fixture
 def rbac_enabled(request: pytest.FixtureRequest) -> bool:
-    return getattr(request, "param", False)
+    try:
+        return request.param
+    except AttributeError:
+        return False
 
 
 @pytest.fixture
@@ -1356,7 +1359,7 @@ def test_pat_business_audit_attributes_success_and_denial_without_secrets(
     assert client.get("/openapi/v1/workspaces", headers=headers).status_code == 200
     headers[CATALOG_HEADER] = "stale"
     assert client.get("/openapi/v1/workspaces", headers=headers).status_code == 412
-    records = [record for record in caplog.records if getattr(record, "event", None) == "pat.request.openapi"]
+    records = [record for record in caplog.records if record.__dict__.get("event") == "pat.request.openapi"]
     assert len(records) == 2
     assert [record.outcome for record in records] == ["succeeded", "denied"]
     assert [record.http_status for record in records] == [200, 412]
@@ -1382,7 +1385,7 @@ def test_pat_business_audit_includes_query_workspace_target(
     workspace_id = str(uuid4())
     response = client.get("/openapi/v1/apps", query_string={"workspace_id": workspace_id}, headers=headers)
     assert response.status_code == 404
-    records = [record for record in caplog.records if getattr(record, "event", None) == "pat.request.openapi"]
+    records = [record for record in caplog.records if record.__dict__.get("event") == "pat.request.openapi"]
     assert len(records) == 1
     assert records[0].target_ids == {"workspace_id": workspace_id}
     assert records[0].http_status == response.status_code
