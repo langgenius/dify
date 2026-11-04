@@ -9,19 +9,14 @@ from typing_extensions import TypedDict
 from graphon.enums import BuiltinNodeTypes
 from models import AppMode
 from services.workflow.authoring import FillContext, canvas_defaults
-from services.workflow.authoring.canvas_defaults import (
-    WILDCARD,
-    CanvasNode,
-    canvas_node,
-    canvas_value,
-    with_canvas_defaults,
-)
+from services.workflow.authoring.canvas_defaults import CanvasNode, canvas_node, with_canvas_defaults
 from services.workflow.authoring.fill import fill_graph_document
 from services.workflow.authoring.node_options import AgentInviteOptions, NodeOptionKind, list_node_options
 from services.workflow.node_defaults import editor_defaults, rewrite_old_shapes
 from tests.unit_tests.services.workflow.authoring.conftest import V2_ONLY_KEYS
 
 CTX = FillContext(tenant_id="tenant-1", account_id="account-1")
+LIST_ITEM = "*"
 GENERATED = json.loads(Path(canvas_defaults.__file__).with_name("canvas_defaults.json").read_text())
 
 
@@ -71,7 +66,7 @@ def _walk(value: object, path: tuple[str, ...] = ()) -> list[tuple[tuple[str, ..
             found += _walk(item, (*path, key))
     if isinstance(value, list):
         for item in value:
-            found += _walk(item, (*path, WILDCARD))
+            found += _walk(item, (*path, LIST_ITEM))
     return found
 
 
@@ -143,7 +138,7 @@ def test_the_version_is_ignored_for_a_type_with_one_edition() -> None:
     assert filled == {"type": "llm", "version": "7", **CanvasNode.LLM.data}
 
 
-def test_a_human_input_edition_has_its_own_defaults_and_purpose() -> None:
+def test_a_human_input_edition_has_its_own_defaults() -> None:
     node = CanvasNode.HUMAN_INPUT
     v1, v2 = node.edition("1"), node.edition("2")
 
@@ -151,13 +146,9 @@ def test_a_human_input_edition_has_its_own_defaults_and_purpose() -> None:
     assert v2 is not None
     assert node.edition() == v1
     assert node.edition("3") is None
-    assert (node.data, node.purpose) == (v1.data, v1.purpose)
-    assert ("delivery_methods",) in v1.purpose
-    assert ("recipients_spec",) in v2.purpose
-    assert ("delivery_methods",) not in v2.purpose
-    assert canvas_value(BuiltinNodeTypes.HUMAN_INPUT, ("timeout",)) == 3
-    assert canvas_value(BuiltinNodeTypes.HUMAN_INPUT, ("timeout",), version="2") == 36
-    assert canvas_value(BuiltinNodeTypes.HUMAN_INPUT, ("timeout",), version="3") is None
+    assert node.data == v1.data
+    assert v1.data["timeout"] == 3
+    assert v2.data["timeout"] == 36
 
 
 def test_a_written_value_wins_at_every_depth() -> None:
@@ -281,47 +272,6 @@ def test_no_generated_value_is_empty() -> None:
 def test_no_generated_key_starts_with_an_underscore() -> None:
     for path, _value in _walk(GENERATED):
         assert not (path and path[-1].startswith("_")), path
-
-
-def test_every_purpose_loc_names_a_field() -> None:
-    for node in CanvasNode:
-        for edition in node.editions.values():
-            assert len(set(edition.purpose)) == len(edition.purpose), node
-            for loc in edition.purpose:
-                assert loc, node
-                assert loc[0] != WILDCARD, node
-
-
-def test_canvas_value_is_the_canvas_value_at_a_loc() -> None:
-    assert canvas_value(BuiltinNodeTypes.LLM, ("model", "mode")) == "chat"
-    assert canvas_value(BuiltinNodeTypes.LLM, ("prompt_template", WILDCARD, "role")) == "system"
-    assert canvas_value(BuiltinNodeTypes.CODE, ("code_language",)) == "python3"
-
-
-@pytest.mark.parametrize(
-    ("node_type", "loc"),
-    [
-        (BuiltinNodeTypes.LLM, ("nothing",)),
-        (BuiltinNodeTypes.LLM, ("model", "provider", "deeper")),
-        (BuiltinNodeTypes.LLM, ("prompt_template", 5)),
-        (BuiltinNodeTypes.LLM, ("prompt_template", 0, "text")),
-        (BuiltinNodeTypes.LLM, ("model", "provider")),
-        (BuiltinNodeTypes.LLM, ("model", WILDCARD)),
-        (BuiltinNodeTypes.END, ("outputs", WILDCARD)),
-        (BuiltinNodeTypes.TOOL, ("tool_parameters",)),
-        ("mystery", ("anything",)),
-    ],
-)
-def test_canvas_value_is_none_where_the_canvas_has_nothing(node_type: str, loc: tuple[str | int, ...]) -> None:
-    assert canvas_value(node_type, loc) is None
-
-
-def test_canvas_value_is_a_copy() -> None:
-    value = canvas_value(BuiltinNodeTypes.LLM, ("model",))
-    assert isinstance(value, dict)
-    value["name"] = "changed"
-
-    assert CanvasNode.LLM.data["model"] == GENERATED["llm"]["model"]
 
 
 def test_legacy_if_else_conditions_get_no_extra_case() -> None:

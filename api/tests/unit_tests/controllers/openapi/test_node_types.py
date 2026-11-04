@@ -22,6 +22,9 @@ class _EndpointView(Protocol):
 
 type _Describe = Callable[..., NodeTypeDetailResponse]
 
+NO_CANVAS_KEYS = frozenset({"example", "purpose"})
+EMPTY_VALUES: tuple[object, ...] = (None, "", [], {})
+
 
 @pytest.fixture
 def describe(app: Flask, sqlite_session: Session) -> _Describe:
@@ -60,8 +63,6 @@ def test_describe_llm_is_compact(describe: _Describe) -> None:
     assert "context" in response.seed
     rows = _rows(response)
     assert rows["model"].required is True
-    assert rows["model"].purpose is True
-    assert rows["context"].purpose is False
     assert response.handles == ["source"]
 
 
@@ -71,17 +72,29 @@ def test_fields_list_required_ones_first_then_by_loc(describe: _Describe) -> Non
     assert order == sorted(order)
 
 
+def test_describe_llm_seed_has_no_empty_value(describe: _Describe) -> None:
+    seed = describe(BuiltinNodeTypes.LLM).seed
+
+    assert not [
+        key
+        for key, value in seed.items()
+        if any(value == empty and type(value) is type(empty) for empty in EMPTY_VALUES)
+    ]
+
+
 def test_the_llm_reply_stays_small_with_items_included(describe: _Describe) -> None:
     body = describe(BuiltinNodeTypes.LLM).model_dump_json(by_alias=True)
 
-    assert len(body.encode()) < 2200, "items included: prompt_template and default_value list their item fields"
+    assert len(body.encode()) < 1900, (
+        "items included: prompt_template and default_value list their item fields; no example or purpose key"
+    )
 
 
 def test_rows_leave_out_what_the_seed_already_holds(describe: _Describe) -> None:
     response = describe(BuiltinNodeTypes.LLM)
 
     assert {"type", "title", "version", "desc"}.isdisjoint(_rows(response))
-    assert all("example" not in row.model_dump(mode="json") for row in response.fields)
+    assert all(NO_CANVAS_KEYS.isdisjoint(row.model_dump(mode="json")) for row in response.fields)
 
 
 def test_rows_carry_only_the_parts_they_have(describe: _Describe) -> None:
@@ -102,7 +115,7 @@ def test_a_list_row_carries_its_item_fields(describe: _Describe) -> None:
     items = {item["loc"][0]: item for item in rows["outputs"]["items"]}
     assert {"variable", "value_selector"} <= items.keys()
     assert items["variable"]["required"] is True
-    assert all("purpose" not in item and "items" not in item for item in items.values())
+    assert all(NO_CANVAS_KEYS.isdisjoint(item) and "items" not in item for item in items.values())
 
 
 def test_a_row_that_is_not_a_list_of_objects_leaves_out_items(describe: _Describe) -> None:
@@ -136,7 +149,7 @@ def test_a_type_the_canvas_gives_no_defaults_still_answers(describe: _Describe) 
     response = describe(BuiltinNodeTypes.TOOL)
 
     assert response.seed == {"type": "tool", "version": "1", "title": "tool"}
-    assert not any(row.purpose for row in response.fields)
+    assert all(NO_CANVAS_KEYS.isdisjoint(row.model_dump(mode="json")) for row in response.fields)
 
 
 def test_describe_node_type_human_input_describes_the_v2_node(describe: _Describe) -> None:
@@ -147,6 +160,4 @@ def test_describe_node_type_human_input_describes_the_v2_node(describe: _Describ
     assert response.version == "2"
     assert {"recipients_spec", "message_template"} <= set(properties)
     assert "delivery_methods" not in properties
-    rows = _rows(response)
-    assert rows["recipients_spec"].purpose is True
-    assert rows["user_actions"].purpose is True
+    assert {"recipients_spec", "user_actions"} <= set(_rows(response))

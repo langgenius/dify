@@ -10,7 +10,6 @@ from pydantic import BaseModel
 
 from core.workflow.node_factory import node_data_model
 from graphon.nodes.base.node import Node
-from services.workflow.authoring.canvas_defaults import WILDCARD, canvas_example
 from services.workflow.authoring.plugins import (
     NO_DEFAULT,
     DeclarationStatus,
@@ -43,7 +42,6 @@ class FieldHint:
     description: str | None
     required: bool
     default: object
-    example: object | None = None
     # One row per field of a list's object item, located relative to the item; an item row has none of its own.
     items: tuple[FieldHint, ...] = ()
 
@@ -220,13 +218,9 @@ class NodeTarget:
     def model(self) -> type[BaseModel]:
         return node_data_model(self.node_class)
 
-    def example(self, loc: Loc) -> object | None:
-        """What the canvas gives a new node at `loc`; a list item takes the example of the canvas's first item."""
-        return canvas_example(self.data, tuple(WILDCARD if isinstance(key, int) else key for key in loc))
-
     def hint(self, loc: Sequence[str | int], *, required: bool) -> FieldHint:
-        """What the agent needs to write the field at `loc` of this node's data, with the canvas's example."""
-        return replace(field_hint(self.model, loc, required=required), example=self.example(tuple(loc)))
+        """What the agent needs to write the field at `loc` of this node's data."""
+        return field_hint(self.model, loc, required=required)
 
 
 def read_node(raw_node: Mapping[str, Any], ctx: FillContext) -> NodeTarget | None:
@@ -264,24 +258,16 @@ def _required_first(hint: FieldHint) -> tuple[bool, Loc]:
     return (not hint.required, hint.loc)
 
 
-def _no_example(_loc: Loc) -> None:
-    return None
-
-
 def top_level_hints(
-    model: type[BaseModel],
-    schema: Mapping[str, Any],
-    *,
-    skip: Container[str] = (),
-    example: Callable[[Loc], object | None] = _no_example,
+    model: type[BaseModel], schema: Mapping[str, Any], *, skip: Container[str] = ()
 ) -> tuple[FieldHint, ...]:
     """A hint for each top-level field of `model`, the node's data model, except those in `skip`, the required ones
-    first and each group by loc. `schema` is the model's JSON schema; `example` gives a field's canvas example.
+    first and each group by loc. `schema` is the model's JSON schema.
     """
     return tuple(
         sorted(
             (
-                replace(_field_hint(schema, (key,), required=field.is_required()), example=example((key,)))
+                _field_hint(schema, (key,), required=field.is_required())
                 for name, field in model.model_fields.items()
                 if (key := field.alias or name) not in skip
             ),
@@ -299,5 +285,5 @@ def node_spec(node: NodeTarget) -> NodeSpec:
         version=node.node_class.version(),
         schema=schema,
         plugin_parameters=_declared_parameters(node),
-        open_fields=top_level_hints(node.model, schema, skip=node.data, example=node.example),
+        open_fields=top_level_hints(node.model, schema, skip=node.data),
     )

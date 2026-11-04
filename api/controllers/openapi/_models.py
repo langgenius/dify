@@ -899,9 +899,6 @@ class FieldHintItemRow(BaseModel):
 
 
 class FieldHintRow(FieldHintItemRow):
-    example: Any = _omitted_when_none(
-        "The value the web canvas gives a new node at this field; left out when the canvas has none"
-    )
     items: list[FieldHintItemRow] = _omitted_when_empty(_ITEMS_DESCRIPTION)
 
     @override
@@ -909,7 +906,6 @@ class FieldHintRow(FieldHintItemRow):
     def of(cls, hint: FieldHint) -> Self:
         return cls(
             **dict(FieldHintItemRow.of(hint)),
-            example=hint.example,
             items=[FieldHintItemRow.of(item) for item in hint.items],
         )
 
@@ -1196,14 +1192,12 @@ class NodeTypeFieldItemRow(BaseModel):
 
 
 class NodeTypeFieldRow(NodeTypeFieldItemRow):
-    purpose: bool = Field(description="True when the web canvas rejects the node with this field left empty")
     items: list[NodeTypeFieldItemRow] = _omitted_when_empty(_ITEMS_DESCRIPTION)
 
     @classmethod
-    def describing(cls, hint: FieldHint, *, purpose: bool) -> Self:
+    def describing(cls, hint: FieldHint) -> Self:
         return cls(
             **dict(NodeTypeFieldItemRow.of(hint)),
-            purpose=purpose,
             items=[NodeTypeFieldItemRow.of(item) for item in hint.items],
         )
 
