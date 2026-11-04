@@ -34,6 +34,7 @@ let mockStoreFiles: FileEntity[] = []
 vi.mock('../store', () => ({
   useFileStore: () => ({
     getState: () => ({
+      isActive: true,
       files: mockStoreFiles,
       setFiles: mockSetFiles,
     }),
