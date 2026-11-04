@@ -685,6 +685,43 @@ class TestWeightRerankRunner:
         mock_cache_embedding.assert_not_called()
         mock_cache_embedding.get_cached_query_embedding.assert_not_called()
 
+    def test_rerank_tolerates_external_document_without_score(
+        self, weights_config, mock_model_manager, mock_cache_embedding, mock_jieba_handler
+    ):
+        """An external knowledge base document may carry no score and no vector.
+
+        dataset_retrieval builds those documents with provider="external" and copies
+        the provider's score into metadata unconditionally, so the value can be None.
+        Reranking must not fail the whole retrieval because of it.
+        """
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+        documents = [
+            Document(
+                page_content="external content",
+                metadata={"score": None, "title": "t", "dataset_id": "d"},
+                provider="external",
+            )
+        ]
+        mock_jieba_handler.return_value.extract_keywords.return_value = {"content"}
+
+        result = runner.run(query="content", documents=documents)
+
+        assert len(result) == 1
+        assert isinstance(result[0].metadata["score"], float)
+        mock_model_manager.assert_not_called()
+        mock_cache_embedding.return_value.embed_query.assert_not_called()
+
+    def test_cosine_treats_none_score_as_zero(self, weights_config, mock_model_manager, mock_cache_embedding):
+        """A None score must not be returned as a similarity value."""
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+        documents = [Document(page_content="external", metadata={"score": None}, provider="external")]
+
+        result = runner._calculate_cosine("tenant123", "query", documents, weights_config.vector_setting)
+
+        assert result == [0.0]
+        mock_model_manager.assert_not_called()
+        mock_cache_embedding.assert_not_called()
+
     @pytest.mark.parametrize("cache_hit", [True, False])
     def test_cosine_resolves_query_vector_once_for_mixed_documents(
         self, cache_hit, weights_config, mock_model_manager, mock_cache_embedding
