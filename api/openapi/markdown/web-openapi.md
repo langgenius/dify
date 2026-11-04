@@ -813,7 +813,7 @@ Logout user from web application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /me/apps
-List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use is derived from retained published execution logs. No App Passport or workspace membership is required.
+List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. Recent use and favorites are personal WebApp preferences independent of Console stars. No App Passport or workspace membership is required.
 
 #### Parameters
 
@@ -829,6 +829,22 @@ List accessible Chatflow and Workflow Apps using the WebApp Account login cookie
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Accessible personal Apps | **application/json**: [ConsumerAppsResponse](#consumerappsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /me/apps/{app_id}
+Remove an App from personal recent and favorite lists without deleting its data. A new accepted execution restores the recent entry. Shared discovery remains available.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | App removed from personal lists |  |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /me/apps/{app_id}/favorite
@@ -1859,7 +1875,7 @@ The connection requirements changed. Refresh and confirm again.
 | icon_type | string |  | Yes |
 | id | string |  | Yes |
 | is_favorite | boolean |  | Yes |
-| last_used_at | integer | Creation time of the Account's latest retained published execution. | Yes |
+| last_used_at | integer | Time of the Account's latest accepted WebApp execution, independent of retained execution logs. | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
 

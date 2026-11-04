@@ -134,7 +134,7 @@ register_response_schema_models(
 class ConsumerAppsApi(Resource):
     @web_ns.doc(
         description="List accessible Chatflow and Workflow Apps using the WebApp Account login cookie. "
-        "Recent use is derived from retained published execution logs. "
+        "Recent use and favorites are personal WebApp preferences independent of Console stars. "
         "No App Passport or workspace membership is required."
     )
     @web_ns.doc(params=query_params_from_model(ConsumerAppsQuery))
@@ -145,6 +145,20 @@ class ConsumerAppsApi(Resource):
             query = ConsumerAppsQuery.model_validate(request.args.to_dict(flat=True))
             result = application_services().consumer.list_apps(identity, query)
         return dump_response(ConsumerAppsResponse, result)
+
+
+@web_ns.route("/me/apps/<uuid:app_id>")
+class ConsumerAppApi(Resource):
+    @web_ns.doc(
+        description="Remove an App from personal recent and favorite lists without deleting its data. "
+        "A new accepted execution restores the recent entry. Shared discovery remains available."
+    )
+    @web_ns.response(204, "App removed from personal lists")
+    def delete(self, app_id: UUID):
+        identity = _identity()
+        with _errors():
+            application_services().consumer.remove_app(identity, str(app_id))
+        return "", 204
 
 
 @web_ns.route("/me/apps/<uuid:app_id>/favorite")

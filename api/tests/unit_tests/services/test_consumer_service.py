@@ -9,10 +9,11 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountStatus, TenantAccountJoin
+from models.account_webapp import AccountWebApp
 from models.end_user_connection import AppConnection, EndUserConnection
-from models.enums import CreatorUserRole, CustomizeTokenStrategy, EndUserType, WorkflowRunTriggeredFrom
+from models.enums import CustomizeTokenStrategy, EndUserType
 from models.model import App, AppMode, AppStar, EndUser, Site
-from models.workflow import WorkflowRun, WorkflowType
+from models.workflow import WorkflowRun
 from repositories.web_passport_repository import WebPassportRepository
 from services.consumer_service import (
     ConsumerAppNotFoundError,
@@ -69,10 +70,8 @@ def test_favorites_and_recent_are_account_scoped_and_recheck_access(harness: Con
     now = datetime(2026, 10, 30, 10)
     with base.sessions.begin() as session:
         session.execute(sa.update(App).where(App.id == app_id).values(mode=mode))
-        for moment in (now, now - timedelta(days=1), now + timedelta(hours=1)):
-            run = new_consumer_run(base, created_at=moment)
-            run.type = WorkflowType.CHAT if mode == AppMode.ADVANCED_CHAT else WorkflowType.WORKFLOW
-            session.add(run)
+    for moment in (now, now - timedelta(days=1), now + timedelta(hours=1)):
+        harness.record_usage(moment)
     for view in ("recent", "favorites", "shared"):
         result = harness.service.list_apps(harness.identity, ConsumerAppsQuery(view=view))
         assert [app.id for app in result.data] == [app_id]
@@ -82,7 +81,8 @@ def test_favorites_and_recent_are_account_scoped_and_recheck_access(harness: Con
     assert not harness.service.list_apps(other, ConsumerAppsQuery()).data
     assert not harness.service.list_apps(other, ConsumerAppsQuery(view="favorites")).data
     with base.sessions() as session:
-        assert session.scalar(sa.select(sa.func.count()).select_from(AppStar)) == 1
+        assert session.scalar(sa.select(sa.func.count()).select_from(AppStar)) == 0
+        assert session.scalar(sa.select(sa.func.count()).select_from(AccountWebApp)) == 1
     harness.access.denied.add(app_id)
     assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery(view="favorites")).data
     with pytest.raises(ConsumerAppNotFoundError):
@@ -113,7 +113,7 @@ def test_consumer_apps_support_only_chatflow_and_workflow(harness: ConsumerHarne
         harness.service.set_favorite(harness.identity, base.context.app_id, enabled=True)
 
 
-def test_passport_without_execution_is_not_recent_and_log_deletion_removes_recent_usage(
+def test_passport_without_execution_is_not_recent_and_usage_survives_log_deletion(
     harness: ConsumerHarness,
 ) -> None:
     base = harness.oauth.base
@@ -126,46 +126,49 @@ def test_passport_without_execution_is_not_recent_and_log_deletion_removes_recen
         session.add(run)
         session.flush()
         run_id = run.id
+    harness.record_usage(run.created_at)
     assert harness.service.list_apps(harness.identity, ConsumerAppsQuery()).data[0].last_used_at == run.created_at
     with base.sessions.begin() as session:
         session.execute(sa.delete(WorkflowRun).where(WorkflowRun.id == run_id))
-    assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery()).data
-    assert harness.service.list_apps(harness.identity, ConsumerAppsQuery(view="favorites")).data[0].last_used_at is None
+    assert harness.service.list_apps(harness.identity, ConsumerAppsQuery()).data[0].last_used_at == run.created_at
+    assert (
+        harness.service.list_apps(harness.identity, ConsumerAppsQuery(view="favorites")).data[0].last_used_at
+        == run.created_at
+    )
 
 
-@pytest.mark.parametrize("mismatch", ["tenant", "app", "role", "source", "account", "guest", "type"])
+@pytest.mark.parametrize("mismatch", ["tenant", "app", "end_user", "account", "guest", "type"])
 def test_recent_usage_requires_the_complete_passport_execution_owner_chain(
     harness: ConsumerHarness, mismatch: str
 ) -> None:
     base = harness.oauth.base
     now = datetime(2026, 10, 30)
-    with base.sessions.begin() as session:
-        session.add(new_consumer_run(base, created_at=now))
-        unrelated = new_consumer_run(base, created_at=now + timedelta(days=1))
-        if mismatch == "tenant":
-            unrelated.tenant_id = str(uuid4())
-        elif mismatch == "app":
-            unrelated.app_id = str(uuid4())
-        elif mismatch == "role":
-            unrelated.created_by_role = CreatorUserRole.ACCOUNT
-        elif mismatch == "source":
-            unrelated.triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
-        else:
-            account_id = None
-            if mismatch == "type":
-                account_id = harness.identity.account_id
-            elif mismatch == "account":
-                account_id = str(uuid4())
+    harness.record_usage(now)
+    tenant_id, app_id, end_user_id = base.context.tenant_id, base.context.app_id, base.context.end_user_id
+    if mismatch == "tenant":
+        tenant_id = str(uuid4())
+    elif mismatch == "app":
+        app_id = str(uuid4())
+    elif mismatch == "end_user":
+        end_user_id = str(uuid4())
+    else:
+        with base.sessions.begin() as session:
             user = EndUser(
-                tenant_id=base.context.tenant_id,
-                app_id=base.context.app_id,
-                type=EndUserType.SERVICE_API if mismatch == "type" else EndUserType.BROWSER,
-                account_id=account_id,
+                tenant_id=tenant_id,
+                app_id=app_id,
                 session_id=str(uuid4()),
+                type=EndUserType.SERVICE_API if mismatch == "type" else EndUserType.BROWSER,
+                account_id=harness.identity.account_id
+                if mismatch == "type"
+                else str(uuid4())
+                if mismatch == "account"
+                else None,
             )
             session.add(user)
-            unrelated.created_by = user.id
-        session.add(unrelated)
+            end_user_id = user.id
+    harness.service.record_usage(
+        harness.identity, tenant_id=tenant_id, app_id=app_id, end_user_id=end_user_id, used_at=now + timedelta(days=1)
+    )
     result = harness.service.list_apps(harness.identity, ConsumerAppsQuery())
     assert [app.id for app in result.data] == [base.context.app_id]
     assert result.data[0].last_used_at == now
@@ -282,6 +285,13 @@ def test_recent_pagination_fills_pages_after_denials_and_handles_equal_timestamp
             run = new_consumer_run(item, created_at=used_at)
             run.created_by = resolution.end_user.id
             session.add(run)
+        harness.service.record_usage(
+            harness.identity,
+            tenant_id=item.context.tenant_id,
+            app_id=item.context.app_id,
+            end_user_id=resolution.end_user.id,
+            used_at=used_at,
+        )
     app_ids = [item.context.app_id for item in bases]
     app_ids.sort(key=lambda app_id: (-used_at_by_app[app_id].timestamp(), app_id))
     harness.access.denied.update(app_ids[:2])

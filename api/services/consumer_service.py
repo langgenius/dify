@@ -41,7 +41,7 @@ class ConsumerApp(BaseModel):
     app_code: str
     is_favorite: bool
     last_used_at: datetime | None = Field(
-        description="Creation time of the Account's latest retained published execution."
+        description="Time of the Account's latest accepted WebApp execution, independent of retained execution logs."
     )
     continuation: str = Field(exclude=True)
 
@@ -145,11 +145,17 @@ class ConsumerAppsStore(Protocol):
     def by_ids(self, identity: ConsumerIdentity, app_ids: Sequence[str]) -> tuple[ConsumerApp, ...]: ...
 
     def favorite(self, identity: ConsumerIdentity, app_id: str, *, enabled: bool) -> None:
-        """Serialize on the Account; revalidate App availability in the write transaction.
+        """Update WebApp collection preferences independently of Console stars."""
+        ...
 
-        The existing tenant/Account/App unique key also prevents duplicate stars.
-        No workspace membership is required or created.
-        """
+    def record_consumer_usage(
+        self, identity: ConsumerIdentity, *, tenant_id: str, app_id: str, end_user_id: str, used_at: datetime
+    ) -> None:
+        """Validate the complete Browser identity chain and preserve the latest accepted use."""
+        ...
+
+    def remove(self, identity: ConsumerIdentity, app_id: str) -> None:
+        """Remove an existing personal entry without changing its App or execution data."""
         ...
 
 
@@ -250,6 +256,16 @@ class ConsumerService:
             if not self._visible(identity, apps):
                 raise ConsumerAppNotFoundError()
         self._apps.favorite(identity, app_id, enabled=enabled)
+
+    def record_usage(
+        self, identity: ConsumerIdentity, *, tenant_id: str, app_id: str, end_user_id: str, used_at: datetime
+    ) -> None:
+        self._apps.record_consumer_usage(
+            identity, tenant_id=tenant_id, app_id=app_id, end_user_id=end_user_id, used_at=used_at
+        )
+
+    def remove_app(self, identity: ConsumerIdentity, app_id: str) -> None:
+        self._apps.remove(identity, app_id)
 
     def list_connections(
         self, identity: ConsumerIdentity, *, provider: str | None, cursor: str | None, limit: int

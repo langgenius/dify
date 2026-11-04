@@ -42,6 +42,7 @@ from models import (
     TraceAppConfig,
     WorkflowSchedulePlan,
 )
+from models.account_webapp import AccountWebApp
 from models.agent import WorkflowAgentNodeBinding
 from models.tools import WorkflowToolProvider
 from models.trigger import WorkflowPluginTrigger, WorkflowTriggerLog, WorkflowWebhookTrigger
@@ -126,6 +127,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_app_resource_access_token_relations(tenant_id, app_id)
         _delete_installed_apps(tenant_id, app_id)
         _delete_app_stars(tenant_id, app_id)
+        _delete_account_webapps(tenant_id, app_id)
         _delete_recommended_apps(tenant_id, app_id)
         _delete_app_annotation_data(tenant_id, app_id)
         _delete_app_dataset_joins(tenant_id, app_id)
@@ -241,6 +243,22 @@ def _delete_installed_apps(tenant_id: str, app_id: str):
         {"tenant_id": tenant_id, "app_id": app_id},
         del_installed_app,
         "installed app",
+    )
+
+
+def _delete_account_webapps(tenant_id: str, app_id: str) -> None:
+    def delete_state(session: Session, state_id: str) -> None:
+        session.execute(
+            delete(AccountWebApp).where(
+                AccountWebApp.id == state_id, AccountWebApp.tenant_id == tenant_id, AccountWebApp.app_id == app_id
+            )
+        )
+
+    _delete_records(
+        "select id from account_webapps where tenant_id=:tenant_id and app_id=:app_id limit 1000",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        delete_state,
+        "personal WebApp",
     )
 
 
