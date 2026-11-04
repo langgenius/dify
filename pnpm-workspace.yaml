@@ -30,7 +30,7 @@ packages:
 overrides:
   '@babel/core@<=7.29.0': ^7.29.1
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
-  '@next/env': 16.4.1
+  '@next/env': 16.4.5
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
   fflate@>=0.7.0 <0.7.5: 0.7.5
@@ -205,7 +205,7 @@ catalog:
   mitt: 3.0.1
   motion: 12.43.0
   negotiator: 1.1.0
-  next: 16.4.1
+  next: 16.4.5
   next-themes: 0.4.6
   nuqs: 2.10.1
   open: 11.0.2
