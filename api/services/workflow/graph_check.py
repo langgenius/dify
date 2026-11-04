@@ -31,7 +31,8 @@ GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
 MESSAGE_MODES: Final = frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION})
 CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP})
 CANVAS_NOTE_TYPE: Final = "custom-note"
-START_NODE_ID_KEY: Final = "start_node_id"
+_START_NODE_ID_KEY: Final = "start_node_id"
+EMPTY_SELECTOR_MESSAGE: Final = "A variable selector reads no variable"
 
 
 class IssueSeverity(StrEnum):
@@ -189,11 +190,11 @@ def _is_node(graph: _Graph, node_id: object) -> bool:
 def _start_issue(graph: _Graph, node: _Node) -> GraphIssue | None:
     if node.type not in CONTAINER_NODE_TYPES:
         return None
-    loc = data_loc(node.id, START_NODE_ID_KEY)
+    loc = data_loc(node.id, _START_NODE_ID_KEY)
     # A missing start_node_id is already reported as invalid data.
     if any(issue.loc == loc for issue in node.issues):
         return None
-    start = node.data.get(START_NODE_ID_KEY)
+    start = node.data.get(_START_NODE_ID_KEY)
     if _is_node(graph, start):
         return None
     return GraphIssue(IssueCode.CONTAINER_START_MISSING, f"start_node_id {start!r} is not in the graph", node.id, loc)
@@ -270,7 +271,9 @@ def _output_name_issues(graph: _Graph) -> Iterable[GraphIssue]:
 
 def _reference_issue(graph: _Graph, node: _Node, key: str, selector: Sequence[str]) -> GraphIssue | None:
     if not selector:
-        return GraphIssue(IssueCode.REFERENCE_EMPTY, f"{key} reads no variable", node.id, data_loc(node.id))
+        name = key.removeprefix(f"{node.id}.").strip("#")
+        message = f"{name} reads no variable" if name else EMPTY_SELECTOR_MESSAGE
+        return GraphIssue(IssueCode.REFERENCE_EMPTY, message, node.id, data_loc(node.id))
     if selector[0] in ROOT_VARIABLE_NODE_IDS:
         return None
     if selector[0] in graph.nodes:

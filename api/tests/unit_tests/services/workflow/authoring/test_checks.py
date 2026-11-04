@@ -38,7 +38,6 @@ CONTEXT = RequestContext("request-1", None, "account-1", "tenant-1")
 LIMITS = ArchiveLimits(max_entries=64, max_bytes=16 * 1024 * 1024)
 FIXTURES = Path(__file__).parents[4] / "fixtures" / "workflow"
 APP = "app.yaml"
-MISSING_MESSAGE = "Field required"
 MANIFEST = "manifest.yaml"
 ITERATION_AND_NOTES_EXPORT = "book_translation_iteration_note_workflow.yml"
 # Exports whose plugins resolve in a bare workspace and that check_graph passes; time is a built-in tool. Their
@@ -306,7 +305,7 @@ def test_a_bare_node_reports_its_missing_required_fields(node: CanvasNode, dsl: 
     assert sorted((issue.loc for issue in invalid), key=str) == sorted(
         (_data("node", *loc) for loc in BARE_SEED_MISSING.get(node, [])), key=str
     )
-    assert {issue.message for issue in invalid} <= {MISSING_MESSAGE}
+    assert all(issue.hint is not None for issue in invalid)
 
 
 def test_new_codes_are_errors_but_a_small_note_and_only_manifest_issues_refuse_an_import() -> None:
