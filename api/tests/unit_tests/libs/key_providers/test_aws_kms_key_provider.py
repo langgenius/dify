@@ -290,10 +290,6 @@ def _with_raw_metadata(envelope: bytes, metadata: bytes) -> bytes:
     return head + len(metadata).to_bytes(2, "big") + metadata + rest
 
 
-def _with_metadata(envelope: bytes, metadata: dict[str, object]) -> bytes:
-    return _with_raw_metadata(envelope, json.dumps(metadata).encode())
-
-
 def _envelope_wrapped_under(client: FakeKmsClient, key_id: str, tenant_id: str, plaintext: str) -> bytes:
     """
     Build a fully self-consistent envelope wrapped under `key_id` -- blob, metadata and encryption
