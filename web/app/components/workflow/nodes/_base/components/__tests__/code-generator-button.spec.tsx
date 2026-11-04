@@ -11,15 +11,8 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
-import { consoleQuery } from '@/service/console'
-import {
-  createCatalogModelFixture,
-  createDefaultModelFixture,
-  createModelCatalogFixture,
-  seedModelProviderQueries,
-} from '@/test/console/model-provider'
+import { seedGeneratorQueries } from '@/test/console/generator-query-preset'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { seedToolProviders } from '@/test/console/tool-providers'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import CodeGenerateBtn from '../code-generator-button'
 
@@ -32,40 +25,7 @@ vi.mock('@/service/debug', async (importOriginal) => ({
 
 const renderGenerator = createNuqsTestRenderer((ui) => {
   const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
-  seedToolProviders(queryClient, {
-    builtInTools: [],
-    customTools: [],
-    workflowTools: [],
-    mcpTools: [],
-  })
-  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
-  seedModelProviderQueries(queryClient, [
-    createModelCatalogFixture({
-      models: [
-        createCatalogModelFixture({
-          model: 'gpt-4o-mini',
-          label: { en_US: 'GPT-4o mini' },
-          model_properties: { mode: 'chat' },
-        }),
-      ],
-    }),
-  ])
-  queryClient.setQueryData(
-    consoleQuery.workspaces.current.defaultModel.get.queryKey({
-      input: { query: { model_type: 'llm' } },
-    }),
-    { data: createDefaultModelFixture({ model: 'gpt-4o-mini' }) },
-  )
-  queryClient.setQueryDefaults(
-    consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
-    { initialData: { data: [] } },
-  )
-  queryClient.setQueryData(
-    consoleQuery.instructionGenerate.template.post.queryOptions({
-      input: { body: { type: 'code' } },
-    }).queryKey,
-    { data: 'Describe the Python change' },
-  )
+  seedGeneratorQueries(queryClient, { type: 'code', template: 'Describe the Python change' })
 
   const start = createStartNode({
     id: 'start',

@@ -13,17 +13,15 @@ import type { KnowledgeValidationResult } from '@/features/agent-v2/agent-compos
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useQueries } from '@tanstack/react-query'
-import { intersectionBy, xorBy } from 'es-toolkit/compat'
+import { intersectionBy } from 'es-toolkit/compat'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import WorkflowField from '@/app/components/workflow/nodes/_base/components/field'
-import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
 import {
   comparisonOperatorNotRequireValue,
   getOperators,
@@ -180,24 +178,6 @@ function ClassicSettingsFields({
     retrievalMode === RETRIEVE_TYPE.multiWay && selectedDatasets.length > 0
       ? resolveMultipleRetrievalConfig(multipleRetrievalConfig)
       : multipleRetrievalConfig
-  const handleSelectedDatasetsChange = (selected: DatasetDetailWithPartialMembersResponse[]) => {
-    const nextDatasets = selected.map(
-      (dataset) => selectedDatasets.find((current) => current.id === dataset.id) ?? dataset,
-    )
-    if (!xorBy(nextDatasets, selectedDatasets, 'id').length) return
-    onChange({
-      selectedDatasets: nextDatasets,
-      metadataFilteringConditions: reconcileMetadataConditions(
-        item.metadataFilteringConditions,
-        nextDatasets,
-        selectedDatasets,
-      ),
-      multipleRetrievalConfig:
-        retrievalMode === RETRIEVE_TYPE.multiWay && nextDatasets.length > 0
-          ? resolveMultipleRetrievalConfig(multipleRetrievalConfig, nextDatasets)
-          : multipleRetrievalConfig,
-    })
-  }
   const singleModel = withModelDefaults(singleRetrievalConfig?.model)
   const metadataModel = withModelDefaults(metadataModelConfig)
   const updateMetadataConditions = (patch: Partial<typeof metadataFilteringConditions>) =>
@@ -334,31 +314,15 @@ function ClassicSettingsFields({
                 onRerankModelOpenChange={setRerankModelOpen}
                 selectedDatasets={selectedDatasets}
               />
-              <div className="h-3 w-px bg-divider-regular" />
-              <AddKnowledge
-                key={selectedDatasets.map((dataset) => dataset.id).join(',')}
-                selectedIds={selectedDatasets.map((dataset) => dataset.id)}
-                modal
-                onChange={handleSelectedDatasetsChange}
-              />
             </div>
           }
         >
           <>
+            {/* Datasets are chosen in the picker above; a card only configures its own binding. */}
             <ul className="space-y-1 system-xs-regular text-text-secondary">
               {selectedDatasets.map((dataset) => (
-                <li key={dataset.id} className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 wrap-break-word">{dataset.name}</span>
-                  <IconButton
-                    aria-label={`${t(($) => $['operation.remove'], { ns: 'common' })} ${dataset.name}`}
-                    onClick={() =>
-                      handleSelectedDatasetsChange(
-                        selectedDatasets.filter((current) => current.id !== dataset.id),
-                      )
-                    }
-                  >
-                    <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                  </IconButton>
+                <li key={dataset.id} className="min-w-0 wrap-break-word">
+                  {dataset.name}
                 </li>
               ))}
             </ul>

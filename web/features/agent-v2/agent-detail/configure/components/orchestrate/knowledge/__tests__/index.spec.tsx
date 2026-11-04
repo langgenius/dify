@@ -10,7 +10,6 @@ import {
   ComparisonOperator,
   LogicalOperator,
   MetadataFilteringModeEnum,
-  MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import {
   agentSoulConfigToFormState,
@@ -208,30 +207,6 @@ async function advanced(user: ReturnType<typeof userEvent.setup>, dialog: HTMLEl
   await user.click(within(dialog).getByRole('button', { name: /advancedSettings.label/ }))
 }
 
-async function openDatasetPicker(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement) {
-  await user.click(
-    await within(dialog).findByRole('button', {
-      name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
-    }),
-  )
-  return screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
-}
-
-async function confirmDatasetPicker(user: ReturnType<typeof userEvent.setup>, picker: HTMLElement) {
-  await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
-  await waitFor(() => expect(picker).not.toBeInTheDocument())
-}
-
-async function toggleDatasets(
-  user: ReturnType<typeof userEvent.setup>,
-  dialog: HTMLElement,
-  names: RegExp[],
-) {
-  const picker = await openDatasetPicker(user, dialog)
-  for (const name of names) await user.click(await within(picker).findByRole('button', { name }))
-  await confirmDatasetPicker(user, picker)
-}
-
 describe('shared knowledge binding dialog', () => {
   beforeEach(() => getDatasets.mockResolvedValue(datasetPage()))
 
@@ -309,16 +284,6 @@ describe('shared knowledge binding dialog', () => {
     expect(await within(dialog).findByRole('textbox', { name: /customInputLabel/ })).toHaveValue(
       'original question',
     )
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
-      }),
-    )
-    const unchangedPicker = await screen.findByRole('dialog', {
-      name: /feature.dataSet.selectTitle/,
-    })
-    await user.click(within(unchangedPicker).getByRole('button', { name: 'common.operation.add' }))
-    await waitFor(() => expect(unchangedPicker).not.toBeInTheDocument())
     const name = within(dialog).getByRole('textbox', { name: /dialog.nameLabel/ })
     await user.clear(name)
     await user.type(name, 'Renamed search')
@@ -425,23 +390,21 @@ describe('shared knowledge binding dialog', () => {
     expect(getSpaces).not.toHaveBeenCalled()
   })
 
-  it('stages changes to an existing dataset group until shared confirmation', async () => {
+  it('shows a saved dataset group read-only in its settings card', async () => {
     const user = userEvent.setup()
     const first = createDatasetFixture()
     const second = createDatasetFixture({ id: 'dataset-2', name: 'Second dataset' })
     getDatasets.mockResolvedValue(datasetPage([first, second]))
-    setupClassic({ id: 'group', name: 'Saved group', selectedDatasets: [first] })
+    setupClassic({ id: 'group', name: 'Saved group', selectedDatasets: [first, second] })
     const dialog = await open(user)
     await advanced(user, dialog)
-    await toggleDatasets(user, dialog, [/Second dataset/])
-    expect(snapshot().knowledge.sets[0].datasets).toHaveLength(1)
-    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-    expect(snapshot().knowledge.sets).toHaveLength(1)
-    expect(snapshot().knowledge.sets[0]).toMatchObject({
-      id: 'group',
-      name: 'Saved group',
-      datasets: [{ id: first.id }, { id: second.id }],
-    })
+    const card = within(within(dialog).getByRole('group', { name: 'Saved group' }))
+    expect(card.getByText(first.name)).toBeInTheDocument()
+    expect(card.getByText('Second dataset')).toBeInTheDocument()
+    expect(
+      card.queryByRole('button', { name: /operation.add.*nodes.knowledgeRetrieval.knowledge/ }),
+    ).not.toBeInTheDocument()
+    expect(card.queryByRole('button', { name: /operation.remove/ })).not.toBeInTheDocument()
   })
 
   it('edits and removes imported metadata conditions independently when their row IDs are missing', async () => {
@@ -507,53 +470,6 @@ describe('shared knowledge binding dialog', () => {
     expect(snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions).toEqual(saved)
   })
 
-  it('blocks a mixed-index group without a required reranker and allows correcting the dataset selection', async () => {
-    const user = userEvent.setup()
-    const first = createDatasetFixture()
-    const second = createDatasetFixture({
-      id: 'dataset-2',
-      name: 'Economy docs',
-      indexing_technique: 'economy',
-    })
-    getDatasets.mockResolvedValue(datasetPage([first, second]))
-    setupClassic({ id: 'group', name: 'Saved group', selectedDatasets: [first] })
-    const original = snapshot().knowledge
-    const dialog = await open(user)
-    await advanced(user, dialog)
-    await toggleDatasets(user, dialog, [/Economy docs/])
-    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-    expect(dialog).toBeInTheDocument()
-    expect(within(dialog).getAllByRole('alert')[0]?.textContent).toMatch(/rerankModel/)
-    expect(snapshot().knowledge).toEqual(original)
-    await toggleDatasets(user, dialog, [/Economy docs/])
-    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(snapshot().knowledge.sets[0]).toMatchObject({
-      datasets: [{ id: first.id }],
-      retrieval: { reranking_mode: 'weighted_score', reranking_enable: true },
-    })
-  })
-
-  it('requires a reranker when same-name embedding models come from different providers', async () => {
-    const user = userEvent.setup()
-    const first = createDatasetFixture()
-    const second = createDatasetFixture({
-      id: 'dataset-2',
-      name: 'Azure docs',
-      embedding_model_provider: 'azure_openai',
-    })
-    getDatasets.mockResolvedValue(datasetPage([first, second]))
-    setupClassic({ id: 'group', name: 'Saved group', selectedDatasets: [first] })
-    const original = snapshot().knowledge
-    const dialog = await open(user)
-    await advanced(user, dialog)
-    await toggleDatasets(user, dialog, [/Azure docs/])
-    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-    expect(dialog).toBeInTheDocument()
-    expect(within(dialog).getAllByRole('alert')[0]?.textContent).toMatch(/rerankModel/)
-    expect(snapshot().knowledge).toEqual(original)
-  })
-
   it('stages retrieval limit edits and discards them when the shared dialog is cancelled', async () => {
     const user = userEvent.setup()
     setupClassic({
@@ -588,183 +504,6 @@ describe('shared knowledge binding dialog', () => {
     })
   })
 
-  it('removes a dataset with an unavailable embedding model before selecting a replacement', async () => {
-    const user = userEvent.setup()
-    const unavailable = createDatasetFixture({
-      name: 'Unavailable docs',
-      embedding_available: false,
-    })
-    const replacement = createDatasetFixture({ id: 'replacement', name: 'Replacement docs' })
-    getDataset.mockResolvedValue(unavailable)
-    getDatasets.mockResolvedValue(datasetPage([unavailable, replacement]))
-    setupClassic({
-      id: 'group',
-      name: 'Saved group',
-      datasetRefs: [{ id: unavailable.id, name: unavailable.name }],
-      queryMode: 'custom',
-      customQuery: 'support question',
-      multipleRetrievalConfig: { top_k: 7, score_threshold: 0.4, reranking_enable: false },
-    })
-    const original = snapshot().knowledge
-    const dialog = await open(user)
-    await advanced(user, dialog)
-    await user.click(
-      await within(dialog).findByRole('button', {
-        name: 'common.operation.remove Unavailable docs',
-      }),
-    )
-    const picker = await openDatasetPicker(user, dialog)
-    expect(await within(picker).findByRole('button', { name: /Unavailable docs/ })).toBeDisabled()
-    await user.click(within(picker).getByRole('button', { name: /Replacement docs/ }))
-    await confirmDatasetPicker(user, picker)
-    expect(snapshot().knowledge).toEqual(original)
-    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-    expect(snapshot().knowledge.sets).toEqual([
-      expect.objectContaining({
-        id: 'group',
-        name: 'Saved group',
-        datasets: [expect.objectContaining({ id: replacement.id })],
-        query: { mode: 'user_query', value: 'support question' },
-        retrieval: expect.objectContaining({ top_k: 7, score_threshold: 0.4 }),
-      }),
-    ])
-  })
-
-  it.each([
-    {
-      title: 'rejects unsupported operators even when field types match',
-      from: MetadataFilteringVariableType.number,
-      to: MetadataFilteringVariableType.number,
-      operator: ComparisonOperator.contains,
-      value: 12,
-      valid: false,
-    },
-    {
-      title: 'requires reconfiguration when the field type changes',
-      from: MetadataFilteringVariableType.string,
-      to: MetadataFilteringVariableType.number,
-      operator: ComparisonOperator.empty,
-      value: undefined,
-      valid: false,
-    },
-    {
-      title: 'retains compatible empty-value conditions',
-      from: MetadataFilteringVariableType.number,
-      to: MetadataFilteringVariableType.number,
-      operator: ComparisonOperator.empty,
-      value: undefined,
-      valid: true,
-    },
-    {
-      title: 'retains compatible timestamp conditions',
-      from: MetadataFilteringVariableType.time,
-      to: MetadataFilteringVariableType.time,
-      operator: ComparisonOperator.after,
-      value: 1700000000,
-      valid: true,
-    },
-    {
-      title: 'rejects string operators on a replacement numeric field',
-      from: MetadataFilteringVariableType.string,
-      to: MetadataFilteringVariableType.number,
-      operator: ComparisonOperator.contains,
-      value: 'abc',
-      valid: false,
-    },
-    {
-      title: 'rejects nonnumeric values on numeric fields',
-      from: MetadataFilteringVariableType.number,
-      to: MetadataFilteringVariableType.number,
-      operator: ComparisonOperator.equal,
-      value: 'abc',
-      valid: false,
-    },
-    {
-      title: 'retains compatible numeric conditions',
-      from: MetadataFilteringVariableType.number,
-      to: MetadataFilteringVariableType.number,
-      operator: ComparisonOperator.equal,
-      value: 12,
-      valid: true,
-    },
-    {
-      title: 'retains compatible list membership conditions',
-      from: MetadataFilteringVariableType.string,
-      to: MetadataFilteringVariableType.string,
-      operator: ComparisonOperator.in,
-      value: ['abc', 'def'],
-      valid: true,
-    },
-    {
-      title: 'rejects same-name fields with conflicting types within a group',
-      from: MetadataFilteringVariableType.string,
-      to: MetadataFilteringVariableType.number,
-      operator: ComparisonOperator.contains,
-      value: 'abc',
-      valid: false,
-      keepOriginal: true,
-    },
-  ])(
-    '$title when changing datasets',
-    async ({ from, to, operator, value, valid, keepOriginal = false }) => {
-      const user = userEvent.setup()
-      const source = createDatasetFixture({
-        name: 'Original docs',
-        doc_metadata: [{ id: 'old-code', name: 'code', type: from }],
-      })
-      const replacement = createDatasetFixture({
-        id: 'replacement',
-        name: 'Replacement docs',
-        doc_metadata: [{ id: 'new-code', name: 'code', type: to }],
-      })
-      getDatasets.mockResolvedValue(datasetPage([source, replacement]))
-      setupClassic({
-        id: 'group',
-        name: 'Saved group',
-        selectedDatasets: [source],
-        metadataFilterMode: MetadataFilteringModeEnum.manual,
-        metadataFilteringConditions: {
-          logical_operator: LogicalOperator.and,
-          conditions: [
-            {
-              id: 'condition',
-              metadata_id: 'old-code',
-              name: 'code',
-              comparison_operator: operator,
-              value,
-            },
-          ],
-        },
-      })
-      const original = snapshot().knowledge
-      const dialog = await open(user)
-      await advanced(user, dialog)
-      const picker = await openDatasetPicker(user, dialog)
-      if (!keepOriginal)
-        await user.click(await within(picker).findByRole('button', { name: /Original docs/ }))
-      await user.click(await within(picker).findByRole('button', { name: /Replacement docs/ }))
-      await confirmDatasetPicker(user, picker)
-      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-      if (valid) {
-        expect(snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions).toEqual([
-          {
-            id: 'condition',
-            metadata_id: 'new-code',
-            name: 'code',
-            comparison_operator: operator,
-            value,
-          },
-        ])
-      } else {
-        expect(dialog).toBeInTheDocument()
-        expect(within(dialog).getAllByRole('alert')[0]?.textContent).toMatch(
-          /metadata.panel.conditions/,
-        )
-        expect(snapshot().knowledge).toEqual(original)
-      }
-    },
-  )
-
   it('retains Classic bindings when dataset lookup fails and supports retry', async () => {
     const user = userEvent.setup()
     getDataset.mockRejectedValue(new ORPCError('FORBIDDEN', { status: 403 }))
@@ -778,183 +517,77 @@ describe('shared knowledge binding dialog', () => {
     expect(await within(dialog).findByRole('radio', { name: /dialog.query.agent$/ })).toBeVisible()
   })
 
-  it.each([false, true])(
-    'replaces deleted datasets without losing the group identity or saved settings (retained dataset=%s)',
-    async (hasRetainedDataset) => {
-      const user = userEvent.setup()
-      const retained = createDatasetFixture({
-        name: 'Retained docs',
-        doc_metadata: [{ id: 'topic-retained', name: 'topic', type: 'string' }],
-      })
-      const replacement = createDatasetFixture({
-        id: 'replacement',
-        name: 'Replacement docs',
-        doc_metadata: [{ id: 'topic-replacement', name: 'topic', type: 'string' }],
-      })
-      getDataset.mockImplementation(async ({ params }: { params: { dataset_id: string } }) => {
-        if (params.dataset_id.startsWith('deleted'))
-          throw new ORPCError('NOT_FOUND', { status: 404 })
-        return retained
-      })
-      getDatasets.mockResolvedValue(datasetPage([retained, replacement]))
-      setupClassic({
+  it('removes deleted datasets without losing the group identity or saved settings', async () => {
+    const user = userEvent.setup()
+    const retained = createDatasetFixture({
+      name: 'Retained docs',
+      doc_metadata: [{ id: 'topic-retained', name: 'topic', type: 'string' }],
+    })
+    getDataset.mockImplementation(async ({ params }: { params: { dataset_id: string } }) => {
+      if (params.dataset_id.startsWith('deleted')) throw new ORPCError('NOT_FOUND', { status: 404 })
+      return retained
+    })
+    getDatasets.mockResolvedValue(datasetPage([retained]))
+    setupClassic({
+      id: 'saved-group',
+      name: 'Saved group',
+      datasetRefs: [
+        { id: retained.id, name: retained.name },
+        { id: 'deleted', name: 'Deleted docs' },
+        { id: 'deleted-2', name: 'Other missing docs' },
+      ],
+      queryMode: 'custom',
+      customQuery: 'support question',
+      multipleRetrievalConfig: { top_k: 7, score_threshold: 0.4, reranking_enable: false },
+      metadataFilterMode: MetadataFilteringModeEnum.manual,
+      metadataFilteringConditions: {
+        logical_operator: LogicalOperator.and,
+        conditions: [
+          {
+            id: 'topic-condition',
+            name: 'topic',
+            comparison_operator: ComparisonOperator.is,
+            value: 'agents',
+          },
+        ],
+      },
+    })
+    const original = snapshot().knowledge
+    const dialog = await open(user)
+    await advanced(user, dialog)
+    await user.click(
+      await within(dialog).findByRole('button', { name: 'common.operation.remove Deleted docs' }),
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'common.operation.remove Other missing docs' }),
+    )
+    expect(snapshot().knowledge).toEqual(original)
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge.sets).toEqual([
+      expect.objectContaining({
         id: 'saved-group',
         name: 'Saved group',
-        datasetRefs: [
-          ...(hasRetainedDataset ? [{ id: retained.id, name: retained.name }] : []),
-          { id: 'deleted', name: 'Deleted docs' },
-          { id: 'deleted-2', name: 'Other missing docs' },
-        ],
-        queryMode: 'custom',
-        customQuery: 'support question',
-        multipleRetrievalConfig: { top_k: 7, score_threshold: 0.4, reranking_enable: false },
-        metadataFilterMode: MetadataFilteringModeEnum.manual,
-        metadataFilteringConditions: {
-          logical_operator: LogicalOperator.and,
-          conditions: [
-            {
-              id: 'topic-condition',
-              name: 'topic',
-              comparison_operator: ComparisonOperator.is,
-              value: 'agents',
-            },
-          ],
-        },
-      })
-      const original = snapshot().knowledge
-      const dialog = await open(user)
-      await advanced(user, dialog)
-      await user.click(
-        await within(dialog).findByRole('button', { name: 'common.operation.remove Deleted docs' }),
-      )
-      await user.click(
-        within(dialog).getByRole('button', { name: 'common.operation.remove Other missing docs' }),
-      )
-      await toggleDatasets(user, dialog, [/Replacement docs/])
-      expect(snapshot().knowledge).toEqual(original)
-      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-      expect(snapshot().knowledge.sets).toEqual([
-        expect.objectContaining({
-          id: 'saved-group',
-          name: 'Saved group',
-          datasets: [
-            ...(hasRetainedDataset ? [expect.objectContaining({ id: retained.id })] : []),
-            expect.objectContaining({ id: replacement.id }),
-          ],
-          query: { mode: 'user_query', value: 'support question' },
-          retrieval: expect.objectContaining({ top_k: 7, score_threshold: 0.4 }),
-          metadata_filtering: {
-            mode: 'manual',
-            conditions: {
-              logical_operator: 'and',
-              conditions: [
-                {
-                  id: 'topic-condition',
-                  metadata_id: hasRetainedDataset ? 'topic-retained' : 'topic-replacement',
-                  name: 'topic',
-                  comparison_operator: 'is',
-                  value: 'agents',
-                },
-              ],
-            },
+        datasets: [expect.objectContaining({ id: retained.id })],
+        query: { mode: 'user_query', value: 'support question' },
+        retrieval: expect.objectContaining({ top_k: 7, score_threshold: 0.4 }),
+        metadata_filtering: {
+          mode: 'manual',
+          conditions: {
+            logical_operator: 'and',
+            conditions: [
+              {
+                id: 'topic-condition',
+                metadata_id: 'topic-retained',
+                name: 'topic',
+                comparison_operator: 'is',
+                value: 'agents',
+              },
+            ],
           },
-        }),
-      ])
-    },
-  )
-
-  it.each([false, true])(
-    'cleans incompatible metadata only after replacing datasets (shared field=%s)',
-    async (hasSharedField) => {
-      const user = userEvent.setup()
-      const originalDataset = createDatasetFixture({
-        name: 'Original docs',
-        doc_metadata: [
-          { id: 'topic-old', name: 'topic', type: 'string' },
-          { id: 'language-old', name: 'language', type: 'string' },
-        ],
-      })
-      const replacement = createDatasetFixture({
-        id: 'replacement',
-        name: 'Replacement docs',
-        doc_metadata: hasSharedField
-          ? [{ id: 'language-new', name: 'language', type: 'string' }]
-          : [],
-      })
-      getDatasets.mockResolvedValue(datasetPage([originalDataset, replacement]))
-      setupClassic({
-        id: 'group',
-        name: 'Saved group',
-        selectedDatasets: [originalDataset],
-        metadataFilterMode: MetadataFilteringModeEnum.manual,
-        metadataFilteringConditions: {
-          logical_operator: LogicalOperator.and,
-          conditions: [
-            {
-              id: 'topic-condition',
-              metadata_id: 'topic-old',
-              name: 'topic',
-              comparison_operator: ComparisonOperator.is,
-              value: 'agents',
-            },
-            {
-              id: 'language-condition',
-              metadata_id: 'language-old',
-              name: 'language',
-              comparison_operator: ComparisonOperator.is,
-              value: 'en',
-            },
-          ],
         },
-      })
-      const original = snapshot().knowledge
-      const dialog = await open(user)
-      await advanced(user, dialog)
-      const picker = await openDatasetPicker(user, dialog)
-      await user.click(await within(picker).findByRole('button', { name: /Original docs/ }))
-      await user.click(within(picker).getByRole('button', { name: /Replacement docs/ }))
-      await confirmDatasetPicker(user, picker)
-      expect(snapshot().knowledge).toEqual(original)
-      const conditions = within(dialog).getByRole('button', { name: /metadata.panel.conditions/ })
-      await user.click(conditions)
-      expect(screen.queryByRole('group', { name: 'topic' })).not.toBeInTheDocument()
-      expect(screen.queryByDisplayValue('agents')).not.toBeInTheDocument()
-      if (hasSharedField)
-        expect(
-          within(screen.getByRole('group', { name: 'language' })).getByRole('textbox'),
-        ).toHaveValue('en')
-      await user.click(conditions)
-      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-      if (hasSharedField) {
-        expect(snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions).toEqual([
-          {
-            id: 'language-condition',
-            metadata_id: 'language-new',
-            name: 'language',
-            comparison_operator: 'is',
-            value: 'en',
-          },
-        ])
-      } else {
-        expect(dialog).toBeInTheDocument()
-        expect(within(dialog).getAllByRole('alert')[0]?.textContent).toMatch(
-          /metadata.panel.conditions/,
-        )
-        expect(snapshot().knowledge).toEqual(original)
-        await user.click(
-          within(dialog).getByRole('button', { name: /metadata.options.manual.title/ }),
-        )
-        await user.click(
-          screen.getByRole('menuitemradio', { name: /metadata.options.disabled.title/ }),
-        )
-        await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-        expect(snapshot().knowledge.sets[0].metadata_filtering).toEqual({ mode: 'disabled' })
-      }
-      expect(snapshot().knowledge.sets[0].datasets).toEqual([
-        expect.objectContaining({ id: replacement.id }),
-      ])
-    },
-  )
+      }),
+    ])
+  })
 
   it.each(['zero', 'empty operator'])(
     'blocks an unfilled metadata value and accepts correction with %s',
@@ -1231,6 +864,20 @@ describe('KnowledgeFS composer interaction', () => {
     ])
     expect(snapshot().knowledge.spaces[0].description).toBe('A real knowledge space')
     expect(snapshot().knowledge.sets).toEqual([])
+  })
+
+  it('lists advanced settings in the picker order regardless of selection order', async () => {
+    const user = userEvent.setup()
+    setup()
+    const dialog = await open(user)
+    await user.click(within(dialog).getByRole('option', { name: optionName('Engineering') }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
+    await user.click(within(dialog).getByRole('button', { name: /advancedSettings.label/ }))
+    expect(
+      within(dialog)
+        .getAllByRole('textbox', { name: /knowledgeFs.alias/ })
+        .map((input) => (input as HTMLInputElement).value),
+    ).toEqual(['Product manual', 'Engineering'])
   })
 
   it('keeps knowledge descriptions accessible without a separate help action', async () => {
@@ -1568,7 +1215,7 @@ describe('KnowledgeFS composer interaction', () => {
 
   it('does not mutate a read-only composer', () => {
     setup([binding], { readOnly: true })
-    expect(screen.getByRole('button', { name: /knowledgeRetrieval.add/ })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /knowledgeRetrieval.add/ })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /knowledgeRetrieval.remove/ }),
     ).not.toBeInTheDocument()
