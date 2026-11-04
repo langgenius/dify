@@ -1,7 +1,7 @@
 """Add account-owned personal access tokens.
 
 Revision ID: b2e4c6d8a013
-Revises: f1d3c5b7a902
+Revises: 53c10126d551
 Create Date: 2026-10-16 12:00:00
 """
 
@@ -11,7 +11,7 @@ from alembic import op
 from models.types import StringUUID
 
 revision = "b2e4c6d8a013"
-down_revision = "f1d3c5b7a902"
+down_revision = "53c10126d551"
 branch_labels = None
 depends_on = None
 

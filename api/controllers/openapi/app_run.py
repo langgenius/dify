@@ -477,6 +477,7 @@ class AppRunStopApi(Resource):
 class AppTaskStopApi(Resource):
     @endpoint(
         op="stop.task",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         effect=Effect.DESTRUCTIVE,
         summary=(
