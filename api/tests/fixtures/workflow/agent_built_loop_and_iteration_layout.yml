@@ -1,0 +1,303 @@
+# An agent-built app's graph cut down to its layout: a loop and an iteration whose children the agent placed by hand.
+app:
+  mode: workflow
+  name: Research brief builder
+kind: app
+version: 0.7.0
+workflow:
+  graph:
+    nodes:
+    - id: start
+      position:
+        x: 80.0
+        y: 280.0
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: Start
+        type: start
+    - id: research_loop
+      position:
+        x: 420.0
+        y: 280.0
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        start_node_id: research_loopstart
+        title: Research loop
+        type: loop
+    - draggable: false
+      id: research_loopstart
+      parentId: research_loop
+      position:
+        x: 24
+        y: 68
+      selectable: false
+      type: custom-loop-start
+      zIndex: 1002
+      data:
+        isInLoop: true
+        title: ''
+        type: loop-start
+    - id: search
+      parentId: research_loop
+      position:
+        x: 128
+        y: 68
+      type: custom
+      zIndex: 1002
+      data:
+        isInLoop: true
+        loop_id: research_loop
+        title: Search the web
+        type: tool
+    - id: judge
+      parentId: research_loop
+      position:
+        x: 400
+        y: 68
+      type: custom
+      zIndex: 1002
+      data:
+        isInLoop: true
+        loop_id: research_loop
+        title: Judge coverage
+        type: llm
+    - id: decide
+      parentId: research_loop
+      position:
+        x: 672
+        y: 68
+      type: custom
+      zIndex: 1002
+      data:
+        isInLoop: true
+        loop_id: research_loop
+        title: Merge sources and decide
+        type: code
+    - id: update
+      parentId: research_loop
+      position:
+        x: 944
+        y: 68
+      type: custom
+      zIndex: 1002
+      data:
+        isInLoop: true
+        loop_id: research_loop
+        title: Update loop state
+        type: assigner
+    - id: read_each
+      position:
+        x: 760.0
+        y: 280.0
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        start_node_id: read_eachstart
+        title: Read each source
+        type: iteration
+    - draggable: false
+      id: read_eachstart
+      parentId: read_each
+      position:
+        x: 24
+        y: 68
+      selectable: false
+      type: custom-iteration-start
+      zIndex: 1002
+      data:
+        isInIteration: true
+        title: ''
+        type: iteration-start
+    - id: reader
+      parentId: read_each
+      position:
+        x: 128
+        y: 68
+      type: custom
+      zIndex: 1002
+      data:
+        isInIteration: true
+        iteration_id: read_each
+        title: Fetch page
+        type: tool
+    - id: extract
+      parentId: read_each
+      position:
+        x: 400
+        y: 68
+      type: custom
+      zIndex: 1002
+      data:
+        isInIteration: true
+        iteration_id: read_each
+        title: Extract facts
+        type: llm
+    - id: dedupe
+      position:
+        x: 1100.0
+        y: 280.0
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: Remove duplicate facts
+        type: code
+    - id: brief
+      position:
+        x: 1440.0
+        y: 280.0
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: Write brief
+        type: llm
+    - id: end
+      position:
+        x: 1780.0
+        y: 280.0
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      data:
+        title: End
+        type: end
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: true
+        loop_id: research_loop
+        sourceType: loop-start
+        targetType: tool
+      id: research_loopstart-source-search-target
+      source: research_loopstart
+      sourceHandle: source
+      target: search
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: true
+        loop_id: research_loop
+        sourceType: tool
+        targetType: llm
+      id: search-source-judge-target
+      source: search
+      sourceHandle: source
+      target: judge
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: true
+        loop_id: research_loop
+        sourceType: llm
+        targetType: code
+      id: judge-source-decide-target
+      source: judge
+      sourceHandle: source
+      target: decide
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: true
+        loop_id: research_loop
+        sourceType: code
+        targetType: assigner
+      id: decide-source-update-target
+      source: decide
+      sourceHandle: source
+      target: update
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: read_each
+        sourceType: iteration-start
+        targetType: tool
+      id: read_eachstart-source-reader-target
+      source: read_eachstart
+      sourceHandle: source
+      target: reader
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: read_each
+        sourceType: tool
+        targetType: llm
+      id: reader-source-extract-target
+      source: reader
+      sourceHandle: source
+      target: extract
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: loop
+      id: start-source-research_loop-target
+      source: start
+      sourceHandle: source
+      target: research_loop
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: loop
+        targetType: iteration
+      id: research_loop-source-read_each-target
+      source: research_loop
+      sourceHandle: source
+      target: read_each
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: iteration
+        targetType: code
+      id: read_each-source-dedupe-target
+      source: read_each
+      sourceHandle: source
+      target: dedupe
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: dedupe-source-brief-target
+      source: dedupe
+      sourceHandle: source
+      target: brief
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: brief-source-end-target
+      source: brief
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom

@@ -9,7 +9,16 @@ from typing_extensions import TypedDict
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.nodes.human_input.constants import TIMEOUT_HANDLE
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy
-from services.workflow.authoring.canvas_layout import COLUMN_GAP, ORIGIN, ROW_GAP, lay_out_nodes
+from services.workflow.authoring.canvas_layout import (
+    CHILD_COLUMN_GAP,
+    CHILD_ROW_GAP,
+    COLUMN_GAP,
+    CONTAINER_PADDING,
+    ORIGIN,
+    ROW_GAP,
+    START_CHILD_SIZE,
+    lay_out_nodes,
+)
 from services.workflow.authoring.canvas_notes import NODE_HEIGHT, NODE_WIDTH, NoteSize
 from services.workflow.graph_check import CANVAS_NOTE_TYPE
 
@@ -221,18 +230,189 @@ def test_nodes_on_a_cycle_go_one_column_past_the_deepest() -> None:
     assert _overlapping(nodes) == []
 
 
-def test_nodes_inside_a_container_notes_and_unreadable_nodes_keep_their_place() -> None:
-    child = _node("child", parentId="loop", position=_at(24, 68))
+def test_notes_and_unreadable_nodes_keep_their_place() -> None:
     note: _Node = {"id": "note", "type": CANVAS_NOTE_TYPE, "data": {"type": ""}, "position": _at(9, 9)}
     unreadable: _Node = {"id": "broken", "type": "custom", "data": None, "position": _at(7, 7)}
-    nodes = [_node("start"), _node("loop", BuiltinNodeTypes.LOOP, width=600), _node("end"), child, note, unreadable]
-    untouched = copy.deepcopy([child, note, unreadable])
+    nodes = [_node("start"), _node("loop", BuiltinNodeTypes.LOOP, width=600), _node("end"), note, unreadable]
+    untouched = copy.deepcopy([note, unreadable])
     edges = [*_chain("start", "loop", "end"), _edge("end", "missing"), _edge("end", "end"), "not an edge"]
 
     positions = _laid_out(nodes, edges)
 
-    assert [child, note, unreadable] == untouched
+    assert [note, unreadable] == untouched
     assert positions["end"][0] == positions["loop"][0] + 600 + COLUMN_GAP
+
+
+_CONTAINERS = [
+    pytest.param(BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.ITERATION_START, id="iteration"),
+    pytest.param(BuiltinNodeTypes.LOOP, BuiltinNodeTypes.LOOP_START, id="loop"),
+]
+
+
+def _container(
+    container_id: str, container_type: str, start_type: str, *children: str, **wrapper: Unpack[_Wrapper]
+) -> tuple[list[_Node], list[_Edge]]:
+    """A container, its start child and `children` chained after it, all placed where an agent drops them."""
+    start = f"{container_id}_start"
+    nodes = [
+        _node(container_id, container_type, data={"start_node_id": start}, **wrapper),
+        _node(start, start_type, parentId=container_id, position=_at(24, 68)),
+        *(_node(child, parentId=container_id, position=_at(24, 68)) for child in children),
+    ]
+    return nodes, _chain(start, *children)
+
+
+_START_TYPES = {BuiltinNodeTypes.ITERATION_START, BuiltinNodeTypes.LOOP_START}
+
+
+def _extent(node: _Node) -> tuple[float, float]:
+    """The node's width and height as the layout takes them; an unmeasured start child is drawn small."""
+    data = node.get("data") or {}
+    start = data.get("type") in _START_TYPES
+    width = START_CHILD_SIZE[NoteSize.WIDTH] if start else NODE_WIDTH
+    height = START_CHILD_SIZE[NoteSize.HEIGHT] if start else NODE_HEIGHT
+    return node.get("width", width), node.get("height", height)
+
+
+def _boxes(nodes: Sequence[_Node], parent: str) -> dict[str, tuple[float, float, float, float]]:
+    """Each child's box inside `parent`, from the container's top-left corner: left, top, right, bottom."""
+    return {
+        node["id"]: (
+            node["position"]["x"],
+            node["position"]["y"],
+            node["position"]["x"] + _extent(node)[0],
+            node["position"]["y"] + _extent(node)[1],
+        )
+        for node in nodes
+        if node.get("parentId") == parent
+    }
+
+
+def _overlaps(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> bool:
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+
+def _assert_holds_its_children(nodes: Sequence[_Node], container: _Node) -> None:
+    boxes = _boxes(nodes, container["id"])
+    assert boxes
+    assert not [pair for pair in itertools.combinations(boxes, 2) if _overlaps(boxes[pair[0]], boxes[pair[1]])]
+    width, height = container["width"], container["height"]
+    data = container["data"]
+    assert data is not None
+    assert (data["width"], data["height"]) == (width, height)
+    for left, top, right, bottom in boxes.values():
+        assert left >= 0
+        assert right <= width
+        assert top >= 0
+        assert bottom <= height
+    assert width >= max(box[2] for box in boxes.values()) + CONTAINER_PADDING[NoteSize.WIDTH]
+    assert height >= max(box[3] for box in boxes.values()) + CONTAINER_PADDING[NoteSize.HEIGHT]
+
+
+@pytest.mark.parametrize(("container_type", "start_type"), _CONTAINERS)
+def test_a_container_lays_out_its_children_inside_it_and_grows_to_hold_them(
+    container_type: str, start_type: str
+) -> None:
+    contained, inner_edges = _container("box", container_type, start_type, "a", "b", "c")
+    nodes = [_node("start"), *contained, _node("after")]
+
+    positions = _laid_out(nodes, [*_chain("start", "box", "after"), *inner_edges])
+
+    box = contained[0]
+    _assert_holds_its_children(nodes, box)
+    padding = (CONTAINER_PADDING[NoteSize.WIDTH], CONTAINER_PADDING[NoteSize.HEIGHT])
+    assert positions["box_start"] == padding
+    step = NODE_WIDTH + CHILD_COLUMN_GAP
+    first = padding[0] + START_CHILD_SIZE[NoteSize.WIDTH] + CHILD_COLUMN_GAP
+    assert [positions[child] for child in ("a", "b", "c")] == [(first + step * i, padding[1]) for i in range(3)]
+    assert box["width"] == first + 2 * step + NODE_WIDTH + padding[0]
+    assert box["height"] == NODE_HEIGHT + 2 * padding[1]
+    assert positions["after"][0] == positions["box"][0] + box["width"] + COLUMN_GAP
+    assert _overlapping(nodes) == []
+
+
+def test_a_container_branch_stacks_its_rows_with_the_child_row_gap() -> None:
+    contained, inner_edges = _container("box", BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.ITERATION_START, "split")
+    branch = contained[2]
+    assert branch["data"] is not None
+    branch["data"].update(type=BuiltinNodeTypes.IF_ELSE, cases=[{"case_id": "yes"}])
+    nodes = [*contained, _node("yes", parentId="box"), _node("no", parentId="box")]
+    edges = [*inner_edges, _edge("split", "yes", "yes"), _edge("split", "no", "false")]
+
+    positions = _laid_out(nodes, edges)
+
+    assert positions["no"] == (positions["yes"][0], positions["yes"][1] + NODE_HEIGHT + CHILD_ROW_GAP)
+    _assert_holds_its_children(nodes, contained[0])
+
+
+def test_a_container_keeps_a_size_larger_than_its_children_need() -> None:
+    contained, inner_edges = _container(
+        "box", BuiltinNodeTypes.LOOP, BuiltinNodeTypes.LOOP_START, "a", width=2000, height=900
+    )
+
+    lay_out_nodes({"nodes": contained, "edges": inner_edges})
+
+    assert (contained[0]["width"], contained[0]["height"]) == (2000, 900)
+    assert contained[0]["data"] is not None
+    assert (contained[0]["data"]["width"], contained[0]["data"]["height"]) == (2000, 900)
+
+
+def test_a_measured_start_child_keeps_its_measured_size() -> None:
+    contained, inner_edges = _container("box", BuiltinNodeTypes.LOOP, BuiltinNodeTypes.LOOP_START, "a")
+    contained[1].update(width=100, height=50)
+
+    positions = _laid_out(contained, inner_edges)
+
+    assert positions["a"][0] == CONTAINER_PADDING[NoteSize.WIDTH] + 100 + CHILD_COLUMN_GAP
+
+
+def test_a_childs_absolute_position_follows_its_container() -> None:
+    contained, inner_edges = _container("box", BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.ITERATION_START, "a")
+    contained[2]["positionAbsolute"] = _at(1, 1)
+    nodes = [_node("start"), *contained]
+
+    lay_out_nodes({"nodes": nodes, "edges": [*_chain("start", "box"), *inner_edges]})
+
+    box, child = contained[0], contained[2]
+    assert child["positionAbsolute"] == {axis: box["position"][axis] + child["position"][axis] for axis in ("x", "y")}
+    assert "positionAbsolute" not in contained[1]
+
+
+def test_a_container_inside_a_container_is_laid_out_inside_out() -> None:
+    outer, outer_edges = _container("outer", BuiltinNodeTypes.LOOP, BuiltinNodeTypes.LOOP_START, "before")
+    inner, inner_edges = _container(
+        "inner", BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.ITERATION_START, "a", "b", "c"
+    )
+    inner[0]["parentId"] = "outer"
+    inner[0]["positionAbsolute"] = _at(0, 0)
+    inner[3]["positionAbsolute"] = _at(0, 0)
+    nodes = [_node("start"), *outer, *inner, _node("after")]
+    edges = [*_chain("start", "outer", "after"), *outer_edges, _edge("before", "inner"), *inner_edges]
+
+    positions = _laid_out(nodes, edges)
+
+    _assert_holds_its_children(nodes, inner[0])
+    _assert_holds_its_children(nodes, outer[0])
+    assert positions["inner"][0] == positions["before"][0] + NODE_WIDTH + CHILD_COLUMN_GAP
+    assert positions["after"][0] == positions["outer"][0] + outer[0]["width"] + COLUMN_GAP
+    assert inner[3]["positionAbsolute"] == {
+        axis: outer[0]["position"][axis] + inner[0]["position"][axis] + inner[3]["position"][axis]
+        for axis in ("x", "y")
+    }
+
+
+def test_laying_out_containers_twice_moves_nothing() -> None:
+    contained, inner_edges = _container("box", BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.ITERATION_START, "a", "b")
+    graph = {
+        "nodes": [_node("start"), *contained, _node("end")],
+        "edges": [*_chain("start", "box", "end"), *inner_edges],
+    }
+    lay_out_nodes(graph)
+    once = copy.deepcopy(graph)
+
+    lay_out_nodes(graph)
+
+    assert graph == once
 
 
 def test_moves_say_how_far_each_placed_node_moved() -> None:

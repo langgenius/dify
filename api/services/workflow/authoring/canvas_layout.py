@@ -1,5 +1,6 @@
-"""Lay out a graph's top-level nodes as the canvas's Organize button does: left to right by depth, each branch's rows
-in the order the canvas draws its handles, and no two nodes overlapping.
+"""Lay out a graph as the canvas's Organize button does: each container's children inside it, the container grown
+to hold them, then the top-level nodes; left to right by depth, each branch's rows in the order the canvas draws its
+handles, and no two nodes overlapping.
 """
 
 from collections.abc import Mapping, Sequence
@@ -7,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any, Final
 
 from services.workflow.authoring.canvas_notes import (
+    POSITION_ABSOLUTE_KEY,
     POSITION_KEY,
     Moves,
     NoteSize,
@@ -15,6 +17,7 @@ from services.workflow.authoring.canvas_notes import (
     node_length,
     place,
 )
+from services.workflow.graph_check import CONTAINER_NODE_TYPES, START_NODE_ID_KEY
 from services.workflow_variable_reference_validator import SOURCE_HANDLE, source_handle_order
 
 # Where the first node sits, as in the editor layout (core/workflow/editor_graph.py).
@@ -22,6 +25,15 @@ ORIGIN: Final[Mapping[NoteSize, float]] = {NoteSize.WIDTH: 80.0, NoteSize.HEIGHT
 # Organize's gaps between columns and between the nodes of one column (web workflow/utils/elk-layout.ts).
 COLUMN_GAP: Final = 100
 ROW_GAP: Final = 80
+# The same gaps between the nodes inside a container (CHILD_LAYOUT_OPTIONS, web workflow/utils/elk-layout.ts:116).
+CHILD_COLUMN_GAP: Final = 80
+CHILD_ROW_GAP: Final = 60
+# The room Organize leaves on every side of a container's children: NODE_LAYOUT_HORIZONTAL_PADDING and
+# NODE_LAYOUT_VERTICAL_PADDING (web workflow/constants.ts:28), applied in hooks/use-workflow-organize.helpers.ts:38,131.
+CONTAINER_PADDING: Final[Mapping[NoteSize, float]] = {NoteSize.WIDTH: 60, NoteSize.HEIGHT: 60}
+# The size the canvas draws a container's start node at, `size-11` under `mt-1` (web workflow/nodes/iteration-start
+# and loop-start index.tsx:12), for one the file gives no measured size.
+START_CHILD_SIZE: Final[Mapping[str, float]] = {NoteSize.WIDTH: 44, NoteSize.HEIGHT: 48}
 
 
 @dataclass(frozen=True)
@@ -30,32 +42,119 @@ class _Link:
     handle_rank: int
 
 
+@dataclass(frozen=True)
+class _Spacing:
+    """Where a level's first node sits, and the gaps between its columns and between the nodes of one column."""
+
+    origin: Mapping[NoteSize, float]
+    column_gap: float
+    row_gap: float
+
+
+_TOP_LEVEL: Final = _Spacing(ORIGIN, COLUMN_GAP, ROW_GAP)
+_INSIDE_CONTAINER: Final = _Spacing(CONTAINER_PADDING, CHILD_COLUMN_GAP, CHILD_ROW_GAP)
+
+type _Lengths = Mapping[NoteSize, float]
+
+
+@dataclass(frozen=True)
+class _Level:
+    """Nodes laid out together, the top level or one container's children, with their sizes and incoming links."""
+
+    nodes: Mapping[str, dict[str, Any]]
+    lengths: Mapping[str, _Lengths]
+    links: Mapping[str, Sequence[_Link]]
+    spacing: _Spacing
+
+
 def lay_out_nodes(graph: dict[str, Any]) -> Moves:
-    """Place every top-level node that is not a note; nodes inside a container keep their place in it. Returns how
-    far each node that had a position moved.
+    """Place every node that is not a note: each container's children inside it, inner containers first, with the
+    container grown to hold them, then the top-level nodes at their containers' new sizes. Returns how far each
+    top-level node that had a position moved.
     """
     nodes = graph.get("nodes")
     if not isinstance(nodes, list):
         return {}
-    placeable = {
-        node_id: node
-        for node_id, node in coverable_nodes(nodes).items()
-        if isinstance(node, dict)
-        if isinstance(node.get("data"), Mapping)
-    }
-    before = {node_id: _position(node) for node_id, node in placeable.items()}
-    edges = graph.get("edges")
-    links = _links(edges if isinstance(edges, list) else [], placeable)
-    tops: dict[str, float] = {}
-    left = ORIGIN[NoteSize.WIDTH]
-    for column in _columns(list(placeable), links):
-        _place_column(column, left=left, placeable=placeable, links=links, tops=tops)
-        left += max(node_length(placeable[node_id], size=NoteSize.WIDTH) for node_id in column) + COLUMN_GAP
+    graph_edges = graph.get("edges")
+    edges = graph_edges if isinstance(graph_edges, list) else []
+    top = _placeable(nodes, parent=None)
+    before = {node_id: _position(node) for node_id, node in top.items()}
+    for node in top.values():
+        _fit_children(node, nodes=nodes, edges=edges)
+    lengths = {node_id: _lengths(node) for node_id, node in top.items()}
+    _lay_out(_Level(top, lengths, _links(edges, top), _TOP_LEVEL))
+    for node_id, node in top.items():
+        _anchor_children(node_id, at=node[POSITION_KEY], nodes=nodes)
     return {
-        node_id: {axis: placeable[node_id][POSITION_KEY][axis] - start for axis, start in old.items()}
+        node_id: {axis: top[node_id][POSITION_KEY][axis] - start for axis, start in old.items()}
         for node_id, old in before.items()
         if old is not None
     }
+
+
+def _placeable(nodes: Sequence[object], *, parent: str | None) -> dict[str, dict[str, Any]]:
+    """The nodes directly inside `parent` that are not notes and whose data can be read, by id."""
+    return {
+        node_id: node
+        for node_id, node in coverable_nodes(nodes, parent=parent).items()
+        if isinstance(node, dict)
+        if isinstance(node.get("data"), dict)
+    }
+
+
+def _lengths(*sources: Mapping[str, Any]) -> dict[NoteSize, float]:
+    return {size: node_length(*sources, size=size) for size in NoteSize}
+
+
+def _is_container(data: Mapping[str, Any]) -> bool:
+    node_type = data.get("type")
+    if not isinstance(node_type, str):
+        return False
+    return node_type in CONTAINER_NODE_TYPES
+
+
+def _fit_children(container: dict[str, Any], *, nodes: Sequence[object], edges: Sequence[object]) -> None:
+    """Lay out a container's children inside it, any container among them first, and grow the container to hold
+    them as Organize does, never shrinking it (web hooks/use-workflow-organize.helpers.ts:44). A node that is not a
+    container, or a container with no children, is left as it is.
+    """
+    data = container["data"]
+    if not _is_container(data):
+        return
+    children = _placeable(nodes, parent=container["id"])
+    if not children:
+        return
+    for child in children.values():
+        _fit_children(child, nodes=nodes, edges=edges)
+    start = data.get(START_NODE_ID_KEY)
+    lengths = {
+        child_id: _lengths(child, *([START_CHILD_SIZE] if child_id == start else []))
+        for child_id, child in children.items()
+    }
+    _lay_out(_Level(children, lengths, _links(edges, children), _INSIDE_CONTAINER))
+    for size in NoteSize:
+        end = max(child[POSITION_KEY][size.axis] + lengths[child_id][size] for child_id, child in children.items())
+        current = container.get(size.value)
+        # The canvas reads the size from the wrapper and the data, so both get it.
+        container[size.value] = data[size.value] = max(
+            current if is_number(current) else 0, end + CONTAINER_PADDING[size]
+        )
+
+
+def _anchor_children(parent_id: str, *, at: Mapping[str, float], nodes: Sequence[object]) -> None:
+    """Give each node inside `parent_id` that saves an absolute position the one it now has, `at` being the
+    parent's, and the same for the nodes inside it.
+    """
+    placed = [
+        (child_id, child, position)
+        for child_id, child in _placeable(nodes, parent=parent_id).items()
+        if (position := _position(child)) is not None
+    ]
+    for child_id, child, position in placed:
+        absolute = {axis: at[axis] + offset for axis, offset in position.items()}
+        if POSITION_ABSOLUTE_KEY in child:
+            child[POSITION_ABSOLUTE_KEY] = absolute
+        _anchor_children(child_id, at=absolute, nodes=nodes)
 
 
 def _position(node: Mapping[str, Any]) -> dict[str, float] | None:
@@ -111,26 +210,27 @@ def _columns(order: Sequence[str], links: Mapping[str, Sequence[_Link]]) -> list
     return [columns[column] for column in sorted(columns)]
 
 
-def _place_column(
-    column: Sequence[str],
-    *,
-    left: float,
-    placeable: Mapping[str, dict[str, Any]],
-    links: Mapping[str, Sequence[_Link]],
-    tops: dict[str, float],
-) -> None:
+def _lay_out(level: _Level) -> None:
+    tops: dict[str, float] = {}
+    left = level.spacing.origin[NoteSize.WIDTH]
+    for column in _columns(list(level.nodes), level.links):
+        _place_column(column, left=left, level=level, tops=tops)
+        left += max(level.lengths[node_id][NoteSize.WIDTH] for node_id in column) + level.spacing.column_gap
+
+
+def _place_column(column: Sequence[str], *, left: float, level: _Level, tops: dict[str, float]) -> None:
     """Stack the column top down: each node level with the upstream node it hangs from, lower branches below,
     pushed down only as far as the node above it needs.
     """
-    origin = ORIGIN[NoteSize.HEIGHT]
+    origin = level.spacing.origin[NoteSize.HEIGHT]
 
     def anchor(node_id: str) -> tuple[float, int]:
-        placed = [(tops[link.source], link.handle_rank) for link in links[node_id] if link.source in tops]
+        placed = [(tops[link.source], link.handle_rank) for link in level.links[node_id] if link.source in tops]
         return min(placed, default=(origin, 0))
 
     floor = origin
     for node_id in sorted(column, key=lambda node_id: (*anchor(node_id), column.index(node_id))):
         top = max(anchor(node_id)[0], floor)
-        place(placeable[node_id], {NoteSize.WIDTH.axis: left, NoteSize.HEIGHT.axis: top})
+        place(level.nodes[node_id], {NoteSize.WIDTH.axis: left, NoteSize.HEIGHT.axis: top})
         tops[node_id] = top
-        floor = top + node_length(placeable[node_id], size=NoteSize.HEIGHT) + ROW_GAP
+        floor = top + level.lengths[node_id][NoteSize.HEIGHT] + level.spacing.row_gap
