@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, Mock, patch
 
@@ -704,7 +704,7 @@ class TestWorkflowCollaborationService:
         events: list[str] = []
 
         @contextmanager
-        def graph_view_lock() -> Iterator[None]:
+        def graph_view_lock() -> Generator[None]:
             events.append("lock_enter")
             yield
             events.append("lock_exit")

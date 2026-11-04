@@ -1,6 +1,6 @@
 """Unit tests for the plugin inner knowledge retrieval controller."""
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from unittest.mock import patch
 
@@ -57,7 +57,7 @@ def _payload() -> dict[str, object]:
 
 
 @contextmanager
-def _plugin_inner_auth() -> Iterator[None]:
+def _plugin_inner_auth() -> Generator[None]:
     with (
         config_overrides_context(PLUGIN_DAEMON_KEY="plugin-daemon-key", INNER_API_KEY_FOR_PLUGIN="inner-key"),
     ):
