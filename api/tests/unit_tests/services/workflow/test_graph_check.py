@@ -4,7 +4,14 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models import AppMode
-from services.workflow.graph_check import IssueCode, IssueSeverity, check_graph, credential_check, data_loc
+from services.workflow.graph_check import (
+    EMPTY_SELECTOR_MESSAGE,
+    IssueCode,
+    IssueSeverity,
+    check_graph,
+    credential_check,
+    data_loc,
+)
 from services.workflow_service import WorkflowService
 
 
@@ -147,7 +154,11 @@ def _code_variable(selector: list[str]) -> dict[str, object]:
 
 MODEL: dict[str, object] = {"provider": "langgenius/openai/openai", "name": "gpt-4o", "mode": "chat"}
 EMPTY_REFERENCES = [
-    pytest.param({"type": "document-extractor", "title": "D", "variable_selector": []}, id="document-extractor"),
+    pytest.param(
+        {"type": "document-extractor", "title": "D", "variable_selector": []},
+        "files reads no variable",
+        id="document-extractor",
+    ),
     pytest.param(
         {
             "type": "assigner",
@@ -155,6 +166,7 @@ EMPTY_REFERENCES = [
             "title": "A",
             "items": [{"variable_selector": [], "input_type": "constant", "operation": "over-write", "value": "x"}],
         },
+        EMPTY_SELECTOR_MESSAGE,
         id="assigner",
     ),
     pytest.param(
@@ -163,6 +175,7 @@ EMPTY_REFERENCES = [
             "title": "If",
             "cases": [{"case_id": "true", "logical_operator": "and", "conditions": [_condition([])]}],
         },
+        EMPTY_SELECTOR_MESSAGE,
         id="if-else",
     ),
     pytest.param(
@@ -174,10 +187,12 @@ EMPTY_REFERENCES = [
             "variables": [_code_variable([])],
             "outputs": {"result": {"type": "string", "children": None}},
         },
+        "arg1 reads no variable",
         id="code",
     ),
     pytest.param(
         {"type": "template-transform", "title": "T", "template": "{{ arg1 }}", "variables": [_code_variable([])]},
+        "arg1 reads no variable",
         id="template-transform",
     ),
     pytest.param(
@@ -188,6 +203,7 @@ EMPTY_REFERENCES = [
             "model": MODEL,
             "classes": [{"id": "1", "name": "Weather"}],
         },
+        "query reads no variable",
         id="question-classifier",
     ),
     pytest.param(
@@ -199,13 +215,14 @@ EMPTY_REFERENCES = [
             "parameters": [{"name": "city", "type": "string", "description": "The city", "required": True}],
             "reasoning_mode": "prompt",
         },
+        "query reads no variable",
         id="parameter-extractor",
     ),
 ]
 
 
-@pytest.mark.parametrize("data", EMPTY_REFERENCES)
-def test_a_reference_that_reads_nothing_is_reported(data: dict[str, object]) -> None:
+@pytest.mark.parametrize(("data", "message"), EMPTY_REFERENCES)
+def test_a_reference_that_reads_nothing_is_reported(data: dict[str, object], message: str) -> None:
     issues = check_graph({"nodes": [START, _node("n", data)], "edges": []}, mode=AppMode.WORKFLOW)
 
     # A branch node here has no edges; that warning is not what this test is about.
@@ -215,7 +232,7 @@ def test_a_reference_that_reads_nothing_is_reported(data: dict[str, object]) -> 
         IssueSeverity.WARNING,
         data_loc("n"),
     )
-    assert issue.message.endswith(" reads no variable")
+    assert issue.message == message
 
 
 def _container(container: str, **data: object) -> list[dict[str, object]]:

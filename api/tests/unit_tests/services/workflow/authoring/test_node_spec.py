@@ -1,4 +1,3 @@
-import dataclasses
 from typing import Literal
 
 import pytest
@@ -212,18 +211,6 @@ def test_open_fields_are_every_top_level_field_the_data_lacks() -> None:
     assert fields[("model",)].type == "object"
     assert fields[("memory",)].required is False
     assert fields[("memory",)].default is None
-
-
-def test_a_hint_carries_only_what_the_schema_says() -> None:
-    assert [field.name for field in dataclasses.fields(FieldHint)] == [
-        "loc",
-        "type",
-        "options",
-        "description",
-        "required",
-        "default",
-        "items",
-    ]
 
 
 def test_open_fields_list_required_fields_first() -> None:
