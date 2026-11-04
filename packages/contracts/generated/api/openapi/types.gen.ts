@@ -1513,7 +1513,7 @@ export type RunListQuery = {
   last_id?: string | null
   limit?: number
   status?: 'failed' | 'partial-succeeded' | 'running' | 'stopped' | 'succeeded' | null
-  triggered_from?: 'app-run' | 'debugging'
+  triggered_from?: 'app-run' | 'debugging' | 'plugin' | 'schedule' | 'webhook'
 }
 
 export type RunListResponse = {
@@ -2931,7 +2931,7 @@ export type GetAppsByAppIdRunsData = {
     last_id?: string
     limit?: number
     status?: 'failed' | 'partial-succeeded' | 'running' | 'stopped' | 'succeeded'
-    triggered_from?: 'app-run' | 'debugging'
+    triggered_from?: 'app-run' | 'debugging' | 'plugin' | 'schedule' | 'webhook'
   }
   url: '/apps/{app_id}/runs'
 }
