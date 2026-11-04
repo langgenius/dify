@@ -186,9 +186,10 @@ TOOL_ARGUMENT_CORRECTNESS_PROMPT = """TARGET METRIC: tool_argument_correctness
 
 DEFINITION
 
-Evaluate whether model-controlled arguments supplied to the called tool are structurally and semantically
-correct for the task and the information available before the call.
-EVALUATION_DATA contains exactly one tool call. Assess only that call.
+Evaluate whether model-controlled arguments supplied to each called tool are structurally and semantically
+correct for the task and the information available before that call.
+EVALUATION_DATA contains one or more tool calls, each with an assessment_key. Return one top-level
+assessment under each matching assessment_key. Every supplied key must be present exactly once.
 
 EVALUATION BOUNDARIES
 
@@ -197,7 +198,7 @@ values, and consistency with the task and prior observations.
 
 Do not evaluate whether the tool should have been selected, whether another tool would have been better,
 trajectory efficiency, tool-execution success, final-answer correctness, or hidden/system-injected
-parameters. Assess this call using only information available before it.
+parameters. Assess each call independently using only information available before that call.
 
 PER-CALL RUBRIC
 
@@ -217,7 +218,7 @@ SPECIAL RULES
 - Accept alternative representations permitted by the schema that preserve the intended meaning.
 - Do not penalize parameters injected by the system and omitted from the model-visible schema.
 - Tool execution failure does not by itself prove that arguments were incorrect.
-- Return one assessment for the supplied tool call. The application attaches its call ID and tool reference.
+- The application attaches each assessment's tool call ID and tool reference from the supplied key.
 - The application averages the weighted scores from all assessed tool calls to produce the metric score.
 """
 
@@ -229,7 +230,7 @@ AGENT_JUDGE_PROMPTS: dict[str, tuple[str, str]] = {
         TOOL_SELECTION_CORRECTNESS_PROMPT,
     ),
     EvaluationMetricName.TOOL_ARGUMENT_CORRECTNESS.value: (
-        "agent.tool_argument_correctness.v2",
+        "agent.tool_argument_correctness.v3",
         TOOL_ARGUMENT_CORRECTNESS_PROMPT,
     ),
 }

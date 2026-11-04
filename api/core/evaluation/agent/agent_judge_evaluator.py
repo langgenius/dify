@@ -7,9 +7,10 @@ import logging
 import math
 import re
 from collections.abc import Mapping, Sequence
+from functools import lru_cache
 from typing import Any, TypeVar, cast
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, create_model, model_validator
 
 from core.evaluation.agent.judge_prompts import get_agent_judge_prompt
 from core.evaluation.entities.evaluation_entity import (
@@ -146,6 +147,13 @@ class ToolArgumentJudgeOutput(_JudgeOutputBase):
 
     criteria: ToolArgumentCriteria
     failed_parameter_paths: list[str] = Field(default_factory=list, max_length=50)
+
+
+@lru_cache(maxsize=_MAX_COLLECTION_ITEMS)
+def _tool_argument_batch_schema(call_count: int) -> type[BaseModel]:
+    """Require one named assessment for every call in this judge request."""
+    fields: dict[str, Any] = {f"call_{index}": (ToolArgumentJudgeOutput, ...) for index in range(1, call_count + 1)}
+    return create_model(f"ToolArgumentBatchJudgeOutput{call_count}", **fields)
 
 
 class _NotApplicableError(Exception):
@@ -385,27 +393,32 @@ class AgentLLMJudgeEvaluator:
         payload_warnings: Sequence[str],
         sanitization_warnings: Sequence[str],
     ) -> EvaluationMetric:
-        """Judge each assessable call separately and bind trusted call identities locally."""
+        """Judge all assessable calls in one request and bind trusted call identities locally."""
         sanitized_calls = cast(list[Mapping[str, Any]], sanitized_payload["tool_calls"])
+        indexed_calls = [(f"call_{index}", call) for index, call in enumerate(sanitized_calls, start=1)]
+        judge_output = judge_model.generate(
+            system_prompt=system_prompt,
+            payload={
+                **sanitized_payload,
+                "tool_calls": [{**call, "assessment_key": key} for key, call in indexed_calls],
+            },
+            schema=_tool_argument_batch_schema(len(indexed_calls)),
+        )
         scores: list[float] = []
         reported_scores: list[float] = []
         serialized_assessments: list[dict[str, Any]] = []
         warnings = [*payload_warnings, *sanitization_warnings]
         evidence_step_ids: list[str] = []
-        for call in sanitized_calls:
-            judge_output = judge_model.generate(
-                system_prompt=system_prompt,
-                payload={**sanitized_payload, "tool_calls": [call]},
-                schema=ToolArgumentJudgeOutput,
-            )
+        for key, call in indexed_calls:
+            call_output = cast(ToolArgumentJudgeOutput, getattr(judge_output, key))
             assessment = ToolCallArgumentAssessment(
                 tool_call_id=str(call["tool_call_id"]),
                 tool_ref=str(call["tool_ref"]),
-                score=judge_output.score,
-                reason=judge_output.reason,
-                criteria=judge_output.criteria,
-                failed_parameter_paths=judge_output.failed_parameter_paths,
-                evidence_step_ids=judge_output.evidence_step_ids,
+                score=call_output.score,
+                reason=call_output.reason,
+                criteria=call_output.criteria,
+                failed_parameter_paths=call_output.failed_parameter_paths,
+                evidence_step_ids=call_output.evidence_step_ids,
             )
             score = _weighted_score(assessment.criteria, _TOOL_ARGUMENT_WEIGHTS)
             serialized = assessment.model_dump(mode="json")
@@ -413,9 +426,9 @@ class AgentLLMJudgeEvaluator:
             serialized["score"] = score
             serialized_assessments.append(serialized)
             scores.append(score)
-            reported_scores.append(judge_output.score)
-            warnings.extend(judge_output.warnings)
-            evidence_step_ids.extend(judge_output.evidence_step_ids)
+            reported_scores.append(call_output.score)
+            warnings.extend(call_output.warnings)
+            evidence_step_ids.extend(call_output.evidence_step_ids)
 
         metric_score = round(sum(scores) / len(scores), 4)
         return EvaluationMetric(

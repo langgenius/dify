@@ -14,6 +14,7 @@ from core.evaluation.agent.agent_judge_evaluator import (
     TrajectoryQualityJudgeOutput,
     _sanitize_value,
     _strict_judge_json_schema,
+    _tool_argument_batch_schema,
     _tool_selection_payload,
     _validated_success_criteria_assessments,
 )
@@ -42,6 +43,25 @@ class _FakeJudgeModel:
         return self.output
 
 
+class _FakeToolArgumentJudgeModel:
+    model_identifier = "provider/model"
+
+    def __init__(self, outputs: list[ToolArgumentJudgeOutput]) -> None:
+        self.outputs = outputs
+        self.payload: dict[str, object] | None = None
+        self.system_prompt = ""
+        self.call_count = 0
+
+    def generate(self, *, system_prompt, payload, schema):
+        self.call_count += 1
+        self.system_prompt = system_prompt
+        self.payload = dict(payload)
+        keys = [f"call_{index}" for index in range(1, len(self.outputs) + 1)]
+        assert list(schema.model_fields) == keys
+        assert _strict_judge_json_schema(schema)["required"] == keys
+        return schema(**dict(zip(keys, self.outputs, strict=True)))
+
+
 def _criterion(score: float | None, *, applicable: bool = True) -> CriterionAssessment:
     return CriterionAssessment(
         applicable=applicable,
@@ -58,6 +78,7 @@ def _criterion(score: float | None, *, applicable: bool = True) -> CriterionAsse
         TrajectoryQualityJudgeOutput,
         ToolSelectionJudgeOutput,
         ToolArgumentJudgeOutput,
+        _tool_argument_batch_schema(2),
     ],
 )
 def test_agent_judge_json_schema_is_strict_at_every_object_level(schema_model: type) -> None:
@@ -281,18 +302,20 @@ def test_task_completion_rejects_inapplicable_success_criterion_without_data_lim
 def test_tool_argument_correctness_scores_each_assessable_call(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake_model = _FakeJudgeModel(
-        ToolArgumentJudgeOutput(
-            score=1,
-            reason="The timezone is ambiguous.",
-            criteria=ToolArgumentCriteria(
-                schema_conformance=_criterion(1),
-                required_parameter_coverage=_criterion(1),
-                semantic_value_correctness=_criterion(0.5),
-                context_consistency=_criterion(0.75),
-            ),
-            failed_parameter_paths=["$.destination_timezone"],
-        )
+    fake_model = _FakeToolArgumentJudgeModel(
+        [
+            ToolArgumentJudgeOutput(
+                score=1,
+                reason="The timezone is ambiguous.",
+                criteria=ToolArgumentCriteria(
+                    schema_conformance=_criterion(1),
+                    required_parameter_coverage=_criterion(1),
+                    semantic_value_correctness=_criterion(0.5),
+                    context_consistency=_criterion(0.75),
+                ),
+                failed_parameter_paths=["$.destination_timezone"],
+            )
+        ]
     )
     monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", lambda *_args: fake_model)
     item = AgentEvaluationItem(
@@ -353,29 +376,20 @@ def test_tool_argument_correctness_scores_each_assessable_call(
     assert metric.details["call_assessments"][0]["reported_score"] == 1
     assert metric.details["call_assessments"][0]["score"] == 0.7375
     assert metric.details["call_assessments"][0]["tool_call_id"] == "call-1"
-    assert metric.details["prompt_version"] == "agent.tool_argument_correctness.v2"
+    assert metric.details["prompt_version"] == "agent.tool_argument_correctness.v3"
+    assert fake_model.call_count == 1
     assert fake_model.payload is not None
     assert fake_model.payload["tool_calls"][0]["tool_description"] == ""
+    assert fake_model.payload["tool_calls"][0]["assessment_key"] == "call_1"
     assert "call_assessments" not in _strict_judge_json_schema(ToolArgumentJudgeOutput)["properties"]
 
 
 def test_tool_argument_correctness_judges_multiple_calls_independently(monkeypatch: pytest.MonkeyPatch) -> None:
-    class PerCallJudgeModel:
-        model_identifier = "provider/model"
-
-        def __init__(self) -> None:
-            self.call_ids: list[str] = []
-
-        def generate(self, *, system_prompt, payload, schema):
-            assert schema is ToolArgumentJudgeOutput
-            assert "exactly one tool call" in system_prompt
-            assert len(payload["tool_calls"]) == 1
-            call_id = payload["tool_calls"][0]["tool_call_id"]
-            self.call_ids.append(call_id)
-            score = 0.6 if call_id == "call-1" else 1.0
-            return ToolArgumentJudgeOutput(
+    fake_model = _FakeToolArgumentJudgeModel(
+        [
+            ToolArgumentJudgeOutput(
                 score=score,
-                reason=f"Assessment for {call_id}.",
+                reason=f"Assessment for call_{index}.",
                 criteria=ToolArgumentCriteria(
                     schema_conformance=_criterion(score),
                     required_parameter_coverage=_criterion(score),
@@ -383,8 +397,9 @@ def test_tool_argument_correctness_judges_multiple_calls_independently(monkeypat
                     context_consistency=_criterion(score),
                 ),
             )
-
-    fake_model = PerCallJudgeModel()
+            for index, score in enumerate((0.6, 1.0), start=1)
+        ]
+    )
     monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", lambda *_args: fake_model)
     item = AgentEvaluationItem(
         index=0,
@@ -406,7 +421,9 @@ def test_tool_argument_correctness_judges_multiple_calls_independently(monkeypat
     result = AgentLLMJudgeEvaluator().evaluate([item], ["tool_argument_correctness"], "provider", "model", "tenant")[0]
 
     assert result.error is None
-    assert fake_model.call_ids == ["call-1", "call-2"]
+    assert fake_model.call_count == 1
+    assert fake_model.payload is not None
+    assert [call["assessment_key"] for call in fake_model.payload["tool_calls"]] == ["call_1", "call_2"]
     assert result.metrics[0].value == 0.8
     assert [assessment["tool_call_id"] for assessment in result.metrics[0].details["call_assessments"]] == [
         "call-1",
