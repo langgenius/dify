@@ -9,7 +9,7 @@ from core.prompt.prompt_transform import PromptTransform
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ParameterRule, ParameterType
-from tests.unit_tests.core.model_fixtures import make_model_config, make_token_buffer_memory
+from tests.helpers.unit.core.model_fixtures import make_model_config, make_token_buffer_memory
 
 
 class TestPromptTransform:

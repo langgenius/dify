@@ -30,11 +30,11 @@ export const changeWebAppPasswordWithToken = ({
   body: { token: string; new_password: string; password_confirm: string }
 }): Promise<CommonResponse> => post<CommonResponse>(url, { body }, { isPublicAPI: true })
 
-export const uploadPublicRemoteFileInfo = (url: string) => {
+export const uploadPublicRemoteFileInfo = (url: string, options?: { silent?: boolean }) => {
   return post<{ id: string; name: string; size: number; mime_type: string; url: string }>(
     '/remote-files/upload',
     { body: { url } },
-    { isPublicAPI: true },
+    { isPublicAPI: true, ...options },
   )
 }
 

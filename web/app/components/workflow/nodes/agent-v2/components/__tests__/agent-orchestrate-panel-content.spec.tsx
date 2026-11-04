@@ -10,6 +10,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { renderEditor } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { toast } from '@/app/notifications'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
@@ -293,6 +294,10 @@ beforeEach(() => {
   }))
 })
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 describe('Inline Agent configure workspace', () => {
   it('loads the build draft while waiting for composer data', async () => {
     renderWorkspace({ composer: null })
@@ -402,9 +407,10 @@ describe('Inline Agent configure workspace', () => {
     expect(api.deleteBuildDraft).not.toHaveBeenCalled()
     await confirm(user)
     await waitFor(() => expect(api.deleteBuildDraft).toHaveBeenCalledOnce())
-    expect(api.stopMessage).toHaveBeenCalledWith({
-      params: { agent_id: 'agent-1', task_id: 'task-0' },
-    })
+    expect(api.stopMessage).toHaveBeenCalledWith(
+      { params: { agent_id: 'agent-1', task_id: 'task-0' } },
+      { context: { silent: true } },
+    )
     expect(api.stopMessage.mock.invocationCallOrder[0]).toBeLessThan(
       api.deleteBuildDraft.mock.invocationCallOrder[0]!,
     )
@@ -571,6 +577,98 @@ describe('Inline Agent configure workspace', () => {
     },
   )
 
+  it('applies the latest build draft instead of the cached one', async () => {
+    const user = userEvent.setup()
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+    renderWorkspace()
+    await screen.findByRole('button', { name: 'custom.apply' })
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft('Latest build instructions'))
+
+    await user.click(applyButton())
+
+    await waitFor(() =>
+      expect(api.saveComposer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            agent_soul: createBuildDraft('Latest build instructions').agent_soul,
+          }),
+        }),
+      ),
+    )
+  })
+
+  it('reports a failed composer save once and keeps the build draft for retry', async () => {
+    const user = userEvent.setup()
+    const errorToast = vi.spyOn(toast, 'error')
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+    api.saveComposer.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 503 }), {
+        message: 'Could not save the Agent configuration',
+      }),
+    )
+    renderWorkspace()
+    await screen.findByRole('button', { name: 'custom.apply' })
+
+    await user.click(applyButton())
+
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Could not save the Agent configuration'),
+    )
+    expect(api.deleteBuildDraft).not.toHaveBeenCalled()
+    expect(screen.getByRole('group', { name: `${prefix}.buildDraft.title` })).toBeVisible()
+    expect(applyButton()).toBeEnabled()
+  })
+
+  it('keeps the build draft available for retry when applying it cannot clear the server draft', async () => {
+    const user = userEvent.setup()
+    const errorToast = vi.spyOn(toast, 'error')
+    const successToast = vi.spyOn(toast, 'success')
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+    api.deleteBuildDraft.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 503 }), {
+        message: 'Could not clear the build draft',
+      }),
+    )
+    renderWorkspace()
+    await screen.findByRole('button', { name: 'custom.apply' })
+
+    await user.click(applyButton())
+
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Could not clear the build draft'),
+    )
+    expect(successToast).not.toHaveBeenCalled()
+    expect(api.saveComposer).toHaveBeenCalledOnce()
+    expect(api.refreshConversation).not.toHaveBeenCalled()
+    expect(screen.getByRole('group', { name: `${prefix}.buildDraft.title` })).toBeVisible()
+    expect(applyButton()).toBeEnabled()
+
+    await user.click(applyButton())
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('group', { name: `${prefix}.buildDraft.title` }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(successToast).toHaveBeenCalledOnce()
+    expect(errorToast).toHaveBeenCalledOnce()
+    expect(promptEditor()).toHaveAttribute('contenteditable', 'true')
+    expect(promptEditor()).toHaveTextContent('Built instructions')
+  })
+
+  it('does not apply a cached build draft when refreshing it fails', async () => {
+    const user = userEvent.setup()
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+    renderWorkspace()
+    await screen.findByRole('button', { name: 'custom.apply' })
+    api.loadBuildDraft.mockRejectedValue(createHttpError(new Response(null, { status: 500 })))
+
+    await user.click(applyButton())
+
+    await waitFor(() => expect(applyButton()).toBeEnabled())
+    expect(api.saveComposer).not.toHaveBeenCalled()
+  })
+
   it('keeps an existing build draft until the switch-to-preview confirmation is accepted', async () => {
     const user = userEvent.setup()
     api.loadBuildDraft.mockResolvedValue(createBuildDraft())
@@ -602,7 +700,7 @@ describe('Inline Agent configure workspace', () => {
           debug_conversation_message_count: 1,
         }),
       })
-      expect(await screen.findByText('Earlier answer')).toBeVisible()
+      expect(await screen.findByText('Earlier answer', {}, { timeout: 5000 })).toBeVisible()
       expect(api.history).toHaveBeenCalledWith({
         params: { agent_id: 'agent-1' },
         query: { conversation_id: 'old-conversation' },
@@ -628,7 +726,11 @@ describe('Inline Agent configure workspace', () => {
         debug_conversation_message_count: 0,
       }),
     })
-    await screen.findByRole('textbox', { name: `${prefix}.build.inputPlaceholder` })
+    await screen.findByRole(
+      'textbox',
+      { name: `${prefix}.build.inputPlaceholder` },
+      { timeout: 5000 },
+    )
     expect(restartButton()).toBeDisabled()
   })
 
@@ -642,23 +744,25 @@ describe('Inline Agent configure workspace', () => {
         debug_conversation_message_count: 1,
       }),
     })
-    await screen.findByText('Build history')
+    expect(await screen.findByText('Build history', {}, { timeout: 5000 })).toBeVisible()
     await changeMode(user, 'preview')
     await sendPreview(user)
     await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
     await receive(0, 'preview-conversation', 'Preview answer')
     await complete()
     await user.click(restartButton())
-    await waitFor(() =>
-      expect(api.refreshConversation).toHaveBeenCalledExactlyOnceWith({
-        params: { agent_id: 'agent-1' },
-        body: { draft_type: 'draft' },
-      }),
-    )
+    expect(api.refreshConversation).not.toHaveBeenCalled()
     await waitFor(() => expect(screen.queryByText('Preview answer')).not.toBeInTheDocument())
     expect(api.deleteBuildDraft).not.toHaveBeenCalled()
+    await sendPreview(user)
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    expect(ssePost.mock.calls[1]?.[1].body).toEqual(
+      expect.objectContaining({ conversation_id: '', parent_message_id: null }),
+    )
+    await receive(1, 'new-preview-conversation', 'New preview answer')
+    await complete(1)
     await changeMode(user, 'build')
-    expect(await screen.findByText('Build history')).toBeVisible()
+    expect(await screen.findByText('Build history', {}, { timeout: 5000 })).toBeVisible()
   })
 
   it('opens generated files after a build response completes', async () => {

@@ -10,6 +10,7 @@ import { I18nextProvider, Trans, useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import ThemeSelector from '@/app/components/base/theme-selector'
+import { I18nDirectionProvider } from '@/app/components/provider/i18n-direction'
 import { loadI18nResource } from '@/i18n/load-resource'
 import { getInitOptions } from '@/i18n/settings'
 import { usePathname, useSearchParams } from '@/next/navigation'
@@ -22,6 +23,8 @@ type AppNotAccessibleProps = {
   clientIp?: string
   /** A dialog supplies its own landmarks and close control. */
   embedded?: boolean
+  /** Only the standalone error document owns the document language. */
+  syncDocument?: boolean
   /** The document gate supplies browser-language resources before streaming. */
   initialLocale?: Locale
   initialResources?: Resource
@@ -50,7 +53,7 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
   return (
     <div
       lang={i18n.language}
-      dir={i18n.dir()}
+      dir={i18n.dir(i18n.language)}
       className={cn(
         'w-full overflow-y-auto bg-background-default-burn p-1',
         embedded ? 'min-h-full' : 'h-dvh',
@@ -151,7 +154,9 @@ export default function AppNotAccessible(props: AppNotAccessibleProps) {
   return (
     <Suspense fallback={<LoadingPlaceholder className="min-h-dvh" />}>
       <I18nextProvider i18n={i18n}>
-        <PageContent {...props} />
+        <I18nDirectionProvider syncDocument={props.syncDocument ?? false}>
+          <PageContent {...props} />
+        </I18nDirectionProvider>
       </I18nextProvider>
     </Suspense>
   )

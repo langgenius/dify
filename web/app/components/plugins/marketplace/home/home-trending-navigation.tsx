@@ -209,23 +209,23 @@ function TrendingNavigation({
       aria-label={t(($) => $['marketplace.home.trendingPaginationLabel'])}
       className={cn(
         styles.navigation,
-        'absolute right-0 z-10 flex h-[22px] items-center gap-2 px-5 py-2',
+        'absolute inset-e-0 z-10 flex h-[22px] items-center gap-2 px-5 py-2',
       )}
     >
       <div className="relative h-1.5 shrink-0" style={{ width: paginationWidth }}>
         <span
           aria-hidden
-          className="pointer-events-none absolute top-0 left-0 z-1 flex h-1.5 w-10 items-center overflow-hidden rounded-full bg-state-base-handle transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none"
+          className="pointer-events-none absolute inset-s-0 top-0 z-1 flex h-1.5 w-10 items-center overflow-hidden rounded-full bg-state-base-handle transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none"
           style={{
-            transform: `translate3d(${selectedIndex * PAGINATION_STEP}px, 0, 0)`,
+            transform: `translate3d(calc(var(--pagination-direction) * ${selectedIndex * PAGINATION_STEP}px), 0, 0)`,
           }}
         >
           <span
             key={selectedIndex}
             ref={progressRef}
             data-carousel-progress
-            className="h-full w-full rounded-full bg-text-accent"
-            style={{ transform: 'scaleX(0)', transformOrigin: 'left center' }}
+            className="h-full w-full origin-left rounded-full bg-text-accent rtl:origin-right"
+            style={{ transform: 'scaleX(0)' }}
           />
         </span>
         {banners.map((banner, index) => {
@@ -246,12 +246,12 @@ function TrendingNavigation({
                 clearImplicitPauseReasons()
               }}
               className={cn(
-                'absolute top-0 left-0 z-2 h-1.5 overflow-hidden rounded-full outline-hidden transition-[transform,width,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] after:absolute after:-inset-2 hover:bg-state-base-handle-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none',
+                'absolute inset-s-0 top-0 z-2 h-1.5 overflow-hidden rounded-full outline-hidden transition-[transform,width,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] after:absolute after:-inset-2 hover:bg-state-base-handle-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none',
                 isCurrent ? 'bg-transparent' : 'bg-state-base-handle',
               )}
               style={{
                 width: isCurrent ? PAGINATION_ACTIVE_WIDTH : PAGINATION_DOT_SIZE,
-                transform: `translate3d(${getPaginationItemOffset(index, selectedIndex)}px, 0, 0)`,
+                transform: `translate3d(calc(var(--pagination-direction) * ${getPaginationItemOffset(index, selectedIndex)}px), 0, 0)`,
               }}
             />
           )

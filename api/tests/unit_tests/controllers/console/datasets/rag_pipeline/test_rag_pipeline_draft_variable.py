@@ -31,8 +31,8 @@ from graphon.variables import IntegerVariable, StringVariable
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowType
-from tests.unit_tests.controllers.rbac_introspection import rbac_checks
-from tests.unit_tests.model_factories import make_workflow
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
+from tests.helpers.unit.model_factories import make_workflow
 
 
 @pytest.fixture

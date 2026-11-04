@@ -149,8 +149,8 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         : ''
 
   const renderHitResults = (results: HitTestingRecord[] | ExternalHitTestingRecordResponse[]) => (
-    <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
-      <h2 className="mb-2 shrink-0 pl-2 leading-6 font-semibold text-text-primary">
+    <div className="flex h-full flex-col rounded-ss-2xl bg-background-body px-4 py-3">
+      <h2 className="mb-2 shrink-0 ps-2 leading-6 font-semibold text-text-primary">
         {t(($) => $['hit.title'], { ns: 'datasetHitTesting', num: results.length })}
       </h2>
       <div className="grow space-y-2 overflow-y-auto">
@@ -170,7 +170,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   )
 
   const renderEmptyState = () => (
-    <div className="flex h-full flex-col items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3">
+    <div className="flex h-full flex-col items-center justify-center rounded-ss-2xl bg-background-body px-4 py-3">
       <div
         className={cn(docStyle.commonIcon, docStyle.targetIcon, 'size-14! bg-text-quaternary!')}
       />
@@ -192,7 +192,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   if (!canRunRetrievalRecall) return <LoadingPlaceholder className="h-full" />
 
   return (
-    <div className="relative flex size-full gap-x-6 overflow-y-auto pl-6">
+    <div className="relative flex size-full gap-x-6 overflow-y-auto ps-6">
       <div role="status" aria-atomic="true" className="sr-only">
         {retrievalStatus}
       </div>
@@ -263,11 +263,11 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
       >
         <div className="flex min-w-0 flex-1 flex-col pt-3">
           {isRetrievalLoading ? (
-            <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
+            <div className="flex h-full flex-col rounded-ss-2xl bg-background-body px-4 py-3">
               <CardSkelton />
             </div>
           ) : isRetrievalError ? (
-            <div className="flex h-full items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3 text-sm text-text-secondary">
+            <div className="flex h-full items-center justify-center rounded-ss-2xl bg-background-body px-4 py-3 text-sm text-text-secondary">
               {retrievalErrorMessage}
             </div>
           ) : (

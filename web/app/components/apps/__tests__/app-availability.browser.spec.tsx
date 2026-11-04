@@ -65,7 +65,7 @@ it.each([AppCard, StarredAppCard])(
     const screen = await render(
       <Wrapper>
         <ul className="w-full p-4">
-          <Card app={app} />
+          <Card app={app} onDelete={vi.fn()} />
         </ul>
       </Wrapper>,
     )

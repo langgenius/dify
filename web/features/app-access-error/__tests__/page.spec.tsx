@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { renderToString } from 'react-dom/server'
 import { I18nextProvider } from 'react-i18next'
+import arCommon from '@/i18n/locales/ar-TN/common.json'
+import arLogin from '@/i18n/locales/ar-TN/login.json'
+import arShare from '@/i18n/locales/ar-TN/share.json'
 import enCommon from '@/i18n/locales/en-US/common.json'
 import enLogin from '@/i18n/locales/en-US/login.json'
 import enShare from '@/i18n/locales/en-US/share.json'
@@ -21,6 +24,8 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 beforeEach(() => {
+  document.documentElement.lang = 'zh-Hans'
+  document.documentElement.dir = 'ltr'
   window.history.replaceState({}, '', '/chat/app')
   vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US'])
   document.title = 'Previous title'
@@ -82,23 +87,56 @@ it.each([undefined, '', 'unknown', '203.0.113.1, 192.0.2.1', '999.1.1.1'])(
   },
 )
 
-it('changes only the error-page language, retaining the IP and restoring the title on exit', async () => {
+it.each([
+  { syncDocument: false, expectedDocumentLocale: 'zh-Hans', expectedDirection: 'ltr' },
+  { syncDocument: true, expectedDocumentLocale: 'ar-TN', expectedDirection: 'rtl' },
+])(
+  'changes error-page language without persisting console preferences (document owner: $syncDocument)',
+  async ({ syncDocument, expectedDocumentLocale, expectedDirection }) => {
+    const user = userEvent.setup()
+    const { unmount } = render(
+      <AppNotAccessible syncDocument={syncDocument} clientIp="203.0.113.8" />,
+    )
+    await user.click(await screen.findByRole('button', { name: 'English' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'العربية (تونس)' }))
+    expect(
+      await screen.findByRole('heading', { name: arShare['appNotAccessible.title'] }),
+    ).toBeInTheDocument()
+    await waitFor(() => expect(document.title).toBe(arShare['appNotAccessible.documentTitle']))
+    expect(screen.getByText('203.0.113.8', { selector: 'code' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: arLogin.signBtn })).toHaveAttribute(
+      'href',
+      '/signin?redirect_url=%2Fchat%2Fapp',
+    )
+    expect(document.cookie).toContain('locale=zh-Hans')
+    expect(document.documentElement.lang).toBe(expectedDocumentLocale)
+    expect(document.documentElement.dir).toBe(expectedDirection)
+    unmount()
+    expect(document.title).toBe('Previous title')
+  },
+)
+
+it('keeps an embedded error language and its portaled menus local to the dialog', async () => {
   const user = userEvent.setup()
-  const { unmount } = render(<AppNotAccessible clientIp="203.0.113.8" />)
-  await user.click(await screen.findByRole('button', { name: 'English' }))
-  await user.click(screen.getByRole('menuitemradio', { name: '日本語 (日本)' }))
-  expect(
-    await screen.findByRole('heading', { name: jaShare['appNotAccessible.title'] }),
-  ).toBeInTheDocument()
-  await waitFor(() => expect(document.title).toBe(jaShare['appNotAccessible.documentTitle']))
-  expect(screen.getByText('203.0.113.8', { selector: 'code' })).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: jaLogin.signBtn })).toHaveAttribute(
-    'href',
-    '/signin?redirect_url=%2Fchat%2Fapp',
+  render(
+    <AppNotAccessible
+      embedded
+      initialLocale="ar-TN"
+      initialResources={{
+        'en-US': { share: enShare, common: enCommon, login: enLogin },
+        'ar-TN': { share: arShare, common: arCommon, login: arLogin },
+      }}
+    />,
   )
-  expect(document.cookie).toContain('locale=zh-Hans')
-  unmount()
-  expect(document.title).toBe('Previous title')
+  const heading = await screen.findByRole('heading', { name: arShare['appNotAccessible.title'] })
+  expect(heading.closest('[dir]')).toHaveAttribute('dir', 'rtl')
+  await user.click(screen.getByRole('button', { name: 'العربية (تونس)' }))
+  expect(screen.getByRole('menu')).toHaveAttribute('dir', 'rtl')
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: arCommon['theme.theme'] }))
+  expect(screen.getByRole('menu')).toHaveAttribute('dir', 'rtl')
+  expect(document.documentElement.lang).toBe('zh-Hans')
+  expect(document.documentElement.dir).toBe('ltr')
 })
 
 it.each([

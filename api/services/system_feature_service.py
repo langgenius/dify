@@ -25,8 +25,11 @@ class SystemFeatureService:
 
     @classmethod
     def get_public_system_features(cls) -> feature_entities.SystemFeatureModel:
-        """Build the non-sensitive bootstrap snapshot shared by Console and Web."""
-        system_features = feature_entities.SystemFeatureModel(deployment_edition=dify_config.DEPLOYMENT_EDITION)
+        """Build the shared public snapshot, including the Agent tracing deployment gate."""
+        system_features = feature_entities.SystemFeatureModel(
+            deployment_edition=dify_config.DEPLOYMENT_EDITION,
+            agent_tracing_api_collection_enabled=dify_config.OPS_AGENT_TRACE_ENABLED,
+        )
         system_features.rbac_enabled = dify_config.RBAC_ENABLED
 
         cls._fulfill_system_params_from_env(system_features)

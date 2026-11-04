@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { act, screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -10,7 +11,19 @@ let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(() => new Promise(() => {})),
+  getInvoices: vi.fn(() => new Promise(() => {})),
 }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'billing.invoices.get': mocks.getInvoices,
+    }),
+  }
+})
 
 vi.mock('@/service/base', () => ({
   request: mocks.request,
@@ -80,5 +93,43 @@ describe('Billing', () => {
     expect(link).toHaveAttribute('href', 'https://billing.example.com')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('explains why the billing link is unavailable', async () => {
+    currentBillingUrl = undefined
+    mocks.getInvoices.mockRejectedValueOnce(
+      new ORPCError('billing_unavailable', { defined: true, status: 503, message: 'Backend text' }),
+    )
+
+    renderBilling()
+
+    expect(await screen.findByText('billing.errors.unavailable')).toBeInTheDocument()
+    expect(screen.queryByText('billing.viewBillingDescription')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps a working billing link when a background refresh fails', async () => {
+    mocks.getInvoices.mockRejectedValueOnce(
+      new ORPCError('billing_unavailable', { defined: true, status: 503 }),
+    )
+
+    const { queryClient } = renderBilling()
+    await act(() =>
+      queryClient.refetchQueries({
+        queryKey: consoleQuery.billing.invoices.get.queryOptions().queryKey,
+      }),
+    )
+
+    expect(
+      queryClient.getQueryState(consoleQuery.billing.invoices.get.queryOptions().queryKey)?.status,
+    ).toBe('error')
+    expect(screen.getByRole('link', { name: /billing\.viewBillingTitle/ })).toHaveAttribute(
+      'href',
+      'https://billing.example.com',
+    )
+    expect(screen.getByText('billing.viewBillingDescription')).toBeInTheDocument()
+    expect(screen.queryByText('billing.errors.unavailable')).not.toBeInTheDocument()
   })
 })

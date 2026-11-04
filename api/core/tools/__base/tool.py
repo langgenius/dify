@@ -58,6 +58,7 @@ class Tool(ABC):
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
 
+        # try parse tool parameters into the correct type
         tool_parameters = self._transform_tool_parameters_type(tool_parameters)
 
         result = self._invoke(

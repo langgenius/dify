@@ -2,7 +2,6 @@
 
 import type * as React from 'react'
 import type { MenuItemVariant } from '../internal/menu'
-import type { Placement } from '../internal/placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
 import { cn } from '../cn'
 import {
@@ -18,21 +17,21 @@ import {
   floatingSeparatorClassName,
   positionerClassName,
 } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const ContextMenu = BaseContextMenu.Root
+const ContextMenuPortal = BaseContextMenu.Portal
 const ContextMenuTrigger = BaseContextMenu.Trigger
-const ContextMenuSub = BaseContextMenu.SubmenuRoot
+const ContextMenuSubmenu = BaseContextMenu.SubmenuRoot
 const ContextMenuGroup = BaseContextMenu.Group
 type ContextMenuProps = BaseContextMenu.Root.Props
 type ContextMenuActions = BaseContextMenu.Root.Actions
 type ContextMenuChangeEventReason = BaseContextMenu.Root.ChangeEventReason
 type ContextMenuChangeEventDetails = BaseContextMenu.Root.ChangeEventDetails
 type ContextMenuTriggerProps = BaseContextMenu.Trigger.Props
-type ContextMenuSubProps = BaseContextMenu.SubmenuRoot.Props
-type ContextMenuSubChangeEventReason = BaseContextMenu.SubmenuRoot.ChangeEventReason
-type ContextMenuSubChangeEventDetails = BaseContextMenu.SubmenuRoot.ChangeEventDetails
+type ContextMenuSubmenuProps = BaseContextMenu.SubmenuRoot.Props
+type ContextMenuSubmenuChangeEventReason = BaseContextMenu.SubmenuRoot.ChangeEventReason
+type ContextMenuSubmenuChangeEventDetails = BaseContextMenu.SubmenuRoot.ChangeEventDetails
 type ContextMenuGroupProps = BaseContextMenu.Group.Props
 type ContextMenuRadioGroupChangeEventReason = BaseContextMenu.RadioGroup.ChangeEventReason
 type ContextMenuRadioGroupChangeEventDetails = BaseContextMenu.RadioGroup.ChangeEventDetails
@@ -53,46 +52,64 @@ function ContextMenuRadioGroup<Value = unknown>(
   return <BaseContextMenu.RadioGroup {...props} />
 }
 
-type ContextMenuContentProps = Omit<BaseContextMenu.Popup.Props, 'children'> &
-  Pick<BaseContextMenu.Positioner.Props, 'sideOffset' | 'alignOffset'> & {
+type ContextMenuPortalProps = BaseContextMenu.Portal.Props
+type ContextMenuPositionerProps = BaseContextMenu.Positioner.Props
+type ContextMenuPopupProps = BaseContextMenu.Popup.Props
+
+function ContextMenuPositioner({ className, ...props }: ContextMenuPositionerProps) {
+  return (
+    <BaseContextMenu.Positioner
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
+
+function ContextMenuPopup({ className, ...props }: ContextMenuPopupProps) {
+  return (
+    <BaseContextMenu.Popup
+      className={(state) =>
+        cn(
+          menuPopupBaseClassName,
+          floatingPopupAnimationClassName,
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
+  )
+}
+
+type ContextMenuContentProps = Omit<ContextMenuPopupProps, 'children'> &
+  Pick<ContextMenuPositionerProps, 'side' | 'align' | 'sideOffset' | 'alignOffset'> & {
     children: React.ReactNode
-    placement?: Placement
   }
 
 function ContextMenuContent({
   children,
-  placement = 'bottom-start',
-  sideOffset = 0,
+  side,
+  align,
+  sideOffset = 4,
   alignOffset = 0,
   className,
   ...props
 }: ContextMenuContentProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
-    <BaseContextMenu.Portal>
-      <BaseContextMenu.Positioner
+    <ContextMenuPortal>
+      <ContextMenuPositioner
         side={side}
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={positionerClassName}
       >
-        <BaseContextMenu.Popup
-          className={(state) =>
-            cn(
-              menuPopupBaseClassName,
-              menuPopupSurfaceClassName,
-              floatingPopupAnimationClassName,
-              resolveClassName(className, state),
-            )
-          }
+        <ContextMenuPopup
+          className={(state) => cn(menuPopupSurfaceClassName, resolveClassName(className, state))}
           {...props}
         >
           {children}
-        </BaseContextMenu.Popup>
-      </BaseContextMenu.Positioner>
-    </BaseContextMenu.Portal>
+        </ContextMenuPopup>
+      </ContextMenuPositioner>
+    </ContextMenuPortal>
   )
 }
 
@@ -198,16 +215,16 @@ function ContextMenuRadioItemIndicator({
 
 type ContextMenuRadioItemIndicatorProps = Omit<BaseContextMenu.RadioItemIndicator.Props, 'children'>
 
-type ContextMenuSubTriggerProps = BaseContextMenu.SubmenuTrigger.Props & {
+type ContextMenuSubmenuTriggerProps = BaseContextMenu.SubmenuTrigger.Props & {
   variant?: ContextMenuItemVariant
 }
 
-function ContextMenuSubTrigger({
+function ContextMenuSubmenuTrigger({
   className,
   variant = 'default',
   children,
   ...props
-}: ContextMenuSubTriggerProps) {
+}: ContextMenuSubmenuTriggerProps) {
   return (
     <BaseContextMenu.SubmenuTrigger
       data-variant={variant}
@@ -222,46 +239,6 @@ function ContextMenuSubTrigger({
         className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary [&:dir(rtl)]:-scale-x-100"
       />
     </BaseContextMenu.SubmenuTrigger>
-  )
-}
-
-type ContextMenuSubContentProps = ContextMenuContentProps
-
-// Base UI's own submenu default: it opens away from the trigger and follows the text direction.
-function ContextMenuSubContent({
-  children,
-  placement = 'inline-end-start',
-  sideOffset = 4,
-  alignOffset = 0,
-  className,
-  ...props
-}: ContextMenuSubContentProps) {
-  const { side, align } = parsePlacement(placement)
-
-  return (
-    <BaseContextMenu.Portal>
-      <BaseContextMenu.Positioner
-        side={side}
-        align={align}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        className={positionerClassName}
-      >
-        <BaseContextMenu.Popup
-          className={(state) =>
-            cn(
-              menuPopupBaseClassName,
-              menuPopupSurfaceClassName,
-              floatingPopupAnimationClassName,
-              resolveClassName(className, state),
-            )
-          }
-          {...props}
-        >
-          {children}
-        </BaseContextMenu.Popup>
-      </BaseContextMenu.Positioner>
-    </BaseContextMenu.Portal>
   )
 }
 
@@ -298,13 +275,15 @@ export {
   ContextMenuGroupLabel,
   ContextMenuItem,
   ContextMenuLinkItem,
+  ContextMenuPopup,
+  ContextMenuPortal,
+  ContextMenuPositioner,
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
   ContextMenuRadioItemIndicator,
   ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
+  ContextMenuSubmenu,
+  ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
 }
 
@@ -321,6 +300,9 @@ export type {
   ContextMenuGroupProps,
   ContextMenuItemProps,
   ContextMenuLinkItemProps,
+  ContextMenuPopupProps,
+  ContextMenuPortalProps,
+  ContextMenuPositionerProps,
   ContextMenuProps,
   ContextMenuRadioGroupChangeEventDetails,
   ContextMenuRadioGroupChangeEventReason,
@@ -328,10 +310,9 @@ export type {
   ContextMenuRadioItemIndicatorProps,
   ContextMenuRadioItemProps,
   ContextMenuSeparatorProps,
-  ContextMenuSubChangeEventDetails,
-  ContextMenuSubChangeEventReason,
-  ContextMenuSubContentProps,
-  ContextMenuSubProps,
-  ContextMenuSubTriggerProps,
+  ContextMenuSubmenuChangeEventDetails,
+  ContextMenuSubmenuChangeEventReason,
+  ContextMenuSubmenuProps,
+  ContextMenuSubmenuTriggerProps,
   ContextMenuTriggerProps,
 }

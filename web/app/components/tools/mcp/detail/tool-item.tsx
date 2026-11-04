@@ -32,11 +32,11 @@ const MCPToolItem = ({ tool }: Props) => {
               parameter.human_description[language] ||
               t(($) => $['mcp.toolItem.noDescription'], { ns: 'tools' })
             return (
-              <li key={parameter.name} className="pl-2">
+              <li key={parameter.name} className="ps-2">
                 <span className="system-xs-regular font-bold text-text-secondary">
                   {parameter.name}
                 </span>
-                <span className="mr-1 system-xs-regular text-text-tertiary">
+                <span className="me-1 system-xs-regular text-text-tertiary">
                   ({parameter.type}
                   ):
                 </span>
@@ -58,7 +58,7 @@ const MCPToolItem = ({ tool }: Props) => {
           <button
             type="button"
             className={cn(
-              'bg-components-panel-item-bg w-full cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 text-left shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+              'bg-components-panel-item-bg w-full cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 text-start shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
             )}
           >
             <div className="pb-0.5 system-md-semibold text-text-secondary">
@@ -71,7 +71,7 @@ const MCPToolItem = ({ tool }: Props) => {
         }
       />
       <PopoverContent
-        placement="left"
+        side="left"
         className="w-90! rounded-xl! border-[0.5px]! border-components-panel-border! px-4! py-3.5! shadow-lg!"
       >
         <div>

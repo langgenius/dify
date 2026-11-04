@@ -6,6 +6,7 @@ from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 def test_execution_context_package_exports_client_safe_config_symbols_only() -> None:
     assert execution_context_exports.__all__ == [
+        "ApplicationTracingContext",
         "DifyExecutionContextAgentConfigVersionKind",
         "DifyExecutionContextAgentMode",
         "DifyExecutionContextInvokeFrom",

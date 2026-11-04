@@ -1,19 +1,25 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { AlertDialogProps } from '@langgenius/dify-ui/alert-dialog'
+import type { AlertDialogActions, AlertDialogProps } from '@langgenius/dify-ui/alert-dialog'
 import type { DialogActions, DialogProps } from '@langgenius/dify-ui/dialog'
+import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppMetadataForm } from '@/app/components/app/app-metadata'
+import { DeleteAppForm } from '@/app/components/app/delete-app-form'
 import SwitchAppModal from '@/app/components/app/switch-app-modal'
 import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
+import {
+  markAppDeletionFailed,
+  markAppDeletionStarted,
+  markAppDeletionSucceeded,
+} from '@/service/app-deletion'
 import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
-import { DeleteAppDialog } from './delete-app-dialog'
 import { ExportAppDialog } from './export-app-dialog'
 
 export type AppInfoOperation = 'edit' | 'duplicate' | 'delete' | 'switch' | 'importDSL'
@@ -33,6 +39,7 @@ export default function AppInfoModals({
   exportOpen,
   onExportOpenChange,
 }: AppInfoModalsProps) {
+  const deleteActionsRef = useRef<AlertDialogActions>(null)
   const editActionsRef = useRef<DialogActions>(null)
   const duplicateActionsRef = useRef<DialogActions>(null)
   const editNameRef = useRef<HTMLInputElement>(null)
@@ -48,6 +55,13 @@ export default function AppInfoModals({
   )
   const copy = useMutation(
     consoleQuery.apps.byAppId.copy.post.mutationOptions({ context: { silent: true } }),
+  )
+  const deletion = useMutation(
+    consoleQuery.apps.byAppId.delete.mutationOptions({
+      context: { silent: true },
+      onMutate: () => markAppDeletionStarted(appDetail.id),
+      onError: () => markAppDeletionFailed(appDetail.id),
+    }),
   )
   return (
     <>
@@ -138,11 +152,44 @@ export default function AppInfoModals({
         open={activeModal === 'switch'}
         onOpenChange={onOpenChange}
       />
-      <DeleteAppDialog
-        appDetail={appDetail}
+      <AlertDialog
+        actionsRef={deleteActionsRef}
         open={activeModal === 'delete'}
-        onOpenChange={onOpenChange}
-      />
+        onOpenChange={(open, details) => {
+          if (!open && deletion.isPending && details.reason !== 'imperative-action')
+            details.cancel()
+          else onOpenChange?.(open, details)
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) deletion.reset()
+        }}
+      >
+        <AlertDialogContent>
+          <DeleteAppForm
+            appName={appDetail.name}
+            isPending={deletion.isPending}
+            error={
+              deletion.isError
+                ? `${t(($) => $.appDeleteFailed)}: ${deletion.error.message}`
+                : undefined
+            }
+            onSubmit={() => {
+              if (deletion.isPending) return
+              deletion.mutate(
+                { params: { app_id: appDetail.id } },
+                {
+                  onSuccess: () => {
+                    markAppDeletionSucceeded(appDetail.id)
+                    deleteActionsRef.current?.close()
+                    toast.success(t(($) => $.appDeleted))
+                    replace('/apps')
+                  },
+                },
+              )
+            }}
+          />
+        </AlertDialogContent>
+      </AlertDialog>
       <ImportAppDialog
         appDetail={appDetail}
         open={activeModal === 'importDSL'}

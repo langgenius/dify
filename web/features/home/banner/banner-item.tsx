@@ -27,9 +27,9 @@ export function BannerItem({ banner, sort, language, accountId, titleId }: Banne
 
   return (
     <article className="relative flex h-56 w-full items-start overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg shadow-xs after:pointer-events-none after:absolute after:inset-0 after:z-30 after:rounded-2xl after:content-[''] has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid @min-[996px]/banner:h-46">
-      <div className="pointer-events-none relative z-20 min-w-px flex-1 self-stretch rounded-2xl py-6 pl-8">
+      <div className="pointer-events-none relative z-20 min-w-px flex-1 self-stretch rounded-2xl py-6 ps-8">
         <div className="flex min-h-24 w-full flex-col gap-1 py-1 @min-[996px]/banner:flex-row @min-[996px]/banner:flex-wrap @min-[996px]/banner:items-end">
-          <div className="flex min-w-0 flex-col pr-4 @min-[996px]/banner:max-w-170 @min-[996px]/banner:min-w-120 @min-[996px]/banner:flex-[1_0_0]">
+          <div className="flex min-w-0 flex-col pe-4 @min-[996px]/banner:max-w-170 @min-[996px]/banner:min-w-120 @min-[996px]/banner:flex-[1_0_0]">
             <p className="line-clamp-1 h-[1.8rem] w-full title-4xl-semi-bold wrap-break-word text-dify-logo-blue">
               {category}
             </p>
@@ -41,7 +41,7 @@ export function BannerItem({ banner, sort, language, accountId, titleId }: Banne
             </p>
           </div>
 
-          <div className="flex min-w-0 items-end pr-4 @min-[996px]/banner:max-w-150 @min-[996px]/banner:min-w-60 @min-[996px]/banner:flex-[1_0_0] @min-[996px]/banner:py-1">
+          <div className="flex min-w-0 items-end pe-4 @min-[996px]/banner:max-w-150 @min-[996px]/banner:min-w-60 @min-[996px]/banner:flex-[1_0_0] @min-[996px]/banner:py-1">
             <p className="line-clamp-3 min-w-0 flex-1 overflow-hidden body-sm-regular text-text-tertiary">
               {description}
             </p>

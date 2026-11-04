@@ -14,6 +14,26 @@ cmd/
 internal/            - internal implementations
 ```
 
+## Agent configuration prompt
+
+The sandbox's `dify-agent` CLI uses the authenticated Agent Stub connection:
+
+```bash
+dify-agent config prompt pull                      # Save ./.dify_conf/prompt.md; print its absolute path
+dify-agent config prompt pull --to ./prompt.txt
+dify-agent config prompt push                      # Read ./.dify_conf/prompt.md; print saved prompt JSON
+dify-agent config prompt push ./prompt.txt
+printf '%s' 'New instructions' | dify-agent config prompt push -
+```
+
+Pull and push preserve raw UTF-8 text, including mention markers, whitespace,
+and line endings. Empty input clears the prompt; a missing file is an error.
+Local edits must be pushed to persist. Only the current account's build draft
+is writable; snapshot and shared-draft configurations are read-only. Later
+requests built from the draft use the saved prompt; already-built requests
+retain their prompt. See the [runtime contract](../dify-agent/docs/dify-agent/index.md)
+for the Agent Stub and inner API endpoints.
+
 ## Job execution modes
 
 `POST /v1/jobs/run` accepts an optional `mode` field:

@@ -1,11 +1,16 @@
 from dataclasses import dataclass
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from graphon.engine.filter import ResponseStreamFilter
 from models.model import AppMode
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
@@ -17,6 +22,19 @@ from repositories.entities.workflow_execution import WorkflowExecutionTiming
 class _WorkflowGenerateEntityWrapper(BaseModel):
     type: Literal[AppMode.WORKFLOW] = AppMode.WORKFLOW
     entity: WorkflowAppGenerateEntity
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_identity(cls, value: Any) -> Any:
+        """Preserve the previous runner role for snapshots written before explicit identity."""
+        if isinstance(value, dict) and isinstance(entity := value.get("entity"), dict) and "user_from" not in entity:
+            invoke_from = InvokeFrom(entity["invoke_from"])
+            # Single-node debugging previously forced DEBUGGER before resolving the role.
+            if entity.get("single_iteration_run") or entity.get("single_loop_run"):
+                invoke_from = InvokeFrom.DEBUGGER
+            user_from = UserFrom.ACCOUNT if invoke_from.runs_as_account() else UserFrom.END_USER
+            return {**value, "entity": {**entity, "user_from": user_from}}
+        return value
 
 
 class _AdvancedChatAppGenerateEntityWrapper(BaseModel):

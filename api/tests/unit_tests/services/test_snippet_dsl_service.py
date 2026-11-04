@@ -25,7 +25,7 @@ from services.snippet_dsl_service import (
     _check_version_compatibility,
 )
 from services.snippet_service import SnippetService
-from tests.unit_tests.model_factories import make_account, make_tenant, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_tenant, make_workflow
 
 SQLITE_MODELS = (CustomizedSnippet,)
 pytestmark = [

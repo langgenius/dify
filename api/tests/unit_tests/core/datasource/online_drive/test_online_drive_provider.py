@@ -3,7 +3,7 @@ import pytest
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.datasource.online_drive.online_drive_provider import OnlineDriveDatasourcePluginProviderController
-from tests.unit_tests.core.datasource.factories import datasource_entity, provider_entity
+from tests.helpers.unit.core.datasource.factories import datasource_entity, provider_entity
 
 
 class TestOnlineDriveDatasourcePluginProviderController:

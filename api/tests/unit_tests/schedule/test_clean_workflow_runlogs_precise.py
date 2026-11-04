@@ -13,7 +13,7 @@ from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry
 
 from graphon.entities.pause_reason import PauseReasonType
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
 from models.base import Base
 from models.enums import (
@@ -51,6 +51,7 @@ from models.workflow import (
     WorkflowPause,
     WorkflowPauseReason,
     WorkflowRun,
+    WorkflowType,
 )
 from repositories.factory import DifyAPIRepositoryFactory
 
@@ -146,7 +147,7 @@ def _seed_batch(session: Session) -> WorkflowRun:
         app_id=app_id,
         mode=AppMode.ADVANCED_CHAT,
         name="cleanup test",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.CONSOLE,
     )
     session.add_all([run, conversation])
@@ -167,7 +168,7 @@ def _seed_batch(session: Session) -> WorkflowRun:
                 app_id=app_id,
                 conversation_id=conversation_id,
                 workflow_run_id=run_id,
-                inputs={},
+                _inputs={},
                 query="question",
                 message={},
                 answer="answer",

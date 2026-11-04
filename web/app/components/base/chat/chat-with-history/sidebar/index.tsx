@@ -20,7 +20,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
-import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
+import TextGenerationMenu from '@/app/components/share/text-generation/text-generation-menu'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useChatWithHistoryContext } from '../context'
 
@@ -83,9 +83,8 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
     },
     [showRename, handleRenameConversation, handleCancelRename],
   )
-  const pinnedTitle = t(($) => $['chat.pinnedTitle'], { ns: 'share' }) || ''
-  const deleteConversationContent =
-    t(($) => $['chat.deleteConversation.content'], { ns: 'share' }) || ''
+  const pinnedTitle = t(($) => $['chat.pinnedTitle'], { ns: 'share' })
+  const deleteConversationContent = t(($) => $['chat.deleteConversation.content'], { ns: 'share' })
 
   return (
     <div
@@ -162,7 +161,12 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
         )}
       </div>
       <div className="flex shrink-0 items-center justify-between p-3">
-        <MenuDropdown hideLogout={isInstalledApp} placement="top-start" data={appData?.site} />
+        <TextGenerationMenu
+          hideLogout={isInstalledApp}
+          side="top"
+          align="start"
+          data={appData?.site}
+        />
         {/* powered by */}
         <div className="shrink-0">
           {!appData?.custom_config?.remove_webapp_brand && (

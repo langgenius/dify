@@ -3,7 +3,7 @@ from collections.abc import Callable
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import DatasourceProviderType
-from tests.unit_tests.core.datasource.factories import datasource_entity
+from tests.helpers.unit.core.datasource.factories import datasource_entity
 
 
 class ConcreteDatasourcePlugin(DatasourcePlugin):

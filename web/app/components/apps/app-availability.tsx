@@ -58,7 +58,7 @@ export function AppAvailabilityDetails({ app }: Props) {
         aria-label={t(($) => $['studio.availability.details'], { name: app.name })}
         openOnHover={false}
       />
-      <InfotipContent placement="bottom-end" className="w-80 max-w-[calc(100vw-2rem)]">
+      <InfotipContent side="bottom" align="end" className="w-80 max-w-[calc(100vw-2rem)]">
         <InfotipTitle className="system-xs-semibold">{app.name}</InfotipTitle>
         {app.availability_source && <p className="mt-1">{sources[app.availability_source]}</p>}
         <p className="mt-1">{t(($) => $['studio.availability.hint'])}</p>

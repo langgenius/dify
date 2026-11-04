@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "Zasoby",
   "resourceAccessToken.searchPlaceholder": "Szukaj tokenów…",
   "resourceAccessToken.searchResourcesPlaceholder": "Szukaj aplikacji lub baz wiedzy…",
-  "resourceAccessToken.tabAll": "Wszystkie",
+  "resourceAccessToken.tabAllTypes": "Wszystkie typy",
   "resourceAccessToken.tabApps": "Aplikacje",
   "resourceAccessToken.tabKnowledgeBases": "Bazy wiedzy",
   "resourceAccessToken.token": "Token",
