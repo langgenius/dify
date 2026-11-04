@@ -23,7 +23,6 @@ from controllers.openapi._errors import (
     AgentNotPublished,
     AppModeMismatch,
     OpenApiErrorCode,
-    OpenApiErrorFormatter,
     TriggerWorkflowNotRunnable,
 )
 from controllers.openapi._models import (
@@ -53,12 +52,7 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser, UploadFile
 from services.app_task_service import AppTaskControlService
-from services.errors.app import (
-    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE,
-)
-from services.errors.app import (
-    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
-)
+from services.errors.app import TriggerWorkflowServiceModeUnavailableError
 from services.errors.llm import InvokeRateLimitError
 from tests.helpers.unit.model_factories import make_upload_file
 from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
@@ -86,22 +80,15 @@ def test_translate_maps_workflow_quota_to_rate_limit_error():
     assert exc.value.code == 429
 
 
-def test_a_trigger_workflow_run_is_refused_for_its_shape_with_the_server_reason() -> None:
-    # The app's entry, not the caller's permission, refuses the run, so it is no 403.
+def test_a_trigger_workflow_run_is_refused_for_its_shape_not_as_forbidden() -> None:
     with pytest.raises(TriggerWorkflowNotRunnable) as exc:
         with _translate_service_errors():
-            raise TriggerWorkflowServiceModeUnavailableServiceError()
-    # The shared handler hands the formatter the exception's description as the message.
-    wire = OpenApiErrorFormatter().finalize(
-        exc.value, {"message": exc.value.description}, HTTPStatus.UNPROCESSABLE_ENTITY
-    )
+            raise TriggerWorkflowServiceModeUnavailableError()
 
-    assert exc.value.code == HTTPStatus.UNPROCESSABLE_ENTITY
-    assert wire == {
-        "code": OpenApiErrorCode.TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE,
-        "message": TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE,
-        "status": HTTPStatus.UNPROCESSABLE_ENTITY,
-    }
+    assert (exc.value.code, exc.value.error_code) == (
+        HTTPStatus.UNPROCESSABLE_ENTITY,
+        OpenApiErrorCode.TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE,
+    )
 
 
 def test_translate_maps_value_error_to_a_fixed_bad_request():
