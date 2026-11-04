@@ -265,6 +265,7 @@ export type IOtherOptions = {
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
   request?: Request
+  onUploadProgress?: (percent: number) => void
 
   onData?: IOnData // for stream
   onReasoning?: IOnReasoning
