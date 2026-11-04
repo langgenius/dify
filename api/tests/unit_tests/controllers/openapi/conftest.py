@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from types import SimpleNamespace
 
@@ -14,6 +14,7 @@ from app_factory import create_flask_app_with_configs
 from constants.oauth_bearer import TokenType
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
+from core.logging.context import clear_request_context
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
@@ -25,6 +26,13 @@ from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import AppMode, IconType
 from services.tools.tool_sources import ToolSource, resolve_tool
+
+
+@pytest.fixture(autouse=True)
+def _clear_request_context() -> Iterator[None]:
+    """A real request's before_request hook sets the logging request id; later tests expect none."""
+    yield
+    clear_request_context()
 
 
 @pytest.fixture
