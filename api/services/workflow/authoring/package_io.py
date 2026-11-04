@@ -186,7 +186,7 @@ class _NoAliasDumper(yaml.Dumper):
 
 
 def dump_app_document(document: dict[str, Any]) -> bytes:
-    """The `app.yaml` bytes of `document`, a value shared between keys written out in each, as the reader requires."""
+    """The `app.yaml` bytes for `document`, with every value written out (the reader refuses aliases)."""
     return yaml.dump(document, Dumper=_NoAliasDumper, allow_unicode=True).encode()
 
 
