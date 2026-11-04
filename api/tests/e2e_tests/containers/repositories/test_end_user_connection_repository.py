@@ -134,6 +134,7 @@ def test_configuration_save_fails_fast_without_holding_an_app_lock_during_migrat
                 tenant_id=harness.context.tenant_id,
                 app_id=harness.context.app_id,
                 end_user_id=harness.context.end_user_id,
+                exclusive=True,
             )
             is not None
         )

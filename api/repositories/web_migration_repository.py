@@ -128,6 +128,7 @@ class WebMigrationRepository:
                 tenant_id=guest.tenant_id,
                 app_id=guest.app_id,
                 end_user_id=guest.end_user_id,
+                exclusive=True,
             )
             if original is None or original.type != EndUserType.BROWSER or original.account_id is not None:
                 raise ConnectionIdentityError()
@@ -173,8 +174,8 @@ class WebMigrationRepository:
             ):
                 raise ConnectionIdentityError()
             account = WebConnectionContext(guest.tenant_id, app.id, target.id, target.account_id)
-            # A new Run may have appeared after the last readiness poll. Startup
-            # remains unfenced, so this check only narrows that race window.
+            # Startup registers its Run before releasing the shared identity lock.
+            # With the exclusive lock held, this check closes the readiness-to-transfer gap.
             if session.scalar(sa.select(sa.exists().where(*unfinished_guest_runs(guest)))):
                 raise GuestMigrationNotReadyError()
             eligible = tuple(
@@ -279,6 +280,7 @@ class WebMigrationRepository:
                 tenant_id=guest.tenant_id,
                 app_id=app.id,
                 end_user_id=account_end_user_id,
+                exclusive=True,
             )
             if target is None or target.type != EndUserType.BROWSER or target.account_id != account.account_id:
                 raise ConnectionIdentityError()

@@ -268,7 +268,7 @@ class EndUserConnectionRepository:
                 else EndUser.account_id.is_(None),
             )
         )
-        coordinated = lock and not shared and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+        coordinated = lock and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
         if coordinated:
             try:
                 actor = lock_end_user(
@@ -276,13 +276,15 @@ class EndUserConnectionRepository:
                     tenant_id=context.tenant_id,
                     app_id=context.app_id,
                     end_user_id=context.end_user_id,
+                    exclusive=not shared,
                 )
             except EndUserBusyError as error:
                 raise ConnectionConflictError() from error
             if actor is None or actor.account_id != context.account_id:
                 raise ConnectionIdentityError()
-            stmt = stmt.with_for_update()
-        elif lock and (not shared or not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED):
+            if not shared:
+                stmt = stmt.with_for_update()
+        elif lock:
             stmt = stmt.with_for_update()
         app = session.scalar(stmt)
         if app is None:
@@ -292,8 +294,8 @@ class EndUserConnectionRepository:
                 Account.id == context.account_id,
                 Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
             )
-            if lock and (not shared or not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED):
-                account = account.with_for_update()
+            if lock:
+                account = account.with_for_update(read=coordinated and shared)
             if session.scalar(account) is None:
                 raise ConnectionIdentityError()
         return app

@@ -5,6 +5,18 @@ from services.errors.app import (
 )
 
 
+class EndUserBusyHTTPError(BaseHTTPException):
+    code = 409
+    error_code = "end_user_busy"
+    description = "This Web App identity is being updated. Please retry."
+
+
+class WebExecutionResourcesChangedHTTPError(BaseHTTPException):
+    code = 409
+    error_code = "webapp_resources_changed"
+    description = "Web App resources changed before execution. Refresh and retry."
+
+
 class AppUnavailableError(BaseHTTPException):
     error_code = "app_unavailable"
     description = "App unavailable, please check your app configurations."

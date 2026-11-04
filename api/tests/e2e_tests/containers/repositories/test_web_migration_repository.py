@@ -15,6 +15,7 @@ from models.end_user_connection import AppConnection, EndUserConnection
 from models.enums import ConversationFromSource, CreatorUserRole, CustomizeTokenStrategy, EndUserType, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser, Site, UploadFile
 from models.tools import ToolFile
+from repositories.end_user_execution_lock import lock_end_user
 from repositories.entities.web_execution import EndUserBusyError
 from repositories.web_migration_repository import WebMigrationRepository
 from services.web_migration_service import MigrationCounts
@@ -228,3 +229,80 @@ def test_two_guests_migrating_to_one_account_preserve_a_whole_default_set(
             ).all()
             == initial_defaults
         )
+
+
+@pytest.mark.timeout(15)
+def test_shared_admissions_coexist_and_migration_conflicts_only_for_the_same_identity(
+    db_session_with_containers: Session,
+) -> None:
+    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    harness = make_harness(sessions)
+    with sessions.begin() as session:
+        other = EndUser(
+            tenant_id=harness.context.tenant_id,
+            app_id=harness.context.app_id,
+            type=EndUserType.BROWSER,
+            session_id=str(uuid4()),
+        )
+        session.add(other)
+        session.flush()
+        other_id = other.id
+    with sessions.begin() as first, sessions.begin() as second:
+        assert (
+            lock_end_user(
+                first,
+                tenant_id=harness.context.tenant_id,
+                app_id=harness.context.app_id,
+                end_user_id=harness.context.end_user_id,
+                exclusive=False,
+            )
+            is not None
+        )
+        assert (
+            lock_end_user(
+                second,
+                tenant_id=harness.context.tenant_id,
+                app_id=harness.context.app_id,
+                end_user_id=harness.context.end_user_id,
+                exclusive=False,
+            )
+            is not None
+        )
+        with pytest.raises(EndUserBusyError), sessions.begin() as migration:
+            lock_end_user(
+                migration,
+                tenant_id=harness.context.tenant_id,
+                app_id=harness.context.app_id,
+                end_user_id=harness.context.end_user_id,
+                exclusive=True,
+            )
+        with sessions.begin() as independent:
+            assert (
+                lock_end_user(
+                    independent,
+                    tenant_id=harness.context.tenant_id,
+                    app_id=harness.context.app_id,
+                    end_user_id=other_id,
+                    exclusive=True,
+                )
+                is not None
+            )
+    with sessions.begin() as migration:
+        assert (
+            lock_end_user(
+                migration,
+                tenant_id=harness.context.tenant_id,
+                app_id=harness.context.app_id,
+                end_user_id=harness.context.end_user_id,
+                exclusive=True,
+            )
+            is not None
+        )
+        with pytest.raises(EndUserBusyError), sessions.begin() as starting:
+            lock_end_user(
+                starting,
+                tenant_id=harness.context.tenant_id,
+                app_id=harness.context.app_id,
+                end_user_id=harness.context.end_user_id,
+                exclusive=False,
+            )

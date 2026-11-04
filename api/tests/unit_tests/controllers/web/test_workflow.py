@@ -118,3 +118,24 @@ class TestWorkflowTaskStopApi:
         stop.assert_called_once_with(
             tenant_id="tenant-1", app_id="app-1", task_id="task-1", app_mode=AppMode.WORKFLOW, owner=None
         )
+
+
+@pytest.mark.parametrize("failure", ["busy", "resources_changed"])
+def test_workflow_admission_failures_return_retryable_conflicts(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    from controllers.web.workflow import AppGenerateService
+    from libs.exception import BaseHTTPException
+    from repositories.entities.web_execution import EndUserBusyError, WebExecutionResourcesChangedError
+
+    error = EndUserBusyError() if failure == "busy" else WebExecutionResourcesChangedError()
+
+    def reject(*_args: object, **_kwargs: object) -> None:
+        raise error
+
+    monkeypatch.setattr(AppGenerateService, "generate", reject)
+    with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
+        with pytest.raises(BaseHTTPException) as caught:
+            WorkflowRunApi().post(_workflow_app(), _end_user())
+    assert caught.value.code == 409
+    assert caught.value.error_code == ("end_user_busy" if failure == "busy" else "webapp_resources_changed")

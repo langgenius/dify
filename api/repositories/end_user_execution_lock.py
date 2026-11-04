@@ -25,11 +25,13 @@ def translate_end_user_lock_errors() -> Generator[None]:
 
 
 @translate_end_user_lock_errors()
-def lock_end_user(session: Session, *, tenant_id: str, app_id: str, end_user_id: str) -> EndUser | None:
-    """Lock one identity without queuing behind another identity update."""
+def lock_end_user(
+    session: Session, *, tenant_id: str, app_id: str, end_user_id: str, exclusive: bool
+) -> EndUser | None:
+    """Shared admissions coexist; migration takes the exclusive lock without queuing."""
     return session.scalar(
         select(EndUser)
         .where(EndUser.id == end_user_id, EndUser.tenant_id == tenant_id, EndUser.app_id == app_id)
-        .with_for_update(nowait=True)
+        .with_for_update(read=not exclusive, nowait=True)
         .execution_options(populate_existing=True)
     )

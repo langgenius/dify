@@ -724,6 +724,18 @@ export const zEmailSendIpLimitError = zErrorResponse.and(
 )
 
 /**
+ * EndUserBusyError
+ *
+ * This Web App identity is being updated. Please retry.
+ */
+export const zEndUserBusyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('end_user_busy'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * EndUserLoginRequiredError
  *
  * Sign in to use personal connections.
@@ -2397,6 +2409,18 @@ export const zHumanInputFormDefinitionResponse = z.object({
   site: zWebAppSiteResponse.nullish(),
   user_actions: z.array(zUserActionConfig),
 })
+
+/**
+ * WebappResourcesChangedError
+ *
+ * Web App resources changed before execution. Refresh and retry.
+ */
+export const zWebappResourcesChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('webapp_resources_changed'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * WorkflowRunPayload

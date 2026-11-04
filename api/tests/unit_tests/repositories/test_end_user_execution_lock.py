@@ -16,7 +16,10 @@ from repositories.entities.web_execution import EndUserBusyError
 
 
 @pytest.mark.parametrize("backend", ["postgresql", "mysql8"])
-def test_identity_lock_is_scoped_and_compiles_to_nowait(sqlite_session: Session, backend: str) -> None:
+@pytest.mark.parametrize("exclusive", [False, True])
+def test_identity_lock_is_scoped_and_compiles_to_nowait_shared_or_exclusive(
+    sqlite_session: Session, backend: str, exclusive: bool
+) -> None:
     user = EndUser(tenant_id="tenant", app_id="app", type=EndUserType.BROWSER, session_id="browser")
     sqlite_session.add(user)
     sqlite_session.commit()
@@ -31,12 +34,14 @@ def test_identity_lock_is_scoped_and_compiles_to_nowait(sqlite_session: Session,
 
     event.listen(sqlite_session, "do_orm_execute", record)
     try:
-        found = lock_end_user(sqlite_session, tenant_id="tenant", app_id="app", end_user_id=user.id)
+        found = lock_end_user(
+            sqlite_session, tenant_id="tenant", app_id="app", end_user_id=user.id, exclusive=exclusive
+        )
     finally:
         event.remove(sqlite_session, "do_orm_execute", record)
     assert found is not None
     assert found.id == user.id
-    assert statements[-1].endswith("FOR UPDATE NOWAIT")
+    assert statements[-1].endswith("FOR UPDATE NOWAIT" if exclusive else "FOR SHARE NOWAIT")
     assert "end_users.tenant_id =" in statements[-1]
     assert "end_users.app_id =" in statements[-1]
 
