@@ -17,7 +17,7 @@ from graphon.model_runtime.model_providers.model_provider_factory import ModelPr
 from graphon.model_runtime.protocols.runtime import ModelRuntime
 
 if TYPE_CHECKING:
-    from core.model_manager import ModelManager
+    from core.model_manager import LLMModerationPolicy, ModelManager
     from core.plugin.impl.model_runtime import PluginModelRuntime
     from core.provider_manager import ProviderManager
 
@@ -60,13 +60,23 @@ class PluginModelAssembly:
     _provider_manager: ProviderManager | None
     _model_manager: ModelManager | None
 
-    def __init__(self, *, tenant_id: str, user_id: str | None = None) -> None:
+    def __init__(
+        self, *, tenant_id: str, user_id: str | None = None, moderation: LLMModerationPolicy | None = None
+    ) -> None:
+        """Bind runtime identity and an optional LLM policy; reject cross-tenant policies before I/O.
+
+        None retains existing assembly. Every LLM obtained from model_manager
+        inherits the same policy; raw runtime capabilities remain infrastructure.
+        """
+        if moderation is not None and moderation.tenant_id != tenant_id:
+            raise ValueError("Moderation policy tenant does not match the model tenant.")
         self.tenant_id = tenant_id
         self.user_id = user_id
         self._model_runtime = None
         self._model_provider_factory = None
         self._provider_manager = None
         self._model_manager = None
+        self._moderation = moderation
 
     @property
     def model_runtime(self) -> PluginModelRuntime:
@@ -106,13 +116,19 @@ class PluginModelAssembly:
         if self._model_manager is None:
             from core.model_manager import ModelManager
 
-            self._model_manager = ModelManager(provider_manager=self.provider_manager)
+            self._model_manager = ModelManager(provider_manager=self.provider_manager, moderation=self._moderation)
         return self._model_manager
 
 
-def create_plugin_model_assembly(*, tenant_id: str, user_id: str | None = None) -> PluginModelAssembly:
-    """Create a request-scoped assembly that shares one plugin runtime across model views."""
-    return PluginModelAssembly(tenant_id=tenant_id, user_id=user_id)
+def create_plugin_model_assembly(
+    *, tenant_id: str, user_id: str | None = None, moderation: LLMModerationPolicy | None = None
+) -> PluginModelAssembly:
+    """Create a request-scoped runtime assembly with an optional tenant-matched LLM policy.
+
+    All manager-created LLMs inherit the policy. None preserves existing behavior,
+    and tenant mismatches fail before constructing runtime dependencies.
+    """
+    return PluginModelAssembly(tenant_id=tenant_id, user_id=user_id, moderation=moderation)
 
 
 def create_plugin_model_runtime(*, tenant_id: str, user_id: str | None = None) -> PluginModelRuntime:
@@ -137,6 +153,11 @@ def create_plugin_provider_manager(*, tenant_id: str, user_id: str | None = None
     return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id).provider_manager
 
 
-def create_plugin_model_manager(*, tenant_id: str, user_id: str | None = None) -> ModelManager:
-    """Create a tenant-bound model manager for service flows."""
-    return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id).model_manager
+def create_plugin_model_manager(
+    *, tenant_id: str, user_id: str | None = None, moderation: LLMModerationPolicy | None = None
+) -> ModelManager:
+    """Create a tenant-bound manager whose LLM instances inherit the supplied policy.
+
+    None preserves existing behavior; cross-tenant policies fail before runtime I/O.
+    """
+    return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id, moderation=moderation).model_manager

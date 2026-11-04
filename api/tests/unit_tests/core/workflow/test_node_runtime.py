@@ -1440,6 +1440,10 @@ class _ModelTypeInstanceStub(LargeLanguageModel):
 
 
 class _ModelInstanceStub:
+    @property
+    def moderation(self) -> None:
+        return None
+
     def __init__(
         self,
         *,

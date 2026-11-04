@@ -1,0 +1,239 @@
+from collections.abc import Callable, Generator, Iterator
+from threading import Thread
+from uuid import uuid4
+
+import pytest
+from flask import Flask, request
+from sqlalchemy import Engine
+from sqlalchemy.orm import sessionmaker
+from werkzeug.serving import make_server
+
+from extensions.application_services.moderation import build_llm_moderation_guard, build_moderation_service
+from extensions.ext_code_based_extension import code_based_extension
+from graphon.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
+    LLMUsage,
+)
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from machinery.context import AppRequestContext
+from models.api_based_extension import APIBasedExtension
+from models.base import TypeBase
+from repositories.api_based_extension_repository import APIBasedExtensionRepository
+from services.api_based_extension_application_service import APIBasedExtensionInput
+from services.moderation_adapters import ExtensionModerationGateway, LLMModerationGuard
+from services.moderation_service import ModerationPhase, ModerationRejectedError, ModerationRule, ModerationService
+
+type APIModerationFixture = tuple[
+    ModerationService, ModerationRule, AppRequestContext, dict[str, object], list[dict[str, object]]
+]
+
+
+@pytest.fixture
+def keyword_guard(sqlite_engine: Engine) -> LLMModerationGuard:
+    code_based_extension.init()
+    service = build_moderation_service(database_client=sessionmaker(sqlite_engine))
+    rule = ModerationRule(
+        type="keywords",
+        config={
+            "inputs_config": {"enabled": True, "preset_response": "Input blocked"},
+            "outputs_config": {"enabled": True, "preset_response": "Output blocked"},
+            "keywords": "blocked",
+        },
+    )
+    return build_llm_moderation_guard(AppRequestContext(tenant_id="tenant-1", app_id=""), service=service, rule=rule)
+
+
+def _result(text: str) -> LLMResult:
+    return LLMResult(
+        model="model", prompt_messages=[], message=AssistantPromptMessage(content=text), usage=LLMUsage.empty_usage()
+    )
+
+
+def _chunk(text: str) -> LLMResultChunk:
+    return LLMResultChunk(
+        model="model",
+        prompt_messages=[],
+        delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=text)),
+    )
+
+
+def test_keyword_guard_rejects_multimodal_text_before_invocation(keyword_guard: LLMModerationGuard) -> None:
+    with pytest.raises(ModerationRejectedError, match="Input blocked"):
+        keyword_guard.check_inputs([UserPromptMessage(content=[TextPromptMessageContent(data="BLOCKED")])])
+
+
+def test_keyword_guard_returns_original_approved_result(keyword_guard: LLMModerationGuard) -> None:
+    result = _result("safe")
+    keyword_guard.check_inputs([UserPromptMessage(content="safe")])
+    assert keyword_guard.check_output(result) is result
+
+
+def test_keyword_guard_rejects_output(keyword_guard: LLMModerationGuard) -> None:
+    with pytest.raises(ModerationRejectedError, match="Output blocked"):
+        keyword_guard.check_output(_result("blocked"))
+
+
+def test_split_keyword_rejects_before_any_stream_delivery_and_closes_provider(
+    keyword_guard: LLMModerationGuard,
+) -> None:
+    events: list[str] = []
+
+    def stream() -> Generator[LLMResultChunk]:
+        try:
+            yield _chunk("blo")
+            yield _chunk("cked")
+        finally:
+            events.append("closed")
+
+    response = keyword_guard.check_output(stream())
+    assert isinstance(response, Generator)
+    with pytest.raises(ModerationRejectedError, match="Output blocked"):
+        next(response)
+    assert events == ["closed"]
+
+
+def test_approved_stream_preserves_chunk_identity_and_usage(keyword_guard: LLMModerationGuard) -> None:
+    chunks = [_chunk("safe"), _chunk(" answer")]
+    chunks[-1].delta.usage = LLMUsage.empty_usage()
+    response = keyword_guard.check_output(chunk for chunk in chunks)
+    assert isinstance(response, Generator)
+    delivered = list(response)
+    assert all(actual is expected for actual, expected in zip(delivered, chunks, strict=True))
+
+
+def test_provider_stream_failure_is_not_converted_to_approval(keyword_guard: LLMModerationGuard) -> None:
+    def stream() -> Generator[LLMResultChunk]:
+        yield _chunk("safe")
+        raise RuntimeError("provider unavailable")
+
+    response = keyword_guard.check_output(stream())
+    assert isinstance(response, Generator)
+    with pytest.raises(RuntimeError, match="provider unavailable"):
+        next(response)
+
+
+def test_tool_argument_fragments_are_reassembled_before_moderation(keyword_guard: LLMModerationGuard) -> None:
+    chunks = [_chunk(""), _chunk("")]
+    for chunk, arguments in zip(chunks, ["blo", "cked"], strict=True):
+        chunk.delta.message.tool_calls = [
+            AssistantPromptMessage.ToolCall(
+                id="tool-1", type="function", function={"name": "search", "arguments": arguments}
+            )
+        ]
+    response = keyword_guard.check_output(chunk for chunk in chunks)
+    assert isinstance(response, Generator)
+    with pytest.raises(ModerationRejectedError, match="Output blocked"):
+        next(response)
+
+
+def test_native_structured_payload_is_checked_without_message_text(keyword_guard: LLMModerationGuard) -> None:
+    result = LLMResultWithStructuredOutput(**_result("").model_dump(), structured_output={"answer": "blocked"})
+    with pytest.raises(ModerationRejectedError, match="Output blocked"):
+        keyword_guard.check_result(result)
+
+    chunk = LLMResultChunkWithStructuredOutput(**_chunk("").model_dump(), structured_output={"answer": "blocked"})
+    response = keyword_guard.check_output(item for item in [chunk])
+    assert isinstance(response, Generator)
+    with pytest.raises(ModerationRejectedError, match="Output blocked"):
+        next(response)
+
+
+class ScopedCipher:
+    def encrypt(self, workspace_id: str, value: str) -> str:
+        return f"{workspace_id}:{value}"
+
+    def decrypt(self, workspace_id: str, value: str) -> str:
+        prefix = f"{workspace_id}:"
+        if not value.startswith(prefix):
+            raise ValueError("Wrong workspace")
+        return value[len(prefix) :]
+
+
+@pytest.fixture
+def api_moderation(sqlite_engine: Engine, config_overrides: Callable[..., None]) -> Iterator[APIModerationFixture]:
+    config_overrides(SSRF_PROXY_HTTP_URL="", SSRF_PROXY_HTTPS_URL="")
+    response: dict[str, object] = {"flagged": True, "action": "overridden", "preset_response": "Blocked"}
+    requests: list[dict[str, object]] = []
+    app = Flask(__name__)
+
+    @app.post("/")
+    def moderate() -> dict[str, object]:
+        assert request.headers["Authorization"] == "Bearer secret"
+        requests.append(request.get_json())
+        return response
+
+    server = make_server("127.0.0.1", 0, app, threaded=True)
+    thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+    thread.start()
+    try:
+        TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[APIBasedExtension.__tablename__]])
+        repository = APIBasedExtensionRepository(session_factory=sessionmaker(sqlite_engine))
+        tenant_id = str(uuid4())
+        cipher = ScopedCipher()
+        extension = repository.create_extension(
+            tenant_id,
+            APIBasedExtensionInput(
+                name="Moderation",
+                api_endpoint=f"http://127.0.0.1:{server.server_port}/",
+                api_key=cipher.encrypt(tenant_id, "secret"),
+            ),
+        )
+        service = ModerationService(gateway=ExtensionModerationGateway(extensions=repository, cipher=cipher))
+        rule = ModerationRule(
+            type="api",
+            config={
+                "inputs_config": {"enabled": True},
+                "outputs_config": {"enabled": True},
+                "api_based_extension_id": extension.id,
+            },
+        )
+        yield service, rule, AppRequestContext(tenant_id=tenant_id, app_id="app-1"), response, requests
+    finally:
+        server.shutdown()
+        thread.join()
+        server.server_close()
+
+
+@pytest.mark.parametrize("phase", ["input", "output"])
+def test_api_override_verdict_rejects_original_content(
+    api_moderation: APIModerationFixture, phase: ModerationPhase
+) -> None:
+    service, rule, context, _, requests = api_moderation
+    with pytest.raises(ModerationRejectedError, match="Blocked"):
+        service.check(context, rule=rule, text="content", phase=phase)
+    assert requests == [
+        {
+            "point": f"app.moderation.{phase}",
+            "params": {"app_id": "app-1", "inputs": {}, "query": "content"}
+            if phase == "input"
+            else {"app_id": "app-1", "text": "content"},
+        }
+    ]
+
+
+@pytest.mark.parametrize("verdict", [None, "false", 0])
+def test_api_malformed_verdict_fails_closed(api_moderation: APIModerationFixture, verdict: str | int | None) -> None:
+    service, rule, context, response, _ = api_moderation
+    if verdict is None:
+        response.pop("flagged")
+    else:
+        response["flagged"] = verdict
+    with pytest.raises(ValueError, match="flagged"):
+        service.check(context, rule=rule, text="content", phase="input")
+
+
+def test_api_extension_cannot_be_used_across_tenants(api_moderation: APIModerationFixture) -> None:
+    service, rule, _, _, requests = api_moderation
+    with pytest.raises(ValueError, match="Extension not found"):
+        service.check(
+            AppRequestContext(tenant_id=str(uuid4()), app_id="app-1"), rule=rule, text="content", phase="input"
+        )
+    assert not requests
