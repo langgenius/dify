@@ -99,43 +99,6 @@ describe('Header layout components', () => {
   afterEach(() => vi.restoreAllMocks())
 
   describe('HeaderInNormal', () => {
-    it.each([false, true])(
-      'keeps an existing Builder session toggle available with canvasReadOnly=%s',
-      async (canvasReadOnly) => {
-        const user = userEvent.setup()
-        const { store } = renderWorkflowComponent(
-          <HeaderInNormal
-            controls={{ showDifyBuilderButton: true, hasDifyBuilderSession: true }}
-          />,
-          { initialStoreState: { canvasReadOnly, workflowDraftSyncPhase: 'builder' } },
-        )
-        const toggle = screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' })
-        expect(toggle).toBeEnabled()
-        await user.click(toggle)
-        expect(store.getState().showDifyBuilderPanel).toBe(true)
-        await user.click(toggle)
-        expect(store.getState().showDifyBuilderPanel).toBe(false)
-      },
-    )
-
-    it.each([
-      { canvasReadOnly: true, canEdit: true, hasSession: false },
-      { canvasReadOnly: false, canEdit: false, hasSession: true },
-    ])(
-      'keeps Builder unavailable without edit access or an unlocked canvas: %j',
-      ({ canvasReadOnly, canEdit, hasSession }) => {
-        renderWorkflowComponent(
-          <HeaderInNormal
-            controls={{ showDifyBuilderButton: true, hasDifyBuilderSession: hasSession }}
-          />,
-          {
-            initialStoreState: { canvasReadOnly },
-            hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canEdit } },
-          },
-        )
-        expect(screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' })).toBeDisabled()
-      },
-    )
     it('opens version history, backs up the draft, and closes editing panels', async () => {
       const user = userEvent.setup()
 
@@ -187,17 +150,6 @@ describe('Header layout components', () => {
       expect(screen.getByRole('button', { name: 'workflow.globalVar.title' })).toBeDisabled()
     })
 
-    it('clears the node selected when version history is opened', async () => {
-      const user = userEvent.setup()
-      renderWorkflowComponent(<HeaderInNormal />)
-
-      mockGetNodes.mockReturnValue([{ ...createSelectedNode(), id: 'newly-selected-node' }])
-      await user.click(screen.getByRole('button', { name: 'version-history' }))
-
-      expect(mockHandleNodeSelect).toHaveBeenCalledExactlyOnceWith('newly-selected-node', true)
-      expect(mockHandleBackupDraft).toHaveBeenCalledOnce()
-    })
-
     it('should hide env and global variable buttons when the controls are disabled', () => {
       renderWorkflowComponent(
         <HeaderInNormal
@@ -214,108 +166,6 @@ describe('Header layout components', () => {
       expect(
         screen.queryByRole('button', { name: 'workflow.globalVar.title' }),
       ).not.toBeInTheDocument()
-    })
-
-    it('should place App Builder at the end of the canvas actions', () => {
-      renderWorkflowComponent(
-        <HeaderInNormal
-          components={{
-            middle: <button type="button">middle-action</button>,
-          }}
-          controls={{
-            showDifyBuilderButton: true,
-          }}
-        />,
-      )
-
-      const appBuilderButton = screen.getByRole('button', {
-        name: 'difyBuilder.buttonTooltip',
-      })
-
-      expect(screen.getAllByRole('button').at(-1)).toBe(appBuilderButton)
-    })
-
-    it('should keep the App Builder entry available to close its panel', async () => {
-      const user = userEvent.setup()
-      const { store } = renderWorkflowComponent(
-        <HeaderInNormal controls={{ showDifyBuilderButton: true }} />,
-        { initialStoreState: { showDifyBuilderPanel: true } },
-      )
-      const appBuilderButton = screen.getByRole('button', {
-        name: 'difyBuilder.buttonTooltip',
-      })
-
-      expect(appBuilderButton).toHaveAttribute('aria-expanded', 'true')
-      expect(appBuilderButton).not.toHaveTextContent('difyBuilder.buttonTooltip')
-
-      await user.click(appBuilderButton)
-
-      expect(store.getState().showDifyBuilderPanel).toBe(false)
-      expect(appBuilderButton).toHaveTextContent('difyBuilder.buttonTooltip')
-    })
-
-    it('should toggle an existing App Builder session while its canvas lock is active', async () => {
-      const user = userEvent.setup()
-      mockNodesReadOnly = true
-
-      const { store } = renderWorkflowComponent(
-        <HeaderInNormal
-          controls={{
-            hasDifyBuilderSession: true,
-            showDifyBuilderButton: true,
-          }}
-        />,
-      )
-      const appBuilderButton = screen.getByRole('button', {
-        name: 'difyBuilder.buttonTooltip',
-      })
-
-      expect(appBuilderButton).toBeEnabled()
-      await user.click(appBuilderButton)
-      expect(store.getState().showDifyBuilderPanel).toBe(true)
-
-      await user.click(screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' }))
-      expect(store.getState().showDifyBuilderPanel).toBe(false)
-    })
-
-    it('should keep App Builder disabled on a read-only canvas without a session', () => {
-      mockNodesReadOnly = true
-
-      renderWorkflowComponent(
-        <HeaderInNormal
-          controls={{
-            hasDifyBuilderSession: false,
-            showDifyBuilderButton: true,
-          }}
-        />,
-      )
-
-      expect(screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' })).toBeDisabled()
-    })
-
-    it('should keep App Builder disabled without edit permission even for an existing session', () => {
-      mockNodesReadOnly = true
-
-      renderWorkflowComponent(
-        <HeaderInNormal
-          controls={{
-            hasDifyBuilderSession: true,
-            showDifyBuilderButton: true,
-          }}
-        />,
-        {
-          hooksStoreProps: {
-            accessControl: {
-              canEdit: false,
-              canImportExportDSL: false,
-              canReleaseAndVersion: false,
-              canRun: false,
-            },
-          },
-        },
-      )
-
-      expect(screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' })).toBeDisabled()
     })
   })
 

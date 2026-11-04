@@ -10,6 +10,7 @@ import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowRunHistory } from '@/service/use-workflow'
+import { useHooksStore } from '../hooks-store'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
 import { useWorkflowRun } from '../hooks/use-workflow-run'
@@ -35,6 +36,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
   const { handleNodesCancelSelected } = useNodesInteractions()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowStore = useWorkflowStore()
+  const onWorkflowHistoryOpen = useHooksStore((s) => s.onWorkflowHistoryOpen)
   const setControlMode = useStore((s) => s.setControlMode)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const { handleBackupDraft } = useWorkflowRun()
@@ -139,8 +141,8 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                       historyWorkflowData: item,
                       showInputsPanel: false,
                       showEnvPanel: false,
-                      showDifyBuilderPanel: false,
                     })
+                    onWorkflowHistoryOpen()
                     closeAllInputFieldPanels()
                     handleBackupDraft()
                     setOpen(false)
@@ -150,13 +152,13 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                   }}
                 >
                   {!isChatflow && INTERRUPTED_STATUSES.includes(item.status) && (
-                    <span className="mt-0.5 me-1.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
+                    <span className="me-1.5 mt-0.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
                   )}
                   {!isChatflow && item.status === WorkflowRunningStatus.Failed && (
-                    <span className="mt-0.5 me-1.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
+                    <span className="me-1.5 mt-0.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
                   )}
                   {!isChatflow && item.status === WorkflowRunningStatus.Succeeded && (
-                    <span className="mt-0.5 me-1.5 i-ri-checkbox-circle-line h-3.5 w-3.5 text-[#12B76A]" />
+                    <span className="me-1.5 mt-0.5 i-ri-checkbox-circle-line h-3.5 w-3.5 text-[#12B76A]" />
                   )}
                   <div>
                     <div

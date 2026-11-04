@@ -3,26 +3,29 @@ import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { useRagPipelineStore } from '../store'
 import { processNodesWithoutDataSource } from '../utils'
 
 export const usePipelineRefreshDraft = () => {
   const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
-  const workflowStore = useWorkflowStore()
+  const workflowStore = useRagPipelineStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
 
   const handleRefreshWorkflowDraft = useCallback(() => {
     const {
       setSyncWorkflowDraftHash,
-      setIsSyncingWorkflowDraft,
       setEnvironmentVariables,
       setEnvSecrets,
       setRagPipelineVariables,
     } = workflowStore.getState()
-    setIsSyncingWorkflowDraft(true)
-    fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
-      .then((response) => {
+    const generation = workflowStore.getState().pipelineDraftGeneration + 1
+    workflowStore.setState({ pipelineDraftGeneration: generation, isSyncingWorkflowDraft: true })
+    return workflowStore.getState().enqueuePipelineDraftOperation(async () => {
+      try {
+        if (generation !== workflowStore.getState().pipelineDraftGeneration) return
+        const response = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
+        if (generation !== workflowStore.getState().pipelineDraftGeneration) return
         const { nodes: processedNodes, viewport } = processNodesWithoutDataSource(
           response.graph.nodes,
           response.graph.viewport,
@@ -50,8 +53,11 @@ export const usePipelineRefreshDraft = () => {
           ) || [],
         )
         setRagPipelineVariables?.(response.rag_pipeline_variables || [])
-      })
-      .finally(() => setIsSyncingWorkflowDraft(false))
+      } finally {
+        if (generation === workflowStore.getState().pipelineDraftGeneration)
+          workflowStore.getState().setIsSyncingWorkflowDraft(false)
+      }
+    })
   }, [handleUpdateWorkflowCanvas, workflowStore, pipelineId])
 
   return {

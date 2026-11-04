@@ -14,7 +14,7 @@ import { getTemplateImportSource } from '@/app/components/explore/template-impor
 import { EducationExpireNotice } from '@/app/education/expire-notice'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useImportDSL } from '@/hooks/use-import-dsl'
+import { useImportDSL } from '@/features/app-creation/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -23,9 +23,12 @@ import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { List } from './list'
 
-const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), {
-  ssr: false,
-})
+const DSLConfirmModal = dynamic(
+  () => import('@/features/app-creation/dsl-version-confirm-dialog'),
+  {
+    ssr: false,
+  },
+)
 const TryApp = dynamic(() => import('../explore/try-app'), { ssr: false })
 const ImportFromMarketplaceTemplateModal = dynamic(
   () => import('./import-from-marketplace-template-modal'),

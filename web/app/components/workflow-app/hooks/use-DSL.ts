@@ -1,20 +1,20 @@
-import type { useNodesSyncDraft } from './use-nodes-sync-draft'
+import type { useWorkflowDraftSave } from '../draft/use-draft-save'
 import type { ExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { exportAppDslFile } from '@/app/components/app/use-export-app-dsl'
+import { useWorkflowAppStore as useWorkflowStore } from '@/app/components/workflow-app/store/workflow'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
-import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
+import { useWorkflowDraftSaveByCanEdit } from '../draft/use-draft-save'
 
-type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
+type DoSyncWorkflowDraft = ReturnType<typeof useWorkflowDraftSave>['doSyncWorkflowDraft']
 
 const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { t } = useTranslation(['app'])
@@ -34,12 +34,14 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       if (!appDetail) return false
 
       if (!workflowId) {
+        if (workflowStore.getState().hasWorkflowDraftConflict) return false
         let syncFailed = false
         await doSyncWorkflowDraft(undefined, {
           onError: () => {
             syncFailed = true
           },
         })
+        if (workflowStore.getState().hasWorkflowDraftConflict) return false
         if (syncFailed) {
           toast.error(t(($) => $.exportFailed, { ns: 'app' }))
           return false
@@ -113,7 +115,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 }
 
 export const useDSLByCanEdit = (canEdit: boolean) => {
-  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
+  const { doSyncWorkflowDraft } = useWorkflowDraftSaveByCanEdit(canEdit)
 
   return useDSLBase(doSyncWorkflowDraft)
 }

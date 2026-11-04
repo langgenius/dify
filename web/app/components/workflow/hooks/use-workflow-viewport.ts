@@ -1,25 +1,17 @@
-import type { Shape } from '../store'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useStore, useWorkflowStore } from '../store'
-
-export const isBuilderCanvasActive = (
-  state: Pick<Shape, 'canvasReadOnly' | 'workflowDraftSyncPhase'>,
-) => state.canvasReadOnly || state.workflowDraftSyncPhase !== 'idle'
+import { useHooksStore } from '../hooks-store'
+import { useStore } from '../store'
 
 export const useWorkflowViewport = () => {
-  const workflowStore = useWorkflowStore()
   const canvas = useStoreApi()
-  const builderCanvasActive = useStore(isBuilderCanvasActive)
+  const canvasReadOnly = useStore((state) => state.canvasReadOnly)
+  const onViewportInteraction = useHooksStore((state) => state.onViewportInteraction)
 
   const handleViewportUserInteraction = useCallback(() => {
-    const state = workflowStore.getState()
-    // The edit lock can be released before a queued Builder focus finishes.
-    // The next Builder command resets this flag, rather than unlocking the canvas.
-    state.setBuilderViewportManuallyChanged(true)
-    // Stop an automatic focus animation before the user's gesture takes over.
+    onViewportInteraction()
     canvas.getState().d3Selection?.interrupt()
-  }, [canvas, workflowStore])
+  }, [canvas, onViewportInteraction])
 
-  return { builderCanvasActive, handleViewportUserInteraction }
+  return { canvasReadOnly, handleViewportUserInteraction }
 }
