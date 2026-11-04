@@ -2355,7 +2355,7 @@ so an edit made in the same second as the export is not detected.
 | page | query |  | No | integer, <br>**Default:** 1 |
 | provider | query | Only this provider's tools | No | string |
 | provider_type | query | Only tools of this provider type | No | string, <br>**Available values:** "api", "builtin", "mcp", "workflow" |
-| query | query | Words to match in the tool name or label, or the provider id or label | No | string |
+| query | query | Words to match in the tool name, label or description, or the provider id or label | No | string |
 | workspace_id | path |  | Yes | string |
 
 #### Responses
@@ -4403,7 +4403,7 @@ Binding modes for persisted tool input values.
 | page | integer, <br>**Default:** 1 |  | No |
 | provider | string | Only this provider's tools | No |
 | provider_type | [ToolSource](#toolsource) | Only tools of this provider type | No |
-| query | string | Words to match in the tool name or label, or the provider id or label | No |
+| query | string | Words to match in the tool name, label or description, or the provider id or label | No |
 
 #### ToolListResponse
 
