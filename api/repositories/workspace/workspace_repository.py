@@ -97,9 +97,8 @@ class WorkspaceRepository(
         The application supplies these external actions; this repository only
         controls when they can run. Notifications run after this method commits.
 
-        A recorded Builder origin is immutable. If it is missing, surviving
-        ownership recovers the historical origin before any new workspace is
-        prepared, including when the old workspace is archived.
+        A recorded Builder origin is immutable. Migrations backfill historical
+        origins; runtime assigns an origin only when committing a first creation.
         """
         with self._session_factory.begin() as session:
             if account is not None:
@@ -108,16 +107,6 @@ class WorkspaceRepository(
                 owner = session.get(Account, owner_id, with_for_update=True)
                 if owner is None:
                     raise WorkspaceOwnerNotFoundError()
-                if owner.first_workspace_created_at is None:
-                    first_owned_at = session.scalar(
-                        select(func.min(Tenant.created_at))
-                        .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
-                        .where(
-                            TenantAccountJoin.account_id == owner_id, TenantAccountJoin.role == TenantAccountRole.OWNER
-                        )
-                    )
-                    if first_owned_at is not None:
-                        owner.first_workspace_created_at = first_owned_at
             if (
                 only_if_no_active_workspace
                 and session.scalar(

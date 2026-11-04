@@ -485,15 +485,14 @@ def test_removed_workspace_does_not_reset_builder_origin(
     assert result.first_workspace_created_at == first_created_at
 
 
-@pytest.mark.parametrize("recorded_at", [None, datetime(2019, 1, 1)])
 @pytest.mark.parametrize("status", [TenantStatus.NORMAL, TenantStatus.ARCHIVE])
-def test_activation_preserves_or_recovers_history_before_creating_another_workspace(
+def test_activation_preserves_recorded_origin_with_existing_workspace(
     gateway: tuple[WorkspaceProvisioningService, Signal],
     sqlite_session_factory: sessionmaker[Session],
-    recorded_at: datetime | None,
     status: TenantStatus,
 ) -> None:
     service, _ = gateway
+    recorded_at = datetime(2019, 1, 1)
     historical_created_at = datetime(2020, 1, 1)
     with sqlite_session_factory.begin() as session:
         account = Account(name="Builder", email="builder@example.com", first_workspace_created_at=recorded_at)
@@ -507,12 +506,12 @@ def test_activation_preserves_or_recovers_history_before_creating_another_worksp
     repeated = service.activate(account_id, name="Repeated")
 
     assert result == repeated
-    assert result.first_workspace_created_at == (recorded_at or historical_created_at)
+    assert result.first_workspace_created_at == recorded_at
     assert (result.workspace_id == historical_id) is (status == TenantStatus.NORMAL)
     with sqlite_session_factory() as session:
         persisted = session.get(Account, account_id)
         assert persisted is not None
-        assert persisted.first_workspace_created_at == (recorded_at or historical_created_at)
+        assert persisted.first_workspace_created_at == recorded_at
         assert persisted.initialized_at is None
 
 

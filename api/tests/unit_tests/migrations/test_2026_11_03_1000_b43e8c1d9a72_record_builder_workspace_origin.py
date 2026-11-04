@@ -1,12 +1,14 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 
 
-def test_upgrade_preserves_legacy_builders_and_leaves_consumers_unactivated() -> None:
+@pytest.mark.parametrize("historical_status", ["normal", "archive"])
+def test_upgrade_preserves_legacy_builders_and_leaves_consumers_unactivated(historical_status: str) -> None:
     path = (
         Path(__file__).resolve().parents[3]
         / "migrations/versions/2026_11_03_1000-b43e8c1d9a72_record_builder_workspace_origin.py"
@@ -24,7 +26,9 @@ def test_upgrade_preserves_legacy_builders_and_leaves_consumers_unactivated() ->
                 "initialized_at DATETIME, created_at DATETIME NOT NULL)"
             )
         )
-        connection.execute(sa.text("CREATE TABLE tenants (id TEXT PRIMARY KEY, created_at DATETIME NOT NULL)"))
+        connection.execute(
+            sa.text("CREATE TABLE tenants (id TEXT PRIMARY KEY, created_at DATETIME NOT NULL, status TEXT NOT NULL)")
+        )
         connection.execute(sa.text("CREATE TABLE tenant_account_joins (account_id TEXT, tenant_id TEXT, role TEXT)"))
         connection.execute(
             sa.text(
@@ -35,7 +39,10 @@ def test_upgrade_preserves_legacy_builders_and_leaves_consumers_unactivated() ->
                 "('invited', 'pending', NULL, '2019-01-01')"
             )
         )
-        connection.execute(sa.text("INSERT INTO tenants VALUES ('first', '2020-02-01'), ('second', '2022-01-01')"))
+        connection.execute(
+            sa.text("INSERT INTO tenants VALUES ('first', '2020-02-01', :status), ('second', '2022-01-01', 'normal')"),
+            {"status": historical_status},
+        )
         connection.execute(
             sa.text(
                 "INSERT INTO tenant_account_joins VALUES "
