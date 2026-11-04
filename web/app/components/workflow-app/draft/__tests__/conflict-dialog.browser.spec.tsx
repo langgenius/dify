@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { createStore, Provider } from 'jotai'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { createWorkflowAppStore as createWorkflowStore } from '@/app/components/workflow-app/store/workflow'
+import { createWorkflowAppStore as createWorkflowStore } from '@/app/components/workflow-app/__tests__/workflow-store'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import translations from '@/i18n/locales/fr-FR/workflow.json'
@@ -14,6 +14,7 @@ import WorkflowDraftConflict from '../conflict-dialog'
 const { fetchDraft } = vi.hoisted(() => ({ fetchDraft: vi.fn() }))
 
 vi.mock('@/service/workflow', () => ({ fetchWorkflowDraft: fetchDraft }))
+// boundary: load the real fr-FR workflow copy so the long discard label is measured at its production length.
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: workflow } = await import('@/i18n/locales/fr-FR/workflow.json')
@@ -30,7 +31,12 @@ it('keeps the discard choice readable and makes Enter defer an automatically ope
     createAppDetailFixture({ id: 'app-1', mode: 'workflow' }),
   )
   const atoms = createStore()
-  atoms.set(editorResourceAtom, { kind: 'app', appId: 'app-1', mode: 'workflow' })
+  atoms.set(editorResourceAtom, {
+    kind: 'app',
+    appId: 'app-1',
+    mode: 'workflow',
+    collaborationEnabled: false,
+  })
   const store = createWorkflowStore()
   store.getState().setWorkflowDraftConflict(true)
   const screen = await render(
