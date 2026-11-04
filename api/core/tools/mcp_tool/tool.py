@@ -27,6 +27,7 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError
 from enums import DeploymentEdition
+from extensions.otel import trace_span
 from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 
 logger = logging.getLogger(__name__)
@@ -308,12 +309,19 @@ class MCPTool(Tool):
         won't trigger a 5xx against a missing inner-API endpoint."""
         return self.identity_mode != IdentityMode.OFF and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
 
+    @trace_span()
     def invoke_remote_mcp_tool(
         self,
         tool_parameters: dict[str, Any],
         user_id: str | None = None,
         app_id: str | None = None,
     ) -> CallToolResult:
+        """Resolve provider credentials and return the remote result.
+
+        Identity forwarding requires user context. The provider lookup session closes before remote I/O;
+        the MCP context owns connection cleanup after successful entry.
+        Provider lookup and decryption errors propagate; remote call errors become ToolInvokeError.
+        """
         # Fail closed: forwarding requires user_id (refuse before any DB I/O).
         if self._forwarding_requested and not user_id:
             raise ToolInvokeError(
