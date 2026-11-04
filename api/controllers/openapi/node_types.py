@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from http import HTTPStatus
+from typing import Final
 
 from flask_restx import Resource
 
@@ -23,6 +24,9 @@ from services.workflow.authoring.node_options import block_seed
 from services.workflow.authoring.node_spec import NodeTarget, top_level_hints
 from services.workflow.node_defaults import node_data_schema
 from services.workflow_variable_reference_validator import source_handle_order
+
+# The response and the seed already carry these.
+_IDENTITY_FIELDS: Final = frozenset({"type", "title", "version", "desc"})
 
 
 @openapi_ns.route("/node-types")
@@ -72,7 +76,7 @@ class NodeTypeDetailApi(Resource):
             seed=seed,
             fields=[
                 NodeTypeFieldRow.describing(hint, purpose=hint.loc[0] in purposes)
-                for hint in top_level_hints(target, schema)
+                for hint in top_level_hints(target, schema, skip=_IDENTITY_FIELDS)
             ],
             handles=list(source_handle_order(seed)),
             schema=schema if query.include_schema else None,

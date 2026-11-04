@@ -72,10 +72,32 @@ def test_fields_list_required_ones_first_then_by_loc(describe: _Describe) -> Non
     assert order == sorted(order)
 
 
-def test_a_field_row_carries_the_canvas_example(describe: _Describe) -> None:
-    rows = _rows(describe(BuiltinNodeTypes.LLM))
+def test_the_llm_reply_stays_small(describe: _Describe) -> None:
+    body = describe(BuiltinNodeTypes.LLM).model_dump_json(by_alias=True, exclude_none=False)
 
-    assert rows["context"].example == {"enabled": False, "variable_selector": []}
+    assert len(body.encode()) < 1500
+
+
+def test_rows_leave_out_what_the_seed_already_holds(describe: _Describe) -> None:
+    response = describe(BuiltinNodeTypes.LLM)
+
+    assert {"type", "title", "version", "desc"}.isdisjoint(_rows(response))
+    assert all("example" not in row.model_dump(mode="json") for row in response.fields)
+
+
+def test_rows_carry_only_the_parts_they_have(describe: _Describe) -> None:
+    rows = {
+        name: row.model_dump(mode="json", exclude_unset=False)
+        for name, row in _rows(describe(BuiltinNodeTypes.LLM)).items()
+    }
+
+    assert "options" not in rows["model"]
+    assert rows["reasoning_format"]["options"] == ["separated", "tagged"]
+    assert rows["reasoning_format"]["default"] == "tagged"
+    assert "\n" not in rows["reasoning_format"]["description"]
+    assert rows["reasoning_format"]["description"].startswith("Strategy for handling model reasoning output.")
+    assert "default" not in rows["memory"]
+    assert "description" not in rows["model"]
 
 
 def test_include_schema_adds_the_json_schema(describe: _Describe) -> None:
