@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
 from uuid import UUID, uuid4
@@ -7,14 +8,14 @@ import pytest
 from controllers.service_api.end_user import end_user as controller_module
 from controllers.service_api.end_user.end_user import EndUserApi
 from controllers.service_api.end_user.error import EndUserNotFoundError
-from machinery.context import ServiceApiRequestContext
+from machinery.context import AppRequestContext
 from models.model import App
 from services.app_scoped_end_user_query_service import AppScopedEndUserNotFoundError
 from services.entities.app_scoped_end_user_entities import AppScopedEndUserRecord
 
 
-def _request_context(*, tenant_id: str = "workspace-1", app_id: str = "app-1") -> ServiceApiRequestContext:
-    return ServiceApiRequestContext(
+def _request_context(*, tenant_id: str = "workspace-1", app_id: str = "app-1") -> AppRequestContext:
+    return AppRequestContext(
         tenant_id=tenant_id,
         app_id=app_id,
     )
@@ -23,9 +24,9 @@ def _request_context(*, tenant_id: str = "workspace-1", app_id: str = "app-1") -
 class EndUserQueryServiceStub:
     def __init__(self, result: AppScopedEndUserRecord | Exception) -> None:
         self._result = result
-        self.calls: list[tuple[ServiceApiRequestContext, str]] = []
+        self.calls: list[tuple[AppRequestContext, str]] = []
 
-    def get_by_id(self, context: ServiceApiRequestContext, end_user_id: str) -> AppScopedEndUserRecord:
+    def get_by_id(self, context: AppRequestContext, end_user_id: str) -> AppScopedEndUserRecord:
         self.calls.append((context, end_user_id))
         if isinstance(self._result, Exception):
             raise self._result
@@ -37,9 +38,9 @@ class ApplicationServicesStub:
         self.app_scoped_end_users = AppScopedEndUserServicesStub(end_user_queries)
 
 
+@dataclass(eq=False, repr=False)
 class AppScopedEndUserServicesStub:
-    def __init__(self, queries: EndUserQueryServiceStub) -> None:
-        self.queries = queries
+    queries: EndUserQueryServiceStub
 
 
 class TestEndUserApi:

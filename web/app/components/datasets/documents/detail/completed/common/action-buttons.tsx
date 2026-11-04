@@ -1,4 +1,4 @@
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { RefObject } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -7,8 +7,8 @@ import { useTranslation } from 'react-i18next'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentContext } from '../../context'
 
-const CANCEL_HOTKEY = 'Escape' satisfies Hotkey
-const SAVE_HOTKEY = 'Mod+S' satisfies Hotkey
+const CANCEL_HOTKEY = 'Escape' satisfies HotkeyChord
+const SAVE_HOTKEY = 'Mod+S' satisfies HotkeyChord
 
 type ActionButtonsProps = {
   target: RefObject<HTMLDivElement | null>

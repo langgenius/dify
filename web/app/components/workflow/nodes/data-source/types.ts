@@ -1,9 +1,9 @@
 import type { DatasourceProviderType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Dispatch, SetStateAction } from 'react'
 import type { ResourceVarInputs } from '../_base/types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
-import type { FlowType } from '@/types/common'
-import type { NodeRunResult, VarInInspect } from '@/types/workflow'
+import type { NodeTracing, VarInInspect } from '@/types/workflow'
 
 export const DataSourceClassification = {
   localFile: 'local_file',
@@ -23,10 +23,9 @@ export type DataSourceNodeType = CommonNodeType & {
 
 export type CustomRunFormProps = {
   nodeId: string
-  flowId: string
-  flowType: FlowType
+  resource: EditorResource
   payload: CommonNodeType
-  setRunResult: Dispatch<SetStateAction<NodeRunResult | null>>
+  setRunResult: Dispatch<SetStateAction<NodeTracing | null>>
   setIsRunAfterSingleRun: Dispatch<SetStateAction<boolean>>
   isPaused: boolean
   isRunAfterSingleRun: boolean

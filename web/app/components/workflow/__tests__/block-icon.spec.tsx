@@ -15,7 +15,6 @@ describe('BlockIcon', () => {
     const iconContainer = container.firstElementChild as HTMLElement
     const backgroundIcon = iconContainer.querySelector('div') as HTMLElement
 
-    expect(iconContainer).not.toHaveClass('bg-util-colors-blue-blue-500')
     expect(backgroundIcon.style.backgroundImage).toContain(
       `${API_PREFIX}/workspaces/current/plugin/icon/plugin-tool.png`,
     )

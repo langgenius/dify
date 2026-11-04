@@ -1,7 +1,7 @@
 import json
 from datetime import date
 from enum import StrEnum, auto
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -80,9 +80,9 @@ class PluginParameter(BaseModel):
     auto_generate: PluginParameterAutoGenerate | None = None
     template: PluginParameterTemplate | None = None
     required: bool = False
-    default: Union[float, int, str, bool, list, dict] | None = None
-    min: Union[float, int] | None = None
-    max: Union[float, int] | None = None
+    default: float | int | str | bool | list | dict | None = None
+    min: float | int | None = None
+    max: float | int | None = None
     precision: int | None = None
     options: list[PluginParameterOption] = Field(default_factory=list)
 

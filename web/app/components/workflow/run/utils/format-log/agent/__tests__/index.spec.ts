@@ -1,4 +1,5 @@
 import type { AgentLogItem, NodeTracing } from '@/types/workflow'
+import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
 import format from '..'
 
@@ -6,19 +7,26 @@ const createTrace = (
   agentLog: AgentLogItem[],
   nodeType: BlockEnum = BlockEnum.Agent,
 ): NodeTracing =>
-  ({
+  createNodeTracing({
     node_id: 'agent-node',
     node_type: nodeType,
     execution_metadata: {
+      total_tokens: 0,
+      total_price: 0,
+      currency: 'USD',
       agent_log: agentLog,
     },
-  }) as unknown as NodeTracing
+  })
 
-const createLog = (messageId: string, parentId?: string): AgentLogItem =>
-  ({
-    message_id: messageId,
-    parent_id: parentId,
-  }) as AgentLogItem
+const createLog = (messageId: string, parentId?: string): AgentLogItem => ({
+  message_id: messageId,
+  parent_id: parentId,
+  node_execution_id: 'execution-1',
+  node_id: 'agent-node',
+  label: messageId,
+  data: {},
+  status: 'succeeded',
+})
 
 describe('agent format log', () => {
   it('should transform flat agent logs into a tree', () => {

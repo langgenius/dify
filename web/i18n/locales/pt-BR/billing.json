@@ -8,6 +8,9 @@
   "apps.fullTip2": "Limite do plano alcançado",
   "apps.fullTip2des": "É recomendado limpar aplicações inativas para liberar uso ou entrar em contato conosco.",
   "buyPermissionDeniedTip": "Por favor, entre em contato com o administrador da sua empresa para assinar",
+  "errors.operationFailed": "Não foi possível concluir esta solicitação. Tente novamente mais tarde. Se o problema persistir, entre em contato com o suporte.",
+  "errors.requestInProgress": "Sua solicitação anterior ainda está sendo processada. Tente novamente em instantes.",
+  "errors.unavailable": "Este serviço está temporariamente indisponível. Tente novamente mais tarde.",
   "plans.community.btnText": "Comece com a Comunidade",
   "plans.community.description": "Para Usuários Individuais, Pequenas Equipes ou Projetos Não Comerciais",
   "plans.community.features": [
@@ -46,6 +49,7 @@
     "Suporte Prioritário por E-mail e Chat"
   ],
   "plans.premium.includesTitle": "Tudo da Comunidade, além de:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Premium",
   "plans.premium.price": "Escalável",
   "plans.premium.priceTip": "Baseado no Mercado de Nuvem",
@@ -69,6 +73,7 @@
   "plansCommon.comparePlanAndFeatures": "Compare planos e recursos",
   "plansCommon.currentPlan": "Plano Atual",
   "plansCommon.days": "dias",
+  "plansCommon.discountedAnnualPrice": "Preço anual com desconto: ",
   "plansCommon.documentProcessingPriority": "Prioridade no Processamento de Documentos",
   "plansCommon.documentProcessingPriorityTip": "Para maior prioridade no processamento de documentos, atualize seu plano.",
   "plansCommon.documentProcessingPriorityUpgrade": "Processe mais dados com maior precisão e velocidade.",
@@ -87,6 +92,7 @@
   "plansCommon.modelProviders": "Fornecedores de Modelos",
   "plansCommon.month": "mês",
   "plansCommon.mostPopular": "Mais Popular",
+  "plansCommon.originalAnnualPrice": "Preço anual original: ",
   "plansCommon.priceTip": "por espaço de trabalho/",
   "plansCommon.priority.priority": "Prioridade",
   "plansCommon.priority.standard": "Padrão",

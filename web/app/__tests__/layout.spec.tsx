@@ -1,6 +1,9 @@
+import { renderToStaticMarkup } from 'react-dom/server'
+
 const mocks = vi.hoisted(() => ({
   dehydrateSystemFeatures: vi.fn(() => ({ mutations: [], queries: [] })),
   getOptionalSystemFeatures: vi.fn(),
+  getDatasetMap: vi.fn<() => Record<string, string>>(() => ({})),
   headers: vi.fn(async () => new Headers()),
 }))
 
@@ -16,7 +19,7 @@ vi.mock('@/env', async (importOriginal) => {
 
   return {
     ...actual,
-    getDatasetMap: () => ({}),
+    getDatasetMap: mocks.getDatasetMap,
   }
 })
 
@@ -31,7 +34,54 @@ vi.mock('@/next/headers', () => ({
 describe('Root layout System Features bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.getDatasetMap.mockReturnValue({})
     mocks.headers.mockResolvedValue(new Headers())
+  })
+
+  it.each([
+    ['zh-CN,zh;q=0.9', 'zh-Hans', 'ltr'],
+    ['ar-TN,ar;q=0.9', 'ar-TN', 'rtl'],
+    ['fa-IR,fa;q=0.9', 'fa-IR', 'rtl'],
+  ])(
+    'renders the terminal error document in %s without console bootstrap',
+    async (language, locale, direction) => {
+      mocks.headers.mockResolvedValue(
+        new Headers({
+          'x-dify-pathname': '/webapp-unavailable',
+          'accept-language': language,
+        }),
+      )
+      const { default: RootLayout, generateMetadata } = await import('../layout')
+
+      const html = renderToStaticMarkup(
+        await RootLayout({ children: <main>App unavailable</main> }),
+      )
+      const document = new DOMParser().parseFromString(html, 'text/html')
+
+      expect(document.documentElement.lang).toBe(locale)
+      expect(document.documentElement.dir).toBe(direction)
+      expect(document.body.querySelector('main')).toHaveTextContent('App unavailable')
+      await expect(generateMetadata()).resolves.toEqual({ icons: { icon: '/favicon.ico' } })
+
+      expect(mocks.getOptionalSystemFeatures).not.toHaveBeenCalled()
+      expect(mocks.dehydrateSystemFeatures).not.toHaveBeenCalled()
+    },
+  )
+
+  it('makes runtime configuration available on html before head scripts', async () => {
+    const dataset = {
+      'data-api-prefix': 'https://runtime.example.com/console/api',
+      'data-enable-hitl-im': 'true',
+    }
+    mocks.getDatasetMap.mockReturnValue(dataset)
+    mocks.headers.mockResolvedValue(new Headers({ 'x-dify-pathname': '/webapp-unavailable' }))
+    const { default: RootLayout } = await import('../layout')
+    const html = renderToStaticMarkup(await RootLayout({ children: <main>App unavailable</main> }))
+    const document = new DOMParser().parseFromString(html, 'text/html')
+    for (const [key, value] of Object.entries(dataset)) {
+      expect(document.documentElement).toHaveAttribute(key, value)
+      expect(document.body).not.toHaveAttribute(key)
+    }
   })
 
   it('uses optional System Features for branded metadata', async () => {
@@ -42,9 +92,8 @@ describe('Root layout System Features bootstrap', () => {
       },
       deployment_edition: 'CLOUD',
     })
-    const { default: RootLayout, generateMetadata } = await import('../layout')
+    const { generateMetadata } = await import('../layout')
 
-    await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
     await expect(generateMetadata()).resolves.toMatchObject({
       title: {
         default: 'Acme AI',
@@ -96,11 +145,10 @@ describe('Root layout System Features bootstrap', () => {
     })
   })
 
-  it('renders the client recovery path when optional System Features are unavailable', async () => {
+  it('uses default metadata when optional System Features are unavailable', async () => {
     mocks.getOptionalSystemFeatures.mockResolvedValue(undefined)
-    const { default: RootLayout, generateMetadata } = await import('../layout')
+    const { generateMetadata } = await import('../layout')
 
-    await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
     await expect(generateMetadata()).resolves.toMatchObject({
       title: {
         default: 'Dify',

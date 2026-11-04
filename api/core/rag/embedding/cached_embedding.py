@@ -104,7 +104,7 @@ class CacheEmbedding(Embeddings):
                             logger.exception("Failed transform embedding")
                 cache_embeddings = []
                 try:
-                    for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
+                    for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings, strict=False):
                         text_embeddings[i] = n_embedding
                         hash = helper.generate_text_hash(texts[i])
                         if hash not in cache_embeddings:
@@ -187,7 +187,7 @@ class CacheEmbedding(Embeddings):
                             logger.exception("Failed transform embedding")
                 cache_embeddings = []
                 try:
-                    for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
+                    for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings, strict=False):
                         multimodel_embeddings[i] = n_embedding
                         file_id = multimodel_documents[i]["file_id"]
                         if file_id not in cache_embeddings:

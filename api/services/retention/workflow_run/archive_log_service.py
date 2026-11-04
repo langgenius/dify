@@ -9,6 +9,11 @@ from dataclasses import dataclass
 from typing import Any, NamedTuple, Protocol
 
 from machinery.context import RequestContext
+from services.retention.workflow_run.archive_deletion_task import (
+    WorkflowRunArchiveDeletionDispatcher,
+    WorkflowRunArchiveDeletionStatus,
+    WorkflowRunArchiveDeletionTask,
+)
 from services.retention.workflow_run.archive_download_task import (
     WorkflowRunArchiveDownloadStatus,
     WorkflowRunArchiveDownloadTask,
@@ -30,6 +35,8 @@ class WorkflowRunArchiveBundleRecord(NamedTuple):
     row_count: int
     archive_bytes: int
     archived_at: datetime.datetime
+    deletion_status: WorkflowRunArchiveDeletionStatus | None = None
+    catalog_id: str = ""
 
 
 class WorkflowRunArchiveBundleQuery(Protocol):
@@ -42,6 +49,16 @@ class WorkflowRunArchiveBundleQuery(Protocol):
         year: int,
         month: int,
     ) -> Sequence[WorkflowRunArchiveBundleRecord]: ...
+
+
+class WorkflowRunArchiveBundleStore(WorkflowRunArchiveBundleQuery, Protocol):
+    def request_deletion(self, tenant_id: str, *, year: int, month: int) -> WorkflowRunArchiveDeletionStatus | None: ...
+
+    def set_deletion_status(
+        self, tenant_id: str, *, year: int, month: int, status: WorkflowRunArchiveDeletionStatus
+    ) -> None: ...
+
+    def remove_deleted_bundles(self, tenant_id: str, *, catalog_ids: Sequence[str]) -> None: ...
 
 
 class WorkflowRunArchiveDownloadTaskStore(Protocol):
@@ -78,6 +95,7 @@ class WorkflowRunArchiveMonth:
     archive_bytes: int
     latest_archived_at: datetime.datetime
     download_task: WorkflowRunArchiveDownloadTask | None
+    deletion_status: WorkflowRunArchiveDeletionStatus | None = None
 
 
 @dataclass(frozen=True)
@@ -102,6 +120,10 @@ class WorkflowRunArchiveNotFoundError(Exception):
     """Raised when no archive bundles exist for a requested tenant/month."""
 
 
+class WorkflowRunArchiveInvalidMonthError(Exception):
+    """Raised when a requested archive year or month is outside the supported range."""
+
+
 class WorkflowRunArchiveDownloadTaskNotFoundError(Exception):
     """Raised when the temporary download task has expired or never existed."""
 
@@ -114,15 +136,17 @@ class WorkflowRunArchiveService:
     def __init__(
         self,
         *,
-        bundles: WorkflowRunArchiveBundleQuery,
+        bundles: WorkflowRunArchiveBundleStore,
         tasks: WorkflowRunArchiveDownloadTaskStore,
         dispatcher: WorkflowRunArchiveDownloadTaskDispatcher,
         sign_download_url: WorkflowRunArchiveDownloadUrlSigner,
+        deletion_dispatcher: WorkflowRunArchiveDeletionDispatcher,
     ) -> None:
         self._bundles = bundles
         self._tasks = tasks
         self._dispatcher = dispatcher
         self._sign_download_url = sign_download_url
+        self._deletion_dispatcher = deletion_dispatcher
 
     def list_archives(self, context: RequestContext) -> WorkflowRunArchiveList:
         """Return monthly archive metadata for the active workspace."""
@@ -135,6 +159,7 @@ class WorkflowRunArchiveService:
         for year, month in sorted(records_by_month, reverse=True):
             records = records_by_month[(year, month)]
             bundle_refs = [(record.shard, record.bundle_id) for record in records]
+            deletion_status = _month_deletion_status(records)
             months.append(
                 WorkflowRunArchiveMonth(
                     year=year,
@@ -144,12 +169,15 @@ class WorkflowRunArchiveService:
                     row_count=sum(record.row_count for record in records),
                     archive_bytes=sum(record.archive_bytes for record in records),
                     latest_archived_at=max(record.archived_at for record in records),
-                    download_task=self._get_cached_month_download_task(
+                    download_task=None
+                    if deletion_status
+                    else self._get_cached_month_download_task(
                         tenant_id=tenant_id,
                         year=year,
                         month=month,
                         bundle_refs=bundle_refs,
                     ),
+                    deletion_status=deletion_status,
                 )
             )
 
@@ -176,6 +204,8 @@ class WorkflowRunArchiveService:
         bundles = self._bundles.list_for_tenant_month(tenant_id, year=year, month=month)
         if not bundles:
             raise WorkflowRunArchiveNotFoundError(f"Workflow run archive not found: {year:04d}-{month:02d}")
+        if _month_deletion_status(bundles):
+            raise WorkflowRunArchiveDownloadNotReadyError("This workflow run archive is being permanently deleted.")
 
         bundle_refs = [(bundle.shard, bundle.bundle_id) for bundle in bundles]
         download_id = build_archive_download_id(
@@ -221,7 +251,87 @@ class WorkflowRunArchiveService:
         task = self._tasks.get(tenant_id=tenant_id, download_id=download_id)
         if task is None:
             raise WorkflowRunArchiveDownloadTaskNotFoundError(f"Workflow run archive download not found: {download_id}")
+        bundles = self._bundles.list_for_tenant_month(tenant_id, year=task.year, month=task.month)
+        available_refs = {(bundle.shard, bundle.bundle_id) for bundle in bundles}
+        requested_refs = {(ref.shard, ref.bundle_id) for ref in task.bundle_refs}
+        available_ids = {bundle.bundle_id for bundle in bundles}
+        if (
+            task.tenant_id != tenant_id
+            or _month_deletion_status(bundles)
+            or not bundles
+            or (requested_refs and not requested_refs.issubset(available_refs))
+            or not set(task.bundle_ids).issubset(available_ids)
+        ):
+            raise WorkflowRunArchiveDownloadTaskNotFoundError("This workflow run archive is no longer available.")
         return task
+
+    def delete_archive(self, context: RequestContext, *, year: int, month: int) -> WorkflowRunArchiveDeletionTask:
+        """Durably disable downloads before enqueueing an idempotent archive-only deletion."""
+        tenant_id = context.active_workspace_id
+        status = self._bundles.request_deletion(tenant_id, year=year, month=month)
+        event = (
+            "workflow_run_archive.deletion_requested" if status is not None else "workflow_run_archive.deletion_noop"
+        )
+        audit_attributes = {
+            "audit": True,
+            "tenant_id": tenant_id,
+            "account_id": context.account_id,
+            "year": year,
+            "month": month,
+            "request_id": context.request_id,
+        }
+        # The repository has committed the deletion marker; a request is not proof of completed deletion.
+        logger.info(
+            "audit: %s tenant_id=%s account_id=%s year=%s month=%s request_id=%s status=%s",
+            event,
+            tenant_id,
+            context.account_id,
+            year,
+            month,
+            context.request_id,
+            status,
+            extra={"attributes": {**audit_attributes, "event": event, "deletion_status": status}},
+        )
+        if status is None:
+            return WorkflowRunArchiveDeletionTask(year, month, WorkflowRunArchiveDeletionStatus.COMPLETED)
+        try:
+            # Re-dispatch pending/processing requests too: a lost or interrupted worker must be recoverable.
+            self._deletion_dispatcher(tenant_id=tenant_id, year=year, month=month)
+        except Exception:
+            logger.exception(
+                "audit: workflow_run_archive.deletion_enqueue_failed "
+                "tenant_id=%s account_id=%s year=%s month=%s request_id=%s",
+                tenant_id,
+                context.account_id,
+                year,
+                month,
+                context.request_id,
+                extra={"attributes": {**audit_attributes, "event": "workflow_run_archive.deletion_enqueue_failed"}},
+            )
+            self._bundles.set_deletion_status(
+                tenant_id, year=year, month=month, status=WorkflowRunArchiveDeletionStatus.FAILED
+            )
+            return WorkflowRunArchiveDeletionTask(
+                year, month, WorkflowRunArchiveDeletionStatus.FAILED, "Failed to enqueue archive deletion."
+            )
+        logger.info(
+            "audit: workflow_run_archive.deletion_enqueued "
+            "tenant_id=%s account_id=%s year=%s month=%s request_id=%s status=%s",
+            tenant_id,
+            context.account_id,
+            year,
+            month,
+            context.request_id,
+            status,
+            extra={
+                "attributes": {
+                    **audit_attributes,
+                    "event": "workflow_run_archive.deletion_enqueued",
+                    "deletion_status": status,
+                }
+            },
+        )
+        return WorkflowRunArchiveDeletionTask(year, month, status)
 
     def get_download_url(self, context: RequestContext, *, download_id: str) -> str:
         """Return a short-lived URL for a ready archive download."""
@@ -284,3 +394,18 @@ class WorkflowRunArchiveService:
         expires_at_utc = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=datetime.UTC)
         remaining_seconds = int((expires_at_utc - datetime.datetime.now(datetime.UTC)).total_seconds())
         return max(1, min(3600, remaining_seconds))
+
+
+def _month_deletion_status(
+    records: Sequence[WorkflowRunArchiveBundleRecord],
+) -> WorkflowRunArchiveDeletionStatus | None:
+    """Any durable deletion request disables the entire month's downloads."""
+    statuses = {record.deletion_status for record in records}
+    for status in (
+        WorkflowRunArchiveDeletionStatus.FAILED,
+        WorkflowRunArchiveDeletionStatus.PROCESSING,
+        WorkflowRunArchiveDeletionStatus.PENDING,
+    ):
+        if status in statuses:
+            return status
+    return None

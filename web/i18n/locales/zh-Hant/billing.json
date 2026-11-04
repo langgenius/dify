@@ -8,6 +8,9 @@
   "apps.fullTip2": "計劃限制已達",
   "apps.fullTip2des": "建議清除不活躍的應用程式以釋放使用空間，或聯繫我們。",
   "buyPermissionDeniedTip": "請聯絡企業管理員訂閱",
+  "errors.operationFailed": "無法完成此請求，請稍後重試。如果問題持續發生，請聯絡支援團隊。",
+  "errors.requestInProgress": "上一個請求仍在處理中，請稍後再試。",
+  "errors.unavailable": "服務暫時無法使用，請稍後再試。",
   "plans.community.btnText": "開始使用社區",
   "plans.community.description": "適用於個別用戶、小型團隊或非商業項目",
   "plans.community.features": [
@@ -46,6 +49,7 @@
     "優先電子郵件與聊天支援"
   ],
   "plans.premium.includesTitle": "來自社群的一切，加上：",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "高級",
   "plans.premium.price": "可擴展的",
   "plans.premium.priceTip": "根據 Cloud Marketplace",
@@ -69,6 +73,7 @@
   "plansCommon.comparePlanAndFeatures": "比較計劃和功能",
   "plansCommon.currentPlan": "當前計劃",
   "plansCommon.days": "天",
+  "plansCommon.discountedAnnualPrice": "優惠年付價格：",
   "plansCommon.documentProcessingPriority": "文件處理優先順序",
   "plansCommon.documentProcessingPriorityTip": "如需更高的文件處理優先順序，請升級您的方案。",
   "plansCommon.documentProcessingPriorityUpgrade": "以更快的速度、更高的精度處理更多的資料。",
@@ -87,6 +92,7 @@
   "plansCommon.modelProviders": "支援的模型提供商",
   "plansCommon.month": "月",
   "plansCommon.mostPopular": "最受歡迎",
+  "plansCommon.originalAnnualPrice": "原年付價格：",
   "plansCommon.priceTip": "每個工作區/",
   "plansCommon.priority.priority": "優先",
   "plansCommon.priority.standard": "標準",

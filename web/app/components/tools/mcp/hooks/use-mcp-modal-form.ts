@@ -1,27 +1,30 @@
 'use client'
 import type { HeaderItem } from '../headers-input'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
-import { uploadRemoteFileInfo } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 
-const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' }
+const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' } satisfies IconPickerValue
 const extractFileId = (url: string) => {
   const match = /files\/(.+?)\/file-preview/.exec(url)
   return match ? match[1] : null
 }
-const getIcon = (data?: ToolWithProvider): AppIconSelection => {
-  if (!data) return DEFAULT_ICON as AppIconSelection
-  if (typeof data.icon === 'string')
-    return { type: 'image', url: data.icon, fileId: extractFileId(data.icon) } as AppIconSelection
+const getIcon = (data?: ToolWithProvider): IconPickerValue => {
+  if (!data) return DEFAULT_ICON
+  if (typeof data.icon === 'string') {
+    const fileId = extractFileId(data.icon)
+    return fileId ? { type: 'image', url: data.icon, fileId } : DEFAULT_ICON
+  }
   return {
-    ...data.icon,
-    icon: data.icon.content,
     type: 'emoji',
-  } as unknown as AppIconSelection
+    icon: data.icon.content,
+    background: data.icon.background,
+  }
 }
 const getInitialHeaders = (data?: ToolWithProvider): HeaderItem[] => {
   return Object.entries(data?.masked_headers || {}).map(([key, value]) => ({
@@ -44,8 +47,7 @@ export const isValidServerID = (str: string) => {
 type MCPModalFormState = {
   url: string
   name: string
-  appIcon: AppIconSelection
-  showAppIconPicker: boolean
+  appIcon: IconPickerValue
   serverIdentifier: string
   timeout: number
   sseReadTimeout: number
@@ -60,8 +62,7 @@ type MCPModalFormState = {
 type MCPModalFormActions = {
   setUrl: (url: string) => void
   setName: (name: string) => void
-  setAppIcon: (icon: AppIconSelection) => void
-  setShowAppIconPicker: (show: boolean) => void
+  setAppIcon: (icon: IconPickerValue) => void
   setServerIdentifier: (id: string) => void
   setTimeout: (timeout: number) => void
   setSseReadTimeout: (timeout: number) => void
@@ -82,6 +83,9 @@ type MCPModalFormActions = {
  * directly, and the key change triggers a remount of the consumer component.
  */
 export const useMCPModalForm = (data?: ToolWithProvider) => {
+  const { mutateAsync: uploadRemoteFile } = useMutation(
+    consoleQuery.remoteFiles.upload.post.mutationOptions({ context: { silent: true } }),
+  )
   const isCreate = !data
   const originalServerUrl = data?.server_url
   const originalServerID = data?.server_identifier
@@ -90,8 +94,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   // Form state - initialized from data
   const [url, setUrl] = useState(() => data?.server_url || '')
   const [name, setName] = useState(() => data?.name || '')
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(() => getIcon(data))
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [appIcon, setAppIcon] = useState<IconPickerValue>(() => getIcon(data))
   const [serverIdentifier, setServerIdentifier] = useState(() => data?.server_identifier || '')
   const [timeout, setMcpTimeout] = useState(() => data?.configuration?.timeout || 30)
   const [sseReadTimeout, setSseReadTimeout] = useState(
@@ -99,7 +102,6 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   )
   const [headers, setHeaders] = useState<HeaderItem[]>(() => getInitialHeaders(data))
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
-  const appIconRef = useRef<HTMLDivElement>(null)
   const urlBlurGenerationRef = useRef(0)
   // Auth state
   const [authMethod, setAuthMethod] = useState<MCPAuthMethod>(MCPAuthMethod.authentication)
@@ -130,22 +132,15 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
         if (!domain) return
 
         const remoteIcon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
-        const res = await uploadRemoteFileInfo(remoteIcon, undefined, true)
-        if (isStale()) return
+        const res = await uploadRemoteFile({ body: { url: remoteIcon } })
+        if (isStale() || !res.url) return
 
-        setAppIcon({ type: 'image', url: res.url, fileId: extractFileId(res.url) || '' })
+        setAppIcon({ type: 'image', url: res.url, fileId: res.id })
       } catch (e) {
         if (isStale()) return
 
         let errorMessage = 'Failed to fetch remote icon'
-        if (e instanceof Response) {
-          try {
-            const errorData = await e.json()
-            if (errorData?.code) errorMessage = `Upload failed: ${errorData.code}`
-          } catch {
-            // Ignore JSON parsing errors
-          }
-        } else if (e instanceof Error) {
+        if (e instanceof Error) {
           errorMessage = e.message
         }
         console.error('Failed to fetch remote icon:', e)
@@ -154,7 +149,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
         if (!isStale()) setIsFetchingIcon(false)
       }
     },
-    [data],
+    [data, uploadRemoteFile],
   )
   const resetIcon = useCallback(() => {
     setAppIcon(getIcon(data))
@@ -169,13 +164,11 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
     isCreate,
     originalServerUrl,
     originalServerID,
-    appIconRef,
     // State
     state: {
       url,
       name,
       appIcon,
-      showAppIconPicker,
       serverIdentifier,
       timeout,
       sseReadTimeout,
@@ -192,7 +185,6 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       setUrl,
       setName,
       setAppIcon,
-      setShowAppIconPicker,
       setServerIdentifier,
       setTimeout: setMcpTimeout,
       setSseReadTimeout,

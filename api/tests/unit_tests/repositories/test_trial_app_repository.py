@@ -1,11 +1,20 @@
 import uuid
-from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+from models.agent import (
+    Agent,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+)
 from models.model import AccountTrialAppRecord, App, AppMode, TrialApp
 from repositories.trial_app_repository import TrialAppRepository
 from services.trial_app_access_service import (
@@ -54,13 +63,16 @@ def test_existing_ids_returns_only_trial_apps(sqlite_session_factory: sessionmak
     assert result == frozenset({eligible_id})
 
 
-def test_existing_ids_skips_session_for_empty_input() -> None:
-    session_factory = MagicMock(spec=sessionmaker)
+def test_existing_ids_skips_session_for_empty_input(
+    sqlite_session_factory: sessionmaker[Session], mocker: MockerFixture
+) -> None:
+    session_factory = sqlite_session_factory
+    open_session = mocker.spy(type(session_factory), "__call__")
 
     result = TrialAppRepository(session_factory).existing_ids([])
 
     assert result == frozenset()
-    session_factory.assert_not_called()
+    open_session.assert_not_called()
 
 
 def test_resolve_returns_actual_app_owner_and_account_usage(sqlite_session_factory: sessionmaker[Session]) -> None:
@@ -230,3 +242,61 @@ def test_record_does_not_commit_caller_session(sqlite_session_factory: sessionma
     usage = _record(sqlite_session_factory, app_id=usage_app_id, account_id=account_id)
     assert usage is not None
     assert usage.count == 1
+
+
+@pytest.mark.parametrize(
+    ("operation", "include_snapshot", "expected"),
+    [
+        (AgentConfigRevisionOperation.PUBLISH_DRAFT, True, True),
+        (AgentConfigRevisionOperation.IMPORT_PACKAGE, True, False),
+        (AgentConfigRevisionOperation.PUBLISH_DRAFT, False, False),
+    ],
+    ids=["published-with-dirty-draft", "unpublished-seed", "missing-snapshot"],
+)
+def test_agent_trial_requires_a_visible_existing_snapshot(
+    sqlite_session_factory: sessionmaker[Session],
+    operation: AgentConfigRevisionOperation,
+    include_snapshot: bool,
+    expected: bool,
+) -> None:
+    app_id, tenant_id, agent_id, snapshot_id = (str(uuid4()) for _ in range(4))
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                App(
+                    id=app_id,
+                    tenant_id=tenant_id,
+                    name="Trial Agent",
+                    mode=AppMode.AGENT,
+                    enable_site=True,
+                    enable_api=False,
+                ),
+                TrialApp(app_id=app_id, tenant_id=tenant_id),
+                Agent(
+                    id=agent_id,
+                    tenant_id=tenant_id,
+                    app_id=app_id,
+                    name="Agent",
+                    scope=AgentScope.ROSTER,
+                    source=AgentSource.AGENT_APP,
+                    active_config_snapshot_id=snapshot_id,
+                    active_config_is_published=False,
+                ),
+                AgentConfigRevision(
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    current_snapshot_id=snapshot_id,
+                    revision=1,
+                    operation=operation,
+                ),
+            ]
+        )
+        if include_snapshot:
+            session.add(
+                AgentConfigSnapshot(
+                    id=snapshot_id, tenant_id=tenant_id, agent_id=agent_id, version=1, config_snapshot={}
+                )
+            )
+
+    result = TrialAppRepository(sqlite_session_factory).existing_ids([app_id])
+    assert result == (frozenset({app_id}) if expected else frozenset())

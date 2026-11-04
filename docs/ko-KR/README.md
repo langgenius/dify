@@ -88,7 +88,7 @@ Dify의 모든 제품에는 해당 API가 함께 제공되므로 Dify를 자신�
 ## Dify 사용하기
 
 - **클라우드 </br>**
-  우리는 누구나 설정이 필요 없이 사용해 볼 수 있도록 [Dify 클라우드](https://dify.ai) 서비스를 호스팅합니다. 이는 자체 배포 버전의 모든 기능을 제공하며, 샌드박스 플랜에서 무료로 200회의 GPT-4 호출을 포함합니다.
+  [Dify Cloud](https://cloud.dify.ai)를 통해 서버를 관리하지 않고 Dify를 사용할 수 있습니다. 최신 요금제와 사용 한도는 [요금 안내](https://dify.ai/pricing)를 확인하세요.
 
 - **셀프-호스팅 Dify 커뮤니티 에디션</br>**
   환경에서 Dify를 빠르게 실행하려면 이 [스타터 가이드를](#빠른-시작) 참조하세요.
@@ -153,11 +153,11 @@ Dify는 모든 형태의 기여를 환영합니다.
 - [X](https://x.com/dify_ai): 릴리스 소식과 프로젝트 업데이트를 확인하세요.
 ## Star 히스토리
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## 보안 공개
 
-개인정보 보호를 위해 보안 문제를 GitHub에 게시하지 마십시오. 대신 security@dify.ai로 질문을 보내주시면 더 자세한 답변을 드리겠습니다.
+[보안 정책](../../SECURITY.md)에 따라 GitHub Security Advisories를 통해 취약점을 비공개로 보고하세요. 공개 이슈, 토론 또는 PR에 공개하지 마세요.
 
 ## 라이선스
 

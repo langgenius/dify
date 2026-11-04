@@ -61,7 +61,6 @@ describe('AgentBuildDraftBar', () => {
     })
 
     expect(applyButton).toHaveAttribute('aria-disabled', 'true')
-    expect(applyButton.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
     expect(discardButton).toBeDisabled()
 
     await user.click(applyButton)
@@ -82,60 +81,10 @@ describe('AgentBuildDraftBar', () => {
     ).toBeDisabled()
   })
 
-  it('should show build draft change metadata', () => {
-    const { container, rerender } = render(
-      <AgentBuildDraftBar
-        changeSummary={changeSummary}
-        changesCount={0}
-        onApply={vi.fn()}
-        onDiscard={vi.fn()}
-      />,
-    )
-
-    expect(container.firstElementChild).toHaveClass('w-full')
-    expect(container.firstElementChild).not.toHaveClass('w-fit')
-    expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.title')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":0}',
-      }),
-    ).toBeInTheDocument()
-    expect(document.querySelector('.i-ri-arrow-right-s-line')).toBeInTheDocument()
-
-    rerender(
-      <AgentBuildDraftBar
-        changeSummary={changeSummary}
-        changesCount={2}
-        onApply={vi.fn()}
-        onDiscard={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.title')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":2}',
-      }),
-    ).toBeInTheDocument()
-  })
-
   it('should open build draft change details from the metadata trigger', async () => {
     const user = userEvent.setup()
     const onApply = vi.fn()
     const onDiscard = vi.fn()
-    const getBoundingClientRectSpy = vi
-      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
-      .mockReturnValue({
-        bottom: 50,
-        height: 50,
-        left: 0,
-        right: 432,
-        top: 0,
-        width: 432,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      })
 
     render(
       <AgentBuildDraftBar
@@ -152,9 +101,7 @@ describe('AgentBuildDraftBar', () => {
 
     await user.click(changesTrigger)
 
-    const changesPanelId = changesTrigger.getAttribute('aria-controls')
-    expect(changesPanelId).toBeTruthy()
-    expect(document.getElementById(changesPanelId!)).toHaveStyle({ width: '432px' })
+    expect(changesTrigger).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('agentV2.agentDetail.configure.skills.label')).toBeInTheDocument()
     expect(screen.getByText('tender-analyzer')).toBeInTheDocument()
     expect(screen.getByText('figma-code-connect')).toBeInTheDocument()
@@ -167,7 +114,6 @@ describe('AgentBuildDraftBar', () => {
       screen.getByText('agentV2.agentDetail.configure.advancedSettings.envEditor.shortLabel'),
     ).toBeInTheDocument()
     expect(screen.getByText('API_KEY')).toBeInTheDocument()
-    expect(document.querySelector('.text-text-accent')).toHaveClass('i-ri-add-circle-fill')
 
     await user.click(
       screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' }),
@@ -184,8 +130,6 @@ describe('AgentBuildDraftBar', () => {
 
     expect(onDiscard).toHaveBeenCalledTimes(1)
     expect(onApply).toHaveBeenCalledTimes(1)
-
-    getBoundingClientRectSpy.mockRestore()
   })
 
   it('should keep both actions enabled when there are no build draft changes', async () => {

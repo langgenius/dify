@@ -18,13 +18,13 @@ import {
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
-import { toast } from '@/app/notifications'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { FormTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
 import { ReadmeEntrance } from '../readme-panel/entrance'
@@ -105,6 +105,8 @@ const EndpointModal = ({
   const { t } = useTranslation(['common', 'plugin', 'tools'])
   const fields = [NAME_FIELD, ...settings]
   const formSchemas = fields.map(toFormSchema)
+  const [validationError, setValidationError] = React.useState<{ message: string } | null>(null)
+  const validationErrorRef = React.useRef<HTMLParagraphElement>(null)
   const [tempCredential, setTempCredential] = React.useState<Record<string, unknown>>(() => {
     const values: Record<string, unknown> = {
       ...Object.fromEntries(
@@ -124,17 +126,21 @@ const EndpointModal = ({
     return values
   })
 
+  React.useEffect(() => {
+    if (validationError) validationErrorRef.current?.focus()
+  }, [validationError])
+
   const handleSave = () => {
     if (isPending) return
     for (const field of fields) {
       const value = tempCredential[field.name]
       if (field.required && (value === undefined || value === null || value === '')) {
-        toast.error(
-          t(($) => $['errorMsg.fieldRequired'], {
+        setValidationError({
+          message: t(($) => $['errorMsg.fieldRequired'], {
             ns: 'common',
             field: field.label ? getValueFromI18nObject(toFormLabel(field.label)) : field.name,
           }),
-        )
+        })
         return
       }
     }
@@ -163,9 +169,9 @@ const EndpointModal = ({
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="p-4 pb-2">
                 <div className="flex items-center justify-between">
-                  <div className="system-xl-semibold text-text-primary">
+                  <DrawerTitle className="system-xl-semibold text-text-primary">
                     {t(($) => $['detailPanel.endpointModalTitle'], { ns: 'plugin' })}
-                  </div>
+                  </DrawerTitle>
                   <IconButton
                     aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                     onClick={onCancel}
@@ -186,10 +192,21 @@ const EndpointModal = ({
                 }}
               >
                 <div className="px-4 py-2">
+                  {validationError && (
+                    <p
+                      ref={validationErrorRef}
+                      role="alert"
+                      tabIndex={-1}
+                      className="mb-2 system-sm-regular text-text-destructive"
+                    >
+                      {validationError.message}
+                    </p>
+                  )}
                   <Form
                     value={tempCredential}
                     onChange={(v) => {
                       setTempCredential(v)
+                      setValidationError(null)
                     }}
                     formSchemas={formSchemas}
                     isEditMode={true}

@@ -1,0 +1,58 @@
+"""Outer adapters used by the data-source API-key auth application service."""
+
+from collections.abc import Callable
+from typing import Protocol, override
+
+import httpx
+
+from core.helper import encrypter
+from services.auth.errors import (
+    DataSourceApiKeyAuthProviderUnavailableError,
+    UnsupportedDataSourceApiKeyAuthProviderError,
+)
+from services.data_source.auth.api_key_service import ApiKeyAuthCredentialEncryptor, ApiKeyAuthCredentialValidator
+from services.data_source.entities.api_key_auth import DataSourceApiKeyAuthCredentials
+
+
+class _ProviderApiKeyAuthValidator(Protocol):
+    def validate_credentials(self) -> bool: ...
+
+
+type _ProviderApiKeyAuthValidatorFactory = Callable[
+    [DataSourceApiKeyAuthCredentials],
+    _ProviderApiKeyAuthValidator,
+]
+
+
+def _get_provider_validator_factory(provider: str) -> _ProviderApiKeyAuthValidatorFactory:
+    match provider:
+        case "firecrawl":
+            from services.data_source.auth.firecrawl.firecrawl import FirecrawlAuth
+
+            return FirecrawlAuth
+        case "watercrawl":
+            from services.data_source.auth.watercrawl.watercrawl import WatercrawlAuth
+
+            return WatercrawlAuth
+        case "jinareader":
+            from services.data_source.auth.jina.jina import JinaAuth
+
+            return JinaAuth
+        case _:
+            raise UnsupportedDataSourceApiKeyAuthProviderError(provider)
+
+
+class ProviderApiKeyAuthCredentialValidator(ApiKeyAuthCredentialValidator):
+    @override
+    def validate(self, provider: str, credentials: DataSourceApiKeyAuthCredentials) -> bool:
+        validator_factory = _get_provider_validator_factory(provider)
+        try:
+            return validator_factory(credentials).validate_credentials()
+        except httpx.TransportError as exc:
+            raise DataSourceApiKeyAuthProviderUnavailableError(provider) from exc
+
+
+class TenantApiKeyAuthCredentialEncryptor(ApiKeyAuthCredentialEncryptor):
+    @override
+    def encrypt(self, workspace_id: str, token: str) -> str:
+        return encrypter.encrypt_token(workspace_id, token)

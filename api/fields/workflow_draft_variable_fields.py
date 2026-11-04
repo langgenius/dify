@@ -10,10 +10,10 @@ from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from models.workflow import WorkflowDraftVariable
 
-type JSONValue = str | int | float | bool | dict[str, "JSONValue"] | list["JSONValue"] | None
+type RecursiveJSONValue = str | int | float | bool | dict[str, "RecursiveJSONValue"] | list["RecursiveJSONValue"] | None
 
 
-def _convert_values_to_json_serializable_object(value: Segment) -> JSONValue:
+def _convert_values_to_json_serializable_object(value: Segment) -> RecursiveJSONValue:
     match value:
         case FileSegment():
             return value.value.model_dump()
@@ -25,7 +25,7 @@ def _convert_values_to_json_serializable_object(value: Segment) -> JSONValue:
             return value.value
 
 
-def _serialize_var_value(variable: WorkflowDraftVariable) -> JSONValue:
+def _serialize_var_value(variable: WorkflowDraftVariable) -> RecursiveJSONValue:
     value = variable.get_value()
     # Create a copy to avoid mutating the model's cached deserialized value.
     value = value.model_copy(deep=True)
@@ -98,7 +98,7 @@ class WorkflowDraftVariableWithoutValueResponse(ResponseModel):
 
 
 class WorkflowDraftVariableResponse(WorkflowDraftVariableWithoutValueResponse):
-    value: JSONValue
+    value: RecursiveJSONValue
     full_content: WorkflowDraftVariableFullContentResponse | None
 
     @model_validator(mode="before")

@@ -85,6 +85,8 @@ describe('DetailSidebarFrame', () => {
     Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
   })
 
+  afterEach(() => Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME))
+
   it('renders expanded detail content by default', () => {
     renderDetailSidebarFrame()
 

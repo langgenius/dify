@@ -1,5 +1,5 @@
 from inspect import unwrap
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -7,7 +7,7 @@ from flask import Flask
 from controllers.console import console_ns
 from controllers.console.datasets.rag_pipeline.datasource_content_preview import (
     DataSourceContentPreviewApi,
-    Parser,
+    DatasourceContentPreviewPayload,
 )
 from models import Account
 from models.dataset import Pipeline
@@ -20,14 +20,14 @@ def make_account() -> Account:
 
 
 class TestDataSourceContentPreviewApi:
-    def _valid_payload(self):
+    def _valid_payload(self) -> dict[str, object]:
         return {
             "inputs": {"query": "hello"},
             "datasource_type": "notion",
             "credential_id": "cred-1",
         }
 
-    def test_post_success(self, app: Flask):
+    def test_post_success(self, app: Flask) -> None:
         api = DataSourceContentPreviewApi()
         method = unwrap(api.post)
 
@@ -50,7 +50,7 @@ class TestDataSourceContentPreviewApi:
                 return_value=service_instance,
             ),
         ):
-            req_data = Parser.model_validate(payload)
+            req_data = DatasourceContentPreviewPayload.model_validate(payload)
             response, status = method(api, req_data, account, pipeline, node_id)
 
         service_instance.run_datasource_node_preview.assert_called_once_with(
@@ -61,11 +61,12 @@ class TestDataSourceContentPreviewApi:
             datasource_type=payload["datasource_type"],
             is_published=True,
             credential_id=payload["credential_id"],
+            datasource_providers=ANY,
         )
         assert status == 200
         assert response == preview_result
 
-    def test_post_invalid_payload(self, app: Flask):
+    def test_post_invalid_payload(self, app: Flask) -> None:
         api = DataSourceContentPreviewApi()
         method = unwrap(api.post)
 
@@ -81,10 +82,10 @@ class TestDataSourceContentPreviewApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
-                method(api, Parser.model_validate(payload), account, pipeline, "node-1")
+            with pytest.raises(ValueError, match=r"datasource_type\n\s+Field required"):
+                method(api, DatasourceContentPreviewPayload.model_validate(payload), account, pipeline, "node-1")
 
-    def test_post_without_credential_id(self, app: Flask):
+    def test_post_without_credential_id(self, app: Flask) -> None:
         api = DataSourceContentPreviewApi()
         method = unwrap(api.post)
 
@@ -108,7 +109,7 @@ class TestDataSourceContentPreviewApi:
                 return_value=service_instance,
             ),
         ):
-            req_data = Parser.model_validate(payload)
+            req_data = DatasourceContentPreviewPayload.model_validate(payload)
             response, status = method(api, req_data, account, pipeline, "node-1")
 
         service_instance.run_datasource_node_preview.assert_called_once()

@@ -2,11 +2,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import OAuthAuthorize from '../page'
 
 const mocks = vi.hoisted(() => ({
   profileLoggedIn: true,
+  logoutError: false,
+  replaceDocument: vi.fn(),
   push: vi.fn(),
   replace: vi.fn(),
   request: vi.fn(),
@@ -19,19 +22,18 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/service/base', () => ({
-  get: vi.fn(async () => {
-    if (!mocks.profileLoggedIn) throw new Response(null, { status: 401 })
-    return new Response(
-      JSON.stringify({
+  request: async (url: string, ...args: unknown[]) => {
+    if (url.endsWith('/account/profile')) {
+      if (!mocks.profileLoggedIn) throw createHttpError(new Response(null, { status: 401 }))
+      return jsonResponse({
         avatar_url: null,
         email: 'user@example.com',
         name: 'Test User',
-      }),
-      { status: 200 },
-    )
-  }),
+      })
+    }
+    return mocks.request(url, ...args)
+  },
   post: vi.fn(),
-  request: (...args: unknown[]) => mocks.request(...args),
   sseGeneratorPost: vi.fn(),
 }))
 
@@ -64,6 +66,10 @@ function findRequest(path: string) {
 
 function mockProviderResponses({ autoAuthorize }: { autoAuthorize: boolean }) {
   mocks.request.mockImplementation(async (url: string) => {
+    if (url.endsWith('/logout')) {
+      if (mocks.logoutError) throw new Error('Logout failed')
+      return jsonResponse({ result: 'success' })
+    }
     if (url.endsWith('/oauth/provider/authorize')) return jsonResponse({ code: 'oauth-code' })
     if (url.endsWith('/oauth/provider')) {
       return jsonResponse({
@@ -85,6 +91,7 @@ describe('OAuthAuthorize', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.profileLoggedIn = true
+    mocks.logoutError = false
     mocks.searchParams = new URLSearchParams({
       client_id: 'client-1',
       redirect_uri: 'https://client.example.com/callback',
@@ -94,18 +101,44 @@ describe('OAuthAuthorize', () => {
     vi.stubGlobal('location', {
       href: 'https://dify.test/account/oauth/authorize',
       origin: 'https://dify.test',
+      replace: mocks.replaceDocument,
     })
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('replaces the document when switching accounts and preserves the authorize URL', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'oauth.switchAccount' }))
+    await waitFor(() =>
+      expect(mocks.replaceDocument).toHaveBeenCalledExactlyOnceWith(
+        `/signin?redirect_url=${encodeURIComponent(`https://dify.test/account/oauth/authorize?${mocks.searchParams.toString()}`)}`,
+      ),
+    )
+    expect(findRequest('/logout')).toBeDefined()
+    expect(mocks.push).not.toHaveBeenCalled()
+  })
+
+  it('stays on the authorization page if switching accounts cannot log out', async () => {
+    const user = userEvent.setup()
+    mocks.logoutError = true
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'oauth.switchAccount' }))
+    await waitFor(() => expect(error).toHaveBeenCalled())
+    expect(mocks.replaceDocument).not.toHaveBeenCalled()
+    expect(mocks.push).not.toHaveBeenCalled()
   })
 
   it('authorizes the displayed app and redirects with the returned code and state', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    expect((await screen.findAllByText('Test OAuth App')).length).toBeGreaterThan(0)
+    await screen.findByRole('button', { name: /continue/i })
     expect(document.title).toBe('oauth.connect Test OAuth App - Dify')
     const providerRequest = findRequest('/oauth/provider')
     const providerTransportRequest = providerRequest?.[2]?.request as Request
@@ -114,6 +147,7 @@ describe('OAuthAuthorize', () => {
       redirect_uri: 'https://client.example.com/callback',
     })
 
+    expect(findRequest('/oauth/provider/authorize')).toBeUndefined()
     await user.click(screen.getByRole('button', { name: /continue/i }))
 
     await waitFor(() => expect(findRequest('/oauth/provider/authorize')).toBeDefined())
@@ -136,7 +170,7 @@ describe('OAuthAuthorize', () => {
 
     renderPage()
 
-    expect((await screen.findAllByText('Test OAuth App')).length).toBeGreaterThan(0)
+    await screen.findByRole('button', { name: /continue/i })
     const providerRequest = findRequest('/oauth/provider')
     const providerTransportRequest = providerRequest?.[2]?.request as Request
     await expect(providerTransportRequest.clone().json()).resolves.toEqual({
@@ -183,13 +217,6 @@ describe('OAuthAuthorize', () => {
         'https://api.marketplace.example.com/api/v1/auth/callback/dify?code=oauth-code&state=marketplace-state',
       ),
     )
-  })
-
-  it('keeps the consent flow when the app is not flagged with auto_authorize', async () => {
-    renderPage()
-
-    expect(await screen.findByRole('button', { name: /continue/i })).toBeInTheDocument()
-    expect(findRequest('/oauth/provider/authorize')).toBeUndefined()
   })
 
   it('sends an anonymous user of an auto_authorize app to signin with the full authorize URL', async () => {

@@ -1,17 +1,10 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
-import type { DataSet } from '@/models/datasets'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import {
-  useBuiltInMetaDataFields,
-  useCreateMetaData,
-  useDatasetMetaData,
-  useDeleteMetaData,
-  useRenameMeta,
-  useUpdateBuiltInStatus,
-} from '@/service/knowledge/use-metadata'
+import { consoleQuery } from '@/service/console'
 import { isShowManageMetadataLocalStorageKey } from '../types'
 import useCheckMetadataName from './use-check-metadata-name'
 
@@ -21,10 +14,9 @@ const useEditDatasetMetadata = ({
   onUpdateDocList,
 }: {
   datasetId: string
-  dataset?: DataSet
+  dataset?: DatasetDetailWithPartialMembersResponse
   onUpdateDocList: () => void
 }) => {
-  const { t } = useTranslation(['common'])
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
   useEffect(() => {
     const isShowManageMetadata = localStorage.getItem(isShowManageMetadataLocalStorageKey)
@@ -33,8 +25,14 @@ const useEditDatasetMetadata = ({
       localStorage.removeItem(isShowManageMetadataLocalStorageKey)
     }
   }, [])
-  const { data: datasetMetaData } = useDatasetMetaData(datasetId)
-  const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
+  const { data: datasetMetaData } = useQuery(
+    consoleQuery.datasets.byDatasetId.metadata.get.queryOptions({
+      input: { params: { dataset_id: datasetId } },
+    }),
+  )
+  const { mutateAsync: createMetaData } = useMutation(
+    consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions(),
+  )
   const { checkName } = useCheckMetadataName()
   const handleAddMetaData = useCallback(
     async (payload: BuiltInMetadataItem) => {
@@ -43,11 +41,13 @@ const useEditDatasetMetadata = ({
         toast.error(errorMsg)
         return Promise.reject(new Error(errorMsg))
       }
-      await doAddMetaData(payload)
+      await createMetaData({ params: { dataset_id: datasetId }, body: payload })
     },
-    [checkName, doAddMetaData],
+    [checkName, createMetaData, datasetId],
   )
-  const { mutate: doRenameMetaData } = useRenameMeta(datasetId)
+  const { mutateAsync: renameMetaData } = useMutation(
+    consoleQuery.datasets.byDatasetId.metadata.byMetadataId.patch.mutationOptions(),
+  )
   const handleRename = useCallback(
     async (payload: MetadataItemWithValueLength) => {
       const errorMsg = checkName(payload.name).errorMsg
@@ -55,25 +55,34 @@ const useEditDatasetMetadata = ({
         toast.error(errorMsg)
         return Promise.reject(new Error(errorMsg))
       }
-      await doRenameMetaData(payload)
+      await renameMetaData({
+        params: { dataset_id: datasetId, metadata_id: payload.id },
+        body: { name: payload.name },
+      })
       onUpdateDocList()
     },
-    [checkName, doRenameMetaData, onUpdateDocList],
+    [checkName, renameMetaData, datasetId, onUpdateDocList],
   )
-  const { mutateAsync: doDeleteMetaData } = useDeleteMetaData(datasetId)
+  const { mutateAsync: deleteMetaData } = useMutation(
+    consoleQuery.datasets.byDatasetId.metadata.byMetadataId.delete.mutationOptions(),
+  )
   const handleDeleteMetaData = useCallback(
     async (metaDataId: string) => {
-      await doDeleteMetaData(metaDataId)
+      await deleteMetaData({ params: { dataset_id: datasetId, metadata_id: metaDataId } })
       onUpdateDocList()
     },
-    [doDeleteMetaData, onUpdateDocList],
+    [deleteMetaData, datasetId, onUpdateDocList],
   )
   const [builtInEnabled, setBuiltInEnabled] = useState(datasetMetaData?.built_in_field_enabled)
   useEffect(() => {
     setBuiltInEnabled(datasetMetaData?.built_in_field_enabled)
   }, [datasetMetaData])
-  const { mutateAsync: toggleBuiltInStatus } = useUpdateBuiltInStatus(datasetId)
-  const { data: builtInMetaData } = useBuiltInMetaDataFields()
+  const { mutateAsync: updateBuiltInStatus } = useMutation(
+    consoleQuery.datasets.byDatasetId.metadata.builtIn.byAction.post.mutationOptions(),
+  )
+  const { data: builtInMetaData } = useQuery(
+    consoleQuery.datasets.metadata.builtIn.get.queryOptions(),
+  )
   return {
     isShowEditModal,
     showEditModal,
@@ -85,9 +94,10 @@ const useEditDatasetMetadata = ({
     builtInMetaData: builtInMetaData?.fields,
     builtInEnabled,
     setBuiltInEnabled: async (enable: boolean) => {
-      await toggleBuiltInStatus(enable)
+      await updateBuiltInStatus({
+        params: { dataset_id: datasetId, action: enable ? 'enable' : 'disable' },
+      })
       setBuiltInEnabled(enable)
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
     },
   }
 }

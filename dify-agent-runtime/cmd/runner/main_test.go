@@ -6,12 +6,79 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
 )
+
+func TestRunnerLandlockFailureDoesNotExecuteScript(test *testing.T) {
+	runnerPath := filepath.Join(test.TempDir(), "shellctl-runner")
+	build := exec.Command("go", "build", "-o", runnerPath, ".")
+	if output, err := build.CombinedOutput(); err != nil {
+		test.Fatalf("build runner: %v\n%s", err, output)
+	}
+
+	for _, mode := range []string{"pty", "stdio"} {
+		for _, isolation := range []string{"true", "false"} {
+			test.Run(mode+"/isolation="+isolation, func(test *testing.T) {
+				jobDir := test.TempDir()
+				invalidDirectory := filepath.Join(jobDir, "regular-file")
+				for name, content := range map[string]string{
+					"regular-file": "not a directory",
+					"script":       "printf executed > script-executed",
+					"start-gate":   "",
+				} {
+					if err := os.WriteFile(filepath.Join(jobDir, name), []byte(content), 0600); err != nil {
+						test.Fatal(err)
+					}
+				}
+				cmd := exec.Command(runnerPath, jobDir, "test-job", jobDir, mode)
+				cmd.Env = mergeEnv(os.Environ(), map[string]string{
+					"HOME":                           jobDir,
+					"SHELLCTL_ENABLE_PATH_ISOLATION": isolation,
+					"SHELLCTL_LANDLOCK_RW_PATHS":     invalidDirectory,
+					"SHELLCTL_LANDLOCK_RO_PATHS":     "/usr,/bin,/lib,/lib64",
+					"SHELLCTL_LANDLOCK_RW_DEV_PATHS": "/dev/null",
+				})
+				output, err := cmd.CombinedOutput()
+				wantExitCode := 125
+				if isolation == "false" {
+					wantExitCode = 0
+				}
+				if got := commandExitCode(err); got != wantExitCode {
+					test.Fatalf("exit code = %d, want %d: %s", got, wantExitCode, output)
+				}
+				exitArtifact, err := os.ReadFile(filepath.Join(jobDir, "runner-exit-code"))
+				if err != nil || strings.TrimSpace(string(exitArtifact)) != strconv.Itoa(wantExitCode) {
+					test.Fatalf("exit artifact = %q, err = %v", exitArtifact, err)
+				}
+				if _, err := os.Stat(filepath.Join(jobDir, "runner-ended-at")); err != nil {
+					test.Fatal(err)
+				}
+				_, markerErr := os.Stat(filepath.Join(jobDir, "script-executed"))
+				if isolation == "true" {
+					if !os.IsNotExist(markerErr) {
+						test.Fatalf("user script side effect exists: %v", markerErr)
+					}
+					if mode == "stdio" {
+						output, err = os.ReadFile(filepath.Join(jobDir, "stderr.log"))
+						if err != nil {
+							test.Fatal(err)
+						}
+					}
+					if !strings.Contains(string(output), "apply Landlock restrictions") {
+						test.Fatalf("missing Landlock diagnostic: %s", output)
+					}
+				} else if markerErr != nil {
+					test.Fatalf("disabled isolation did not execute script: %v", markerErr)
+				}
+			})
+		}
+	}
+}
 
 func TestRunStdioCapturesCompleteSeparatedStreams(t *testing.T) {
 	jobDir := t.TempDir()

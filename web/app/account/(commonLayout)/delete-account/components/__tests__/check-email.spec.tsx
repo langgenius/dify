@@ -1,41 +1,36 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleClient } from '@/service/console'
+import { renderWithAccountProfile } from '@/test/console/account-profile'
+import { useAccountDeleteStore } from '../../state'
 import CheckEmail from '../check-email'
 
-const mockGetDeleteEmailVerifyCode = vi.fn()
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    useSuspenseQuery: ({
-      select,
-    }: {
-      select: (data: { profile: { email: string } }) => string
-    }) => ({
-      data: select({ profile: { email: 'owner@example.com' } }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'account.delete.verify.get': vi.fn(),
     }),
   }
 })
 
-vi.mock('../../state', () => ({
-  useSendDeleteAccountEmail: () => ({
-    isPending: false,
-    mutateAsync: mockGetDeleteEmailVerifyCode,
-  }),
-}))
-
 describe('CheckEmail', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockGetDeleteEmailVerifyCode.mockResolvedValue({ result: 'success' })
+    vi.mocked(consoleClient.account.delete.verify.get).mockResolvedValue({
+      result: 'success',
+      data: 'deletion-email-token',
+    })
   })
 
-  it('submits with Enter only after the account email matches', async () => {
+  it('requests and stores a verification token only after the account email matches', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
 
-    render(<CheckEmail onCancel={vi.fn()} onConfirm={onConfirm} />)
+    renderWithAccountProfile(<CheckEmail onCancel={vi.fn()} onConfirm={onConfirm} />, {
+      accountProfile: { email: 'owner@example.com' },
+    })
 
     const input = screen.getByRole('textbox', { name: 'accountSettings.account.deleteLabel' })
     const submitButton = screen.getByRole('button', {
@@ -45,15 +40,16 @@ describe('CheckEmail', () => {
     await user.type(input, 'someone@example.com{Enter}')
 
     expect(submitButton).toBeDisabled()
-    expect(mockGetDeleteEmailVerifyCode).not.toHaveBeenCalled()
+    expect(consoleClient.account.delete.verify.get).not.toHaveBeenCalled()
 
     await user.clear(input)
     await user.type(input, 'owner@example.com{Enter}')
 
     await waitFor(() => {
-      expect(mockGetDeleteEmailVerifyCode).toHaveBeenCalledOnce()
+      expect(useAccountDeleteStore.getState().sendEmailToken).toBe('deletion-email-token')
     })
     expect(submitButton).toBeEnabled()
+    expect(consoleClient.account.delete.verify.get).toHaveBeenCalledExactlyOnceWith()
     expect(onConfirm).toHaveBeenCalledOnce()
   })
 })
