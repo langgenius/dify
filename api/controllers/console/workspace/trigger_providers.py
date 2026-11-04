@@ -635,7 +635,7 @@ class TriggerOAuthCallbackApi(Resource):
                 provider_id=TriggerProviderID(provider),
                 context_id=request.cookies.get("context_id"),
                 redirect_uri=f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback",
-                callback=TriggerOAuthCallbackRequest(
+                callback_loader=lambda: TriggerOAuthCallbackRequest(
                     method=request.method,
                     full_path=request.full_path,
                     headers=tuple(request.headers.items()),

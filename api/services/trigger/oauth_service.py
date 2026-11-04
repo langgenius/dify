@@ -1,6 +1,6 @@
 """Orchestrate trigger authorization without carrying HTTP or ORM objects."""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -148,7 +148,7 @@ class TriggerOAuthService:
         provider_id: TriggerProviderID,
         context_id: str | None,
         redirect_uri: str,
-        callback: TriggerOAuthCallbackRequest,
+        callback_loader: Callable[[], TriggerOAuthCallbackRequest],
     ) -> None:
         """Consume the cookie capability; None means the browser omitted the cookie."""
         if not context_id:
@@ -170,7 +170,7 @@ class TriggerOAuthService:
             provider_id=provider_id,
             redirect_uri=redirect_uri,
             client_config=client_config,
-            callback=callback,
+            callback=callback_loader(),
         )
         if not result.credentials:
             raise TriggerOAuthProviderError("Failed to get OAuth credentials from the provider.")
