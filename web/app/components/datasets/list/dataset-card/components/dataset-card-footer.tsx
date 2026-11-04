@@ -12,6 +12,7 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { isDatasetAvailable } from '../availability'
 
 const EXTERNAL_PROVIDER = 'external'
 
@@ -46,7 +47,7 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
     <div
       className={cn(
         'flex items-center gap-x-3 px-4 pt-2 pb-3 text-text-tertiary',
-        !dataset.embedding_available && 'opacity-30',
+        !isDatasetAvailable(dataset) && 'opacity-30',
       )}
     >
       <Popover>

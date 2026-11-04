@@ -14,6 +14,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useKnowledgeUpgrade } from '@/features/new-rag/upgrade/knowledge-upgrade-context-value'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getDatasetACLCapabilities } from '@/utils/permission'
+import { isDatasetAvailable } from '../availability'
 
 type OperationsMenuProps = {
   dataset: DatasetCardItem
@@ -84,7 +85,7 @@ const OperationsMenu = ({
     <div
       className={cn(
         'absolute inset-e-2 z-5',
-        dataset.embedding_available ? 'top-2' : 'top-6',
+        isDatasetAvailable(dataset) ? 'top-2' : 'top-6',
         open
           ? 'pointer-events-auto opacity-100'
           : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100',
