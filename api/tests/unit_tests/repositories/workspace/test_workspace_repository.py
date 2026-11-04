@@ -11,8 +11,8 @@ from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity
 from repositories.workspace.workspace_repository import WorkspaceRepository
-from services.errors.base import PersistenceCommitOutcomeUnknownError
-from services.errors.workspace import WorkspaceNotFoundError, WorkspaceNotLinkedError
+from services.errors.base import NoPermissionError, PersistenceCommitOutcomeUnknownError
+from services.errors.workspace import WorkspaceAlreadyHasOwnerError, WorkspaceNotFoundError, WorkspaceNotLinkedError
 from services.workspace.contracts import (
     EffectiveCreditPool,
     WorkspaceCreation,
@@ -374,6 +374,121 @@ class TestWorkspaceRepositoryCases:
         assert repository.active_owner_id(active.id) == "active-owner"
         assert repository.active_owner_id(archived.id) is None
         assert repository.active_owner_id("missing") is None
+
+    @staticmethod
+    def test_upsert_member_rejects_a_second_workspace_owner(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        """Reject a second owner in one tenant and roll back the candidate membership."""
+        with sqlite_session_factory.begin() as session:
+            workspace = make_tenant("owner-guard-workspace")
+            owner = make_account("owner", status=AccountStatus.ACTIVE, created_at=datetime(2026, 1, 1))
+            candidate = make_account("candidate", status=AccountStatus.ACTIVE, created_at=datetime(2026, 1, 1))
+            session.add_all(
+                [
+                    workspace,
+                    owner,
+                    candidate,
+                    TenantAccountJoin(
+                        tenant_id=workspace.id,
+                        account_id=owner.id,
+                        role=TenantAccountRole.OWNER,
+                    ),
+                ]
+            )
+
+        repository = WorkspaceRepository(sqlite_session_factory)
+        with pytest.raises(WorkspaceAlreadyHasOwnerError, match="Tenant already has an owner"):
+            repository.upsert_member(
+                workspace_id=workspace.id,
+                account_id=candidate.id,
+                role=TenantAccountRole.OWNER,
+                actor_account_id=owner.id,
+            )
+
+        with sqlite_session_factory() as session:
+            assert (
+                session.scalar(
+                    select(TenantAccountJoin).where(
+                        TenantAccountJoin.tenant_id == workspace.id,
+                        TenantAccountJoin.account_id == candidate.id,
+                    )
+                )
+                is None
+            )
+
+    @staticmethod
+    def test_remove_member_enforces_workspace_operator_and_owner_invariants(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        """Fail closed within each tenant when workspace, operator, privilege, or owner invariants are missing."""
+        created_at = datetime(2026, 1, 1)
+        with sqlite_session_factory.begin() as session:
+            workspace = make_tenant("removal-guard-workspace")
+            accounts = {
+                account_id: make_account(account_id, status=AccountStatus.ACTIVE, created_at=created_at)
+                for account_id in ("owner", "member", "outsider", "normal-operator")
+            }
+            session.add_all([workspace, *accounts.values()])
+            session.add_all(
+                [
+                    TenantAccountJoin(
+                        tenant_id=workspace.id,
+                        account_id=accounts["owner"].id,
+                        role=TenantAccountRole.OWNER,
+                    ),
+                    TenantAccountJoin(
+                        tenant_id=workspace.id,
+                        account_id=accounts["member"].id,
+                        role=TenantAccountRole.NORMAL,
+                    ),
+                    TenantAccountJoin(
+                        tenant_id=workspace.id,
+                        account_id=accounts["normal-operator"].id,
+                        role=TenantAccountRole.NORMAL,
+                    ),
+                ]
+            )
+
+        repository = WorkspaceRepository(sqlite_session_factory)
+        with pytest.raises(WorkspaceNotFoundError):
+            repository.remove_member(
+                workspace_id="missing-workspace",
+                account_id=accounts["member"].id,
+                operator_account_id=accounts["owner"].id,
+                require_privileged_operator=True,
+            )
+        with pytest.raises(NoPermissionError, match="no longer a workspace member"):
+            repository.remove_member(
+                workspace_id=workspace.id,
+                account_id=accounts["member"].id,
+                operator_account_id=accounts["outsider"].id,
+                require_privileged_operator=True,
+            )
+        with pytest.raises(NoPermissionError, match="no longer has permission"):
+            repository.remove_member(
+                workspace_id=workspace.id,
+                account_id=accounts["member"].id,
+                operator_account_id=accounts["normal-operator"].id,
+                require_privileged_operator=True,
+            )
+        with pytest.raises(NoPermissionError, match="owner cannot be removed"):
+            repository.remove_member(
+                workspace_id=workspace.id,
+                account_id=accounts["owner"].id,
+                operator_account_id=accounts["owner"].id,
+                require_privileged_operator=False,
+            )
+
+        with sqlite_session_factory() as session:
+            memberships = {
+                membership.account_id: membership.role
+                for membership in session.scalars(
+                    select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == workspace.id)
+                )
+            }
+        assert memberships[accounts["owner"].id] == TenantAccountRole.OWNER
+        assert memberships[accounts["member"].id] == TenantAccountRole.NORMAL
 
     @staticmethod
     def test_provision_rolls_back_a_known_precommit_failure(
