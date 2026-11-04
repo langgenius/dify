@@ -4856,11 +4856,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/__tests__/email-input.spec.tsx": {
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/email-input.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
