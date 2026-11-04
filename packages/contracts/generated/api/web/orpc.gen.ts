@@ -31,6 +31,7 @@ import {
   zEmailCodeError,
   zEmailPasswordResetLimitError,
   zEmailSendIpLimitError,
+  zEndUserBusyError,
   zEndUserLoginRequiredError,
   zExpiredError,
   zFileExtensionBlockedError,
@@ -79,6 +80,7 @@ import {
   zUploadTokenRequiredError,
   zWebFormRateLimitExceededError,
   zWebLoginUnavailableError,
+  zWebappResourcesChangedError,
   zWorkflowNotActiveError,
 } from './zod.gen.ts'
 import {
@@ -366,12 +368,14 @@ export const post3 = oc
     connection_required: { status: 400, data: zConnectionRequiredError },
     connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_busy: { status: 409, data: zEndUserBusyError },
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     rate_limit_error: { status: 429, data: zRateLimitError },
+    webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
   })
 
 export const chatMessages = {
@@ -1928,12 +1932,12 @@ export const meta = {
 }
 
 /**
- * Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports with the Account Web login cookie established by /api/passport. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+ * Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Before transfer, request cancellation of persisted unfinished Guest Workflow/Chatflow Runs through the existing stop flow, then poll until no unfinished Guest Runs remain. The batch shares a five-second readiness window with 100ms polling outside migration transactions. Timeout returns migration_not_ready (nested status 409) for that item without transferring its resources. Stop failure also prevents that Passport from transferring resources. Each Passport atomically transfers Connections, files and all conversations with their personal state. Run terminal status is checked again inside each transfer transaction. Concurrent migration or identity updates may report end_user_busy without waiting. Web execution registers each Run under the shared identity fence before launch. Transfer takes the exclusive fence and rechecks unfinished Runs before changing ownership. Success includes the App code, Account App Passport, transferred counts and accepted stop count. Cancellation is not rolled back if the subsequent migration fails. Keep the Guest Passport to retry remaining resources with the same Account. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
  */
 export const post29 = oc
   .route({
     description:
-      "Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports with the Account Web login cookie established by /api/passport. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.",
+      'Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Before transfer, request cancellation of persisted unfinished Guest Workflow/Chatflow Runs through the existing stop flow, then poll until no unfinished Guest Runs remain. The batch shares a five-second readiness window with 100ms polling outside migration transactions. Timeout returns migration_not_ready (nested status 409) for that item without transferring its resources. Stop failure also prevents that Passport from transferring resources. Each Passport atomically transfers Connections, files and all conversations with their personal state. Run terminal status is checked again inside each transfer transaction. Concurrent migration or identity updates may report end_user_busy without waiting. Web execution registers each Run under the shared identity fence before launch. Transfer takes the exclusive fence and rechecks unfinished Runs before changing ownership. Success includes the App code, Account App Passport, transferred counts and accepted stop count. Cancellation is not rolled back if the subsequent migration fails. Keep the Guest Passport to retry remaining resources with the same Account. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postMigrationClaim',
@@ -1953,12 +1957,12 @@ export const claim = {
 }
 
 /**
- * Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
+ * Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow and Chatflow only; other App modes are omitted. conversation_count counts Chatflow history; Workflow normally has none. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
  */
 export const post30 = oc
   .route({
     description:
-      'Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.',
+      'Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow and Chatflow only; other App modes are omitted. conversation_count counts Chatflow history; Workflow normally has none. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postMigrationClaimablePassports',
@@ -2365,11 +2369,12 @@ export const workflow = {
 /**
  * Run workflow
  *
- * Execute a workflow with provided inputs and files.
+ * Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.
  */
 export const post35 = oc
   .route({
-    description: 'Execute a workflow with provided inputs and files.',
+    description:
+      'Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkflowsRun',
@@ -2396,6 +2401,7 @@ export const post35 = oc
     connection_required: { status: 400, data: zConnectionRequiredError },
     connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_busy: { status: 409, data: zEndUserBusyError },
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_workflow_app: { status: 400, data: zNotWorkflowAppError },
@@ -2406,6 +2412,7 @@ export const post35 = oc
       status: 403,
       data: zTriggerWorkflowServiceModeUnavailableError,
     },
+    webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
   })
 
 export const run = {

@@ -146,6 +146,7 @@ export const zClaimablePassportResponse = z.object({
   app_code: z.string(),
   app_name: z.string(),
   connection_count: z.int().gte(0),
+  conversation_count: z.int().gte(0),
   index: z.int().gte(0),
 })
 
@@ -182,7 +183,9 @@ export const zConnectionClaimErrorResponse = z.object({
     'app_not_found',
     'connection_claim_unavailable',
     'connection_conflict',
+    'end_user_busy',
     'end_user_login_required',
+    'migration_not_ready',
     'unauthorized',
     'web_app_access_denied',
   ]),
@@ -220,8 +223,10 @@ export const zConnectionClaimSuccessResponse = z.object({
   access_token: z.string(),
   app_code: z.string(),
   claimed_connections: z.int().gte(0),
+  claimed_conversations: z.int().gte(0),
   index: z.int().gte(0),
   status: z.literal('success'),
+  stop_requested_run_count: z.int().gte(0),
 })
 
 /**
@@ -629,7 +634,7 @@ export const zCompletionRequestError = zErrorResponse.and(
 /**
  * ConnectionClaimPreflightFailedError
  *
- * Connection claim preflight failed. No Connections were transferred.
+ * Guest migration preflight failed. No resources were transferred.
  */
 export const zConnectionClaimPreflightFailedError = zErrorResponse.and(
   z.object({
@@ -642,7 +647,7 @@ export const zConnectionClaimPreflightFailedError = zErrorResponse.and(
 /**
  * ConnectionClaimUnavailableError
  *
- * Connection claim is temporarily unavailable. Please retry.
+ * Guest migration is temporarily unavailable. Please retry.
  */
 export const zConnectionClaimUnavailableError = zErrorResponse.and(
   z.object({
@@ -841,6 +846,18 @@ export const zEmailSendIpLimitError = zErrorResponse.and(
   z.object({
     code: z.literal('email_send_ip_limit'),
     status: z.literal(429),
+  }),
+)
+
+/**
+ * EndUserBusyError
+ *
+ * This Web App identity is being updated. Please retry.
+ */
+export const zEndUserBusyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('end_user_busy'),
+    status: z.literal(409),
   }),
 )
 
@@ -2806,6 +2823,18 @@ export const zHumanInputFormDefinitionResponse = z.object({
 })
 
 /**
+ * WebappResourcesChangedError
+ *
+ * Web App resources changed before execution. Refresh and retry.
+ */
+export const zWebappResourcesChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('webapp_resources_changed'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * WorkflowNotActiveError
  */
 export const zWorkflowNotActiveError = zErrorResponse.and(
@@ -3489,7 +3518,7 @@ export const zGetMetaResponse = zAppMetaResponse
 export const zPostMigrationClaimBody = zConnectionClaimPayload
 
 /**
- * Guest Connection claim results
+ * Whole Guest migration results
  */
 export const zPostMigrationClaimResponse = zConnectionClaimResponse
 

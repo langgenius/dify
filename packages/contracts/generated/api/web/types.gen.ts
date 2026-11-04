@@ -148,6 +148,7 @@ export type ClaimablePassportResponse = {
   app_code: string
   app_name: string
   connection_count: number
+  conversation_count: number
   index: number
 }
 
@@ -181,7 +182,9 @@ export type ConnectionClaimErrorResponse = {
     | 'app_not_found'
     | 'connection_claim_unavailable'
     | 'connection_conflict'
+    | 'end_user_busy'
     | 'end_user_login_required'
+    | 'migration_not_ready'
     | 'unauthorized'
     | 'web_app_access_denied'
   message: string
@@ -216,8 +219,10 @@ export type ConnectionClaimSuccessResponse = {
   access_token: string
   app_code: string
   claimed_connections: number
+  claimed_conversations: number
   index: number
   status: 'success'
+  stop_requested_run_count: number
 }
 
 export type ConnectionClaimUnavailableError = ErrorResponse & {
@@ -449,6 +454,11 @@ export type EmailPasswordResetLimitError = ErrorResponse & {
 export type EmailSendIpLimitError = ErrorResponse & {
   code: 'email_send_ip_limit'
   status: 429
+}
+
+export type EndUserBusyError = ErrorResponse & {
+  code: 'end_user_busy'
+  status: 409
 }
 
 export type EndUserConnectionCreatePayload = {
@@ -1826,6 +1836,11 @@ export type WebSiteResponse = {
   use_icon_as_answer_icon?: boolean | null
 }
 
+export type WebappResourcesChangedError = ErrorResponse & {
+  code: 'webapp_resources_changed'
+  status: 409
+}
+
 export type WorkflowNotActiveError = ErrorResponse & {
   code: 'workflow_not_active'
   status: 409
@@ -2006,6 +2021,8 @@ export type PostChatMessagesErrors = {
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
     | ConnectionRevisionChangedError
+    | EndUserBusyError
+    | WebappResourcesChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
@@ -3977,6 +3994,8 @@ export type PostWorkflowsRunErrors = {
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
     | ConnectionRevisionChangedError
+    | EndUserBusyError
+    | WebappResourcesChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse

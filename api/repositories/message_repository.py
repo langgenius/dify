@@ -18,10 +18,12 @@ from pydantic import JsonValue
 from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageFile
-from models.enums import FeedbackFromSource, FeedbackRating
+from models.enums import EndUserType, FeedbackFromSource, FeedbackRating
 from models.model import AppMode, InstalledApp, MessageFeedback, load_annotation_reply_config
+from repositories.conversation_access import conversation_actor_scope, message_actor_scope
 from repositories.message_projection import snapshot_console_message, snapshot_message
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import (
@@ -85,6 +87,7 @@ class MessageRepository:
                 conversation_id=conversation_id,
                 first_id=first_id,
                 use_id_tiebreaker=installed_app is not None,
+                actor=actor,
             )
             messages = list(session.scalars(statement.limit(limit + 1)))
             has_more = len(messages) > limit
@@ -125,6 +128,7 @@ class MessageRepository:
                 conversation_id=conversation_id,
                 first_id=first_id,
                 use_id_tiebreaker=False,
+                actor=actor if app.mode == AppMode.AGENT else None,
             )
             messages = list(session.scalars(statement.limit(limit)))
             # Console's legacy has_more checks for a strictly older timestamp;
@@ -222,9 +226,23 @@ class MessageRepository:
 
     @staticmethod
     def _page_statement(
-        session: Session, *, app_id: str, conversation_id: str, first_id: str | None, use_id_tiebreaker: bool
+        session: Session,
+        *,
+        app_id: str,
+        conversation_id: str,
+        first_id: str | None,
+        use_id_tiebreaker: bool,
+        actor: MessageActor | None,
     ) -> Select[tuple[Message]]:
         statement = select(Message).where(Message.app_id == app_id, Message.conversation_id == conversation_id)
+        if actor is not None:
+            statement = statement.where(
+                message_actor_scope(
+                    app_id,
+                    account_id=actor.account_id if isinstance(actor, MessageAccount) else None,
+                    end_user_id=None if isinstance(actor, MessageAccount) else actor.end_user_id,
+                )
+            )
         if first_id:
             first_message = session.scalar(statement.where(Message.id == first_id))
             if first_message is None:
@@ -310,6 +328,11 @@ class MessageRepository:
                     source="console" if isinstance(actor, MessageAccount) else "api",
                     account_id=account_id,
                     end_user_id=end_user_id,
+                    lock=(
+                        dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+                        and not isinstance(actor, MessageAccount)
+                        and app.mode == AppMode.ADVANCED_CHAT
+                    ),
                 )
             if message is None:
                 raise MessageNotExistsError(f"Message {message_id} is unavailable for this app and actor")
@@ -615,14 +638,39 @@ class MessageRepository:
         source: str,
         account_id: str | None,
         end_user_id: str | None,
+        lock: bool = False,
     ) -> Message | None:
-        """Return the owned message, or None; the other actor kind's ID is None."""
-        return session.scalar(
-            select(Message).where(
-                Message.id == message_id,
-                Message.app_id == app_id,
-                Message.from_source == source,
-                Message.from_account_id == account_id,
-                Message.from_end_user_id == end_user_id,
-            )
+        """Read browser Chatflow history by conversation owner, preserving other actors' sender checks.
+
+        The caller supplies a validated actor scope. An optional conversation lock
+        fences mutations against migration; an unavailable message returns None.
+        """
+        ownership = and_(
+            Message.from_source == source,
+            Message.from_account_id == account_id,
+            Message.from_end_user_id == end_user_id,
         )
+        if end_user_id is not None:
+            migratable = (
+                select(App.id)
+                .join(EndUser, (EndUser.app_id == App.id) & (EndUser.tenant_id == App.tenant_id))
+                .where(
+                    App.id == app_id,
+                    App.mode == AppMode.ADVANCED_CHAT,
+                    EndUser.id == end_user_id,
+                    EndUser.type == EndUserType.BROWSER,
+                )
+                .exists()
+            )
+            ownership = or_(
+                and_(migratable, message_actor_scope(app_id, account_id=account_id, end_user_id=end_user_id)),
+                and_(~migratable, ownership),
+            )
+        statement = select(Message).where(Message.id == message_id, Message.app_id == app_id, ownership)
+        if lock:
+            statement = (
+                statement.join(Conversation, Conversation.id == Message.conversation_id)
+                .where(*conversation_actor_scope(app_id, account_id=account_id, end_user_id=end_user_id))
+                .with_for_update(of=Conversation)
+            )
+        return session.scalar(statement)

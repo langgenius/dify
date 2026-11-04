@@ -331,6 +331,14 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             # A request accepted before removal must not resurrect a hidden entry.
             if state.removed_at is not None and used_at > state.removed_at:
                 state.removed_at = None
+            session.execute(
+                sa.update(Account)
+                .where(
+                    Account.id == identity.account_id,
+                    sa.or_(Account.first_app_used_at.is_(None), Account.first_app_used_at > used_at),
+                )
+                .values(first_app_used_at=used_at)
+            )
 
     def remove(self, identity: ConsumerIdentity, app_id: str) -> None:
         removed_at = naive_utc_now()

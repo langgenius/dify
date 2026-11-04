@@ -9,6 +9,7 @@ from pydantic import JsonValue
 from sqlalchemy import Select, exists, func, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
@@ -45,6 +46,7 @@ from services.entities.conversation_entities import (
     ConversationRef,
     ConversationScope,
     ConversationSort,
+    EndUserConversationRef,
     InstalledAppConversationRef,
     InstalledAppConversationScope,
 )
@@ -440,7 +442,7 @@ class ConversationRepository:
 
     def rename(self, *, ref: ConversationRef, name: str, updated_at: datetime | None) -> ConversationRecord:
         with self._session_factory.begin() as session:
-            _, conversation = self._resolve(session=session, ref=ref)
+            _, conversation = self._resolve(session=session, ref=ref, lock=True)
             record = self._to_record(
                 conversation=conversation, inputs=conversation.inputs_with_session(session=session)
             )
@@ -453,7 +455,7 @@ class ConversationRepository:
 
     def delete(self, *, ref: ConversationRef) -> ConversationDeletion:
         with self._session_factory.begin() as session:
-            app, conversation = self._resolve(session=session, ref=ref)
+            app, conversation = self._resolve(session=session, ref=ref, lock=True)
             retired_workspace_ids = retire_conversation(app_model=app, conversation=conversation, session=session)
             return ConversationDeletion(
                 tenant_id=app.tenant_id,
@@ -480,6 +482,8 @@ class ConversationRepository:
 
     def set_pinned(self, *, ref: ConversationRef, is_pinned: bool) -> None:
         with self._session_factory.begin() as session:
+            if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED and isinstance(ref, EndUserConversationRef):
+                self._resolve(session=session, ref=ref, lock=True)
             if isinstance(ref, InstalledAppConversationRef):
                 app = self._get_app(session=session, installed_app=ref.installed_app)
                 role = CreatorUserRole.ACCOUNT
@@ -528,7 +532,7 @@ class ConversationRepository:
                 session.delete(pin)
 
     @classmethod
-    def _resolve(cls, *, session: Session, ref: ConversationRef) -> tuple[App, Conversation]:
+    def _resolve(cls, *, session: Session, ref: ConversationRef, lock: bool = False) -> tuple[App, Conversation]:
         if isinstance(ref, InstalledAppConversationRef):
             app = cls._get_app(session=session, installed_app=ref.installed_app)
             conversation = cls._get_conversation(
@@ -536,7 +540,7 @@ class ConversationRepository:
             )
             return app, conversation
 
-        result = session.execute(
+        statement = (
             select(App, Conversation)
             .join(Conversation, Conversation.app_id == App.id)
             .join(
@@ -552,7 +556,17 @@ class ConversationRepository:
                 Conversation.from_account_id.is_(None),
                 Conversation.is_deleted.is_(False),
             )
-        ).one_or_none()
+        )
+        result = session.execute(statement).one_or_none()
+        if (
+            result is not None
+            and lock
+            and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            and result[0].mode == AppMode.ADVANCED_CHAT
+        ):
+            result = session.execute(
+                statement.with_for_update(of=Conversation).execution_options(populate_existing=True)
+            ).one_or_none()
         if result is None:
             raise ConversationNotExistsError(
                 f"Conversation {ref.conversation_id} does not belong to this end user and app."

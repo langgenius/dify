@@ -1,18 +1,19 @@
 """PostgreSQL usage backfill and concurrent collection writes; CI only."""
 
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta
 from importlib import import_module
 from threading import Barrier
 from uuid import uuid4
 
-from sqlalchemy import event, select
+from sqlalchemy import event, select, update
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, sessionmaker
 
+from models.account import Account
 from models.account_webapp import AccountWebApp
 from models.enums import CustomizeTokenStrategy
-from models.model import AppStar, Site
+from models.model import AppStar, EndUser, Site
 from repositories.app.console_repository import ConsoleAppRepository
 from services.consumer_service import ConsumerIdentity
 from tests.helpers.consumer import new_consumer_run
@@ -91,3 +92,48 @@ def test_recent_backfill_does_not_import_console_favorites(db_session_with_conta
         assert state is not None
         assert state.last_used_at == moment
         assert state.favorited_at is None
+
+
+def test_concurrent_first_usage_across_apps_keeps_earliest_event(db_session_with_containers: Session) -> None:
+    engine = db_session_with_containers.get_bind()
+    sessions = sessionmaker(bind=engine, expire_on_commit=False)
+    base = make_harness(sessions)
+    other = make_harness(sessions)
+    assert base.context.account_id is not None
+    identity = ConsumerIdentity(base.context.account_id)
+    with sessions.begin() as session:
+        session.execute(
+            update(EndUser).where(EndUser.id == other.context.end_user_id).values(account_id=identity.account_id)
+        )
+    repository = ConsoleAppRepository(session_factory=sessions)
+    barrier = Barrier(2)
+
+    def after_lookup(_conn, _cursor, statement: str, _parameters, _context, _many) -> None:
+        if statement.startswith("SELECT account_webapps.id "):
+            barrier.wait(timeout=15)
+
+    event.listen(engine, "after_cursor_execute", after_lookup)
+    moment = datetime(2026, 11, 4)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [
+                executor.submit(
+                    repository.record_consumer_usage,
+                    identity,
+                    tenant_id=app.context.tenant_id,
+                    app_id=app.context.app_id,
+                    end_user_id=app.context.end_user_id,
+                    used_at=used_at,
+                )
+                for app, used_at in ((base, moment), (other, moment - timedelta(hours=1)))
+            ]
+            for future in futures:
+                future.result(timeout=30)
+    finally:
+        event.remove(engine, "after_cursor_execute", after_lookup)
+    with sessions() as session:
+        assert session.scalar(select(Account.first_app_used_at).where(Account.id == identity.account_id)) == (
+            moment - timedelta(hours=1)
+        )
+        states = session.scalars(select(AccountWebApp).where(AccountWebApp.account_id == identity.account_id)).all()
+        assert {state.last_used_at for state in states} == {moment, moment - timedelta(hours=1)}
