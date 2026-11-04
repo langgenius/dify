@@ -26,23 +26,11 @@ export const agentComposerKnowledgeRetrievalsAtom = atom(
   },
 )
 
-export const addKnowledgeRetrievalAtom = atom(
-  null,
-  (_get, set, retrieval: AgentKnowledgeRetrievalItem) => {
-    set(agentComposerKnowledgeRetrievalsAtom, (retrievals) => [...retrievals, retrieval])
-  },
-)
-
-export const updateKnowledgeRetrievalAtom = atom(
-  null,
-  (_get, set, retrieval: AgentKnowledgeRetrievalItem) => {
-    set(agentComposerKnowledgeRetrievalsAtom, (retrievals) =>
-      retrievals.map((currentRetrieval) =>
-        currentRetrieval.id === retrieval.id ? retrieval : currentRetrieval,
-      ),
-    )
-  },
-)
+/** Agent Knowledge Base bindings stay saved but hidden while KnowledgeFS is unavailable. */
+export const getVisibleKnowledgeRetrievals = (
+  retrievals: AgentKnowledgeRetrievalItem[],
+  knowledgeFsEnabled: boolean,
+) => (knowledgeFsEnabled ? retrievals : retrievals.filter((item) => !item.controlSpaceId))
 
 export const removeKnowledgeRetrievalAtom = atom(null, (_get, set, retrievalId: string) => {
   set(agentComposerKnowledgeRetrievalsAtom, (retrievals) =>

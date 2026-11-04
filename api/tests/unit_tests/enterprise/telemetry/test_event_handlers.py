@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,12 +8,12 @@ from enterprise.telemetry.contracts import TelemetryCase
 
 
 @pytest.fixture
-def mock_telemetry_emit():
+def mock_telemetry_emit() -> Generator[MagicMock]:
     with patch("core.telemetry.emit") as mock:
         yield mock
 
 
-def test_handle_app_created_calls_emit(mock_telemetry_emit):
+def test_handle_app_created_calls_emit(mock_telemetry_emit: MagicMock) -> None:
     sender = MagicMock()
     sender.id = "app-123"
     sender.tenant_id = "tenant-456"
@@ -28,7 +29,7 @@ def test_handle_app_created_calls_emit(mock_telemetry_emit):
     assert event.payload["mode"] == "chat"
 
 
-def test_handle_app_created_no_exporter(mock_telemetry_emit):
+def test_handle_app_created_no_exporter(mock_telemetry_emit: MagicMock) -> None:
     """Public facade handles exporter availability internally; handler always calls it."""
     sender = MagicMock()
     sender.id = "app-123"

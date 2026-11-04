@@ -1,35 +1,33 @@
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import useDocumentTitle from '@/hooks/use-document-title'
-import {
-  fetchInitValidateStatus,
-  fetchSetupStatus,
-  sendForgotPasswordEmail,
-} from '@/service/common'
+import { consoleClient } from '@/service/console'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
-vi.mock('@/service/common', () => ({
-  fetchSetupStatus: vi.fn(),
-  fetchInitValidateStatus: vi.fn(),
-  sendForgotPasswordEmail: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    setup: {
+      get: vi.fn(),
+    },
+    init: {
+      get: vi.fn(),
+    },
+    forgotPassword: {
+      post: vi.fn(),
+    },
+  },
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-const mockFetchSetupStatus = vi.mocked(fetchSetupStatus)
-const mockFetchInitValidateStatus = vi.mocked(fetchInitValidateStatus)
-const mockSendForgotPasswordEmail = vi.mocked(sendForgotPasswordEmail)
-const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
+const mockFetchSetupStatus = vi.mocked(consoleClient.setup.get)
+const mockFetchInitValidateStatus = vi.mocked(consoleClient.init.get)
+const mockSendForgotPasswordEmail = vi.mocked(consoleClient.forgotPassword.post)
 
 const prepareLoadedState = () => {
-  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
+  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' })
   mockFetchInitValidateStatus.mockResolvedValue({
     status: 'finished',
-  } as InitValidateStatusResponse)
+  })
 }
 
 describe('ForgotPasswordForm', () => {
@@ -41,10 +39,10 @@ describe('ForgotPasswordForm', () => {
   it('should render form after loading', async () => {
     render(<ForgotPasswordForm />)
 
-    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('common.loading')
+    expect(document.title).toBe('common.loading - Dify')
     expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.forgotPassword')
-    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.forgotPassword')
+    expect(document.title).toBe('login.forgotPassword - Dify')
   })
 
   it('should show validation error when email is empty', async () => {
@@ -79,18 +77,17 @@ describe('ForgotPasswordForm', () => {
 
   it('should send the reset email and show a sign-in link after confirmation', async () => {
     const user = userEvent.setup()
-    mockSendForgotPasswordEmail.mockResolvedValue({ result: 'success', data: 'ok' } as any)
+    mockSendForgotPasswordEmail.mockResolvedValue({ result: 'success', data: 'ok' })
 
     render(<ForgotPasswordForm />)
 
     const emailInput = await screen.findByLabelText('login.email')
     await user.type(emailInput, 'test@example.com')
 
-    await user.click(screen.getByRole('button', { name: /login\.sendResetLink/ }))
+    await user.keyboard('{Enter}')
 
     await waitFor(() => {
       expect(mockSendForgotPasswordEmail).toHaveBeenCalledWith({
-        url: '/forgot-password',
         body: { email: 'test@example.com' },
       })
     })
@@ -101,33 +98,20 @@ describe('ForgotPasswordForm', () => {
         '/signin',
       )
     })
-    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.resetLinkSent')
-  })
-
-  it('should submit when form is submitted', async () => {
-    const user = userEvent.setup()
-    mockSendForgotPasswordEmail.mockResolvedValue({ result: 'success', data: 'ok' } as any)
-
-    render(<ForgotPasswordForm />)
-
-    await user.type(await screen.findByLabelText('login.email'), 'test@example.com')
-    await user.keyboard('{Enter}')
-
-    await waitFor(() => {
-      expect(mockSendForgotPasswordEmail).toHaveBeenCalledWith({
-        url: '/forgot-password',
-        body: { email: 'test@example.com' },
-      })
-    })
+    expect(document.title).toBe('login.resetLinkSent - Dify')
   })
 
   it('should disable submit while request is in flight', async () => {
     const user = userEvent.setup()
-    let resolveRequest: ((value: any) => void) | undefined
-    const requestPromise = new Promise((resolve) => {
+    let resolveRequest:
+      | ((value: Awaited<ReturnType<typeof consoleClient.forgotPassword.post>>) => void)
+      | undefined
+    const requestPromise = new Promise<
+      Awaited<ReturnType<typeof consoleClient.forgotPassword.post>>
+    >((resolve) => {
       resolveRequest = resolve
     })
-    mockSendForgotPasswordEmail.mockReturnValue(requestPromise as any)
+    mockSendForgotPasswordEmail.mockReturnValue(requestPromise)
 
     render(<ForgotPasswordForm />)
 
@@ -143,7 +127,9 @@ describe('ForgotPasswordForm', () => {
     await user.click(button)
     expect(mockSendForgotPasswordEmail).toHaveBeenCalledTimes(1)
 
-    resolveRequest?.({ result: 'success', data: 'ok' })
+    await act(async () => {
+      resolveRequest?.({ result: 'success', data: 'ok' })
+    })
 
     await waitFor(() => {
       expect(screen.getByRole('link', { name: /login\.backToSignIn/ })).toBeInTheDocument()
@@ -153,7 +139,7 @@ describe('ForgotPasswordForm', () => {
   it('should keep form state when request fails', async () => {
     const user = userEvent.setup()
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockSendForgotPasswordEmail.mockResolvedValue({ result: 'fail', data: 'error' } as any)
+    mockSendForgotPasswordEmail.mockResolvedValue({ result: 'fail', data: 'error' })
 
     render(<ForgotPasswordForm />)
 
@@ -164,7 +150,11 @@ describe('ForgotPasswordForm', () => {
       expect(mockSendForgotPasswordEmail).toHaveBeenCalledTimes(1)
     })
 
-    expect(screen.getByRole('button', { name: /login\.sendResetLink/ })).toBeInTheDocument()
+    expect(screen.getByLabelText('login.email')).toHaveValue('test@example.com')
+    expect(screen.getByRole('button', { name: /login\.sendResetLink/ })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
 
     consoleSpy.mockRestore()
   })
@@ -177,7 +167,7 @@ describe('ForgotPasswordForm', () => {
     })
     mockFetchInitValidateStatus.mockResolvedValue({
       status: 'not_started',
-    } as InitValidateStatusResponse)
+    })
 
     render(<ForgotPasswordForm />)
 

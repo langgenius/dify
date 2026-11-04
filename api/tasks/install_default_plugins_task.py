@@ -8,17 +8,15 @@ from configs import dify_config
 from core.helper import marketplace
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.plugin_service import PluginService
-from services.model_provider_service import ModelProviderService
+from graphon.model_runtime.entities.model_entities import ModelType
+from services.model_provider.service import ModelProviderService
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="plugin", bind=True, max_retries=60, default_retry_delay=5)
 def configure_default_models_task(self, tenant_id: str, plugin_install_task_id: str | None) -> None:
-    """Set explicitly configured default models after default plugins finish installing."""
-    if not dify_config.NEW_USER_DEFAULT_MODELS:
-        return
-
+    """Apply explicit defaults and initialize an unset LLM after default plugins finish installing."""
     plugin_install_failed = False
     if plugin_install_task_id:
         try:
@@ -28,7 +26,7 @@ def configure_default_models_task(self, tenant_id: str, plugin_install_task_id: 
                 "Failed to fetch default plugin installation task for tenant %s; retrying",
                 tenant_id,
             )
-            raise self.retry(exc=exc)
+            raise self.retry(exc=exc) from exc
 
         if install_task.status in (PluginInstallTaskStatus.Pending, PluginInstallTaskStatus.Running):
             raise self.retry()
@@ -46,7 +44,8 @@ def configure_default_models_task(self, tenant_id: str, plugin_install_task_id: 
 
     model_provider_service = ModelProviderService()
     failed_model_types: list[str] = []
-    for model_type, provider, model in dify_config.NEW_USER_DEFAULT_MODEL_LIST:
+    model_settings = dify_config.NEW_USER_DEFAULT_MODEL_LIST
+    for model_type, provider, model in model_settings:
         try:
             model_provider_service.update_default_model_of_model_type(
                 tenant_id=tenant_id,
@@ -63,6 +62,13 @@ def configure_default_models_task(self, tenant_id: str, plugin_install_task_id: 
                 provider,
                 model,
             )
+
+    if not any(model_type == ModelType.LLM for model_type, _, _ in model_settings):
+        try:
+            model_provider_service.initialize_default_llm(tenant_id)
+        except Exception:
+            failed_model_types.append(ModelType.LLM.value)
+            logger.exception("Failed to initialize default LLM for tenant %s", tenant_id)
 
     if plugin_install_failed or failed_model_types:
         raise RuntimeError(
@@ -89,11 +95,10 @@ def install_default_plugins_task(tenant_id: str, plugin_ids: list[str]) -> None:
             return
 
         response = PluginService.install_from_marketplace_pkg(tenant_id, plugin_identifiers)
-        if dify_config.NEW_USER_DEFAULT_MODELS:
-            configure_default_models_task.delay(
-                tenant_id,
-                None if response.all_installed else response.task_id,
-            )
+        configure_default_models_task.delay(
+            tenant_id,
+            None if response.all_installed else response.task_id,
+        )
     except Exception:
         logger.exception("Failed to install default plugins for tenant %s", tenant_id)
         raise

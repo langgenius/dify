@@ -22,8 +22,8 @@ describe('workflow-panel helpers', () => {
     payload: Partial<CustomRunFormProps['payload']>,
   ): CustomRunFormProps => ({
     nodeId: 'node-1',
-    flowId: 'flow-1',
-    flowType: 'app' as CustomRunFormProps['flowType'],
+    resource: { kind: 'app', appId: 'flow-1', mode: 'workflow' },
+
     payload: payload as CustomRunFormProps['payload'],
     setRunResult: vi.fn(),
     setIsRunAfterSingleRun: vi.fn(),
@@ -53,7 +53,7 @@ describe('workflow-panel helpers', () => {
 
   describe('tool and provider lookup', () => {
     it('should prefer fresh built-in tool data when it is available', () => {
-      const storeTools = [{ id: 'legacy/tool', allow_delete: false }]
+      const storeTools = [{ id: 'provider/tool', allow_delete: false }]
       const queryTools = [{ id: 'provider/tool', allow_delete: true }]
 
       expect(

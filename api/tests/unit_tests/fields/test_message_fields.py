@@ -1,6 +1,24 @@
 from decimal import Decimal
 
-from fields.message_fields import ExploreMessageListItem, MessageListItem, WebMessageListItem
+from fields.message_fields import ExploreMessageListItem, MessageListItem, RetrieverResource, WebMessageListItem
+
+
+def _retrieved_video_resource():
+    # Shaped like a real stored retriever_resources entry (core/rag/entities/citation_metadata.py's
+    # RetrievalSourceMetadata, the write-side model) for a video citation with a start/end offset.
+    return {
+        "position": 1,
+        "dataset_id": "af57b949-2259-4fe4-b58a-0117fd3a6b92",
+        "document_id": "9196b0c1-898e-4e8e-9d78-18cb07896b89",
+        "document_name": "training.mp4",
+        "retriever_from": "workflow",
+        "score": 0.86,
+        "content": "transcript excerpt",
+        "page": None,
+        "title": "training.mp4",
+        "files": None,
+        "doc_metadata": {"start_seconds": 1036.0, "end_seconds": 1054.6, "document_name": "training.mp4"},
+    }
 
 
 def _base_kwargs():
@@ -19,6 +37,25 @@ def _base_kwargs():
 
 
 class TestExploreMessageListItem:
+    def test_retriever_resource_preserves_knowledge_fs_citation_identity(self):
+        kwargs = _base_kwargs()
+        kwargs["retriever_resources"] = [
+            {
+                "position": 1,
+                "document_id": "11111111-1111-4111-8111-111111111111",
+                "document_asset_id": "22222222-2222-4222-8222-222222222222",
+                "document_revision": 4,
+                "document_version": 7,
+            }
+        ]
+
+        payload = MessageListItem(**kwargs).model_dump(mode="json")["retriever_resources"][0]
+
+        assert payload["document_id"] == "11111111-1111-4111-8111-111111111111"
+        assert payload["document_asset_id"] == "22222222-2222-4222-8222-222222222222"
+        assert payload["document_revision"] == 4
+        assert payload["document_version"] == 7
+
     def test_exposes_metadata_for_history_rehydration(self):
         # The Explore/installed-app surface must surface message_metadata (incl. reasoning)
         # so the chat-with-history client can rehydrate the thinking panel on reload.
@@ -66,3 +103,31 @@ class TestExploreMessageListItem:
         assert payload["message_tokens"] == 7
         assert payload["answer_tokens"] == 11
         assert payload["total_tokens"] == 18
+
+
+class TestRetrieverResourceDocMetadata:
+    def test_doc_metadata_survives_validation_from_a_stored_dict(self):
+        # GET /messages re-validates the raw dicts stored in Message.retriever_resources
+        # (JSON-backed, written from RetrievalSourceMetadata) against RetrieverResource.
+        # Before this field existed, ResponseModel's extra="ignore" silently dropped
+        # doc_metadata here -- the video player on a reloaded conversation had nothing
+        # to read start_seconds/end_seconds from, even though the data was never lost
+        # in storage.
+        resource = RetrieverResource.model_validate(_retrieved_video_resource())
+
+        payload = resource.model_dump(mode="json")
+
+        assert payload["doc_metadata"] == {
+            "start_seconds": 1036.0,
+            "end_seconds": 1054.6,
+            "document_name": "training.mp4",
+        }
+        assert payload["title"] == "training.mp4"
+        assert payload["retriever_from"] == "workflow"
+
+    def test_message_list_item_propagates_doc_metadata_through_retriever_resources(self):
+        payload = MessageListItem(
+            **{**_base_kwargs(), "retriever_resources": [_retrieved_video_resource()]},
+        ).model_dump(mode="json")
+
+        assert payload["retriever_resources"][0]["doc_metadata"]["start_seconds"] == 1036.0

@@ -17,6 +17,7 @@ from controllers.service_api.app.error import (
 from controllers.service_api.schema import binary_response
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from models.model import App, EndUser
 from services.message_file_preview_service import (
     MessageFilePreview,
@@ -61,6 +62,7 @@ class FilePreviewApi(Resource):
     Files can only be accessed if they belong to messages within the requesting app's context.
     """
 
+    @error_responses(FileAccessDeniedError, FileNotFoundError)
     @service_api_ns.doc(
         summary="Download File",
         description=(

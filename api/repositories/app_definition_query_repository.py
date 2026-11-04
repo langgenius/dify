@@ -2,14 +2,15 @@
 
 from typing import Any, cast, override
 
-from sqlalchemy import select
+from sqlalchemy import String, select
+from sqlalchemy import cast as sql_cast
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
-from models.account import Tenant, TenantStatus
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.agent import AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, Site, load_annotation_reply_config
@@ -21,6 +22,7 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppSiteConfiguration,
     AppToolIconSource,
+    ServiceApiAppRecord,
 )
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
 
@@ -45,8 +47,45 @@ def map_site_configuration(site: Site) -> AppSiteConfiguration:
     )
 
 
+def _load_app_model_config(app: App, *, session: Session) -> AppModelConfig | None:
+    if not app.app_model_config_id:
+        return None
+    return session.scalar(
+        select(AppModelConfig).where(AppModelConfig.id == app.app_model_config_id, AppModelConfig.app_id == app.id)
+    )
+
+
+def load_app_parameter_config(app: App, *, session: Session) -> AppParameterConfig | None:
+    """Materialize the app's own selected config within the caller-owned Session."""
+    if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+        if not app.workflow_id:
+            return None
+        workflow = session.scalar(
+            select(Workflow).where(
+                Workflow.id == app.workflow_id,
+                Workflow.app_id == app.id,
+                Workflow.tenant_id == app.tenant_id,
+            )
+        )
+        if workflow is None:
+            return None
+        return AppParameterConfig(
+            features_dict=workflow.features_dict,
+            user_input_form=cast(list[dict[str, Any]], workflow.user_input_form(to_old_structure=True)),
+        )
+
+    app_model_config = _load_app_model_config(app, session=session)
+    if app_model_config is None:
+        return None
+    features_dict = app_model_config.to_dict(annotation_reply=load_annotation_reply_config(session, app.id))
+    return AppParameterConfig(
+        features_dict=features_dict,
+        user_input_form=cast(list[dict[str, Any]], features_dict.get("user_input_form", [])),
+    )
+
+
 def _get_public_agent_parameter_config(app: App, *, session: Session) -> AppParameterConfig:
-    app_model_config = app.app_model_config_with_session(session=session)
+    app_model_config = _load_app_model_config(app, session=session)
     agent = app.agent_app_binding_with_session(session=session)
     if agent is None:
         raise AgentAppGeneratorError("Agent App has no bound Agent")
@@ -82,6 +121,46 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
         self._session_factory = session_factory
 
     @override
+    def get_service_api_record(self, app_id: str, *, tenant_id: str | None = None) -> ServiceApiAppRecord | None:
+        with self._session_factory() as session:
+            statement = (
+                # Let admission reject abnormal historical statuses with a domain
+                # error instead of failing enum deserialization before policy runs.
+                select(App.id, App.tenant_id, App.mode, sql_cast(App.status, String), App.enable_api, Tenant.status)
+                .outerjoin(Tenant, Tenant.id == App.tenant_id)
+                .where(App.id == app_id)
+            )
+            if tenant_id is not None:
+                statement = statement.where(App.tenant_id == tenant_id)
+            row = session.execute(statement).one_or_none()
+            if row is None:
+                return None
+            resolved_id, tenant_id, mode, status, enable_api, tenant_status = row
+            return ServiceApiAppRecord(
+                app_id=resolved_id,
+                tenant_id=tenant_id,
+                mode=mode.value,
+                status=status,
+                enable_api=enable_api,
+                tenant_status=tenant_status.value if tenant_status is not None else None,
+            )
+
+    @override
+    def get_service_api_owner_id(self, tenant_id: str) -> str | None:
+        with self._session_factory() as session:
+            return session.scalar(
+                select(Account.id)
+                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
+                .where(
+                    Tenant.id == tenant_id,
+                    Tenant.status == TenantStatus.NORMAL,
+                    TenantAccountJoin.role == TenantAccountRole.OWNER,
+                )
+                .limit(1)
+            )
+
+    @override
     def get_mode(self, app_id: str) -> str | None:
         with self._session_factory() as session:
             mode = session.scalar(select(App.mode).where(App.id == app_id).limit(1))
@@ -102,27 +181,7 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
             if public_runtime and app.mode == AppMode.AGENT:
                 return _get_public_agent_parameter_config(app, session=session)
 
-            if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-                workflow = app.workflow_with_session(session=session)
-                if workflow is None:
-                    return None
-
-                return AppParameterConfig(
-                    features_dict=workflow.features_dict,
-                    user_input_form=cast(list[dict[str, Any]], workflow.user_input_form(to_old_structure=True)),
-                )
-
-            app_model_config = app.app_model_config_with_session(session=session)
-            if app_model_config is None:
-                return None
-
-            features_dict = app_model_config.to_dict(
-                annotation_reply=load_annotation_reply_config(session, app.id),
-            )
-            return AppParameterConfig(
-                features_dict=features_dict,
-                user_input_form=cast(list[dict[str, Any]], features_dict.get("user_input_form", [])),
-            )
+            return load_app_parameter_config(app, session=session)
 
     @override
     def get_tool_icon_sources(self, app_id: str) -> tuple[AppToolIconSource, ...] | None:

@@ -1,6 +1,10 @@
 'use client'
+import type {
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
-import type { ChildChunkDetail, ChunkingMode, SegmentDetailModel } from '@/models/datasets'
+import type { ChunkingMode } from '@/models/datasets'
 import NewSegment from '@/app/components/datasets/documents/detail/new-segment'
 import ChildSegmentDetail from '../child-segment-detail'
 import { DocumentDetailDrawer } from '../common/full-screen-drawer'
@@ -9,7 +13,7 @@ import { SegmentDetail } from '../segment-detail'
 
 type DrawerGroupProps = {
   currSegment: {
-    segInfo?: SegmentDetailModel
+    segInfo?: SegmentResponse
     showModal: boolean
     isEditMode?: boolean
   }
@@ -28,7 +32,7 @@ type DrawerGroupProps = {
   onSaveNewSegment: () => void
   viewNewlyAddedChunk: () => void
   currChildChunk: {
-    childChunkInfo?: ChildChunkDetail
+    childChunkInfo?: ChildChunkResponse
     showModal: boolean
   }
   currChunkId: string
@@ -36,7 +40,7 @@ type DrawerGroupProps = {
   onUpdateChildChunk: (segmentId: string, childChunkId: string, content: string) => Promise<void>
   showNewChildSegmentModal: boolean
   onCloseNewChildChunkModal: () => void
-  onSaveNewChildChunk: (newChildChunk?: ChildChunkDetail) => void
+  onSaveNewChildChunk: (newChildChunk?: ChildChunkResponse) => void
   viewNewlyAddedChildChunk: () => void
   fullScreen: boolean
   docForm: ChunkingMode

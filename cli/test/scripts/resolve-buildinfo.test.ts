@@ -1,21 +1,16 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterAll, describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import { BUILD_CHANNELS, resolveBuildInfo } from '../../scripts/lib/resolve-buildinfo.js'
-import { ENV_CACHE_DIR, ENV_CONFIG_DIR } from '../../src/store/dir.js'
 
 const CLI_ROOT = new URL('../../', import.meta.url)
 const RELEASE_NAMING = fileURLToPath(new URL('scripts/release-naming.mjs', CLI_ROOT))
-const DEV_ENTRY = fileURLToPath(new URL('bin/dev.js', CLI_ROOT))
 
 const FIXED_DATE = new Date('2026-05-09T12:00:00.000Z')
 const fixedNow = () => FIXED_DATE
 const noGit = () => null
 // Stub the package.json reader so tests exercise the "no sources" path
-// without coupling to the live cli/package.json#difyctl.compat values.
+// without coupling to the live cli/package.json#difyctl.channel value.
 const noPkg = () => ({})
 
 describe('resolveBuildInfo', () => {
@@ -36,8 +31,6 @@ describe('resolveBuildInfo', () => {
       commit: 'abcdef0123456789',
       buildDate: '2026-01-01T00:00:00.000Z',
       channel: 'stable',
-      minDify: '0.0.0',
-      maxDify: '0.0.0',
     })
   })
 
@@ -55,8 +48,6 @@ describe('resolveBuildInfo', () => {
       commit: '1234567890abcdef',
       buildDate: '2026-05-09T12:00:00.000Z',
       channel: 'dev',
-      minDify: '0.0.0',
-      maxDify: '0.0.0',
     })
     expect(calls).toStrictEqual(['git describe --tags --dirty --always', 'git rev-parse HEAD'])
   })
@@ -68,8 +59,6 @@ describe('resolveBuildInfo', () => {
       commit: 'none',
       buildDate: '2026-05-09T12:00:00.000Z',
       channel: 'dev',
-      minDify: '0.0.0',
-      maxDify: '0.0.0',
     })
   })
 
@@ -128,56 +117,20 @@ describe('resolveBuildInfo', () => {
     expect(info.channel).toBe('dev')
   })
 
-  it('reads minDify and maxDify from env', () => {
-    const info = resolveBuildInfo({
-      env: {
-        DIFYCTL_VERSION: '0.1.0-rc.1',
-        DIFYCTL_CHANNEL: 'rc',
-        DIFYCTL_COMMIT: 'abc',
-        DIFYCTL_BUILD_DATE: '2026-01-01T00:00:00.000Z',
-        DIFYCTL_MIN_DIFY: '1.6.0',
-        DIFYCTL_MAX_DIFY: '1.7.0',
-      },
-      git: noGit,
-      now: fixedNow,
-      pkg: noPkg,
-    })
-    expect(info.minDify).toBe('1.6.0')
-    expect(info.maxDify).toBe('1.7.0')
-  })
-
-  it('defaults minDify and maxDify to 0.0.0 when env and package.json are unset', () => {
-    const info = resolveBuildInfo({ env: {}, git: noGit, now: fixedNow, pkg: noPkg })
-    expect(info.minDify).toBe('0.0.0')
-    expect(info.maxDify).toBe('0.0.0')
-  })
-
-  it('falls back to package.json#difyctl.compat when env unset', () => {
-    const pkg = () => ({
-      difyctl: { compat: { minDify: '1.6.0', maxDify: '1.7.0' }, channel: 'rc' },
-    })
+  it('falls back to package.json#difyctl.channel when env unset', () => {
+    const pkg = () => ({ difyctl: { channel: 'rc' } })
     const info = resolveBuildInfo({ env: {}, git: noGit, now: fixedNow, pkg })
-    expect(info.minDify).toBe('1.6.0')
-    expect(info.maxDify).toBe('1.7.0')
     expect(info.channel).toBe('rc')
   })
 
-  it('env wins over package.json for compat range and channel', () => {
-    const pkg = () => ({
-      difyctl: { compat: { minDify: '1.6.0', maxDify: '1.7.0' }, channel: 'rc' },
-    })
+  it('env wins over package.json for channel', () => {
+    const pkg = () => ({ difyctl: { channel: 'rc' } })
     const info = resolveBuildInfo({
-      env: {
-        DIFYCTL_MIN_DIFY: '2.0.0',
-        DIFYCTL_MAX_DIFY: '2.1.0',
-        DIFYCTL_CHANNEL: 'stable',
-      },
+      env: { DIFYCTL_CHANNEL: 'stable' },
       git: noGit,
       now: fixedNow,
       pkg,
     })
-    expect(info.minDify).toBe('2.0.0')
-    expect(info.maxDify).toBe('2.1.0')
     expect(info.channel).toBe('stable')
   })
 })
@@ -198,33 +151,5 @@ describe('channel list parity', () => {
     expect(sorted(releaseNamingChannels())).toStrictEqual(
       sorted(BUILD_CHANNELS.filter((name) => name !== LOCAL_ONLY_CHANNEL)),
     )
-  })
-})
-
-type ClientVersionReport = { client: { channel: string } }
-
-describe('bin/dev.js pins the local build channel', () => {
-  const ENV_CHANNEL = 'DIFYCTL_CHANNEL'
-  const stateDir = mkdtempSync(join(tmpdir(), 'difyctl-dev-channel-'))
-  afterAll(() => rmSync(stateDir, { recursive: true, force: true }))
-
-  function reportedChannel(channelOverride?: string): string {
-    const env: NodeJS.ProcessEnv = {
-      ...process.env,
-      [ENV_CONFIG_DIR]: stateDir,
-      [ENV_CACHE_DIR]: stateDir,
-    }
-    if (channelOverride === undefined) delete env[ENV_CHANNEL]
-    else env[ENV_CHANNEL] = channelOverride
-    const stdout = execFileSync('bun', [DEV_ENTRY, 'version', '--client', '--output', 'json'], {
-      cwd: fileURLToPath(CLI_ROOT),
-      encoding: 'utf8',
-      env,
-    })
-    return (JSON.parse(stdout) as ClientVersionReport).client.channel
-  }
-
-  it('reports dev when the env does not set a channel', { timeout: 30_000 }, () => {
-    expect(reportedChannel()).toBe('dev')
   })
 })

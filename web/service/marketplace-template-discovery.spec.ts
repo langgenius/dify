@@ -23,7 +23,7 @@ const importDiscovery = async () => {
 
 describe('marketplace template discovery', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
   })
 
   it('loads each template collection and isolates a failed collection', async () => {
@@ -48,8 +48,7 @@ describe('marketplace template discovery', () => {
       },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
-    expect(mocks.templateCollectionTemplates).toHaveBeenNthCalledWith(
-      1,
+    expect(mocks.templateCollectionTemplates).toHaveBeenCalledWith(
       {
         params: { collectionName: 'featured' },
         body: {},

@@ -1,24 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { TopBar } from '../index'
 
-vi.mock('@/next/link', () => ({
-  default: ({
-    children,
-    href,
-    replace,
-    className,
-  }: {
-    children: React.ReactNode
-    href: string
-    replace?: boolean
-    className?: string
-  }) => (
-    <a href={href} data-replace={replace} className={className}>
-      {children}
-    </a>
-  ),
-}))
-
 describe('TopBar', () => {
   it('returns to the dataset list while creating a new dataset', () => {
     render(<TopBar activeIndex={0} />)

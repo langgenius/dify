@@ -22,6 +22,8 @@ N'oubliez pas de lier un problème existant ou d'ouvrir un nouveau problème dan
 
 ### Rapports de bugs
 
+Signalez les vulnérabilités en privé selon la [politique de sécurité](../../SECURITY.md), sans ouvrir d’issue publique.
+
 > [!IMPORTANT]
 > Veuillez vous assurer d'inclure les informations suivantes lors de la soumission d'un rapport de bug :
 
@@ -36,7 +38,7 @@ Comment nous priorisons :
 
 | Type de Problème | Priorité |
 | ------------------------------------------------------------ | --------------- |
-| Bugs dans les fonctions principales (service cloud, impossibilité de se connecter, applications qui ne fonctionnent pas, failles de sécurité) | Critique |
+| Bugs dans les fonctions principales (service cloud, impossibilité de se connecter, applications qui ne fonctionnent pas) | Critique |
 | Bugs non critiques, améliorations de performance | Priorité Moyenne |
 | Corrections mineures (fautes de frappe, UI confuse mais fonctionnelle) | Priorité Basse |
 
@@ -66,7 +68,7 @@ Comment nous priorisons :
 1. Forkez le dépôt
 1. Avant de rédiger une PR, veuillez créer un problème pour discuter des changements que vous souhaitez apporter
 1. Créez une nouvelle branche pour vos changements
-1. Veuillez ajouter des tests pour vos changements en conséquence
+1. Ajoutez ou mettez à jour les tests si le changement affecte un comportement observable ou présente un risque significatif de régression.
 1. Assurez-vous que votre code passe les tests existants
 1. Veuillez lier le problème dans la description de la PR, `fixes #<numéro_du_problème>`
 1. Faites fusionner votre code !
@@ -75,22 +77,11 @@ Comment nous priorisons :
 
 #### Frontend
 
-Pour configurer le service frontend, veuillez consulter notre [guide complet](https://github.com/langgenius/dify/blob/main/web/README.md) dans le fichier `web/README.md`. Ce document fournit des instructions détaillées pour vous aider à configurer correctement l'environnement frontend.
+Pour configurer le service frontend, veuillez consulter notre [guide complet](../../web/README.md) dans le fichier `web/README.md`. Ce document fournit des instructions détaillées pour vous aider à configurer correctement l'environnement frontend.
 
 #### Backend
 
-Pour configurer le service backend, veuillez consulter nos [instructions détaillées](https://github.com/langgenius/dify/blob/main/api/README.md) dans le fichier `api/README.md`. Ce document contient un guide étape par étape pour vous aider à faire fonctionner le backend sans problème.
-
-#### Autres choses à noter
-
-Nous recommandons de revoir attentivement ce document avant de procéder à la configuration, car il contient des informations essentielles sur :
-
-- Prérequis et dépendances
-- Étapes d'installation
-- Détails de configuration
-- Conseils courants de dépannage
-
-N'hésitez pas à nous contacter si vous rencontrez des problèmes pendant le processus de configuration.
+Pour configurer le service backend, veuillez consulter nos [instructions détaillées](../../api/README.md) dans le fichier `api/README.md`. Ce document contient un guide étape par étape pour vous aider à faire fonctionner le backend sans problème.
 
 ## Obtenir de l'aide
 

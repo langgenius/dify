@@ -75,14 +75,14 @@ describe('Dialog wrapper', () => {
     it('should connect a detached trigger to the dialog', async () => {
       const handle = createDialogHandle()
       const screen = await render(
-        <>
+        <React.Fragment>
           <DialogTrigger handle={handle}>Open dialog</DialogTrigger>
           <Dialog handle={handle}>
             <DialogContent>
               <DialogTitle>Detached dialog</DialogTitle>
             </DialogContent>
           </Dialog>
-        </>,
+        </React.Fragment>,
       )
 
       await screen.getByRole('button', { name: 'Open dialog' }).click()

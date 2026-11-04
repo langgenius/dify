@@ -1,55 +1,28 @@
+import type { TFunction } from 'i18next'
 import type { CommandSearchResult } from '../types'
+import type { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
 
-/**
- * Slash command handler interface
- * Each slash command should implement this interface
- */
-export type SlashCommandHandler<TDeps = unknown> = {
-  /** Command name (e.g., 'theme', 'language') */
-  name: string
-
-  /** Command alias list (e.g., ['lang'] for language) */
-  aliases?: string[]
-
-  /** Command description */
-  description: string
-
-  /**
-   * Command mode:
-   * - 'direct': Execute immediately when selected (e.g., /docs, /discord)
-   * - 'submenu': Show submenu options (e.g., /theme, /language)
-   */
-  mode?: 'direct' | 'submenu'
-
-  /**
-   * Check if command is available in current context
-   * If not implemented, command is always available
-   * Used to conditionally show/hide commands based on page, user state, etc.
-   */
-  isAvailable?: () => boolean
-
-  /**
-   * Direct execution function for 'direct' mode commands
-   * Called when the command is selected and should execute immediately
-   */
-  execute?: () => void | Promise<void>
-
-  /**
-   * Search command results (for 'submenu' mode or showing options)
-   * @param args Command arguments (part after removing command name)
-   * @param locale Current language
-   */
-  search: (args: string, locale?: string) => CommandSearchResult[]
-
-  /**
-   * Called when registering command, passing external dependencies
-   */
-  register?: (deps: TDeps) => void
-
-  /**
-   * Called when unregistering command
-   */
-  unregister?: () => void
+export type CommandContext = {
+  t: TFunction<['app', 'common', 'modelProvider', 'accountSettings']>
+  locale: string
+  agentsAvailable: boolean
+  skillsAvailable: boolean
+  currentApp: { id: string; mode: 'workflow' | 'advanced-chat' } | null
+  setTheme: (theme: string) => void
+  setLocale: (locale: string) => Promise<void>
+  getDocsHomeUrl: () => string
+  onError: (error: unknown) => void
+  navigate: (path: string) => void
+  openExternal: (url: string) => void
+  openGenerator: ReturnType<typeof useWorkflowGeneratorStore.getState>['openGenerator']
 }
 
-export type SlashCommand = Omit<SlashCommandHandler, 'register'>
+export type SlashCommand = {
+  name: string
+  aliases?: readonly string[]
+  description: string
+  mode?: 'direct' | 'submenu'
+  isAvailable?: (context: CommandContext) => boolean
+  execute: (args: Record<string, unknown>, context: CommandContext) => void | Promise<void>
+  search: (args: string, context: CommandContext) => CommandSearchResult[]
+}

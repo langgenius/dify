@@ -28,6 +28,8 @@
   "menus.plugins": "集成",
   "menus.status": "beta",
   "menus.tools": "工具",
+  "settings.accessToken": "访问令牌",
+  "settings.accessTokenDescription": "创建仅可访问指定应用和知识库的 Service API 令牌。",
   "settings.agentStrategy": "Agent 策略",
   "settings.billing": "账单",
   "settings.customEndpoint": "自定义端点",

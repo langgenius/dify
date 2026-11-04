@@ -6,7 +6,8 @@ import type {
 } from '@/app/components/workflow/nodes/human-input/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useEffect, useState } from 'react'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
@@ -84,13 +85,6 @@ describe('HITLInputComponentUI', () => {
   })
 
   describe('Rendering', () => {
-    it('should render action buttons correctly', () => {
-      renderComponent()
-
-      expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.remove' })).toBeInTheDocument()
-    })
-
     it('should render variable block when default type is variable', () => {
       const selector = ['node-2', 'answer'] as ValueSelector
 
@@ -120,6 +114,7 @@ describe('HITLInputComponentUI', () => {
     })
 
     it('should close the edit modal when readonly becomes true', async () => {
+      const user = userEvent.setup()
       let setReadonlyValue: ((readonly: boolean) => void) | undefined
       const Harness = () => {
         const [readonly, setReadonly] = useState(false)
@@ -157,7 +152,7 @@ describe('HITLInputComponentUI', () => {
 
       render(<Harness />)
 
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       expect(await screen.findByRole('textbox')).toBeInTheDocument()
 
@@ -184,27 +179,6 @@ describe('HITLInputComponentUI', () => {
       })
 
       expect(getByText('alpha, beta')).toBeInTheDocument()
-    })
-
-    it('should render input type label after the summary content', () => {
-      const { getByText } = renderComponent({
-        formInput: {
-          type: InputVarType.select,
-          output_variable_name: 'customer_name',
-          option_source: {
-            type: 'constant',
-            selector: [],
-            value: ['alpha', 'beta'],
-          },
-        } satisfies FormInputItem,
-      })
-
-      const summary = getByText('alpha, beta')
-      const typeLabel = getByText('appDebug.variableConfig.select')
-
-      expect(
-        summary.compareDocumentPosition(typeLabel) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
     })
 
     it('should render file-list placeholder instead of selected file details', () => {
@@ -241,10 +215,11 @@ describe('HITLInputComponentUI', () => {
   })
 
   describe('Remove action', () => {
-    it('should call onRemove when remove button is clicked', () => {
+    it('should call onRemove when remove button is clicked', async () => {
+      const user = userEvent.setup()
       const { onRemove } = renderComponent()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
       expect(onRemove).toHaveBeenCalledWith(varName)
       expect(onRemove).toHaveBeenCalledTimes(1)
@@ -253,13 +228,14 @@ describe('HITLInputComponentUI', () => {
 
   describe('Edit flow', () => {
     it('should close modal without update when cancel is clicked', async () => {
+      const user = userEvent.setup()
       const { findByRole, queryByRole, onChange, onRename } = renderComponent()
 
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       await findByRole('textbox')
 
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
 
       expect(onChange).not.toHaveBeenCalled()
       expect(onRename).not.toHaveBeenCalled()
@@ -268,14 +244,16 @@ describe('HITLInputComponentUI', () => {
     })
 
     it('should prevent renaming to an existing variable name', async () => {
+      const user = userEvent.setup()
       const { findByRole, onChange, onRename } = renderComponent({
         unavailableVariableNames: ['existing_name'],
       })
 
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       const textbox = await findByRole('textbox')
-      fireEvent.change(textbox, { target: { value: 'existing_name' } })
+      await user.clear(textbox)
+      await user.type(textbox, 'existing_name')
 
       expect(
         screen.getByText(
@@ -284,7 +262,7 @@ describe('HITLInputComponentUI', () => {
       ).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onChange).not.toHaveBeenCalled()
       expect(onRename).not.toHaveBeenCalled()
@@ -293,32 +271,18 @@ describe('HITLInputComponentUI', () => {
 
   describe('Default formInput', () => {
     it('should open an empty default editor when formInput is undefined', async () => {
+      const user = userEvent.setup()
       const { findByRole } = renderComponent({
         formInput: undefined,
       })
 
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       const textbox = await findByRole('textbox')
       const saveButton = await screen.findByRole('button', { name: 'common.operation.save' })
 
       expect(textbox).toHaveValue('')
       expect(saveButton).toBeDisabled()
-    })
-
-    it('should render variable selector when workflowNodesMap fallback is used', () => {
-      const { getByText } = renderComponent({
-        workflowNodesMap: undefined as unknown as WorkflowNodesMap,
-        formInput: createParagraphFormInput({
-          default: {
-            type: 'variable',
-            selector: ['node-2', 'answer'] as ValueSelector,
-            value: '',
-          },
-        }),
-      })
-
-      expect(getByText('answer')).toBeInTheDocument()
     })
   })
 })

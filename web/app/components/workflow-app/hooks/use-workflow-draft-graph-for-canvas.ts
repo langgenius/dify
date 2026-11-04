@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { Node, WorkflowDataUpdater } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -5,7 +6,7 @@ import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import startPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'
-import { AppModeEnum } from '@/types/app'
+import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 
 type HydrateWorkflowDraftGraphOptions = {
   localStartPlaceholderNodes?: Node[]
@@ -25,16 +26,12 @@ const hasStartPlaceholderNode = (nodes: Node[] = []): boolean => {
   return nodes.some((node) => node?.data?.type === BlockEnum.StartPlaceholder)
 }
 
-export const useWorkflowDraftGraphForCanvas = (appMode?: AppModeEnum | string) => {
-  const { t } = useTranslation(['workflow'])
+export const useWorkflowDraftGraphForCanvas = (appMode?: AppMode) => {
+  const { t } = useTranslation(['workflow'] as const)
 
   const getNodesWithLocalStartPlaceholder = useCallback(
     (nodes: Node[] = [], localStartPlaceholderNodes?: Node[]) => {
-      if (
-        appMode !== AppModeEnum.WORKFLOW ||
-        hasWorkflowEntryNode(nodes) ||
-        hasStartPlaceholderNode(nodes)
-      )
+      if (appMode !== 'workflow' || hasWorkflowEntryNode(nodes) || hasStartPlaceholderNode(nodes))
         return nodes
 
       if (localStartPlaceholderNodes?.length) return [...localStartPlaceholderNodes, ...nodes]
@@ -61,7 +58,7 @@ export const useWorkflowDraftGraphForCanvas = (appMode?: AppModeEnum | string) =
       options?: HydrateWorkflowDraftGraphOptions,
     ): WorkflowDataUpdater => {
       const nodes = getNodesWithLocalStartPlaceholder(
-        graph?.nodes || [],
+        normalizeWorkflowNodes(graph?.nodes || [], appMode),
         options?.localStartPlaceholderNodes,
       )
 
@@ -71,7 +68,7 @@ export const useWorkflowDraftGraphForCanvas = (appMode?: AppModeEnum | string) =
         viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
       }
     },
-    [getNodesWithLocalStartPlaceholder],
+    [appMode, getNodesWithLocalStartPlaceholder],
   )
 
   return {

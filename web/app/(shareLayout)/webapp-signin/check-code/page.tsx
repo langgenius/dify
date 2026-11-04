@@ -1,5 +1,5 @@
 'use client'
-import type { FormEvent } from 'react'
+import type { SubmitEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useEffect, useRef, useState } from 'react'
@@ -78,7 +78,7 @@ export default function CheckCode() {
     }
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     verify()
   }
@@ -143,7 +143,7 @@ export default function CheckCode() {
           onValueChange={setCode}
           maxLength={6}
           className="mt-1"
-          placeholder={t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) || ''}
+          placeholder={t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' })}
         />
         <Button type="submit" loading={loading} className="my-3 w-full" variant="primary">
           {t(($) => $['checkCode.verify'], { ns: 'login' })}

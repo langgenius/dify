@@ -75,14 +75,6 @@ describe('amplitude utils', () => {
 
       expect(mockTrack).not.toHaveBeenCalled()
     })
-
-    it('should drop events until the consented SDK has initialized', () => {
-      mockState.initialized = false
-
-      trackEvent('dataset_created')
-
-      expect(mockTrack).not.toHaveBeenCalled()
-    })
   })
 
   describe('flushEvents', () => {

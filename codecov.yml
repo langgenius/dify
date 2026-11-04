@@ -1,25 +1,32 @@
 coverage:
   status:
-    project:
-      default:
+    # Report project coverage per flag (see flag_management) instead of one combined total,
+    # so a PR touching only one area is not judged by another area's carried-forward data.
+    project: off
+
+flag_management:
+  default_rules:
+    carryforward: true
+    statuses:
+      - type: project
         target: auto
         # Absorb sub-percent coverage noise (rounding, trivial added lines, CVA variants, etc).
         threshold: 1%
         # Deleting covered code during refactors/migrations must not regress base.
         removed_code_behavior: adjust_base
+  individual_flags:
+    - name: web
+      paths:
+        - "web/"
 
-flags:
-  web:
-    paths:
-      - "web/"
-    carryforward: true
+    - name: dify-ui
+      paths:
+        - "packages/dify-ui/"
 
-  dify-ui:
-    paths:
-      - "packages/dify-ui/"
-    carryforward: true
+    - name: api
+      paths:
+        - "api/"
 
-  api:
-    paths:
-      - "api/"
-    carryforward: true
+    - name: cli
+      paths:
+        - "cli/"

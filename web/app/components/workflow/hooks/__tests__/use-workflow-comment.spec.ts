@@ -1,19 +1,15 @@
 import type {
+  WorkflowCommentBasic,
   WorkflowCommentDetail,
-  WorkflowCommentList,
-} from '@/app/components/workflow/comment/types'
+} from '@dify/contracts/api/console/apps/types.gen'
 import { act, waitFor } from '@testing-library/react'
+import { useReactFlow } from 'reactflow'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { ControlMode } from '../../types'
 import { useWorkflowComment } from '../use-workflow-comment'
-
-const mockScreenToFlowPosition = vi.hoisted(() =>
-  vi.fn(({ x, y }: { x: number; y: number }) => ({ x: x - 90, y: y - 180 })),
-)
-const mockSetCenter = vi.hoisted(() => vi.fn())
-const mockGetNodes = vi.hoisted(() => vi.fn(() => []))
 
 const mockCreateWorkflowComment = vi.hoisted(() => vi.fn())
 const mockCreateWorkflowCommentReply = vi.hoisted(() => vi.fn())
@@ -43,56 +39,24 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('reactflow', () => ({
-  useReactFlow: () => ({
-    screenToFlowPosition: mockScreenToFlowPosition,
-    setCenter: mockSetCenter,
-    getNodes: mockGetNodes,
-  }),
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ appId: 'app-1' }),
-}))
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: {
-      systemFeatures: {
-        get: () => ({
-          enable_collaboration_mode: globalFeatureState.enableCollaboration,
-        }),
-      },
-      apps: {
-        byAppId: {
-          workflow: {
-            comments: {
-              get: (...args: unknown[]) => mockFetchWorkflowComments(...args),
-              post: (...args: unknown[]) => mockCreateWorkflowComment(...args),
-              byCommentId: {
-                delete: (...args: unknown[]) => mockDeleteWorkflowComment(...args),
-                get: (...args: unknown[]) => mockFetchWorkflowComment(...args),
-                put: (...args: unknown[]) => mockUpdateWorkflowComment(...args),
-                resolve: {
-                  post: (...args: unknown[]) => mockResolveWorkflowComment(...args),
-                },
-                replies: {
-                  post: (...args: unknown[]) => mockCreateWorkflowCommentReply(...args),
-                  byReplyId: {
-                    delete: (...args: unknown[]) => mockDeleteWorkflowCommentReply(...args),
-                    put: (...args: unknown[]) => mockUpdateWorkflowCommentReply(...args),
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    consoleQuery: actual.consoleQuery,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflow.comments.get': mockFetchWorkflowComments,
+      'apps.byAppId.workflow.comments.post': mockCreateWorkflowComment,
+      'apps.byAppId.workflow.comments.byCommentId.delete': mockDeleteWorkflowComment,
+      'apps.byAppId.workflow.comments.byCommentId.get': mockFetchWorkflowComment,
+      'apps.byAppId.workflow.comments.byCommentId.put': mockUpdateWorkflowComment,
+      'apps.byAppId.workflow.comments.byCommentId.resolve.post': mockResolveWorkflowComment,
+      'apps.byAppId.workflow.comments.byCommentId.replies.post': mockCreateWorkflowCommentReply,
+      'apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete':
+        mockDeleteWorkflowCommentReply,
+      'apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.put':
+        mockUpdateWorkflowCommentReply,
+    }),
   }
 })
 
@@ -106,7 +70,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   },
 }))
 
-const baseComment = (): WorkflowCommentList => ({
+const baseComment = (): WorkflowCommentBasic => ({
   id: 'comment-1',
   position_x: 10,
   position_y: 20,
@@ -154,6 +118,14 @@ const createSeededQueryClient = () => {
   return queryClient
 }
 
+const useCommentCanvas = () => ({ ...useWorkflowComment(), flow: useReactFlow() })
+
+const renderWorkflowHook: typeof renderWorkflowFlowHook = (hook, options) =>
+  renderWorkflowFlowHook(hook, {
+    ...options,
+    reactFlowProps: { fitView: false, defaultViewport: { x: 80, y: 160, zoom: 2 } },
+  })
+
 describe('useWorkflowComment', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -167,13 +139,20 @@ describe('useWorkflowComment', () => {
       created_at: 1700000000,
     })
     mockUpdateWorkflowComment.mockResolvedValue({})
+    mockCreateWorkflowCommentReply.mockResolvedValue({})
+    mockUpdateWorkflowCommentReply.mockResolvedValue({})
+    mockDeleteWorkflowCommentReply.mockResolvedValue({})
+    mockResolveWorkflowComment.mockResolvedValue({})
+    mockDeleteWorkflowComment.mockResolvedValue({})
   })
+
+  afterEach(() => vi.unstubAllGlobals())
 
   it('loads comment list on mount when collaboration is enabled', async () => {
     const comment = baseComment()
     mockFetchWorkflowComments.mockResolvedValue({ data: [comment] })
 
-    const { store } = renderWorkflowHook(() => useWorkflowComment(), {
+    const { store } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
     })
 
@@ -190,7 +169,7 @@ describe('useWorkflowComment', () => {
   it('does not load comment list when collaboration is disabled', async () => {
     globalFeatureState.enableCollaboration = false
 
-    renderWorkflowHook(() => useWorkflowComment(), {
+    renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
     })
 
@@ -200,11 +179,11 @@ describe('useWorkflowComment', () => {
   })
 
   it('creates a comment, updates local cache, and emits collaboration sync', async () => {
-    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
       initialStoreState: {
         comments: [],
-        pendingComment: { pageX: 100, pageY: 200, elementX: 10, elementY: 20 },
+        pendingComment: { pageX: 100, pageY: 200, elementX: 100, elementY: 200 },
         isCommentQuickAdd: true,
         mentionableUsersCache: {
           'app-1': [
@@ -260,11 +239,11 @@ describe('useWorkflowComment', () => {
       created_at: '1700001234',
     })
 
-    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
       initialStoreState: {
         comments: [],
-        pendingComment: { pageX: 100, pageY: 200, elementX: 10, elementY: 20 },
+        pendingComment: { pageX: 100, pageY: 200, elementX: 100, elementY: 200 },
         isCommentQuickAdd: true,
       },
     })
@@ -287,11 +266,11 @@ describe('useWorkflowComment', () => {
       created_at: createdAt,
     })
 
-    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
       initialStoreState: {
         comments: [],
-        pendingComment: { pageX: 100, pageY: 200, elementX: 10, elementY: 20 },
+        pendingComment: { pageX: 100, pageY: 200, elementX: 100, elementY: 200 },
         isCommentQuickAdd: true,
         mentionableUsersCache: {
           'app-1': [
@@ -338,7 +317,7 @@ describe('useWorkflowComment', () => {
     const commentDetail = baseCommentDetail()
     mockUpdateWorkflowComment.mockRejectedValue(new Error('update failed'))
 
-    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
       initialStoreState: {
         comments: [comment],
@@ -382,7 +361,7 @@ describe('useWorkflowComment', () => {
     mockFetchWorkflowComments.mockResolvedValue({ data: [comment] })
     mockFetchWorkflowComment.mockResolvedValue(detail)
 
-    const { unmount } = renderWorkflowHook(() => useWorkflowComment(), {
+    const { unmount, result } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
       initialStoreState: {
         activeCommentId: comment.id,
@@ -402,22 +381,25 @@ describe('useWorkflowComment', () => {
         params: { app_id: 'app-1', comment_id: comment.id },
       })
     })
-    expect(mockFetchWorkflowComments).toHaveBeenCalledTimes(2)
+    await waitFor(() =>
+      expect(result.current.activeComment?.content).toBe('updated by another user'),
+    )
+    expect(result.current.comments).toEqual([comment])
 
     unmount()
     expect(mockUnsubscribeCommentsUpdate).toHaveBeenCalledTimes(1)
   })
 
   it('focuses comment thread, loads detail, and updates navigation/create/close states', async () => {
+    vi.stubGlobal('innerWidth', 1600)
     const commentA = baseComment()
-    const commentB: WorkflowCommentList = {
+    const commentB: WorkflowCommentBasic = {
       ...baseComment(),
       id: 'comment-2',
       content: 'second',
       position_x: 50,
       position_y: 80,
     }
-    mockGetNodes.mockReturnValue([{ id: 'node-1', data: { selected: true } }] as never)
     mockFetchWorkflowComment.mockResolvedValue({
       ...baseCommentDetail(),
       id: commentB.id,
@@ -426,14 +408,15 @@ describe('useWorkflowComment', () => {
       position_y: commentB.position_y,
     })
 
-    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
+      nodes: [createNode({ id: 'node-1', data: { selected: true } })],
       initialStoreState: {
         comments: [commentA, commentB],
         commentDetailCache: {
           [commentA.id]: baseCommentDetail(),
         },
-        rightPanelWidth: 800,
+        rightPanelWidth: 0,
         nodePanelWidth: 300,
         controlMode: ControlMode.Comment,
         activeCommentId: commentA.id,
@@ -448,7 +431,10 @@ describe('useWorkflowComment', () => {
     await waitFor(() => {
       expect(store.getState().activeCommentId).toBe(commentB.id)
     })
-    expect(mockSetCenter).toHaveBeenCalledWith(502, 80, { zoom: 1, duration: 600 })
+    await waitFor(() =>
+      expect(result.current.flow.getViewport()).toEqual({ x: -380, y: 170, zoom: 1 }),
+    )
+    expect(result.current.activeComment?.content).toBe('second detail')
 
     act(() => {
       result.current.handleCreateComment({
@@ -475,7 +461,7 @@ describe('useWorkflowComment', () => {
 
   it('runs resolve, delete, and reply lifecycle handlers with collaboration sync', async () => {
     const commentA = baseComment()
-    const commentB: WorkflowCommentList = {
+    const commentB: WorkflowCommentBasic = {
       ...baseComment(),
       id: 'comment-2',
       content: 'fallback',
@@ -491,7 +477,7 @@ describe('useWorkflowComment', () => {
       position_y: commentB.position_y,
     })
 
-    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
       initialStoreState: {
         comments: [commentA, commentB],
@@ -547,7 +533,7 @@ describe('useWorkflowComment', () => {
   })
 
   it('does not update a reply when the content is blank', async () => {
-    const { result } = renderWorkflowHook(() => useWorkflowComment(), {
+    const { result } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
     })
 
@@ -558,76 +544,100 @@ describe('useWorkflowComment', () => {
     expect(mockUpdateWorkflowCommentReply).not.toHaveBeenCalled()
   })
 
-  it('resets reply submit loading when creation fails', async () => {
-    mockCreateWorkflowCommentReply.mockRejectedValueOnce(new Error('create reply failed'))
+  it.each(['create', 'update', 'delete'] as const)(
+    'keeps reply %s pending until failure, then permits retry',
+    async (operation) => {
+      const request =
+        operation === 'create'
+          ? mockCreateWorkflowCommentReply
+          : operation === 'update'
+            ? mockUpdateWorkflowCommentReply
+            : mockDeleteWorkflowCommentReply
+      let rejectRequest!: (error: Error) => void
+      request.mockReturnValueOnce(
+        new Promise((_resolve, reject) => {
+          rejectRequest = reject
+        }),
+      )
+      const { result } = renderWorkflowHook(useCommentCanvas, {
+        queryClient: createSeededQueryClient(),
+      })
+      await waitFor(() => expect(result.current.loading).toBe(false))
+      const submit = () =>
+        operation === 'create'
+          ? result.current.handleCommentReply('comment-1', 'new reply')
+          : operation === 'update'
+            ? result.current.handleCommentReplyUpdate('comment-1', 'reply-1', 'updated reply')
+            : result.current.handleCommentReplyDelete('comment-1', 'reply-1')
+      const isPending = () =>
+        operation === 'create'
+          ? result.current.replySubmitting
+          : operation === 'update'
+            ? result.current.replyUpdating
+            : result.current.activeCommentLoading
+      let pending!: Promise<void>
+      act(() => {
+        pending = submit()
+      })
+      expect(isPending()).toBe(true)
+      await act(async () => {
+        rejectRequest(new Error('Request failed'))
+        await pending
+      })
+      expect(isPending()).toBe(false)
+      expect(mockEmitCommentsUpdate).not.toHaveBeenCalled()
+      await act(async () => {
+        await submit()
+      })
+      expect(request).toHaveBeenCalledTimes(2)
+      expect(mockEmitCommentsUpdate).toHaveBeenCalledWith('app-1')
+      expect(isPending()).toBe(false)
+    },
+  )
 
-    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+  it('keeps the selected thread loading when an earlier thread request finishes', async () => {
+    const first = baseComment()
+    const second = { ...first, id: 'comment-2', content: 'second' }
+    let resolveFirst!: (detail: WorkflowCommentDetail) => void
+    let resolveSecond!: (detail: WorkflowCommentDetail) => void
+    mockFetchWorkflowComment
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirst = resolve
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveSecond = resolve
+        }),
+      )
+    const { result } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
-      initialStoreState: {
-        replySubmitting: false,
-      },
     })
-
+    let firstRequest!: Promise<void>
+    let secondRequest!: Promise<void>
+    act(() => {
+      firstRequest = result.current.handleCommentIconClick(first)
+    })
+    act(() => {
+      secondRequest = result.current.handleCommentIconClick(second)
+    })
     await act(async () => {
-      await result.current.handleCommentReply('comment-1', 'new reply')
+      resolveFirst(baseCommentDetail())
+      await firstRequest
     })
-
-    expect(mockCreateWorkflowCommentReply).toHaveBeenCalledWith({
-      params: { app_id: 'app-1', comment_id: 'comment-1' },
-      body: {
-        content: 'new reply',
-        mentioned_user_ids: [],
-      },
+    expect(result.current.activeComment?.id).toBe(second.id)
+    expect(result.current.activeCommentLoading).toBe(true)
+    await act(async () => {
+      resolveSecond({ ...baseCommentDetail(), id: second.id, content: 'second detail' })
+      await secondRequest
     })
-    expect(store.getState().replySubmitting).toBe(false)
+    expect(result.current.activeComment?.content).toBe('second detail')
+    expect(result.current.activeCommentLoading).toBe(false)
   })
 
-  it('resets reply update loading when update fails', async () => {
-    mockUpdateWorkflowCommentReply.mockRejectedValueOnce(new Error('update failed'))
-
-    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
-      queryClient: createSeededQueryClient(),
-      initialStoreState: {
-        replyUpdating: false,
-      },
-    })
-
-    await act(async () => {
-      await result.current.handleCommentReplyUpdate('comment-1', 'reply-1', 'updated reply')
-    })
-
-    expect(mockUpdateWorkflowCommentReply).toHaveBeenCalledWith({
-      params: { app_id: 'app-1', comment_id: 'comment-1', reply_id: 'reply-1' },
-      body: {
-        content: 'updated reply',
-        mentioned_user_ids: [],
-      },
-    })
-    expect(store.getState().replyUpdating).toBe(false)
-  })
-
-  it('resets reply delete loading when deletion fails', async () => {
-    mockDeleteWorkflowCommentReply.mockRejectedValueOnce(new Error('delete failed'))
-
-    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
-      queryClient: createSeededQueryClient(),
-      initialStoreState: {
-        activeCommentDetailLoading: false,
-      },
-    })
-
-    await act(async () => {
-      await result.current.handleCommentReplyDelete('comment-1', 'reply-1')
-    })
-
-    expect(mockDeleteWorkflowCommentReply).toHaveBeenCalledWith({
-      params: { app_id: 'app-1', comment_id: 'comment-1', reply_id: 'reply-1' },
-    })
-    expect(store.getState().activeCommentDetailLoading).toBe(false)
-  })
-
-  it('ignores navigation when no active comment or active comment is absent from the list', () => {
-    const { result } = renderWorkflowHook(() => useWorkflowComment(), {
+  it('ignores navigation when no active comment or active comment is absent from the list', async () => {
+    const { result } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
       initialStoreState: {
         comments: [baseComment()],
@@ -638,23 +648,25 @@ describe('useWorkflowComment', () => {
       result.current.handleCommentNavigate('next')
     })
 
-    expect(mockSetCenter).not.toHaveBeenCalled()
+    expect(result.current.flow.getViewport()).toEqual({ x: 80, y: 160, zoom: 2 })
 
-    act(() => {
-      result.current.handleCommentIconClick({ ...baseComment(), id: 'missing-comment' })
+    await act(async () => {
+      await result.current.handleCommentIconClick({ ...baseComment(), id: 'missing-comment' })
     })
-
-    mockSetCenter.mockClear()
+    await waitFor(() =>
+      expect(result.current.flow.getViewport()).toEqual({ x: 20, y: 230, zoom: 1 }),
+    )
+    const viewport = result.current.flow.getViewport()
 
     act(() => {
       result.current.handleCommentNavigate('next')
     })
 
-    expect(mockSetCenter).not.toHaveBeenCalled()
+    expect(result.current.flow.getViewport()).toEqual(viewport)
   })
 
   it('clears a pending comment when comment mode is left outside quick add', () => {
-    const { store } = renderWorkflowHook(() => useWorkflowComment(), {
+    const { store } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
       initialStoreState: {
         controlMode: ControlMode.Pointer,
@@ -668,7 +680,7 @@ describe('useWorkflowComment', () => {
 
   it('does not overwrite the active comment when a different comment is resolved/refreshed', async () => {
     const commentA = baseComment()
-    const commentB: WorkflowCommentList = {
+    const commentB: WorkflowCommentBasic = {
       ...baseComment(),
       id: 'comment-2',
       content: 'second',
@@ -687,7 +699,7 @@ describe('useWorkflowComment', () => {
       data: [{ ...commentA, resolved: true }, commentB],
     })
 
-    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
       initialStoreState: {
         comments: [commentA, commentB],
@@ -713,12 +725,16 @@ describe('useWorkflowComment', () => {
       content: 'refreshed content',
     })
 
-    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
       initialStoreState: {
         comments: [commentA],
         activeCommentId: commentA.id,
-        activeCommentDetail: { ...baseCommentDetail(), id: commentA.id, content: 'stale content' },
+        activeCommentDetail: {
+          ...baseCommentDetail(),
+          id: commentA.id,
+          content: 'stale content',
+        },
       },
     })
 

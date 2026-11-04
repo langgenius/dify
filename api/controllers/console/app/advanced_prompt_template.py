@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Literal
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -23,9 +23,33 @@ class AdvancedPromptTemplateQuery(BaseModel):
     model_name: str = Field(..., description="Model name")
 
 
+class PromptTemplateMessageResponse(ResponseModel):
+    role: Literal["system", "user", "assistant"]
+    text: str
+
+
+class ChatPromptTemplateResponse(ResponseModel):
+    prompt: list[PromptTemplateMessageResponse]
+
+
+class CompletionPromptTemplateTextResponse(ResponseModel):
+    text: str
+
+
+class ConversationHistoriesRoleResponse(ResponseModel):
+    user_prefix: str
+    assistant_prefix: str
+
+
+class CompletionPromptTemplateResponse(ResponseModel):
+    prompt: CompletionPromptTemplateTextResponse
+    conversation_histories_role: ConversationHistoriesRoleResponse | None = None
+
+
 class AdvancedPromptTemplateResponse(ResponseModel):
-    chat_prompt_config: dict[str, Any] | None = Field(default=None)
-    completion_prompt_config: dict[str, Any] | None = Field(default=None)
+    chat_prompt_config: ChatPromptTemplateResponse | None = Field(default=None)
+    completion_prompt_config: CompletionPromptTemplateResponse | None = Field(default=None)
+    stop: list[str] | None = Field(default=None, description="Stop words for completion prompts.")
 
 
 console_ns.schema_model(

@@ -1,6 +1,24 @@
 import type { TokenStore } from './token-store'
-import { describe, expect, it, vi } from 'vite-plus/test'
-import { detectTokenStore, getTokenStore } from './manager'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { localFile } from './local-file'
+import { detectTokenStore, getTokenStore, keyringDurable } from './manager'
+import { TOKENS_SCHEMA } from './token-store'
+
+const DBUS_SESSION = 'DBUS_SESSION_BUS_ADDRESS'
+const sys = vi.hoisted(() => ({ platform: 'darwin' as NodeJS.Platform }))
+vi.mock('@/sys', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/sys')>()),
+  platform: () => sys.platform,
+}))
+
+const file = localFile('', TOKENS_SCHEMA, () => {})
+
+beforeEach(() => {
+  sys.platform = 'darwin'
+})
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
 
 function memStore(label: string): TokenStore & { _label: string } {
   const map = new Map<string, string>()
@@ -20,10 +38,25 @@ function memStore(label: string): TokenStore & { _label: string } {
 }
 
 describe('detectTokenStore', () => {
+  it('skips the probe and returns the file store when asked', async () => {
+    const k = memStore('keyring')
+    const f = memStore('file')
+    const writeSpy = vi.spyOn(k, 'write')
+    const result = await detectTokenStore({
+      file,
+      skipKeyring: true,
+      factory: { keyring: () => k, file: () => f },
+    })
+    expect(writeSpy).not.toHaveBeenCalled()
+    expect(result.mode).toBe('file')
+    expect(result.store).toBe(f)
+  })
+
   it('returns keychain store when probe succeeds', async () => {
     const k = memStore('keyring')
     const f = memStore('file')
     const result = await detectTokenStore({
+      file,
       factory: { keyring: () => k, file: () => f },
     })
     expect(result.mode).toBe('keychain')
@@ -37,6 +70,7 @@ describe('detectTokenStore', () => {
       throw new Error('locked')
     }) as TokenStore['write']
     const result = await detectTokenStore({
+      file,
       factory: { keyring: () => k, file: () => f },
     })
     expect(result.mode).toBe('file')
@@ -48,6 +82,7 @@ describe('detectTokenStore', () => {
     const f = memStore('file')
     k.read = vi.fn(async () => 'something-else') as TokenStore['read']
     const result = await detectTokenStore({
+      file,
       factory: { keyring: () => k, file: () => f },
     })
     expect(result.mode).toBe('file')
@@ -57,6 +92,7 @@ describe('detectTokenStore', () => {
   it('falls back to file when keyring constructor throws', async () => {
     const f = memStore('file')
     const result = await detectTokenStore({
+      file,
       factory: {
         keyring: () => {
           throw new Error('no backend')
@@ -72,6 +108,7 @@ describe('detectTokenStore', () => {
     const k = memStore('keyring')
     const f = memStore('file')
     await detectTokenStore({
+      file,
       factory: { keyring: () => k, file: () => f },
     })
     expect(await k.read('__difyctl_probe__', '__difyctl_probe__')).toBe('')
@@ -85,6 +122,7 @@ describe('detectTokenStore', () => {
       throw new Error('read boom')
     }) as TokenStore['read']
     const result = await detectTokenStore({
+      file,
       factory: { keyring: () => k, file: () => f },
     })
     expect(removeSpy).toHaveBeenCalledWith('__difyctl_probe__', '__difyctl_probe__')
@@ -101,6 +139,7 @@ describe('getTokenStore', () => {
       throw new Error('probe must never run on the read path')
     }) as TokenStore['write']
     const store = getTokenStore('keychain', {
+      file,
       factory: { keyring: () => k, file: () => f },
     })
     expect(store).toBe(k)
@@ -110,9 +149,36 @@ describe('getTokenStore', () => {
     const keyringFactory = vi.fn(() => memStore('keyring'))
     const f = memStore('file')
     const store = getTokenStore('file', {
+      file,
       factory: { keyring: keyringFactory, file: () => f },
     })
     expect(store).toBe(f)
     expect(keyringFactory).not.toHaveBeenCalled()
+  })
+})
+
+describe('keyringDurable', () => {
+  it.each([
+    ['linux', undefined, false],
+    ['linux', '', false],
+    ['linux', 'unix:path=/run/user/1000/bus', true],
+    ['darwin', undefined, true],
+    ['win32', undefined, true],
+    ['freebsd', undefined, true],
+  ] as const)('%s with DBus %o → %s', (platform, dbus, durable) => {
+    sys.platform = platform
+    vi.stubEnv(DBUS_SESSION, dbus)
+    expect(keyringDurable()).toBe(durable)
+  })
+
+  it('a non-durable keyring skips the probe and uses the file store', async () => {
+    sys.platform = 'linux'
+    vi.stubEnv(DBUS_SESSION, undefined)
+    const k = memStore('keyring')
+    const f = memStore('file')
+    const writeSpy = vi.spyOn(k, 'write')
+    const result = await detectTokenStore({ file, factory: { keyring: () => k, file: () => f } })
+    expect(writeSpy).not.toHaveBeenCalled()
+    expect(result.mode).toBe('file')
   })
 })

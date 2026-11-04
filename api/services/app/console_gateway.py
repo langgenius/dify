@@ -2,23 +2,30 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import copy
+from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, replace
-from typing import BinaryIO, Literal, override
-from uuid import UUID
+from typing import Any, BinaryIO, Final, Literal, override
+from uuid import UUID, uuid4
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.rbac import RBACPermission
+from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
 from events.app_event import app_was_updated
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account
 from models.agent import AgentIconType
-from models.model import AppMode
+from models.model import App, AppMode
+from models.tools import WorkflowToolProvider
 from repositories.app.console_repository import ConsoleAppRepository, console_app_actor, require_console_app
 from repositories.app.response import app_record
 from services.agent.errors import AgentNameConflictError
@@ -38,7 +45,7 @@ from services.app.console_service import (
 )
 from services.app.import_service import AppDefinitionImports
 from services.app.response_gateway import AppResponseGateway
-from services.app_dsl_service import IMPORT_INFO_REDIS_KEY_PREFIX, AppDslService, PendingData
+from services.app_dsl_service import AppDslService, initialize_imported_app_creator_access
 from services.app_import_source import download_app_import_source, try_read_yaml
 from services.app_package_service import AppPackageService
 from services.app_service import AppService
@@ -58,18 +65,94 @@ from services.entities.dsl_entities import (
     AppImportPackage,
     AppImportParams,
     CheckDependenciesResult,
+    DraftGuardedImportParams,
     Import,
     ImportStatus,
+    PackagedWorkflowTool,
 )
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
+from services.rbac import contracts as rbac_contracts
+from services.rbac.members import MemberService
+from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
+from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+from services.workflow_service import WorkflowService
+from services.workflow_tool_references import WorkflowToolTarget
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
+
+# Positions as the console editor lays out its templates (START_INITIAL_POSITION and
+# NODE_WIDTH_X_OFFSET in web/app/components/workflow/constants.ts).
+_START_POSITION: Final = (80, 282)
+_NODE_X_STEP: Final = 300
+_DISCARDED_IMPORT_STATUSES: Final = frozenset({ImportStatus.FAILED})
+# A copy that waits for version confirmation keeps nothing.
+_DISCARDED_COPY_STATUSES: Final = frozenset({ImportStatus.FAILED, ImportStatus.PENDING})
+
+
+def _editor_node(node_id: str, column: int, data: dict[str, Any]) -> dict[str, Any]:
+    """A node as the editor's generateNewNode shapes it."""
+    x, y = _START_POSITION
+    return {
+        "id": node_id,
+        "type": "custom",
+        "data": data,
+        "position": {"x": x + _NODE_X_STEP * column, "y": y},
+        "targetPosition": "left",
+        "sourcePosition": "right",
+    }
+
+
+def _editor_edge(source: str, target: str) -> dict[str, Any]:
+    return {
+        "id": f"{source}-{target}",
+        "source": source,
+        "sourceHandle": "source",
+        "target": target,
+        "targetHandle": "target",
+    }
+
+
+# The Chatflow template the console editor saves on first open (use-workflow-template.ts).
+_CHATFLOW_STARTER_GRAPH: Final[dict[str, Any]] = {
+    "nodes": [
+        _editor_node("start", 0, {"type": BuiltinNodeTypes.START, "title": "Start", "variables": []}),
+        _editor_node(
+            "llm",
+            1,
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "", "name": "", "mode": LLMMode.CHAT, "completion_params": {"temperature": 0.7}},
+                "prompt_template": [{"role": PromptMessageRole.SYSTEM, "text": ""}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+                "memory": {
+                    "window": {"enabled": False, "size": 10},
+                    "query_prompt_template": "{{#sys.query#}}\n\n{{#sys.files#}}",
+                },
+            },
+        ),
+        _editor_node(
+            "answer",
+            2,
+            {"type": BuiltinNodeTypes.ANSWER, "title": "Answer", "variables": [], "answer": "{{#llm.text#}}"},
+        ),
+    ],
+    "edges": [_editor_edge("start", "llm"), _editor_edge("llm", "answer")],
+}
+
+# The draft a new app starts with. A workflow starts empty: its entry (Start or a trigger) is chosen while building.
+_STARTER_DRAFT_GRAPHS: Final[dict[AppMode, dict[str, Any]]] = {
+    AppMode.WORKFLOW: {"nodes": [], "edges": []},
+    AppMode.ADVANCED_CHAT: _CHATFLOW_STARTER_GRAPH,
+}
+_STARTER_DRAFT_FEATURES: Final[dict[str, Any]] = {"retriever_resource": {"enabled": True}}
 
 
 @dataclass(frozen=True)
 class ConsoleAppPermissions(AppPermissions):
-    snapshot: rbac_service.MyPermissionsResponse
+    snapshot: rbac_contracts.MyPermissionsResponse
     access_filter: AppAccessFilter
 
     @override
@@ -86,10 +169,6 @@ class ConsoleAppPermissions(AppPermissions):
 class EnterpriseConsoleAppAccess(ConsoleAppAccess):
     @override
     def require_import(self, context: RequestContext, kind: Literal["url", "dsl", "agent"]) -> None:
-        if kind == "dsl" and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            apps = FeatureService.get_features(context.active_workspace_id, exclude_vector_space=True).apps
-            if 0 < apps.limit <= apps.size:
-                raise NoPermissionError("The number of apps has reached the limit of your subscription.")
         if not dify_config.RBAC_ENABLED:
             return
         permissions = (
@@ -122,44 +201,26 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
     def inherit_access(self, source_app_id: str, app_id: str) -> None:
         if not SystemFeatureService.is_webapp_auth_enabled():
             return
-        try:
-            access_mode = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(source_app_id).access_mode
-        except Exception:
-            # Old apps without settings default to public, matching the access fallback.
-            access_mode = "public"
-        EnterpriseService.WebAppAuth.update_app_access_mode(app_id, access_mode)
+        EnterpriseService.WebAppAuth.inherit_app_access_mode(source_app_id, app_id)
 
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
-        self._session_factory = session_factory
+    def __init__(self, *, members: MemberService) -> None:
+        self._members = members
 
     @override
     def permissions(self, context: RequestContext, *, app_id: str | None = None) -> ConsoleAppPermissions:
-        with self._session_factory() as session:
-            permissions = rbac_service.RBACService.MyPermissions.get(
-                context.active_workspace_id,
-                context.account_id,
-                app_id=app_id,
-                session=session,
+        permissions = self._members.permissions(context.active_workspace_id, context.account_id, app_id=app_id)
+        access_filter = AppAccessFilter.unrestricted()
+        if dify_config.RBAC_ENABLED and app_id is None:
+            access_filter = resolve_app_access_filter(
+                context.active_workspace_id, context.account_id, permissions=permissions
             )
-            access_filter = AppAccessFilter.unrestricted()
-            if dify_config.RBAC_ENABLED and app_id is None:
-                access_filter = resolve_app_access_filter(
-                    context.active_workspace_id,
-                    context.account_id,
-                    session=session,
-                    permissions=permissions,
-                )
         return ConsoleAppPermissions(permissions, access_filter)
 
     @override
     def created_permissions(self, context: RequestContext, app_id: str) -> list[str]:
-        with self._session_factory() as session:
-            keys = rbac_service.RBACService.AppPermissions.batch_get(
-                context.active_workspace_id,
-                context.account_id,
-                [app_id],
-                session=session,
-            )
+        keys = self._members.resource_permissions(
+            context.active_workspace_id, context.account_id, rbac_contracts.RBACResourceType.APP, [app_id]
+        )
         return keys.get(app_id, [])
 
     @override
@@ -169,7 +230,7 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
                 context.active_workspace_id,
                 context.account_id,
                 app_id,
-                rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=True),
             )
             initialize_created_app_rbac_access_task.delay(
                 context.active_workspace_id, context.account_id, app_id=app_id
@@ -207,12 +268,14 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         packages: AppPackageService,
         agent_packages: RosterAgentPackageExporter,
         agent_importer: RosterAgentPackageImporter,
+        recommended_packages: RecommendedAppPackageService,
     ) -> None:
         self._session_factory = session_factory
         self._dsl_factory = dsl_factory
         self._packages = packages
         self._agent_packages = agent_packages
         self._agent_importer = agent_importer
+        self._recommended_packages = recommended_packages
 
     @override
     def download_import(self, url: str) -> AbstractContextManager[BinaryIO]:
@@ -236,8 +299,31 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         context: RequestContext,
         params: AppImportParams,
         *,
-        as_copy: bool = False,
         package: AppImportPackage | None = None,
+        preserve_agent_bindings: bool = False,
+    ) -> Import:
+        return self._import(
+            context,
+            params,
+            package=package,
+            preserve_agent_bindings=preserve_agent_bindings,
+            discarded=_DISCARDED_IMPORT_STATUSES,
+        )
+
+    @override
+    def import_copy(self, context: RequestContext, params: AppImportParams) -> Import:
+        return self._import(
+            context, params, package=None, preserve_agent_bindings=True, discarded=_DISCARDED_COPY_STATUSES
+        )
+
+    def _import(
+        self,
+        context: RequestContext,
+        params: AppImportParams,
+        *,
+        package: AppImportPackage | None,
+        preserve_agent_bindings: bool,
+        discarded: frozenset[ImportStatus],
     ) -> Import:
         account = self._import_actor(context)
         with self._session_factory() as session:
@@ -253,21 +339,22 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 icon_background=params.icon_background,
                 app_id=params.app_id,
                 package=package,
+                preserve_agent_bindings=preserve_agent_bindings,
+                draft_hash=params.draft_hash if isinstance(params, DraftGuardedImportParams) else None,
             )
-            if result.status == ImportStatus.FAILED or (as_copy and result.status == ImportStatus.PENDING):
+            if result.status in discarded:
                 session.rollback()
             else:
                 session.commit()
+        initialize_imported_app_creator_access(
+            result, tenant_id=context.active_workspace_id, account_id=context.account_id
+        )
         return result
 
     @override
     def confirm_import(self, context: RequestContext, import_id: str) -> tuple[Import, bool]:
-        from extensions.ext_redis import redis_client
-
-        raw = redis_client.get(f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}")
-        pending = PendingData.model_validate_json(raw) if raw else None
         result = self.confirm_definition(context, import_id)
-        return result, pending is not None and pending.app_id is None
+        return result, result.app_created
 
     @override
     def confirm_definition(self, context: RequestContext, import_id: str) -> Import:
@@ -278,6 +365,9 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 session.rollback()
             else:
                 session.commit()
+        initialize_imported_app_creator_access(
+            result, tenant_id=context.active_workspace_id, account_id=context.account_id
+        )
         return result
 
     @override
@@ -291,8 +381,107 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         return ImportedAppPackage(result.app_id, result.agent_id, result.warnings)
 
     @override
+    def import_agent_template(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage:
+        assert params.template_id is not None
+        assert params.version_id is not None
+        source = self._recommended_packages.get_source(app_id=str(params.template_id), version_id=params.version_id)
+        result = self._agent_importer.import_template(
+            source=source,
+            tenant_id=context.active_workspace_id,
+            account=self._import_actor(context),
+            name=params.name,
+            description=params.description,
+            icon_type=params.icon_type,
+            icon=params.icon,
+            icon_background=params.icon_background,
+        )
+        return ImportedAppPackage(result.app_id, result.agent_id, result.warnings)
+
+    @override
+    def import_agent_package_url(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage:
+        assert params.package_url is not None
+        result = self._agent_importer.import_package_url(
+            url=params.package_url,
+            tenant_id=context.active_workspace_id,
+            account=self._import_actor(context),
+            name=params.name,
+            description=params.description,
+            icon_type=params.icon_type,
+            icon=params.icon,
+            icon_background=params.icon_background,
+        )
+        return ImportedAppPackage(result.app_id, result.agent_id, result.warnings)
+
+    @override
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult:
         return AppDslService.check_app_dependencies(tenant_id=context.active_workspace_id, app_id=app_id)
+
+    @override
+    def plan_workflow_tools(
+        self, context: RequestContext, tools: Sequence[PackagedWorkflowTool], *, creates_root_app: bool
+    ) -> dict[str, WorkflowToolTarget]:
+        """Reuse tools that already exist here, and admit, name and reserve ids for the ones to create."""
+        workspace_id = context.active_workspace_id
+        with self._session_factory() as session:
+            account = console_app_actor(session, context)
+            existing = {
+                provider.id: provider.name
+                for provider in session.scalars(
+                    select(WorkflowToolProvider).where(
+                        WorkflowToolProvider.tenant_id == workspace_id,
+                        WorkflowToolProvider.id.in_([tool.provider_id for tool in tools]),
+                    )
+                )
+            }
+            taken_names = set(
+                session.scalars(select(WorkflowToolProvider.name).where(WorkflowToolProvider.tenant_id == workspace_id))
+            )
+            can_manage_tools = account.is_admin_or_owner
+        missing = [tool for tool in tools if tool.provider_id not in existing]
+        if missing and dify_config.RBAC_ENABLED:
+            can_manage_tools = rbac_service.RBACService.CheckAccess.check(
+                workspace_id, context.account_id, scene=RBACPermission.TOOL_MANAGE, resource_type=None, resource_id=None
+            )
+        if missing and not can_manage_tools:
+            raise NoPermissionError("You do not have permission to create the workflow tools this App calls")
+        AppDslService.check_app_quota(tenant_id=workspace_id, new_apps=len(missing) + int(creates_root_app))
+        targets = {
+            provider_id: WorkflowToolTarget(provider_id=provider_id, name=name, create=False)
+            for provider_id, name in existing.items()
+        }
+        for tool in missing:
+            name, suffix = tool.name, 2
+            while name in taken_names:
+                name, suffix = f"{tool.name}_{suffix}", suffix + 1
+            taken_names.add(name)
+            targets[tool.provider_id] = WorkflowToolTarget(provider_id=str(uuid4()), name=name, create=True)
+        return targets
+
+    @override
+    def create_workflow_tool(
+        self, context: RequestContext, *, app_id: str, tool: PackagedWorkflowTool, target: WorkflowToolTarget
+    ) -> None:
+        """Publish an imported workflow and expose it as the Workflow Tool its callers already reference."""
+        with self._session_factory.begin() as session:
+            account = console_app_actor(session, context)
+            app = require_console_app(session, context, app_id)
+            workflow = WorkflowService().publish_workflow(session=session, app_model=app, account=account)
+            app.workflow_id = workflow.id
+            app.updated_by = account.id
+            app.updated_at = naive_utc_now()
+        WorkflowToolManageService.create_workflow_tool(
+            user_id=context.account_id,
+            tenant_id=context.active_workspace_id,
+            workflow_app_id=app_id,
+            name=target.name,
+            label=tool.label,
+            icon=dict(tool.icon),
+            description=tool.description,
+            parameters=tool.parameters,
+            privacy_policy=tool.privacy_policy,
+            labels=tool.labels,
+            import_id=target.provider_id,
+        )
 
     @override
     def export_dsl(self, context: RequestContext, app_id: str, options: AppExportOptions) -> str:
@@ -305,6 +494,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 include_secret=options.include_secret,
                 workflow_id=options.workflow_id,
                 version_id=options.version_id,
+                preserve_agent_bindings=options.preserve_agent_bindings,
             )
         return dsl.serialize_export_data(prepared)
 
@@ -315,7 +505,25 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         with self._session_factory() as session:
             app = require_console_app(session, context, app_id)
         return self._packages.export_app(
-            app_model=app, include_secret=options.include_secret, workflow_id=options.workflow_id
+            app_model=app,
+            include_secret=options.include_secret,
+            workflow_id=options.workflow_id,
+            preserve_agent_bindings=options.preserve_agent_bindings,
+            may_bundle=lambda called_app: self._may_export_app(context, called_app),
+        )
+
+    @staticmethod
+    def _may_export_app(context: RequestContext, app: App) -> bool:
+        """Apply the export endpoint's App check to a workflow the exported App calls."""
+        # Without RBAC, the workspace role the endpoint admitted covers every App in the workspace.
+        if not dify_config.RBAC_ENABLED or app.maintainer == context.account_id:
+            return True
+        return rbac_service.RBACService.CheckAccess.check(
+            context.active_workspace_id,
+            context.account_id,
+            scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+            resource_type=RBACResourceScope.APP,
+            resource_id=app.id,
         )
 
     @override
@@ -360,6 +568,21 @@ class AppLifecycleGateway(AppLifecycle):
                 except IntegrityError as exc:
                     raise AgentNameConflictError() from exc
             return app_record(app, session=session, projection="detail-with-site")
+
+    @override
+    def create_draft(self, context: RequestContext, app_id: str) -> None:
+        with self._session_factory() as session:
+            app = require_console_app(session, context, app_id)
+            WorkflowService(self._session_factory).sync_draft_workflow(
+                app_model=app,
+                graph=copy.deepcopy(_STARTER_DRAFT_GRAPHS[AppMode(app.mode)]),
+                features=copy.deepcopy(_STARTER_DRAFT_FEATURES),
+                unique_hash=None,
+                account=console_app_actor(session, context),
+                environment_variables=[],
+                conversation_variables=[],
+                session=session,
+            )
 
     @override
     def delete(self, context: RequestContext, app_id: str) -> AppDeletion:

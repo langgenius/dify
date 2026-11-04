@@ -17,11 +17,14 @@ export function ReadmeDialog({ detail, open, onOpenChange, triggerId }: ReadmeDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} triggerId={triggerId}>
-      <DialogContent className="h-[calc(100dvh-16px)] w-full max-w-200 overflow-hidden p-0">
+      <DialogContent className="h-[calc(100dvh-16px)] w-200 overflow-hidden">
         <ReadmePanelContent
           detail={detail}
           title={
-            <DialogTitle className="truncate text-xs font-medium text-text-tertiary uppercase">
+            <DialogTitle
+              // oxlint-disable-next-line shadcn/no-restyle -- README panel title is a section label in the panel header.
+              className="truncate text-xs font-medium text-text-tertiary uppercase"
+            >
               {t(($) => $['readmeInfo.title'], { ns: 'plugin' })}
             </DialogTitle>
           }

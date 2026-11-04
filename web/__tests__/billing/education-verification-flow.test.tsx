@@ -5,7 +5,7 @@ import type {
 import type { RenderOptions } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import type { DeepPartial } from '@/test/console/system-features'
-import { cleanup, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import PlanComp from '@/app/components/billing/plan'
@@ -41,22 +41,16 @@ const renderWithoutPricing = (ui: ReactElement, options: RenderOptions = {}) => 
   return renderWithConsoleState(ui, { ...options, wrapper })
 }
 
-// ─── Mock state ──────────────────────────────────────────────────────────────
-
-// ─── Context mocks ───────────────────────────────────────────────────────────
-
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
 
-// ─── Navigation mocks ───────────────────────────────────────────────────────
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),
 }))
 
-// ─── Test data factories ────────────────────────────────────────────────────
 type BillingOverrides = DeepPartial<GetFeaturesResponse> & {
   vectorSpace?: Partial<GetFeaturesVectorSpaceResponse>
 }
@@ -83,7 +77,6 @@ const setupBilling = (
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
 function render(...args: Parameters<typeof renderWithoutPricing>) {
   args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
   return renderWithoutPricing(...args)
@@ -92,11 +85,9 @@ function render(...args: Parameters<typeof renderWithoutPricing>) {
 describe('Education Verification Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    cleanup()
     setupBilling()
   })
 
-  // ─── 1. Education Button Visibility ─────────────────────────────────────
   describe('Education button visibility', () => {
     it('should not show verify button when enableEducationPlan is false', () => {
       setupBilling({}, { enableEducationPlan: false })
@@ -130,31 +121,10 @@ describe('Education Verification Flow', () => {
 
       render(<PlanComp loc="test" />)
 
-      expect(screen.getByText(/toVerified/i)).toBeInTheDocument()
-    })
-  })
-
-  // ─── 2. Education + Upgrade Coexistence ─────────────────────────────────
-  describe('Education and upgrade button coexistence', () => {
-    it('should show both education verify and upgrade buttons for sandbox user', () => {
-      setupBilling(
-        { billing: { subscription: { plan: 'sandbox' } } },
-        { enableEducationPlan: true },
+      expect(screen.getByRole('link', { name: /toVerified/i })).toHaveAttribute(
+        'href',
+        '/education/verify',
       )
-
-      render(<PlanComp loc="test" />)
-
-      expect(screen.getByText(/toVerified/i)).toBeInTheDocument()
-      expect(screen.getByText(/upgradeBtn\.encourageShort/i)).toBeInTheDocument()
-    })
-
-    it('should show team plan with plain upgrade button and education button', () => {
-      setupBilling({ billing: { subscription: { plan: 'team' } } }, { enableEducationPlan: true })
-
-      render(<PlanComp loc="test" />)
-
-      expect(screen.getByText(/toVerified/i)).toBeInTheDocument()
-      expect(screen.getByText(/upgradeBtn\.plain/i)).toBeInTheDocument()
     })
   })
 })

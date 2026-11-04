@@ -1,4 +1,4 @@
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -21,7 +21,7 @@ class DatasourceNodeData(BaseNodeData, DatasourceEntity):
 
     class DatasourceInput(BaseModel):
         # TODO: check this type
-        value: Union[Any, list[str]]
+        value: Any | list[str]
         type: Literal["mixed", "variable", "constant"] | None = None
 
         @field_validator("type", mode="before")

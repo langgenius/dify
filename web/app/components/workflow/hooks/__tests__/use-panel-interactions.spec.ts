@@ -1,96 +1,48 @@
 import type * as React from 'react'
-import { waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { usePanelInteractions } from '../use-panel-interactions'
 
-describe('usePanelInteractions', () => {
-  let container: HTMLDivElement
-  let readTextMock: ReturnType<typeof vi.fn>
-
-  beforeEach(() => {
-    readTextMock = vi.fn().mockResolvedValue('')
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: {
-        readText: readTextMock,
-      },
-    })
-
-    container = document.createElement('div')
-    container.id = 'workflow-container'
-    container.getBoundingClientRect = vi.fn().mockReturnValue({
-      x: 100,
-      y: 50,
-      width: 800,
-      height: 600,
-      top: 50,
-      right: 900,
-      bottom: 650,
-      left: 100,
-    })
-    document.body.appendChild(container)
+it('replaces the node menu with the pane menu, imports clipboard data, and clears the target on cancel', async () => {
+  const clipboardNode = createNode({ id: 'clipboard-node' })
+  const clipboardEdge = createEdge({
+    id: 'clipboard-edge',
+    source: clipboardNode.id,
+    target: 'target-node',
   })
-
-  afterEach(() => {
-    container.remove()
+  const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: {
+      readText: vi.fn().mockResolvedValue(
+        JSON.stringify({
+          kind: 'dify-workflow-clipboard',
+          version: '0.6.0',
+          nodes: [clipboardNode],
+          edges: [clipboardEdge],
+        }),
+      ),
+    },
   })
-
-  it('handlePaneContextMenu should set the panel context menu target', () => {
+  try {
     const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
-      initialStoreState: {
-        contextMenuTarget: { type: 'node', nodeId: 'n1' },
-      },
+      initialStoreState: { contextMenuTarget: { type: 'node', nodeId: 'n1' } },
     })
     const preventDefault = vi.fn()
-
-    result.current.handlePaneContextMenu({
-      preventDefault,
-      clientX: 350,
-      clientY: 250,
-    } as unknown as React.MouseEvent)
-
-    expect(preventDefault).toHaveBeenCalled()
-    expect(store.getState().contextMenuTarget).toEqual({ type: 'panel' })
-  })
-
-  it('handlePaneContextMenu should sync clipboard from navigator clipboard', async () => {
-    const clipboardNode = createNode({ id: 'clipboard-node' })
-    const clipboardEdge = createEdge({
-      id: 'clipboard-edge',
-      source: clipboardNode.id,
-      target: 'target-node',
-    })
-    readTextMock.mockResolvedValue(
-      JSON.stringify({
-        kind: 'dify-workflow-clipboard',
-        version: '0.6.0',
-        nodes: [clipboardNode],
-        edges: [clipboardEdge],
-      }),
+    act(() =>
+      result.current.handlePaneContextMenu({ preventDefault } as unknown as React.MouseEvent),
     )
-
-    const { result, store } = renderWorkflowHook(() => usePanelInteractions())
-
-    result.current.handlePaneContextMenu({
-      preventDefault: vi.fn(),
-      clientX: 350,
-      clientY: 250,
-    } as unknown as React.MouseEvent)
-
+    expect(preventDefault).toHaveBeenCalledOnce()
+    expect(store.getState().contextMenuTarget).toEqual({ type: 'panel' })
     await waitFor(() => {
       expect(store.getState().clipboardElements).toEqual([clipboardNode])
       expect(store.getState().clipboardEdges).toEqual([clipboardEdge])
     })
-  })
-
-  it('handlePaneContextmenuCancel should clear the context menu target', () => {
-    const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
-      initialStoreState: { contextMenuTarget: { type: 'panel' } },
-    })
-
-    result.current.handlePaneContextmenuCancel()
-
+    act(() => result.current.handlePaneContextmenuCancel())
     expect(store.getState().contextMenuTarget).toBeUndefined()
-  })
+  } finally {
+    if (original) Object.defineProperty(navigator, 'clipboard', original)
+    else Reflect.deleteProperty(navigator, 'clipboard')
+  }
 })

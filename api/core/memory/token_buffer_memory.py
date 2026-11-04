@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, load_only, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.file_access import DatabaseFileAccessController
@@ -21,10 +21,13 @@ from graphon.model_runtime.entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from models.agent_config_entities import AgentSoulConfig
+from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
+from services.agent.runtime_config_service import AgentRuntimeConfigService
 
 _file_access_controller = DatabaseFileAccessController()
 
@@ -154,7 +157,25 @@ class TokenBufferMemory:
         session: Session,
         workflow_run_repo: APIWorkflowRunRepository | None,
     ) -> FileUploadConfig | None:
+        """Read attachment settings using the caller's session without file I/O.
+
+        Agent and workflow modes require the owning app. Agent settings come
+        from the conversation's Soul, never the legacy model configuration.
+        Disabled uploads return None; missing required records raise ValueError
+        and unsupported modes raise AssertionError. No records are changed.
+        """
         match conversation.mode:
+            case AppMode.AGENT:
+                if not app_record:
+                    raise ValueError("App not found for conversation")
+                soul = AgentRuntimeConfigService(session).resolve_conversation_soul(
+                    app_model=app_record,
+                    conversation=conversation,
+                    account_id=conversation.from_account_id,
+                    use_debug_draft=conversation.from_source == ConversationFromSource.CONSOLE,
+                )
+                features = (soul or AgentSoulConfig()).app_features.model_dump(mode="json", exclude_none=True)
+                return FileUploadConfigManager.convert(features)
             case AppMode.AGENT_CHAT | AppMode.COMPLETION | AppMode.CHAT:
                 return FileUploadConfigManager.convert(conversation.model_config_with_session(session=session))
             case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
@@ -171,7 +192,7 @@ class TokenBufferMemory:
                 workflow = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
                 if not workflow:
                     raise ValueError(f"Workflow not found: {workflow_run.workflow_id}")
-                return FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
+                return FileUploadConfigManager.convert(workflow.normalized_features_dict, is_vision=False)
             case _:
                 raise AssertionError(f"Invalid app mode: {conversation.mode}")
 
@@ -211,16 +232,30 @@ class TokenBufferMemory:
         """Read ordered history and attachment configuration without provider or file I/O.
 
         ``None`` for message_limit uses the existing 500-message ceiling. A missing
-        app keeps text-only legacy history available; workflow attachments still
+        app keeps text-only legacy history available; Agent and workflow attachments still
         require the app. An omitted workflow repository uses the configured factory.
         """
         # fetch limited messages, and return reversed
-        stmt = select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at.desc())
+        # Load only the columns used to rebuild history. Message.message stores the full prompt of each turn,
+        # earlier history included, so loading it makes memory grow quadratically with conversation length.
+        stmt = (
+            select(Message)
+            .options(
+                load_only(
+                    Message.id,
+                    Message.parent_message_id,
+                    Message.query,
+                    Message.answer,
+                    Message.answer_tokens,
+                    Message.workflow_run_id,
+                    Message.created_at,
+                )
+            )
+            .where(Message.conversation_id == conversation.id)
+            .order_by(Message.created_at.desc())
+        )
 
-        if message_limit and message_limit > 0:
-            message_limit = min(message_limit, 500)
-        else:
-            message_limit = 500
+        message_limit = min(message_limit, 500) if message_limit and message_limit > 0 else 500
 
         msg_limit_stmt = stmt.limit(message_limit)
 

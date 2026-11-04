@@ -83,7 +83,7 @@ export function DatasetDetailTop({ expand = true, onToggle }: DatasetDetailTopPr
                   <button
                     type="button"
                     aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                    className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                    className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
                   >
                     <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
                   </button>
@@ -91,7 +91,7 @@ export function DatasetDetailTop({ expand = true, onToggle }: DatasetDetailTopPr
               />
             }
           />
-          <TooltipContent placement="bottom" className="flex items-center gap-1">
+          <TooltipContent side="bottom" className="flex items-center gap-1">
             <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
             <KbdGroup>
               {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (

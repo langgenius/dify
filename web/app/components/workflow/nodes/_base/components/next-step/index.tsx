@@ -41,7 +41,7 @@ const NextStep = ({ selectedNode }: NextStepProps) => {
       })),
     isEqual,
   )
-  const outgoers = getOutgoers(selectedNode as Node, nodes as Node[], edges)
+  const outgoers = getOutgoers(selectedNode, nodes as Node[], edges)
   const connectedEdges = getConnectedEdges([selectedNode] as Node[], edges).filter(
     (edge) => edge.source === selectedNode!.id,
   )

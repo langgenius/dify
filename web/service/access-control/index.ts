@@ -1,15 +1,14 @@
-import type { AccessControlGroup } from '@/models/access-control'
+import type { WebAppAuthSearchForWhilteListCandidatesData } from '@dify/contracts/enterprise/types.gen'
 import {
   useAppWhiteListSubjects as useAppWhiteListSubjectsBase,
   useGetUserCanAccessApp as useGetUserCanAccessAppBase,
   useSearchForWhiteListCandidates as useSearchForWhiteListCandidatesBase,
 } from './use-app-access-control'
 
-type SearchForWhiteListCandidatesQuery = {
-  keyword?: string
-  groupId?: AccessControlGroup['id']
-  resultsPerPage?: number
-}
+type SearchForWhiteListCandidatesQuery = Omit<
+  NonNullable<WebAppAuthSearchForWhilteListCandidatesData['query']>,
+  'pageNumber'
+>
 
 type UserCanAccessAppParams = {
   appId?: string

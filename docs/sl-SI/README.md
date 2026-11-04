@@ -83,7 +83,7 @@ docker compose up -d
 
 Po zagonu lahko dostopate do nadzorne plošče Dify v brskalniku na [http://localhost/install](http://localhost/install) in začnete postopek inicializacije.
 
-#### Iskanje pomoči
+### Iskanje pomoči
 
 Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) če naletite na težave pri nastavitvi Dify. Če imate še vedno težave, se obrnite na [skupnost ali nas](#skupnost-in-stik).
 
@@ -117,7 +117,7 @@ AVse ponudbe Difyja so opremljene z ustreznimi API-ji, tako da lahko Dify brez t
 ## Uporaba Dify
 
 - **Cloud </br>**
-  Gostimo storitev Dify Cloud za vsakogar, ki jo lahko preizkusite brez nastavitev. Zagotavlja vse zmožnosti različice za samostojno namestitev in vključuje 200 brezplačnih klicev GPT-4 v načrtu peskovnika.
+  Preizkusite [Dify Cloud](https://cloud.dify.ai) brez upravljanja strežnika. Trenutne pakete in omejitve uporabe najdete na [strani s cenami](https://dify.ai/pricing).
 
 - **Self-hosting Dify Community Edition</br>**
   Hitro zaženite Dify v svojem okolju s tem [začetnim vodnikom](#hitri-začetek) . Za dodatne reference in podrobnejša navodila uporabite našo [dokumentacijo](https://docs.dify.ai) .
@@ -160,11 +160,11 @@ Izberite kanal, ki najbolj ustreza vašemu vprašanju:
 - [X](https://x.com/dify_ai): spremljajte novice o izdajah in posodobitve projekta.
 ## Star history
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## Varnostno razkritje
 
-Zaradi zaščite vaše zasebnosti se izogibajte objavljanju varnostnih vprašanj na GitHub. Namesto tega pošljite vprašanja na security@dify.ai in zagotovili vam bomo podrobnejši odgovor.
+Ranljivosti prijavite zasebno prek GitHub Security Advisories v skladu z našo [varnostno politiko](../../SECURITY.md). Ne razkrivajte jih v javnih prijavah težav, razpravah ali zahtevkih za združitev.
 
 ## Licenca
 

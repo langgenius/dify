@@ -1401,7 +1401,7 @@ export const zOtelExporterEndpoint = z.object({
   protocol: z.enum(['HTTP_PROTOBUF', 'HTTP_JSON', 'GRPC']).optional(),
   timeout: z
     .string()
-    .regex(/^-?(?:0|[1-9]\d{0,11})(?:\.\d{1,9})?s$/)
+    .regex(/^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,9})?s$/)
     .optional(),
   headers: z.record(z.string(), z.string()).optional(),
   tlsCaPem: z.string().optional(),

@@ -1,12 +1,12 @@
 'use client'
 
 import type { Plugin } from '@/app/components/plugins/types'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useRef } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
-import { getPluginLinkInMarketplace } from '../utils'
+import { marketplaceLinks } from '@/features/marketplace/links'
 import MarketplaceDetailDialogFrame from './frame'
 import { useSilentMarketplaceInstall } from './use-silent-install'
 
@@ -127,7 +127,7 @@ function MarketplaceDetailDialog({
   const detailLabel = t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })
   const installedForSrcRef = useRef(isInstalled)
   if (!open) installedForSrcRef.current = isInstalled
-  const detailURL = getPluginLinkInMarketplace(plugin, {
+  const detailURL = marketplaceLinks.plugin(plugin, {
     canInstall: String(canInstallPlugin),
     installed: String(installedForSrcRef.current),
     language: locale,

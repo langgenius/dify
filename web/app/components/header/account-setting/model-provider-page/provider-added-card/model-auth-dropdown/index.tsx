@@ -3,9 +3,10 @@ import type { ModelProvider, PreferredProviderTypeEnum } from '../../declaration
 import type { CredentialPanelState } from '../use-credential-panel-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { memo, useCallback, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLazyModelProviderDetail } from '../../hooks'
+import { modelProviderDetailsQueryOptions } from '../../utils'
 import { getButtonConfig } from './button-config'
 import DropdownContent from './dropdown-content'
 
@@ -23,42 +24,22 @@ function ModelAuthDropdown({
   onChangePriority,
 }: ModelAuthDropdownProps) {
   const { t } = useTranslation(['common', 'modelProvider'])
-  const [open, setOpen] = useState(false)
-  const [isProviderDetailError, setIsProviderDetailError] = useState(false)
+  const [requestedOpen, setRequestedOpen] = useState(false)
   const isFullProvider = !('is_configured' in provider) || 'provider_credential_schema' in provider
-  const { providerDetail, loadProviderDetail, isProviderDetailEnabled, isLoadingProviderDetail } =
-    useLazyModelProviderDetail(provider.provider)
-  const currentProvider = isFullProvider ? provider : providerDetail
-
-  const handleClose = useCallback(() => {
-    setOpen(false)
-    setIsProviderDetailError(false)
-  }, [])
-
+  const detailQuery = useQuery({
+    ...modelProviderDetailsQueryOptions(),
+    enabled: requestedOpen && !isFullProvider,
+    retry: false,
+  })
+  const currentProvider = isFullProvider
+    ? provider
+    : detailQuery.data?.data.find((item) => item.provider === provider.provider)
+  const loading = requestedOpen && !isFullProvider && detailQuery.isLoading
+  const open = requestedOpen && (isFullProvider || !detailQuery.isPending)
   const buttonConfig = getButtonConfig(state.variant, state.hasCredentials, t)
-  const loadDetail = useCallback(async () => {
-    setIsProviderDetailError(false)
-    const detail = await loadProviderDetail()
-    if (!detail) setIsProviderDetailError(true)
-  }, [loadProviderDetail])
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      handleClose()
-      return
-    }
-
-    setOpen(true)
-
-    if (
-      !isFullProvider &&
-      !(currentProvider && isProviderDetailEnabled && !isLoadingProviderDetail)
-    )
-      void loadDetail()
-  }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={setRequestedOpen}>
       <PopoverTrigger
         render={
           <Button
@@ -66,14 +47,14 @@ function ModelAuthDropdown({
             size="small"
             variant={buttonConfig.variant}
             title={buttonConfig.text}
-            loading={isLoadingProviderDetail}
+            loading={loading}
           >
             <span className="i-ri-equalizer-2-line size-3.5 shrink-0" />
             <span className="min-w-0 truncate">{buttonConfig.text}</span>
           </Button>
         }
       />
-      <PopoverContent placement="bottom-end">
+      <PopoverContent align="end">
         <PopoverTitle className="sr-only">{buttonConfig.text}</PopoverTitle>
         {currentProvider ? (
           <DropdownContent
@@ -81,30 +62,16 @@ function ModelAuthDropdown({
             state={state}
             isChangingPriority={isChangingPriority}
             onChangePriority={onChangePriority}
-            onClose={handleClose}
+            onClose={() => setRequestedOpen(false)}
           />
-        ) : isProviderDetailError ? (
+        ) : (
           <div className="flex w-80 flex-col items-start gap-3 p-4" role="alert">
             <span className="system-sm-medium text-text-primary">
               {t(($) => $['api.actionFailed'], { ns: 'common' })}
             </span>
-            <Button size="small" variant="secondary" onClick={() => void loadDetail()}>
+            <Button size="small" variant="secondary" onClick={() => void detailQuery.refetch()}>
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </Button>
-          </div>
-        ) : (
-          <div
-            className="flex w-80 items-center justify-center gap-2 p-4"
-            role="status"
-            aria-busy="true"
-          >
-            <span
-              aria-hidden
-              className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
-            />
-            <span className="system-sm-regular text-text-secondary">
-              {t(($) => $.loading, { ns: 'common' })}
-            </span>
           </div>
         )}
       </PopoverContent>

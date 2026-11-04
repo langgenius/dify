@@ -1,6 +1,5 @@
 'use client'
 import type { FormActions } from '@langgenius/dify-ui/form'
-import type { MailRegisterResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -11,20 +10,22 @@ import {
   FieldValidity,
 } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { Input } from '@langgenius/dify-ui/input'
-import { useQueryClient } from '@tanstack/react-query'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
-import { toast } from '@/app/notifications'
 import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useMailRegister } from '@/service/use-common'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
@@ -57,7 +58,9 @@ const ChangePasswordForm = () => {
 
   const formActionsRef = useRef<FormActions>(null)
   const confirmPasswordRef = useRef<HTMLInputElement>(null)
-  const { mutateAsync: register, isPending } = useMailRegister()
+  const { mutateAsync: register, isPending } = useMutation(
+    consoleQuery.emailRegister.post.mutationOptions(),
+  )
   const pageTitle = t(($) => $.changePassword, { ns: 'login' })
   useDocumentTitle(pageTitle)
 
@@ -66,13 +69,15 @@ const ChangePasswordForm = () => {
       if (isPending) return
       try {
         const res = await register({
-          token,
-          new_password: formValues.password,
-          password_confirm: formValues.confirmPassword,
-          language: locale,
-          timezone: getBrowserTimezone(),
+          body: {
+            token,
+            new_password: formValues.password,
+            password_confirm: formValues.confirmPassword,
+            language: locale,
+            timezone: getBrowserTimezone(),
+          },
         })
-        const { result } = res as MailRegisterResponse
+        const { result } = res
         if (result === 'success') {
           const utmInfo = parseUtmInfo()
           rememberCreateAppExternalAttribution({ utmInfo })
@@ -90,7 +95,6 @@ const ChangePasswordForm = () => {
           )
           Cookies.remove('utm_info') // Clean up: remove utm_info cookie
 
-          toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
           await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
@@ -98,7 +102,7 @@ const ChangePasswordForm = () => {
         console.error(error)
       }
     },
-    [token, register, locale, queryClient, router, searchParams, t, isPending],
+    [token, register, locale, queryClient, router, searchParams, isPending],
   )
 
   return (
@@ -133,17 +137,18 @@ const ChangePasswordForm = () => {
               <FieldLabel>
                 {t(($) => $['account.newPassword'], { ns: 'accountSettings' })}
               </FieldLabel>
-              <Input
-                type="password"
-                required
-                autoComplete="new-password"
-                spellCheck={false}
-                onValueChange={() => {
-                  if (confirmPasswordRef.current?.value)
-                    formActionsRef.current?.validate('confirmPassword')
-                }}
-                placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-              />
+              <PasswordField>
+                <PasswordFieldInput
+                  required
+                  autoComplete="new-password"
+                  onValueChange={() => {
+                    if (confirmPasswordRef.current?.value)
+                      formActionsRef.current?.validate('confirmPassword')
+                  }}
+                  placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
+                />
+                <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+              </PasswordField>
               <FieldValidity>
                 {({ validity }) =>
                   validity.valid !== false ? (
@@ -178,14 +183,15 @@ const ChangePasswordForm = () => {
               <FieldLabel>
                 {t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
               </FieldLabel>
-              <Input
-                type="password"
-                required
-                autoComplete="new-password"
-                spellCheck={false}
-                ref={confirmPasswordRef}
-                placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
-              />
+              <PasswordField>
+                <PasswordFieldInput
+                  required
+                  autoComplete="new-password"
+                  ref={confirmPasswordRef}
+                  placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' })}
+                />
+                <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+              </PasswordField>
               <FieldError>{t(($) => $['account.notEqual'], { ns: 'accountSettings' })}</FieldError>
             </Field>
             <Button type="submit" variant="primary" className="w-full" loading={isPending}>

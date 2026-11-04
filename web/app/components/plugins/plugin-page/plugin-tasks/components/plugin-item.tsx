@@ -1,4 +1,4 @@
-import type { FC, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
 import type { PluginLanguage } from '@/i18n/metadata'
 import CardIcon from '@/app/components/plugins/card/base/card-icon'
@@ -14,7 +14,7 @@ type PluginItemProps = {
   onClear?: () => void
 }
 
-const PluginItem: FC<PluginItemProps> = ({
+function PluginItem({
   plugin,
   getIconUrl,
   language,
@@ -23,7 +23,7 @@ const PluginItem: FC<PluginItemProps> = ({
   statusClassName,
   action,
   onClear,
-}) => {
+}: PluginItemProps) {
   const hasPluginIcon = !!plugin.icon
   const pluginName = plugin.labels[language] || plugin.plugin_unique_identifier
 
@@ -55,7 +55,7 @@ const PluginItem: FC<PluginItemProps> = ({
         <button
           type="button"
           aria-label={`Clear ${pluginName}`}
-          className="invisible flex size-6 shrink-0 items-center justify-center self-start rounded-md group-hover/item:visible hover:bg-state-base-hover-alt"
+          className="flex size-6 shrink-0 items-center justify-center self-start rounded-md opacity-0 outline-hidden group-hover/item:opacity-100 hover:bg-state-base-hover-alt focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid [@media(hover:none)]:opacity-100"
           onClick={onClear}
         >
           <span className="i-ri-close-line size-4 text-text-tertiary" />

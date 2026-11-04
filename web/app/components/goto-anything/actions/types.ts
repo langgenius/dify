@@ -2,6 +2,7 @@ import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.ge
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { DatasetListItemResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { SkillResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { keepPreviousData } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import type { TypeWithI18N } from '../../base/form/types'
 import type { Plugin } from '../../plugins/types'
@@ -72,6 +73,7 @@ type ActionItemBase = {
   shortcut: string
   title: string | TypeWithI18N
   description: string
+  matches?: (query: string) => boolean
   action?: (data: SearchResult) => void
 }
 
@@ -85,3 +87,8 @@ type LocalActionItem = ActionItemBase & {
 }
 
 export type ActionItem = RemoteActionItem | LocalActionItem
+
+export type SearchQueryOptions = {
+  enabled?: boolean
+  placeholderData?: typeof keepPreviousData
+}

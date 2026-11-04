@@ -259,14 +259,3 @@ export function createI18nextMock(translations: TranslationMap = {}) {
     }),
   }
 }
-
-export function createReactI18nextLanguageMock(language: string) {
-  const mock = createReactI18nextMock()
-  return {
-    ...mock,
-    getI18n: () => ({
-      ...mock.getI18n(),
-      language,
-    }),
-  }
-}
