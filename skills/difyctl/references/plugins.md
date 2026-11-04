@@ -2,10 +2,10 @@
 
 ## Find tools, models and knowledge bases
 
-1. `difyctl get tool --query <service>` lists tools the workspace can use: built-in and plugin tools, workflows published as tools, API tools and MCP tools. Each row has `configured` and a ready `node_data`.
+1. `difyctl get tool --query <service>` lists tools the workspace can use: built-in and plugin tools, workflows published as tools, API tools and MCP tools. Each row has `configured` and the tool's `parameters`.
 2. `difyctl get model --model-type llm` lists models across providers (`--provider <id>` for one). Use one whose `status` is `active`. Paste the row's `node_model` as the LLM node's `model` block; don't build it by hand.
 3. For knowledge bases: `difyctl get knowledge_base --query <words>`. A knowledge-retrieval node needs a row's `node_data`.
-4. Nothing fits: `difyctl get marketplace plugin --query <service> --category tool` (or `--category model`).
+4. Nothing fits: `difyctl get marketplace plugin --query <service> --category tool --limit 5` (or `--category model`).
 5. When building an app, rank the options by the tool rule in [build-workflow.md](build-workflow.md).
 
 ## Missing plugins after an import
@@ -15,7 +15,7 @@
 
 ## Find and install
 
-1. `difyctl get marketplace plugin --query <words>` searches the marketplace. Each hit has `identifier` (the versioned id to install) and `installed`.
+1. `difyctl get marketplace plugin --query <words> --limit 5` searches the marketplace. Use specific words. Each hit has `identifier` (the versioned id to install) and `installed`. `total` counts every match; read a large one as "more exist", not as rows to scan. Narrow the words instead of paging.
 2. Confirm with the human before installing. Then `difyctl install plugin --identifiers <identifier>`.
 3. Install finishes in the background. Run the `describe.plugin.task` hint until `status` is `success` or `failed`. On `failed`, show the human each plugin's `message`. If `all_installed` is true there is no task; follow the provider hint.
 4. On success the hint names the provider to set up: `describe.model_provider` or `describe.tool_provider`.

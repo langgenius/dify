@@ -4,7 +4,7 @@ The spec phase ends when the human approves `difyctl/<app-slug>/spec.md`. Don't 
 
 ## How to run the spec talk
 
-1. Start from intent: what the app is for, who uses it, what a good result looks like. Ask one question at a time, with choices where you can.
+1. Start from intent: what the app is for, who uses it, what a good result looks like. Ask a few related questions together, with choices where you can.
 2. Choose the mode early and say why. Workflow: one run, inputs to outputs. Chatflow: a conversation with memory.
 3. As you talk, keep two things:
    - **Requirements.** Each condition or feature the human states becomes `R<n>`, in their words, typed `feature` (something the app does), `rule` (a condition or limit) or `failure` (what happens when something goes wrong).
@@ -12,7 +12,7 @@ The spec phase ends when the human approves `difyctl/<app-slug>/spec.md`. Don't 
 4. Walk 3 to 6 realistic cases through the graph with the human. Include edge cases: empty input, a tool failing, an answer too long.
 5. Collect resources: models, tools and plugins, knowledge bases, credentials.
    - For each step that calls an outside service or needs a model, search first: `difyctl get tool --query <service>`, `difyctl get model --model-type llm`, `difyctl get knowledge_base --query <words>`, then `difyctl get marketplace plugin --query <service>`.
-   - Show the human a short list per step, ranked by the tool rule in `build-workflow.md`: name, brief, publisher type, install count, installed and configured or not.
+   - Show the human a short list per step, ranked by the tool rule in `build-workflow.md`: name, brief, install count, installed and configured or not.
    - If the best option needs something from the human (an API key, an install, a knowledge base to upload), ask for it.
    - Record the human's choice and the options shown. Write an unknown item as open; never guess a name.
 6. Before you ask for approval, read the requirements back and ask "anything missing?". Each requirement needs a graph step and at least one acceptance case. Raise any gap with the human.

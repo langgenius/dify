@@ -1213,6 +1213,8 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
     ("mode", "node_type"),
     [
         (AppMode.WORKFLOW, "answer"),
+        (AppMode.WORKFLOW, "knowledge-index"),
+        (AppMode.ADVANCED_CHAT, "knowledge-index"),
         (AppMode.ADVANCED_CHAT, "end"),
         (AppMode.ADVANCED_CHAT, "trigger-webhook"),
         (AppMode.ADVANCED_CHAT, "trigger-schedule"),

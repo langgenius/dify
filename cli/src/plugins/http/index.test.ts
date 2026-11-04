@@ -2,8 +2,10 @@ import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { FORBIDDEN_HINT, startMock } from '@test/fixtures/dify-mock/server'
+import { FORBIDDEN_HINT, startMock, TRIGGER_REFUSED_MESSAGE } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
+import { HttpClientError } from '@/errors/base'
+import { ExitCode, exitFor } from '@/errors/codes'
 import { Context } from '@/kernel/context'
 import { catalog, CATALOG_PATH } from '@/plugins/catalog'
 import { CONFIG_FILE_NAME } from '@/plugins/config'
@@ -128,6 +130,21 @@ describe('http plugin', () => {
       httpStatus: 403,
       hint: expect.stringMatching(/^permission denied/),
     })
+  })
+
+  it("a 4xx other than 401 and 403 exits 1 with the server's message and no permission hint", async () => {
+    const h = await new Context().get(http)
+    mock.setScenario('trigger-refused')
+    const err = await h.request(account).catch((e: unknown) => e)
+    if (!(err instanceof HttpClientError)) throw err
+    expect(err).toMatchObject({
+      code: 'server_error',
+      httpStatus: 422,
+      message: TRIGGER_REFUSED_MESSAGE,
+      serverError: { code: 'trigger_workflow_service_mode_unavailable' },
+    })
+    expect(err.hint).toBeUndefined()
+    expect(exitFor(err.code)).toBe(ExitCode.Generic)
   })
 
   it('surfaces 5xx as server_error with the server body and details', async () => {

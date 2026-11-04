@@ -10,6 +10,7 @@ export type FoldResult = {
   message_id?: string
   conversation_id?: string
   run_id?: string
+  task_id?: string
   error?: { message: string; code?: string }
   hints: Hint[]
 }
@@ -23,7 +24,7 @@ export const FOLD_STATUS = {
   Failed: 'failed',
 } as const
 
-type FoldStatus = (typeof FOLD_STATUS)[keyof typeof FOLD_STATUS]
+export type FoldStatus = (typeof FOLD_STATUS)[keyof typeof FOLD_STATUS]
 
 // Highest precedence first: a handler only ever raises status toward this end.
 const STATUS_PRECEDENCE: readonly FoldStatus[] = [
@@ -123,10 +124,22 @@ function markError(result: FoldResult, event: Record<string, unknown>): void {
   raise(result, FOLD_STATUS.Failed)
 }
 
-/** Runs for every event before its own handler: any workflow event names its run. */
+type IdField = 'run_id' | 'task_id' | 'message_id' | 'conversation_id'
+
+// Event field -> result field, for the ids any event may carry.
+const EVENT_IDS: Readonly<Record<string, IdField>> = {
+  workflow_run_id: 'run_id',
+  task_id: 'task_id',
+  message_id: 'message_id',
+  conversation_id: 'conversation_id',
+}
+
+/** Runs for every event before its own handler: any event may name the run it belongs to. */
 export const foldAnyEvent: EventHandler = (result, event) => {
-  const runId = asString(event.workflow_run_id)
-  if (runId !== undefined) result.run_id = runId
+  for (const [field, target] of Object.entries(EVENT_IDS)) {
+    const id = asString(event[field])
+    if (id !== undefined) result[target] = id
+  }
 }
 
 export const FOLD_TABLE: Readonly<Record<string, EventHandler>> = Object.freeze({

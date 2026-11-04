@@ -13,14 +13,15 @@ from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
-from core.workflow.node_factory import resolve_workflow_node_class
+from core.workflow.node_factory import node_data_model, resolve_workflow_node_class
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.variable_prefixes import ROOT_VARIABLE_NODE_IDS
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.variables import VariableBase
 from models import AppMode
-from services.workflow.node_defaults import complete_sub_models, editor_defaults, node_data_type
+from services.workflow.node_defaults import complete_sub_models, editor_defaults
 from services.workflow_service import WorkflowService
 from services.workflow_variable_reference_validator import SOURCE_HANDLE, branch_handles
 
@@ -29,7 +30,17 @@ logger = logging.getLogger(__name__)
 GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
 MESSAGE_MODES: Final = frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION})
 CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP})
-_CANVAS_NOTE_TYPE: Final = "custom-note"
+CANVAS_NOTE_TYPE: Final = "custom-note"
+START_NODE_ID_KEY: Final = "start_node_id"
+EMPTY_SELECTOR_MESSAGE: Final = "A variable selector reads no variable"
+MISSING_NODE_TYPE_MESSAGE: Final = (
+    "The node has no data.type: write its node type there. "
+    f"If the node is a canvas note, it needs type: {CANVAS_NOTE_TYPE} on the node itself, beside data"
+)
+NOTE_TYPE_IN_DATA_MESSAGE: Final = (
+    f"{CANVAS_NOTE_TYPE} is the type of a canvas note's node, not of its data: "
+    f"write type: {CANVAS_NOTE_TYPE} on the node itself, beside data"
+)
 
 
 class IssueSeverity(StrEnum):
@@ -45,6 +56,7 @@ class IssueCode(StrEnum):
     EDGE_ENDPOINT_MISSING = "edge_endpoint_missing"
     BRANCH_HANDLE_INVALID = "branch_handle_invalid"
     REFERENCE_MISSING = "reference_missing"
+    REFERENCE_EMPTY = "reference_empty"
     CONTAINER_START_MISSING = "container_start_missing"
     OUTPUT_NAME_DUPLICATE = "output_name_duplicate"
     BRANCH_UNCONNECTED = "branch_unconnected"
@@ -55,7 +67,10 @@ class IssueCode(StrEnum):
         return IssueSeverity.WARNING if self in _WARNING_CODES else IssueSeverity.ERROR
 
 
-_WARNING_CODES: Final = frozenset({IssueCode.BRANCH_UNCONNECTED, IssueCode.RESOURCE_UNAVAILABLE})
+# An empty reference is a warning: the console saves a selector not chosen yet, and this check gates imports.
+_WARNING_CODES: Final = frozenset(
+    {IssueCode.BRANCH_UNCONNECTED, IssueCode.RESOURCE_UNAVAILABLE, IssueCode.REFERENCE_EMPTY}
+)
 
 
 @dataclass(frozen=True)
@@ -64,6 +79,8 @@ class GraphIssue:
     message: str
     node_id: str | None = None
     loc: tuple[str | int, ...] = field(default_factory=tuple)
+    # The pydantic error type of a node data problem, such as "missing".
+    error_type: str | None = None
 
 
 ResourceCheck = Callable[[Mapping[str, Any]], str | None]
@@ -71,8 +88,8 @@ ResourceCheck = Callable[[Mapping[str, Any]], str | None]
 
 def refused_node_types(mode: AppMode) -> frozenset[str]:
     if mode == AppMode.ADVANCED_CHAT:
-        return frozenset({BuiltinNodeTypes.END, *TRIGGER_NODE_TYPES})
-    return frozenset({BuiltinNodeTypes.ANSWER})
+        return frozenset({BuiltinNodeTypes.END, *TRIGGER_NODE_TYPES, KNOWLEDGE_INDEX_NODE_TYPE})
+    return frozenset({BuiltinNodeTypes.ANSWER, KNOWLEDGE_INDEX_NODE_TYPE})
 
 
 def credential_check(workspace_id: str, environment: Mapping[str, VariableBase], session: Session) -> ResourceCheck:
@@ -102,7 +119,7 @@ class _Node:
 
     @property
     def type(self) -> str:
-        return str(self.data.get("type", ""))
+        return _data_type(self.data)
 
 
 @dataclass(frozen=True)
@@ -112,7 +129,7 @@ class _Graph:
     mode: AppMode
 
 
-def _data_loc(node_id: str, *path: str | int) -> tuple[str | int, ...]:
+def data_loc(node_id: str, *path: str | int) -> tuple[str | int, ...]:
     return ("nodes", node_id, "data", *path)
 
 
@@ -125,29 +142,49 @@ def _references(node_class: type[Node], config: Mapping[str, Any]) -> Mapping[st
 
 def _read_known_node(node_id: str, raw_data: Mapping[str, Any], node_class: type[Node]) -> _Node:
     data = editor_defaults(raw_data)
-    model = node_data_type(node_class.node_type, node_class)
+    model = node_data_model(node_class)
     config = adapt_node_config_for_graph({"id": node_id, "data": data})
     try:
         model.model_validate(config["data"])
     except ValidationError as error:
         problems = error.errors(include_url=False, include_input=False, include_context=False)
         issues = tuple(
-            GraphIssue(IssueCode.NODE_DATA_INVALID, p["msg"], node_id, _data_loc(node_id, *p["loc"])) for p in problems
+            GraphIssue(IssueCode.NODE_DATA_INVALID, p["msg"], node_id, data_loc(node_id, *p["loc"]), p["type"])
+            for p in problems
         )
         return _Node(node_id, data, issues)
     return _Node(node_id, complete_sub_models(model, data), references=_references(node_class, config))
 
 
+# Data types no node has, each with where the author went wrong.
+_MISPLACED_TYPE_MESSAGES: Final[Mapping[str, str]] = {
+    "": MISSING_NODE_TYPE_MESSAGE,
+    CANVAS_NOTE_TYPE: NOTE_TYPE_IN_DATA_MESSAGE,
+}
+
+
+def _unknown_type_message(node_type: str) -> str:
+    return _MISPLACED_TYPE_MESSAGES.get(node_type, f"Unknown node type {node_type!r}")
+
+
+def _data_type(data: Mapping[str, Any]) -> str:
+    """The data's node type as text; a null type is a missing one."""
+    node_type = data.get("type")
+    if node_type is None:
+        return ""
+    return str(node_type)
+
+
 def _read_node(node_id: str, raw: Mapping[str, Any]) -> _Node:
     raw_data: Mapping[str, Any] = raw["data"]
-    node_type = str(raw_data.get("type", ""))
+    node_type = _data_type(raw_data)
     try:
         node_class = resolve_workflow_node_class(
             node_type=node_type, node_version=str(raw_data.get("version", "1")), node_data=raw_data
         )
     except ValueError:
         issue = GraphIssue(
-            IssueCode.UNKNOWN_NODE_TYPE, f"Unknown node type {node_type!r}", node_id, _data_loc(node_id, "type")
+            IssueCode.UNKNOWN_NODE_TYPE, _unknown_type_message(node_type), node_id, data_loc(node_id, "type")
         )
         return _Node(node_id, raw_data, (issue,))
     try:
@@ -156,9 +193,7 @@ def _read_node(node_id: str, raw: Mapping[str, Any]) -> _Node:
         # A validator or reference reader can raise other errors on bad or newer data; report this node, check the rest.
         logger.warning("node %s data could not be read", node_id, exc_info=True)
         message = f"The node data could not be read ({type(error).__name__}: {error})"
-        return _Node(
-            node_id, raw_data, (GraphIssue(IssueCode.NODE_DATA_INVALID, message, node_id, _data_loc(node_id)),)
-        )
+        return _Node(node_id, raw_data, (GraphIssue(IssueCode.NODE_DATA_INVALID, message, node_id, data_loc(node_id)),))
 
 
 def _mode_issues(graph: _Graph) -> Iterable[GraphIssue]:
@@ -169,21 +204,35 @@ def _mode_issues(graph: _Graph) -> Iterable[GraphIssue]:
                 IssueCode.MODE_INCOMPATIBLE,
                 f"A {graph.mode} app can't hold a {node.type} node",
                 node.id,
-                _data_loc(node.id, "type"),
+                data_loc(node.id, "type"),
             )
+
+
+def _is_node(graph: _Graph, node_id: object) -> bool:
+    if not isinstance(node_id, str):
+        return False
+    return node_id in graph.nodes
+
+
+def _start_issue(graph: _Graph, node: _Node) -> GraphIssue | None:
+    if node.type not in CONTAINER_NODE_TYPES:
+        return None
+    loc = data_loc(node.id, START_NODE_ID_KEY)
+    # A missing start_node_id is already reported as invalid data.
+    if any(issue.loc == loc for issue in node.issues):
+        return None
+    start = node.data.get(START_NODE_ID_KEY)
+    if _is_node(graph, start):
+        return None
+    return GraphIssue(IssueCode.CONTAINER_START_MISSING, f"start_node_id {start!r} is not in the graph", node.id, loc)
 
 
 def _node_issues(graph: _Graph) -> Iterable[GraphIssue]:
     for node in graph.nodes.values():
         yield from node.issues
-        start = node.data.get("start_node_id")
-        if node.type in CONTAINER_NODE_TYPES and start and start not in graph.nodes:
-            yield GraphIssue(
-                IssueCode.CONTAINER_START_MISSING,
-                f"start_node_id {start!r} is not in the graph",
-                node.id,
-                _data_loc(node.id, "start_node_id"),
-            )
+        start_issue = _start_issue(graph, node)
+        if start_issue is not None:
+            yield start_issue
 
 
 def _edge_issues(graph: _Graph) -> Iterable[GraphIssue]:
@@ -243,20 +292,31 @@ def _output_name_issues(graph: _Graph) -> Iterable[GraphIssue]:
                 IssueCode.OUTPUT_NAME_DUPLICATE,
                 f"Output {name!r} is used by more than one End node output; output names must be unique",
                 node_id,
-                _data_loc(node_id, "outputs", index, "variable"),
+                data_loc(node_id, "outputs", index, "variable"),
             )
+
+
+def _reference_issue(graph: _Graph, node: _Node, key: str, selector: Sequence[str]) -> GraphIssue | None:
+    if not selector:
+        name = key.removeprefix(f"{node.id}.").strip("#")
+        message = f"{name} reads no variable" if name else EMPTY_SELECTOR_MESSAGE
+        return GraphIssue(IssueCode.REFERENCE_EMPTY, message, node.id, data_loc(node.id))
+    if selector[0] in ROOT_VARIABLE_NODE_IDS:
+        return None
+    if selector[0] in graph.nodes:
+        return None
+    return GraphIssue(
+        IssueCode.REFERENCE_MISSING,
+        f"{key} reads node {selector[0]!r}, which is not in the graph",
+        node.id,
+        data_loc(node.id),
+    )
 
 
 def _reference_issues(graph: _Graph) -> Iterable[GraphIssue]:
     for node in graph.nodes.values():
-        for key, selector in node.references.items():
-            if selector and selector[0] not in ROOT_VARIABLE_NODE_IDS and selector[0] not in graph.nodes:
-                yield GraphIssue(
-                    IssueCode.REFERENCE_MISSING,
-                    f"{key} reads node {selector[0]!r}, which is not in the graph",
-                    node.id,
-                    _data_loc(node.id),
-                )
+        issues = (_reference_issue(graph, node, key, selector) for key, selector in node.references.items())
+        yield from (issue for issue in issues if issue is not None)
 
 
 _CHECKS: Final[tuple[Callable[[_Graph], Iterable[GraphIssue]], ...]] = (
@@ -294,7 +354,7 @@ def _shape_issues(graph: Mapping[str, Any]) -> list[GraphIssue]:
             )
         elif not isinstance(node.get("data"), Mapping):
             issues.append(
-                GraphIssue(IssueCode.GRAPH_INVALID, "The node data must be a mapping", node_id, _data_loc(node_id))
+                GraphIssue(IssueCode.GRAPH_INVALID, "The node data must be a mapping", node_id, data_loc(node_id))
             )
         if isinstance(node_id, str) and node_id:
             seen_ids.add(node_id)
@@ -315,7 +375,7 @@ def check_graph(graph: Mapping[str, Any], *, mode: AppMode, resources: ResourceC
     shape_issues = _shape_issues(graph)
     if shape_issues:
         return shape_issues
-    raw_nodes = {str(n["id"]): n for n in graph["nodes"] if n.get("type") != _CANVAS_NOTE_TYPE}
+    raw_nodes = {str(n["id"]): n for n in graph["nodes"] if n.get("type") != CANVAS_NOTE_TYPE}
     view = _Graph(
         nodes={node_id: _read_node(node_id, raw) for node_id, raw in raw_nodes.items()},
         edges=graph.get("edges") or [],

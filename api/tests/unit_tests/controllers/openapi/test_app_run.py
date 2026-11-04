@@ -4,6 +4,7 @@ import json
 import sys
 import uuid
 from dataclasses import replace
+from http import HTTPStatus
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -18,7 +19,12 @@ from werkzeug.exceptions import BadRequest, NotFound, TooManyRequests
 
 from constants.oauth_bearer import TokenType
 from controllers.openapi import app_run
-from controllers.openapi._errors import AgentNotPublished, AppModeMismatch
+from controllers.openapi._errors import (
+    AgentNotPublished,
+    AppModeMismatch,
+    OpenApiErrorCode,
+    TriggerWorkflowNotRunnable,
+)
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
     AgentRunPayload,
@@ -35,7 +41,6 @@ from controllers.openapi.app_run import (
     _translate_service_errors,
 )
 from controllers.openapi.auth.subjects import Subject, subject_from_auth
-from controllers.service_api.app.error import TriggerWorkflowServiceModeUnavailableError
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -47,9 +52,7 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser, UploadFile
 from services.app_task_service import AppTaskControlService
-from services.errors.app import (
-    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
-)
+from services.errors.app import TriggerWorkflowServiceModeUnavailableError
 from services.errors.llm import InvokeRateLimitError
 from tests.helpers.unit.model_factories import make_upload_file
 from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
@@ -77,12 +80,15 @@ def test_translate_maps_workflow_quota_to_rate_limit_error():
     assert exc.value.code == 429
 
 
-def test_translate_maps_trigger_workflow_to_stable_unavailable_error():
-    with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc:
+def test_a_trigger_workflow_run_is_refused_for_its_shape_not_as_forbidden() -> None:
+    with pytest.raises(TriggerWorkflowNotRunnable) as exc:
         with _translate_service_errors():
-            raise TriggerWorkflowServiceModeUnavailableServiceError()
-    assert exc.value.error_code == "trigger_workflow_service_mode_unavailable"
-    assert exc.value.code == 403
+            raise TriggerWorkflowServiceModeUnavailableError()
+
+    assert (exc.value.code, exc.value.error_code) == (
+        HTTPStatus.UNPROCESSABLE_ENTITY,
+        OpenApiErrorCode.TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE,
+    )
 
 
 def test_translate_maps_value_error_to_a_fixed_bad_request():

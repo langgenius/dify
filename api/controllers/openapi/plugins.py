@@ -22,7 +22,6 @@ from controllers.openapi._errors import (
     PluginNotInstalled,
     PluginServiceUnavailable,
 )
-from controllers.openapi._i18n import localized
 from controllers.openapi._models import (
     Hint,
     MarketplacePluginListResponse,
@@ -51,6 +50,7 @@ from core.plugin.entities.plugin import PluginEntity
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginDaemonInternalError
 from core.plugin.plugin_service import PluginService
+from libs.i18n_text import localized
 from services.errors.plugin import PluginInstallationForbiddenError
 
 _IN_FLIGHT: Final = frozenset({PluginInstallTaskStatus.Pending, PluginInstallTaskStatus.Running})

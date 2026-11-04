@@ -182,6 +182,14 @@ jobs:
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: cli/.bun-version
+
+      - name: Check generated node defaults
+        run: vp run gen:node-defaults --check
+
       - name: Check generated i18n types
         run: vp run i18n:check-types
 

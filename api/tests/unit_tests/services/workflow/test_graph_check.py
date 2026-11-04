@@ -4,7 +4,17 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models import AppMode
-from services.workflow.graph_check import IssueCode, IssueSeverity, check_graph, credential_check
+from services.workflow.graph_check import (
+    CANVAS_NOTE_TYPE,
+    EMPTY_SELECTOR_MESSAGE,
+    MISSING_NODE_TYPE_MESSAGE,
+    NOTE_TYPE_IN_DATA_MESSAGE,
+    IssueCode,
+    IssueSeverity,
+    check_graph,
+    credential_check,
+    data_loc,
+)
 from services.workflow_service import WorkflowService
 
 
@@ -89,6 +99,15 @@ def test_mode_incompatible_nodes() -> None:
     assert [(i.code, i.node_id) for i in issues] == [(IssueCode.MODE_INCOMPATIBLE, "a")]
 
 
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_knowledge_index_belongs_to_knowledge_pipelines_only(mode: AppMode) -> None:
+    index = _node("k", {"type": "knowledge-index", "title": "K"})
+    issues = check_graph({"nodes": [START, index], "edges": []}, mode=mode)
+    assert [(i.code, i.node_id) for i in issues if i.code == IssueCode.MODE_INCOMPATIBLE] == [
+        (IssueCode.MODE_INCOMPATIBLE, "k")
+    ]
+
+
 def test_unknown_type_and_invalid_data_are_located() -> None:
     weird = _node("w", {"type": "future-node", "title": "W"})
     llm = _node("l", {"type": "llm", "title": "L"})
@@ -96,6 +115,37 @@ def test_unknown_type_and_invalid_data_are_located() -> None:
     assert issues["w"].code is IssueCode.UNKNOWN_NODE_TYPE
     assert issues["l"].code is IssueCode.NODE_DATA_INVALID
     assert issues["l"].loc[:3] == ("nodes", "l", "data")
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param({"text": "Explains the start", "theme": "blue"}, id="no data type"),
+        pytest.param({"type": "", "text": "Explains the start", "theme": "blue"}, id="empty data type"),
+        pytest.param({"type": None, "text": "Explains the start", "theme": "blue"}, id="null data type"),
+    ],
+)
+def test_a_node_with_no_type_is_told_where_the_type_goes(data: dict[str, object]) -> None:
+    [issue] = check_graph({"nodes": [START, _node("n", data)], "edges": []}, mode=AppMode.WORKFLOW)
+
+    assert (issue.code, issue.node_id, issue.loc) == (IssueCode.UNKNOWN_NODE_TYPE, "n", data_loc("n", "type"))
+    assert issue.message == MISSING_NODE_TYPE_MESSAGE
+    assert f"type: {CANVAS_NOTE_TYPE}" in issue.message
+
+
+def test_the_note_type_written_in_data_is_told_to_go_on_the_node() -> None:
+    note = _node("n", {"type": CANVAS_NOTE_TYPE, "text": "Explains the start", "theme": "blue"})
+    [issue] = check_graph({"nodes": [START, note], "edges": []}, mode=AppMode.WORKFLOW)
+
+    assert (issue.code, issue.node_id, issue.loc) == (IssueCode.UNKNOWN_NODE_TYPE, "n", data_loc("n", "type"))
+    assert issue.message == NOTE_TYPE_IN_DATA_MESSAGE
+
+
+def test_a_named_unknown_type_is_named() -> None:
+    weird = _node("w", {"type": "future-node", "title": "W"})
+    [issue] = check_graph({"nodes": [START, weird], "edges": []}, mode=AppMode.WORKFLOW)
+
+    assert issue.message == "Unknown node type 'future-node'"
 
 
 def test_edges_must_point_at_nodes() -> None:
@@ -123,6 +173,152 @@ def test_references_to_missing_nodes() -> None:
 
 def test_system_selectors_are_not_missing() -> None:
     assert _codes({"nodes": [START, _template(["sys", "user_id"])], "edges": []}) == []
+
+
+_QUERY = ["start", "query"]
+
+
+def _condition(selector: list[str]) -> dict[str, object]:
+    return {"id": "c1", "variable_selector": selector, "comparison_operator": "contains", "value": "x"}
+
+
+def _code_variable(selector: list[str]) -> dict[str, object]:
+    return {"variable": "arg1", "value_selector": selector, "value_type": "string"}
+
+
+MODEL: dict[str, object] = {"provider": "langgenius/openai/openai", "name": "gpt-4o", "mode": "chat"}
+EMPTY_REFERENCES = [
+    pytest.param(
+        {"type": "document-extractor", "title": "D", "variable_selector": []},
+        "files reads no variable",
+        id="document-extractor",
+    ),
+    pytest.param(
+        {
+            "type": "assigner",
+            "version": "2",
+            "title": "A",
+            "items": [{"variable_selector": [], "input_type": "constant", "operation": "over-write", "value": "x"}],
+        },
+        EMPTY_SELECTOR_MESSAGE,
+        id="assigner",
+    ),
+    pytest.param(
+        {
+            "type": "if-else",
+            "title": "If",
+            "cases": [{"case_id": "true", "logical_operator": "and", "conditions": [_condition([])]}],
+        },
+        EMPTY_SELECTOR_MESSAGE,
+        id="if-else",
+    ),
+    pytest.param(
+        {
+            "type": "code",
+            "title": "C",
+            "code_language": "python3",
+            "code": "def main(arg1: str) -> dict:\n    return {'result': arg1}\n",
+            "variables": [_code_variable([])],
+            "outputs": {"result": {"type": "string", "children": None}},
+        },
+        "arg1 reads no variable",
+        id="code",
+    ),
+    pytest.param(
+        {"type": "template-transform", "title": "T", "template": "{{ arg1 }}", "variables": [_code_variable([])]},
+        "arg1 reads no variable",
+        id="template-transform",
+    ),
+    pytest.param(
+        {
+            "type": "question-classifier",
+            "title": "Q",
+            "query_variable_selector": [],
+            "model": MODEL,
+            "classes": [{"id": "1", "name": "Weather"}],
+        },
+        "query reads no variable",
+        id="question-classifier",
+    ),
+    pytest.param(
+        {
+            "type": "parameter-extractor",
+            "title": "P",
+            "query": [],
+            "model": MODEL,
+            "parameters": [{"name": "city", "type": "string", "description": "The city", "required": True}],
+            "reasoning_mode": "prompt",
+        },
+        "query reads no variable",
+        id="parameter-extractor",
+    ),
+]
+
+
+@pytest.mark.parametrize(("data", "message"), EMPTY_REFERENCES)
+def test_a_reference_that_reads_nothing_is_reported(data: dict[str, object], message: str) -> None:
+    issues = check_graph({"nodes": [START, _node("n", data)], "edges": []}, mode=AppMode.WORKFLOW)
+
+    # A branch node here has no edges; that warning is not what this test is about.
+    [issue] = [issue for issue in issues if issue.node_id == "n" if issue.code != IssueCode.BRANCH_UNCONNECTED]
+    assert (issue.code, issue.code.severity, issue.loc) == (
+        IssueCode.REFERENCE_EMPTY,
+        IssueSeverity.WARNING,
+        data_loc("n"),
+    )
+    assert issue.message == message
+
+
+def _container(container: str, **data: object) -> list[dict[str, object]]:
+    child_start: dict[str, object] = {
+        "id": "box-start",
+        "parentId": "box",
+        "data": {"type": f"{container}-start", "title": ""},
+    }
+    return [START, _node("box", {"type": container, "title": "Box", **data}), child_start]
+
+
+CONTAINERS = [
+    pytest.param("iteration", {"iterator_selector": _QUERY, "output_selector": ["box", "item"]}, id="iteration"),
+    pytest.param("loop", {"loop_count": 3, "logical_operator": "and"}, id="loop"),
+]
+
+
+def _box_codes(nodes: list[dict[str, object]]) -> list[IssueCode]:
+    issues = check_graph({"nodes": nodes, "edges": []}, mode=AppMode.WORKFLOW)
+    return [issue.code for issue in issues if issue.node_id == "box"]
+
+
+@pytest.mark.parametrize(("container", "settings"), CONTAINERS)
+@pytest.mark.parametrize("start", ["", "ghost"])
+def test_an_empty_start_node_id_is_a_missing_start_child(
+    container: str, settings: dict[str, object], start: str
+) -> None:
+    assert _box_codes(_container(container, start_node_id=start, **settings)) == [IssueCode.CONTAINER_START_MISSING]
+
+
+@pytest.mark.parametrize(("container", "settings"), CONTAINERS)
+def test_a_container_with_its_start_child_has_no_issue(container: str, settings: dict[str, object]) -> None:
+    assert _box_codes(_container(container, start_node_id="box-start", **settings)) == []
+
+
+@pytest.mark.parametrize(("container", "settings"), CONTAINERS)
+def test_a_missing_start_node_id_is_reported_once(container: str, settings: dict[str, object]) -> None:
+    issues = check_graph({"nodes": _container(container, **settings), "edges": []}, mode=AppMode.WORKFLOW)
+
+    assert [(issue.code, issue.loc) for issue in issues if issue.node_id == "box"] == [
+        (IssueCode.NODE_DATA_INVALID, data_loc("box", "start_node_id"))
+    ]
+
+
+def test_an_explicit_empty_iterator_selector_is_flagged() -> None:
+    nodes = _container("iteration", start_node_id="box-start", iterator_selector=[], output_selector=["box", "item"])
+
+    issues = check_graph({"nodes": nodes, "edges": []}, mode=AppMode.WORKFLOW)
+
+    [issue] = [issue for issue in issues if issue.node_id == "box"]
+    assert (issue.code, issue.loc) == (IssueCode.NODE_DATA_INVALID, data_loc("box"))
+    assert "could not be read" in issue.message
 
 
 def test_resource_problems_are_warnings() -> None:

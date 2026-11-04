@@ -25,7 +25,14 @@ from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Effect, Example, Kind, endpoint
-from controllers.openapi._errors import AgentNotPublished, AppModeMismatch, RunNotFound, RunNotStoppable, require_uuid
+from controllers.openapi._errors import (
+    AgentNotPublished,
+    AppModeMismatch,
+    RunNotFound,
+    RunNotStoppable,
+    TriggerWorkflowNotRunnable,
+    require_uuid,
+)
 from controllers.openapi._files import end_read_transaction, materialize, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
@@ -60,7 +67,6 @@ from controllers.service_api.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
-    TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
@@ -80,11 +86,9 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import WorkflowStopOutcome
 from services.errors.app import (
     IsDraftWorkflowError,
+    TriggerWorkflowServiceModeUnavailableError,
     WorkflowIdFormatError,
     WorkflowNotFoundError,
-)
-from services.errors.app import (
-    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
 from services.errors.llm import InvokeRateLimitError
 from services.workflow.graph_check import GRAPH_MODES, MESSAGE_MODES
@@ -104,8 +108,8 @@ def _translate_service_errors() -> Generator[None]:
         raise NotFound(str(ex)) from ex
     except (IsDraftWorkflowError, WorkflowIdFormatError) as ex:
         raise BadRequest(str(ex)) from ex
-    except TriggerWorkflowServiceModeUnavailableServiceError as caught_error:
-        raise TriggerWorkflowServiceModeUnavailableError() from caught_error
+    except TriggerWorkflowServiceModeUnavailableError as caught_error:
+        raise TriggerWorkflowNotRunnable() from caught_error
     except services.errors.conversation.ConversationNotExistsError as caught_error:
         raise NotFound("Conversation Not Exists.") from caught_error
     except services.errors.conversation.ConversationCompletedError as caught_error:

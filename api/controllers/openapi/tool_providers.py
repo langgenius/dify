@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Generator, Iterable, Sequence
+from collections.abc import Generator, Iterable, Sequence
 from contextlib import contextmanager
+from dataclasses import asdict
 from http import HTTPStatus
 from typing import Final
 
@@ -14,7 +15,6 @@ from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import CredentialNotFound, CredentialOAuthOnly, ProviderNotFound
-from controllers.openapi._i18n import localized
 from controllers.openapi._models import (
     CredentialFormField,
     CredentialRef,
@@ -31,10 +31,8 @@ from controllers.openapi._models import (
     ToolRow,
     ToolSource,
 )
-from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import ADMIN_ROLES, WORKSPACE_READ_GUARDS, workspace_write_guards
-from core.db.session_factory import session_factory
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import ToolParameter
@@ -44,10 +42,10 @@ from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from extensions.ext_application_services import application_services
-from services.tools.api_tools_manage_service import ApiToolManageService
+from libs.i18n_text import localized
+from libs.text_search import matches
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-from services.tools.mcp_tools_manage_service import MCPToolManageService
-from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+from services.tools.tool_sources import ToolNodeIdentity, tool_names
 
 _PROVIDER_EXAMPLE: Final = "langgenius/tavily/tavily"
 _ToolProviderController = BuiltinToolProviderController | PluginToolProviderController
@@ -118,21 +116,6 @@ def _write_response(ctx: Context, provider: str, credential_id: str) -> Credenti
     return CredentialWriteResponse(id=credential.id, name=credential.name, active=credential.is_default)
 
 
-def _mcp_providers(ctx: Context) -> list[ToolProviderApiEntity]:
-    with session_factory.create_session() as session:
-        return MCPToolManageService(session=session).list_providers(tenant_id=ctx.workspace.id, include_sensitive=False)
-
-
-_TOOL_SOURCES: Final[dict[ToolSource, Callable[[Context], list[ToolProviderApiEntity]]]] = {
-    ToolSource.BUILTIN: lambda ctx: BuiltinToolManageService.list_builtin_tools(ctx.account.id, ctx.workspace.id),
-    ToolSource.WORKFLOW: lambda ctx: WorkflowToolManageService.list_tenant_workflow_tools(
-        ctx.account.id, ctx.workspace.id
-    ),
-    ToolSource.API: lambda ctx: ApiToolManageService.list_api_tools(ctx.workspace.id),
-    ToolSource.MCP: _mcp_providers,
-}
-
-
 def _inputs(parameters: Sequence[ToolParameter], form: ToolParameter.ToolParameterForm) -> dict[str, ToolInputValue]:
     return {p.name: ToolInputValue(value=p.default) for p in parameters if p.form == form}
 
@@ -154,25 +137,18 @@ def _parameter_row(parameter: ToolParameter, language: str | None) -> ToolParame
 
 def tool_row(provider: ToolProviderApiEntity, tool: ToolApiEntity, language: str | None) -> ToolRow:
     parameters = tool.parameters or []
-    label = localized(tool.label, language) or tool.name
+    identity = ToolNodeIdentity.of(provider, tool, language)
     return ToolRow(
         provider=provider.id,
         provider_type=str(provider.type),
         provider_label=localized(provider.label, language),
         configured=provider.is_team_authorization,
         name=tool.name,
-        label=label,
+        label=identity.tool_label,
         description=localized(tool.description, language),
         parameters=[_parameter_row(p, language) for p in parameters],
         node_data=ToolNodeTemplate(
-            title=label,
-            provider_type=str(provider.type),
-            provider_id=provider.server_identifier or provider.id,
-            provider_name=provider.name,
-            plugin_id=provider.plugin_id or None,
-            plugin_unique_identifier=provider.plugin_unique_identifier or None,
-            tool_name=tool.name,
-            tool_label=label,
+            **asdict(identity),
             tool_parameters=_inputs(parameters, ToolParameter.ToolParameterForm.LLM),
             tool_configurations=_inputs(parameters, ToolParameter.ToolParameterForm.FORM),
         ),
@@ -182,8 +158,13 @@ def tool_row(provider: ToolProviderApiEntity, tool: ToolApiEntity, language: str
 def tool_rows(
     providers: Iterable[ToolProviderApiEntity], *, words: str, provider: str | None, language: str | None
 ) -> list[ToolRow]:
-    rows = [tool_row(p, tool, language) for p in providers if provider is None or p.id == provider for tool in p.tools]
-    rows = [r for r in rows if matches(words, r.name, r.label, r.provider, r.provider_label)]
+    listed = [
+        (tool_row(p, tool, language), tool_names(p, tool, language))
+        for p in providers
+        if provider is None or p.id == provider
+        for tool in p.tools
+    ]
+    rows = [row for row, names in listed if matches(words, row.label, row.description, *names)]
     return sorted(rows, key=lambda r: (r.provider, r.name))
 
 
@@ -203,7 +184,9 @@ class ToolsApi(Resource):
     )
     def get(self, ctx: Context, workspace_id: str, *, query: ToolListQuery):
         sources = [query.provider_type] if query.provider_type else list(ToolSource)
-        providers = [p for source in sources for p in _TOOL_SOURCES[source](ctx)]
+        providers = [
+            p for source in sources for p in source.list_providers(tenant_id=ctx.workspace.id, user_id=ctx.account.id)
+        ]
         rows = tool_rows(providers, words=query.query, provider=query.provider, language=ctx.account.interface_language)
         page = ToolListResponse.page_of(rows, query=query)
         unready = sorted({r.provider for r in page.data if not r.configured and r.provider_type == ToolSource.BUILTIN})

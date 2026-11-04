@@ -46,7 +46,7 @@ function extensionOf(contentType: string | null): string {
   return EXTENSIONS[mediaType] ?? UNKNOWN_EXTENSION
 }
 
-export const fileRenderer: Renderer = async (res, io, options, opId) => {
+export const fileRenderer: Renderer = async (res, io, options, { opId }) => {
   const bytes = new Uint8Array(await res.arrayBuffer())
   const contentType = res.headers.get(CONTENT_TYPE_HEADER)
   const filename =

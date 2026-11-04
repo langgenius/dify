@@ -36,12 +36,17 @@ def _param(
     )
 
 
-def _tool(name: str, parameters: list[ToolParameter] | None, label: str | None = None) -> ToolApiEntity:
+def _tool(
+    name: str,
+    parameters: list[ToolParameter] | None,
+    label: str | None = None,
+    description: I18nObject | None = None,
+) -> ToolApiEntity:
     return ToolApiEntity(
         author="a",
         name=name,
         label=I18nObject(en_US=label if label is not None else name.title()),
-        description=I18nObject(en_US=f"{name} tool"),
+        description=description or I18nObject(en_US=f"{name} tool"),
         parameters=parameters,
     )
 
@@ -146,6 +151,46 @@ def test_rows_are_flattened_sorted_and_filtered() -> None:
         "send",
     ]
     assert tool_rows([GITHUB, other], words="", provider="no/such/provider", language=None) == []
+
+
+JINA = _provider(
+    "langgenius/jina_tool/jina",
+    ToolProviderType.BUILT_IN,
+    [
+        _tool("jina_reader", [], label="Reader", description=I18nObject(en_US="Read a web page")),
+        _tool("lookup", [], label="Search the web", description=I18nObject(en_US="Top results for a query")),
+        _tool(
+            "fetch",
+            [],
+            label="Fetch results",
+            description=I18nObject(en_US="Search on the public web", zh_Hans="在公共网络上搜索"),
+        ),
+    ],
+)
+
+
+def _names(words: str, language: str | None = None) -> list[str]:
+    return [r.name for r in tool_rows([JINA], words=words, provider=None, language=language)]
+
+
+def test_query_matches_the_tool_name_label_or_description_ignoring_case() -> None:
+    assert _names("_READER") == ["jina_reader"]
+    assert _names("The Web") == ["lookup"]
+    assert _names("PUBLIC") == ["fetch"]
+    assert _names("search") == ["fetch", "lookup"]
+
+
+def test_query_matches_the_description_in_the_request_language_else_its_fallback() -> None:
+    assert _names("搜索", language="zh-Hans") == ["fetch"]
+    assert _names("web page", language="zh-Hans") == ["jina_reader"]
+
+
+def test_query_matches_the_provider_name_where_it_differs_from_the_id() -> None:
+    mcp = _provider("uuid-1", ToolProviderType.MCP, [_tool("lookup", [])], server_identifier="my-server")
+    mcp = mcp.model_copy(update={"name": "Team Wiki"})
+
+    assert [r.name for r in tool_rows([mcp], words="team wiki", provider=None, language=None)] == ["lookup"]
+    assert [r.name for r in tool_rows([mcp], words="MY-SERVER", provider=None, language=None)] == ["lookup"]
 
 
 def test_page_past_the_end() -> None:
