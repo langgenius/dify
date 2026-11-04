@@ -408,6 +408,76 @@ def test_an_unknown_node_version_gets_no_purpose_issue(dsl: DslCheckRequest) -> 
     assert _empty_locs(check, "human") == set()
 
 
+def _group(name: str, variables: list[list[str]]) -> dict[str, object]:
+    return {"group_name": name, "output_type": "string", "variables": variables}
+
+
+def _grouped_aggregator(*groups: dict[str, object]) -> dict[str, object]:
+    settings = {"group_enabled": True, "groups": list(groups)}
+    return {
+        "id": "agg",
+        "data": {"type": BuiltinNodeTypes.VARIABLE_AGGREGATOR, "variables": [], "advanced_settings": settings},
+    }
+
+
+def test_a_grouped_aggregator_with_full_groups_is_not_asked_for_its_own_variables(dsl: DslCheckRequest) -> None:
+    aggregator = _grouped_aggregator(_group("a", [["start", "query"]]), _group("b", [["start", "query"]]))
+
+    check = _chain(dsl, START, aggregator, END)
+
+    assert _empty_locs(check, "agg") == set()
+
+
+def test_a_grouped_aggregator_reports_each_empty_variable_of_a_group(dsl: DslCheckRequest) -> None:
+    aggregator = _grouped_aggregator(_group("a", [["start", "query"]]), _group("b", [["start", "query"], []]))
+
+    check = _chain(dsl, START, aggregator, END)
+
+    assert _empty_locs(check, "agg") == {_data("agg", "advanced_settings", "groups", 1, "variables", 1)}
+
+
+def test_a_grouped_aggregator_without_groups_reports_the_groups(dsl: DslCheckRequest) -> None:
+    check = _chain(dsl, START, _grouped_aggregator(), END)
+
+    assert _empty_locs(check, "agg") == {_data("agg", "advanced_settings", "groups")}
+
+
+def test_a_group_without_variables_is_not_reported_as_the_web_does_not(dsl: DslCheckRequest) -> None:
+    aggregator = _grouped_aggregator(_group("a", [["start", "query"]]), _group("b", []))
+
+    check = _chain(dsl, START, aggregator, END)
+
+    assert _empty_locs(check, "agg") == set()
+
+
+def test_an_ungrouped_aggregator_reports_its_own_variables(dsl: DslCheckRequest) -> None:
+    variables: list[list[str]] = [["start", "q"], []]
+    aggregator = {"id": "agg", "data": {"type": BuiltinNodeTypes.VARIABLE_AGGREGATOR, "variables": variables}}
+
+    check = _chain(dsl, START, aggregator, END)
+
+    assert _empty_locs(check, "agg") == {_data("agg", "variables", 1)}
+
+
+def test_an_llm_whose_model_comes_from_an_environment_variable_is_not_asked_for_one(dsl: DslCheckRequest) -> None:
+    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "model_selector": ["env", "MODEL"]}}
+
+    check = _chain(dsl, START, llm, END)
+
+    assert _empty_locs(check, "llm") == {_data("llm", "prompt_template")}
+
+
+@pytest.mark.parametrize("selector", [[], ["env"], ["env", ""], ["start", "MODEL"], "env"])
+def test_an_llm_with_a_selector_that_names_no_environment_model_is_asked_for_one(
+    selector: object, dsl: DslCheckRequest
+) -> None:
+    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "model_selector": selector}}
+
+    check = _chain(dsl, START, llm, END)
+
+    assert {_data("llm", "model", "provider"), _data("llm", "model", "name")} <= _empty_locs(check, "llm")
+
+
 @pytest.mark.parametrize("container", [BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP])
 def test_a_filled_bare_container_still_needs_its_start_child(container: str, dsl: DslCheckRequest) -> None:
     check = _check(dsl, [START, {"id": "box", "data": {"type": container}}, END])
