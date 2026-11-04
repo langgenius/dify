@@ -1414,7 +1414,7 @@ class TestWorkflowToolTracingBoundaryCases:
             user=actor,
             app_id=ids["root"],
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-            upload_file=lambda **_kwargs: None,
+            upload_file=lambda **_kwargs: pytest.fail("Payload uploads are not expected for this trace"),
         )
         info = WorkflowTraceInfo(
             node_executions=nodes.get_by_workflow_execution(ids["run"]),

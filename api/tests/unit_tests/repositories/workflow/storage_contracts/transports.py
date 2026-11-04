@@ -13,16 +13,19 @@ from collections import deque
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import override
 from zoneinfo import ZoneInfo
 
-from aliyun.log import GetLogsRequest, LogItem, PutLogsRequest
+from aliyun.log import GetLogsRequest, LogClient, LogItem, PutLogsRequest
+from aliyun.log.putlogsresponse import PutLogsResponse
 from kombu.serialization import dumps, loads
 
 from extensions.logstore.aliyun_logstore import AliyunLogStore
+from extensions.logstore.aliyun_logstore_pg import AliyunLogStorePG
 from repositories.workflow.logstore.schema import workflow_logstore_indexes
 
 
-class _SDKEndpoint:
+class _SDKEndpoint(LogClient):
     def __init__(
         self,
         put: Callable[[PutLogsRequest], None],
@@ -31,14 +34,18 @@ class _SDKEndpoint:
         self._put = put
         self._get = get
 
-    def put_logs(self, request: PutLogsRequest) -> None:
+    @override
+    def put_logs(self, request: object) -> PutLogsResponse:
+        assert isinstance(request, PutLogsRequest)
         self._put(request)
+        return PutLogsResponse({})
 
+    @override
     def get_logs(self, request: GetLogsRequest) -> "LogResponse":
         return self._get(request)
 
 
-class _PGEndpoint:
+class _PGEndpoint(AliyunLogStorePG):
     def __init__(
         self,
         put: Callable[[str, Sequence[tuple[str, str]], bool], None],
@@ -47,10 +54,12 @@ class _PGEndpoint:
         self._put = put
         self._query = query
 
-    def put_log(self, logstore: str, contents: Sequence[tuple[str, str]], log_enabled: bool) -> None:
+    @override
+    def put_log(self, logstore: str, contents: Sequence[tuple[str, str]], log_enabled: bool = False) -> None:
         self._put(logstore, contents, log_enabled)
 
-    def execute_sql(self, sql: str, logstore: str, log_enabled: bool) -> list[dict[str, object]]:
+    @override
+    def execute_sql(self, sql: str, logstore: str, log_enabled: bool = False) -> list[dict[str, object]]:
         return self._query(sql, logstore, log_enabled)
 
 
@@ -58,8 +67,6 @@ class _ContractAliyunLogStore(AliyunLogStore):
     """Initialize the production adapter with deterministic local endpoints."""
 
     _instance: AliyunLogStore | None = None
-    client: _SDKEndpoint
-    _pg_client: _PGEndpoint
 
     def __new__(
         cls,
@@ -68,7 +75,10 @@ class _ContractAliyunLogStore(AliyunLogStore):
         pg: bool,
     ) -> "_ContractAliyunLogStore":
         del transport, pg
-        return super().__new__(cls)
+        instance = super().__new__(cls)
+        if not isinstance(instance, cls):
+            raise TypeError(f"Expected {cls.__name__}, got {type(instance).__name__}")
+        return instance
 
     def __init__(self, transport: "AppendOnlyLogStore", *, pg: bool) -> None:
         self.project_name = "contract-project"
