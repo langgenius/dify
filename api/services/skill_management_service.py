@@ -1801,10 +1801,58 @@ class SkillManagementService:
         skill_id: str,
         payload: SkillMetadataPayload,
     ) -> dict[str, Any]:
+        """Update metadata for an existing tenant-owned skill at the expected revision.
+
+        Rewrite only a display-name field already declared in draft metadata, using
+        the same predicate as publishing. Persist the content, size and hash only
+        when parsing it back yields the requested name (stripped and capped at 128).
+        Invalid or non-round-tripping drafts stay unchanged. For automatically named
+        skills, check the future autosave slug for conflicts before any writes; this
+        call changes neither the slug nor name_manually_edited.
+        Lookup, stale revision and slug conflict errors abort without any changes.
+        """
         with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             self._check_expected_updated_at(skill, payload.expected_updated_at)
             if payload.display_name is not None:
+                file = session.scalar(
+                    select(SkillDraftFile).where(
+                        SkillDraftFile.skill_id == skill.id,
+                        SkillDraftFile.path == _SKILL_MD,
+                    )
+                )
+                draft_text = file.content_text if file is not None else None
+                declared_display_name = None
+                if draft_text is not None:
+                    try:
+                        declared_display_name = self._display_name_override_from_frontmatter(
+                            self._parse_frontmatter(draft_text)
+                        )
+                    except SkillManagementServiceError:
+                        declared_display_name = None
+                if file is not None and draft_text is not None and declared_display_name is not None:
+                    display_name = payload.display_name.strip()[:128]
+                    if not skill.name_manually_edited and display_name and display_name != _UNTITLED_DISPLAY_NAME:
+                        generated_name = self._name_from_display_name(display_name)
+                        if generated_name != skill.name:
+                            self._ensure_skill_name_available(
+                                session,
+                                tenant_id=tenant_id,
+                                current_skill_id=skill.id,
+                                name=generated_name,
+                            )
+                    content = self._replace_or_insert_frontmatter_display_name(draft_text, payload.display_name)
+                    rewritten_display_name = None
+                    try:
+                        rewritten_display_name = self._display_name_override_from_frontmatter(
+                            self._parse_frontmatter(content)
+                        )
+                    except SkillManagementServiceError:
+                        rewritten_display_name = None
+                    if rewritten_display_name == display_name:
+                        file.content_text = content
+                        file.size = len(content.encode("utf-8"))
+                        file.hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
                 skill.display_name = payload.display_name
             if payload.icon is not None:
                 skill.icon = payload.icon
@@ -4573,6 +4621,11 @@ class SkillManagementService:
 
     @staticmethod
     def _replace_or_insert_frontmatter_display_name(content: str, display_name: str) -> str:
+        """Replace a display-name scalar and its continuations, or insert it for builder drafts.
+
+        Content without frontmatter is returned unchanged. Callers editing existing
+        drafts must check field declaration and validate the rewritten value before saving.
+        """
         match = _FRONTMATTER_RE.match(content)
         if match is None:
             return content
@@ -4583,10 +4636,11 @@ class SkillManagementService:
             allow_unicode=True,
             default_flow_style=True,
             sort_keys=False,
+            width=float("inf"),
         ).splitlines()[0]
         if re.search(r"(?m)^\s*(display-name|display_name)\s*:", frontmatter):
             next_frontmatter = re.sub(
-                r"(?m)^(\s*)(display-name|display_name)\s*:.*$",
+                r"(?m)^([ \t]*)(display-name|display_name)[ \t]*:.*(?:\r?\n\1[ \t]+\S.*)*$",
                 lambda match: f"{match.group(1)}display-name: {escaped_display_name}",
                 frontmatter,
                 count=1,
@@ -4598,6 +4652,9 @@ class SkillManagementService:
                 frontmatter,
                 count=1,
             )
+        elif re.search(r"(?m)^metadata[ \t]*:", frontmatter):
+            # A flow mapping cannot be edited line by line without replacing other metadata.
+            return content
         else:
             next_frontmatter = f"{frontmatter}\nmetadata:\n  display-name: {escaped_display_name}"
 

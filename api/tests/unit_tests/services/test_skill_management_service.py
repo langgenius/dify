@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import zipfile
@@ -950,6 +951,245 @@ def test_update_display_name_keeps_name_and_draft_content_unchanged() -> None:
     assert updated["name_manually_edited"] is False
     skill_md = next(item for item in service.get_skill(tenant_id=TENANT, skill_id=created["id"])["files"])
     assert skill_md["content"] == original_skill_md["content"]
+
+
+def test_publish_preserves_updated_display_name_in_draft_frontmatter() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="finance-sop", display_name="Finance SOP", description="Finance procedures"),
+    )
+
+    service.update_metadata(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillMetadataPayload(display_name="Finance Audit"),
+    )
+    service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
+
+    detail = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    assert detail["display_name"] == "Finance Audit"
+    assert detail["name"] == "finance-sop"
+    skill_md = next(item for item in detail["files"] if item["path"] == "SKILL.md")
+    frontmatter = service._parse_frontmatter(skill_md["content"])
+    assert frontmatter["metadata"]["display-name"] == "Finance Audit"
+    with session_factory.create_session() as session:
+        draft_file = session.scalar(
+            select(SkillDraftFile).where(
+                SkillDraftFile.skill_id == created["id"],
+                SkillDraftFile.path == "SKILL.md",
+            )
+        )
+        assert draft_file is not None
+        content_bytes = skill_md["content"].encode("utf-8")
+        assert draft_file.size == len(content_bytes)
+        assert draft_file.hash == hashlib.sha256(content_bytes).hexdigest()
+
+
+def test_publish_keeps_display_name_rename_after_manual_takeover_with_declared_display_name() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="finance-sop", display_name="Finance SOP", description="Finance procedures"),
+    )
+    manually_named = service.apply_draft_file_operation(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftFileOperationPayload(
+            operation="upsert_text",
+            path="SKILL.md",
+            content=(
+                "---\nname: manual-name\ndescription: Finance SOP\nmetadata:\n  display-name: Finance SOP\n---\n# Body"
+            ),
+        ),
+    )
+    assert manually_named["name"] == "manual-name"
+    assert manually_named["name_manually_edited"] is True
+
+    service.update_metadata(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillMetadataPayload(display_name="Finance Audit"),
+    )
+    service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
+
+    detail = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    assert detail["display_name"] == "Finance Audit"
+    assert detail["name"] == "manual-name"
+    skill_md = next(item for item in detail["files"] if item["path"] == "SKILL.md")
+    assert service._parse_frontmatter(skill_md["content"])["metadata"]["display-name"] == "Finance Audit"
+    assert skill_md["content"].endswith("# Body")
+
+
+@pytest.mark.parametrize(
+    ("old_name", "new_name"),
+    [
+        ("Original", "Director's review: " + "Quarterly " * 9 + "Report"),
+        ("Quarterly " * 9 + "Report", "Short Name"),
+        ("Original", "财务审批"),
+    ],
+    ids=["long-quoted-new-name", "wrapped-old-name", "utf8-size"],
+)
+def test_rename_display_name_round_trips_through_publish(old_name: str, new_name: str) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="rename-test", display_name=old_name, description="Procedure"),
+    )
+    service.update_metadata(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillMetadataPayload(display_name=new_name),
+    )
+    detail = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    content = next(item["content"] for item in detail["files"] if item["path"] == "SKILL.md")
+    with session_factory.create_session() as session:
+        file = session.scalar(
+            select(SkillDraftFile).where(
+                SkillDraftFile.skill_id == created["id"],
+                SkillDraftFile.path == "SKILL.md",
+            )
+        )
+        assert file is not None
+        assert file.size == len(content.encode("utf-8"))
+        assert file.hash == hashlib.sha256(content.encode("utf-8")).hexdigest()
+    service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
+    assert service.get_skill(tenant_id=TENANT, skill_id=created["id"])["display_name"] == new_name
+
+
+@pytest.mark.parametrize("key", ["display-name", "display_name"])
+def test_rename_preserves_other_frontmatter_and_body(key: str) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="rename-test", display_name="Original", description="Procedure"),
+    )
+    content = (
+        "---\n# Keep this comment\nname: rename-test\ndescription: Procedure\n"
+        "license: MIT # keep inline comment\nmetadata:\n  owner: finance\n"
+        f"  {key}: Original\n  version: '1.0'\n---\n# Body\n\nKeep me.\n"
+    )
+    service.apply_draft_file_operation(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftFileOperationPayload(operation="upsert_text", path="SKILL.md", content=content),
+    )
+    service.update_metadata(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillMetadataPayload(display_name="Updated"),
+    )
+    detail = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    actual = next(item["content"] for item in detail["files"] if item["path"] == "SKILL.md")
+    assert actual == content.replace(f"  {key}: Original", "  display-name: Updated")
+    service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
+    assert service.get_skill(tenant_id=TENANT, skill_id=created["id"])["display_name"] == "Updated"
+
+
+def test_rename_auto_named_skill_rejects_future_slug_conflict_without_changes() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    occupied = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(display_name="财务审批", description="Procedure"),
+    )
+    service.apply_draft_file_operation(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=occupied["id"],
+        payload=SkillDraftFileOperationPayload(operation="upsert_text", path="notes.md", content="Notes"),
+    )
+    assert service.get_skill(tenant_id=TENANT, skill_id=occupied["id"])["name"] == "untitled-skill"
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(display_name="Original", description="Procedure"),
+    )
+    before = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    assert before["name_manually_edited"] is False
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.update_metadata(
+            tenant_id=TENANT,
+            user_id=USER,
+            skill_id=created["id"],
+            payload=SkillMetadataPayload(display_name="退款审批"),
+        )
+    assert exc_info.value.code == "skill_name_conflict"
+    after = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    assert after == before
+
+
+def test_rename_auto_named_skill_defers_slug_update_until_file_save() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(display_name="Original", description="Procedure"),
+    )
+    updated = service.update_metadata(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillMetadataPayload(display_name="Updated Name"),
+    )
+    assert updated["name"] == created["name"]
+    assert updated["name_manually_edited"] is False
+    saved = service.apply_draft_file_operation(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftFileOperationPayload(operation="upsert_text", path="notes.md", content="Notes"),
+    )
+    assert saved["name"] == "updated-name"
+    assert saved["display_name"] == "Updated Name"
+    assert saved["name_manually_edited"] is False
+
+
+@pytest.mark.parametrize(
+    "frontmatter",
+    [
+        "display-name: Top level only\n",
+        "metadata: [incomplete\n",
+        "description: |\n  display-name: Decoy\nmetadata:\n  display-name: Original\n",
+        "metadata:\n  display_name: Alias\n  display-name: Original\n",
+        "metadata: {display-name: Original}\n",
+    ],
+    ids=["top-level", "invalid-yaml", "block-scalar-decoy", "duplicate-alias", "flow-mapping"],
+)
+def test_rename_leaves_draft_unchanged_when_display_name_cannot_round_trip(frontmatter: str) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="rename-test", display_name="Original", description="Procedure"),
+    )
+    content = f"---\nname: rename-test\n{frontmatter}---\n# Body"
+    service.apply_draft_file_operation(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftFileOperationPayload(operation="upsert_text", path="SKILL.md", content=content),
+    )
+    before = service.get_skill(tenant_id=TENANT, skill_id=created["id"])["files"]
+    service.update_metadata(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillMetadataPayload(display_name="Updated"),
+    )
+    after = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    assert after["display_name"] == "Updated"
+    assert after["files"] == before
 
 
 def test_frontmatter_name_change_marks_manual_takeover_and_stops_display_name_sync() -> None:
