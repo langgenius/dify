@@ -1,5 +1,7 @@
 """Consumer identity, ownership, usage and access-policy behavior with real persistence."""
 
+import copy
+import json
 from dataclasses import replace
 from datetime import datetime, timedelta
 from uuid import uuid4
@@ -13,7 +15,7 @@ from models.account_webapp import AccountWebApp
 from models.end_user_connection import AppConnection, EndUserConnection
 from models.enums import CustomizeTokenStrategy, EndUserType
 from models.model import App, AppMode, AppStar, EndUser, Site
-from models.workflow import WorkflowRun
+from models.workflow import Workflow, WorkflowRun
 from repositories.web_passport_repository import WebPassportRepository
 from services.consumer_service import (
     ConsumerAppNotFoundError,
@@ -113,7 +115,98 @@ def test_consumer_apps_support_only_chatflow_and_workflow(harness: ConsumerHarne
         harness.service.set_favorite(harness.identity, base.context.app_id, enabled=True)
 
 
-def test_passport_without_execution_is_not_recent_and_usage_survives_log_deletion(
+def test_consumer_apps_report_not_configured_until_all_required_nodes_are_saved(
+    harness: ConsumerHarness,
+) -> None:
+    base = harness.oauth.base
+    with base.sessions.begin() as session:
+        workflow = session.get(Workflow, base.workflow_id)
+        assert workflow is not None
+        graph = workflow.graph_dict
+        second_node = copy.deepcopy(graph["nodes"][0])
+        second_node["id"] = "tool-2"
+        graph["nodes"].append(second_node)
+        workflow.graph = json.dumps(graph)
+        foreign_account = Account(name="Other", email=f"{uuid4()}@example.com", status=AccountStatus.ACTIVE)
+        foreign_end_user = EndUser(
+            tenant_id=base.context.tenant_id,
+            app_id=base.context.app_id,
+            type=EndUserType.BROWSER,
+            account_id=foreign_account.id,
+            session_id=str(uuid4()),
+            _is_anonymous=False,
+        )
+        foreign_connection = replace(
+            new_connection(),
+            tenant_id=base.context.tenant_id,
+            account_id=foreign_account.id,
+        )
+        session.add_all([foreign_account, foreign_end_user, foreign_connection])
+        session.flush()
+        session.add_all(
+            AppConnection(
+                tenant_id=base.context.tenant_id,
+                app_id=base.context.app_id,
+                workflow_id=base.workflow_id,
+                node_id=node_id,
+                end_user_id=foreign_end_user.id,
+                provider=foreign_connection.provider,
+                connection_id=foreign_connection.id,
+            )
+            for node_id in ("tool-1", "tool-2")
+        )
+
+    missing = harness.service.list_apps(harness.identity, ConsumerAppsQuery(view="shared"))
+    assert missing.data[0].connection_status == "not_configured"
+
+    connection = base.service.create_api_key(base.context, base.command())
+    with base.sessions.begin() as session:
+        session.add(
+            AppConnection(
+                tenant_id=base.context.tenant_id,
+                app_id=base.context.app_id,
+                workflow_id=base.workflow_id,
+                node_id="tool-1",
+                end_user_id=base.context.end_user_id,
+                provider=connection.provider,
+                connection_id=connection.id,
+            )
+        )
+    partial = harness.service.list_apps(harness.identity, ConsumerAppsQuery(view="shared"))
+    assert partial.data[0].connection_status == "not_configured"
+
+    with base.sessions.begin() as session:
+        session.add(
+            AppConnection(
+                tenant_id=base.context.tenant_id,
+                app_id=base.context.app_id,
+                workflow_id=base.workflow_id,
+                node_id="tool-2",
+                end_user_id=base.context.end_user_id,
+                provider=connection.provider,
+                connection_id=connection.id,
+            )
+        )
+    configured = harness.service.list_apps(harness.identity, ConsumerAppsQuery(view="shared"))
+    assert configured.data[0].connection_status is None
+
+
+def test_consumer_apps_without_end_user_requirement_have_no_connection_status(harness: ConsumerHarness) -> None:
+    base = harness.oauth.base
+    with base.sessions.begin() as session:
+        workflow = session.get(Workflow, base.workflow_id)
+        assert workflow is not None
+        graph = workflow.graph_dict
+        graph["nodes"][0]["data"]["credential_source"] = "workspace"
+        graph["nodes"][0]["data"]["end_user_auth"] = None
+        workflow.graph = json.dumps(graph)
+
+    result = harness.service.list_apps(harness.identity, ConsumerAppsQuery(view="shared"))
+
+    assert result.data[0].connection_status is None
+
+
+def test_passport_without_execution_is_not_recent_and_log_deletion_removes_recent_usage(
     harness: ConsumerHarness,
 ) -> None:
     base = harness.oauth.base

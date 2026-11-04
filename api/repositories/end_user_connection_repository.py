@@ -68,7 +68,11 @@ from services.end_user_connections.revision import (
 )
 from services.end_user_connections.selections import SavedConnectionSelection
 from services.errors.conversation import ConversationNotExistsError
-from services.workflow.tool_credentials import get_tool_authorization_requirements
+from services.workflow.tool_credentials import (
+    get_tool_authorization_requirements,
+    get_tool_connection_requirements,
+    requires_end_user_connections,
+)
 
 
 class EndUserConnectionRepository:
@@ -163,6 +167,78 @@ class EndUserConnectionRepository:
                 connection_type=type_,
                 account_label=account_label or None,
                 connection_id=None if account_label else UUID(connection_id),
+            )
+
+    def apps_missing_required_connections(self, identity: ConsumerIdentity, app_ids: Sequence[str]) -> frozenset[str]:
+        """Resolve required node IDs from current publications and saved Account choices.
+
+        The Account owns personal Connections independently of a WebApp session.
+        Any linked browser EndUser for this App contributes its saved choices.
+        Incomplete or malformed EndUser authentication settings remain action
+        items instead of making App discovery fail.
+        """
+        unique_app_ids = tuple(dict.fromkeys(app_ids))
+        if not unique_app_ids:
+            return frozenset()
+        with self._sessions() as session:
+            workflow_rows = session.execute(
+                sa.select(App.id, Workflow)
+                .join(
+                    Workflow,
+                    sa.and_(
+                        Workflow.id == App.workflow_id,
+                        Workflow.tenant_id == App.tenant_id,
+                        Workflow.app_id == App.id,
+                    ),
+                )
+                .where(App.id.in_(unique_app_ids), Workflow.version != Workflow.VERSION_DRAFT)
+            ).all()
+            required: dict[str, frozenset[str]] = {}
+            malformed: set[str] = set()
+            for app_id, workflow in workflow_rows:
+                try:
+                    graph = workflow.graph_dict
+                    if not requires_end_user_connections(graph):
+                        continue
+                    required[app_id] = frozenset(item.node_id for item in get_tool_connection_requirements(graph))
+                except (KeyError, TypeError, ValueError):
+                    malformed.add(app_id)
+            configured: dict[str, set[str]] = {}
+            if required:
+                rows = session.execute(
+                    sa.select(AppConnection.app_id, AppConnection.node_id)
+                    .join(
+                        EndUser,
+                        sa.and_(
+                            EndUser.id == AppConnection.end_user_id,
+                            EndUser.tenant_id == AppConnection.tenant_id,
+                            EndUser.app_id == AppConnection.app_id,
+                        ),
+                    )
+                    .join(
+                        EndUserConnection,
+                        sa.and_(
+                            EndUserConnection.id == AppConnection.connection_id,
+                            EndUserConnection.tenant_id == AppConnection.tenant_id,
+                            EndUserConnection.provider == AppConnection.provider,
+                        ),
+                    )
+                    .where(
+                        AppConnection.app_id.in_(tuple(required)),
+                        EndUser.account_id == identity.account_id,
+                        EndUser.type == EndUserType.BROWSER,
+                        EndUserConnection.account_id == identity.account_id,
+                    )
+                )
+                for app_id, node_id in rows:
+                    configured.setdefault(app_id, set()).add(node_id)
+            return frozenset(
+                malformed
+                | {
+                    app_id
+                    for app_id, required_nodes in required.items()
+                    if not required_nodes or not required_nodes.issubset(configured.get(app_id, set()))
+                }
             )
 
     def account_group_connections(

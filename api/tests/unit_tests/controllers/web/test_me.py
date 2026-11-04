@@ -49,6 +49,7 @@ def test_http_app_views_favorites_and_timestamps(client: FlaskClient, harness: C
         assert data["has_more"] is False
         assert data["data"][0]["id"] == base.context.app_id
         assert isinstance(data["data"][0]["last_used_at"], int)
+        assert data["data"][0]["connection_status"] == "not_configured"
         assert "continuation" not in data["data"][0]
     assert client.delete(path).status_code == 204
     assert client.get("/api/me/apps?view=favorites").get_json()["data"] == []

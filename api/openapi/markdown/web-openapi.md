@@ -1869,6 +1869,7 @@ The connection requirements changed. Refresh and confirm again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_code | string |  | Yes |
+| connection_status | string | App-level personal Connection status. not_configured means required End User tool nodes lack saved Connections; null means this action is not required. | No |
 | description | string |  | Yes |
 | icon | string |  | Yes |
 | icon_background | string |  | Yes |

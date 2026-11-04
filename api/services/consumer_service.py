@@ -43,6 +43,13 @@ class ConsumerApp(BaseModel):
     last_used_at: datetime | None = Field(
         description="Time of the Account's latest accepted WebApp execution, independent of retained execution logs."
     )
+    connection_status: Literal["not_configured"] | None = Field(
+        default=None,
+        description=(
+            "App-level personal Connection status. not_configured means required End User tool nodes lack "
+            "saved Connections; null means this action is not required."
+        ),
+    )
     continuation: str = Field(exclude=True)
 
 
@@ -160,6 +167,15 @@ class ConsumerAppsStore(Protocol):
 
 
 class ConsumerConnectionsStore(Protocol):
+    def apps_missing_required_connections(self, identity: ConsumerIdentity, app_ids: Sequence[str]) -> frozenset[str]:
+        """Return Apps whose published graph requires End User connections that are not all saved.
+
+        Only the admitted Account and its App-scoped EndUser choices contribute.
+        Missing Connections are distinct from saved Connections that later need
+        reauthorization.
+        """
+        ...
+
     def account_connection_groups(
         self, identity: ConsumerIdentity, *, provider: str | None, after: ConsumerConnectionKey | None, limit: int
     ) -> tuple[ConsumerConnectionGroup, ...]: ...
@@ -238,17 +254,30 @@ class ConsumerService:
                 identity, query, after=after, limit=query.limit + 1, shared_ids=shared_ids
             )
             if not candidates:
-                return ConsumerAppsPage(data=tuple(data), has_more=False, next_cursor=None)
+                return self._apps_page(identity, data, has_more=False, next_cursor=None)
             visible = {app.id for app in self._visible(identity, candidates)}
             for app in candidates:
                 if app.id in visible:
                     if len(data) == query.limit:
-                        return ConsumerAppsPage(data=tuple(data), has_more=True, next_cursor=last)
+                        return self._apps_page(identity, data, has_more=True, next_cursor=last)
                     data.append(app)
                 last = app.continuation
             if len(candidates) < query.limit + 1:
-                return ConsumerAppsPage(data=tuple(data), has_more=False, next_cursor=None)
+                return self._apps_page(identity, data, has_more=False, next_cursor=None)
             after = last
+
+    def _apps_page(
+        self, identity: ConsumerIdentity, apps: Sequence[ConsumerApp], *, has_more: bool, next_cursor: str | None
+    ) -> ConsumerAppsPage:
+        missing = self._connections.apps_missing_required_connections(identity, tuple(app.id for app in apps))
+        return ConsumerAppsPage(
+            data=tuple(
+                app.model_copy(update={"connection_status": "not_configured"}) if app.id in missing else app
+                for app in apps
+            ),
+            has_more=has_more,
+            next_cursor=next_cursor,
+        )
 
     def set_favorite(self, identity: ConsumerIdentity, app_id: str, *, enabled: bool) -> None:
         if enabled:
@@ -327,7 +356,7 @@ class ConsumerService:
             apps = tuple(app for app in apps if app.id > after)
         more = len(apps) > limit
         data = apps[:limit]
-        return ConsumerAppsPage(data=data, has_more=more, next_cursor=data[-1].id if more else None)
+        return self._apps_page(identity, data, has_more=more, next_cursor=data[-1].id if more else None)
 
     def connection_context(self, identity: ConsumerIdentity, connection_id: str) -> AccountConnectionContext:
         return self._connections.account_connection_context(identity, connection_id)
