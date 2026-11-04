@@ -1,9 +1,8 @@
 import copy
 import hashlib
 import io
-import itertools
 import zipfile
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from pathlib import Path
 from typing import TypedDict
 from uuid import uuid4
@@ -29,12 +28,18 @@ from services.app_package_service import AppPackageService
 from services.entities.dsl_entities import AppImportParams, ImportStatus
 from services.workflow.authoring import FillContext, fill_package
 from services.workflow.authoring.canvas_defaults import with_canvas_defaults
-from services.workflow.authoring.canvas_layout import START_CHILD_SIZE
-from services.workflow.authoring.canvas_notes import NOTE_PADDING, NoteSize, node_length
+from services.workflow.authoring.canvas_notes import NOTE_PADDING, NoteSize
 from services.workflow.authoring.fill import FilledPackage, FilledRoot, SubmittedRoot, fill_graph_document
 from services.workflow.authoring.package_io import PackageUnreadableError, read_package_entries
 from services.workflow.graph_check import CANVAS_NOTE_TYPE, CONTAINER_NODE_TYPES, IssueCode, check_graph
 from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
+from tests.helpers.unit.services.canvas_boxes import (
+    assert_holds_its_children,
+    child_boxes,
+    node_box,
+    overlapping,
+    top_level_boxes,
+)
 from tests.unit_tests.services.test_app_package_service import (
     _bundle_any_app,
     _nested_package,
@@ -157,8 +162,6 @@ def test_a_console_export_changes_only_in_canvas_defaults_and_layout_and_fills_t
 
 AGENT_BUILT_CONTAINERS = "agent_built_loop_and_iteration_layout.yml"
 
-type _Box = tuple[float, float, float, float]
-
 
 class _Position(TypedDict):
     x: float
@@ -175,35 +178,6 @@ class _Node(TypedDict, total=False):
     data: dict[str, object]
 
 
-def _box(node: _Node, *sizes: Mapping[str, float]) -> _Box:
-    x, y = node["position"]["x"], node["position"]["y"]
-    return (
-        x,
-        y,
-        x + node_length(node, *sizes, size=NoteSize.WIDTH),
-        y + node_length(node, *sizes, size=NoteSize.HEIGHT),
-    )
-
-
-def _overlapping_boxes(boxes: dict[str, _Box]) -> list[tuple[str, str]]:
-    return [
-        (a, b)
-        for a, b in itertools.combinations(boxes, 2)
-        if boxes[a][0] < boxes[b][2] and boxes[b][0] < boxes[a][2]
-        if boxes[a][1] < boxes[b][3] and boxes[b][1] < boxes[a][3]
-    ]
-
-
-def _child_boxes(nodes: list[_Node], container: _Node) -> dict[str, _Box]:
-    """Each child's box from its container's corner, an unmeasured start child at the size the canvas draws it."""
-    start = container["data"]["start_node_id"]
-    return {
-        node["id"]: _box(node, *([START_CHILD_SIZE] if node["id"] == start else []))
-        for node in nodes
-        if node.get("parentId") == container["id"]
-    }
-
-
 def _filled_agent_built_graph(monkeypatch: pytest.MonkeyPatch, *extra: _Node) -> list[_Node]:
     monkeypatch.setattr(PluginToolManager, "fetch_tool_provider", lambda _self, _tenant_id, _provider: None)
     document = yaml.safe_load((FIXTURES / AGENT_BUILT_CONTAINERS).read_text())
@@ -218,19 +192,12 @@ def test_an_agent_built_loop_and_iteration_hold_their_children_and_overlap_nothi
 ) -> None:
     nodes = _filled_agent_built_graph(monkeypatch)
 
-    top = {node["id"]: _box(node) for node in nodes if not node.get("parentId")}
-    assert _overlapping_boxes(top) == []
+    assert overlapping(top_level_boxes(nodes)) == []
     containers = [node for node in nodes if node["data"]["type"] in CONTAINER_NODE_TYPES]
     assert len(containers) == 2
     for container in containers:
-        children = _child_boxes(nodes, container)
-        assert len(children) >= 3
-        assert _overlapping_boxes(children) == []
-        for left, top_edge, right, bottom in children.values():
-            assert left >= 0
-            assert right <= container["width"]
-            assert top_edge >= 0
-            assert bottom <= container["height"]
+        assert len(child_boxes(nodes, container)) >= 3
+        assert_holds_its_children(nodes, container)
 
 
 def test_a_note_covering_a_container_is_framed_around_its_new_size(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -240,9 +207,12 @@ def test_a_note_covering_a_container_is_framed_around_its_new_size(monkeypatch: 
 
     container = next(node for node in nodes if node["id"] == "read_each")
     assert container["width"] > NoteSize.WIDTH.node_default
-    note_left, _, note_right, note_bottom = _box(note)
-    left, _, right, bottom = _box(container)
-    assert (note_left, note_right, note_bottom) == (left - NOTE_PADDING, right + NOTE_PADDING, bottom + NOTE_PADDING)
+    frame, box = node_box(note), node_box(container)
+    assert (frame.left, frame.right, frame.bottom) == (
+        box.left - NOTE_PADDING,
+        box.right + NOTE_PADDING,
+        box.bottom + NOTE_PADDING,
+    )
 
 
 def test_filling_an_agent_built_loop_and_iteration_twice_gives_the_same_members(

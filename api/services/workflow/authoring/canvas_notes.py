@@ -306,7 +306,9 @@ def _centre(extent: _Extent) -> float:
 
 
 def place(node: dict[str, Any], position: Mapping[str, float]) -> None:
-    """Move a top-level node, and the absolute position the canvas saves beside it when the node has one."""
+    """Move a node, and the absolute position the canvas saves beside it when the node has one. A node inside a
+    container gets its relative position there too, until its container is placed and it is anchored to it.
+    """
     node[POSITION_KEY] = dict(position)
     if POSITION_ABSOLUTE_KEY in node:
         node[POSITION_ABSOLUTE_KEY] = dict(position)
@@ -346,7 +348,13 @@ def _box(node: Mapping[str, Any], *, sizes: Sequence[Mapping[str, Any]] | None =
 
 def node_length(*sources: Mapping[str, Any], size: NoteSize) -> float:
     """The first measured length of `size` among `sources`, else the one the canvas gives an unmeasured node."""
-    return next((length for source in sources if is_number(length := source.get(size.value))), size.node_default)
+    length = measured_length(*sources, size=size)
+    return size.node_default if length is None else length
+
+
+def measured_length(*sources: Mapping[str, Any], size: NoteSize) -> float | None:
+    """The first measured length of `size` among `sources`; None when none has one."""
+    return next((length for source in sources if is_number(length := source.get(size.value))), None)
 
 
 def is_number(value: object) -> TypeGuard[float]:
