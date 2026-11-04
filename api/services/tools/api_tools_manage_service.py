@@ -493,8 +493,9 @@ class ApiToolManageService:
         # get auth type, none or api key
         auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
-        # create provider entity
-        provider_controller = ApiToolProviderController.from_db(provider, auth_type, session=db.session())
+        # create provider entity; the session only serves the provider's user lookup, so keep it short-lived
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            provider_controller = ApiToolProviderController.from_db(provider, auth_type, session=_session)
         # load tools into provider entity
         provider_controller.load_bundled_tools(tool_bundles)
 
@@ -548,9 +549,11 @@ class ApiToolManageService:
             # convert provider controller to user provider
             provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
             labels = ToolLabelManager.get_tool_labels(provider_controller)
-            user_provider = ToolTransformService.api_provider_to_user_provider(
-                provider_controller, db_provider=provider, decrypt_credentials=True, session=db.session()
-            )
+            # the session only serves the provider's user lookup, so open it per provider and keep it short-lived
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+                user_provider = ToolTransformService.api_provider_to_user_provider(
+                    provider_controller, db_provider=provider, decrypt_credentials=True, session=_session
+                )
             user_provider.labels = labels
 
             # add icon
