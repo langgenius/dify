@@ -1,5 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { useState } from 'react'
+import { page } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
 import { DeploymentConfiguration } from '../index'
 
 const APP_ID = 'app-1'
@@ -18,24 +20,43 @@ function createQueryClient() {
   })
 }
 
-function renderConfiguration(queryClient: QueryClient) {
+function ConfigurationSession() {
+  const [open, setOpen] = useState(true)
+  return open ? (
+    <DeploymentConfiguration
+      appId={APP_ID}
+      embedded
+      request={{
+        environment: 'Staging',
+        environmentId: ENVIRONMENT_ID,
+        initialVersion: { id: WORKFLOW_ID, name: 'Release 1' },
+        kind: 'deployLatest',
+      }}
+      version={{ id: WORKFLOW_ID, name: 'Release 1' }}
+      onClose={() => setOpen(false)}
+    />
+  ) : (
+    <button type="button" onClick={() => setOpen(true)}>
+      Configure deployment
+    </button>
+  )
+}
+
+async function renderConfiguration() {
+  const queryClient = createQueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
-      <DeploymentConfiguration
-        appId={APP_ID}
-        embedded
-        request={{
-          environment: 'Staging',
-          environmentId: ENVIRONMENT_ID,
-          initialVersion: { id: WORKFLOW_ID, name: 'Release 1' },
-          kind: 'deployLatest',
-        }}
-        version={{ id: WORKFLOW_ID, name: 'Release 1' }}
-        onClose={vi.fn()}
-      />
+      <ConfigurationSession />
     </QueryClientProvider>,
   )
 }
+
+beforeEach(async () => {
+  await page.viewport(1000, 800)
+  onTestFinished(() => {
+    vi.restoreAllMocks()
+  })
+})
 
 describe('DeploymentConfiguration query freshness', () => {
   it('fetches precheck and deployment options again whenever the form is reopened', async () => {
@@ -75,25 +96,19 @@ describe('DeploymentConfiguration query freshness', () => {
       throw new Error(`Unexpected request: ${request.method} ${request.url}`)
     })
 
-    const queryClient = createQueryClient()
-    const firstRender = renderConfiguration(queryClient)
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'common.appMenus.deploy' })).toBeEnabled()
-    })
+    await renderConfiguration()
+    const deploy = page.getByRole('button', { name: 'common.appMenus.deploy' })
+    await expect.element(deploy).toBeEnabled()
     expect(requestCounts).toEqual({ deploymentOptions: 1, precheck: 1 })
 
-    firstRender.unmount()
-    await waitFor(() => {
-      expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
-    })
+    await page.getByRole('button', { name: 'common.operation.cancel' }).click()
+    await expect
+      .element(page.getByRole('heading', { name: 'deployments.studio.deployConfiguration' }))
+      .not.toBeInTheDocument()
+    await page.getByRole('button', { name: 'Configure deployment' }).click()
 
-    renderConfiguration(queryClient)
-
-    await waitFor(() => {
-      expect(requestCounts).toEqual({ deploymentOptions: 2, precheck: 2 })
-      expect(screen.getByRole('button', { name: 'common.appMenus.deploy' })).toBeEnabled()
-    })
+    await expect.element(deploy).toBeEnabled()
+    await expect.poll(() => requestCounts).toEqual({ deploymentOptions: 2, precheck: 2 })
   })
 
   it('shows the backend message when precheck fails', async () => {
@@ -121,10 +136,11 @@ describe('DeploymentConfiguration query freshness', () => {
       throw new Error(`Unexpected request: ${request.method} ${request.url}`)
     })
 
-    const view = renderConfiguration(createQueryClient())
+    await renderConfiguration()
 
-    const alert = await within(view.container).findByRole('alert')
-    expect(alert).toHaveTextContent('workflow tool dependencies form a cycle')
+    await expect
+      .element(page.getByRole('alert').getByText('workflow tool dependencies form a cycle'))
+      .toBeVisible()
   })
 
   it('shows the backend message when deployment options fail', async () => {
@@ -163,9 +179,10 @@ describe('DeploymentConfiguration query freshness', () => {
       throw new Error(`Unexpected request: ${request.method} ${request.url}`)
     })
 
-    const view = renderConfiguration(createQueryClient())
+    await renderConfiguration()
 
-    const alert = await within(view.container).findByRole('alert')
-    expect(alert).toHaveTextContent('workflow deployment options are invalid')
+    await expect
+      .element(page.getByRole('alert').getByText('workflow deployment options are invalid'))
+      .toBeVisible()
   })
 })

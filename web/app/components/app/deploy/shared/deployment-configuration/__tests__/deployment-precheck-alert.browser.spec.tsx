@@ -3,8 +3,10 @@ import type {
   WorkflowAsToolDependency,
   WorkflowReference,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { page } from 'vite-plus/test/browser'
+import { render as renderBrowser } from 'vitest-browser-react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { DeploymentPrecheckAlert } from '../deployment-precheck-alert'
 
 vi.mock('react-i18next', async () => {
@@ -19,9 +21,10 @@ vi.mock('react-i18next', async () => {
   })
 })
 
-vi.mock('../use-provider-icon', () => ({
-  useGetProviderIcon: () => () => undefined,
-}))
+async function render(ui: React.ReactElement) {
+  const { wrapper: Wrapper } = createConsoleQueryWrapper()
+  return renderBrowser(<Wrapper>{ui}</Wrapper>)
+}
 
 function workflowReference(name: string, suffix: string): WorkflowReference {
   return {
@@ -50,19 +53,18 @@ function unsupportedNode(id: string, owner: Partial<UnsupportedNode> = {}): Unsu
 }
 
 describe('DeploymentPrecheckAlert', () => {
-  it('does not show a source for an unsupported node from the deployed app', () => {
-    render(<DeploymentPrecheckAlert nodes={[unsupportedNode('root-node')]} />)
+  it('does not show a source for an unsupported node from the deployed app', async () => {
+    await render(<DeploymentPrecheckAlert nodes={[unsupportedNode('root-node')]} />)
 
-    expect(screen.getByText('Slack')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /From/ })).not.toBeInTheDocument()
+    await expect.element(page.getByText('Slack')).toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: /From/ })).not.toBeInTheDocument()
   })
 
   it('shows the leaf subworkflow name and its complete dependency path', async () => {
-    const user = userEvent.setup()
     const root = workflowReference('Deployed app', 'root')
     const translation = workflowReference('Translation', 'translation')
     const source = workflowReference('Order fulfillment', 'order')
-    render(
+    await render(
       <DeploymentPrecheckAlert
         nodes={[
           unsupportedNode('child-node', {
@@ -72,25 +74,24 @@ describe('DeploymentPrecheckAlert', () => {
       />,
     )
 
-    await user.hover(screen.getByRole('button', { name: 'Slack: From Order fulfillment' }))
+    await page.getByRole('button', { name: 'Slack: From Order fulfillment' }).hover()
 
-    const preview = await screen.findByRole('dialog', { name: 'Slack' })
-    const sourceLink = within(preview).getByRole('link', {
+    const preview = page.getByRole('dialog', { name: 'Slack' })
+    const sourceLink = preview.getByRole('link', {
       name: /Deployed app.*Translation.*Order fulfillment/,
     })
-    expect(sourceLink).toHaveAttribute('href', '/app/app-order/workflow')
-    expect(sourceLink).toHaveAttribute('target', '_blank')
+    await expect.element(sourceLink).toHaveAttribute('href', '/app/app-order/workflow')
+    await expect.element(sourceLink).toHaveAttribute('target', '_blank')
   })
 
   it('includes the deployed app when matching nodes also come from workflow-as-tool paths', async () => {
-    const user = userEvent.setup()
     const root = workflowReference('Deployed app', 'root')
     const orderSource = workflowReference('Order fulfillment', 'order')
     const auditSource = workflowReference('Audit workflow', 'audit')
     const sharedSource = workflowReference('Shared workflow', 'shared')
     const orderPath = [root, orderSource, sharedSource]
     const auditPath = [root, auditSource, sharedSource]
-    render(
+    await render(
       <DeploymentPrecheckAlert
         nodes={[
           unsupportedNode('root-node'),
@@ -107,25 +108,34 @@ describe('DeploymentPrecheckAlert', () => {
       />,
     )
 
-    expect(screen.getAllByText('Slack')).toHaveLength(1)
+    await expect.element(page.getByText('Slack', { exact: true })).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: 'Slack: From 3 nodes' }))
+    await page.getByRole('button', { name: 'Slack: From 3 nodes' }).click()
 
-    const preview = await screen.findByRole('dialog', { name: 'Slack' })
-    expect(within(preview).getAllByRole('link')).toHaveLength(3)
-    expect(within(preview).getByRole('link', { name: 'Deployed app' })).toHaveAttribute(
-      'href',
-      '/app/app-root/workflow',
-    )
-    expect(
-      within(preview).getByRole('link', {
-        name: /Deployed app.*Order fulfillment.*Shared workflow/,
-      }),
-    ).toBeInTheDocument()
-    expect(
-      within(preview).getByRole('link', {
-        name: /Deployed app.*Audit workflow.*Shared workflow/,
-      }),
-    ).toBeInTheDocument()
+    const preview = page.getByRole('dialog', { name: 'Slack' })
+    await expect.element(preview).toBeVisible()
+    await expect.poll(() => preview.getByRole('link').elements().length).toBe(3)
+    await expect
+      .element(preview.getByRole('link', { name: 'Deployed app' }))
+      .toHaveAttribute('href', '/app/app-root/workflow')
+    await expect
+      .element(
+        preview.getByRole('link', {
+          name: /Deployed app.*Order fulfillment.*Shared workflow/,
+        }),
+      )
+      .toBeInTheDocument()
+    await expect
+      .element(
+        preview.getByRole('link', {
+          name: /Deployed app.*Audit workflow.*Shared workflow/,
+        }),
+      )
+      .toBeInTheDocument()
   })
+})
+
+beforeEach(async () => {
+  await page.viewport(1000, 800)
+  onTestFinished(guardUnexpectedFetch())
 })
