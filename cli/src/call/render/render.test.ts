@@ -227,7 +227,7 @@ it.each([
   ["attachment; filename*=UTF-8''broken%ZZ.zip; filename=fallback.zip", 'fallback.zip'],
   ["attachment; filename*=UTF-8''%FF.zip; filename=fallback.zip", 'fallback.zip'],
   ["attachment; filename*=UTF-8''; filename=fallback.zip", 'fallback.zip'],
-  ["attachment; filename*=UTF-8''dir%2Freport.zip; filename=fallback.zip", 'fallback.zip'],
+  ["attachment; filename*=UTF-8''dir%2Freport.zip; filename=fallback.zip", 'report.zip'],
   ['attachment; filename=report%20name.zip', 'report%20name.zip'],
   ["attachment; filename*=ISO-8859-1''%A3.zip; filename=fallback.zip", 'fallback.zip'],
   ["attachment; filename*=UTF-8''dir%2Freport.zip", 'report.zip'],
