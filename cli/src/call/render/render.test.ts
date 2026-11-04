@@ -20,10 +20,11 @@ function render(
   res: Response,
   flags: CallFlags = {},
   input: Record<string, unknown> = {},
+  tokenFromEnv = false,
 ) {
   const buf = bufferStreams()
   const io = ioService(buf)
-  return { buf, code: rendererFor(kind, io)(res, io, flags, { opId: OP_ID, input }) }
+  return { buf, code: rendererFor(kind, io)(res, io, flags, { opId: OP_ID, input, tokenFromEnv }) }
 }
 
 const BUN_SUFFIX = 'For more information, pass `verbose: true` in the second argument to fetch()'
@@ -146,6 +147,18 @@ it('a broken stream that knows the run but not the app gets no hint', async () =
   const r = render(
     'sse',
     brokenSse([{ event: 'workflow_started', workflow_run_id: 'run-9', data: {} }], 'x'),
+  )
+  expect(await r.code).toBe(1)
+  expect(JSON.parse(r.buf.outBuf())).toMatchObject({ run_id: 'run-9', hints: [] })
+})
+
+it('a broken stream gets no hint when the token comes from the environment', async () => {
+  const r = render(
+    'sse',
+    brokenSse([{ event: 'workflow_started', workflow_run_id: 'run-9', data: {} }], 'x'),
+    {},
+    { app_id: 'app-1' },
+    true,
   )
   expect(await r.code).toBe(1)
   expect(JSON.parse(r.buf.outBuf())).toMatchObject({ run_id: 'run-9', hints: [] })

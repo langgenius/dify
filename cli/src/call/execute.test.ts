@@ -197,10 +197,29 @@ it('a stream that dies mid-run folds as incomplete, exit 1, with one stderr noti
     status: 'incomplete',
     text: { answer: 'partial' },
     message_id: 'msg-1',
-    hints: [],
+    run_id: 'run-1',
+    hints: [
+      expect.objectContaining({ op: 'get.run.event', input: { app_id: 'app-1', run_id: 'run-1' } }),
+    ],
   })
   expect(w.io.errBuf().trim().split('\n')).toHaveLength(1)
   expect(w.io.errBuf()).toMatch(/^stream ended early: /)
+})
+
+it('a DIFY_TOKEN caller gets no follow hint, since its token may not read run events', async () => {
+  const w = await testContext({
+    login: false,
+    env: true,
+    argv: ['run', 'console_app', 'chat', '--input', '{"app_id":"app-1","inputs":{},"query":"hi"}'],
+  })
+  worlds.push(w)
+  w.mock.setScenario('broken-stream')
+  expect(await (await w.ctx.get(commands)).run()).toBe(1)
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({
+    status: 'incomplete',
+    run_id: 'run-1',
+    hints: [],
+  })
 })
 
 it('registers the stream abort as a deferred cleanup', async () => {

@@ -325,7 +325,12 @@ function destroyMidStream(c: HonoContext): Response {
   const { outgoing } = c.env as { outgoing: ServerResponse }
   outgoing.writeHead(200, { 'content-type': 'text/event-stream' })
   outgoing.write(
-    sseChunks([{ event: 'message', data: { message_id: 'msg-1', answer: 'partial' } }]),
+    sseChunks([
+      {
+        event: 'message',
+        data: { message_id: 'msg-1', answer: 'partial', workflow_run_id: 'run-1' },
+      },
+    ]),
     () => outgoing.socket?.destroy(),
   )
   return RESPONSE_ALREADY_SENT
