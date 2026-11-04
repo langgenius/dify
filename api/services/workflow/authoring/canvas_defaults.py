@@ -310,6 +310,18 @@ def with_canvas_defaults(data: Mapping[str, object]) -> dict[str, object]:
     return filled
 
 
+def canvas_example(data: Mapping[str, object], loc: Loc) -> object | None:
+    """A copy of the canvas value at `loc` for a node as written; None where the canvas has none, or where the
+    canvas value is one fill withholds from this node because it would not suit it.
+    """
+    edition = _edition_of(data)
+    if edition is None:
+        return None
+    if loc and loc[0] in edition.withheld(data):
+        return None
+    return canvas_value(str(data[_TYPE_KEY]), loc, version=data.get(_VERSION_KEY))
+
+
 def _step(value: object, key: str | int) -> object | None:
     if isinstance(value, Mapping):
         return value.get(key)
@@ -366,5 +378,4 @@ def empty_purpose_locs(data: Mapping[str, object]) -> tuple[Loc, ...]:
     edition = _edition_of(data)
     if edition is None:
         return ()
-    found = (empty for loc in edition.purpose for empty in _empty_at(edition, data, loc))
-    return tuple(dict.fromkeys(found))
+    return tuple(empty for loc in edition.purpose for empty in _empty_at(edition, data, loc))

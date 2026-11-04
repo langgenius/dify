@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.plugin.impl.tool import PluginToolManager
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
 from libs.archive_writer import ArchiveLimits
 from machinery.context import RequestContext
@@ -153,7 +154,6 @@ def test_a_node_without_a_required_field_the_canvas_gives_no_default_gets_a_hint
         _data("extractor", "query"),
         _data("extractor", "model", "provider"),
         _data("extractor", "model", "name"),
-        _data("extractor", "parameters"),
     }
     assert all(issue.hint is not None and issue.hint.required for issue in missing)
     [parameters] = [issue for issue in missing if issue.loc == ("nodes", "extractor", "data", "parameters")]
@@ -280,6 +280,7 @@ def test_an_llm_with_memory_is_not_asked_for_a_prompt(dsl: DslCheckRequest) -> N
         pytest.param({"text": ""}, True, id="completion-blank"),
         pytest.param({"text": "Say hi"}, False, id="completion-text"),
         pytest.param([], True, id="no-messages"),
+        pytest.param([{"role": "user", "text": "{{#x.y#}}"}], False, id="reference-only"),
     ],
 )
 def test_an_llm_prompt_is_empty_only_when_no_message_has_text(
@@ -334,10 +335,66 @@ def test_text_holding_only_a_reference_is_not_empty(text: str, empty: bool, dsl:
     assert (_data("answer", "answer") in _empty_locs(check, "answer")) is empty
 
 
-def test_a_type_with_no_canvas_entry_gets_no_purpose_issue(dsl: DslCheckRequest) -> None:
-    check = _chain(dsl, START, _tool("current_time"), END)
+ITERATION = {"id": "loop", "data": {"type": BuiltinNodeTypes.ITERATION}}
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        pytest.param([_tool("current_time")], id="tool"),
+        pytest.param([{"id": "tool", "data": {"type": BuiltinNodeTypes.AGENT}}], id="agent"),
+        pytest.param([{"id": "tool", "data": {"type": KNOWLEDGE_INDEX_NODE_TYPE}}], id="knowledge-index"),
+        pytest.param(
+            [ITERATION, {"id": "tool", "parentId": "loop", "data": {"type": BuiltinNodeTypes.ITERATION_START}}],
+            id="iteration-start",
+        ),
+        pytest.param([{"id": "tool", "data": {"type": "node-from-the-future"}}], id="unknown"),
+    ],
+)
+def test_a_type_with_no_canvas_entry_gets_no_purpose_issue(
+    extra: list[dict[str, object]], dsl: DslCheckRequest
+) -> None:
+    check = _check(dsl, [START, *extra, END])
 
     assert AuthoringIssueCode.FIELD_EMPTY not in {issue.code for issue in _issues_of(check, "tool")}
+
+
+def test_an_iterations_child_llm_gets_the_same_purpose_issues_as_a_top_level_one(dsl: DslCheckRequest) -> None:
+    child = {"id": "child", "parentId": "loop", "data": {"type": BuiltinNodeTypes.LLM}}
+
+    check = _check(dsl, [START, ITERATION, LLM_WITHOUT_MODEL, child, END])
+
+    top_level = {loc[3:] for loc in _empty_locs(check, "llm")}
+    assert top_level
+    assert {loc[3:] for loc in _empty_locs(check, "child")} == top_level
+
+
+def test_a_field_gets_one_issue_when_the_dsl_check_already_reported_it(dsl: DslCheckRequest) -> None:
+    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "model": "gpt"}}
+
+    check = _chain(dsl, START, llm, END)
+
+    invalid = [issue.loc for issue in _issues_of(check, "llm") if issue.code == IssueCode.NODE_DATA_INVALID]
+    assert _data("llm", "model") in invalid
+    assert {loc for loc in _empty_locs(check, "llm") if loc[:4] == _data("llm", "model")} == set()
+
+
+def test_a_node_data_invalid_hint_carries_the_canvas_example(dsl: DslCheckRequest) -> None:
+    classifier = {
+        "id": "classifier",
+        "data": {"type": BuiltinNodeTypes.QUESTION_CLASSIFIER, "classes": [{"id": "1", "label": "One"}]},
+    }
+
+    check = _chain(dsl, START, classifier, END)
+
+    [issue] = [
+        issue
+        for issue in _issues_of(check, "classifier")
+        if issue.code == IssueCode.NODE_DATA_INVALID and issue.loc == _data("classifier", "classes", 0, "name")
+    ]
+    assert issue.hint is not None
+    assert issue.hint.example == ""
+    assert _data("classifier", "classes", 0, "name") not in _empty_locs(check, "classifier")
 
 
 def test_an_unknown_node_version_gets_no_purpose_issue(dsl: DslCheckRequest) -> None:

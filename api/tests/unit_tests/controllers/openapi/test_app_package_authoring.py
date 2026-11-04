@@ -190,11 +190,8 @@ def test_check_reports_a_missing_field_with_a_hint_and_a_spec_per_node(app: Flas
     response, status = _check(app, _folder({_APP: _chain_dsl(_start(), _EXTRACTOR_WITHOUT_PARAMETERS, _end())}))
 
     assert (status, response.valid) == (200, False)
-    [parameters] = [
-        issue
-        for issue in response.issues
-        if issue.loc == ["nodes", "extractor", "data", "parameters"] and issue.code == IssueCode.NODE_DATA_INVALID
-    ]
+    [parameters] = [issue for issue in response.issues if issue.loc == ["nodes", "extractor", "data", "parameters"]]
+    assert parameters.code == IssueCode.NODE_DATA_INVALID
     assert (parameters.severity, parameters.refuses_import, parameters.node_id) == ("error", True, "extractor")
     assert parameters.hint is not None
     assert (parameters.hint.loc, parameters.hint.required) == (["parameters"], True)
