@@ -15,7 +15,6 @@ from core.entities.provider_entities import CredentialConfiguration, CustomModel
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
 from core.provider_manager import ProviderManager
-from core.provider_manager import ProviderManager
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
