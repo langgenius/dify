@@ -1,8 +1,9 @@
 import json
-from typing import Any
+from typing import Any, override
 from uuid import uuid4
 
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 from upstash_vector import Index, Vector
 
 from configs import dify_config
@@ -41,9 +42,11 @@ class UpstashVector(BaseVector):
         else:
             return 1536
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         vectors = [
             Vector(
@@ -52,14 +55,16 @@ class UpstashVector(BaseVector):
                 metadata=doc.metadata,
                 data=doc.page_content,
             )
-            for doc, embedding in zip(documents, embeddings)
+            for doc, embedding in zip(documents, embeddings, strict=False)
         ]
         self.index.upsert(vectors=vectors)
 
+    @override
     def text_exists(self, id: str) -> bool:
         response = self.get_ids_by_metadata_field("doc_id", id)
         return len(response) > 0
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         item_ids = []
         for doc_id in ids:
@@ -72,6 +77,7 @@ class UpstashVector(BaseVector):
         if ids:
             self.index.delete(ids=ids)
 
+    @override
     def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
         query_result = self.index.query(
             vector=[1.001 * i for i in range(self._get_index_dimension())],
@@ -81,11 +87,13 @@ class UpstashVector(BaseVector):
         )
         return [result.id for result in query_result]
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
             self._delete_by_ids(ids)
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -114,18 +122,24 @@ class UpstashVector(BaseVector):
                     docs.append(Document(page_content=text, metadata=metadata))
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return []
 
+    @override
     def delete(self):
         self.index.reset()
 
+    @override
     def get_type(self) -> str:
         return VectorType.UPSTASH
 
 
 class UpstashVectorFactory(AbstractVectorFactory):
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> UpstashVector:
+    @override
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> UpstashVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

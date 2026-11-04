@@ -2,7 +2,24 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
+import {
+  zArchivedDocumentImmutableError,
+  zChildChunkDeleteIndexError,
+  zChildChunkIndexingError,
+  zCompletionRequestError,
+  zDatasetAccessDeniedError,
+  zDatasetNameDuplicateError,
+  zDocumentAlreadyFinishedError,
+  zDocumentIndexingError,
+  zIndexingEstimateError,
+  zInvalidActionError,
+  zInvalidMetadataError,
+  zKnowledgeFsUpgradeModelsUnavailableError,
+  zMaxKeysExceededError,
+  zModelCurrentlyNotSupportError,
+  zProviderNotInitializeError,
+  zProviderQuotaExceededError,
+} from './zod.gen.ts'
 import {
   zDeleteDatasetsApiKeysByApiKeyIdPath,
   zDeleteDatasetsApiKeysByApiKeyIdResponse,
@@ -13,8 +30,10 @@ import {
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
   zDeleteDatasetsByDatasetIdDocumentsPath,
+  zDeleteDatasetsByDatasetIdDocumentsQuery,
   zDeleteDatasetsByDatasetIdDocumentsResponse,
   zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath,
   zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse,
@@ -47,11 +66,11 @@ import {
   zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse,
-  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath,
-  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusPath,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse,
@@ -64,6 +83,10 @@ import {
   zGetDatasetsByDatasetIdErrorDocsResponse,
   zGetDatasetsByDatasetIdIndexingStatusPath,
   zGetDatasetsByDatasetIdIndexingStatusResponse,
+  zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath,
+  zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse,
+  zGetDatasetsByDatasetIdKnowledgeFsUpgradesPath,
+  zGetDatasetsByDatasetIdKnowledgeFsUpgradesResponse,
   zGetDatasetsByDatasetIdMetadataPath,
   zGetDatasetsByDatasetIdMetadataResponse,
   zGetDatasetsByDatasetIdNotionSyncPath,
@@ -72,6 +95,7 @@ import {
   zGetDatasetsByDatasetIdPermissionPartUsersPath,
   zGetDatasetsByDatasetIdPermissionPartUsersResponse,
   zGetDatasetsByDatasetIdQueriesPath,
+  zGetDatasetsByDatasetIdQueriesQuery,
   zGetDatasetsByDatasetIdQueriesResponse,
   zGetDatasetsByDatasetIdRelatedAppsPath,
   zGetDatasetsByDatasetIdRelatedAppsResponse,
@@ -86,8 +110,8 @@ import {
   zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse,
   zGetDatasetsExternalKnowledgeApiQuery,
   zGetDatasetsExternalKnowledgeApiResponse,
+  zGetDatasetsKnowledgeFsUpgradeJobsResponse,
   zGetDatasetsMetadataBuiltInResponse,
-  zGetDatasetsNotionIndexingEstimateResponse,
   zGetDatasetsProcessRuleQuery,
   zGetDatasetsProcessRuleResponse,
   zGetDatasetsQuery,
@@ -103,8 +127,10 @@ import {
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumePath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionQuery,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
@@ -113,6 +139,7 @@ import {
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
   zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath,
+  zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchQuery,
   zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse,
   zPatchDatasetsByDatasetIdMetadataByMetadataIdBody,
   zPatchDatasetsByDatasetIdMetadataByMetadataIdPath,
@@ -122,10 +149,8 @@ import {
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdBody,
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath,
   zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse,
+  zPostDatasetsApiKeysBody,
   zPostDatasetsApiKeysResponse,
-  zPostDatasetsBatchImportStatusByJobIdBody,
-  zPostDatasetsBatchImportStatusByJobIdPath,
-  zPostDatasetsBatchImportStatusByJobIdResponse,
   zPostDatasetsBody,
   zPostDatasetsByDatasetIdApiKeysByStatusPath,
   zPostDatasetsByDatasetIdApiKeysByStatusResponse,
@@ -159,6 +184,12 @@ import {
   zPostDatasetsByDatasetIdHitTestingBody,
   zPostDatasetsByDatasetIdHitTestingPath,
   zPostDatasetsByDatasetIdHitTestingResponse,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesBody,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesHeaders,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesResponse,
   zPostDatasetsByDatasetIdMetadataBody,
   zPostDatasetsByDatasetIdMetadataBuiltInByActionPath,
   zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse,
@@ -183,7 +214,7 @@ import {
   zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataBody,
   zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataPath,
   zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get dataset API base information
@@ -245,7 +276,9 @@ export const post = oc
     path: '/datasets/api-keys',
     tags: ['console'],
   })
+  .input(z.object({ body: zPostDatasetsApiKeysBody }))
   .output(zPostDatasetsApiKeysResponse)
+  .errors({ max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } })
 
 export const apiKeys = {
   get: get2,
@@ -264,25 +297,8 @@ export const get3 = oc
   .input(z.object({ params: zGetDatasetsBatchImportStatusByJobIdPath }))
   .output(zGetDatasetsBatchImportStatusByJobIdResponse)
 
-export const post2 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postDatasetsBatchImportStatusByJobId',
-    path: '/datasets/batch_import_status/{job_id}',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostDatasetsBatchImportStatusByJobIdBody,
-      params: zPostDatasetsBatchImportStatusByJobIdPath,
-    }),
-  )
-  .output(zPostDatasetsBatchImportStatusByJobIdResponse)
-
 export const byJobId = {
   get: get3,
-  post: post2,
 }
 
 export const batchImportStatus = {
@@ -291,16 +307,10 @@ export const batchImportStatus = {
 
 /**
  * Create external knowledge dataset
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post3 = oc
+export const post2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Create external knowledge dataset\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create external knowledge dataset',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsExternal',
@@ -310,9 +320,10 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostDatasetsExternalBody }))
   .output(zPostDatasetsExternalResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const external = {
-  post: post3,
+  post: post2,
 }
 
 /**
@@ -345,19 +356,14 @@ export const delete2 = oc
   })
   .input(z.object({ params: zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath }))
   .output(zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 /**
  * Get external knowledge API template details
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get external knowledge API template details\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get external knowledge API template details',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsExternalKnowledgeApiByExternalKnowledgeApiId',
@@ -366,17 +372,14 @@ export const get5 = oc
   })
   .input(z.object({ params: zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath }))
   .output(zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 /**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
+ * Update external knowledge API template
  */
 export const patch = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Update external knowledge API template',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsExternalKnowledgeApiByExternalKnowledgeApiId',
@@ -390,6 +393,7 @@ export const patch = oc
     }),
   )
   .output(zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const byExternalKnowledgeApiId = {
   delete: delete2,
@@ -400,62 +404,48 @@ export const byExternalKnowledgeApiId = {
 
 /**
  * Get external knowledge API templates
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get6 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get external knowledge API templates\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get external knowledge API templates',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsExternalKnowledgeApi',
     path: '/datasets/external-knowledge-api',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }).optional())
   .output(zGetDatasetsExternalKnowledgeApiResponse)
 
 /**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
+ * Create external knowledge API template
  */
-export const post4 = oc
+export const post3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create external knowledge API template',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsExternalKnowledgeApi',
     path: '/datasets/external-knowledge-api',
+    successStatus: 201,
     tags: ['console'],
   })
   .input(z.object({ body: zPostDatasetsExternalKnowledgeApiBody }))
   .output(zPostDatasetsExternalKnowledgeApiResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const externalKnowledgeApi = {
   get: get6,
-  post: post4,
+  post: post3,
   byExternalKnowledgeApiId,
 }
 
 /**
  * Estimate dataset indexing cost
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post5 = oc
+export const post4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Estimate dataset indexing cost\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Estimate dataset indexing cost',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsIndexingEstimate',
@@ -464,38 +454,55 @@ export const post5 = oc
   })
   .input(z.object({ body: zPostDatasetsIndexingEstimateBody }))
   .output(zPostDatasetsIndexingEstimateResponse)
+  .errors({
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const indexingEstimate = {
-  post: post5,
+  post: post4,
 }
 
 /**
  * Initialize dataset with documents
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post6 = oc
+export const post5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Initialize dataset with documents\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Initialize dataset with documents',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsInit',
     path: '/datasets/init',
-    successStatus: 201,
     tags: ['console'],
   })
   .input(z.object({ body: zPostDatasetsInitBody }))
   .output(zPostDatasetsInitResponse)
+  .errors({
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const init = {
-  post: post6,
+  post: post5,
 }
 
 export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsKnowledgeFsUpgradeJobs',
+    path: '/datasets/knowledge-fs-upgrade-jobs',
+    tags: ['console'],
+  })
+  .output(zGetDatasetsKnowledgeFsUpgradeJobsResponse)
+
+export const knowledgeFsUpgradeJobs = {
+  get: get7,
+}
+
+export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -506,33 +513,15 @@ export const get7 = oc
   .output(zGetDatasetsMetadataBuiltInResponse)
 
 export const builtIn = {
-  get: get7,
+  get: get8,
 }
 
 export const metadata = {
   builtIn,
 }
 
-export const get8 = oc
+export const post6 = oc
   .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getDatasetsNotionIndexingEstimate',
-    path: '/datasets/notion-indexing-estimate',
-    tags: ['console'],
-  })
-  .output(zGetDatasetsNotionIndexingEstimateResponse)
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post7 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsNotionIndexingEstimate',
@@ -541,31 +530,28 @@ export const post7 = oc
   })
   .input(z.object({ body: zPostDatasetsNotionIndexingEstimateBody }))
   .output(zPostDatasetsNotionIndexingEstimateResponse)
+  .errors({
+    indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const notionIndexingEstimate = {
-  get: get8,
-  post: post7,
+  post: post6,
 }
 
 /**
  * Get dataset document processing rules
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get9 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get dataset document processing rules\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get dataset document processing rules',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsProcessRule',
     path: '/datasets/process-rule',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetDatasetsProcessRuleQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsProcessRuleQuery.optional() }).optional())
   .output(zGetDatasetsProcessRuleResponse)
 
 export const processRule = {
@@ -610,7 +596,7 @@ export const retrievalSetting = {
   byVectorType,
 }
 
-export const post8 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -622,7 +608,7 @@ export const post8 = oc
   .output(zPostDatasetsByDatasetIdApiKeysByStatusResponse)
 
 export const byStatus = {
-  post: post8,
+  post: post7,
 }
 
 export const apiKeys2 = {
@@ -648,16 +634,8 @@ export const autoDisableLogs = {
   get: get12,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get13 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdBatchByBatchIndexingEstimate',
@@ -666,21 +644,19 @@ export const get13 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdBatchByBatchIndexingEstimatePath }))
   .output(zGetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse)
+  .errors({
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    document_already_finished: { status: 400, data: zDocumentAlreadyFinishedError },
+    indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const indexingEstimate2 = {
   get: get13,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get14 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdBatchByBatchIndexingStatus',
@@ -707,16 +683,10 @@ export const batch = {
  * Stream a ZIP archive containing the requested uploaded documents
  *
  * Download selected dataset documents as a single ZIP archive (upload-file only)
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post9 = oc
+export const post8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Download selected dataset documents as a single ZIP archive (upload-file only)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Download selected dataset documents as a single ZIP archive (upload-file only)',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsDownloadZip',
@@ -733,7 +703,7 @@ export const post9 = oc
   .output(zPostDatasetsByDatasetIdDocumentsDownloadZipResponse)
 
 export const downloadZip = {
-  post: post9,
+  post: post8,
 }
 
 /**
@@ -744,10 +714,10 @@ export const downloadZip = {
  * (indexing_technique must be 'high_quality' and summary_index_setting.enable must be true),
  * then asynchronously generates summary indexes for the provided documents.
  */
-export const post10 = oc
+export const post9 = oc
   .route({
     description:
-      'Generate summary index for documents\nThis endpoint checks if the dataset configuration supports summary generation\n(indexing_technique must be \'high_quality\' and summary_index_setting.enable must be true),\nthen asynchronously generates summary indexes for the provided documents.',
+      "Generate summary index for documents\nThis endpoint checks if the dataset configuration supports summary generation\n(indexing_technique must be 'high_quality' and summary_index_setting.enable must be true),\nthen asynchronously generates summary indexes for the provided documents.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsGenerateSummary',
@@ -764,10 +734,10 @@ export const post10 = oc
   .output(zPostDatasetsByDatasetIdDocumentsGenerateSummaryResponse)
 
 export const generateSummary = {
-  post: post10,
+  post: post9,
 }
 
-export const post11 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -785,7 +755,7 @@ export const post11 = oc
   .output(zPostDatasetsByDatasetIdDocumentsMetadataResponse)
 
 export const metadata2 = {
-  post: post11,
+  post: post10,
 }
 
 export const patch2 = oc
@@ -796,8 +766,14 @@ export const patch2 = oc
     path: '/datasets/{dataset_id}/documents/status/{action}/batch',
     tags: ['console'],
   })
-  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath }))
+  .input(
+    z.object({
+      params: zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath,
+      query: zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchQuery.optional(),
+    }),
+  )
   .output(zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse)
+  .errors({ invalid_action: { status: 400, data: zInvalidActionError } })
 
 export const batch2 = {
   patch: patch2,
@@ -816,7 +792,7 @@ export const status = {
  */
 export const get15 = oc
   .route({
-    description: 'Get a signed download URL for a dataset document\'s original uploaded file',
+    description: "Get a signed download URL for a dataset document's original uploaded file",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdDownload',
@@ -832,16 +808,10 @@ export const download = {
 
 /**
  * Estimate document indexing cost
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get16 = oc
   .route({
-    deprecated: true,
-    description:
-      'Estimate document indexing cost\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Estimate document indexing cost',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimate',
@@ -850,6 +820,12 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimatePath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse)
+  .errors({
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    document_already_finished: { status: 400, data: zDocumentAlreadyFinishedError },
+    indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const indexingEstimate3 = {
   get: get16,
@@ -857,16 +833,10 @@ export const indexingEstimate3 = {
 
 /**
  * Get document indexing status
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get17 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get document indexing status\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get document indexing status',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatus',
@@ -914,6 +884,7 @@ export const get18 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse)
+  .errors({ dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError } })
 
 export const sync = {
   get: get18,
@@ -923,16 +894,8 @@ export const notion = {
   sync,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get19 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLog',
@@ -961,6 +924,10 @@ export const patch3 = oc
   })
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPausePath }))
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponse)
+  .errors({
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+  })
 
 export const pause = {
   patch: patch3,
@@ -981,6 +948,10 @@ export const patch4 = oc
   })
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumePath }))
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse)
+  .errors({
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+  })
 
 export const resume = {
   patch: patch4,
@@ -1000,6 +971,7 @@ export const patch5 = oc
   })
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionPath }))
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse)
+  .errors({ invalid_action: { status: 400, data: zInvalidActionError } })
 
 export const byAction2 = {
   patch: patch5,
@@ -1011,7 +983,7 @@ export const processing = {
   byAction: byAction2,
 }
 
-export const post12 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1028,7 +1000,7 @@ export const post12 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponse)
 
 export const rename = {
-  post: post12,
+  post: post11,
 }
 
 export const patch6 = oc
@@ -1039,23 +1011,24 @@ export const patch6 = oc
     path: '/datasets/{dataset_id}/documents/{document_id}/segment/{action}',
     tags: ['console'],
   })
-  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath }))
+  .input(
+    z.object({
+      params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath,
+      query: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionQuery.optional(),
+    }),
+  )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse)
+  .errors({
+    invalid_action: { status: 400, data: zInvalidActionError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const byAction3 = {
   patch: patch6,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post13 = oc
+export const post12 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegment',
@@ -1069,24 +1042,14 @@ export const post13 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponse)
+  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
 
 export const segment = {
-  post: post13,
+  post: post12,
   byAction: byAction3,
 }
 
-export const get20 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImport',
-    path: '/datasets/{dataset_id}/documents/{document_id}/segments/batch_import',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath }))
-  .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse)
-
-export const post14 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1103,8 +1066,7 @@ export const post14 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse)
 
 export const batchImport = {
-  get: get20,
-  post: post14,
+  post: post13,
 }
 
 export const delete3 = oc
@@ -1126,17 +1088,10 @@ export const delete3 = oc
   .output(
     zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
   )
+  .errors({ child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError } })
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const patch7 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId:
@@ -1154,22 +1109,15 @@ export const patch7 = oc
   .output(
     zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
   )
+  .errors({ child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError } })
 
 export const byChildChunkId = {
   delete: delete3,
   patch: patch7,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get21 = oc
+export const get20 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
@@ -1179,20 +1127,14 @@ export const get21 = oc
   .input(
     z.object({
       params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
+      query:
+        zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery.optional(),
     }),
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const patch8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
@@ -1201,21 +1143,15 @@ export const patch8 = oc
   })
   .input(
     z.object({
+      body: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody,
       params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
     }),
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
+  .errors({ child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError } })
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post15 = oc
+export const post14 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
@@ -1229,11 +1165,15 @@ export const post15 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
+  .errors({
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  })
 
 export const childChunks = {
-  get: get21,
+  get: get20,
   patch: patch8,
-  post: post15,
+  post: post14,
   byChildChunkId,
 }
 
@@ -1251,16 +1191,8 @@ export const delete4 = oc
   )
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const patch9 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
@@ -1274,6 +1206,7 @@ export const patch9 = oc
     }),
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
+  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
 
 export const bySegmentId = {
   delete: delete4,
@@ -1290,31 +1223,33 @@ export const delete5 = oc
     successStatus: 204,
     tags: ['console'],
   })
-  .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath }))
+  .input(
+    z.object({
+      params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+      query: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery.optional(),
+    }),
+  )
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get22 = oc
+export const get21 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegments',
     path: '/datasets/{dataset_id}/documents/{document_id}/segments',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath }))
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+      query: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery.optional(),
+    }),
+  )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
 export const segments = {
   delete: delete5,
-  get: get22,
+  get: get21,
   batchImport,
   bySegmentId,
 }
@@ -1330,17 +1265,13 @@ export const segments = {
  * - generating: Number of summaries being generated
  * - error: Number of summaries with errors
  * - not_started: Number of segments without summary records
+ * - timeout: Number of summaries that timed out
  * - summaries: List of summary records with status and content preview
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get23 = oc
+export const get22 = oc
   .route({
-    deprecated: true,
     description:
-      'Get summary index generation status for a document\nReturns:\n- total_segments: Total number of segments in the document\n- summary_status: Dictionary with status counts\n  - completed: Number of summaries completed\n  - generating: Number of summaries being generated\n  - error: Number of summaries with errors\n  - not_started: Number of segments without summary records\n- summaries: List of summary records with status and content preview\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Get summary index generation status for a document\nReturns:\n- total_segments: Total number of segments in the document\n- summary_status: Dictionary with status counts\n  - completed: Number of summaries completed\n  - generating: Number of summaries being generated\n  - error: Number of summaries with errors\n  - not_started: Number of segments without summary records\n  - timeout: Number of summaries that timed out\n- summaries: List of summary records with status and content preview',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatus',
@@ -1352,13 +1283,13 @@ export const get23 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse)
 
 export const summaryStatus = {
-  get: get23,
+  get: get22,
 }
 
 /**
  * sync website document
  */
-export const get24 = oc
+export const get23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1369,9 +1300,10 @@ export const get24 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse)
+  .errors({ archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError } })
 
 export const websiteSync = {
-  get: get24,
+  get: get23,
 }
 
 export const delete6 = oc
@@ -1388,16 +1320,10 @@ export const delete6 = oc
 
 /**
  * Get document details
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get25 = oc
+export const get24 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get document details\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get document details',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentId',
@@ -1411,10 +1337,11 @@ export const get25 = oc
     }),
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse)
+  .errors({ invalid_metadata: { status: 400, data: zInvalidMetadataError } })
 
 export const byDocumentId = {
   delete: delete6,
-  get: get25,
+  get: get24,
   download,
   indexingEstimate: indexingEstimate3,
   indexingStatus: indexingStatus2,
@@ -1438,21 +1365,20 @@ export const delete7 = oc
     successStatus: 204,
     tags: ['console'],
   })
-  .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsPath }))
+  .input(
+    z.object({
+      params: zDeleteDatasetsByDatasetIdDocumentsPath,
+      query: zDeleteDatasetsByDatasetIdDocumentsQuery.optional(),
+    }),
+  )
   .output(zDeleteDatasetsByDatasetIdDocumentsResponse)
 
 /**
  * Get documents in a dataset
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get26 = oc
+export const get25 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get documents in a dataset\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get documents in a dataset',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocuments',
@@ -1467,16 +1393,8 @@ export const get26 = oc
   )
   .output(zGetDatasetsByDatasetIdDocumentsResponse)
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post16 = oc
+export const post15 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocuments',
@@ -1490,11 +1408,16 @@ export const post16 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsResponse)
+  .errors({
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const documents = {
   delete: delete7,
-  get: get26,
-  post: post16,
+  get: get25,
+  post: post15,
   downloadZip,
   generateSummary,
   metadata: metadata2,
@@ -1505,7 +1428,7 @@ export const documents = {
 /**
  * Get dataset error documents
  */
-export const get27 = oc
+export const get26 = oc
   .route({
     description: 'Get dataset error documents',
     inputStructure: 'detailed',
@@ -1518,21 +1441,15 @@ export const get27 = oc
   .output(zGetDatasetsByDatasetIdErrorDocsResponse)
 
 export const errorDocs = {
-  get: get27,
+  get: get26,
 }
 
 /**
  * Test external knowledge retrieval for dataset
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post17 = oc
+export const post16 = oc
   .route({
-    deprecated: true,
-    description:
-      'Test external knowledge retrieval for dataset\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Test external knowledge retrieval for dataset',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdExternalHitTesting',
@@ -1546,23 +1463,18 @@ export const post17 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdExternalHitTestingResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const externalHitTesting = {
-  post: post17,
+  post: post16,
 }
 
 /**
  * Test dataset knowledge retrieval
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post18 = oc
+export const post17 = oc
   .route({
-    deprecated: true,
-    description:
-      'Test dataset knowledge retrieval\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Test dataset knowledge retrieval',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdHitTesting',
@@ -1576,15 +1488,21 @@ export const post18 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
+  .errors({
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const hitTesting = {
-  post: post18,
+  post: post17,
 }
 
 /**
  * Get dataset indexing status
  */
-export const get28 = oc
+export const get27 = oc
   .route({
     description: 'Get dataset indexing status',
     inputStructure: 'detailed',
@@ -1597,10 +1515,79 @@ export const get28 = oc
   .output(zGetDatasetsByDatasetIdIndexingStatusResponse)
 
 export const indexingStatus3 = {
-  get: get28,
+  get: get27,
 }
 
+export const get28 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdKnowledgeFsUpgradesByJobId',
+    path: '/datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath }))
+  .output(zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse)
+
+export const post18 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdKnowledgeFsUpgradesByJobId',
+    path: '/datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}',
+    successStatus: 202,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath }))
+  .output(zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse)
+
+export const byJobId2 = {
+  get: get28,
+  post: post18,
+}
+
+export const get29 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdKnowledgeFsUpgrades',
+    path: '/datasets/{dataset_id}/knowledge-fs-upgrades',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdKnowledgeFsUpgradesPath }))
+  .output(zGetDatasetsByDatasetIdKnowledgeFsUpgradesResponse)
+
 export const post19 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdKnowledgeFsUpgrades',
+    path: '/datasets/{dataset_id}/knowledge-fs-upgrades',
+    successStatus: 202,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdKnowledgeFsUpgradesBody,
+      headers: zPostDatasetsByDatasetIdKnowledgeFsUpgradesHeaders,
+      params: zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdKnowledgeFsUpgradesResponse)
+  .errors({
+    knowledge_fs_upgrade_models_unavailable: {
+      status: 422,
+      data: zKnowledgeFsUpgradeModelsUnavailableError,
+    },
+  })
+
+export const knowledgeFsUpgrades = {
+  get: get29,
+  post: post19,
+  byJobId: byJobId2,
+}
+
+export const post20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1613,7 +1600,7 @@ export const post19 = oc
   .output(zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse)
 
 export const byAction4 = {
-  post: post19,
+  post: post20,
 }
 
 export const builtIn2 = {
@@ -1653,7 +1640,7 @@ export const byMetadataId = {
   patch: patch10,
 }
 
-export const get29 = oc
+export const get30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1664,7 +1651,7 @@ export const get29 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdMetadataPath }))
   .output(zGetDatasetsByDatasetIdMetadataResponse)
 
-export const post20 = oc
+export const post21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1682,13 +1669,13 @@ export const post20 = oc
   .output(zPostDatasetsByDatasetIdMetadataResponse)
 
 export const metadata4 = {
-  get: get29,
-  post: post20,
+  get: get30,
+  post: post21,
   builtIn: builtIn2,
   byMetadataId,
 }
 
-export const get30 = oc
+export const get31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1698,9 +1685,10 @@ export const get30 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdNotionSyncPath }))
   .output(zGetDatasetsByDatasetIdNotionSyncResponse)
+  .errors({ dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError } })
 
 export const sync2 = {
-  get: get30,
+  get: get31,
 }
 
 export const notion2 = {
@@ -1710,7 +1698,7 @@ export const notion2 = {
 /**
  * Get dataset permission user list
  */
-export const get31 = oc
+export const get32 = oc
   .route({
     description: 'Get dataset permission user list',
     inputStructure: 'detailed',
@@ -1723,13 +1711,13 @@ export const get31 = oc
   .output(zGetDatasetsByDatasetIdPermissionPartUsersResponse)
 
 export const permissionPartUsers = {
-  get: get31,
+  get: get32,
 }
 
 /**
  * Get dataset query history
  */
-export const get32 = oc
+export const get33 = oc
   .route({
     description: 'Get dataset query history',
     inputStructure: 'detailed',
@@ -1738,17 +1726,22 @@ export const get32 = oc
     path: '/datasets/{dataset_id}/queries',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetDatasetsByDatasetIdQueriesPath }))
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdQueriesPath,
+      query: zGetDatasetsByDatasetIdQueriesQuery.optional(),
+    }),
+  )
   .output(zGetDatasetsByDatasetIdQueriesResponse)
 
 export const queries = {
-  get: get32,
+  get: get33,
 }
 
 /**
  * Get applications related to dataset
  */
-export const get33 = oc
+export const get34 = oc
   .route({
     description: 'Get applications related to dataset',
     inputStructure: 'detailed',
@@ -1761,13 +1754,13 @@ export const get33 = oc
   .output(zGetDatasetsByDatasetIdRelatedAppsResponse)
 
 export const relatedApps = {
-  get: get33,
+  get: get34,
 }
 
 /**
  * retry document
  */
-export const post21 = oc
+export const post22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1786,13 +1779,13 @@ export const post21 = oc
   .output(zPostDatasetsByDatasetIdRetryResponse)
 
 export const retry = {
-  post: post21,
+  post: post22,
 }
 
 /**
  * Check if dataset is in use
  */
-export const get34 = oc
+export const get35 = oc
   .route({
     description: 'Check if dataset is in use',
     inputStructure: 'detailed',
@@ -1805,7 +1798,7 @@ export const get34 = oc
   .output(zGetDatasetsByDatasetIdUseCheckResponse)
 
 export const useCheck2 = {
-  get: get34,
+  get: get35,
 }
 
 export const delete9 = oc
@@ -1823,7 +1816,7 @@ export const delete9 = oc
 /**
  * Get dataset details
  */
-export const get35 = oc
+export const get36 = oc
   .route({
     description: 'Get dataset details',
     inputStructure: 'detailed',
@@ -1837,16 +1830,10 @@ export const get35 = oc
 
 /**
  * Update dataset details
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const patch11 = oc
   .route({
-    deprecated: true,
-    description:
-      'Update dataset details\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Update dataset details',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetId',
@@ -1858,7 +1845,7 @@ export const patch11 = oc
 
 export const byDatasetId = {
   delete: delete9,
-  get: get35,
+  get: get36,
   patch: patch11,
   apiKeys: apiKeys2,
   autoDisableLogs,
@@ -1868,6 +1855,7 @@ export const byDatasetId = {
   externalHitTesting,
   hitTesting,
   indexingStatus: indexingStatus3,
+  knowledgeFsUpgrades,
   metadata: metadata4,
   notion: notion2,
   permissionPartUsers,
@@ -1879,8 +1867,6 @@ export const byDatasetId = {
 
 /**
  * Delete an API key for a dataset
- *
- * Delete an API key for a dataset
  */
 export const delete10 = oc
   .route({
@@ -1890,7 +1876,6 @@ export const delete10 = oc
     operationId: 'deleteDatasetsByResourceIdApiKeysByApiKeyId',
     path: '/datasets/{resource_id}/api-keys/{api_key_id}',
     successStatus: 204,
-    summary: 'Delete an API key for a dataset',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath }))
@@ -1902,17 +1887,14 @@ export const byApiKeyId2 = {
 
 /**
  * Get all API keys for a dataset
- *
- * Get all API keys for a dataset
  */
-export const get36 = oc
+export const get37 = oc
   .route({
     description: 'Get all API keys for a dataset',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByResourceIdApiKeys',
     path: '/datasets/{resource_id}/api-keys',
-    summary: 'Get all API keys for a dataset',
     tags: ['console'],
   })
   .input(z.object({ params: zGetDatasetsByResourceIdApiKeysPath }))
@@ -1920,10 +1902,8 @@ export const get36 = oc
 
 /**
  * Create a new API key for a dataset
- *
- * Create a new API key for a dataset
  */
-export const post22 = oc
+export const post23 = oc
   .route({
     description: 'Create a new API key for a dataset',
     inputStructure: 'detailed',
@@ -1931,15 +1911,15 @@ export const post22 = oc
     operationId: 'postDatasetsByResourceIdApiKeys',
     path: '/datasets/{resource_id}/api-keys',
     successStatus: 201,
-    summary: 'Create a new API key for a dataset',
     tags: ['console'],
   })
   .input(z.object({ params: zPostDatasetsByResourceIdApiKeysPath }))
   .output(zPostDatasetsByResourceIdApiKeysResponse)
+  .errors({ max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } })
 
 export const apiKeys3 = {
-  get: get36,
-  post: post22,
+  get: get37,
+  post: post23,
   byApiKeyId: byApiKeyId2,
 }
 
@@ -1950,7 +1930,7 @@ export const byResourceId = {
 /**
  * Get list of datasets
  */
-export const get37 = oc
+export const get38 = oc
   .route({
     description: 'Get list of datasets',
     inputStructure: 'detailed',
@@ -1959,13 +1939,13 @@ export const get37 = oc
     path: '/datasets',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetDatasetsQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsQuery.optional() }).optional())
   .output(zGetDatasetsResponse)
 
 /**
  * Create a new dataset
  */
-export const post23 = oc
+export const post24 = oc
   .route({
     description: 'Create a new dataset',
     inputStructure: 'detailed',
@@ -1977,10 +1957,11 @@ export const post23 = oc
   })
   .input(z.object({ body: zPostDatasetsBody }))
   .output(zPostDatasetsResponse)
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const datasets = {
-  get: get37,
-  post: post23,
+  get: get38,
+  post: post24,
   apiBaseInfo,
   apiKeys,
   batchImportStatus,
@@ -1988,6 +1969,7 @@ export const datasets = {
   externalKnowledgeApi,
   indexingEstimate,
   init,
+  knowledgeFsUpgradeJobs,
   metadata,
   notionIndexingEstimate,
   processRule,

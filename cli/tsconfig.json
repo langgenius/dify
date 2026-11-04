@@ -1,22 +1,17 @@
 {
   "extends": "@dify/tsconfig/node.json",
   "compilerOptions": {
-    "rootDir": "src",
+    "moduleResolution": "bundler",
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "~@/*": [
-        "./*"
-      ]
+      "@/*": ["./src/*"],
+      "@test/*": ["./test/*"]
     },
     "types": ["node"],
-    "declaration": true,
-    "declarationMap": true,
-    "noEmit": false,
+    "allowImportingTsExtensions": true,
+    "noEmit": true, // we already have bundlers to handle this.
     "outDir": "dist",
     "sourceMap": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "**/*.test.ts"]
+  "include": ["*.ts", "bin/**/*.ts", "src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

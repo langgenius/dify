@@ -1,0 +1,204 @@
+'use client'
+
+import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { ReactNode } from 'react'
+import type { AgentConfigurePublishResult } from '../../use-agent-configure-sync'
+import type { AgentBuildDraftChangedKey } from './build-draft-changes-context'
+import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
+import { useId, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { AgentOrchestrateAddActionsProvider } from './add-actions'
+import { AgentAdvancedSettings } from './advanced'
+import { AgentOrchestrateBottomActions } from './bottom-actions'
+import { AgentBuildDraftChangedKeysProvider } from './build-draft-changes-context'
+import { AgentConfigApiContextProvider } from './config-context'
+import { AgentFiles, AgentTemplateFiles } from './files'
+import { AgentOrchestrateHeader } from './header'
+import { AgentKnowledgeRetrieval } from './knowledge'
+import { AgentModelField } from './model-config/field'
+import { AgentPromptEditor, AgentTemplatePromptEditor } from './prompt-editor'
+import { AgentConfigurePublishBar } from './publish-bar'
+import {
+  AgentOrchestrateReadOnlyContext,
+  AgentOrchestrateViewingVersionContext,
+} from './read-only-context'
+import { AgentSkills, AgentTemplateSkills } from './skills'
+import { AgentTemplateTools, AgentTools } from './tools'
+
+const EMPTY_BUILD_DRAFT_CHANGED_KEYS: readonly AgentBuildDraftChangedKey[] = []
+
+type AgentOrchestratePanelProps = {
+  agentId: string
+  appId?: string
+  nodeId?: string
+  agentName?: string | null
+  currentModel?: AgentComposerModel
+  isPublishing?: boolean
+  className?: string
+  readOnly?: boolean
+  trialAppId?: string
+  trialVersionId?: string
+  selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  isBuildDraftActive?: boolean
+  buildDraftChangedKeys?: readonly AgentBuildDraftChangedKey[]
+  showHeader?: boolean
+  showPublishBar?: boolean
+  headerAction?: ReactNode
+  bottomAction?: ReactNode
+  onSelectModel: (model: AgentComposerModel) => void
+  onPublish?: () => Promise<AgentConfigurePublishResult | false>
+  onExitVersions?: () => void
+  onOpenVersions?: () => void
+  onVersionRestored?: () => void | Promise<void>
+}
+
+export function AgentOrchestratePanel({
+  agentId,
+  appId,
+  nodeId,
+  agentName,
+  currentModel,
+  isPublishing,
+  className,
+  readOnly = false,
+  trialAppId,
+  trialVersionId,
+  selectedVersionSnapshot,
+  isBuildDraftActive = false,
+  buildDraftChangedKeys = [],
+  showHeader = true,
+  showPublishBar = true,
+  headerAction,
+  bottomAction,
+  onSelectModel,
+  onPublish,
+  onExitVersions,
+  onOpenVersions,
+  onVersionRestored,
+}: AgentOrchestratePanelProps) {
+  const { t } = useTranslation(['agentV2'])
+  const isTemplatePreview = !!trialAppId
+  const orchestrateHeadingId = useId()
+  const orchestrateLabel = t(($) => $['agentDetail.configure.title'])
+  const orchestrateBottomAction =
+    bottomAction ??
+    (showPublishBar ? (
+      <AgentConfigurePublishBar
+        agentId={agentId}
+        agentName={agentName}
+        isPublishing={isPublishing}
+        selectedVersionSnapshot={selectedVersionSnapshot}
+        onPublish={onPublish}
+        onExitVersions={onExitVersions}
+        onOpenVersions={onOpenVersions}
+        onVersionRestored={onVersionRestored}
+      />
+    ) : null)
+  const draftType = isBuildDraftActive ? ('debug_build' as const) : ('draft' as const)
+  const configApiContext = useMemo(
+    () =>
+      appId && nodeId
+        ? {
+            agentId,
+            draftType,
+            versionId: selectedVersionSnapshot?.id ?? undefined,
+            workflow: {
+              appId,
+              nodeId,
+            },
+          }
+        : {
+            agentId,
+            trialAppId,
+            draftType,
+            versionId: selectedVersionSnapshot?.id ?? trialVersionId,
+          },
+    [agentId, appId, draftType, nodeId, selectedVersionSnapshot?.id, trialAppId, trialVersionId],
+  )
+
+  return (
+    <div
+      className={cn(
+        'relative flex flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg',
+        className,
+      )}
+    >
+      {showHeader && (
+        <AgentOrchestrateHeader
+          headingId={orchestrateHeadingId}
+          trailingAction={headerAction}
+          isBuildDraftActive={isBuildDraftActive}
+        />
+      )}
+
+      <ScrollArea
+        className={cn(
+          'min-h-0 flex-1 overflow-hidden',
+          showHeader ? 'rounded-b-[inherit]' : 'rounded-[inherit]',
+        )}
+      >
+        <AgentOrchestrateViewingVersionContext value={!!selectedVersionSnapshot}>
+          <AgentOrchestrateReadOnlyContext value={readOnly || isTemplatePreview}>
+            <ScrollAreaViewport
+              aria-label={showHeader ? undefined : orchestrateLabel}
+              aria-labelledby={showHeader ? orchestrateHeadingId : undefined}
+              className="overscroll-none"
+              role="region"
+            >
+              <ScrollAreaContent className="flex min-h-full flex-col" style={{ minWidth: 0 }}>
+                <div className="flex-1 px-4">
+                  <AgentConfigApiContextProvider value={configApiContext}>
+                    <AgentOrchestrateAddActionsProvider>
+                      <AgentBuildDraftChangedKeysProvider
+                        changedKeys={
+                          isBuildDraftActive
+                            ? buildDraftChangedKeys
+                            : EMPTY_BUILD_DRAFT_CHANGED_KEYS
+                        }
+                      >
+                        <AgentModelField currentModel={currentModel} onSelect={onSelectModel} />
+                        {isTemplatePreview ? (
+                          <>
+                            <AgentTemplatePromptEditor />
+                            <AgentTemplateSkills />
+                            <AgentTemplateFiles />
+                            <AgentTemplateTools />
+                          </>
+                        ) : (
+                          <>
+                            <AgentPromptEditor />
+                            <AgentSkills />
+                            <AgentFiles />
+                            <AgentTools />
+                          </>
+                        )}
+                        <AgentKnowledgeRetrieval />
+                        {!isTemplatePreview && <AgentAdvancedSettings />}
+                      </AgentBuildDraftChangedKeysProvider>
+                    </AgentOrchestrateAddActionsProvider>
+                  </AgentConfigApiContextProvider>
+                </div>
+                {orchestrateBottomAction ? (
+                  <AgentOrchestrateBottomActions shrinkOnOpen={!bottomAction}>
+                    {orchestrateBottomAction}
+                  </AgentOrchestrateBottomActions>
+                ) : null}
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+          </AgentOrchestrateReadOnlyContext>
+        </AgentOrchestrateViewingVersionContext>
+        <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
+      </ScrollArea>
+    </div>
+  )
+}

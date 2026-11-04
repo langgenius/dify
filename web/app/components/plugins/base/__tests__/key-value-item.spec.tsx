@@ -1,20 +1,7 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import KeyValueItem from '../key-value-item'
-
-vi.mock('../../../base/icons/src/vender/line/files', () => ({
-  CopyCheck: () => <span data-testid="copy-check-icon" />,
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({
-    children,
-    onClick,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button data-testid="action-button" onClick={onClick} {...props}>{children}</button>
-  ),
-}))
 
 const mockCopy = vi.fn()
 vi.mock('copy-to-clipboard', () => ({
@@ -22,36 +9,27 @@ vi.mock('copy-to-clipboard', () => ({
 }))
 
 describe('KeyValueItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    cleanup()
-  })
-
   it('renders label and value', () => {
     render(<KeyValueItem label="ID" value="abc-123" />)
     expect(screen.getByText('ID')).toBeInTheDocument()
     expect(screen.getByText('abc-123')).toBeInTheDocument()
   })
 
-  it('renders maskedValue instead of value when provided', () => {
+  it('associates the label with the copy action and announces the result', async () => {
+    const user = userEvent.setup()
     render(<KeyValueItem label="Key" value="sk-secret" maskedValue="sk-***" />)
     expect(screen.getByText('sk-***')).toBeInTheDocument()
     expect(screen.queryByText('sk-secret')).not.toBeInTheDocument()
-  })
 
-  it('copies actual value (not masked) when copy button is clicked', () => {
-    render(<KeyValueItem label="Key" value="sk-secret" maskedValue="sk-***" />)
-    fireEvent.click(screen.getByTestId('action-button'))
+    const keyGroup = screen.getByRole('group', { name: 'Key' })
+    const copyButton = within(keyGroup).getByRole('button', {
+      name: 'common.operation.copy: Key',
+    })
+
+    await user.click(copyButton)
+
     expect(mockCopy).toHaveBeenCalledWith('sk-secret')
-  })
-
-  it('renders copy tooltip', () => {
-    render(<KeyValueItem label="ID" value="123" />)
-    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
+    expect(copyButton).toHaveAccessibleName('common.operation.copy: Key')
+    expect(within(keyGroup).getByRole('status')).toHaveTextContent('common.operation.copied: Key')
   })
 })

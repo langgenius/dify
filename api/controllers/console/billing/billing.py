@@ -1,17 +1,32 @@
-import base64
-from typing import Literal
+from typing import Literal, assert_never
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from werkzeug.exceptions import BadRequest
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
-from enums.cloud_plan import CloudPlan
-from libs.login import current_account_with_tenant, login_required
-from services.billing_service import BillingService
+from controllers.console.billing.error import (
+    BillingOperationFailedError,
+    BillingOperationFailedErrorResponse,
+    BillingUnavailableError,
+    BillingUnavailableErrorResponse,
+    BillingUnprocessableEntityErrorResponse,
+    to_billing_request_error,
+)
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
+from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
+from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
+from libs.helper import dump_response
+from machinery.context import RequestContext
+from models.account import TenantAccountRole
+from services.billing_client import billing
+from services.errors.billing import UnknownErrorReason
+
+_BILLING_PORTAL_ALLOWED_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
 
 class SubscriptionQuery(BaseModel):
@@ -19,61 +34,139 @@ class SubscriptionQuery(BaseModel):
     interval: Literal["month", "year"] = Field(..., description="Billing interval")
 
 
-class PartnerTenantsPayload(BaseModel):
-    click_id: str = Field(..., description="Click Id from partner referral link")
+class BillingInvoiceResponse(ResponseModel):
+    url: str
 
 
-register_schema_models(console_ns, SubscriptionQuery, PartnerTenantsPayload)
+class BillingSubscriptionResponse(ResponseModel):
+    url: str
+
+
+register_schema_models(console_ns, SubscriptionQuery)
+register_response_schema_models(
+    console_ns,
+    BillingOperationFailedErrorResponse,
+    BillingUnprocessableEntityErrorResponse,
+    BillingUnavailableErrorResponse,
+    BillingInvoiceResponse,
+    BillingSubscriptionResponse,
+)
+
+
+def _subscription_portal_error(error: billing.BillingSubscriptionUpstreamError) -> BaseHTTPException:
+    match error.reason:
+        case (
+            ""
+            | "CODEC"
+            | "VALIDATOR"
+            | "UNKNOWN"
+            | "INVALID_SECRET_KEY"
+            | "REQUEST_IN_PROGRESS"
+            | "MISSING_TENANT_ID"
+            | "INVALID_TENANT_ID"
+            | "MISSING_ACCOUNT_ID"
+            | "INVALID_ACCOUNT_ID"
+            | "MISSING_PREFILLED_EMAIL"
+            | "INVALID_PAYMENT_LINK_REQUEST"
+            | "MISSING_PLAN"
+            | "MISSING_INTERVAL"
+            | "INVALID_PLAN_INTERVAL"
+            | "CREATE_SUBSCRIPTION_PAYMENT_LINK_FAILED"
+            | "INVALID_KNOWLEDGE_RATE_LIMIT_REQUEST"
+            | "TENANT_IDS_COUNT_TOO_LARGE"
+            | "DOCUMENT_USAGE_UNAVAILABLE"
+        ):
+            return to_billing_request_error(error)
+        case UnknownErrorReason() | None:
+            return to_billing_request_error(error)
+        case unreachable:
+            assert_never(unreachable)
+
+
+def _invoice_portal_error(error: billing.BillingInvoiceUpstreamError) -> BaseHTTPException:
+    match error.reason:
+        case (
+            ""
+            | "CODEC"
+            | "VALIDATOR"
+            | "UNKNOWN"
+            | "INVALID_SECRET_KEY"
+            | "REQUEST_IN_PROGRESS"
+            | "MISSING_TENANT_ID"
+            | "INVALID_TENANT_ID"
+            | "MISSING_ACCOUNT_ID"
+            | "INVALID_ACCOUNT_ID"
+            | "MISSING_PREFILLED_EMAIL"
+            | "INVALID_INVOICE_REQUEST"
+            | "CREATE_INVOICE_PORTAL_FAILED"
+        ):
+            return to_billing_request_error(error)
+        case UnknownErrorReason() | None:
+            return to_billing_request_error(error)
+        case unreachable:
+            assert_never(unreachable)
 
 
 @console_ns.route("/billing/subscription")
 class Subscription(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
-        args = SubscriptionQuery.model_validate(request.args.to_dict(flat=True))
-        BillingService.is_tenant_owner_or_admin(current_user)
-        return BillingService.get_subscription(args.plan, args.interval, current_user.email, current_tenant_id)
+    @error_responses(BillingOperationFailedError, BillingUnavailableError)
+    @console_ns.doc(params=query_params_from_model(SubscriptionQuery))
+    @console_ns.response(200, "Success", console_ns.models[BillingSubscriptionResponse.__name__])
+    @console_ns.response(403, "Forbidden")
+    @console_ns.response(
+        422,
+        "Invalid subscription query",
+        console_ns.models[BillingUnprocessableEntityErrorResponse.__name__],
+    )
+    @console_ns.response(
+        502,
+        "Billing operation failed",
+        console_ns.models[BillingOperationFailedErrorResponse.__name__],
+    )
+    @console_ns.response(
+        503,
+        "Billing unavailable",
+        console_ns.models[BillingUnavailableErrorResponse.__name__],
+    )
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        allowed_roles=_BILLING_PORTAL_ALLOWED_ROLES,
+    )
+    @model_validate(SubscriptionQuery)
+    def get(self, req_data: SubscriptionQuery, request_context: RequestContext):
+        try:
+            data = application_services().billing_portal.get_subscription(
+                request_context,
+                plan=req_data.plan,
+                interval=req_data.interval,
+            )
+        except billing.BillingSubscriptionUpstreamError as error:
+            raise _subscription_portal_error(error) from error
+        return dump_response(BillingSubscriptionResponse, data)
 
 
 @console_ns.route("/billing/invoices")
 class Invoices(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
-        BillingService.is_tenant_owner_or_admin(current_user)
-        return BillingService.get_invoices(current_user.email, current_tenant_id)
-
-
-@console_ns.route("/billing/partners/<string:partner_key>/tenants")
-class PartnerTenants(Resource):
-    @console_ns.doc("sync_partner_tenants_bindings")
-    @console_ns.doc(description="Sync partner tenants bindings")
-    @console_ns.doc(params={"partner_key": "Partner key"})
-    @console_ns.expect(console_ns.models[PartnerTenantsPayload.__name__])
-    @console_ns.response(200, "Tenants synced to partner successfully")
-    @console_ns.response(400, "Invalid partner information")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    def put(self, partner_key: str):
-        current_user, _ = current_account_with_tenant()
-
+    @error_responses(BillingOperationFailedError, BillingUnavailableError)
+    @console_ns.response(200, "Success", console_ns.models[BillingInvoiceResponse.__name__])
+    @console_ns.response(403, "Forbidden")
+    @console_ns.response(
+        502,
+        "Billing operation failed",
+        console_ns.models[BillingOperationFailedErrorResponse.__name__],
+    )
+    @console_ns.response(
+        503,
+        "Billing unavailable",
+        console_ns.models[BillingUnavailableErrorResponse.__name__],
+    )
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        allowed_roles=_BILLING_PORTAL_ALLOWED_ROLES,
+    )
+    def get(self, request_context: RequestContext):
         try:
-            args = PartnerTenantsPayload.model_validate(console_ns.payload or {})
-            click_id = args.click_id
-            decoded_partner_key = base64.b64decode(partner_key).decode("utf-8")
-        except Exception:
-            raise BadRequest("Invalid partner_key")
-
-        if not click_id or not decoded_partner_key or not current_user.id:
-            raise BadRequest("Invalid partner information")
-
-        return BillingService.sync_partner_tenants_bindings(current_user.id, decoded_partner_key, click_id)
+            data = application_services().billing_portal.get_invoices(request_context)
+        except billing.BillingInvoiceUpstreamError as error:
+            raise _invoice_portal_error(error) from error
+        return dump_response(BillingInvoiceResponse, data)

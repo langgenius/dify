@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * TagResponse
  */
 export const zTagResponse = z.object({
@@ -11,6 +27,11 @@ export const zTagResponse = z.object({
   name: z.string(),
   type: z.string().nullish(),
 })
+
+/**
+ * TagListResponse
+ */
+export const zTagListResponse = z.array(zTagResponse)
 
 /**
  * TagUpdateRequestPayload
@@ -24,7 +45,7 @@ export const zTagUpdateRequestPayload = z.object({
  *
  * Tag type
  */
-export const zTagType = z.enum(['app', 'knowledge'])
+export const zTagType = z.enum(['app', 'knowledge', 'skill', 'snippet'])
 
 /**
  * TagBasePayload
@@ -36,13 +57,13 @@ export const zTagBasePayload = z.object({
 
 export const zGetTagsQuery = z.object({
   keyword: z.string().optional(),
-  type: z.string().optional(),
+  type: z.enum(['app', 'knowledge', 'skill', 'snippet']),
 })
 
 /**
  * Success
  */
-export const zGetTagsResponse = z.array(zTagResponse)
+export const zGetTagsResponse = zTagListResponse
 
 export const zPostTagsBody = zTagBasePayload
 
@@ -52,18 +73,18 @@ export const zPostTagsBody = zTagBasePayload
 export const zPostTagsResponse = zTagResponse
 
 export const zDeleteTagsByTagIdPath = z.object({
-  tag_id: z.string(),
+  tag_id: z.uuid(),
 })
 
 /**
  * Tag deleted successfully
  */
-export const zDeleteTagsByTagIdResponse = z.record(z.string(), z.never())
+export const zDeleteTagsByTagIdResponse = z.void()
 
 export const zPatchTagsByTagIdBody = zTagUpdateRequestPayload
 
 export const zPatchTagsByTagIdPath = z.object({
-  tag_id: z.string(),
+  tag_id: z.uuid(),
 })
 
 /**

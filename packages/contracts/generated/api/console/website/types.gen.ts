@@ -12,6 +12,25 @@ export type WebsiteCrawlPayload = {
   url: string
 }
 
+export type WebsiteCrawlResponse = {
+  [key: string]: unknown
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type CrawlFailedError = ErrorResponse & {
+  code: 'crawl_failed'
+  status: 500
+}
+
 export type PostWebsiteCrawlData = {
   body: WebsiteCrawlPayload
   path?: never
@@ -20,17 +39,15 @@ export type PostWebsiteCrawlData = {
 }
 
 export type PostWebsiteCrawlErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  500: CrawlFailedError | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWebsiteCrawlError = PostWebsiteCrawlErrors[keyof PostWebsiteCrawlErrors]
 
 export type PostWebsiteCrawlResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WebsiteCrawlResponse
 }
 
 export type PostWebsiteCrawlResponse = PostWebsiteCrawlResponses[keyof PostWebsiteCrawlResponses]
@@ -47,22 +64,17 @@ export type GetWebsiteCrawlStatusByJobIdData = {
 }
 
 export type GetWebsiteCrawlStatusByJobIdErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  500: CrawlFailedError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetWebsiteCrawlStatusByJobIdError
-  = GetWebsiteCrawlStatusByJobIdErrors[keyof GetWebsiteCrawlStatusByJobIdErrors]
+export type GetWebsiteCrawlStatusByJobIdError =
+  GetWebsiteCrawlStatusByJobIdErrors[keyof GetWebsiteCrawlStatusByJobIdErrors]
 
 export type GetWebsiteCrawlStatusByJobIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WebsiteCrawlResponse
 }
 
-export type GetWebsiteCrawlStatusByJobIdResponse
-  = GetWebsiteCrawlStatusByJobIdResponses[keyof GetWebsiteCrawlStatusByJobIdResponses]
+export type GetWebsiteCrawlStatusByJobIdResponse =
+  GetWebsiteCrawlStatusByJobIdResponses[keyof GetWebsiteCrawlStatusByJobIdResponses]

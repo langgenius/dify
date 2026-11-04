@@ -3,12 +3,13 @@ import json
 import logging
 import uuid
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, override
 
 import psycopg2.errors
 import psycopg2.extras
 import psycopg2.pool
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -82,6 +83,7 @@ class PGVector(BaseVector):
         self.index_hash = hashlib.md5(self.table_name.encode()).hexdigest()[:8]
         self.pg_bigm = config.pg_bigm
 
+    @override
     def get_type(self) -> str:
         return VectorType.PGVECTOR
 
@@ -107,11 +109,13 @@ class PGVector(BaseVector):
             conn.commit()
             self.pool.putconn(conn)
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
         self._create_collection(dimension)
         return self.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         values = []
         pks = []
@@ -133,6 +137,7 @@ class PGVector(BaseVector):
             )
         return pks
 
+    @override
     def text_exists(self, id: str) -> bool:
         with self._get_cursor() as cur:
             cur.execute(f"SELECT id FROM {self.table_name} WHERE id = %s", (id,))
@@ -146,6 +151,7 @@ class PGVector(BaseVector):
                 docs.append(Document(page_content=record[1], metadata=record[0]))
         return docs
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         # Avoiding crashes caused by performing delete operations on empty lists in certain scenarios
         # Scenario 1: extract a document fails, resulting in a table not being created.
@@ -162,10 +168,12 @@ class PGVector(BaseVector):
             except Exception as e:
                 raise e
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE meta->>%s = %s", (key, value))
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
         Search the nearest neighbors to a vector.
@@ -199,6 +207,7 @@ class PGVector(BaseVector):
                     docs.append(Document(page_content=text, metadata=metadata))
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
         if not isinstance(top_k, int) or top_k <= 0:
@@ -242,6 +251,7 @@ class PGVector(BaseVector):
 
         return docs
 
+    @override
     def delete(self):
         with self._get_cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
@@ -270,7 +280,10 @@ class PGVector(BaseVector):
 
 
 class PGVectorFactory(AbstractVectorFactory):
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> PGVector:
+    @override
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> PGVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix

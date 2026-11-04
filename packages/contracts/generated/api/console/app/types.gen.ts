@@ -4,6 +4,45 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type AdvancedPromptTemplateResponse = {
+  chat_prompt_config?: ChatPromptTemplateResponse | null
+  completion_prompt_config?: CompletionPromptTemplateResponse | null
+  stop?: Array<string> | null
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type ChatPromptTemplateResponse = {
+  prompt: Array<PromptTemplateMessageResponse>
+}
+
+export type CompletionPromptTemplateResponse = {
+  conversation_histories_role?: ConversationHistoriesRoleResponse | null
+  prompt: CompletionPromptTemplateTextResponse
+}
+
+export type PromptTemplateMessageResponse = {
+  role: 'assistant' | 'system' | 'user'
+  text: string
+}
+
+export type ConversationHistoriesRoleResponse = {
+  assistant_prefix: string
+  user_prefix: string
+}
+
+export type CompletionPromptTemplateTextResponse = {
+  text: string
+}
+
 export type GetAppPromptTemplatesData = {
   body?: never
   path?: never
@@ -17,19 +56,16 @@ export type GetAppPromptTemplatesData = {
 }
 
 export type GetAppPromptTemplatesErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetAppPromptTemplatesError
-  = GetAppPromptTemplatesErrors[keyof GetAppPromptTemplatesErrors]
+export type GetAppPromptTemplatesError =
+  GetAppPromptTemplatesErrors[keyof GetAppPromptTemplatesErrors]
 
 export type GetAppPromptTemplatesResponses = {
-  200: Array<{
-    [key: string]: unknown
-  }>
+  200: AdvancedPromptTemplateResponse
 }
 
-export type GetAppPromptTemplatesResponse
-  = GetAppPromptTemplatesResponses[keyof GetAppPromptTemplatesResponses]
+export type GetAppPromptTemplatesResponse =
+  GetAppPromptTemplatesResponses[keyof GetAppPromptTemplatesResponses]

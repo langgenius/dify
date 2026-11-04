@@ -1,26 +1,29 @@
 """Event sink contracts used by the runner and storage adapters.
 
-The runner only needs append-only event writes and status transitions, so tests
-can use ``InMemoryRunEventSink`` without Redis. Production storage implements the
-same protocol with Redis streams in ``dify_agent.storage.redis_run_store``. The
-terminal success helper writes the final JSON-safe output and session snapshot in
-one event so event consumers can stop at ``run_succeeded`` without correlating
-separate payload events.
+Non-terminal events remain append-only. Successful and failed terminal events
+use ``finalize_run`` so the event and matching run status are committed as one
+compare-and-set transition. Cancellation has a dedicated intent-aware finalizer.
+Tests can use ``InMemoryRunEventSink`` without Redis; production storage
+implements the same contract with Redis streams in
+``dify_agent.storage.redis_run_store``.
 """
 
 from collections import defaultdict
-from typing import Protocol
+from dataclasses import dataclass
+from typing import Protocol, TypeAlias
 
 from pydantic import JsonValue
 from pydantic_ai.messages import AgentStreamEvent
 
-from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.protocol.schemas import (
+    AgentRunUsage,
     EmptyRunEventData,
     PydanticAIStreamRunEvent,
     RunEvent,
     RunFailedEvent,
     RunFailedEventData,
+    RunFailureType,
     RunStartedEvent,
     RunStatus,
     RunSucceededEvent,
@@ -29,15 +32,47 @@ from dify_agent.protocol.schemas import (
 )
 
 
+TerminalRunEvent: TypeAlias = RunSucceededEvent | RunFailedEvent
+NonTerminalRunEvent: TypeAlias = RunStartedEvent | PydanticAIStreamRunEvent
+
+
+@dataclass(frozen=True, slots=True)
+class RunFinalizationResult:
+    """Outcome of attempting the only terminal transition for one run."""
+
+    applied: bool
+    status: RunStatus
+    event_id: str | None = None
+
+
+class RunStreamSealedError(RuntimeError):
+    """Raised when a non-terminal event arrives after the run stream was sealed.
+
+    The first terminal transition seals the stream: later non-terminal appends
+    must not persist, consume a cursor, or refresh retention. ``status``
+    carries the winning terminal status so callers can coordinate without
+    re-reading the run record.
+    """
+
+    def __init__(self, run_id: str, status: RunStatus) -> None:
+        super().__init__(f"run {run_id} is already {status}; the stream no longer accepts non-terminal events")
+        self.run_id = run_id
+        self.status = status
+
+
 class RunEventSink(Protocol):
     """Boundary used by runtime code to publish observable run progress."""
 
-    async def append_event(self, event: RunEvent) -> str:
-        """Persist ``event`` and return its cursor id."""
+    async def append_event(self, event: NonTerminalRunEvent) -> str:
+        """Persist a non-terminal event and return its cursor id.
+
+        Raises ``RunStreamSealedError`` when the run already has a terminal
+        status; the sealed stream must not accept further non-terminal events.
+        """
         ...
 
-    async def update_status(self, run_id: str, status: RunStatus, error: str | None = None) -> None:
-        """Persist the current run status."""
+    async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
+        """Atomically persist the first terminal event and matching status."""
         ...
 
 
@@ -47,31 +82,56 @@ class InMemoryRunEventSink:
     events: dict[str, list[RunEvent]]
     statuses: dict[str, RunStatus]
     errors: dict[str, str | None]
+    error_types: dict[str, RunFailureType | None]
 
     def __init__(self) -> None:
         self.events = defaultdict(list)
         self.statuses = {}
         self.errors = {}
+        self.error_types = {}
 
-    async def append_event(self, event: RunEvent) -> str:
-        """Store an event and assign a monotonic per-run cursor."""
+    async def append_event(self, event: NonTerminalRunEvent) -> str:
+        """Store a non-terminal event and assign a monotonic per-run cursor."""
+        current_status = self.statuses.get(event.run_id, "running")
+        if current_status != "running":
+            raise RunStreamSealedError(event.run_id, current_status)
         event_id = str(len(self.events[event.run_id]) + 1)
         stored = event.model_copy(update={"id": event_id})
         self.events[event.run_id].append(stored)
         return event_id
 
-    async def update_status(self, run_id: str, status: RunStatus, error: str | None = None) -> None:
-        """Record the latest status; timestamps are owned by run stores."""
-        self.statuses[run_id] = status
-        self.errors[run_id] = error
+    async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
+        """Store only the first terminal event and its derived status."""
+        current_status = self.statuses.get(event.run_id, "running")
+        if current_status != "running":
+            return RunFinalizationResult(applied=False, status=current_status)
+
+        status, error, error_type = terminal_event_status_fields(event)
+        event_id = str(len(self.events[event.run_id]) + 1)
+        self.events[event.run_id].append(event.model_copy(update={"id": event_id}))
+        self.statuses[event.run_id] = status
+        self.errors[event.run_id] = error
+        self.error_types[event.run_id] = error_type
+        return RunFinalizationResult(applied=True, status=status, event_id=event_id)
+
+
+def terminal_event_status_fields(
+    event: TerminalRunEvent,
+) -> tuple[RunStatus, str | None, RunFailureType | None]:
+    """Derive the persisted terminal status fields from one typed event."""
+    match event:
+        case RunSucceededEvent():
+            return "succeeded", None, None
+        case RunFailedEvent():
+            return "failed", event.data.error, event.data.error_type
 
 
 async def emit_run_event(
     sink: RunEventSink,
     *,
-    event: RunEvent,
+    event: NonTerminalRunEvent,
 ) -> str:
-    """Append an already typed public run event."""
+    """Append an already typed non-terminal public run event."""
     return await sink.append_event(event)
 
 
@@ -83,11 +143,22 @@ async def emit_run_started(sink: RunEventSink, *, run_id: str) -> str:
     )
 
 
-async def emit_pydantic_ai_event(sink: RunEventSink, *, run_id: str, data: AgentStreamEvent) -> str:
+async def emit_pydantic_ai_event(
+    sink: RunEventSink,
+    *,
+    run_id: str,
+    data: AgentStreamEvent,
+    agent_message_delta: str | None = None,
+) -> str:
     """Emit one typed Pydantic AI stream event."""
     return await emit_run_event(
         sink,
-        event=PydanticAIStreamRunEvent(run_id=run_id, data=data, created_at=utc_now()),
+        event=PydanticAIStreamRunEvent(
+            run_id=run_id,
+            data=data,
+            agent_message_delta=agent_message_delta,
+            created_at=utc_now(),
+        ),
     )
 
 
@@ -96,14 +167,21 @@ async def emit_run_succeeded(
     *,
     run_id: str,
     output: JsonValue,
-    session_snapshot: CompositorSessionSnapshot,
-) -> str:
-    """Emit the terminal success event with output and resumable state."""
-    return await emit_run_event(
-        sink,
-        event=RunSucceededEvent(
+    session_snapshot: SessionSnapshot,
+    usage: AgentRunUsage | None = None,
+) -> RunFinalizationResult:
+    """Finalize a successful run, including explicitly null output."""
+    data: dict[str, JsonValue | SessionSnapshot | AgentRunUsage | None] = {
+        "session_snapshot": session_snapshot,
+    }
+    data["output"] = output
+    if usage is not None:
+        data["usage"] = usage
+
+    return await sink.finalize_run(
+        RunSucceededEvent(
             run_id=run_id,
-            data=RunSucceededEventData(output=output, session_snapshot=session_snapshot),
+            data=RunSucceededEventData.model_validate(data),
             created_at=utc_now(),
         ),
     )
@@ -114,21 +192,38 @@ async def emit_run_failed(
     *,
     run_id: str,
     error: str,
+    error_type: RunFailureType | None = None,
     reason: str | None = None,
-) -> str:
-    """Emit the terminal failure lifecycle event."""
-    return await emit_run_event(
-        sink,
-        event=RunFailedEvent(run_id=run_id, data=RunFailedEventData(error=error, reason=reason), created_at=utc_now()),
+    session_snapshot: SessionSnapshot | None = None,
+    usage: AgentRunUsage | None = None,
+) -> RunFinalizationResult:
+    """Finalize a run with a failed terminal event."""
+    return await sink.finalize_run(
+        RunFailedEvent(
+            run_id=run_id,
+            data=RunFailedEventData(
+                error=error,
+                error_type=error_type,
+                reason=reason,
+                session_snapshot=session_snapshot,
+                usage=usage,
+            ),
+            created_at=utc_now(),
+        ),
     )
 
 
 __all__ = [
     "InMemoryRunEventSink",
+    "NonTerminalRunEvent",
     "RunEventSink",
+    "RunFinalizationResult",
+    "RunStreamSealedError",
+    "TerminalRunEvent",
     "emit_pydantic_ai_event",
     "emit_run_event",
     "emit_run_failed",
     "emit_run_started",
     "emit_run_succeeded",
+    "terminal_event_status_fields",
 ]

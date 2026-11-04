@@ -2,25 +2,15 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
+import { zBillingOperationFailedError, zBillingUnavailableError } from './zod.gen.ts'
 import {
   zGetBillingInvoicesResponse,
+  zGetBillingSubscriptionQuery,
   zGetBillingSubscriptionResponse,
-  zPutBillingPartnersByPartnerKeyTenantsBody,
-  zPutBillingPartnersByPartnerKeyTenantsPath,
-  zPutBillingPartnersByPartnerKeyTenantsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getBillingInvoices',
@@ -28,66 +18,29 @@ export const get = oc
     tags: ['console'],
   })
   .output(zGetBillingInvoicesResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  })
 
 export const invoices = {
   get,
 }
 
-/**
- * Sync partner tenants bindings
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const put = oc
-  .route({
-    deprecated: true,
-    description:
-      'Sync partner tenants bindings\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'PUT',
-    operationId: 'putBillingPartnersByPartnerKeyTenants',
-    path: '/billing/partners/{partner_key}/tenants',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPutBillingPartnersByPartnerKeyTenantsBody,
-      params: zPutBillingPartnersByPartnerKeyTenantsPath,
-    }),
-  )
-  .output(zPutBillingPartnersByPartnerKeyTenantsResponse)
-
-export const tenants = {
-  put,
-}
-
-export const byPartnerKey = {
-  tenants,
-}
-
-export const partners = {
-  byPartnerKey,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getBillingSubscription',
     path: '/billing/subscription',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetBillingSubscriptionQuery }))
   .output(zGetBillingSubscriptionResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  })
 
 export const subscription = {
   get: get2,
@@ -95,7 +48,6 @@ export const subscription = {
 
 export const billing = {
   invoices,
-  partners,
   subscription,
 }
 

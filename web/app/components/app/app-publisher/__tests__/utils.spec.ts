@@ -1,70 +1,54 @@
 import type { TFunction } from 'i18next'
-import { AccessMode } from '@/models/access-control'
-import { AppModeEnum } from '@/types/app'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { basePath } from '@/utils/var'
-import {
-  getDisabledFunctionTooltip,
-  getPublisherAppMode,
-  getPublisherAppUrl,
-  isPublisherAccessConfigured,
-} from '../utils'
+import { getDisabledFunctionTooltip, getPublisherAppMode, getPublisherAppUrl } from '../utils'
 
 describe('app-publisher utils', () => {
   describe('getPublisherAppMode', () => {
     it('should normalize chat-like apps to chat mode', () => {
-      expect(getPublisherAppMode(AppModeEnum.AGENT_CHAT)).toBe(AppModeEnum.CHAT)
+      expect(getPublisherAppMode('agent-chat')).toBe('chat')
     })
 
     it('should keep completion mode unchanged', () => {
-      expect(getPublisherAppMode(AppModeEnum.COMPLETION)).toBe(AppModeEnum.COMPLETION)
+      expect(getPublisherAppMode('completion')).toBe('completion')
     })
   })
 
   describe('getPublisherAppUrl', () => {
     it('should build the published app url from site info', () => {
-      expect(getPublisherAppUrl({
-        appBaseUrl: 'https://example.com',
-        accessToken: 'token-1',
-        mode: AppModeEnum.CHAT,
-      })).toBe(`https://example.com${basePath}/chat/token-1`)
-    })
-  })
-
-  describe('isPublisherAccessConfigured', () => {
-    it('should require members or groups for specific access mode', () => {
-      expect(isPublisherAccessConfigured(
-        { access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS },
-        { groups: [], members: [] },
-      )).toBe(false)
-    })
-
-    it('should treat public access as configured', () => {
-      expect(isPublisherAccessConfigured(
-        { access_mode: AccessMode.PUBLIC },
-        { groups: [], members: [] },
-      )).toBe(true)
+      expect(
+        getPublisherAppUrl({
+          appBaseUrl: 'https://example.com',
+          accessToken: 'token-1',
+          mode: 'chat' as const,
+        }),
+      ).toBe(`https://example.com${basePath}/chat/token-1`)
     })
   })
 
   describe('getDisabledFunctionTooltip', () => {
-    const t = ((key: string) => key) as unknown as TFunction
+    const t = withSelectorKey((key: string) => key, 'app') as unknown as TFunction<['app']>
 
     it('should prioritize the unpublished hint', () => {
-      expect(getDisabledFunctionTooltip({
-        t,
-        publishedAt: undefined,
-        missingStartNode: false,
-        noAccessPermission: false,
-      })).toBe('notPublishedYet')
+      expect(
+        getDisabledFunctionTooltip({
+          t,
+          publishedAt: undefined,
+          missingStartNode: true,
+          noAccessPermission: true,
+        }),
+      ).toBe('notPublishedYet')
     })
 
     it('should return the access error when the app is published but blocked', () => {
-      expect(getDisabledFunctionTooltip({
-        t,
-        publishedAt: Date.now(),
-        missingStartNode: false,
-        noAccessPermission: true,
-      })).toBe('noAccessPermission')
+      expect(
+        getDisabledFunctionTooltip({
+          t,
+          publishedAt: 1_710_000_000,
+          missingStartNode: false,
+          noAccessPermission: true,
+        }),
+      ).toBe('noAccessPermission')
     })
   })
 })

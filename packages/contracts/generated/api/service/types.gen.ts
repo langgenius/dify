@@ -4,8 +4,33 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/v1` | (string & {})
 }
 
+export type AgentNotPublishedError = ErrorResponse & {
+  code: 'agent_not_published'
+  status: 400
+}
+
+export type AgentThought = {
+  answer?: string | null
+  chain_id?: string | null
+  created_at?: number | null
+  files: Array<string>
+  id: string
+  message_id: string
+  observation?: string | null
+  position: number
+  thought?: string | null
+  tool?: string | null
+  tool_input?: string | null
+  tool_labels: AnyJsonValue
+}
+
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
+}
+
 export type Annotation = {
-  content?: string | null
+  answer?: string | null
   created_at?: number | null
   hit_count?: number | null
   id: string
@@ -17,6 +42,17 @@ export type AnnotationCreatePayload = {
   question: string
 }
 
+export type AnnotationJobStatusDetailResponse = {
+  error_msg?: string
+  job_id: string
+  job_status: string
+}
+
+export type AnnotationJobStatusResponse = {
+  job_id: string
+  job_status: string
+}
+
 export type AnnotationList = {
   data: Array<Annotation>
   has_more: boolean
@@ -25,10 +61,46 @@ export type AnnotationList = {
   total: number
 }
 
+export type AnnotationListQuery = {
+  keyword?: string
+  limit?: number
+  page?: number
+}
+
 export type AnnotationReplyActionPayload = {
   embedding_model_name: string
   embedding_provider_name: string
   score_threshold: number
+}
+
+export type AnyJsonValue = unknown
+
+export type AppAbnormalStatusError = ErrorResponse & {
+  code: 'app_abnormal_status'
+  status: 403
+}
+
+export type AppApiDisabledError = ErrorResponse & {
+  code: 'app_api_disabled'
+  status: 403
+}
+
+export type AppFeedbackListResponse = {
+  data: Array<AppFeedbackResponse>
+}
+
+export type AppFeedbackResponse = {
+  app_id: string
+  content?: string | null
+  conversation_id: string
+  created_at: string
+  from_account_id?: string | null
+  from_end_user_id?: string | null
+  from_source: string
+  id: string
+  message_id: string
+  rating: string
+  updated_at: string
 }
 
 export type AppInfoResponse = {
@@ -39,23 +111,253 @@ export type AppInfoResponse = {
   tags: Array<string>
 }
 
+export type AppMetaResponse = {
+  tool_icons?: {
+    [key: string]: string | ToolIcon
+  }
+}
+
+export type AppNotFoundError = ErrorResponse & {
+  code: 'app_not_found'
+  status: 403
+}
+
+export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
+  code: 'app_suggested_questions_after_answer_disabled'
+  status: 403
+}
+
+export type AppUnavailableError = ErrorResponse & {
+  code: 'app_unavailable'
+  status: 400
+}
+
+export type ArchivedDocumentImmutableError = ErrorResponse & {
+  code: 'archived_document_immutable'
+  status: 403
+}
+
+export type AudioBinaryResponse = Blob | File
+
+export type AudioTooLargeError = ErrorResponse & {
+  code: 'audio_too_large'
+  status: 413
+}
+
+export type AudioTranscriptResponse = {
+  text: string
+}
+
+export type BinaryFileResponse = Blob | File
+
+export type BlockingMetadataResponse = {
+  retriever_resources?: Array<BlockingRetrieverResourceResponse> | null
+  usage?: BlockingUsageResponse | null
+  [key: string]: unknown
+}
+
+export type BlockingRetrieverResourceResponse = {
+  content?: string | null
+  created_at?: number | null
+  data_source_type?: string | null
+  dataset_id?: string | null
+  dataset_name?: string | null
+  document_id?: string | null
+  document_name?: string | null
+  hit_count?: number | null
+  id?: string | null
+  index_node_hash?: string | null
+  knowledge_fs_citation?: KnowledgeFsCitation | null
+  message_id?: string | null
+  position: number
+  score?: number | null
+  segment_id?: string | null
+  segment_position?: number | null
+  summary?: string | null
+  word_count?: number | null
+  [key: string]: unknown
+}
+
+export type BlockingUsageResponse = {
+  completion_price?: string | null
+  completion_price_unit?: string | null
+  completion_tokens?: number | null
+  completion_unit_price?: string | null
+  currency?: string | null
+  latency?: number | null
+  prompt_price?: string | null
+  prompt_price_unit?: string | null
+  prompt_tokens?: number | null
+  prompt_unit_price?: string | null
+  total_price?: string | null
+  total_tokens?: number | null
+  [key: string]: unknown
+}
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type ChatBlockingResponse =
+  | ({
+      event: 'message'
+    } & ChatMessageBlockingResponse)
+  | ({
+      event: 'workflow_paused'
+    } & ChatPausedBlockingResponse)
+
+export type ChatMessageBlockingResponse = {
+  answer: string
+  conversation_id: string
+  created_at: number
+  event: 'message'
+  id: string
+  message_id: string
+  metadata: BlockingMetadataResponse
+  mode: string
+  task_id: string
+  [key: string]: unknown
+}
+
+export type ChatPauseReasonResponse = {
+  TYPE: string
+  actions?: Array<JsonObject>
+  approval_channels?: Array<string>
+  display_in_ui?: boolean | null
+  expiration_time?: number | null
+  form_content?: string | null
+  form_id?: string | null
+  form_token?: string | null
+  inputs?: Array<JsonObject>
+  message?: string | null
+  node_id?: string | null
+  node_title?: string | null
+  resolved_default_values?: {
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
+export type ChatPausedBlockingDataResponse = {
+  answer: string
+  conversation_id: string
+  created_at: number
+  elapsed_time: number
+  id: string
+  message_id: string
+  metadata: BlockingMetadataResponse
+  mode: string
+  paused_nodes: Array<string>
+  reasons: Array<ChatPauseReasonResponse>
+  status: 'paused'
+  total_steps: number
+  total_tokens: number
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type ChatPausedBlockingResponse = {
+  answer: string
+  conversation_id: string
+  created_at: number
+  data: ChatPausedBlockingDataResponse
+  event: 'workflow_paused'
+  id: string
+  message_id: string
+  metadata: BlockingMetadataResponse
+  mode: string
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
 export type ChatRequestPayload = {
   auto_generate_name?: boolean
   conversation_id?: string | null
-  files?: Array<{
-    [key: string]: unknown
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
   query: string
   response_mode?: 'blocking' | 'streaming' | null
-  retriever_from?: string
+  workflow_id?: string | null
+}
+
+export type ChatRequestPayloadWithUser = {
+  auto_generate_name?: boolean
+  conversation_id?: string | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
+  inputs: {
+    [key: string]: unknown
+  }
+  query: string
+  response_mode?: 'blocking' | 'streaming' | null
+  user: string
   workflow_id?: string | null
 }
 
 export type ChildChunkCreatePayload = {
   content: string
+}
+
+export type ChildChunkDetailResponse = {
+  data: ChildChunkResponse
 }
 
 export type ChildChunkListQuery = {
@@ -64,20 +366,121 @@ export type ChildChunkListQuery = {
   page?: number
 }
 
+export type ChildChunkListResponse = {
+  data: Array<ChildChunkResponse>
+  limit: number
+  page: number
+  total: number
+  total_pages: number
+}
+
+export type ChildChunkResponse = {
+  content: string
+  created_at: number
+  id: string
+  position: number
+  segment_id: string
+  type: 'automatic' | 'customized'
+  updated_at: number
+  word_count: number
+}
+
 export type ChildChunkUpdatePayload = {
   content: string
 }
 
+export type CompletionBlockingResponse = {
+  answer: string
+  created_at: number
+  event: string
+  id: string
+  message_id: string
+  metadata: BlockingMetadataResponse
+  mode: string
+  task_id: string
+  [key: string]: unknown
+}
+
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
 export type CompletionRequestPayload = {
-  files?: Array<{
-    [key: string]: unknown
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
   query?: string
   response_mode?: 'blocking' | 'streaming' | null
-  retriever_from?: string
+}
+
+export type CompletionRequestPayloadWithUser = {
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
+  inputs: {
+    [key: string]: unknown
+  }
+  query?: string
+  response_mode?: 'blocking' | 'streaming' | null
+  user: string
 }
 
 export type Condition = {
@@ -101,7 +504,23 @@ export type Condition = {
     | '≤'
     | '≥'
   name: string
-  value?: unknown
+  value?: string | Array<string> | number | null
+}
+
+export type ConversationCursorNotFoundError = ErrorResponse & {
+  code: 'conversation_cursor_not_found'
+  status: 404
+}
+
+export type ConversationFirstMessageNotFoundError = ErrorResponse & {
+  code: 'conversation_first_message_not_found'
+  status: 404
+}
+
+export type ConversationInfiniteScrollPagination = {
+  data: Array<SimpleConversation>
+  has_more: boolean
+  limit: number
 }
 
 export type ConversationListQuery = {
@@ -110,15 +529,51 @@ export type ConversationListQuery = {
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
 }
 
-export type ConversationRenamePayload = {
+export type ConversationNotFoundError = ErrorResponse & {
+  code: 'conversation_not_found'
+  status: 404
+}
+
+export type ConversationRenamePayload = (
+  | {
+      auto_generate: true
+      name?: string | null
+    }
+  | {
+      auto_generate?: false
+      name: string
+    }
+) & {
   auto_generate?: boolean
   name?: string | null
+}
+
+export type ConversationRenamePayloadWithUser = (
+  | {
+      auto_generate: true
+      name?: string | null
+      user?: string
+    }
+  | {
+      auto_generate?: false
+      name: string
+      user?: string
+    }
+) & {
+  auto_generate?: boolean
+  name?: string | null
+  user?: string
 }
 
 export type ConversationVariableInfiniteScrollPaginationResponse = {
   data: Array<ConversationVariableResponse>
   has_more: boolean
   limit: number
+}
+
+export type ConversationVariableNotFoundError = ErrorResponse & {
+  code: 'conversation_variable_not_found'
+  status: 404
 }
 
 export type ConversationVariableResponse = {
@@ -131,8 +586,18 @@ export type ConversationVariableResponse = {
   value_type: string
 }
 
+export type ConversationVariableTypeMismatchError = ErrorResponse & {
+  code: 'conversation_variable_type_mismatch'
+  status: 400
+}
+
 export type ConversationVariableUpdatePayload = {
-  value: unknown
+  value: JsonValue
+}
+
+export type ConversationVariableUpdatePayloadWithUser = {
+  user?: string
+  value: JsonValue
 }
 
 export type ConversationVariablesQuery = {
@@ -140,6 +605,8 @@ export type ConversationVariablesQuery = {
   limit?: number
   variable_name?: string | null
 }
+
+export type CustomConfigurationStatus = 'active' | 'no-configure'
 
 export type DatasetBoundTagListResponse = {
   data: Array<DatasetBoundTagResponse>
@@ -159,11 +626,14 @@ export type DatasetCreatePayload = {
   external_knowledge_id?: string | null
   indexing_technique?: 'economy' | 'high_quality' | null
   name: string
-  permission?: DatasetPermissionEnum
-  provider?: string
-  retrieval_model?: RetrievalModel
+  permission?: PermissionEnum | null
+  provider?: 'external' | 'vendor'
+  retrieval_model?: RetrievalModel | null
   summary_index_setting?: {
-    [key: string]: unknown
+    enable?: boolean
+    model_name?: string
+    model_provider_name?: string
+    summary_prompt?: string
   } | null
 }
 
@@ -174,7 +644,14 @@ export type DatasetDetailResponse = {
   chunk_structure: string | null
   created_at: number
   created_by: string
-  data_source_type: string | null
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
   description: string | null
   doc_form: string | null
   doc_metadata: Array<DatasetDocMetadataResponse>
@@ -184,18 +661,19 @@ export type DatasetDetailResponse = {
   embedding_model_provider: string | null
   enable_api: boolean
   external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
-  external_retrieval_model: DatasetExternalRetrievalModelResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
-  indexing_technique: string | null
+  indexing_technique: IndexTechniqueType | null
   is_multimodal: boolean
   is_published: boolean
+  maintainer?: string | null
   name: string
-  permission: string
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
+  runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
@@ -212,7 +690,14 @@ export type DatasetDetailWithPartialMembersResponse = {
   chunk_structure: string | null
   created_at: number
   created_by: string
-  data_source_type: string | null
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
   description: string | null
   doc_form: string | null
   doc_metadata: Array<DatasetDocMetadataResponse>
@@ -222,19 +707,20 @@ export type DatasetDetailWithPartialMembersResponse = {
   embedding_model_provider: string | null
   enable_api: boolean
   external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
-  external_retrieval_model: DatasetExternalRetrievalModelResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
-  indexing_technique: string | null
+  indexing_technique: IndexTechniqueType | null
   is_multimodal: boolean
   is_published: boolean
+  maintainer?: string | null
   name: string
   partial_member_list?: Array<string> | null
-  permission: string
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
+  runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
@@ -247,7 +733,7 @@ export type DatasetDetailWithPartialMembersResponse = {
 export type DatasetDocMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetExternalKnowledgeInfoResponse = {
@@ -296,7 +782,7 @@ export type DatasetMetadataActionResponse = {
 
 export type DatasetMetadataBuiltInFieldResponse = {
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetMetadataBuiltInFieldsResponse = {
@@ -307,7 +793,7 @@ export type DatasetMetadataListItemResponse = {
   count?: number
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetMetadataListResponse = {
@@ -318,10 +804,13 @@ export type DatasetMetadataListResponse = {
 export type DatasetMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
-export type DatasetPermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
+export type DatasetNameDuplicateError = ErrorResponse & {
+  code: 'dataset_name_duplicate'
+  status: 409
+}
 
 export type DatasetRerankingModelResponse = {
   reranking_model_name?: string | null
@@ -334,9 +823,9 @@ export type DatasetRetrievalModelResponse = {
   reranking_model?: DatasetRerankingModelResponse
   score_threshold?: number | null
   score_threshold_enabled: boolean
-  search_method: string
+  search_method: RetrievalMethod
   top_k: number
-  weights?: DatasetWeightedScoreResponse
+  weights?: DatasetWeightedScoreResponse | null
 }
 
 export type DatasetSummaryIndexSettingResponse = {
@@ -359,15 +848,17 @@ export type DatasetUpdatePayload = {
   external_knowledge_api_id?: string | null
   external_knowledge_id?: string | null
   external_retrieval_model?: {
-    [key: string]: unknown
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+    top_k?: number
   } | null
   indexing_technique?: 'economy' | 'high_quality' | null
   name?: string | null
   partial_member_list?: Array<{
-    [key: string]: string
+    user_id?: string
   }> | null
-  permission?: DatasetPermissionEnum
-  retrieval_model?: RetrievalModel
+  permission?: PermissionEnum | null
+  retrieval_model?: RetrievalModel | null
 }
 
 export type DatasetVectorSettingResponse = {
@@ -382,24 +873,119 @@ export type DatasetWeightedScoreResponse = {
   weight_type?: string | null
 }
 
+export type DatasourceCredentialInfoResponse = {
+  id?: string | null
+  is_default?: boolean | null
+  name?: string | null
+  type?: string | null
+}
+
 export type DatasourceNodeRunPayload = {
   credential_id?: string | null
-  datasource_type: string
+  datasource_type: 'local_file' | 'online_document' | 'online_drive' | 'website_crawl'
   inputs: {
     [key: string]: unknown
   }
   is_published: boolean
 }
 
+export type DatasourcePluginListResponse = Array<DatasourcePluginResponse>
+
+export type DatasourcePluginResponse = {
+  credentials?: Array<DatasourceCredentialInfoResponse>
+  datasource_type?: string | null
+  node_id?: string | null
+  plugin_id?: string | null
+  provider_name?: string | null
+  title?: string | null
+  user_input_variables?: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type DatasourcePluginsQuery = {
+  is_published?: boolean
+}
+
+export type DocumentAndBatchResponse = {
+  batch: string
+  document: DocumentResponse
+}
+
 export type DocumentBatchDownloadZipPayload = {
   document_ids: Array<string>
+}
+
+export type DocumentDetailResponse = {
+  archived?: boolean
+  average_segment_length?: number | number
+  completed_at?: number | null
+  created_at?: number
+  created_by?: string
+  created_from?: string
+  data_source_info?: {
+    [key: string]: unknown
+  }
+  data_source_type?: string
+  dataset_process_rule?: {
+    [key: string]: unknown
+  }
+  dataset_process_rule_id?: string | null
+  disabled_at?: number | null
+  disabled_by?: string | null
+  display_status?: string | null
+  doc_form?: string
+  doc_language?: string | null
+  doc_metadata?:
+    | Array<DocumentMetadataResponse>
+    | {
+        [key: string]: unknown
+      }
+    | null
+  doc_type?: string | null
+  document_process_rule?: {
+    [key: string]: unknown
+  }
+  enabled?: boolean
+  error?: string | null
+  hit_count?: number
+  id: string
+  indexing_latency?: number | null
+  indexing_status?: string
+  name?: string
+  need_summary?: boolean
+  position?: number
+  segment_count?: number
+  summary_index_status?: string | null
+  tokens?: number | null
+  updated_at?: number | null
+}
+
+export type DocumentGetQuery = {
+  metadata?: 'all' | 'only' | 'without'
 }
 
 export type DocumentListQuery = {
   keyword?: string | null
   limit?: number
   page?: number
-  status?: string | null
+  status?:
+    | 'archived'
+    | 'available'
+    | 'disabled'
+    | 'error'
+    | 'indexing'
+    | 'paused'
+    | 'queuing'
+    | null
+}
+
+export type DocumentListResponse = {
+  data: Array<DocumentResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
 }
 
 export type DocumentMetadataOperation = {
@@ -408,26 +994,128 @@ export type DocumentMetadataOperation = {
   partial_update?: boolean
 }
 
+export type DocumentMetadataResponse = {
+  id: string
+  name: string
+  type: 'number' | 'string' | 'time'
+  value: string | number | number | null
+}
+
+export type DocumentResponse = {
+  archived?: boolean | null
+  created_at?: number | null
+  created_by?: string | null
+  created_from?: string | null
+  data_source_detail_dict: DocumentSourceDetailResponse
+  data_source_info?: {
+    [key: string]: JsonValue
+  } | null
+  data_source_type?: string | null
+  dataset_process_rule_id?: string | null
+  disabled_at?: number | null
+  disabled_by?: string | null
+  display_status?: string | null
+  doc_form?: string | null
+  doc_metadata?: Array<DocumentMetadataResponse>
+  enabled?: boolean | null
+  error?: string | null
+  hit_count?: number | null
+  id: string
+  indexing_status?: string | null
+  name: string
+  need_summary?: boolean | null
+  position?: number | null
+  summary_index_status?: string | null
+  tokens?: number | null
+  word_count?: number | null
+}
+
+export type DocumentSourceDetailResponse = {
+  upload_file?: DocumentUploadFileDetailResponse | null
+  [key: string]: unknown
+}
+
+export type DocumentStatusListResponse = {
+  data: Array<DocumentStatusResponse>
+}
+
+export type DocumentStatusPayload = {
+  document_ids?: Array<string>
+}
+
+export type DocumentStatusResponse = {
+  cleaning_completed_at: number | null
+  completed_at: number | null
+  completed_segments?: number | null
+  error: string | null
+  error_code?: 'vector_space_estimate_exceeded' | null
+  estimated_vector_space_mb?: number | null
+  id: string
+  indexing_status:
+    | 'cleaning'
+    | 'completed'
+    | 'error'
+    | 'indexing'
+    | 'parsing'
+    | 'paused'
+    | 'splitting'
+    | 'waiting'
+  parsing_completed_at: number | null
+  paused_at: number | null
+  processing_started_at: number | null
+  splitting_completed_at: number | null
+  stopped_at: number | null
+  total_segments?: number | null
+  vector_space_limit_mb?: number | null
+}
+
 export type DocumentTextCreatePayload = {
-  doc_form?: string
+  doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
   doc_language?: string
   embedding_model?: string | null
   embedding_model_provider?: string | null
-  indexing_technique?: string | null
+  indexing_technique?: 'economy' | 'high_quality' | null
   name: string
   original_document_id?: string | null
-  process_rule?: ProcessRule
-  retrieval_model?: RetrievalModel
+  process_rule?: ProcessRule | null
+  retrieval_model?: RetrievalModel | null
   text: string
 }
 
-export type DocumentTextUpdate = {
-  doc_form?: string
+export type DocumentTextUpdate = (
+  | {
+      doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
+      doc_language?: string
+      name: string
+      process_rule?: ProcessRule | null
+      retrieval_model?: RetrievalModel | null
+      text: string
+    }
+  | {
+      doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
+      doc_language?: string
+      name?: string | null
+      process_rule?: ProcessRule | null
+      retrieval_model?: RetrievalModel | null
+      text?: null
+    }
+) & {
+  doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
   doc_language?: string
   name?: string | null
-  process_rule?: ProcessRule
-  retrieval_model?: RetrievalModel
+  process_rule?: ProcessRule | null
+  retrieval_model?: RetrievalModel | null
   text?: string | null
+}
+
+export type DocumentUploadFileDetailResponse = {
+  created_at: number
+  created_by: string
+  extension: string
+  id: string
+  mime_type?: string | null
+  name: string
+  size: number
 }
 
 export type EndUserDetail = {
@@ -443,9 +1131,66 @@ export type EndUserDetail = {
   updated_at: string
 }
 
+export type EndUserNotFoundError = ErrorResponse & {
+  code: 'end_user_not_found'
+  status: 404
+}
+
+export type ErrorMessageResponse = {
+  error: string
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type EventStreamResponse = string
+
+export type ExecutionContentType = 'human_input'
+
 export type FeedbackListQuery = {
   limit?: number
   page?: number
+}
+
+export type FetchFrom = 'customizable-model' | 'predefined-model'
+
+export type FileAccessDeniedError = ErrorResponse & {
+  code: 'file_access_denied'
+  status: 403
+}
+
+export type FileExtensionBlockedError = ErrorResponse & {
+  code: 'file_extension_blocked'
+  status: 400
+}
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
+}
+
+export type FileNotFoundError = ErrorResponse & {
+  code: 'file_not_found'
+  status: 404
 }
 
 export type FilePreviewQuery = {
@@ -463,11 +1208,45 @@ export type FileResponse = {
   name: string
   original_url?: string | null
   preview_url?: string | null
+  reference?: string | null
   size: number
   source_url?: string | null
   tenant_id?: string | null
   user_id?: string | null
 }
+
+export type FileTooLargeError = ErrorResponse & {
+  code: 'file_too_large'
+  status: 413
+}
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FilenameNotExistsError = ErrorResponse & {
+  code: 'filename_not_exists_error'
+  status: 400
+}
+
+export type ForbiddenError = ErrorResponse & {
+  code: 'forbidden'
+  status: 403
+}
+
+export type FormInputConfig =
+  | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+  | ({
+      type: 'select'
+    } & SelectInputConfig)
+  | ({
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
 
 export type HitTestingChildChunk = {
   content: string
@@ -478,7 +1257,7 @@ export type HitTestingChildChunk = {
 
 export type HitTestingDocument = {
   data_source_type: string
-  doc_metadata: unknown
+  doc_metadata: unknown | null
   doc_type: string | null
   id: string
   name: string
@@ -496,10 +1275,12 @@ export type HitTestingFile = {
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
   external_retrieval_model?: {
-    [key: string]: unknown
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+    top_k?: number
   } | null
   query: string
-  retrieval_model?: RetrievalModel
+  retrieval_model?: RetrievalModel | null
 }
 
 export type HitTestingQuery = {
@@ -512,7 +1293,7 @@ export type HitTestingRecord = {
   score: number | null
   segment: HitTestingSegment
   summary: string | null
-  tsne_position: unknown
+  tsne_position: unknown | null
 }
 
 export type HitTestingResponse = {
@@ -546,11 +1327,78 @@ export type HitTestingSegment = {
   word_count: number
 }
 
+export type HumanInputContent = {
+  form_definition?: HumanInputFormDefinition | null
+  form_submission_data?: HumanInputFormSubmissionData | null
+  submitted: boolean
+  type?: ExecutionContentType
+  workflow_run_id: string
+}
+
+export type HumanInputFormDefinition = {
+  actions?: Array<UserActionConfig>
+  display_in_ui?: boolean
+  expiration_time: number
+  form_content: string
+  form_id: string
+  form_token?: string | null
+  form_version?: '1' | '2'
+  inputs?: Array<FormInputConfig>
+  node_id: string
+  node_title: string
+  resolved_default_values?: {
+    [key: string]: unknown
+  }
+}
+
+export type HumanInputFormDefinitionResponse = {
+  expiration_time?: number | null
+  form_content: string
+  inputs: Array<FormInputConfig>
+  resolved_default_values: {
+    [key: string]: string
+  }
+  user_actions: Array<UserActionConfig>
+}
+
+export type HumanInputFormExpiredError = ErrorResponse & {
+  code: 'human_input_form_expired'
+  status: 412
+}
+
+export type HumanInputFormSubmissionData = {
+  action_id: string
+  action_text: string
+  node_id: string
+  node_title: string
+  rendered_content: string
+  submitted_data?: {
+    [key: string]: JsonValue
+  } | null
+}
+
 export type HumanInputFormSubmitPayload = {
   action: string
   inputs: {
     [key: string]: JsonValue
   }
+}
+
+export type HumanInputFormSubmitPayloadWithUser = {
+  action: string
+  inputs: {
+    [key: string]: JsonValue
+  }
+  user: string
+}
+
+export type HumanInputFormSubmitResponse = {
+  [key: string]: never
+}
+
+export type HumanInputFormSubmittedError = ErrorResponse & {
+  code: 'human_input_form_submitted'
+  status: 412
 }
 
 export type IndexInfoResponse = {
@@ -559,7 +1407,1882 @@ export type IndexInfoResponse = {
   welcome: string
 }
 
+export type IndexTechniqueType = 'economy' | 'high_quality'
+
+export type InvalidActionError = ErrorResponse & {
+  code: 'invalid_action'
+  status: 400
+}
+
+export type InvalidFormDataError = ErrorResponse & {
+  code: 'invalid_form_data'
+  status: 400
+}
+
+export type InvalidMetadataError = ErrorResponse & {
+  code: 'invalid_metadata'
+  status: 400
+}
+
+export type JsonObject = {
+  [key: string]: unknown
+}
+
+export type JsonValueType = unknown
+
 export type JsonValue = unknown
+
+export type KnowledgeFsActiveProfileRevisions = {
+  embedding?: number | null
+  retrieval?: number | null
+}
+
+export type KnowledgeFsAdmittedQueryRequest = {
+  activeDocumentIds?: Array<string>
+  activeEntityIds?: Array<string>
+  knowledgeSpaceId: string
+  mode?: 'auto' | 'deep' | 'fast' | 'research' | null
+  query?: string | null
+  queryImages?: Array<KnowledgeFsQueryImageReference>
+  sessionId?: string | null
+}
+
+export type KnowledgeFsAnswerTraceResponse = {
+  created_at: string
+  evidence_bundle_id?: string | null
+  id: string
+  knowledge_space_id: string
+  mode: 'auto' | 'deep' | 'fast' | 'research'
+  query: string
+  query_images?: Array<KnowledgeFsQueryImageResponse>
+  source?: KnowledgeFsTraceSource
+  steps: Array<KnowledgeFsAnswerTraceStepResponse>
+}
+
+export type KnowledgeFsAnswerTraceStepResponse = {
+  ended_at?: string | null
+  metadata: {
+    [key: string]: unknown
+  }
+  name: string
+  started_at: string
+  status: 'error' | 'ok' | 'skipped'
+}
+
+export type KnowledgeFsBackgroundTaskFailureResponse = {
+  document_id: string
+  document_title?: string | null
+  error_code: string
+  error_message: string
+  failure: KnowledgeFsPublicFailureResponse
+  job_id?: string | null
+}
+
+export type KnowledgeFsBackgroundTaskListQuery = {
+  cursor?: string | null
+  limit?: number
+  task_ids?: string | null
+}
+
+export type KnowledgeFsBackgroundTaskListResponse = {
+  data: Array<KnowledgeFsBackgroundTaskResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsBackgroundTaskResponse = {
+  can_cancel: boolean
+  can_retry: boolean
+  completed_at?: string | null
+  created_at: string
+  document_id?: string | null
+  document_revision?: number | null
+  document_title?: string | null
+  error_code?: string | null
+  error_message?: string | null
+  failure?: KnowledgeFsPublicFailureResponse | null
+  failures?: Array<KnowledgeFsBackgroundTaskFailureResponse> | null
+  id: string
+  knowledge_space_id: string
+  operation:
+    | 'document_delete'
+    | 'document_processing'
+    | 'document_reindex'
+    | 'document_upload'
+    | 'source_bulk'
+    | 'source_crawl_import'
+    | 'source_crawl_preview'
+    | 'source_online_document_import'
+    | 'source_online_drive_import'
+    | 'source_sync'
+  progress_completed: number
+  progress_failed: number
+  progress_percent: number
+  progress_total: number
+  semantic_enrichment?: KnowledgeFsSemanticEnrichmentResponse | null
+  source_id?: string | null
+  source_title?: string | null
+  state: 'canceled' | 'completed' | 'failed' | 'queued' | 'running'
+  task_kind: 'document' | 'document_bulk' | 'source'
+  updated_at: string
+}
+
+export type KnowledgeFsBulkDeletionAcceptedItemResponse = {
+  document_id: string
+  document_title?: string | null
+  job: KnowledgeFsDurableDeletionJobResponse
+  status_url: string
+}
+
+export type KnowledgeFsBulkDeletionAcceptedResponse = {
+  batch_id?: string | null
+  items: Array<KnowledgeFsBulkDeletionAcceptedItemResponse>
+  results?: Array<KnowledgeFsBulkDeletionResultResponse>
+  status_url?: string | null
+  total: number
+}
+
+export type KnowledgeFsBulkDeletionResultResponse = {
+  document_id: string
+  error?: KnowledgeFsDurableDeletionErrorResponse | null
+  job?: KnowledgeFsDurableDeletionJobResponse | null
+  status: 'accepted' | 'pending' | 'rejected'
+  status_url?: string | null
+}
+
+export type KnowledgeFsBulkDocumentDeleteItemPayload = {
+  documentId: string
+  expectedRevision: number
+}
+
+export type KnowledgeFsBulkDocumentDeletePayload = {
+  documents: Array<KnowledgeFsBulkDocumentDeleteItemPayload>
+}
+
+export type KnowledgeFsBulkJobFailureResponse = {
+  document_id: string
+  document_title?: string | null
+  error_code: string
+  error_message: string
+  failure?: KnowledgeFsPublicFailureResponse | null
+  job_id?: string | null
+}
+
+export type KnowledgeFsBulkJobResponse = {
+  canceled_items: number
+  completed_items: number
+  created_at: string
+  failed_item_ids: Array<string>
+  failed_items: number
+  failures?: Array<KnowledgeFsBulkJobFailureResponse>
+  id: string
+  knowledge_space_id: string
+  status: 'canceled' | 'completed' | 'failed' | 'running'
+  total_items: number
+  type: 'document_delete' | 'document_reindex' | 'document_upload'
+  updated_at: string
+}
+
+export type KnowledgeFsCrawlImportPagePayload = {
+  content: string
+  description?: string | null
+  sourceUrl: string
+  title?: string | null
+}
+
+export type KnowledgeFsCrawlImportPayload = {
+  desiredSyncPolicy?: KnowledgeFsSourceEditSyncPolicyPayload | null
+  pages?: Array<KnowledgeFsCrawlImportPagePayload> | null
+  replaceExistingSelection?: boolean
+  sourceUpdate?: KnowledgeFsSourceImportConfigurationPayload | null
+  sourceUrls: Array<string>
+}
+
+export type KnowledgeFsCrawlPreviewPageListQuery = {
+  cursor?: string | null
+  limit?: number
+}
+
+export type KnowledgeFsCrawlPreviewPageListResponse = {
+  data: Array<KnowledgeFsCrawlPreviewPageResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsCrawlPreviewPageResponse = {
+  description?: string | null
+  etag?: string | null
+  page_id: string
+  source_url: string
+  title?: string | null
+}
+
+export type KnowledgeFsCrawlPreviewSelectionPayload = {
+  pageIds: Array<string>
+}
+
+export type KnowledgeFsCrawledPageResponse = {
+  content: string
+  description?: string | null
+  source_url: string
+  title?: string | null
+}
+
+export type KnowledgeFsCursorQuery = {
+  cursor?: string | null
+  limit?: number
+}
+
+export type KnowledgeFsDocumentChunkListQuery = {
+  cursor?: string | null
+  limit?: number
+  query?: string | null
+}
+
+export type KnowledgeFsDocumentChunkListResponse = {
+  data: Array<KnowledgeFsDocumentChunkResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsDocumentChunkResponse = {
+  created_at: string
+  document_id: string
+  document_revision: number
+  enabled: boolean
+  end_offset?: number | null
+  id: string
+  kind?: 'chunk' | 'image' | 'section' | 'summary' | 'table'
+  knowledge_space_id: string
+  ordinal: number
+  parent_chunk_id?: string | null
+  parse_element_ids: Array<string>
+  section_path?: Array<string>
+  start_offset?: number | null
+  text: string
+  token_count: number
+  user_metadata: {
+    [key: string]: unknown
+  }
+}
+
+export type KnowledgeFsDocumentCompilationJobResponse = {
+  base_head_revision?: number | null
+  candidate_fingerprint?: string | null
+  candidate_publication_id?: string | null
+  completed_at?: number | null
+  created_at: number
+  document_asset_id: string
+  error?: string | null
+  execution_attempts?: number | null
+  failure?: KnowledgeFsPublicFailureResponse | null
+  id: string
+  knowledge_space_id: string
+  max_execution_attempts?: number | null
+  run_state?: string | null
+  stage:
+    | 'canceled'
+    | 'failed'
+    | 'nodes_generated'
+    | 'outline_built'
+    | 'parsed'
+    | 'projection_built'
+    | 'published'
+    | 'queued'
+    | 'smoke_eval_passed'
+  updated_at: number
+  version: number
+}
+
+export type KnowledgeFsDocumentDeletePayload = {
+  expectedRevision: number
+}
+
+export type KnowledgeFsDocumentListResponse = {
+  data: Array<KnowledgeFsDocumentResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsDocumentMetadataPayload = {
+  expectedRowVersion: number
+  patch: {
+    [key: string]: unknown
+  }
+}
+
+export type KnowledgeFsDocumentOutlineNodeResponse = {
+  child_node_ids?: Array<string>
+  children?: Array<KnowledgeFsDocumentOutlineNodeResponse>
+  end_offset?: number | null
+  end_page?: number | null
+  id: string
+  level: number
+  metadata: {
+    [key: string]: unknown
+  }
+  section_path?: Array<string>
+  source_element_ids?: Array<string>
+  source_node_ids?: Array<string>
+  start_offset?: number | null
+  start_page?: number | null
+  summary?: string | null
+  title: string
+  title_location?: {
+    [key: string]: unknown
+  } | null
+  toc_source: string
+}
+
+export type KnowledgeFsDocumentOutlineResponse = {
+  artifact_hash: string
+  created_at: string
+  document_asset_id: string
+  id: string
+  knowledge_space_id: string
+  metadata: {
+    [key: string]: unknown
+  }
+  nodes: Array<KnowledgeFsDocumentOutlineNodeResponse>
+  outline_version: string
+  parse_artifact_id: string
+  updated_at?: string | null
+  version: number
+}
+
+export type KnowledgeFsDocumentProcessingTaskListResponse = {
+  data: Array<KnowledgeFsDocumentProcessingTaskResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsDocumentProcessingTaskResponse = {
+  active_operations?: Array<string> | null
+  completed_at?: string | null
+  created_at: string
+  document_id: string
+  document_revision: number
+  error_code?:
+    | 'DOCUMENT_COMPILATION_FAILED'
+    | 'DOCUMENT_COMPILATION_LEASE_LOST'
+    | 'DOCUMENT_COMPILATION_PROFILE_CHANGED'
+    | 'DOCUMENT_COMPILATION_RETRYABLE'
+    | 'DOCUMENT_COUNT_QUOTA_EXCEEDED'
+    | 'DOCUMENT_COUNT_QUOTA_UNAVAILABLE'
+    | 'DOCUMENT_DISABLED'
+    | 'DOCUMENT_PARSER_INPUT_INVALID'
+    | 'DOCUMENT_PARSER_NOT_CONFIGURED'
+    | 'DOCUMENT_PARSER_RATE_LIMITED'
+    | 'DOCUMENT_PARSER_RESPONSE_INVALID'
+    | 'DOCUMENT_PARSER_TIMEOUT'
+    | 'DOCUMENT_PARSER_UNAVAILABLE'
+    | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
+    | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
+    | 'EMBEDDING_DIMENSION_INVALID'
+    | 'EMBEDDING_DIMENSION_UNSUPPORTED'
+    | 'EXECUTION_ATTEMPTS_EXHAUSTED'
+    | 'KNOWLEDGE_FS_ACCESS_DENIED'
+    | 'KNOWLEDGE_FS_CONFLICT'
+    | 'KNOWLEDGE_FS_INTERNAL_ERROR'
+    | 'KNOWLEDGE_FS_INVALID_REQUEST'
+    | 'KNOWLEDGE_FS_NOT_FOUND'
+    | 'KNOWLEDGE_FS_RATE_LIMITED'
+    | 'KNOWLEDGE_FS_TIMEOUT'
+    | 'KNOWLEDGE_FS_UNAVAILABLE'
+    | 'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND'
+    | 'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED'
+    | 'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS'
+    | 'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED'
+    | 'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT'
+    | 'LOGICAL_DOCUMENT_CAS_CONFLICT'
+    | 'MODEL_CAPABILITY_MISMATCH'
+    | 'MODEL_CONFIGURATION_STALE'
+    | 'MODEL_CREDENTIAL_INVALID'
+    | 'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE'
+    | 'MODEL_IDENTITY_MISMATCH'
+    | 'MODEL_PREFLIGHT_CANCELED'
+    | 'MODEL_PREFLIGHT_FAILED'
+    | 'MODEL_PREFLIGHT_TIMEOUT'
+    | 'MODEL_PREFLIGHT_UNAVAILABLE'
+    | 'MODEL_PROFILE_ACTIVATION_INCOMPLETE'
+    | 'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED'
+    | 'MODEL_RUNTIME_CONTEXT_LIMIT'
+    | 'MODEL_RUNTIME_FAILED'
+    | 'MODEL_RUNTIME_OUTPUT_LIMIT'
+    | 'MODEL_RUNTIME_RESPONSE_INVALID'
+    | 'MODEL_RUNTIME_TIMEOUT'
+    | 'MODEL_RUNTIME_UNAVAILABLE'
+    | 'MODEL_SELECTION_NOT_FOUND'
+    | 'RESEARCH_TASK_CAPABILITY_REVOKED'
+    | 'RESEARCH_TASK_DISPATCH_DEAD'
+    | 'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED'
+    | 'RESEARCH_TASK_FAILED'
+    | 'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID'
+    | 'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID'
+    | 'RETRIEVAL_DELETION_IN_PROGRESS'
+    | 'RETRIEVAL_EXECUTION_LEASE_LOST'
+    | 'SOURCE_BULK_ACTION_FAILED'
+    | 'SOURCE_CONNECTION_UNAVAILABLE'
+    | 'SOURCE_CRAWL_PAGE_NOT_FOUND'
+    | 'SOURCE_CRAWL_PROVIDER_UNAVAILABLE'
+    | 'SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED'
+    | 'SOURCE_CREDENTIAL_CONFIG_INVALID'
+    | 'SOURCE_CREDENTIAL_MUTATION_FAILED'
+    | 'SOURCE_CREDENTIAL_TEST_FAILED'
+    | 'SOURCE_CREDENTIAL_UNAVAILABLE'
+    | 'SOURCE_DOCUMENT_COMPILATION_FAILED'
+    | 'SOURCE_DOCUMENT_MATERIALIZATION_FAILED'
+    | 'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED'
+    | 'SOURCE_IMPORT_PARTIAL_FAILURE'
+    | 'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID'
+    | 'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_UNAVAILABLE'
+    | 'SOURCE_ONLINE_DRIVE_CONFIG_INVALID'
+    | 'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_IMPORT_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_REQUEST_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_UNAVAILABLE'
+    | 'SOURCE_OPERATION_FAILED'
+    | 'SOURCE_PROVIDER_REJECTED'
+    | 'SOURCE_PROVIDER_TIMEOUT'
+    | 'SOURCE_PROVIDER_UNAVAILABLE'
+    | 'SOURCE_SECRET_INTEGRITY_FAILED'
+    | 'SOURCE_SECRET_REF_CONFLICT'
+    | 'SOURCE_SYNC_FAILED'
+    | 'SOURCE_SYNC_SELECTION_MISMATCH'
+    | 'SOURCE_VERSION_CONFLICT'
+    | 'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID'
+    | 'SOURCE_WEBSITE_CRAWL_FAILED'
+    | 'SOURCE_WORKFLOW_CONTENT_MISSING'
+    | 'SOURCE_WORKFLOW_CONTENT_TOO_LARGE'
+    | 'SOURCE_WORKFLOW_EXTERNAL_TIMEOUT'
+    | 'SOURCE_WORKFLOW_FAILED'
+    | 'UPLOAD_INITIALIZATION_FAILED'
+    | 'UPLOAD_INTEGRITY_MISMATCH'
+    | 'VECTOR_SPACE_QUOTA_EXCEEDED'
+    | 'VECTOR_SPACE_QUOTA_UNAVAILABLE'
+    | null
+  error_message?: string | null
+  failure?: KnowledgeFsPublicFailureResponse | null
+  id: string
+  knowledge_space_id: string
+  phase?: string | null
+  progress_percent: number
+  retry_at?: string | null
+  semantic_enrichment?: KnowledgeFsSemanticEnrichmentResponse | null
+  stage:
+    | 'nodes_generated'
+    | 'outline_built'
+    | 'parsed'
+    | 'projection_built'
+    | 'published'
+    | 'queued'
+    | 'smoke_eval_passed'
+  state:
+    | 'canceled'
+    | 'dispatch_pending'
+    | 'failed'
+    | 'queued'
+    | 'retry_wait'
+    | 'running'
+    | 'succeeded'
+    | 'superseded'
+  updated_at: string
+}
+
+export type KnowledgeFsDocumentReferenceQuery = {
+  document_asset_id: string
+  document_asset_version: number
+}
+
+export type KnowledgeFsDocumentReindexItemResponse = {
+  asset?: KnowledgeFsDocumentResponse | null
+  code?: string | null
+  compilation_job?: {
+    [key: string]: unknown
+  } | null
+  document_id?: string | null
+  error?: string | null
+  status: 'disabled' | 'failed' | 'not_found' | 'pending' | 'queued'
+  status_url?: string | null
+}
+
+export type KnowledgeFsDocumentReindexPayload = {
+  all?: boolean | null
+  documentIds?: Array<string> | null
+}
+
+export type KnowledgeFsDocumentReindexResponse = {
+  bulk_job_id: string
+  items: Array<KnowledgeFsDocumentReindexItemResponse>
+  total: number
+}
+
+export type KnowledgeFsDocumentResponse = {
+  created_at: string
+  filename: string
+  id: string
+  knowledge_space_id: string
+  metadata: {
+    [key: string]: unknown
+  }
+  mime_type: string
+  object_key: string
+  parser_status: 'failed' | 'parsed' | 'pending'
+  sha256: string
+  size_bytes: number
+  source_id?: string | null
+  updated_at?: string | null
+  version: number
+}
+
+export type KnowledgeFsDocumentRevisionListResponse = {
+  data: Array<KnowledgeFsDocumentRevisionResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsDocumentRevisionResponse = {
+  activated_at?: string | null
+  content_hash: string
+  created_at: string
+  document_asset_id: string
+  document_asset_version: number
+  document_id: string
+  knowledge_space_id: string
+  mime_type: string
+  revision: number
+  size_bytes: number
+  state: 'active' | 'candidate' | 'failed' | 'superseded'
+}
+
+export type KnowledgeFsDurableDeletionAcceptedResponse = {
+  document_title?: string | null
+  job: KnowledgeFsDurableDeletionJobResponse
+  status_url: string
+}
+
+export type KnowledgeFsDurableDeletionErrorResponse = {
+  code: string
+  message: string
+  retryable: boolean
+}
+
+export type KnowledgeFsDurableDeletionJobResponse = {
+  checkpoint:
+    | 'completed'
+    | 'deleting_derived_data'
+    | 'deleting_objects'
+    | 'deleting_primary_data'
+    | 'quiescing'
+    | 'requested'
+  completed_at?: string | null
+  created_at: string
+  error?: KnowledgeFsDurableDeletionErrorResponse | null
+  id: string
+  knowledge_space_id: string
+  mode?: 'cascade' | 'keep' | null
+  progress?: KnowledgeFsDurableDeletionProgressResponse | null
+  retry_at?: string | null
+  run_state:
+    | 'canceled'
+    | 'completed'
+    | 'dispatch_pending'
+    | 'failed'
+    | 'queued'
+    | 'retry_wait'
+    | 'running'
+  target_id: string
+  target_type: 'document' | 'knowledge_space' | 'logical_document' | 'source'
+  updated_at: string
+}
+
+export type KnowledgeFsDurableDeletionProgressResponse = {
+  completed_items: number
+  current_item_kind?: string | null
+  total_items?: number | null
+}
+
+export type KnowledgeFsEmbeddingSettingsResponse = {
+  dimension?: number | null
+  model: string
+  plugin_id: string
+  provider: string
+  revision?: number | null
+  vector_space_id?: string | null
+}
+
+export type KnowledgeFsLogicalDocumentDeletePayload = {
+  expectedRevision: number
+}
+
+export type KnowledgeFsLogicalDocumentListResponse = {
+  data: Array<KnowledgeFsLogicalDocumentResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsLogicalDocumentResponse = {
+  active: KnowledgeFsDocumentRevisionResponse | null
+  active_revision?: number | null
+  created_at: string
+  disabled_at?: string | null
+  disabled_by_subject_id?: string | null
+  enabled?: boolean
+  id: string
+  knowledge_space_id: string
+  latest_task?: KnowledgeFsBackgroundTaskResponse | null
+  provider_item_id?: string | null
+  row_version: number
+  source_id?: string | null
+  status: 'deleting' | 'failed' | 'pending' | 'ready'
+  title: string
+  updated_at: string
+  user_metadata: {
+    [key: string]: unknown
+  }
+}
+
+export type KnowledgeFsOnlineDocumentWorkflowImportItemPayload = {
+  etag?: string | null
+  lastEditedTime?: string | null
+  name?: string | null
+  pageId: string
+  providerItemId: string
+  type: string
+  workspaceId: string
+}
+
+export type KnowledgeFsOnlineDocumentWorkflowImportPayload = {
+  desiredSyncPolicy?: KnowledgeFsSourceEditSyncPolicyPayload | null
+  items: Array<KnowledgeFsOnlineDocumentWorkflowImportItemPayload>
+  kind: 'online-document-import'
+  sourceUpdate?: KnowledgeFsSourceImportConfigurationPayload | null
+}
+
+export type KnowledgeFsOnlineDriveWorkflowImportItemPayload = {
+  bucket?: string | null
+  etag?: string | null
+  id: string
+  mimeType?: string | null
+  name: string
+  providerItemId: string
+}
+
+export type KnowledgeFsOnlineDriveWorkflowImportPayload = {
+  desiredSyncPolicy?: KnowledgeFsSourceEditSyncPolicyPayload | null
+  items: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
+  kind: 'online-drive-import'
+  sourceUpdate?: KnowledgeFsSourceImportConfigurationPayload | null
+}
+
+export type KnowledgeFsProductRerankProfile = {
+  enabled: boolean
+  model?: KnowledgeFsProfileModelSelection | null
+}
+
+export type KnowledgeFsProductRetrievalProfile = {
+  defaultMode: 'deep' | 'fast' | 'research'
+  reasoningModel: KnowledgeFsProfileModelSelection
+  rerank: KnowledgeFsProductRerankProfile
+  scoreThreshold: KnowledgeFsProductScoreThreshold
+  topK: number
+}
+
+export type KnowledgeFsProductScoreThreshold = {
+  enabled: boolean
+  stage?: 'mode-final' | 'rerank'
+  value?: number | null
+}
+
+export type KnowledgeFsProfileMigrationResponse = {
+  candidate_publication_fingerprint?: string | null
+  changed_kind: 'embedding' | 'retrieval'
+  checkpoint: 'activated' | 'candidate-built' | 'evaluated' | 'queued'
+  completed_at?: string | null
+  created_at: string
+  error_code?: string | null
+  evaluation_summary?: {
+    [key: string]: boolean | number | number | string
+  } | null
+  id: string
+  knowledge_space_id: string
+  rebuild_scope: 'clone-publication' | 'full-page-index-summary-outline' | 'full-vector-space'
+  run_state: 'canceled' | 'failed' | 'queued' | 'running' | 'succeeded'
+  updated_at: string
+}
+
+export type KnowledgeFsProfileModelSelection = {
+  model: string
+  pluginId: string
+  provider: string
+}
+
+export type KnowledgeFsPublicFailureResponse = {
+  action?:
+    | 'configure_model'
+    | 'configure_parser'
+    | 'configure_source'
+    | 'contact_admin'
+    | 'retry'
+    | 'reupload'
+    | null
+  category:
+    | 'authorization'
+    | 'canceled'
+    | 'configuration'
+    | 'conflict'
+    | 'dependency'
+    | 'internal'
+    | 'not_found'
+    | 'rate_limit'
+    | 'timeout'
+    | 'validation'
+  code:
+    | 'DOCUMENT_COMPILATION_FAILED'
+    | 'DOCUMENT_COMPILATION_LEASE_LOST'
+    | 'DOCUMENT_COMPILATION_PROFILE_CHANGED'
+    | 'DOCUMENT_COMPILATION_RETRYABLE'
+    | 'DOCUMENT_COUNT_QUOTA_EXCEEDED'
+    | 'DOCUMENT_COUNT_QUOTA_UNAVAILABLE'
+    | 'DOCUMENT_DISABLED'
+    | 'DOCUMENT_PARSER_INPUT_INVALID'
+    | 'DOCUMENT_PARSER_NOT_CONFIGURED'
+    | 'DOCUMENT_PARSER_RATE_LIMITED'
+    | 'DOCUMENT_PARSER_RESPONSE_INVALID'
+    | 'DOCUMENT_PARSER_TIMEOUT'
+    | 'DOCUMENT_PARSER_UNAVAILABLE'
+    | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
+    | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
+    | 'EMBEDDING_DIMENSION_INVALID'
+    | 'EMBEDDING_DIMENSION_UNSUPPORTED'
+    | 'EXECUTION_ATTEMPTS_EXHAUSTED'
+    | 'KNOWLEDGE_FS_ACCESS_DENIED'
+    | 'KNOWLEDGE_FS_CONFLICT'
+    | 'KNOWLEDGE_FS_INTERNAL_ERROR'
+    | 'KNOWLEDGE_FS_INVALID_REQUEST'
+    | 'KNOWLEDGE_FS_NOT_FOUND'
+    | 'KNOWLEDGE_FS_RATE_LIMITED'
+    | 'KNOWLEDGE_FS_TIMEOUT'
+    | 'KNOWLEDGE_FS_UNAVAILABLE'
+    | 'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND'
+    | 'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED'
+    | 'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS'
+    | 'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED'
+    | 'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT'
+    | 'LOGICAL_DOCUMENT_CAS_CONFLICT'
+    | 'MODEL_CAPABILITY_MISMATCH'
+    | 'MODEL_CONFIGURATION_STALE'
+    | 'MODEL_CREDENTIAL_INVALID'
+    | 'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE'
+    | 'MODEL_IDENTITY_MISMATCH'
+    | 'MODEL_PREFLIGHT_CANCELED'
+    | 'MODEL_PREFLIGHT_FAILED'
+    | 'MODEL_PREFLIGHT_TIMEOUT'
+    | 'MODEL_PREFLIGHT_UNAVAILABLE'
+    | 'MODEL_PROFILE_ACTIVATION_INCOMPLETE'
+    | 'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED'
+    | 'MODEL_RUNTIME_CONTEXT_LIMIT'
+    | 'MODEL_RUNTIME_FAILED'
+    | 'MODEL_RUNTIME_OUTPUT_LIMIT'
+    | 'MODEL_RUNTIME_RESPONSE_INVALID'
+    | 'MODEL_RUNTIME_TIMEOUT'
+    | 'MODEL_RUNTIME_UNAVAILABLE'
+    | 'MODEL_SELECTION_NOT_FOUND'
+    | 'RESEARCH_TASK_CAPABILITY_REVOKED'
+    | 'RESEARCH_TASK_DISPATCH_DEAD'
+    | 'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED'
+    | 'RESEARCH_TASK_FAILED'
+    | 'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID'
+    | 'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID'
+    | 'RETRIEVAL_DELETION_IN_PROGRESS'
+    | 'RETRIEVAL_EXECUTION_LEASE_LOST'
+    | 'SOURCE_BULK_ACTION_FAILED'
+    | 'SOURCE_CONNECTION_UNAVAILABLE'
+    | 'SOURCE_CRAWL_PAGE_NOT_FOUND'
+    | 'SOURCE_CRAWL_PROVIDER_UNAVAILABLE'
+    | 'SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED'
+    | 'SOURCE_CREDENTIAL_CONFIG_INVALID'
+    | 'SOURCE_CREDENTIAL_MUTATION_FAILED'
+    | 'SOURCE_CREDENTIAL_TEST_FAILED'
+    | 'SOURCE_CREDENTIAL_UNAVAILABLE'
+    | 'SOURCE_DOCUMENT_COMPILATION_FAILED'
+    | 'SOURCE_DOCUMENT_MATERIALIZATION_FAILED'
+    | 'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED'
+    | 'SOURCE_IMPORT_PARTIAL_FAILURE'
+    | 'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID'
+    | 'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_UNAVAILABLE'
+    | 'SOURCE_ONLINE_DRIVE_CONFIG_INVALID'
+    | 'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_IMPORT_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_REQUEST_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_UNAVAILABLE'
+    | 'SOURCE_OPERATION_FAILED'
+    | 'SOURCE_PROVIDER_REJECTED'
+    | 'SOURCE_PROVIDER_TIMEOUT'
+    | 'SOURCE_PROVIDER_UNAVAILABLE'
+    | 'SOURCE_SECRET_INTEGRITY_FAILED'
+    | 'SOURCE_SECRET_REF_CONFLICT'
+    | 'SOURCE_SYNC_FAILED'
+    | 'SOURCE_SYNC_SELECTION_MISMATCH'
+    | 'SOURCE_VERSION_CONFLICT'
+    | 'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID'
+    | 'SOURCE_WEBSITE_CRAWL_FAILED'
+    | 'SOURCE_WORKFLOW_CONTENT_MISSING'
+    | 'SOURCE_WORKFLOW_CONTENT_TOO_LARGE'
+    | 'SOURCE_WORKFLOW_EXTERNAL_TIMEOUT'
+    | 'SOURCE_WORKFLOW_FAILED'
+    | 'UPLOAD_INITIALIZATION_FAILED'
+    | 'UPLOAD_INTEGRITY_MISMATCH'
+    | 'VECTOR_SPACE_QUOTA_EXCEEDED'
+    | 'VECTOR_SPACE_QUOTA_UNAVAILABLE'
+  message: string
+  parameters?: {
+    [key: string]: string | number | number | boolean
+  } | null
+  retryPolicy: 'after_configuration' | 'automatic' | 'manual' | 'never'
+  stage?: string | null
+  traceId?: string | null
+}
+
+export type KnowledgeFsQueryAdmissionResponse = {
+  expires_at: string
+  operation_id: 'createQuery'
+  request: KnowledgeFsAdmittedQueryRequest
+  token: string
+  trace_id: string
+  url: string
+}
+
+export type KnowledgeFsQueryCreatePayload = {
+  activeDocumentIds?: Array<string>
+  activeEntityIds?: Array<string>
+  mode?: 'auto' | 'deep' | 'fast' | 'research' | null
+  query?: string | null
+  queryImages?: Array<KnowledgeFsQueryImageReference>
+  sessionId?: string | null
+}
+
+export type KnowledgeFsQueryImageReference = {
+  uploadFileId: string
+}
+
+export type KnowledgeFsQueryImageResponse = {
+  byte_size?: number | null
+  mime_type?: string | null
+  name?: string | null
+  preview_url?: string | null
+  upload_file_id: string
+}
+
+export type KnowledgeFsReadinessCapabilities = {
+  deep: boolean
+  index: boolean
+  ingest: boolean
+  query: boolean
+  research: boolean
+  source_sync: boolean
+}
+
+export type KnowledgeFsReadinessIssue = {
+  code: 'binding_missing' | 'incompatible' | 'missing' | 'unavailable' | 'validation_failed'
+  field: 'embedding' | 'publication' | 'reasoning' | 'rerank'
+  retryable: boolean
+}
+
+export type KnowledgeFsResearchTaskCreatePayload = {
+  budgetUsd?: number | null
+  limits?: KnowledgeFsResearchTaskLimits | null
+  metadata?: {
+    [key: string]: unknown
+  }
+  mode?: 'auto' | 'deep' | 'fast' | 'research' | null
+  query?: string | null
+  queryImages?: Array<KnowledgeFsQueryImageReference>
+  topK?: number | null
+}
+
+export type KnowledgeFsResearchTaskLimits = {
+  maxRetrievalSteps?: number | null
+  maxScannedResources?: number | null
+  maxToolCalls?: number | null
+  timeoutMs?: number | null
+}
+
+export type KnowledgeFsResearchTaskListResponse = {
+  data: Array<KnowledgeFsResearchTaskResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsResearchTaskPartialListResponse = {
+  data: Array<KnowledgeFsResearchTaskPartialResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsResearchTaskPartialResponse = {
+  answer?: string | null
+  evidence_bundle: {
+    [key: string]: unknown
+  }
+  knowledge_space_id: string
+  research_task_job_id: string
+  sequence: number
+}
+
+export type KnowledgeFsResearchTaskPartialsQuery = {
+  cursor?: string | null
+  limit?: number
+}
+
+export type KnowledgeFsResearchTaskPlanBudgetResponse = {
+  budget_usd?: number | null
+  exceeds_budget: boolean
+  remaining_budget_usd?: number | null
+}
+
+export type KnowledgeFsResearchTaskPlanPayload = {
+  budgetUsd?: number | null
+  mode?: 'auto' | 'deep' | 'fast' | 'research' | null
+  query?: string | null
+  queryImages?: Array<KnowledgeFsQueryImageReference>
+  topK?: number | null
+}
+
+export type KnowledgeFsResearchTaskPlanResponse = {
+  budget: KnowledgeFsResearchTaskPlanBudgetResponse
+  estimates: {
+    [key: string]: unknown
+  }
+  knowledge_space_id: string
+  query: string
+  query_images?: Array<KnowledgeFsQueryImageReference>
+  retrieval_plan: KnowledgeFsResearchTaskRetrievalPlanResponse
+  steps: Array<{
+    [key: string]: unknown
+  }>
+  strategy_version: 'research-dry-run-planner-v1'
+}
+
+export type KnowledgeFsResearchTaskResponse = {
+  budget_usd?: number | null
+  completed_at?: number | null
+  cost: {
+    [key: string]: unknown
+  }
+  created_at: number
+  error?: string | null
+  failure?: KnowledgeFsPublicFailureResponse | null
+  id: string
+  knowledge_space_id: string
+  limits?: KnowledgeFsResearchTaskLimits | null
+  metadata: {
+    [key: string]: unknown
+  }
+  mode?: 'auto' | 'deep' | 'fast' | 'research' | null
+  query: string
+  query_images?: Array<KnowledgeFsQueryImageResponse>
+  stage:
+    | 'analyzing'
+    | 'canceled'
+    | 'completed'
+    | 'failed'
+    | 'generating'
+    | 'paused'
+    | 'planning'
+    | 'queued'
+    | 'retrieving'
+  top_k?: number | null
+  updated_at: number
+}
+
+export type KnowledgeFsResearchTaskRetrievalPlanResponse = {
+  dense_top_k: number
+  fts_top_k: number
+  fusion_limit: number
+  query_language: 'cjk' | 'latin' | 'mixed-cjk-latin' | 'other'
+  requested_mode: 'auto' | 'deep' | 'fast' | 'research'
+  rerank_candidate_limit: number
+  resolved_mode: 'deep' | 'fast' | 'research'
+  strategy_version: string
+  top_k: number
+}
+
+export type KnowledgeFsResolvedDocumentReferenceResponse = {
+  document_id: string
+  revision: number
+}
+
+export type KnowledgeFsRetrievalSettingsResponse = {
+  default_mode: 'deep' | 'fast' | 'research'
+  reasoning_model: KnowledgeFsEmbeddingSettingsResponse
+  rerank: KnowledgeFsProductRerankProfile
+  revision?: number | null
+  score_threshold: KnowledgeFsProductScoreThreshold
+  top_k: number
+}
+
+export type KnowledgeFsSemanticEnrichmentResponse = {
+  error_code?: string | null
+  error_message?: string | null
+  failure?: KnowledgeFsPublicFailureResponse | null
+  nodes_completed: number
+  nodes_total?: number | null
+  provider_calls?: number | null
+  provider_calls_maximum?: number | null
+  state: 'disabled' | 'failed' | 'not_scheduled' | 'pending' | 'ready' | 'running'
+  updated_at?: string | null
+}
+
+export type KnowledgeFsServiceQueryImageUploadResponse = {
+  byte_size: number
+  mime_type: string
+  upload_file_id: string
+}
+
+export type KnowledgeFsServiceSourceConnectionCreatePayload = {
+  authKind?: 'endpoint'
+  configuration?: {
+    [key: string]: boolean | number | string
+  }
+  credentials?: {
+    [key: string]: unknown
+  }
+  name: string
+  providerId: string
+}
+
+export type KnowledgeFsServiceSourceCreatePayload = {
+  connectionId?: string | null
+  metadata?: {
+    [key: string]: unknown
+  }
+  name: string
+  permissionScope?: Array<string>
+  status?: 'active' | 'disabled' | 'error' | 'syncing' | null
+  type: 'connector' | 'object-storage' | 'upload' | 'web'
+  uri: string
+}
+
+export type KnowledgeFsServiceSourceUpdatePayload = {
+  expectedVersion?: number | null
+  metadata?: {
+    [key: string]: unknown
+  } | null
+  name?: string | null
+  providerParameters?: {
+    [key: string]: boolean | number | string
+  } | null
+  status?: 'active' | 'disabled' | 'error' | 'syncing' | null
+  syncAfterUpdate?: boolean | null
+  uri?: string | null
+}
+
+export type KnowledgeFsSettingsPayload = {
+  embedding?: KnowledgeFsProfileModelSelection | null
+  expectedRevision: number
+  retrieval?: KnowledgeFsProductRetrievalProfile | null
+}
+
+export type KnowledgeFsSettingsResponse = {
+  active_profile_available: boolean
+  active_profile_revisions: KnowledgeFsActiveProfileRevisions
+  capabilities: KnowledgeFsReadinessCapabilities
+  configuration_state: 'active' | 'pending-validation' | 'setup-required' | 'validation-failed'
+  embedding: KnowledgeFsEmbeddingSettingsResponse | null
+  issues: Array<KnowledgeFsReadinessIssue>
+  retrieval: KnowledgeFsRetrievalSettingsResponse | null
+  revision: number
+}
+
+export type KnowledgeFsSettingsUpdateResponse = {
+  migration?: KnowledgeFsProfileMigrationResponse | null
+  settings: KnowledgeFsSettingsResponse
+}
+
+export type KnowledgeFsSourceConnectionListQuery = {
+  cursor?: string | null
+  limit?: number
+}
+
+export type KnowledgeFsSourceConnectionListResponse = {
+  data: Array<KnowledgeFsSourceConnectionResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsSourceConnectionRefreshPayload = {
+  expectedVersion: number
+}
+
+export type KnowledgeFsSourceConnectionResponse = {
+  auth_kind: 'api-key' | 'endpoint' | 'oauth2'
+  configuration: {
+    [key: string]: boolean | number | string
+  }
+  created_at: string
+  error_code?: string | null
+  expires_at?: string | null
+  id: string
+  knowledge_space_id: string
+  name: string
+  provider_id: string
+  scopes: Array<string>
+  status: 'active' | 'error' | 'expired' | 'provisioning' | 'revoked'
+  updated_at: string
+  version: number
+}
+
+export type KnowledgeFsSourceCrawlResponse = {
+  completed?: number | null
+  failed?: number | null
+  imported?: number | null
+  pages: Array<KnowledgeFsCrawledPageResponse>
+  replaced?: number | null
+  skipped?: number | null
+  status?: string | null
+  total?: number | null
+}
+
+export type KnowledgeFsSourceCreatePayload = {
+  connectionId?: string | null
+  credentials?: {
+    [key: string]: unknown
+  } | null
+  metadata?: {
+    [key: string]: unknown
+  }
+  name: string
+  permissionScope?: Array<string>
+  status?: 'active' | 'disabled' | 'error' | 'syncing' | null
+  type: 'connector' | 'object-storage' | 'upload' | 'web'
+  uri: string
+}
+
+export type KnowledgeFsSourceCredentialTestResponse = {
+  code?:
+    | 'DOCUMENT_COMPILATION_FAILED'
+    | 'DOCUMENT_COMPILATION_LEASE_LOST'
+    | 'DOCUMENT_COMPILATION_PROFILE_CHANGED'
+    | 'DOCUMENT_COMPILATION_RETRYABLE'
+    | 'DOCUMENT_COUNT_QUOTA_EXCEEDED'
+    | 'DOCUMENT_COUNT_QUOTA_UNAVAILABLE'
+    | 'DOCUMENT_DISABLED'
+    | 'DOCUMENT_PARSER_INPUT_INVALID'
+    | 'DOCUMENT_PARSER_NOT_CONFIGURED'
+    | 'DOCUMENT_PARSER_RATE_LIMITED'
+    | 'DOCUMENT_PARSER_RESPONSE_INVALID'
+    | 'DOCUMENT_PARSER_TIMEOUT'
+    | 'DOCUMENT_PARSER_UNAVAILABLE'
+    | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
+    | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
+    | 'EMBEDDING_DIMENSION_INVALID'
+    | 'EMBEDDING_DIMENSION_UNSUPPORTED'
+    | 'EXECUTION_ATTEMPTS_EXHAUSTED'
+    | 'KNOWLEDGE_FS_ACCESS_DENIED'
+    | 'KNOWLEDGE_FS_CONFLICT'
+    | 'KNOWLEDGE_FS_INTERNAL_ERROR'
+    | 'KNOWLEDGE_FS_INVALID_REQUEST'
+    | 'KNOWLEDGE_FS_NOT_FOUND'
+    | 'KNOWLEDGE_FS_RATE_LIMITED'
+    | 'KNOWLEDGE_FS_TIMEOUT'
+    | 'KNOWLEDGE_FS_UNAVAILABLE'
+    | 'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND'
+    | 'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED'
+    | 'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS'
+    | 'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED'
+    | 'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT'
+    | 'LOGICAL_DOCUMENT_CAS_CONFLICT'
+    | 'MODEL_CAPABILITY_MISMATCH'
+    | 'MODEL_CONFIGURATION_STALE'
+    | 'MODEL_CREDENTIAL_INVALID'
+    | 'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE'
+    | 'MODEL_IDENTITY_MISMATCH'
+    | 'MODEL_PREFLIGHT_CANCELED'
+    | 'MODEL_PREFLIGHT_FAILED'
+    | 'MODEL_PREFLIGHT_TIMEOUT'
+    | 'MODEL_PREFLIGHT_UNAVAILABLE'
+    | 'MODEL_PROFILE_ACTIVATION_INCOMPLETE'
+    | 'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED'
+    | 'MODEL_RUNTIME_CONTEXT_LIMIT'
+    | 'MODEL_RUNTIME_FAILED'
+    | 'MODEL_RUNTIME_OUTPUT_LIMIT'
+    | 'MODEL_RUNTIME_RESPONSE_INVALID'
+    | 'MODEL_RUNTIME_TIMEOUT'
+    | 'MODEL_RUNTIME_UNAVAILABLE'
+    | 'MODEL_SELECTION_NOT_FOUND'
+    | 'RESEARCH_TASK_CAPABILITY_REVOKED'
+    | 'RESEARCH_TASK_DISPATCH_DEAD'
+    | 'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED'
+    | 'RESEARCH_TASK_FAILED'
+    | 'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID'
+    | 'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID'
+    | 'RETRIEVAL_DELETION_IN_PROGRESS'
+    | 'RETRIEVAL_EXECUTION_LEASE_LOST'
+    | 'SOURCE_BULK_ACTION_FAILED'
+    | 'SOURCE_CONNECTION_UNAVAILABLE'
+    | 'SOURCE_CRAWL_PAGE_NOT_FOUND'
+    | 'SOURCE_CRAWL_PROVIDER_UNAVAILABLE'
+    | 'SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED'
+    | 'SOURCE_CREDENTIAL_CONFIG_INVALID'
+    | 'SOURCE_CREDENTIAL_MUTATION_FAILED'
+    | 'SOURCE_CREDENTIAL_TEST_FAILED'
+    | 'SOURCE_CREDENTIAL_UNAVAILABLE'
+    | 'SOURCE_DOCUMENT_COMPILATION_FAILED'
+    | 'SOURCE_DOCUMENT_MATERIALIZATION_FAILED'
+    | 'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED'
+    | 'SOURCE_IMPORT_PARTIAL_FAILURE'
+    | 'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID'
+    | 'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_UNAVAILABLE'
+    | 'SOURCE_ONLINE_DRIVE_CONFIG_INVALID'
+    | 'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_IMPORT_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_REQUEST_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_UNAVAILABLE'
+    | 'SOURCE_OPERATION_FAILED'
+    | 'SOURCE_PROVIDER_REJECTED'
+    | 'SOURCE_PROVIDER_TIMEOUT'
+    | 'SOURCE_PROVIDER_UNAVAILABLE'
+    | 'SOURCE_SECRET_INTEGRITY_FAILED'
+    | 'SOURCE_SECRET_REF_CONFLICT'
+    | 'SOURCE_SYNC_FAILED'
+    | 'SOURCE_SYNC_SELECTION_MISMATCH'
+    | 'SOURCE_VERSION_CONFLICT'
+    | 'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID'
+    | 'SOURCE_WEBSITE_CRAWL_FAILED'
+    | 'SOURCE_WORKFLOW_CONTENT_MISSING'
+    | 'SOURCE_WORKFLOW_CONTENT_TOO_LARGE'
+    | 'SOURCE_WORKFLOW_EXTERNAL_TIMEOUT'
+    | 'SOURCE_WORKFLOW_FAILED'
+    | 'UPLOAD_INITIALIZATION_FAILED'
+    | 'UPLOAD_INTEGRITY_MISMATCH'
+    | 'VECTOR_SPACE_QUOTA_EXCEEDED'
+    | 'VECTOR_SPACE_QUOTA_UNAVAILABLE'
+    | null
+  error?: string | null
+  failure?: KnowledgeFsPublicFailureResponse | null
+  valid: boolean
+}
+
+export type KnowledgeFsSourceDeletePayload = {
+  expectedRevision: number
+}
+
+export type KnowledgeFsSourceDeleteQuery = {
+  documents?: 'cascade' | 'keep'
+}
+
+export type KnowledgeFsSourceEditOnlineDocumentSelectionPayload = {
+  items: Array<KnowledgeFsOnlineDocumentWorkflowImportItemPayload>
+  kind: 'online_document'
+}
+
+export type KnowledgeFsSourceEditOnlineDriveSelectionPayload = {
+  items: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
+  kind: 'online_drive'
+}
+
+export type KnowledgeFsSourceEditSyncPolicyPayload = {
+  customIntervalSeconds?: number | null
+  enabled: boolean
+  mode: 'custom' | 'interval' | 'manual'
+}
+
+export type KnowledgeFsSourceEditWebsiteSelectionPayload = {
+  kind: 'website_crawl'
+  sourceUrls: Array<string>
+}
+
+export type KnowledgeFsSourceFileBucketResponse = {
+  bucket?: string | null
+  continuation_token?: string | null
+  files: Array<KnowledgeFsSourceFileResponse>
+  is_truncated?: boolean | null
+}
+
+export type KnowledgeFsSourceFileResponse = {
+  id: string
+  name: string
+  size?: number | null
+  type: string
+}
+
+export type KnowledgeFsSourceFilesQuery = {
+  bucket?: string | null
+  continuationToken?: string | null
+  maxKeys?: number | null
+  prefix?: string | null
+}
+
+export type KnowledgeFsSourceFilesResponse = {
+  buckets: Array<KnowledgeFsSourceFileBucketResponse>
+}
+
+export type KnowledgeFsSourceImportConfigurationPayload = {
+  expectedVersion: number
+  metadata?: {
+    [key: string]: unknown
+  } | null
+  name?: string | null
+  providerParameters?: {
+    [key: string]: boolean | number | string
+  } | null
+  status?: 'active' | 'disabled' | 'error' | 'syncing' | null
+  uri?: string | null
+}
+
+export type KnowledgeFsSourceImportFailureResponse = {
+  code:
+    | 'DOCUMENT_COMPILATION_FAILED'
+    | 'DOCUMENT_COMPILATION_LEASE_LOST'
+    | 'DOCUMENT_COMPILATION_PROFILE_CHANGED'
+    | 'DOCUMENT_COMPILATION_RETRYABLE'
+    | 'DOCUMENT_COUNT_QUOTA_EXCEEDED'
+    | 'DOCUMENT_COUNT_QUOTA_UNAVAILABLE'
+    | 'DOCUMENT_DISABLED'
+    | 'DOCUMENT_PARSER_INPUT_INVALID'
+    | 'DOCUMENT_PARSER_NOT_CONFIGURED'
+    | 'DOCUMENT_PARSER_RATE_LIMITED'
+    | 'DOCUMENT_PARSER_RESPONSE_INVALID'
+    | 'DOCUMENT_PARSER_TIMEOUT'
+    | 'DOCUMENT_PARSER_UNAVAILABLE'
+    | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
+    | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
+    | 'EMBEDDING_DIMENSION_INVALID'
+    | 'EMBEDDING_DIMENSION_UNSUPPORTED'
+    | 'EXECUTION_ATTEMPTS_EXHAUSTED'
+    | 'KNOWLEDGE_FS_ACCESS_DENIED'
+    | 'KNOWLEDGE_FS_CONFLICT'
+    | 'KNOWLEDGE_FS_INTERNAL_ERROR'
+    | 'KNOWLEDGE_FS_INVALID_REQUEST'
+    | 'KNOWLEDGE_FS_NOT_FOUND'
+    | 'KNOWLEDGE_FS_RATE_LIMITED'
+    | 'KNOWLEDGE_FS_TIMEOUT'
+    | 'KNOWLEDGE_FS_UNAVAILABLE'
+    | 'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND'
+    | 'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED'
+    | 'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS'
+    | 'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED'
+    | 'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT'
+    | 'LOGICAL_DOCUMENT_CAS_CONFLICT'
+    | 'MODEL_CAPABILITY_MISMATCH'
+    | 'MODEL_CONFIGURATION_STALE'
+    | 'MODEL_CREDENTIAL_INVALID'
+    | 'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE'
+    | 'MODEL_IDENTITY_MISMATCH'
+    | 'MODEL_PREFLIGHT_CANCELED'
+    | 'MODEL_PREFLIGHT_FAILED'
+    | 'MODEL_PREFLIGHT_TIMEOUT'
+    | 'MODEL_PREFLIGHT_UNAVAILABLE'
+    | 'MODEL_PROFILE_ACTIVATION_INCOMPLETE'
+    | 'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED'
+    | 'MODEL_RUNTIME_CONTEXT_LIMIT'
+    | 'MODEL_RUNTIME_FAILED'
+    | 'MODEL_RUNTIME_OUTPUT_LIMIT'
+    | 'MODEL_RUNTIME_RESPONSE_INVALID'
+    | 'MODEL_RUNTIME_TIMEOUT'
+    | 'MODEL_RUNTIME_UNAVAILABLE'
+    | 'MODEL_SELECTION_NOT_FOUND'
+    | 'RESEARCH_TASK_CAPABILITY_REVOKED'
+    | 'RESEARCH_TASK_DISPATCH_DEAD'
+    | 'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED'
+    | 'RESEARCH_TASK_FAILED'
+    | 'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID'
+    | 'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID'
+    | 'RETRIEVAL_DELETION_IN_PROGRESS'
+    | 'RETRIEVAL_EXECUTION_LEASE_LOST'
+    | 'SOURCE_BULK_ACTION_FAILED'
+    | 'SOURCE_CONNECTION_UNAVAILABLE'
+    | 'SOURCE_CRAWL_PAGE_NOT_FOUND'
+    | 'SOURCE_CRAWL_PROVIDER_UNAVAILABLE'
+    | 'SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED'
+    | 'SOURCE_CREDENTIAL_CONFIG_INVALID'
+    | 'SOURCE_CREDENTIAL_MUTATION_FAILED'
+    | 'SOURCE_CREDENTIAL_TEST_FAILED'
+    | 'SOURCE_CREDENTIAL_UNAVAILABLE'
+    | 'SOURCE_DOCUMENT_COMPILATION_FAILED'
+    | 'SOURCE_DOCUMENT_MATERIALIZATION_FAILED'
+    | 'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED'
+    | 'SOURCE_IMPORT_PARTIAL_FAILURE'
+    | 'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID'
+    | 'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_UNAVAILABLE'
+    | 'SOURCE_ONLINE_DRIVE_CONFIG_INVALID'
+    | 'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_IMPORT_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_REQUEST_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_UNAVAILABLE'
+    | 'SOURCE_OPERATION_FAILED'
+    | 'SOURCE_PROVIDER_REJECTED'
+    | 'SOURCE_PROVIDER_TIMEOUT'
+    | 'SOURCE_PROVIDER_UNAVAILABLE'
+    | 'SOURCE_SECRET_INTEGRITY_FAILED'
+    | 'SOURCE_SECRET_REF_CONFLICT'
+    | 'SOURCE_SYNC_FAILED'
+    | 'SOURCE_SYNC_SELECTION_MISMATCH'
+    | 'SOURCE_VERSION_CONFLICT'
+    | 'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID'
+    | 'SOURCE_WEBSITE_CRAWL_FAILED'
+    | 'SOURCE_WORKFLOW_CONTENT_MISSING'
+    | 'SOURCE_WORKFLOW_CONTENT_TOO_LARGE'
+    | 'SOURCE_WORKFLOW_EXTERNAL_TIMEOUT'
+    | 'SOURCE_WORKFLOW_FAILED'
+    | 'UPLOAD_INITIALIZATION_FAILED'
+    | 'UPLOAD_INTEGRITY_MISMATCH'
+    | 'VECTOR_SPACE_QUOTA_EXCEEDED'
+    | 'VECTOR_SPACE_QUOTA_UNAVAILABLE'
+  error: string
+  failure?: KnowledgeFsPublicFailureResponse | null
+  filename: string
+}
+
+export type KnowledgeFsSourceImportFilePayload = {
+  bucket?: string | null
+  id: string
+  mimeType?: string | null
+  name: string
+}
+
+export type KnowledgeFsSourceImportFilesPayload = {
+  files: Array<KnowledgeFsSourceImportFilePayload>
+}
+
+export type KnowledgeFsSourceImportPagePayload = {
+  lastEditedTime?: string | null
+  name?: string | null
+  pageId: string
+  type: string
+  workspaceId: string
+}
+
+export type KnowledgeFsSourceImportPagesPayload = {
+  pages: Array<KnowledgeFsSourceImportPagePayload>
+}
+
+export type KnowledgeFsSourceImportResponse = {
+  documents: Array<KnowledgeFsSourceImportedDocumentResponse>
+  failed: Array<KnowledgeFsSourceImportFailureResponse>
+  skipped: Array<string>
+}
+
+export type KnowledgeFsSourceImportedDocumentResponse = {
+  document_asset_id: string
+  filename: string
+}
+
+export type KnowledgeFsSourceListResponse = {
+  data: Array<KnowledgeFsSourceResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsSourcePageResponse = {
+  last_edited_time?: string | null
+  page_id: string
+  page_name: string
+  parent_id?: string | null
+  type: string
+}
+
+export type KnowledgeFsSourcePagesQuery = {
+  cursor?: string | null
+  limit?: number
+}
+
+export type KnowledgeFsSourcePagesResponse = {
+  next_cursor?: string | null
+  workspaces: Array<KnowledgeFsSourceWorkspacePagesResponse>
+}
+
+export type KnowledgeFsSourceProviderFieldResponse = {
+  description?: string | null
+  format?: 'password' | 'uri' | null
+  name: string
+  required: boolean
+  secret: boolean
+  type: 'boolean' | 'integer' | 'string'
+}
+
+export type KnowledgeFsSourceProviderListResponse = {
+  data: Array<KnowledgeFsSourceProviderResponse>
+}
+
+export type KnowledgeFsSourceProviderResponse = {
+  auth_kinds: Array<'api-key' | 'endpoint' | 'oauth2'>
+  available: boolean
+  capabilities: Array<'online-document' | 'online-drive' | 'website-crawl'>
+  configuration: Array<KnowledgeFsSourceProviderFieldResponse>
+  display_name: string
+  id: string
+  unavailable_reason?: string | null
+}
+
+export type KnowledgeFsSourceResponse = {
+  connection_id?: string | null
+  created_at: string
+  credential_configured?: boolean | null
+  id: string
+  knowledge_space_id: string
+  last_synced_at?: string | null
+  metadata: {
+    [key: string]: unknown
+  }
+  name: string
+  permission_scope: Array<string>
+  status: 'active' | 'disabled' | 'error' | 'syncing'
+  sync_policy?: KnowledgeFsSourceSyncPolicyResponse | null
+  sync_workflow?: KnowledgeFsSourceWorkflowResponse | null
+  type: 'connector' | 'object-storage' | 'upload' | 'web'
+  updated_at: string
+  uri: string
+  version: number
+}
+
+export type KnowledgeFsSourceSyncPolicyPayload = {
+  customIntervalSeconds?: number | null
+  enabled: boolean
+  expectedRevision: number
+  expectedSourceVersion: number
+  mode: 'custom' | 'interval' | 'manual'
+}
+
+export type KnowledgeFsSourceSyncPolicyResponse = {
+  created_at: string
+  custom_interval_seconds?: number | null
+  enabled: boolean
+  expected_source_version: number
+  id: string
+  knowledge_space_id: string
+  mode: 'custom' | 'interval' | 'manual'
+  next_run_at?: string | null
+  revision: number
+  source_id: string
+  updated_at: string
+}
+
+export type KnowledgeFsSourceUpdatePayload = {
+  expectedVersion?: number | null
+  metadata?: {
+    [key: string]: unknown
+  } | null
+  name?: string | null
+  providerParameters?: {
+    [key: string]: boolean | number | string
+  } | null
+  selection?:
+    | ({
+        kind: 'website_crawl'
+      } & KnowledgeFsSourceEditWebsiteSelectionPayload)
+    | ({
+        kind: 'online_document'
+      } & KnowledgeFsSourceEditOnlineDocumentSelectionPayload)
+    | ({
+        kind: 'online_drive'
+      } & KnowledgeFsSourceEditOnlineDriveSelectionPayload)
+    | null
+  status?: 'active' | 'disabled' | 'error' | 'syncing' | null
+  syncAfterUpdate?: boolean | null
+  syncPolicy?: KnowledgeFsSourceEditSyncPolicyPayload | null
+  uri?: string | null
+}
+
+export type KnowledgeFsSourceWorkflowCancelPayload = {
+  reason?: string | null
+}
+
+export type KnowledgeFsSourceWorkflowImportPayload =
+  | ({
+      kind: 'online-document-import'
+    } & KnowledgeFsOnlineDocumentWorkflowImportPayload)
+  | ({
+      kind: 'online-drive-import'
+    } & KnowledgeFsOnlineDriveWorkflowImportPayload)
+
+export type KnowledgeFsSourceWorkflowListQuery = {
+  cursor?: string | null
+  limit?: number
+  sourceId?: string | null
+}
+
+export type KnowledgeFsSourceWorkflowListResponse = {
+  data: Array<KnowledgeFsSourceWorkflowResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsSourceWorkflowResponse = {
+  canceled_at?: string | null
+  checkpoint: string
+  completed_at?: string | null
+  created_at: string
+  cursor?: string | null
+  execution_attempts: number
+  failure?: KnowledgeFsPublicFailureResponse | null
+  id: string
+  kind: string
+  knowledge_space_id: string
+  last_error_code?:
+    | 'DOCUMENT_COMPILATION_FAILED'
+    | 'DOCUMENT_COMPILATION_LEASE_LOST'
+    | 'DOCUMENT_COMPILATION_PROFILE_CHANGED'
+    | 'DOCUMENT_COMPILATION_RETRYABLE'
+    | 'DOCUMENT_COUNT_QUOTA_EXCEEDED'
+    | 'DOCUMENT_COUNT_QUOTA_UNAVAILABLE'
+    | 'DOCUMENT_DISABLED'
+    | 'DOCUMENT_PARSER_INPUT_INVALID'
+    | 'DOCUMENT_PARSER_NOT_CONFIGURED'
+    | 'DOCUMENT_PARSER_RATE_LIMITED'
+    | 'DOCUMENT_PARSER_RESPONSE_INVALID'
+    | 'DOCUMENT_PARSER_TIMEOUT'
+    | 'DOCUMENT_PARSER_UNAVAILABLE'
+    | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
+    | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
+    | 'EMBEDDING_DIMENSION_INVALID'
+    | 'EMBEDDING_DIMENSION_UNSUPPORTED'
+    | 'EXECUTION_ATTEMPTS_EXHAUSTED'
+    | 'KNOWLEDGE_FS_ACCESS_DENIED'
+    | 'KNOWLEDGE_FS_CONFLICT'
+    | 'KNOWLEDGE_FS_INTERNAL_ERROR'
+    | 'KNOWLEDGE_FS_INVALID_REQUEST'
+    | 'KNOWLEDGE_FS_NOT_FOUND'
+    | 'KNOWLEDGE_FS_RATE_LIMITED'
+    | 'KNOWLEDGE_FS_TIMEOUT'
+    | 'KNOWLEDGE_FS_UNAVAILABLE'
+    | 'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND'
+    | 'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED'
+    | 'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS'
+    | 'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED'
+    | 'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT'
+    | 'LOGICAL_DOCUMENT_CAS_CONFLICT'
+    | 'MODEL_CAPABILITY_MISMATCH'
+    | 'MODEL_CONFIGURATION_STALE'
+    | 'MODEL_CREDENTIAL_INVALID'
+    | 'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE'
+    | 'MODEL_IDENTITY_MISMATCH'
+    | 'MODEL_PREFLIGHT_CANCELED'
+    | 'MODEL_PREFLIGHT_FAILED'
+    | 'MODEL_PREFLIGHT_TIMEOUT'
+    | 'MODEL_PREFLIGHT_UNAVAILABLE'
+    | 'MODEL_PROFILE_ACTIVATION_INCOMPLETE'
+    | 'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED'
+    | 'MODEL_RUNTIME_CONTEXT_LIMIT'
+    | 'MODEL_RUNTIME_FAILED'
+    | 'MODEL_RUNTIME_OUTPUT_LIMIT'
+    | 'MODEL_RUNTIME_RESPONSE_INVALID'
+    | 'MODEL_RUNTIME_TIMEOUT'
+    | 'MODEL_RUNTIME_UNAVAILABLE'
+    | 'MODEL_SELECTION_NOT_FOUND'
+    | 'RESEARCH_TASK_CAPABILITY_REVOKED'
+    | 'RESEARCH_TASK_DISPATCH_DEAD'
+    | 'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED'
+    | 'RESEARCH_TASK_FAILED'
+    | 'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID'
+    | 'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID'
+    | 'RETRIEVAL_DELETION_IN_PROGRESS'
+    | 'RETRIEVAL_EXECUTION_LEASE_LOST'
+    | 'SOURCE_BULK_ACTION_FAILED'
+    | 'SOURCE_CONNECTION_UNAVAILABLE'
+    | 'SOURCE_CRAWL_PAGE_NOT_FOUND'
+    | 'SOURCE_CRAWL_PROVIDER_UNAVAILABLE'
+    | 'SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED'
+    | 'SOURCE_CREDENTIAL_CONFIG_INVALID'
+    | 'SOURCE_CREDENTIAL_MUTATION_FAILED'
+    | 'SOURCE_CREDENTIAL_TEST_FAILED'
+    | 'SOURCE_CREDENTIAL_UNAVAILABLE'
+    | 'SOURCE_DOCUMENT_COMPILATION_FAILED'
+    | 'SOURCE_DOCUMENT_MATERIALIZATION_FAILED'
+    | 'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED'
+    | 'SOURCE_IMPORT_PARTIAL_FAILURE'
+    | 'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID'
+    | 'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED'
+    | 'SOURCE_ONLINE_DOCUMENT_UNAVAILABLE'
+    | 'SOURCE_ONLINE_DRIVE_CONFIG_INVALID'
+    | 'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_IMPORT_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_REQUEST_FAILED'
+    | 'SOURCE_ONLINE_DRIVE_UNAVAILABLE'
+    | 'SOURCE_OPERATION_FAILED'
+    | 'SOURCE_PROVIDER_REJECTED'
+    | 'SOURCE_PROVIDER_TIMEOUT'
+    | 'SOURCE_PROVIDER_UNAVAILABLE'
+    | 'SOURCE_SECRET_INTEGRITY_FAILED'
+    | 'SOURCE_SECRET_REF_CONFLICT'
+    | 'SOURCE_SYNC_FAILED'
+    | 'SOURCE_SYNC_SELECTION_MISMATCH'
+    | 'SOURCE_VERSION_CONFLICT'
+    | 'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID'
+    | 'SOURCE_WEBSITE_CRAWL_FAILED'
+    | 'SOURCE_WORKFLOW_CONTENT_MISSING'
+    | 'SOURCE_WORKFLOW_CONTENT_TOO_LARGE'
+    | 'SOURCE_WORKFLOW_EXTERNAL_TIMEOUT'
+    | 'SOURCE_WORKFLOW_FAILED'
+    | 'UPLOAD_INITIALIZATION_FAILED'
+    | 'UPLOAD_INTEGRITY_MISMATCH'
+    | 'VECTOR_SPACE_QUOTA_EXCEEDED'
+    | 'VECTOR_SPACE_QUOTA_UNAVAILABLE'
+    | null
+  max_execution_attempts: number
+  progress_completed: number
+  progress_failed: number
+  progress_skipped: number
+  progress_total?: number | null
+  source_id?: string | null
+  state: string
+  updated_at: string
+}
+
+export type KnowledgeFsSourceWorkspacePagesResponse = {
+  pages: Array<KnowledgeFsSourcePageResponse>
+  total?: number | null
+  workspace_id?: string | null
+  workspace_name?: string | null
+}
+
+export type KnowledgeFsTraceEntriesQuery = {
+  cursor?: string | null
+  limit?: number
+}
+
+export type KnowledgeFsTraceEntryListResponse = {
+  consistency_class?: string | null
+  data: Array<KnowledgeFsTraceEntryResponse>
+  next_cursor?: string | null
+  path: string
+  preview?: boolean | null
+  truncated: boolean
+}
+
+export type KnowledgeFsTraceEntryResponse = {
+  kind: 'directory' | 'resource'
+  metadata: {
+    [key: string]: unknown
+  }
+  name: string
+  path: string
+  resource_type?: string | null
+  target_id?: string | null
+  version?: number | null
+}
+
+export type KnowledgeFsTraceListResponse = {
+  data: Array<KnowledgeFsTraceResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsTraceProfileResponse = {
+  embedding_model?: string | null
+  embedding_vector_space_id?: string | null
+  projection_publication_id?: string | null
+  projection_version?: number | null
+  reasoning_model?: string | null
+  rerank_model?: string | null
+  retrieval_profile_revision?: number | null
+}
+
+export type KnowledgeFsTraceResponse = {
+  completed: boolean
+  created_at: string
+  duration_ms?: number | null
+  evidence_bundle_id?: string | null
+  evidence_state?: string | null
+  final_score?: number | null
+  id: string
+  mode: 'auto' | 'deep' | 'fast' | 'research'
+  open_bad_case_id?: string | null
+  profile: KnowledgeFsTraceProfileResponse
+  query: string
+  query_images?: Array<KnowledgeFsQueryImageResponse>
+  result_count: number
+  scores: KnowledgeFsTraceScoresResponse
+  source?: KnowledgeFsTraceSource
+  stages: Array<KnowledgeFsTraceStageResponse>
+}
+
+export type KnowledgeFsTraceScoresResponse = {
+  final?: number | null
+  rerank?: number | null
+  retrieval?: number | null
+}
+
+export type KnowledgeFsTraceSource = 'agent' | 'mcp' | 'retrieval_test' | 'service_api' | 'workflow'
+
+export type KnowledgeFsTraceStageResponse = {
+  candidate_count?: number | null
+  name: string
+  status: 'error' | 'ok' | 'skipped'
+}
+
+export type KnowledgeFsAccessDeniedError = ErrorResponse & {
+  code: 'knowledge_fs_access_denied'
+  status: 403
+}
+
+export type KnowledgeFsCitation = {
+  artifact_hash: string
+  control_space_id: string
+  document_asset_id: string
+  document_title?: string | null
+  document_version?: number | null
+  end_offset?: number | null
+  id: string
+  node_id: string
+  page_number?: number | null
+  parse_artifact_id?: string | null
+  section_path?: Array<string>
+  space_name: string
+  start_offset?: number | null
+}
+
+export type KnowledgeFsConflictError = ErrorResponse & {
+  code: 'knowledge_fs_conflict'
+  status: 409
+}
+
+export type KnowledgeFsInvalidCredentialError = ErrorResponse & {
+  code: 'knowledge_fs_invalid_credential'
+  status: 401
+}
+
+export type KnowledgeFsInvalidRequestError = ErrorResponse & {
+  code: 'knowledge_fs_invalid_request'
+  status: 400
+}
+
+export type KnowledgeFsOperationUnavailableError = ErrorResponse & {
+  code: 'knowledge_fs_operation_unavailable'
+  status: 503
+}
+
+export type KnowledgeFsRateLimitExceededError = ErrorResponse & {
+  code: 'knowledge_fs_rate_limit_exceeded'
+  status: 429
+}
+
+export type KnowledgeFsRequestRejectedError = ErrorResponse & {
+  code: 'knowledge_fs_request_rejected'
+  status: 422
+}
+
+export type KnowledgeFsRequestTooLargeError = ErrorResponse & {
+  code: 'knowledge_fs_request_too_large'
+  status: 413
+}
+
+export type KnowledgeFsResourceNotFoundError = ErrorResponse & {
+  code: 'knowledge_fs_resource_not_found'
+  status: 404
+}
+
+export type KnowledgeFsUpstreamUnavailableError = ErrorResponse & {
+  code: 'knowledge_fs_upstream_unavailable'
+  status: 502
+}
 
 export type KnowledgeTagListResponse = Array<KnowledgeTagResponse>
 
@@ -573,6 +3296,60 @@ export type KnowledgeTagResponse = {
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
+}
+
+export type MessageFeedbackPayloadWithUser = {
+  content?: string | null
+  rating?: 'dislike' | 'like' | null
+  user: string
+}
+
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
+}
+
+export type MessageFile = {
+  belongs_to?: string | null
+  filename: string
+  id: string
+  mime_type?: string | null
+  size?: number | null
+  transfer_method: string
+  type: string
+  upload_file_id?: string | null
+  url?: string | null
+}
+
+export type MessageInfiniteScrollPagination = {
+  data: Array<MessageListItem>
+  has_more: boolean
+  limit: number
+}
+
+export type MessageListItem = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  answer_tokens?: number
+  conversation_id: string
+  created_at?: number | null
+  currency?: string | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  message_tokens?: number
+  parent_message_id?: string | null
+  provider_response_latency?: number
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
+  total_price?: string | null
+  readonly total_tokens: number
 }
 
 export type MessageListQuery = {
@@ -589,7 +3366,7 @@ export type MetadataArgs = {
 export type MetadataDetail = {
   id: string
   name: string
-  value?: unknown
+  value?: string | number | number | null
 }
 
 export type MetadataFilteringCondition = {
@@ -605,27 +3382,549 @@ export type MetadataUpdatePayload = {
   name: string
 }
 
-export type PipelineRunApiEntity = {
-  datasource_info_list: Array<{
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type ModelFeature =
+  | 'agent-thought'
+  | 'audio'
+  | 'document'
+  | 'multi-tool-call'
+  | 'polling'
+  | 'stream-tool-call'
+  | 'structured-output'
+  | 'tool-call'
+  | 'video'
+  | 'vision'
+
+export type ModelPropertyKey =
+  | 'audio_type'
+  | 'context_size'
+  | 'default_voice'
+  | 'file_upload_limit'
+  | 'max_characters_per_chunk'
+  | 'max_chunks'
+  | 'max_workers'
+  | 'mode'
+  | 'supported_file_extensions'
+  | 'voices'
+  | 'word_limit'
+
+export type ModelRuntimeI18nObject = {
+  en_US: string
+  zh_Hans?: string | null
+}
+
+export type ModelStatus =
+  | 'active'
+  | 'credential-removed'
+  | 'disabled'
+  | 'no-configure'
+  | 'no-permission'
+  | 'quota-exceeded'
+
+export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+
+export type NoAudioUploadedError = ErrorResponse & {
+  code: 'no_audio_uploaded'
+  status: 400
+}
+
+export type NoFileUploadedError = ErrorResponse & {
+  code: 'no_file_uploaded'
+  status: 400
+}
+
+export type NotChatAppError = ErrorResponse & {
+  code: 'not_chat_app'
+  status: 400
+}
+
+export type NotWorkflowAppError = ErrorResponse & {
+  code: 'not_workflow_app'
+  status: 400
+}
+
+export type OptionalServiceApiUserPayload = {
+  user?: string
+}
+
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
+}
+
+export type Parameters = {
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
+  opening_statement?: string | null
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  show_thoughts?: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
+  suggested_questions: Array<string>
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
+  system_parameters: SystemParameters
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<
+    | {
+        'text-input': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        select: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        paragraph: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        number: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        external_data_tool: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        file: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        'file-list': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        checkbox: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        json_object: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+  >
+}
+
+export type PermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
+
+export type PipelineDataset = {
+  chunk_structure: string
+  description?: string
+  id: string
+  name: string
+}
+
+export type PipelineDocument = {
+  data_source_info?: {
     [key: string]: unknown
-  }>
-  datasource_type: string
+  } | null
+  data_source_type: string
+  enabled: boolean
+  error?: string | null
+  id: string
+  indexing_status: string
+  name: string
+  position: number
+}
+
+export type PipelineRunApiEntity = {
+  datasource_info_list: Array<
+    | {
+        name?: string
+        reference: string
+      }
+    | {
+        credential_id?: string
+        page: {
+          page_id: string
+          page_name?: string
+          type: string
+        }
+        workspace_id: string
+      }
+    | {
+        title?: string
+        url: string
+      }
+    | {
+        bucket?: string
+        id: string
+        name?: string
+        type: 'file' | 'folder'
+      }
+  >
+  datasource_type: 'local_file' | 'online_document' | 'online_drive' | 'website_crawl'
   inputs: {
     [key: string]: unknown
   }
   is_published: boolean
-  response_mode: string
+  response_mode: 'blocking' | 'streaming'
   start_node_id: string
+}
+
+export type PipelineRunError = ErrorResponse & {
+  code: 'pipeline_run_error'
+  status: 500
+}
+
+export type PipelineRunJsonResponse = PublishedPipelineRunResponse | WorkflowBlockingResponse
+
+export type PipelineUploadFileResponse = {
+  created_at?: string | null
+  created_by: string
+  extension: string
+  id: string
+  mime_type?: string | null
+  name: string
+  size: number
 }
 
 export type PreProcessingRule = {
   enabled: boolean
-  id: string
+  id: PreProcessingRuleKey
 }
 
+export type PreProcessingRuleKey = 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
+
 export type ProcessRule = {
-  mode: 'automatic' | 'custom' | 'hierarchical'
-  rules?: Rule
+  mode: ProcessRuleMode
+  rules?: Rule | null
+}
+
+export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
+
+export type ProviderModelWithStatusEntity = {
+  deprecated?: boolean
+  features?: Array<ModelFeature> | null
+  fetch_from: FetchFrom
+  has_invalid_load_balancing_configs?: boolean
+  label: ModelRuntimeI18nObject
+  load_balancing_enabled?: boolean
+  model: string
+  model_properties: {
+    [key in ModelPropertyKey]?: unknown
+  }
+  model_type: ModelType
+  status: ModelStatus
+}
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderNotSupportSpeechToTextError = ErrorResponse & {
+  code: 'provider_not_support_speech_to_text'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type ProviderWithModelsListResponse = {
+  data: Array<ProviderWithModelsResponse>
+}
+
+export type ProviderWithModelsResponse = {
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
+  models: Array<ProviderModelWithStatusEntity>
+  provider: string
+  status: CustomConfigurationStatus
+  tenant_id: string
+}
+
+export type PublishedPipelineRunResponse = {
+  batch: string
+  dataset: PipelineDataset
+  documents: Array<PipelineDocument>
+}
+
+export type RateLimitError = ErrorResponse & {
+  code: 'rate_limit_error'
+  status: 429
 }
 
 export type RerankingModel = {
@@ -637,40 +3936,142 @@ export type ResultResponse = {
   result: string
 }
 
-export type RetrievalMethod
-  = | 'full_text_search'
-    | 'hybrid_search'
-    | 'keyword_search'
-    | 'semantic_search'
+export type RetrievalMethod =
+  | 'full_text_search'
+  | 'hybrid_search'
+  | 'keyword_search'
+  | 'semantic_search'
 
 export type RetrievalModel = {
-  metadata_filtering_conditions?: MetadataFilteringCondition
+  metadata_filtering_conditions?: MetadataFilteringCondition | null
   reranking_enable: boolean
-  reranking_mode?: string | null
-  reranking_model?: RerankingModel
+  reranking_mode?: 'reranking_model' | 'weighted_score' | null
+  reranking_model?: RerankingModel | null
   score_threshold?: number | null
   score_threshold_enabled: boolean
   search_method: RetrievalMethod
   top_k: number
-  weights?: WeightModel
+  weights?: WeightModel | null
+}
+
+export type RetrieverResource = {
+  content?: string | null
+  created_at?: number | null
+  data_source_type?: string | null
+  dataset_id?: string | null
+  dataset_name?: string | null
+  doc_metadata?: {
+    [key: string]: JsonValueType
+  } | null
+  document_asset_id?: string | null
+  document_id?: string | null
+  document_name?: string | null
+  document_revision?: number | null
+  document_version?: number | null
+  files?: Array<{
+    [key: string]: JsonValueType
+  }> | null
+  hit_count?: number | null
+  id?: string
+  index_node_hash?: string | null
+  knowledge_fs_citation?: KnowledgeFsCitation | null
+  message_id?: string
+  page?: number | null
+  position: number
+  retriever_from?: string | null
+  score?: number | null
+  segment_id?: string | null
+  segment_position?: number | null
+  summary?: string | null
+  title?: string | null
+  word_count?: number | null
 }
 
 export type Rule = {
   parent_mode?: 'full-doc' | 'paragraph' | null
   pre_processing_rules?: Array<PreProcessingRule> | null
-  segmentation?: Segmentation
-  subchunk_segmentation?: Segmentation
+  segmentation?: Segmentation | null
+  subchunk_segmentation?: Segmentation | null
+}
+
+export type ScopedTaskStopPayload = {
+  user: string
+}
+
+export type SegmentAttachmentResponse = {
+  extension: string
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  source_url: string
+}
+
+export type SegmentCreateItemPayload = {
+  answer?: string | null
+  attachment_ids?: Array<string> | null
+  content: string
+  keywords?: Array<string> | null
+}
+
+export type SegmentCreateListResponse = {
+  data: Array<SegmentResponse>
+  doc_form: string
 }
 
 export type SegmentCreatePayload = {
-  segments?: Array<{
-    [key: string]: unknown
-  }> | null
+  segments: Array<SegmentCreateItemPayload>
+}
+
+export type SegmentDetailResponse = {
+  data: SegmentResponse
+  doc_form: string
 }
 
 export type SegmentListQuery = {
   keyword?: string | null
+  limit?: number
+  page?: number
   status?: Array<string>
+}
+
+export type SegmentListResponse = {
+  data: Array<SegmentResponse>
+  doc_form: string
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type SegmentResponse = {
+  answer: string | null
+  attachments: Array<SegmentAttachmentResponse>
+  child_chunks: Array<ChildChunkResponse>
+  completed_at: number | null
+  content: string
+  created_at: number
+  created_by: string
+  disabled_at: number | null
+  disabled_by: string | null
+  document_id: string
+  enabled: boolean
+  error: string | null
+  hit_count: number
+  id: string
+  index_node_hash: string | null
+  index_node_id: string | null
+  indexing_at: number | null
+  keywords: Array<string> | null
+  position: number
+  sign_content: string
+  status: 'completed' | 'error' | 'indexing' | 'paused' | 're_segment' | 'waiting'
+  stopped_at: number | null
+  summary: string | null
+  tokens: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
 }
 
 export type SegmentUpdateArgs = {
@@ -693,10 +4094,28 @@ export type Segmentation = {
   separator?: string
 }
 
-export type SimpleAccount = {
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
+}
+
+export type SimpleConversation = {
+  created_at?: number | null
+  id: string
+  inputs: {
+    [key: string]: AnyJsonValue
+  }
+  introduction?: string | null
+  name: string
+  status: string
+  updated_at?: number | null
 }
 
 export type SimpleEndUser = {
@@ -704,6 +4123,10 @@ export type SimpleEndUser = {
   is_anonymous: boolean
   session_id?: string | null
   type: string
+}
+
+export type SimpleFeedback = {
+  rating?: string | null
 }
 
 export type SimpleResultResponse = {
@@ -726,10 +4149,36 @@ export type Site = {
   icon_background?: string | null
   icon_type?: string | null
   readonly icon_url: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   show_workflow_steps: boolean
   title: string
   use_icon_as_answer_icon: boolean
+}
+
+export type SpeechToTextDisabledError = ErrorResponse & {
+  code: 'speech_to_text_disabled'
+  status: 400
+}
+
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
+
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
+}
+
+export type SystemParameters = {
+  audio_file_size_limit: number
+  file_size_limit: number
+  image_file_size_limit: number
+  video_file_size_limit: number
+  workflow_file_upload_limit: number
 }
 
 export type TagBindingPayload = {
@@ -745,11 +4194,17 @@ export type TagDeletePayload = {
   tag_id: string
 }
 
-export type TagUnbindingPayload = {
-  tag_id?: string | null
-  tag_ids?: Array<string>
-  target_id: string
-}
+export type TagUnbindingPayload =
+  | {
+      tag_id: string
+      tag_ids?: Array<string>
+      target_id: string
+    }
+  | {
+      tag_id?: string | null
+      tag_ids: Array<string>
+      target_id: string
+    }
 
 export type TagUpdatePayload = {
   name: string
@@ -763,17 +4218,58 @@ export type TextToAudioPayload = {
   voice?: string | null
 }
 
+export type TextToAudioPayloadWithUser = {
+  message_id?: string | null
+  streaming?: boolean | null
+  text?: string | null
+  user?: string
+  voice?: string | null
+}
+
+export type TooManyFilesError = ErrorResponse & {
+  code: 'too_many_files'
+  status: 400
+}
+
+export type ToolIcon = {
+  background: string
+  content: string
+}
+
+export type TriggerWorkflowServiceModeUnavailableError = ErrorResponse & {
+  code: 'trigger_workflow_service_mode_unavailable'
+  status: 403
+}
+
+export type UnsupportedAudioTypeError = ErrorResponse & {
+  code: 'unsupported_audio_type'
+  status: 415
+}
+
+export type UnsupportedFileTypeError = ErrorResponse & {
+  code: 'unsupported_file_type'
+  status: 415
+}
+
 export type UrlResponse = {
   url: string
 }
+
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type ValueSourceType = 'constant' | 'variable'
 
 export type WeightKeywordSetting = {
   keyword_weight: number
 }
 
 export type WeightModel = {
-  keyword_setting?: WeightKeywordSetting
-  vector_setting?: WeightVectorSetting
+  keyword_setting?: WeightKeywordSetting | null
+  vector_setting?: WeightVectorSetting | null
   weight_type?: 'customized' | 'keyword_first' | 'semantic_first' | null
 }
 
@@ -793,13 +4289,55 @@ export type WorkflowAppLogPaginationResponse = {
 
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount
-  created_by_end_user?: SimpleEndUser
+  created_by_account?: SimpleAccountResponse | null
+  created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   created_from?: string | null
-  details?: unknown
+  details?:
+    | {
+        [key: string]: unknown
+      }
+    | Array<unknown>
+    | string
+    | number
+    | number
+    | boolean
+    | null
   id: string
-  workflow_run?: WorkflowRunForLogResponse
+  workflow_run?: WorkflowRunForLogResponse | null
+}
+
+export type WorkflowBlockingResponse =
+  | WorkflowFinishedBlockingResponse
+  | WorkflowPausedBlockingResponse
+
+export type WorkflowEventsQuery = {
+  continue_on_pause?: boolean
+  include_state_snapshot?: boolean
+  user: string
+}
+
+export type WorkflowFinishedBlockingDataResponse = {
+  created_at: number
+  elapsed_time: number
+  error: string | null
+  finished_at: number | null
+  id: string
+  outputs: {
+    [key: string]: unknown
+  } | null
+  status: 'failed' | 'partial-succeeded' | 'stopped' | 'succeeded'
+  total_steps: number
+  total_tokens: number
+  workflow_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowFinishedBlockingResponse = {
+  data: WorkflowFinishedBlockingDataResponse
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
 }
 
 export type WorkflowLogQuery = {
@@ -813,9 +4351,53 @@ export type WorkflowLogQuery = {
   status?: 'failed' | 'stopped' | 'succeeded' | null
 }
 
+export type WorkflowPauseReasonResponse = {
+  TYPE: string
+  actions?: Array<JsonObject>
+  approval_channels?: Array<string>
+  display_in_ui?: boolean | null
+  expiration_time?: number | null
+  form_content?: string | null
+  form_id?: string | null
+  form_token?: string | null
+  inputs?: Array<JsonObject>
+  message?: string | null
+  node_id?: string | null
+  node_title?: string | null
+  resolved_default_values?: {
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
+export type WorkflowPausedBlockingDataResponse = {
+  created_at: number
+  elapsed_time: number
+  error: string | null
+  finished_at: number | null
+  id: string
+  outputs: {
+    [key: string]: unknown
+  } | null
+  paused_nodes: Array<string>
+  reasons: Array<WorkflowPauseReasonResponse>
+  status: 'paused'
+  total_steps: number
+  total_tokens: number
+  workflow_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowPausedBlockingResponse = {
+  data: WorkflowPausedBlockingDataResponse
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
 export type WorkflowRunForLogResponse = {
   created_at?: number | null
-  elapsed_time?: unknown
+  elapsed_time?: number | number | null
   error?: string | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -828,22 +4410,96 @@ export type WorkflowRunForLogResponse = {
 }
 
 export type WorkflowRunPayload = {
-  files?: Array<{
-    [key: string]: unknown
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
   response_mode?: 'blocking' | 'streaming' | null
 }
 
+export type WorkflowRunPayloadWithUser = {
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
+  inputs: {
+    [key: string]: unknown
+  }
+  response_mode?: 'blocking' | 'streaming' | null
+  user: string
+}
+
 export type WorkflowRunResponse = {
   created_at?: number | null
-  elapsed_time?: unknown
+  elapsed_time?: number | number | null
   error?: string | null
   finished_at?: number | null
   id: string
-  inputs?: unknown
+  inputs?:
+    | {
+        [key: string]: unknown
+      }
+    | Array<unknown>
+    | string
+    | number
+    | number
+    | boolean
+    | null
   outputs?: {
     [key: string]: unknown
   }
@@ -851,6 +4507,59 @@ export type WorkflowRunResponse = {
   total_steps?: number | null
   total_tokens?: number | null
   workflow_id: string
+}
+
+export type WorkflowTaskStopPayload = {
+  user: string
+}
+
+export type WorkflowVersionExecutionNotAllowedError = ErrorResponse & {
+  code: 'workflow_version_execution_not_allowed'
+  status: 403
+}
+
+export type WorkspaceArchivedError = ErrorResponse & {
+  code: 'workspace_archived'
+  status: 403
+}
+
+export type WorkspaceNotFoundError = ErrorResponse & {
+  code: 'workspace_not_found'
+  status: 403
+}
+
+export type HumanInputFormSubmitResponseWritable = {
+  [key: string]: never
+}
+
+export type MessageInfiniteScrollPaginationWritable = {
+  data: Array<MessageListItemWritable>
+  has_more: boolean
+  limit: number
+}
+
+export type MessageListItemWritable = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  answer_tokens?: number
+  conversation_id: string
+  created_at?: number | null
+  currency?: string | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  message_tokens?: number
+  parent_message_id?: string | null
+  provider_response_latency?: number
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
+  total_price?: string | null
 }
 
 export type SiteWritable = {
@@ -863,6 +4572,7 @@ export type SiteWritable = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   show_workflow_steps: boolean
   title: string
@@ -875,6 +4585,12 @@ export type GetRootData = {
   query?: never
   url: '/'
 }
+
+export type GetRootErrors = {
+  default: ErrorResponse
+}
+
+export type GetRootError = GetRootErrors[keyof GetRootErrors]
 
 export type GetRootResponses = {
   200: IndexInfoResponse
@@ -893,17 +4609,23 @@ export type GetAppFeedbacksData = {
 }
 
 export type GetAppFeedbacksErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  400: AppUnavailableError | ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppFeedbacksError = GetAppFeedbacksErrors[keyof GetAppFeedbacksErrors]
 
 export type GetAppFeedbacksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AppFeedbackListResponse
 }
 
 export type GetAppFeedbacksResponse = GetAppFeedbacksResponses[keyof GetAppFeedbacksResponses]
@@ -911,34 +4633,42 @@ export type GetAppFeedbacksResponse = GetAppFeedbacksResponses[keyof GetAppFeedb
 export type PostAppsAnnotationReplyByActionData = {
   body: AnnotationReplyActionPayload
   path: {
-    action: string
+    action: 'disable' | 'enable'
   }
   query?: never
   url: '/apps/annotation-reply/{action}'
 }
 
 export type PostAppsAnnotationReplyByActionErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostAppsAnnotationReplyByActionError
-  = PostAppsAnnotationReplyByActionErrors[keyof PostAppsAnnotationReplyByActionErrors]
+export type PostAppsAnnotationReplyByActionError =
+  PostAppsAnnotationReplyByActionErrors[keyof PostAppsAnnotationReplyByActionErrors]
 
 export type PostAppsAnnotationReplyByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AnnotationJobStatusResponse
 }
 
-export type PostAppsAnnotationReplyByActionResponse
-  = PostAppsAnnotationReplyByActionResponses[keyof PostAppsAnnotationReplyByActionResponses]
+export type PostAppsAnnotationReplyByActionResponse =
+  PostAppsAnnotationReplyByActionResponses[keyof PostAppsAnnotationReplyByActionResponses]
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdData = {
   body?: never
   path: {
-    action: string
+    action: 'disable' | 'enable'
     job_id: string
   }
   query?: never
@@ -946,37 +4676,55 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdData = {
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetAppsAnnotationReplyByActionStatusByJobIdError
-  = GetAppsAnnotationReplyByActionStatusByJobIdErrors[keyof GetAppsAnnotationReplyByActionStatusByJobIdErrors]
+export type GetAppsAnnotationReplyByActionStatusByJobIdError =
+  GetAppsAnnotationReplyByActionStatusByJobIdErrors[keyof GetAppsAnnotationReplyByActionStatusByJobIdErrors]
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AnnotationJobStatusDetailResponse
 }
 
-export type GetAppsAnnotationReplyByActionStatusByJobIdResponse
-  = GetAppsAnnotationReplyByActionStatusByJobIdResponses[keyof GetAppsAnnotationReplyByActionStatusByJobIdResponses]
+export type GetAppsAnnotationReplyByActionStatusByJobIdResponse =
+  GetAppsAnnotationReplyByActionStatusByJobIdResponses[keyof GetAppsAnnotationReplyByActionStatusByJobIdResponses]
 
 export type GetAppsAnnotationsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    page?: number
+  }
   url: '/apps/annotations'
 }
 
 export type GetAppsAnnotationsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsAnnotationsError = GetAppsAnnotationsErrors[keyof GetAppsAnnotationsErrors]
@@ -985,8 +4733,8 @@ export type GetAppsAnnotationsResponses = {
   200: AnnotationList
 }
 
-export type GetAppsAnnotationsResponse
-  = GetAppsAnnotationsResponses[keyof GetAppsAnnotationsResponses]
+export type GetAppsAnnotationsResponse =
+  GetAppsAnnotationsResponses[keyof GetAppsAnnotationsResponses]
 
 export type PostAppsAnnotationsData = {
   body: AnnotationCreatePayload
@@ -996,9 +4744,19 @@ export type PostAppsAnnotationsData = {
 }
 
 export type PostAppsAnnotationsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsAnnotationsError = PostAppsAnnotationsErrors[keyof PostAppsAnnotationsErrors]
@@ -1007,8 +4765,8 @@ export type PostAppsAnnotationsResponses = {
   201: Annotation
 }
 
-export type PostAppsAnnotationsResponse
-  = PostAppsAnnotationsResponses[keyof PostAppsAnnotationsResponses]
+export type PostAppsAnnotationsResponse =
+  PostAppsAnnotationsResponses[keyof PostAppsAnnotationsResponses]
 
 export type DeleteAppsAnnotationsByAnnotationIdData = {
   body?: never
@@ -1020,28 +4778,29 @@ export type DeleteAppsAnnotationsByAnnotationIdData = {
 }
 
 export type DeleteAppsAnnotationsByAnnotationIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type DeleteAppsAnnotationsByAnnotationIdError
-  = DeleteAppsAnnotationsByAnnotationIdErrors[keyof DeleteAppsAnnotationsByAnnotationIdErrors]
+export type DeleteAppsAnnotationsByAnnotationIdError =
+  DeleteAppsAnnotationsByAnnotationIdErrors[keyof DeleteAppsAnnotationsByAnnotationIdErrors]
 
 export type DeleteAppsAnnotationsByAnnotationIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
-export type DeleteAppsAnnotationsByAnnotationIdResponse
-  = DeleteAppsAnnotationsByAnnotationIdResponses[keyof DeleteAppsAnnotationsByAnnotationIdResponses]
+export type DeleteAppsAnnotationsByAnnotationIdResponse =
+  DeleteAppsAnnotationsByAnnotationIdResponses[keyof DeleteAppsAnnotationsByAnnotationIdResponses]
 
 export type PutAppsAnnotationsByAnnotationIdData = {
   body: AnnotationCreatePayload
@@ -1053,99 +4812,103 @@ export type PutAppsAnnotationsByAnnotationIdData = {
 }
 
 export type PutAppsAnnotationsByAnnotationIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PutAppsAnnotationsByAnnotationIdError
-  = PutAppsAnnotationsByAnnotationIdErrors[keyof PutAppsAnnotationsByAnnotationIdErrors]
+export type PutAppsAnnotationsByAnnotationIdError =
+  PutAppsAnnotationsByAnnotationIdErrors[keyof PutAppsAnnotationsByAnnotationIdErrors]
 
 export type PutAppsAnnotationsByAnnotationIdResponses = {
   200: Annotation
 }
 
-export type PutAppsAnnotationsByAnnotationIdResponse
-  = PutAppsAnnotationsByAnnotationIdResponses[keyof PutAppsAnnotationsByAnnotationIdResponses]
+export type PutAppsAnnotationsByAnnotationIdResponse =
+  PutAppsAnnotationsByAnnotationIdResponses[keyof PutAppsAnnotationsByAnnotationIdResponses]
 
 export type PostAudioToTextData = {
-  body?: never
+  body: {
+    file: Blob | File
+    user?: string
+  }
   path?: never
   query?: never
   url: '/audio-to-text'
 }
 
 export type PostAudioToTextErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+    | SpeechToTextDisabledError
+    | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAudioToTextError = PostAudioToTextErrors[keyof PostAudioToTextErrors]
 
 export type PostAudioToTextResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AudioTranscriptResponse
 }
 
 export type PostAudioToTextResponse = PostAudioToTextResponses[keyof PostAudioToTextResponses]
 
 export type PostChatMessagesData = {
-  body: ChatRequestPayload
+  body: ChatRequestPayloadWithUser
   path?: never
   query?: never
   url: '/chat-messages'
 }
 
 export type PostChatMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  429: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | AgentNotPublishedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotChatAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  403: WorkflowVersionExecutionNotAllowedError | ErrorResponse
+  404: ErrorResponse
+  429: RateLimitError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostChatMessagesError = PostChatMessagesErrors[keyof PostChatMessagesErrors]
 
 export type PostChatMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChatBlockingResponse | string
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
 
 export type PostChatMessagesByTaskIdStopData = {
-  body?: never
+  body: ScopedTaskStopPayload
   path: {
     task_id: string
   }
@@ -1154,60 +4917,56 @@ export type PostChatMessagesByTaskIdStopData = {
 }
 
 export type PostChatMessagesByTaskIdStopErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostChatMessagesByTaskIdStopError
-  = PostChatMessagesByTaskIdStopErrors[keyof PostChatMessagesByTaskIdStopErrors]
+export type PostChatMessagesByTaskIdStopError =
+  PostChatMessagesByTaskIdStopErrors[keyof PostChatMessagesByTaskIdStopErrors]
 
 export type PostChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostChatMessagesByTaskIdStopResponse
-  = PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
+export type PostChatMessagesByTaskIdStopResponse =
+  PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
 
 export type PostCompletionMessagesData = {
-  body: CompletionRequestPayload
+  body: CompletionRequestPayloadWithUser
   path?: never
   query?: never
   url: '/completion-messages'
 }
 
 export type PostCompletionMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  429: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostCompletionMessagesError
-  = PostCompletionMessagesErrors[keyof PostCompletionMessagesErrors]
+export type PostCompletionMessagesError =
+  PostCompletionMessagesErrors[keyof PostCompletionMessagesErrors]
 
 export type PostCompletionMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: CompletionBlockingResponse | string
 }
 
-export type PostCompletionMessagesResponse
-  = PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
+export type PostCompletionMessagesResponse =
+  PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
 
 export type PostCompletionMessagesByTaskIdStopData = {
-  body?: never
+  body: ScopedTaskStopPayload
   path: {
     task_id: string
   }
@@ -1216,177 +4975,202 @@ export type PostCompletionMessagesByTaskIdStopData = {
 }
 
 export type PostCompletionMessagesByTaskIdStopErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: AppUnavailableError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostCompletionMessagesByTaskIdStopError
-  = PostCompletionMessagesByTaskIdStopErrors[keyof PostCompletionMessagesByTaskIdStopErrors]
+export type PostCompletionMessagesByTaskIdStopError =
+  PostCompletionMessagesByTaskIdStopErrors[keyof PostCompletionMessagesByTaskIdStopErrors]
 
 export type PostCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostCompletionMessagesByTaskIdStopResponse
-  = PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
+export type PostCompletionMessagesByTaskIdStopResponse =
+  PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
 
 export type GetConversationsData = {
   body?: never
   path?: never
   query?: {
-    last_id?: string | null
+    last_id?: string
     limit?: number
     sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+    user?: string
   }
   url: '/conversations'
 }
 
 export type GetConversationsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationCursorNotFoundError | ConversationNotFoundError | ErrorResponse
+  422: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetConversationsError = GetConversationsErrors[keyof GetConversationsErrors]
 
 export type GetConversationsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ConversationInfiniteScrollPagination
 }
 
 export type GetConversationsResponse = GetConversationsResponses[keyof GetConversationsResponses]
 
-export type DeleteConversationsByCIdData = {
-  body?: never
+export type DeleteConversationsByConversationIdData = {
+  body: OptionalServiceApiUserPayload
   path: {
-    c_id: string
+    conversation_id: string
   }
   query?: never
-  url: '/conversations/{c_id}'
+  url: '/conversations/{conversation_id}'
 }
 
-export type DeleteConversationsByCIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+export type DeleteConversationsByConversationIdErrors = {
+  400: NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type DeleteConversationsByCIdError
-  = DeleteConversationsByCIdErrors[keyof DeleteConversationsByCIdErrors]
+export type DeleteConversationsByConversationIdError =
+  DeleteConversationsByConversationIdErrors[keyof DeleteConversationsByConversationIdErrors]
 
-export type DeleteConversationsByCIdResponses = {
-  204: {
-    [key: string]: never
-  }
+export type DeleteConversationsByConversationIdResponses = {
+  204: void
 }
 
-export type DeleteConversationsByCIdResponse
-  = DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
+export type DeleteConversationsByConversationIdResponse =
+  DeleteConversationsByConversationIdResponses[keyof DeleteConversationsByConversationIdResponses]
 
-export type PostConversationsByCIdNameData = {
-  body: ConversationRenamePayload
+export type PostConversationsByConversationIdNameData = {
+  body: ConversationRenamePayloadWithUser
   path: {
-    c_id: string
+    conversation_id: string
   }
   query?: never
-  url: '/conversations/{c_id}/name'
+  url: '/conversations/{conversation_id}/name'
 }
 
-export type PostConversationsByCIdNameErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+export type PostConversationsByConversationIdNameErrors = {
+  400: NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationFirstMessageNotFoundError | ConversationNotFoundError | ErrorResponse
+  422: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostConversationsByCIdNameError
-  = PostConversationsByCIdNameErrors[keyof PostConversationsByCIdNameErrors]
+export type PostConversationsByConversationIdNameError =
+  PostConversationsByConversationIdNameErrors[keyof PostConversationsByConversationIdNameErrors]
 
-export type PostConversationsByCIdNameResponses = {
-  200: {
-    [key: string]: unknown
-  }
+export type PostConversationsByConversationIdNameResponses = {
+  200: SimpleConversation
 }
 
-export type PostConversationsByCIdNameResponse
-  = PostConversationsByCIdNameResponses[keyof PostConversationsByCIdNameResponses]
+export type PostConversationsByConversationIdNameResponse =
+  PostConversationsByConversationIdNameResponses[keyof PostConversationsByConversationIdNameResponses]
 
-export type GetConversationsByCIdVariablesData = {
+export type GetConversationsByConversationIdVariablesData = {
   body?: never
   path: {
-    c_id: string
+    conversation_id: string
   }
   query?: {
-    last_id?: string | null
+    last_id?: string
     limit?: number
-    variable_name?: string | null
+    user?: string
+    variable_name?: string
   }
-  url: '/conversations/{c_id}/variables'
+  url: '/conversations/{conversation_id}/variables'
 }
 
-export type GetConversationsByCIdVariablesErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+export type GetConversationsByConversationIdVariablesErrors = {
+  400: NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationNotFoundError | ConversationVariableNotFoundError | ErrorResponse
+  422: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetConversationsByCIdVariablesError
-  = GetConversationsByCIdVariablesErrors[keyof GetConversationsByCIdVariablesErrors]
+export type GetConversationsByConversationIdVariablesError =
+  GetConversationsByConversationIdVariablesErrors[keyof GetConversationsByConversationIdVariablesErrors]
 
-export type GetConversationsByCIdVariablesResponses = {
+export type GetConversationsByConversationIdVariablesResponses = {
   200: ConversationVariableInfiniteScrollPaginationResponse
 }
 
-export type GetConversationsByCIdVariablesResponse
-  = GetConversationsByCIdVariablesResponses[keyof GetConversationsByCIdVariablesResponses]
+export type GetConversationsByConversationIdVariablesResponse =
+  GetConversationsByConversationIdVariablesResponses[keyof GetConversationsByConversationIdVariablesResponses]
 
-export type PutConversationsByCIdVariablesByVariableIdData = {
-  body: ConversationVariableUpdatePayload
+export type PutConversationsByConversationIdVariablesByVariableIdData = {
+  body: ConversationVariableUpdatePayloadWithUser
   path: {
-    c_id: string
+    conversation_id: string
     variable_id: string
   }
   query?: never
-  url: '/conversations/{c_id}/variables/{variable_id}'
+  url: '/conversations/{conversation_id}/variables/{variable_id}'
 }
 
-export type PutConversationsByCIdVariablesByVariableIdErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+export type PutConversationsByConversationIdVariablesByVariableIdErrors = {
+  400: ConversationVariableTypeMismatchError | NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationNotFoundError | ConversationVariableNotFoundError | ErrorResponse
+  422: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PutConversationsByCIdVariablesByVariableIdError
-  = PutConversationsByCIdVariablesByVariableIdErrors[keyof PutConversationsByCIdVariablesByVariableIdErrors]
+export type PutConversationsByConversationIdVariablesByVariableIdError =
+  PutConversationsByConversationIdVariablesByVariableIdErrors[keyof PutConversationsByConversationIdVariablesByVariableIdErrors]
 
-export type PutConversationsByCIdVariablesByVariableIdResponses = {
+export type PutConversationsByConversationIdVariablesByVariableIdResponses = {
   200: ConversationVariableResponse
 }
 
-export type PutConversationsByCIdVariablesByVariableIdResponse
-  = PutConversationsByCIdVariablesByVariableIdResponses[keyof PutConversationsByCIdVariablesByVariableIdResponses]
+export type PutConversationsByConversationIdVariablesByVariableIdResponse =
+  PutConversationsByConversationIdVariablesByVariableIdResponses[keyof PutConversationsByConversationIdVariablesByVariableIdResponses]
 
 export type GetDatasetsData = {
   body?: never
@@ -1402,9 +5186,9 @@ export type GetDatasetsData = {
 }
 
 export type GetDatasetsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsError = GetDatasetsErrors[keyof GetDatasetsErrors]
@@ -1423,12 +5207,11 @@ export type PostDatasetsData = {
 }
 
 export type PostDatasetsErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  409: DatasetNameDuplicateError | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsError = PostDatasetsErrors[keyof PostDatasetsErrors]
@@ -1440,38 +5223,32 @@ export type PostDatasetsResponses = {
 export type PostDatasetsResponse = PostDatasetsResponses[keyof PostDatasetsResponses]
 
 export type PostDatasetsPipelineFileUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/datasets/pipeline/file-upload'
 }
 
 export type PostDatasetsPipelineFileUploadErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
+  400: FilenameNotExistsError | NoFileUploadedError | TooManyFilesError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsPipelineFileUploadError
-  = PostDatasetsPipelineFileUploadErrors[keyof PostDatasetsPipelineFileUploadErrors]
+export type PostDatasetsPipelineFileUploadError =
+  PostDatasetsPipelineFileUploadErrors[keyof PostDatasetsPipelineFileUploadErrors]
 
 export type PostDatasetsPipelineFileUploadResponses = {
-  201: {
-    [key: string]: unknown
-  }
+  201: PipelineUploadFileResponse
 }
 
-export type PostDatasetsPipelineFileUploadResponse
-  = PostDatasetsPipelineFileUploadResponses[keyof PostDatasetsPipelineFileUploadResponses]
+export type PostDatasetsPipelineFileUploadResponse =
+  PostDatasetsPipelineFileUploadResponses[keyof PostDatasetsPipelineFileUploadResponses]
 
 export type DeleteDatasetsTagsData = {
   body: TagDeletePayload
@@ -1481,24 +5258,20 @@ export type DeleteDatasetsTagsData = {
 }
 
 export type DeleteDatasetsTagsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteDatasetsTagsError = DeleteDatasetsTagsErrors[keyof DeleteDatasetsTagsErrors]
 
 export type DeleteDatasetsTagsResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
-export type DeleteDatasetsTagsResponse
-  = DeleteDatasetsTagsResponses[keyof DeleteDatasetsTagsResponses]
+export type DeleteDatasetsTagsResponse =
+  DeleteDatasetsTagsResponses[keyof DeleteDatasetsTagsResponses]
 
 export type GetDatasetsTagsData = {
   body?: never
@@ -1508,9 +5281,9 @@ export type GetDatasetsTagsData = {
 }
 
 export type GetDatasetsTagsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsTagsError = GetDatasetsTagsErrors[keyof GetDatasetsTagsErrors]
@@ -1529,12 +5302,11 @@ export type PatchDatasetsTagsData = {
 }
 
 export type PatchDatasetsTagsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PatchDatasetsTagsError = PatchDatasetsTagsErrors[keyof PatchDatasetsTagsErrors]
@@ -1553,12 +5325,10 @@ export type PostDatasetsTagsData = {
 }
 
 export type PostDatasetsTagsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsTagsError = PostDatasetsTagsErrors[keyof PostDatasetsTagsErrors]
@@ -1577,25 +5347,21 @@ export type PostDatasetsTagsBindingData = {
 }
 
 export type PostDatasetsTagsBindingErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsTagsBindingError
-  = PostDatasetsTagsBindingErrors[keyof PostDatasetsTagsBindingErrors]
+export type PostDatasetsTagsBindingError =
+  PostDatasetsTagsBindingErrors[keyof PostDatasetsTagsBindingErrors]
 
 export type PostDatasetsTagsBindingResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
-export type PostDatasetsTagsBindingResponse
-  = PostDatasetsTagsBindingResponses[keyof PostDatasetsTagsBindingResponses]
+export type PostDatasetsTagsBindingResponse =
+  PostDatasetsTagsBindingResponses[keyof PostDatasetsTagsBindingResponses]
 
 export type PostDatasetsTagsUnbindingData = {
   body: TagUnbindingPayload
@@ -1605,25 +5371,21 @@ export type PostDatasetsTagsUnbindingData = {
 }
 
 export type PostDatasetsTagsUnbindingErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsTagsUnbindingError
-  = PostDatasetsTagsUnbindingErrors[keyof PostDatasetsTagsUnbindingErrors]
+export type PostDatasetsTagsUnbindingError =
+  PostDatasetsTagsUnbindingErrors[keyof PostDatasetsTagsUnbindingErrors]
 
 export type PostDatasetsTagsUnbindingResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
-export type PostDatasetsTagsUnbindingResponse
-  = PostDatasetsTagsUnbindingResponses[keyof PostDatasetsTagsUnbindingResponses]
+export type PostDatasetsTagsUnbindingResponse =
+  PostDatasetsTagsUnbindingResponses[keyof PostDatasetsTagsUnbindingResponses]
 
 export type DeleteDatasetsByDatasetIdData = {
   body?: never
@@ -1635,28 +5397,21 @@ export type DeleteDatasetsByDatasetIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  409: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type DeleteDatasetsByDatasetIdError
-  = DeleteDatasetsByDatasetIdErrors[keyof DeleteDatasetsByDatasetIdErrors]
+export type DeleteDatasetsByDatasetIdError =
+  DeleteDatasetsByDatasetIdErrors[keyof DeleteDatasetsByDatasetIdErrors]
 
 export type DeleteDatasetsByDatasetIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
-export type DeleteDatasetsByDatasetIdResponse
-  = DeleteDatasetsByDatasetIdResponses[keyof DeleteDatasetsByDatasetIdResponses]
+export type DeleteDatasetsByDatasetIdResponse =
+  DeleteDatasetsByDatasetIdResponses[keyof DeleteDatasetsByDatasetIdResponses]
 
 export type GetDatasetsByDatasetIdData = {
   body?: never
@@ -1668,26 +5423,21 @@ export type GetDatasetsByDatasetIdData = {
 }
 
 export type GetDatasetsByDatasetIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdError
-  = GetDatasetsByDatasetIdErrors[keyof GetDatasetsByDatasetIdErrors]
+export type GetDatasetsByDatasetIdError =
+  GetDatasetsByDatasetIdErrors[keyof GetDatasetsByDatasetIdErrors]
 
 export type GetDatasetsByDatasetIdResponses = {
   200: DatasetDetailWithPartialMembersResponse
 }
 
-export type GetDatasetsByDatasetIdResponse
-  = GetDatasetsByDatasetIdResponses[keyof GetDatasetsByDatasetIdResponses]
+export type GetDatasetsByDatasetIdResponse =
+  GetDatasetsByDatasetIdResponses[keyof GetDatasetsByDatasetIdResponses]
 
 export type PatchDatasetsByDatasetIdData = {
   body: DatasetUpdatePayload
@@ -1699,29 +5449,28 @@ export type PatchDatasetsByDatasetIdData = {
 }
 
 export type PatchDatasetsByDatasetIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PatchDatasetsByDatasetIdError
-  = PatchDatasetsByDatasetIdErrors[keyof PatchDatasetsByDatasetIdErrors]
+export type PatchDatasetsByDatasetIdError =
+  PatchDatasetsByDatasetIdErrors[keyof PatchDatasetsByDatasetIdErrors]
 
 export type PatchDatasetsByDatasetIdResponses = {
   200: DatasetDetailWithPartialMembersResponse
 }
 
-export type PatchDatasetsByDatasetIdResponse
-  = PatchDatasetsByDatasetIdResponses[keyof PatchDatasetsByDatasetIdResponses]
+export type PatchDatasetsByDatasetIdResponse =
+  PatchDatasetsByDatasetIdResponses[keyof PatchDatasetsByDatasetIdResponses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileData = {
-  body?: never
+  body: {
+    data?: string
+    file: Blob | File
+  }
   path: {
     dataset_id: string
   }
@@ -1730,25 +5479,29 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
+  400:
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | ProviderNotInitializeError
+    | TooManyFilesError
+    | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByFileError
-  = PostDatasetsByDatasetIdDocumentCreateByFileErrors[keyof PostDatasetsByDatasetIdDocumentCreateByFileErrors]
+export type PostDatasetsByDatasetIdDocumentCreateByFileError =
+  PostDatasetsByDatasetIdDocumentCreateByFileErrors[keyof PostDatasetsByDatasetIdDocumentCreateByFileErrors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByFileResponse
-  = PostDatasetsByDatasetIdDocumentCreateByFileResponses[keyof PostDatasetsByDatasetIdDocumentCreateByFileResponses]
+export type PostDatasetsByDatasetIdDocumentCreateByFileResponse =
+  PostDatasetsByDatasetIdDocumentCreateByFileResponses[keyof PostDatasetsByDatasetIdDocumentCreateByFileResponses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextData = {
   body: DocumentTextCreatePayload
@@ -1760,28 +5513,29 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
+  400: ProviderNotInitializeError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByTextError
-  = PostDatasetsByDatasetIdDocumentCreateByTextErrors[keyof PostDatasetsByDatasetIdDocumentCreateByTextErrors]
+export type PostDatasetsByDatasetIdDocumentCreateByTextError =
+  PostDatasetsByDatasetIdDocumentCreateByTextErrors[keyof PostDatasetsByDatasetIdDocumentCreateByTextErrors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByTextResponse
-  = PostDatasetsByDatasetIdDocumentCreateByTextResponses[keyof PostDatasetsByDatasetIdDocumentCreateByTextResponses]
+export type PostDatasetsByDatasetIdDocumentCreateByTextResponse =
+  PostDatasetsByDatasetIdDocumentCreateByTextResponses[keyof PostDatasetsByDatasetIdDocumentCreateByTextResponses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Data = {
-  body?: never
+  body: {
+    data?: string
+    file: Blob | File
+  }
   path: {
     dataset_id: string
   }
@@ -1790,25 +5544,29 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Errors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
+  400:
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | ProviderNotInitializeError
+    | TooManyFilesError
+    | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByFile2Error
-  = PostDatasetsByDatasetIdDocumentCreateByFile2Errors[keyof PostDatasetsByDatasetIdDocumentCreateByFile2Errors]
+export type PostDatasetsByDatasetIdDocumentCreateByFile2Error =
+  PostDatasetsByDatasetIdDocumentCreateByFile2Errors[keyof PostDatasetsByDatasetIdDocumentCreateByFile2Errors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Responses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByFile2Response
-  = PostDatasetsByDatasetIdDocumentCreateByFile2Responses[keyof PostDatasetsByDatasetIdDocumentCreateByFile2Responses]
+export type PostDatasetsByDatasetIdDocumentCreateByFile2Response =
+  PostDatasetsByDatasetIdDocumentCreateByFile2Responses[keyof PostDatasetsByDatasetIdDocumentCreateByFile2Responses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Data = {
   body: DocumentTextCreatePayload
@@ -1820,55 +5578,54 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Errors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
+  400: ProviderNotInitializeError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByText2Error
-  = PostDatasetsByDatasetIdDocumentCreateByText2Errors[keyof PostDatasetsByDatasetIdDocumentCreateByText2Errors]
+export type PostDatasetsByDatasetIdDocumentCreateByText2Error =
+  PostDatasetsByDatasetIdDocumentCreateByText2Errors[keyof PostDatasetsByDatasetIdDocumentCreateByText2Errors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Responses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByText2Response
-  = PostDatasetsByDatasetIdDocumentCreateByText2Responses[keyof PostDatasetsByDatasetIdDocumentCreateByText2Responses]
+export type PostDatasetsByDatasetIdDocumentCreateByText2Response =
+  PostDatasetsByDatasetIdDocumentCreateByText2Responses[keyof PostDatasetsByDatasetIdDocumentCreateByText2Responses]
 
 export type GetDatasetsByDatasetIdDocumentsData = {
   body?: never
   path: {
     dataset_id: string
   }
-  query?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    page?: number
+    status?: 'archived' | 'available' | 'disabled' | 'error' | 'indexing' | 'paused' | 'queuing'
+  }
   url: '/datasets/{dataset_id}/documents'
 }
 
 export type GetDatasetsByDatasetIdDocumentsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsError
-  = GetDatasetsByDatasetIdDocumentsErrors[keyof GetDatasetsByDatasetIdDocumentsErrors]
+export type GetDatasetsByDatasetIdDocumentsError =
+  GetDatasetsByDatasetIdDocumentsErrors[keyof GetDatasetsByDatasetIdDocumentsErrors]
 
 export type GetDatasetsByDatasetIdDocumentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsResponse
-  = GetDatasetsByDatasetIdDocumentsResponses[keyof GetDatasetsByDatasetIdDocumentsResponses]
+export type GetDatasetsByDatasetIdDocumentsResponse =
+  GetDatasetsByDatasetIdDocumentsResponses[keyof GetDatasetsByDatasetIdDocumentsResponses]
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
   body: DocumentBatchDownloadZipPayload
@@ -1880,28 +5637,21 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsDownloadZipError
-  = PostDatasetsByDatasetIdDocumentsDownloadZipErrors[keyof PostDatasetsByDatasetIdDocumentsDownloadZipErrors]
+export type PostDatasetsByDatasetIdDocumentsDownloadZipError =
+  PostDatasetsByDatasetIdDocumentsDownloadZipErrors[keyof PostDatasetsByDatasetIdDocumentsDownloadZipErrors]
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Blob | File
 }
 
-export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse
-  = PostDatasetsByDatasetIdDocumentsDownloadZipResponses[keyof PostDatasetsByDatasetIdDocumentsDownloadZipResponses]
+export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse =
+  PostDatasetsByDatasetIdDocumentsDownloadZipResponses[keyof PostDatasetsByDatasetIdDocumentsDownloadZipResponses]
 
 export type PostDatasetsByDatasetIdDocumentsMetadataData = {
   body: MetadataOperationData
@@ -1913,28 +5663,27 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsMetadataError
-  = PostDatasetsByDatasetIdDocumentsMetadataErrors[keyof PostDatasetsByDatasetIdDocumentsMetadataErrors]
+export type PostDatasetsByDatasetIdDocumentsMetadataError =
+  PostDatasetsByDatasetIdDocumentsMetadataErrors[keyof PostDatasetsByDatasetIdDocumentsMetadataErrors]
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
   200: DatasetMetadataActionResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsMetadataResponse
-  = PostDatasetsByDatasetIdDocumentsMetadataResponses[keyof PostDatasetsByDatasetIdDocumentsMetadataResponses]
+export type PostDatasetsByDatasetIdDocumentsMetadataResponse =
+  PostDatasetsByDatasetIdDocumentsMetadataResponses[keyof PostDatasetsByDatasetIdDocumentsMetadataResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionData = {
-  body?: never
+  body: DocumentStatusPayload
   path: {
-    action: string
+    action: 'archive' | 'disable' | 'enable' | 'un_archive'
     dataset_id: string
   }
   query?: never
@@ -1942,29 +5691,22 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: InvalidActionError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsStatusByActionError
-  = PatchDatasetsByDatasetIdDocumentsStatusByActionErrors[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionErrors]
+export type PatchDatasetsByDatasetIdDocumentsStatusByActionError =
+  PatchDatasetsByDatasetIdDocumentsStatusByActionErrors[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionResponses = {
   200: SimpleResultResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsStatusByActionResponse
-  = PatchDatasetsByDatasetIdDocumentsStatusByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionResponses]
+export type PatchDatasetsByDatasetIdDocumentsStatusByActionResponse =
+  PatchDatasetsByDatasetIdDocumentsStatusByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusData = {
   body?: never
@@ -1977,25 +5719,21 @@ export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusError
-  = GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors]
+export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusError =
+  GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentStatusListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse
-  = GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses]
+export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse =
+  GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
@@ -2008,28 +5746,21 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdError
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdError =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
@@ -2037,36 +5768,35 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
     dataset_id: string
     document_id: string
   }
-  query?: never
+  query?: {
+    metadata?: 'all' | 'only' | 'without'
+  }
   url: '/datasets/{dataset_id}/documents/{document_id}'
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: InvalidMetadataError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdErrors]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentDetailResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
-  body?: never
+  body?: {
+    data?: string
+    file?: Blob | File
+  }
   path: {
     dataset_id: string
     document_id: string
@@ -2076,25 +5806,25 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdError
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdError =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
   body?: never
@@ -2107,26 +5837,21 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses = {
   200: UrlResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
   body?: never
@@ -2135,32 +5860,31 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
     document_id: string
   }
   query?: {
-    keyword?: string | null
+    keyword?: string
+    limit?: number
+    page?: number
     status?: Array<string>
   }
   url: '/datasets/{dataset_id}/documents/{document_id}/segments'
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ProviderNotInitializeError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
   body: SegmentCreatePayload
@@ -2173,28 +5897,23 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ErrorMessageResponse | ProviderNotInitializeError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentCreateListResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body?: never
@@ -2208,25 +5927,22 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdDat
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body?: never
@@ -2240,25 +5956,22 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData =
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentDetailResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body: SegmentUpdatePayload
@@ -2272,25 +5985,23 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ProviderNotInitializeError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentDetailResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksData = {
   body?: never
@@ -2300,7 +6011,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
     segment_id: string
   }
   query?: {
-    keyword?: string | null
+    keyword?: string
     limit?: number
     page?: number
   }
@@ -2308,25 +6019,21 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChildChunkListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksData = {
   body: ChildChunkCreatePayload
@@ -2340,28 +6047,26 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ProviderNotInitializeError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChildChunkDetailResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData
-  = {
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData =
+  {
     body?: never
     path: {
       child_chunk_id: string
@@ -2373,31 +6078,28 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
     url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
   }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors
-  = {
-    401: {
-      [key: string]: unknown
-    }
-    404: {
-      [key: string]: unknown
-    }
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
+  {
+    400: ErrorResponse
+    401: ErrorResponse
+    403: ErrorResponse
+    404: ErrorResponse
+    default: ErrorResponse
   }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdError
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdError =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors]
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
-  = {
-    204: {
-      [key: string]: never
-    }
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses =
+  {
+    204: void
   }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData
-  = {
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData =
+  {
     body: ChildChunkUpdatePayload
     path: {
       child_chunk_id: string
@@ -2409,31 +6111,32 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
     url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
   }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors
-  = {
-    401: {
-      [key: string]: unknown
-    }
-    404: {
-      [key: string]: unknown
-    }
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
+  {
+    400: ErrorResponse
+    401: ErrorResponse
+    403: ErrorResponse
+    404: ErrorResponse
+    503: ErrorResponse
+    default: ErrorResponse
   }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdError
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdError =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors]
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
-  = {
-    200: {
-      [key: string]: unknown
-    }
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses =
+  {
+    200: ChildChunkDetailResponse
   }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileData = {
-  body?: never
+  body?: {
+    data?: string
+    file?: Blob | File
+  }
   path: {
     dataset_id: string
     document_id: string
@@ -2443,25 +6146,25 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileError
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextData = {
   body: DocumentTextUpdate
@@ -2474,28 +6177,29 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ProviderNotInitializeError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextError
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Data = {
-  body?: never
+  body?: {
+    data?: string
+    file?: Blob | File
+  }
   path: {
     dataset_id: string
     document_id: string
@@ -2505,25 +6209,25 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Error
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Error =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Data = {
   body: DocumentTextUpdate
@@ -2536,25 +6240,23 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ProviderNotInitializeError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Error
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Error =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses]
 
 export type PostDatasetsByDatasetIdHitTestingData = {
   body: HitTestingPayload
@@ -2566,23 +6268,28 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 }
 
 export type PostDatasetsByDatasetIdHitTestingErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdHitTestingError
-  = PostDatasetsByDatasetIdHitTestingErrors[keyof PostDatasetsByDatasetIdHitTestingErrors]
+export type PostDatasetsByDatasetIdHitTestingError =
+  PostDatasetsByDatasetIdHitTestingErrors[keyof PostDatasetsByDatasetIdHitTestingErrors]
 
 export type PostDatasetsByDatasetIdHitTestingResponses = {
   200: HitTestingResponse
 }
 
-export type PostDatasetsByDatasetIdHitTestingResponse
-  = PostDatasetsByDatasetIdHitTestingResponses[keyof PostDatasetsByDatasetIdHitTestingResponses]
+export type PostDatasetsByDatasetIdHitTestingResponse =
+  PostDatasetsByDatasetIdHitTestingResponses[keyof PostDatasetsByDatasetIdHitTestingResponses]
 
 export type GetDatasetsByDatasetIdMetadataData = {
   body?: never
@@ -2594,23 +6301,21 @@ export type GetDatasetsByDatasetIdMetadataData = {
 }
 
 export type GetDatasetsByDatasetIdMetadataErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdMetadataError
-  = GetDatasetsByDatasetIdMetadataErrors[keyof GetDatasetsByDatasetIdMetadataErrors]
+export type GetDatasetsByDatasetIdMetadataError =
+  GetDatasetsByDatasetIdMetadataErrors[keyof GetDatasetsByDatasetIdMetadataErrors]
 
 export type GetDatasetsByDatasetIdMetadataResponses = {
   200: DatasetMetadataListResponse
 }
 
-export type GetDatasetsByDatasetIdMetadataResponse
-  = GetDatasetsByDatasetIdMetadataResponses[keyof GetDatasetsByDatasetIdMetadataResponses]
+export type GetDatasetsByDatasetIdMetadataResponse =
+  GetDatasetsByDatasetIdMetadataResponses[keyof GetDatasetsByDatasetIdMetadataResponses]
 
 export type PostDatasetsByDatasetIdMetadataData = {
   body: MetadataArgs
@@ -2622,23 +6327,22 @@ export type PostDatasetsByDatasetIdMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdMetadataError
-  = PostDatasetsByDatasetIdMetadataErrors[keyof PostDatasetsByDatasetIdMetadataErrors]
+export type PostDatasetsByDatasetIdMetadataError =
+  PostDatasetsByDatasetIdMetadataErrors[keyof PostDatasetsByDatasetIdMetadataErrors]
 
 export type PostDatasetsByDatasetIdMetadataResponses = {
   201: DatasetMetadataResponse
 }
 
-export type PostDatasetsByDatasetIdMetadataResponse
-  = PostDatasetsByDatasetIdMetadataResponses[keyof PostDatasetsByDatasetIdMetadataResponses]
+export type PostDatasetsByDatasetIdMetadataResponse =
+  PostDatasetsByDatasetIdMetadataResponses[keyof PostDatasetsByDatasetIdMetadataResponses]
 
 export type GetDatasetsByDatasetIdMetadataBuiltInData = {
   body?: never
@@ -2650,25 +6354,26 @@ export type GetDatasetsByDatasetIdMetadataBuiltInData = {
 }
 
 export type GetDatasetsByDatasetIdMetadataBuiltInErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdMetadataBuiltInError
-  = GetDatasetsByDatasetIdMetadataBuiltInErrors[keyof GetDatasetsByDatasetIdMetadataBuiltInErrors]
+export type GetDatasetsByDatasetIdMetadataBuiltInError =
+  GetDatasetsByDatasetIdMetadataBuiltInErrors[keyof GetDatasetsByDatasetIdMetadataBuiltInErrors]
 
 export type GetDatasetsByDatasetIdMetadataBuiltInResponses = {
   200: DatasetMetadataBuiltInFieldsResponse
 }
 
-export type GetDatasetsByDatasetIdMetadataBuiltInResponse
-  = GetDatasetsByDatasetIdMetadataBuiltInResponses[keyof GetDatasetsByDatasetIdMetadataBuiltInResponses]
+export type GetDatasetsByDatasetIdMetadataBuiltInResponse =
+  GetDatasetsByDatasetIdMetadataBuiltInResponses[keyof GetDatasetsByDatasetIdMetadataBuiltInResponses]
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
   body?: never
   path: {
-    action: string
+    action: 'disable' | 'enable'
     dataset_id: string
   }
   query?: never
@@ -2676,23 +6381,21 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdMetadataBuiltInByActionError
-  = PostDatasetsByDatasetIdMetadataBuiltInByActionErrors[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionErrors]
+export type PostDatasetsByDatasetIdMetadataBuiltInByActionError =
+  PostDatasetsByDatasetIdMetadataBuiltInByActionErrors[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionErrors]
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponses = {
   200: DatasetMetadataActionResponse
 }
 
-export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse
-  = PostDatasetsByDatasetIdMetadataBuiltInByActionResponses[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionResponses]
+export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse =
+  PostDatasetsByDatasetIdMetadataBuiltInByActionResponses[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionResponses]
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
   body?: never
@@ -2705,25 +6408,21 @@ export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type DeleteDatasetsByDatasetIdMetadataByMetadataIdError
-  = DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors]
+export type DeleteDatasetsByDatasetIdMetadataByMetadataIdError =
+  DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors]
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
-export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponse
-  = DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses]
+export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponse =
+  DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses]
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
   body: MetadataUpdatePayload
@@ -2736,23 +6435,22 @@ export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PatchDatasetsByDatasetIdMetadataByMetadataIdError
-  = PatchDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdErrors]
+export type PatchDatasetsByDatasetIdMetadataByMetadataIdError =
+  PatchDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdErrors]
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponses = {
   200: DatasetMetadataResponse
 }
 
-export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponse
-  = PatchDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdResponses]
+export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponse =
+  PatchDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdResponses]
 
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsData = {
   body?: never
@@ -2760,31 +6458,31 @@ export type GetDatasetsByDatasetIdPipelineDatasourcePluginsData = {
     dataset_id: string
   }
   query?: {
-    is_published?: string
+    is_published?: boolean
   }
   url: '/datasets/{dataset_id}/pipeline/datasource-plugins'
 }
 
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdPipelineDatasourcePluginsError
-  = GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors[keyof GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors]
+export type GetDatasetsByDatasetIdPipelineDatasourcePluginsError =
+  GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors[keyof GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors]
 
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasourcePluginListResponse
 }
 
-export type GetDatasetsByDatasetIdPipelineDatasourcePluginsResponse
-  = GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses[keyof GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses]
+export type GetDatasetsByDatasetIdPipelineDatasourcePluginsResponse =
+  GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses[keyof GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses]
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunData = {
-  body?: never
+  body: DatasourceNodeRunPayload
   path: {
     dataset_id: string
     node_id: string
@@ -2794,25 +6492,25 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunData = {
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunError
-  = PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors[keyof PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors]
+export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunError =
+  PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors[keyof PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors]
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: string
 }
 
-export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse
-  = PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses[keyof PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses]
+export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse =
+  PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses[keyof PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses]
 
 export type PostDatasetsByDatasetIdPipelineRunData = {
-  body?: never
+  body: PipelineRunApiEntity
   path: {
     dataset_id: string
   }
@@ -2821,22 +6519,23 @@ export type PostDatasetsByDatasetIdPipelineRunData = {
 }
 
 export type PostDatasetsByDatasetIdPipelineRunErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: PipelineRunError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdPipelineRunError
-  = PostDatasetsByDatasetIdPipelineRunErrors[keyof PostDatasetsByDatasetIdPipelineRunErrors]
+export type PostDatasetsByDatasetIdPipelineRunError =
+  PostDatasetsByDatasetIdPipelineRunErrors[keyof PostDatasetsByDatasetIdPipelineRunErrors]
 
 export type PostDatasetsByDatasetIdPipelineRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PipelineRunJsonResponse | string
 }
 
-export type PostDatasetsByDatasetIdPipelineRunResponse
-  = PostDatasetsByDatasetIdPipelineRunResponses[keyof PostDatasetsByDatasetIdPipelineRunResponses]
+export type PostDatasetsByDatasetIdPipelineRunResponse =
+  PostDatasetsByDatasetIdPipelineRunResponses[keyof PostDatasetsByDatasetIdPipelineRunResponses]
 
 export type PostDatasetsByDatasetIdRetrieveData = {
   body: HitTestingPayload
@@ -2848,23 +6547,28 @@ export type PostDatasetsByDatasetIdRetrieveData = {
 }
 
 export type PostDatasetsByDatasetIdRetrieveErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostDatasetsByDatasetIdRetrieveError
-  = PostDatasetsByDatasetIdRetrieveErrors[keyof PostDatasetsByDatasetIdRetrieveErrors]
+export type PostDatasetsByDatasetIdRetrieveError =
+  PostDatasetsByDatasetIdRetrieveErrors[keyof PostDatasetsByDatasetIdRetrieveErrors]
 
 export type PostDatasetsByDatasetIdRetrieveResponses = {
   200: HitTestingResponse
 }
 
-export type PostDatasetsByDatasetIdRetrieveResponse
-  = PostDatasetsByDatasetIdRetrieveResponses[keyof PostDatasetsByDatasetIdRetrieveResponses]
+export type PostDatasetsByDatasetIdRetrieveResponse =
+  PostDatasetsByDatasetIdRetrieveResponses[keyof PostDatasetsByDatasetIdRetrieveResponses]
 
 export type GetDatasetsByDatasetIdTagsData = {
   body?: never
@@ -2876,20 +6580,21 @@ export type GetDatasetsByDatasetIdTagsData = {
 }
 
 export type GetDatasetsByDatasetIdTagsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetDatasetsByDatasetIdTagsError
-  = GetDatasetsByDatasetIdTagsErrors[keyof GetDatasetsByDatasetIdTagsErrors]
+export type GetDatasetsByDatasetIdTagsError =
+  GetDatasetsByDatasetIdTagsErrors[keyof GetDatasetsByDatasetIdTagsErrors]
 
 export type GetDatasetsByDatasetIdTagsResponses = {
   200: DatasetBoundTagListResponse
 }
 
-export type GetDatasetsByDatasetIdTagsResponse
-  = GetDatasetsByDatasetIdTagsResponses[keyof GetDatasetsByDatasetIdTagsResponses]
+export type GetDatasetsByDatasetIdTagsResponse =
+  GetDatasetsByDatasetIdTagsResponses[keyof GetDatasetsByDatasetIdTagsResponses]
 
 export type GetEndUsersByEndUserIdData = {
   body?: never
@@ -2901,44 +6606,44 @@ export type GetEndUsersByEndUserIdData = {
 }
 
 export type GetEndUsersByEndUserIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: EndUserNotFoundError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetEndUsersByEndUserIdError
-  = GetEndUsersByEndUserIdErrors[keyof GetEndUsersByEndUserIdErrors]
+export type GetEndUsersByEndUserIdError =
+  GetEndUsersByEndUserIdErrors[keyof GetEndUsersByEndUserIdErrors]
 
 export type GetEndUsersByEndUserIdResponses = {
   200: EndUserDetail
 }
 
-export type GetEndUsersByEndUserIdResponse
-  = GetEndUsersByEndUserIdResponses[keyof GetEndUsersByEndUserIdResponses]
+export type GetEndUsersByEndUserIdResponse =
+  GetEndUsersByEndUserIdResponses[keyof GetEndUsersByEndUserIdResponses]
 
 export type PostFilesUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+    user?: string
+  }
   path?: never
   query?: never
   url: '/files/upload'
 }
 
 export type PostFilesUploadErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | TooManyFilesError
+    | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostFilesUploadError = PostFilesUploadErrors[keyof PostFilesUploadErrors]
@@ -2956,33 +6661,27 @@ export type GetFilesByFileIdPreviewData = {
   }
   query?: {
     as_attachment?: boolean
+    user?: string
   }
   url: '/files/{file_id}/preview'
 }
 
 export type GetFilesByFileIdPreviewErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: FileAccessDeniedError | ErrorResponse
+  404: FileNotFoundError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetFilesByFileIdPreviewError
-  = GetFilesByFileIdPreviewErrors[keyof GetFilesByFileIdPreviewErrors]
+export type GetFilesByFileIdPreviewError =
+  GetFilesByFileIdPreviewErrors[keyof GetFilesByFileIdPreviewErrors]
 
 export type GetFilesByFileIdPreviewResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Blob | File
 }
 
-export type GetFilesByFileIdPreviewResponse
-  = GetFilesByFileIdPreviewResponses[keyof GetFilesByFileIdPreviewResponses]
+export type GetFilesByFileIdPreviewResponse =
+  GetFilesByFileIdPreviewResponses[keyof GetFilesByFileIdPreviewResponses]
 
 export type GetFormHumanInputByFormTokenData = {
   body?: never
@@ -2994,31 +6693,25 @@ export type GetFormHumanInputByFormTokenData = {
 }
 
 export type GetFormHumanInputByFormTokenErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  412: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetFormHumanInputByFormTokenError
-  = GetFormHumanInputByFormTokenErrors[keyof GetFormHumanInputByFormTokenErrors]
+export type GetFormHumanInputByFormTokenError =
+  GetFormHumanInputByFormTokenErrors[keyof GetFormHumanInputByFormTokenErrors]
 
 export type GetFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HumanInputFormDefinitionResponse
 }
 
-export type GetFormHumanInputByFormTokenResponse
-  = GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
+export type GetFormHumanInputByFormTokenResponse =
+  GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
 
 export type PostFormHumanInputByFormTokenData = {
-  body: HumanInputFormSubmitPayload
+  body: HumanInputFormSubmitPayloadWithUser
   path: {
     form_token: string
   }
@@ -3027,31 +6720,23 @@ export type PostFormHumanInputByFormTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  412: {
-    [key: string]: unknown
-  }
+  400: InvalidFormDataError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostFormHumanInputByFormTokenError
-  = PostFormHumanInputByFormTokenErrors[keyof PostFormHumanInputByFormTokenErrors]
+export type PostFormHumanInputByFormTokenError =
+  PostFormHumanInputByFormTokenErrors[keyof PostFormHumanInputByFormTokenErrors]
 
 export type PostFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HumanInputFormSubmitResponse
 }
 
-export type PostFormHumanInputByFormTokenResponse
-  = PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+export type PostFormHumanInputByFormTokenResponse =
+  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
 
 export type GetInfoData = {
   body?: never
@@ -3061,12 +6746,10 @@ export type GetInfoData = {
 }
 
 export type GetInfoErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: AppUnavailableError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetInfoError = GetInfoErrors[keyof GetInfoErrors]
@@ -3077,38 +6760,2251 @@ export type GetInfoResponses = {
 
 export type GetInfoResponse = GetInfoResponses[keyof GetInfoResponses]
 
+export type PostKnowledgeFsQueryStreamData = {
+  body: KnowledgeFsAdmittedQueryRequest
+  path?: never
+  query?: never
+  url: '/knowledge-fs/query-stream'
+}
+
+export type PostKnowledgeFsQueryStreamErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsQueryStreamError =
+  PostKnowledgeFsQueryStreamErrors[keyof PostKnowledgeFsQueryStreamErrors]
+
+export type PostKnowledgeFsQueryStreamResponses = {
+  200: string
+}
+
+export type PostKnowledgeFsQueryStreamResponse =
+  PostKnowledgeFsQueryStreamResponses[keyof PostKnowledgeFsQueryStreamResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+    task_ids?: string
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/background-tasks'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksError =
+  GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksResponses = {
+  200: KnowledgeFsBackgroundTaskListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/bulk-jobs/{job_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponses = {
+  200: KnowledgeFsBulkJobResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdData = {
+  body?: never
+  path: {
+    batch_id: string
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/deletion-batches/{batch_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdResponses = {
+  200: KnowledgeFsBulkDeletionAcceptedResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/deletion-jobs/{job_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdResponses = {
+  200: KnowledgeFsDurableDeletionJobResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryData = {
+  body?: never
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/deletion-jobs/{job_id}/retry'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryError =
+  PostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryResponses = {
+  200: KnowledgeFsDurableDeletionJobResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query: {
+    document_asset_id: string
+    document_asset_version: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/document-references/resolve'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponses = {
+  200: KnowledgeFsResolvedDocumentReferenceResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/documents'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponses = {
+  200: KnowledgeFsDocumentListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponses]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkData = {
+  body: KnowledgeFsBulkDocumentDeletePayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/documents/bulk'
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkErrors]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkResponses = {
+  202: KnowledgeFsBulkDeletionAcceptedResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkResponse =
+  DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexData = {
+  body: KnowledgeFsDocumentReindexPayload
+  headers?: {
+    'Idempotency-Key'?: string
+  }
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/documents/reindex'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  413: KnowledgeFsRequestTooLargeError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexError =
+  PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexResponses = {
+  202: KnowledgeFsDocumentReindexResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexResponses]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdData = {
+  body: KnowledgeFsDocumentDeletePayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}'
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses = {
+  202: KnowledgeFsDurableDeletionAcceptedResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse =
+  DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses = {
+  200: KnowledgeFsDocumentResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses]
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdData = {
+  body: KnowledgeFsDocumentMetadataPayload
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}'
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdError =
+  PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors[keyof PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors]
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses = {
+  200: KnowledgeFsLogicalDocumentResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse =
+  PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineData = {
+  body?: never
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/outline'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineResponses = {
+  200: KnowledgeFsDocumentOutlineResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsData = {
+  body?: never
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsResponses = {
+  200: KnowledgeFsDocumentRevisionListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksData =
+  {
+    body?: never
+    path: {
+      control_space_id: string
+      document_id: string
+      revision: number
+    }
+    query?: {
+      cursor?: string
+      limit?: number
+      query?: string
+    }
+    url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks'
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksErrors =
+  {
+    400: KnowledgeFsInvalidRequestError | ErrorResponse
+    401: KnowledgeFsInvalidCredentialError | ErrorResponse
+    403: KnowledgeFsAccessDeniedError | ErrorResponse
+    404: KnowledgeFsResourceNotFoundError | ErrorResponse
+    502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+    503: KnowledgeFsOperationUnavailableError | ErrorResponse
+    default: ErrorResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksResponses =
+  {
+    200: KnowledgeFsDocumentChunkListResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdData =
+  {
+    body?: never
+    path: {
+      chunk_id: string
+      control_space_id: string
+      document_id: string
+      revision: number
+    }
+    query?: never
+    url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks/{chunk_id}'
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdErrors =
+  {
+    400: KnowledgeFsInvalidRequestError | ErrorResponse
+    401: KnowledgeFsInvalidCredentialError | ErrorResponse
+    403: KnowledgeFsAccessDeniedError | ErrorResponse
+    404: KnowledgeFsResourceNotFoundError | ErrorResponse
+    502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+    503: KnowledgeFsOperationUnavailableError | ErrorResponse
+    default: ErrorResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponses =
+  {
+    200: KnowledgeFsDocumentChunkResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponses]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/jobs/{job_id}'
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponses = {
+  200: KnowledgeFsDocumentCompilationJobResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponse =
+  DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/jobs/{job_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponses = {
+  200: KnowledgeFsDocumentCompilationJobResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryData = {
+  body?: never
+  path: {
+    control_space_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/jobs/{job_id}/retry'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryError =
+  PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponses = {
+  200: KnowledgeFsDocumentCompilationJobResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsError =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses = {
+  200: KnowledgeFsLogicalDocumentListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
+  body: KnowledgeFsLogicalDocumentDeletePayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}'
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses = {
+  202: KnowledgeFsDurableDeletionAcceptedResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses = {
+  200: KnowledgeFsLogicalDocumentResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksData = {
+  body?: never
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/processing-tasks'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksErrors =
+  {
+    400: KnowledgeFsInvalidRequestError | ErrorResponse
+    401: KnowledgeFsInvalidCredentialError | ErrorResponse
+    403: KnowledgeFsAccessDeniedError | ErrorResponse
+    404: KnowledgeFsResourceNotFoundError | ErrorResponse
+    502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+    503: KnowledgeFsOperationUnavailableError | ErrorResponse
+    default: ErrorResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksError =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksResponses =
+  {
+    200: KnowledgeFsDocumentProcessingTaskListResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksByTaskIdData =
+  {
+    body?: never
+    path: {
+      control_space_id: string
+      document_id: string
+      task_id: string
+    }
+    query?: never
+    url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/processing-tasks/{task_id}'
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksByTaskIdErrors =
+  {
+    400: KnowledgeFsInvalidRequestError | ErrorResponse
+    401: KnowledgeFsInvalidCredentialError | ErrorResponse
+    403: KnowledgeFsAccessDeniedError | ErrorResponse
+    404: KnowledgeFsResourceNotFoundError | ErrorResponse
+    502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+    503: KnowledgeFsOperationUnavailableError | ErrorResponse
+    default: ErrorResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksByTaskIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksByTaskIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksByTaskIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksByTaskIdResponses =
+  {
+    200: KnowledgeFsDocumentProcessingTaskResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksByTaskIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksByTaskIdResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionData = {
+  body: KnowledgeFsQueryCreatePayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/queries/admission'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  413: KnowledgeFsRequestTooLargeError | ErrorResponse
+  422: KnowledgeFsRequestRejectedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionError =
+  PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionResponses = {
+  200: KnowledgeFsQueryAdmissionResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueryImagesData = {
+  body: {
+    file: Blob | File
+  }
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/query-images'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueryImagesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  413: KnowledgeFsRequestTooLargeError | ErrorResponse
+  422: KnowledgeFsRequestRejectedError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueryImagesError =
+  PostKnowledgeFsSpacesByControlSpaceIdQueryImagesErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdQueryImagesErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueryImagesResponses = {
+  201: KnowledgeFsServiceQueryImageUploadResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueryImagesResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdQueryImagesResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdQueryImagesResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/research-tasks'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksError =
+  GetKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksResponses = {
+  200: KnowledgeFsResearchTaskListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdResearchTasksResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdResearchTasksResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksData = {
+  body: KnowledgeFsResearchTaskCreatePayload
+  headers?: {
+    'Idempotency-Key'?: string
+  }
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/research-tasks'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  413: KnowledgeFsRequestTooLargeError | ErrorResponse
+  422: KnowledgeFsRequestRejectedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksError =
+  PostKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksResponses = {
+  202: KnowledgeFsResearchTaskResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdResearchTasksResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdResearchTasksResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanData = {
+  body: KnowledgeFsResearchTaskPlanPayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/research-tasks/plan'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  413: KnowledgeFsRequestTooLargeError | ErrorResponse
+  422: KnowledgeFsRequestRejectedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanError =
+  PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanResponses = {
+  200: KnowledgeFsResearchTaskPlanResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanResponses]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}'
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponses = {
+  200: KnowledgeFsResearchTaskResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse =
+  DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponses = {
+  200: KnowledgeFsResearchTaskResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsData = {
+  body?: never
+  path: {
+    control_space_id: string
+    task_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}/partials'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsError =
+  GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsResponses = {
+  200: KnowledgeFsResearchTaskPartialListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumeData = {
+  body?: never
+  path: {
+    control_space_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}/resume'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumeErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumeError =
+  PostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumeErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumeErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumeResponses = {
+  200: KnowledgeFsResearchTaskResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumeResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumeResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumeResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/settings'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsError =
+  GetKnowledgeFsSpacesByControlSpaceIdSettingsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSettingsErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsResponses = {
+  200: KnowledgeFsSettingsResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSettingsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSettingsResponses]
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsData = {
+  body: KnowledgeFsSettingsPayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/settings'
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  422: KnowledgeFsRequestRejectedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsError =
+  PatchKnowledgeFsSpacesByControlSpaceIdSettingsErrors[keyof PatchKnowledgeFsSpacesByControlSpaceIdSettingsErrors]
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsResponses = {
+  200: KnowledgeFsSettingsUpdateResponse
+  202: KnowledgeFsSettingsUpdateResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsResponse =
+  PatchKnowledgeFsSpacesByControlSpaceIdSettingsResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdSettingsResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    migration_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/settings/migrations/{migration_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponses = {
+  200: KnowledgeFsProfileMigrationResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/source-connections'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponses = {
+  200: KnowledgeFsSourceConnectionListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsData = {
+  body: KnowledgeFsServiceSourceConnectionCreatePayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/source-connections'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponses = {
+  201: KnowledgeFsSourceConnectionResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshData = {
+  body: KnowledgeFsSourceConnectionRefreshPayload
+  path: {
+    connection_id: string
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/source-connections/{connection_id}/refresh'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshResponses = {
+  200: KnowledgeFsSourceConnectionResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/source-providers'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersResponses = {
+  200: KnowledgeFsSourceProviderListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+    sourceId?: string
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/source-workflows'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsResponses = {
+  200: KnowledgeFsSourceWorkflowListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdResponses = {
+  200: KnowledgeFsSourceWorkflowResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelData = {
+  body: KnowledgeFsSourceWorkflowCancelPayload
+  path: {
+    control_space_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/cancel'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelResponses = {
+  200: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesData = {
+  body?: never
+  path: {
+    control_space_id: string
+    run_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/pages'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesResponses = {
+  200: KnowledgeFsCrawlPreviewPageListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryData = {
+  body?: never
+  path: {
+    control_space_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/retry'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryResponses = {
+  200: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionData = {
+  body: KnowledgeFsCrawlPreviewSelectionPayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/selection'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionResponses = {
+  202: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/sources'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesResponses = {
+  200: KnowledgeFsSourceListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesData = {
+  body: KnowledgeFsServiceSourceCreatePayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  429: KnowledgeFsRateLimitExceededError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesResponses = {
+  201: KnowledgeFsSourceResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesResponses]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdData = {
+  body: KnowledgeFsSourceDeletePayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: {
+    documents?: 'cascade' | 'keep'
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}'
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses = {
+  202: KnowledgeFsDurableDeletionAcceptedResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
+  DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses = {
+  200: KnowledgeFsSourceResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses]
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdData = {
+  body: KnowledgeFsServiceSourceUpdatePayload
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}'
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdError =
+  PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors[keyof PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors]
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses = {
+  200: KnowledgeFsSourceResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
+  PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlData = {
+  body?: never
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlResponses = {
+  202: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportData = {
+  body: KnowledgeFsCrawlImportPayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-import'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponses = {
+  202: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewData = {
+  body?: never
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-preview'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewResponses = {
+  202: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesData = {
+  body?: never
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: {
+    bucket?: string
+    continuationToken?: string
+    maxKeys?: number
+    prefix?: string
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/files'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesResponses = {
+  200: KnowledgeFsSourceFilesResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportData = {
+  body: KnowledgeFsSourceImportPagesPayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportResponses = {
+  202: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesData = {
+  body: KnowledgeFsSourceImportFilesPayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import-files'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesResponses = {
+  202: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesData = {
+  body?: never
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesResponses = {
+  200: KnowledgeFsSourcePagesResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncData = {
+  body?: never
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncResponses = {
+  202: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyData = {
+  body?: never
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponses = {
+  200: KnowledgeFsSourceSyncPolicyResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponses]
+
+export type PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyData = {
+  body: KnowledgeFsSourceSyncPolicyPayload
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy'
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyError =
+  PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors[keyof PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors]
+
+export type PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponses = {
+  200: KnowledgeFsSourceSyncPolicyResponse
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponse =
+  PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponses[keyof PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestData = {
+  body?: never
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/test'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponses = {
+  200: KnowledgeFsSourceCredentialTestResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsData = {
+  body: KnowledgeFsSourceWorkflowImportPayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/workflow-imports'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponses = {
+  202: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+    source?: 'agent' | 'mcp' | 'retrieval_test' | 'service_api' | 'workflow'
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/traces'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesError =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesResponses = {
+  200: KnowledgeFsTraceListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    trace_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/traces/{trace_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdResponses = {
+  200: KnowledgeFsAnswerTraceResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsData = {
+  body?: never
+  path: {
+    control_space_id: string
+    trace_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/conflicts'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsError =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsResponses = {
+  200: KnowledgeFsTraceEntryListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceData = {
+  body?: never
+  path: {
+    control_space_id: string
+    trace_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/evidence'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceError =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceResponses = {
+  200: KnowledgeFsTraceEntryListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingData = {
+  body?: never
+  path: {
+    control_space_id: string
+    trace_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/missing'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingError =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingErrors]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponses = {
+  200: KnowledgeFsTraceEntryListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponses]
+
 export type GetMessagesData = {
   body?: never
   path?: never
   query: {
     conversation_id: string
-    first_id?: string | null
+    first_id?: string
     limit?: number
+    user?: string
   }
   url: '/messages'
 }
 
 export type GetMessagesErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: AppUnavailableError | NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetMessagesError = GetMessagesErrors[keyof GetMessagesErrors]
 
 export type GetMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: MessageInfiniteScrollPagination
 }
 
 export type GetMessagesResponse = GetMessagesResponses[keyof GetMessagesResponses]
 
 export type PostMessagesByMessageIdFeedbacksData = {
-  body: MessageFeedbackPayload
+  body: MessageFeedbackPayloadWithUser
   path: {
     message_id: string
   }
@@ -3117,57 +9013,74 @@ export type PostMessagesByMessageIdFeedbacksData = {
 }
 
 export type PostMessagesByMessageIdFeedbacksErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostMessagesByMessageIdFeedbacksError
-  = PostMessagesByMessageIdFeedbacksErrors[keyof PostMessagesByMessageIdFeedbacksErrors]
+export type PostMessagesByMessageIdFeedbacksError =
+  PostMessagesByMessageIdFeedbacksErrors[keyof PostMessagesByMessageIdFeedbacksErrors]
 
 export type PostMessagesByMessageIdFeedbacksResponses = {
   200: ResultResponse
 }
 
-export type PostMessagesByMessageIdFeedbacksResponse
-  = PostMessagesByMessageIdFeedbacksResponses[keyof PostMessagesByMessageIdFeedbacksResponses]
+export type PostMessagesByMessageIdFeedbacksResponse =
+  PostMessagesByMessageIdFeedbacksResponses[keyof PostMessagesByMessageIdFeedbacksResponses]
 
 export type GetMessagesByMessageIdSuggestedData = {
   body?: never
   path: {
     message_id: string
   }
-  query?: never
+  query: {
+    user: string
+  }
   url: '/messages/{message_id}/suggested'
 }
 
 export type GetMessagesByMessageIdSuggestedErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotChatAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | AppSuggestedQuestionsAfterAnswerDisabledError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetMessagesByMessageIdSuggestedError
-  = GetMessagesByMessageIdSuggestedErrors[keyof GetMessagesByMessageIdSuggestedErrors]
+export type GetMessagesByMessageIdSuggestedError =
+  GetMessagesByMessageIdSuggestedErrors[keyof GetMessagesByMessageIdSuggestedErrors]
 
 export type GetMessagesByMessageIdSuggestedResponses = {
   200: SimpleResultStringListResponse
 }
 
-export type GetMessagesByMessageIdSuggestedResponse
-  = GetMessagesByMessageIdSuggestedResponses[keyof GetMessagesByMessageIdSuggestedResponses]
+export type GetMessagesByMessageIdSuggestedResponse =
+  GetMessagesByMessageIdSuggestedResponses[keyof GetMessagesByMessageIdSuggestedResponses]
 
 export type GetMetaData = {
   body?: never
@@ -3177,20 +9090,16 @@ export type GetMetaData = {
 }
 
 export type GetMetaErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: AppUnavailableError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetMetaError = GetMetaErrors[keyof GetMetaErrors]
 
 export type GetMetaResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AppMetaResponse
 }
 
 export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses]
@@ -3203,20 +9112,16 @@ export type GetParametersData = {
 }
 
 export type GetParametersErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: AgentNotPublishedError | AppUnavailableError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetParametersError = GetParametersErrors[keyof GetParametersErrors]
 
 export type GetParametersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Parameters
 }
 
 export type GetParametersResponse = GetParametersResponses[keyof GetParametersResponses]
@@ -3229,12 +9134,9 @@ export type GetSiteData = {
 }
 
 export type GetSiteErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetSiteError = GetSiteErrors[keyof GetSiteErrors]
@@ -3246,88 +9148,86 @@ export type GetSiteResponses = {
 export type GetSiteResponse = GetSiteResponses[keyof GetSiteResponses]
 
 export type PostTextToAudioData = {
-  body: TextToAudioPayload
+  body: TextToAudioPayloadWithUser
   path?: never
   query?: never
   url: '/text-to-audio'
 }
 
 export type PostTextToAudioErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostTextToAudioError = PostTextToAudioErrors[keyof PostTextToAudioErrors]
 
 export type PostTextToAudioResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Blob | File
 }
 
 export type PostTextToAudioResponse = PostTextToAudioResponses[keyof PostTextToAudioResponses]
 
-export type GetWorkflowByTaskIdEventsData = {
+export type GetWorkflowByWorkflowRunIdEventsData = {
   body?: never
   path: {
-    task_id: string
+    workflow_run_id: string
   }
-  query?: {
-    continue_on_pause?: string
-    include_state_snapshot?: string
-    user?: string
+  query: {
+    continue_on_pause?: boolean
+    include_state_snapshot?: boolean
+    user: string
   }
-  url: '/workflow/{task_id}/events'
+  url: '/workflow/{workflow_run_id}/events'
 }
 
-export type GetWorkflowByTaskIdEventsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+export type GetWorkflowByWorkflowRunIdEventsErrors = {
+  400: NotWorkflowAppError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetWorkflowByTaskIdEventsError
-  = GetWorkflowByTaskIdEventsErrors[keyof GetWorkflowByTaskIdEventsErrors]
+export type GetWorkflowByWorkflowRunIdEventsError =
+  GetWorkflowByWorkflowRunIdEventsErrors[keyof GetWorkflowByWorkflowRunIdEventsErrors]
 
-export type GetWorkflowByTaskIdEventsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+export type GetWorkflowByWorkflowRunIdEventsResponses = {
+  200: string
 }
 
-export type GetWorkflowByTaskIdEventsResponse
-  = GetWorkflowByTaskIdEventsResponses[keyof GetWorkflowByTaskIdEventsResponses]
+export type GetWorkflowByWorkflowRunIdEventsResponse =
+  GetWorkflowByWorkflowRunIdEventsResponses[keyof GetWorkflowByWorkflowRunIdEventsResponses]
 
 export type GetWorkflowsLogsData = {
   body?: never
   path?: never
   query?: {
-    created_at__after?: string | null
-    created_at__before?: string | null
-    created_by_account?: string | null
-    created_by_end_user_session_id?: string | null
-    keyword?: string | null
+    created_at__after?: string
+    created_at__before?: string
+    created_by_account?: string
+    created_by_end_user_session_id?: string
+    keyword?: string
     limit?: number
     page?: number
-    status?: 'failed' | 'stopped' | 'succeeded' | null
+    status?: 'failed' | 'stopped' | 'succeeded'
   }
   url: '/workflows/logs'
 }
 
 export type GetWorkflowsLogsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetWorkflowsLogsError = GetWorkflowsLogsErrors[keyof GetWorkflowsLogsErrors]
@@ -3339,36 +9239,31 @@ export type GetWorkflowsLogsResponses = {
 export type GetWorkflowsLogsResponse = GetWorkflowsLogsResponses[keyof GetWorkflowsLogsResponses]
 
 export type PostWorkflowsRunData = {
-  body: WorkflowRunPayload
+  body: WorkflowRunPayloadWithUser
   path?: never
   query?: never
   url: '/workflows/run'
 }
 
 export type PostWorkflowsRunErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  429: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotWorkflowAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  403: TriggerWorkflowServiceModeUnavailableError | ErrorResponse
+  429: RateLimitError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkflowsRunError = PostWorkflowsRunErrors[keyof PostWorkflowsRunErrors]
 
 export type PostWorkflowsRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowBlockingResponse | string
 }
 
 export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
@@ -3383,26 +9278,25 @@ export type GetWorkflowsRunByWorkflowRunIdData = {
 }
 
 export type GetWorkflowsRunByWorkflowRunIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: NotWorkflowAppError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetWorkflowsRunByWorkflowRunIdError
-  = GetWorkflowsRunByWorkflowRunIdErrors[keyof GetWorkflowsRunByWorkflowRunIdErrors]
+export type GetWorkflowsRunByWorkflowRunIdError =
+  GetWorkflowsRunByWorkflowRunIdErrors[keyof GetWorkflowsRunByWorkflowRunIdErrors]
 
 export type GetWorkflowsRunByWorkflowRunIdResponses = {
   200: WorkflowRunResponse
 }
 
-export type GetWorkflowsRunByWorkflowRunIdResponse
-  = GetWorkflowsRunByWorkflowRunIdResponses[keyof GetWorkflowsRunByWorkflowRunIdResponses]
+export type GetWorkflowsRunByWorkflowRunIdResponse =
+  GetWorkflowsRunByWorkflowRunIdResponses[keyof GetWorkflowsRunByWorkflowRunIdResponses]
 
 export type PostWorkflowsTasksByTaskIdStopData = {
-  body?: never
+  body: WorkflowTaskStopPayload
   path: {
     task_id: string
   }
@@ -3411,26 +9305,24 @@ export type PostWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostWorkflowsTasksByTaskIdStopErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: NotWorkflowAppError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostWorkflowsTasksByTaskIdStopError
-  = PostWorkflowsTasksByTaskIdStopErrors[keyof PostWorkflowsTasksByTaskIdStopErrors]
+export type PostWorkflowsTasksByTaskIdStopError =
+  PostWorkflowsTasksByTaskIdStopErrors[keyof PostWorkflowsTasksByTaskIdStopErrors]
 
 export type PostWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostWorkflowsTasksByTaskIdStopResponse
-  = PostWorkflowsTasksByTaskIdStopResponses[keyof PostWorkflowsTasksByTaskIdStopResponses]
+export type PostWorkflowsTasksByTaskIdStopResponse =
+  PostWorkflowsTasksByTaskIdStopResponses[keyof PostWorkflowsTasksByTaskIdStopResponses]
 
 export type PostWorkflowsByWorkflowIdRunData = {
-  body: WorkflowRunPayload
+  body: WorkflowRunPayloadWithUser
   path: {
     workflow_id: string
   }
@@ -3439,58 +9331,54 @@ export type PostWorkflowsByWorkflowIdRunData = {
 }
 
 export type PostWorkflowsByWorkflowIdRunErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  429: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotWorkflowAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  403:
+    | TriggerWorkflowServiceModeUnavailableError
+    | WorkflowVersionExecutionNotAllowedError
+    | ErrorResponse
+  404: ErrorResponse
+  429: RateLimitError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostWorkflowsByWorkflowIdRunError
-  = PostWorkflowsByWorkflowIdRunErrors[keyof PostWorkflowsByWorkflowIdRunErrors]
+export type PostWorkflowsByWorkflowIdRunError =
+  PostWorkflowsByWorkflowIdRunErrors[keyof PostWorkflowsByWorkflowIdRunErrors]
 
 export type PostWorkflowsByWorkflowIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowBlockingResponse | string
 }
 
-export type PostWorkflowsByWorkflowIdRunResponse
-  = PostWorkflowsByWorkflowIdRunResponses[keyof PostWorkflowsByWorkflowIdRunResponses]
+export type PostWorkflowsByWorkflowIdRunResponse =
+  PostWorkflowsByWorkflowIdRunResponses[keyof PostWorkflowsByWorkflowIdRunResponses]
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeData = {
   body?: never
   path: {
-    model_type: string
+    model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
   }
   query?: never
   url: '/workspaces/current/models/model-types/{model_type}'
 }
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetWorkspacesCurrentModelsModelTypesByModelTypeError
-  = GetWorkspacesCurrentModelsModelTypesByModelTypeErrors[keyof GetWorkspacesCurrentModelsModelTypesByModelTypeErrors]
+export type GetWorkspacesCurrentModelsModelTypesByModelTypeError =
+  GetWorkspacesCurrentModelsModelTypesByModelTypeErrors[keyof GetWorkspacesCurrentModelsModelTypesByModelTypeErrors]
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ProviderWithModelsListResponse
 }
 
-export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponse
-  = GetWorkspacesCurrentModelsModelTypesByModelTypeResponses[keyof GetWorkspacesCurrentModelsModelTypesByModelTypeResponses]
+export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponse =
+  GetWorkspacesCurrentModelsModelTypesByModelTypeResponses[keyof GetWorkspacesCurrentModelsModelTypesByModelTypeResponses]

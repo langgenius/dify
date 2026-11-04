@@ -1,21 +1,27 @@
-export const ACCOUNT_SETTING_MODAL_ACTION = 'showSettings'
-
 export const ACCOUNT_SETTING_TAB = {
-  PROVIDER: 'provider',
   MEMBERS: 'members',
+  IM_PLATFORM: 'im-platform',
+  IP_POLICIES: 'ip-policies',
+  ROLES_AND_PERMISSIONS: 'roles-and-permissions',
+  PERMISSION_SET: 'permission-set',
+  ACCESS_TOKEN: 'access-token',
   BILLING: 'billing',
-  DATA_SOURCE: 'data-source',
-  API_BASED_EXTENSION: 'api-based-extension',
+  WORKFLOW_LOG_ARCHIVES: 'workflow-log-archives',
   CUSTOM: 'custom',
-  LANGUAGE: 'language',
+  PREFERENCES: 'preferences',
 } as const
 
-export type AccountSettingTab = typeof ACCOUNT_SETTING_TAB[keyof typeof ACCOUNT_SETTING_TAB]
+export type AccountSettingTab = (typeof ACCOUNT_SETTING_TAB)[keyof typeof ACCOUNT_SETTING_TAB]
 
-export const DEFAULT_ACCOUNT_SETTING_TAB = ACCOUNT_SETTING_TAB.MEMBERS
-
-export const isValidAccountSettingTab = (tab: string | null): tab is AccountSettingTab => {
-  if (!tab)
-    return false
-  return Object.values(ACCOUNT_SETTING_TAB).includes(tab as AccountSettingTab)
-}
+export const ACCOUNT_SETTING_TAB_VALUES = [
+  ACCOUNT_SETTING_TAB.MEMBERS,
+  ACCOUNT_SETTING_TAB.IM_PLATFORM,
+  ACCOUNT_SETTING_TAB.IP_POLICIES,
+  ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
+  ACCOUNT_SETTING_TAB.PERMISSION_SET,
+  ACCOUNT_SETTING_TAB.ACCESS_TOKEN,
+  ACCOUNT_SETTING_TAB.BILLING,
+  ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES,
+  ACCOUNT_SETTING_TAB.CUSTOM,
+  ACCOUNT_SETTING_TAB.PREFERENCES,
+] as const

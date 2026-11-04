@@ -1,0 +1,32 @@
+'use client'
+
+import dynamic from 'next/dynamic'
+import { Pricing } from '@/app/components/billing/pricing'
+import { SettingsModal } from '@/app/components/header/account-setting/settings-modal'
+
+const InSiteMessageNotification = dynamic(
+  () => import('@/app/components/app/in-site-message/notification'),
+  { ssr: false },
+)
+const ReadmePanel = dynamic(() => import('@/app/components/plugins/readme-panel'), { ssr: false })
+const WorkflowGeneratorMount = dynamic(
+  () => import('@/app/components/workflow/workflow-generator/mount'),
+  { ssr: false },
+)
+const GotoAnything = dynamic(
+  () => import('@/app/components/goto-anything').then((mod) => mod.GotoAnything),
+  { ssr: false },
+)
+
+export function CommonLayoutGlobalMounts() {
+  return (
+    <>
+      <InSiteMessageNotification />
+      <ReadmePanel />
+      <GotoAnything />
+      <WorkflowGeneratorMount />
+      <SettingsModal />
+      <Pricing />
+    </>
+  )
+}

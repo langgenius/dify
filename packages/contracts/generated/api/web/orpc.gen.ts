@@ -2,7 +2,71 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
+import {
+  zAccountBannedError,
+  zAgentNotPublishedError,
+  zAgentVersionNotFoundError,
+  zAlreadySubmittedError,
+  zAppMoreLikeThisDisabledError,
+  zAppSuggestedQuestionsAfterAnswerDisabledError,
+  zAppUnavailableError,
+  zAudioTooLargeError,
+  zAuthenticationFailedError,
+  zCompletionRequestError,
+  zConversationCursorNotFoundError,
+  zConversationFirstMessageNotFoundError,
+  zConversationNotFoundError,
+  zEmailCodeError,
+  zEmailPasswordResetLimitError,
+  zEmailSendIpLimitError,
+  zExpiredError,
+  zFileExtensionBlockedError,
+  zFileTooLargeError,
+  zFilenameNotExistsError,
+  zHumanInputAccessDeliveryFailedError,
+  zHumanInputAccessRateLimitExceededError,
+  zHumanInputChallengeExpiredError,
+  zHumanInputChallengeStaleError,
+  zHumanInputFormExpiredError,
+  zHumanInputFormNotFoundError,
+  zHumanInputFormSubmittedError,
+  zHumanInputInvalidOtpError,
+  zHumanInputV2UnavailableError,
+  zInvalidEmailError,
+  zInvalidFormDataError,
+  zInvalidInputError,
+  zInvalidOrExpiredTokenError,
+  zInvalidParamError,
+  zInvalidUploadTokenError,
+  zMalformedUploadTokenError,
+  zMessageFeedbackRatingRequiredError,
+  zModelCurrentlyNotSupportError,
+  zNoAudioUploadedError,
+  zNoFileUploadedError,
+  zNotChatAppError,
+  zNotCompletionAppError,
+  zNotWorkflowAppError,
+  zPasswordMismatchError,
+  zPasswordResetRateLimitExceededError,
+  zProviderNotInitializeError,
+  zProviderNotSupportSpeechToTextError,
+  zProviderQuotaExceededError,
+  zRateLimitError,
+  zRemoteFileAccessDeniedError,
+  zRemoteFileInvalidResponseError,
+  zRemoteFileInvalidUrlError,
+  zRemoteFileNotFoundError,
+  zRemoteFileUnavailableError,
+  zRemoteFileUrlBlockedError,
+  zSpeechToTextDisabledError,
+  zTooManyFilesError,
+  zTriggerWorkflowServiceModeUnavailableError,
+  zUnsupportedAudioTypeError,
+  zUnsupportedFileTypeError,
+  zUploadTokenRequiredError,
+  zWebFormRateLimitExceededError,
+  zWorkflowNotActiveError,
+} from './zod.gen.ts'
 import {
   zDeleteConversationsByCIdPath,
   zDeleteConversationsByCIdResponse,
@@ -12,6 +76,11 @@ import {
   zGetConversationsResponse,
   zGetFormHumanInputByFormTokenPath,
   zGetFormHumanInputByFormTokenResponse,
+  zGetFormHumanInputV2ByFormTokenPath,
+  zGetFormHumanInputV2ByFormTokenResponse,
+  zGetFormHumanInputV2PublicByFormTokenPath,
+  zGetFormHumanInputV2PublicByFormTokenResponse,
+  zGetLoginStatusQuery,
   zGetLoginStatusResponse,
   zGetMessagesByMessageIdMoreLikeThisPath,
   zGetMessagesByMessageIdMoreLikeThisQuery,
@@ -22,6 +91,7 @@ import {
   zGetMessagesResponse,
   zGetMetaResponse,
   zGetParametersResponse,
+  zGetPassportQuery,
   zGetPassportResponse,
   zGetRemoteFilesByUrlPath,
   zGetRemoteFilesByUrlResponse,
@@ -48,6 +118,7 @@ import {
   zPostCompletionMessagesByTaskIdStopPath,
   zPostCompletionMessagesByTaskIdStopResponse,
   zPostCompletionMessagesResponse,
+  zPostConversationsByCIdNameBody,
   zPostConversationsByCIdNamePath,
   zPostConversationsByCIdNameQuery,
   zPostConversationsByCIdNameResponse,
@@ -62,15 +133,38 @@ import {
   zPostForgotPasswordResponse,
   zPostForgotPasswordValidityBody,
   zPostForgotPasswordValidityResponse,
+  zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
   zPostFormHumanInputByFormTokenResponse,
+  zPostFormHumanInputByFormTokenUploadTokenPath,
+  zPostFormHumanInputByFormTokenUploadTokenResponse,
+  zPostFormHumanInputV2ByFormTokenBody,
+  zPostFormHumanInputV2ByFormTokenPath,
+  zPostFormHumanInputV2ByFormTokenResponse,
+  zPostFormHumanInputV2PublicByFormTokenAccessRequestPath,
+  zPostFormHumanInputV2PublicByFormTokenAccessRequestResponse,
+  zPostFormHumanInputV2PublicByFormTokenBody,
+  zPostFormHumanInputV2PublicByFormTokenPath,
+  zPostFormHumanInputV2PublicByFormTokenResponse,
+  zPostFormHumanInputV2PublicByFormTokenUploadTokenPath,
+  zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse,
+  zPostHumanInputFormsFilesResponse,
+  zPostHumanInputV2FilesBody,
+  zPostHumanInputV2FilesHeaders,
+  zPostHumanInputV2FilesRemoteBody,
+  zPostHumanInputV2FilesRemoteHeaders,
+  zPostHumanInputV2FilesRemoteResponse,
+  zPostHumanInputV2FilesResponse,
   zPostLoginBody,
   zPostLoginResponse,
   zPostLogoutResponse,
+  zPostMessagesByMessageIdFeedbacksBody,
   zPostMessagesByMessageIdFeedbacksPath,
   zPostMessagesByMessageIdFeedbacksQuery,
   zPostMessagesByMessageIdFeedbacksResponse,
+  zPostRemoteFilesUploadBody,
   zPostRemoteFilesUploadResponse,
+  zPostSavedMessagesBody,
   zPostSavedMessagesQuery,
   zPostSavedMessagesResponse,
   zPostTextToAudioBody,
@@ -79,22 +173,16 @@ import {
   zPostWorkflowsRunResponse,
   zPostWorkflowsTasksByTaskIdStopPath,
   zPostWorkflowsTasksByTaskIdStopResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Convert audio to text
  *
  * Convert audio file to text using speech-to-text service.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post = oc
   .route({
-    deprecated: true,
-    description:
-      'Convert audio file to text using speech-to-text service.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Convert audio file to text using speech-to-text service.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAudioToText',
@@ -103,6 +191,21 @@ export const post = oc
     tags: ['web'],
   })
   .output(zPostAudioToTextResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_speech_to_text: {
+      status: 400,
+      data: zProviderNotSupportSpeechToTextError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
+    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+  })
 
 export const audioToText = {
   post,
@@ -122,6 +225,7 @@ export const post2 = oc
   })
   .input(z.object({ params: zPostChatMessagesByTaskIdStopPath }))
   .output(zPostChatMessagesByTaskIdStopResponse)
+  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const stop = {
   post: post2,
@@ -133,16 +237,10 @@ export const byTaskId = {
 
 /**
  * Create a chat message for conversational applications.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Create a chat message for conversational applications.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create a chat message for conversational applications.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postChatMessages',
@@ -151,6 +249,16 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostChatMessagesBody }))
   .output(zPostChatMessagesResponse)
+  .errors({
+    agent_not_published: { status: 400, data: zAgentNotPublishedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+  })
 
 export const chatMessages = {
   post: post3,
@@ -171,6 +279,7 @@ export const post4 = oc
   })
   .input(z.object({ params: zPostCompletionMessagesByTaskIdStopPath }))
   .output(zPostCompletionMessagesByTaskIdStopResponse)
+  .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const stop2 = {
   post: post4,
@@ -182,16 +291,10 @@ export const byTaskId2 = {
 
 /**
  * Create a completion message for text generation applications.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Create a completion message for text generation applications.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Create a completion message for text generation applications.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postCompletionMessages',
@@ -200,6 +303,14 @@ export const post5 = oc
   })
   .input(z.object({ body: zPostCompletionMessagesBody }))
   .output(zPostCompletionMessagesResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const completionMessages = {
   post: post5,
@@ -208,16 +319,10 @@ export const completionMessages = {
 
 /**
  * Rename a specific conversation with a custom name or auto-generate one.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post6 = oc
   .route({
-    deprecated: true,
-    description:
-      'Rename a specific conversation with a custom name or auto-generate one.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Rename a specific conversation with a custom name or auto-generate one.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postConversationsByCIdName',
@@ -226,11 +331,20 @@ export const post6 = oc
   })
   .input(
     z.object({
+      body: zPostConversationsByCIdNameBody,
       params: zPostConversationsByCIdNamePath,
       query: zPostConversationsByCIdNameQuery.optional(),
     }),
   )
   .output(zPostConversationsByCIdNameResponse)
+  .errors({
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const name = {
   post: post6,
@@ -250,17 +364,22 @@ export const patch = oc
   })
   .input(z.object({ params: zPatchConversationsByCIdPinPath }))
   .output(zPatchConversationsByCIdPinResponse)
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const pin = {
   patch,
 }
 
 /**
- * Unpin a specific conversation to remove it from the top of the list.
+ * Remove the current user's pin. Succeeds when the conversation is already unpinned.
  */
 export const patch2 = oc
   .route({
-    description: 'Unpin a specific conversation to remove it from the top of the list.',
+    description:
+      "Remove the current user's pin. Succeeds when the conversation is already unpinned.",
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchConversationsByCIdUnpin',
@@ -269,6 +388,10 @@ export const patch2 = oc
   })
   .input(z.object({ params: zPatchConversationsByCIdUnpinPath }))
   .output(zPatchConversationsByCIdUnpinResponse)
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const unpin = {
   patch: patch2,
@@ -289,6 +412,10 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteConversationsByCIdPath }))
   .output(zDeleteConversationsByCIdResponse)
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const byCId = {
   delete: delete_,
@@ -299,24 +426,23 @@ export const byCId = {
 
 /**
  * Retrieve paginated list of conversations for a chat application.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get = oc
   .route({
-    deprecated: true,
-    description:
-      'Retrieve paginated list of conversations for a chat application.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Retrieve paginated list of conversations for a chat application.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getConversations',
     path: '/conversations',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetConversationsQuery.optional() }))
+  .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
+  .errors({
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const conversations = {
   get,
@@ -337,6 +463,12 @@ export const post7 = oc
   })
   .input(z.object({ body: zPostEmailCodeLoginValidityBody }))
   .output(zPostEmailCodeLoginValidityResponse)
+  .errors({
+    account_banned: { status: 400, data: zAccountBannedError },
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+  })
 
 export const validity = {
   post: post7,
@@ -356,6 +488,7 @@ export const post8 = oc
   })
   .input(z.object({ body: zPostEmailCodeLoginBody }))
   .output(zPostEmailCodeLoginResponse)
+  .errors({ authentication_failed: { status: 401, data: zAuthenticationFailedError } })
 
 export const emailCodeLogin = {
   post: post8,
@@ -387,11 +520,12 @@ export const emailCodeLogin = {
  * FilenameNotExistsError: File has no filename
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
+ * BlockedFileExtensionError: File extension is blocked
  */
 export const post9 = oc
   .route({
     description:
-      'Upload a file for use in web applications\nAccepts file uploads for use within web applications, supporting\nmultiple file types with automatic validation and storage.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user uploading the file\n\nForm Parameters:\n    file: The file to upload (required)\n    source: Optional source type (datasets or None)\n\nReturns:\n    dict: File information including ID, URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    NoFileUploadedError: No file provided in request\n    TooManyFilesError: Multiple files provided (only one allowed)\n    FilenameNotExistsError: File has no filename\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
+      'Upload a file for use in web applications\nAccepts file uploads for use within web applications, supporting\nmultiple file types with automatic validation and storage.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user uploading the file\n\nForm Parameters:\n    file: The file to upload (required)\n    source: Optional source type (datasets or None)\n\nReturns:\n    dict: File information including ID, URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    NoFileUploadedError: No file provided in request\n    TooManyFilesError: Multiple files provided (only one allowed)\n    FilenameNotExistsError: File has no filename\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported\n    BlockedFileExtensionError: File extension is blocked',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFilesUpload',
@@ -401,6 +535,14 @@ export const post9 = oc
     tags: ['web'],
   })
   .output(zPostFilesUploadResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
 
 export const upload = {
   post: post9,
@@ -424,6 +566,11 @@ export const post10 = oc
   })
   .input(z.object({ body: zPostForgotPasswordResetsBody }))
   .output(zPostForgotPasswordResetsResponse)
+  .errors({
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    password_mismatch: { status: 400, data: zPasswordMismatchError },
+  })
 
 export const resets = {
   post: post10,
@@ -443,6 +590,12 @@ export const post11 = oc
   })
   .input(z.object({ body: zPostForgotPasswordValidityBody }))
   .output(zPostForgotPasswordValidityResponse)
+  .errors({
+    email_code_error: { status: 400, data: zEmailCodeError },
+    email_password_reset_limit: { status: 429, data: zEmailPasswordResetLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+  })
 
 export const validity2 = {
   post: post11,
@@ -462,6 +615,11 @@ export const post12 = oc
   })
   .input(z.object({ body: zPostForgotPasswordBody }))
   .output(zPostForgotPasswordResponse)
+  .errors({
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    password_reset_rate_limit_exceeded: { status: 429, data: zPasswordResetRateLimitExceededError },
+  })
 
 export const forgotPassword = {
   post: post12,
@@ -469,20 +627,210 @@ export const forgotPassword = {
   validity: validity2,
 }
 
+export const post13 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2PublicByFormTokenAccessRequest',
+    path: '/form/human-input/v2/public/{form_token}/access-request',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostFormHumanInputV2PublicByFormTokenAccessRequestPath }))
+  .output(zPostFormHumanInputV2PublicByFormTokenAccessRequestResponse)
+  .errors({
+    human_input_access_delivery_failed: { status: 503, data: zHumanInputAccessDeliveryFailedError },
+    human_input_access_rate_limit_exceeded: {
+      status: 429,
+      data: zHumanInputAccessRateLimitExceededError,
+    },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    human_input_v2_unavailable: { status: 503, data: zHumanInputV2UnavailableError },
+  })
+
+export const accessRequest = {
+  post: post13,
+}
+
+export const post14 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2PublicByFormTokenUploadToken',
+    path: '/form/human-input/v2/public/{form_token}/upload-token',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostFormHumanInputV2PublicByFormTokenUploadTokenPath }))
+  .output(zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+  })
+
+export const uploadToken = {
+  post: post14,
+}
+
 /**
- * Get human input form definition by token
- *
- * GET /api/form/human_input/<form_token>
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
+ * Read a public v2 form definition by delivery token without an OTP or login session.
  */
 export const get2 = oc
   .route({
-    deprecated: true,
     description:
-      'GET /api/form/human_input/<form_token>\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Read a public v2 form definition by delivery token without an OTP or login session.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputV2PublicByFormToken',
+    path: '/form/human-input/v2/public/{form_token}',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetFormHumanInputV2PublicByFormTokenPath }))
+  .output(zGetFormHumanInputV2PublicByFormTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+  })
+
+/**
+ * Submit a form with inputs, an action, and email verification proof.
+ */
+export const post15 = oc
+  .route({
+    description: 'Submit a form with inputs, an action, and email verification proof.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2PublicByFormToken',
+    path: '/form/human-input/v2/public/{form_token}',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputV2PublicByFormTokenBody,
+      params: zPostFormHumanInputV2PublicByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputV2PublicByFormTokenResponse)
+  .errors({
+    human_input_challenge_expired: { status: 400, data: zHumanInputChallengeExpiredError },
+    human_input_challenge_stale: { status: 400, data: zHumanInputChallengeStaleError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    human_input_invalid_otp: { status: 400, data: zHumanInputInvalidOtpError },
+    human_input_v2_unavailable: { status: 503, data: zHumanInputV2UnavailableError },
+    invalid_input: { status: 400, data: zInvalidInputError },
+    workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
+  })
+
+export const byFormToken = {
+  get: get2,
+  post: post15,
+  accessRequest,
+  uploadToken,
+}
+
+export const public_ = {
+  byFormToken,
+}
+
+/**
+ * Read a v2 form using the original EndUser's Web App passport.
+ */
+export const get3 = oc
+  .route({
+    description: "Read a v2 form using the original EndUser's Web App passport.",
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputV2ByFormToken',
+    path: '/form/human-input/v2/{form_token}',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetFormHumanInputV2ByFormTokenPath }))
+  .output(zGetFormHumanInputV2ByFormTokenResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+  })
+
+/**
+ * Submit a v2 form using the original EndUser's Web App passport.
+ */
+export const post16 = oc
+  .route({
+    description: "Submit a v2 form using the original EndUser's Web App passport.",
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2ByFormToken',
+    path: '/form/human-input/v2/{form_token}',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputV2ByFormTokenBody,
+      params: zPostFormHumanInputV2ByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputV2ByFormTokenResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+    invalid_input: { status: 400, data: zInvalidInputError },
+    workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
+  })
+
+export const byFormToken2 = {
+  get: get3,
+  post: post16,
+}
+
+export const v2 = {
+  public: public_,
+  byFormToken: byFormToken2,
+}
+
+/**
+ * Issue an upload token for a human input form
+ *
+ * Issue an upload token for an active human input form
+ * POST /api/form/human_input/<form_token>/upload-token
+ */
+export const post17 = oc
+  .route({
+    description:
+      'Issue an upload token for an active human input form\nPOST /api/form/human_input/<form_token>/upload-token',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputByFormTokenUploadToken',
+    path: '/form/human_input/{form_token}/upload-token',
+    summary: 'Issue an upload token for a human input form',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostFormHumanInputByFormTokenUploadTokenPath }))
+  .output(zPostFormHumanInputByFormTokenUploadTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+  })
+
+export const uploadToken2 = {
+  post: post17,
+}
+
+/**
+ * Get human input form definition by token
+ *
+ * Get a human input form definition by token
+ * GET /api/form/human_input/<form_token>
+ */
+export const get4 = oc
+  .route({
+    description:
+      'Get a human input form definition by token\nGET /api/form/human_input/<form_token>',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFormHumanInputByFormToken',
@@ -492,10 +840,16 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
   .output(zGetFormHumanInputByFormTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+  })
 
 /**
  * Submit human input form by token
  *
+ * Submit a human input form by token
  * POST /api/form/human_input/<form_token>
  *
  * Request body:
@@ -505,16 +859,11 @@ export const get2 = oc
  * },
  * "action": "Approve"
  * }
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post13 = oc
+export const post18 = oc
   .route({
-    deprecated: true,
     description:
-      'POST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Submit a human input form by token\nPOST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFormHumanInputByFormToken',
@@ -522,16 +871,29 @@ export const post13 = oc
     summary: 'Submit human input form by token',
     tags: ['web'],
   })
-  .input(z.object({ params: zPostFormHumanInputByFormTokenPath }))
+  .input(
+    z.object({
+      body: zPostFormHumanInputByFormTokenBody,
+      params: zPostFormHumanInputByFormTokenPath,
+    }),
+  )
   .output(zPostFormHumanInputByFormTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_form_data: { status: 400, data: zInvalidFormDataError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+  })
 
-export const byFormToken = {
-  get: get2,
-  post: post13,
+export const byFormToken3 = {
+  get: get4,
+  post: post18,
+  uploadToken: uploadToken2,
 }
 
 export const humanInput = {
-  byFormToken,
+  v2,
+  byFormToken: byFormToken3,
 }
 
 export const form = {
@@ -539,9 +901,150 @@ export const form = {
 }
 
 /**
+ * Upload one local file or remote URL file for a HITL human input form
+ */
+export const post19 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postHumanInputFormsFiles',
+    path: '/human-input-forms/files',
+    successStatus: 201,
+    summary: 'Upload one local file or remote URL file for a HITL human input form',
+    tags: ['web'],
+  })
+  .output(zPostHumanInputFormsFilesResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+    malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+    upload_token_required: { status: 401, data: zUploadTokenRequiredError },
+  })
+
+export const files2 = {
+  post: post19,
+}
+
+export const humanInputForms = {
+  files: files2,
+}
+
+/**
+ * Fetch a remote file using a v2 upload grant.
+ */
+export const post20 = oc
+  .route({
+    description: 'Fetch a remote file using a v2 upload grant.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postHumanInputV2FilesRemote',
+    path: '/human-input/v2/files/remote',
+    successStatus: 201,
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostHumanInputV2FilesRemoteBody,
+      headers: zPostHumanInputV2FilesRemoteHeaders,
+    }),
+  )
+  .output(zPostHumanInputV2FilesRemoteResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+    malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+    upload_token_required: { status: 401, data: zUploadTokenRequiredError },
+  })
+
+export const remote = {
+  post: post20,
+}
+
+/**
+ * Upload a file or a remote URL using a v2 upload grant.
+ */
+export const post21 = oc
+  .route({
+    description: 'Upload a file or a remote URL using a v2 upload grant.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postHumanInputV2Files',
+    path: '/human-input/v2/files',
+    successStatus: 201,
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostHumanInputV2FilesBody.optional(),
+      headers: zPostHumanInputV2FilesHeaders,
+    }),
+  )
+  .output(zPostHumanInputV2FilesResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_not_found: { status: 404, data: zHumanInputFormNotFoundError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+    malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+    upload_token_required: { status: 401, data: zUploadTokenRequiredError },
+  })
+
+export const files3 = {
+  post: post21,
+  remote,
+}
+
+export const v22 = {
+  files: files3,
+}
+
+export const humanInput2 = {
+  v2: v22,
+}
+
+/**
  * Check login status
  */
-export const get3 = oc
+export const get5 = oc
   .route({
     description: 'Check login status',
     inputStructure: 'detailed',
@@ -550,10 +1053,11 @@ export const get3 = oc
     path: '/login/status',
     tags: ['web'],
   })
+  .input(z.object({ query: zGetLoginStatusQuery.optional() }).optional())
   .output(zGetLoginStatusResponse)
 
 export const status = {
-  get: get3,
+  get: get5,
 }
 
 /**
@@ -561,7 +1065,7 @@ export const status = {
  *
  * Authenticate user for web application access
  */
-export const post14 = oc
+export const post22 = oc
   .route({
     description: 'Authenticate user for web application access',
     inputStructure: 'detailed',
@@ -573,16 +1077,20 @@ export const post14 = oc
   })
   .input(z.object({ body: zPostLoginBody }))
   .output(zPostLoginResponse)
+  .errors({
+    account_banned: { status: 400, data: zAccountBannedError },
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+  })
 
 export const login = {
-  post: post14,
+  post: post22,
   status,
 }
 
 /**
  * Logout user from web application
  */
-export const post15 = oc
+export const post23 = oc
   .route({
     description: 'Logout user from web application',
     inputStructure: 'detailed',
@@ -594,21 +1102,15 @@ export const post15 = oc
   .output(zPostLogoutResponse)
 
 export const logout = {
-  post: post15,
+  post: post23,
 }
 
 /**
  * Submit feedback (like/dislike) for a specific message.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post16 = oc
+export const post24 = oc
   .route({
-    deprecated: true,
-    description:
-      'Submit feedback (like/dislike) for a specific message.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Submit feedback (like/dislike) for a specific message.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postMessagesByMessageIdFeedbacks',
@@ -617,28 +1119,27 @@ export const post16 = oc
   })
   .input(
     z.object({
+      body: zPostMessagesByMessageIdFeedbacksBody,
       params: zPostMessagesByMessageIdFeedbacksPath,
       query: zPostMessagesByMessageIdFeedbacksQuery.optional(),
     }),
   )
   .output(zPostMessagesByMessageIdFeedbacksResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+  })
 
 export const feedbacks = {
-  post: post16,
+  post: post24,
 }
 
 /**
  * Generate a new completion similar to an existing message (completion apps only).
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get4 = oc
+export const get6 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generate a new completion similar to an existing message (completion apps only).\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Generate a new completion similar to an existing message (completion apps only).',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdMoreLikeThis',
@@ -652,17 +1153,27 @@ export const get4 = oc
     }),
   )
   .output(zGetMessagesByMessageIdMoreLikeThisResponse)
+  .errors({
+    app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const moreLikeThis = {
-  get: get4,
+  get: get6,
 }
 
 /**
- * Get suggested follow-up questions after a message (chat apps only).
+ * Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
  */
-export const get5 = oc
+export const get7 = oc
   .route({
-    description: 'Get suggested follow-up questions after a message (chat apps only).',
+    description:
+      'Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggestedQuestions',
@@ -671,9 +1182,22 @@ export const get5 = oc
   })
   .input(z.object({ params: zGetMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetMessagesByMessageIdSuggestedQuestionsResponse)
+  .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const suggestedQuestions = {
-  get: get5,
+  get: get7,
 }
 
 export const byMessageId = {
@@ -684,16 +1208,10 @@ export const byMessageId = {
 
 /**
  * Retrieve paginated list of messages from a conversation in a chat application.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get6 = oc
+export const get8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Retrieve paginated list of messages from a conversation in a chat application.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Retrieve paginated list of messages from a conversation in a chat application.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessages',
@@ -702,9 +1220,13 @@ export const get6 = oc
   })
   .input(z.object({ query: zGetMessagesQuery }))
   .output(zGetMessagesResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const messages = {
-  get: get6,
+  get: get8,
   byMessageId,
 }
 
@@ -712,16 +1234,10 @@ export const messages = {
  * Get app meta
  *
  * Retrieve the metadata for a specific app.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get7 = oc
+export const get9 = oc
   .route({
-    deprecated: true,
-    description:
-      'Retrieve the metadata for a specific app.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Retrieve the metadata for a specific app.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMeta',
@@ -730,25 +1246,20 @@ export const get7 = oc
     tags: ['web'],
   })
   .output(zGetMetaResponse)
+  .errors({ app_unavailable: { status: 400, data: zAppUnavailableError } })
 
 export const meta = {
-  get: get7,
+  get: get9,
 }
 
 /**
  * Retrieve app parameters
  *
  * Retrieve the parameters for a specific app.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get8 = oc
+export const get10 = oc
   .route({
-    deprecated: true,
-    description:
-      'Retrieve the parameters for a specific app.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Retrieve the parameters for a specific app.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getParameters',
@@ -757,33 +1268,32 @@ export const get8 = oc
     tags: ['web'],
   })
   .output(zGetParametersResponse)
+  .errors({
+    agent_not_published: { status: 400, data: zAgentNotPublishedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const parameters = {
-  get: get8,
+  get: get10,
 }
 
 /**
  * Get authentication passport for web application access
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get9 = oc
+export const get11 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get authentication passport for web application access\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get authentication passport for web application access',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getPassport',
     path: '/passport',
     tags: ['web'],
   })
+  .input(z.object({ query: zGetPassportQuery.optional() }).optional())
   .output(zGetPassportResponse)
 
 export const passport = {
-  get: get9,
+  get: get11,
 }
 
 /**
@@ -805,19 +1315,19 @@ export const passport = {
  * int: HTTP status code 201 for success
  *
  * Raises:
- * RemoteFileUploadError: Failed to fetch file from remote URL
+ * RemoteFileInvalidUrlError: Remote file URL is invalid
+ * RemoteFileUrlBlockedError: Remote file URL is blocked
+ * RemoteFileNotFoundError: Remote file does not exist
+ * RemoteFileAccessDeniedError: Remote file requires authorization
+ * RemoteFileUnavailableError: Remote file is unavailable
+ * RemoteFileInvalidResponseError: Remote file response is invalid
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post17 = oc
+export const post25 = oc
   .route({
-    deprecated: true,
     description:
-      'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileUploadError: Failed to fetch file from remote URL\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileInvalidUrlError: Remote file URL is invalid\n    RemoteFileUrlBlockedError: Remote file URL is blocked\n    RemoteFileNotFoundError: Remote file does not exist\n    RemoteFileAccessDeniedError: Remote file requires authorization\n    RemoteFileUnavailableError: Remote file is unavailable\n    RemoteFileInvalidResponseError: Remote file response is invalid\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRemoteFilesUpload',
@@ -826,10 +1336,22 @@ export const post17 = oc
     summary: 'Upload a file from a remote URL',
     tags: ['web'],
   })
+  .input(z.object({ body: zPostRemoteFilesUploadBody }))
   .output(zPostRemoteFilesUploadResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
 
 export const upload2 = {
-  post: post17,
+  post: post25,
 }
 
 /**
@@ -850,7 +1372,7 @@ export const upload2 = {
  * Raises:
  * HTTPException: If the remote file cannot be accessed
  */
-export const get10 = oc
+export const get12 = oc
   .route({
     description:
       'Get information about a remote file\nRetrieves basic information about a file located at a remote URL,\nincluding content type and content length.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n    url: URL-encoded path to the remote file\n\nReturns:\n    dict: Remote file information including type and length\n\nRaises:\n    HTTPException: If the remote file cannot be accessed',
@@ -863,9 +1385,17 @@ export const get10 = oc
   })
   .input(z.object({ params: zGetRemoteFilesByUrlPath }))
   .output(zGetRemoteFilesByUrlResponse)
+  .errors({
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+  })
 
 export const byUrl = {
-  get: get10,
+  get: get12,
 }
 
 export const remoteFiles = {
@@ -888,6 +1418,7 @@ export const delete2 = oc
   })
   .input(z.object({ params: zDeleteSavedMessagesByMessageIdPath }))
   .output(zDeleteSavedMessagesByMessageIdResponse)
+  .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const byMessageId2 = {
   delete: delete2,
@@ -895,49 +1426,39 @@ export const byMessageId2 = {
 
 /**
  * Retrieve paginated list of saved messages for a completion application.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get11 = oc
+export const get13 = oc
   .route({
-    deprecated: true,
-    description:
-      'Retrieve paginated list of saved messages for a completion application.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Retrieve paginated list of saved messages for a completion application.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSavedMessages',
     path: '/saved-messages',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetSavedMessagesQuery.optional() }))
+  .input(z.object({ query: zGetSavedMessagesQuery.optional() }).optional())
   .output(zGetSavedMessagesResponse)
+  .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 /**
  * Save a specific message for later reference.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post18 = oc
+export const post26 = oc
   .route({
-    deprecated: true,
-    description:
-      'Save a specific message for later reference.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Save a specific message for later reference.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSavedMessages',
     path: '/saved-messages',
     tags: ['web'],
   })
-  .input(z.object({ query: zPostSavedMessagesQuery }))
+  .input(z.object({ body: zPostSavedMessagesBody, query: zPostSavedMessagesQuery }))
   .output(zPostSavedMessagesResponse)
+  .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const savedMessages = {
-  get: get11,
-  post: post18,
+  get: get13,
+  post: post26,
   byMessageId: byMessageId2,
 }
 
@@ -945,16 +1466,10 @@ export const savedMessages = {
  * Retrieve app site info
  *
  * Retrieve app site information and configuration.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get12 = oc
+export const get14 = oc
   .route({
-    deprecated: true,
-    description:
-      'Retrieve app site information and configuration.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Retrieve app site information and configuration.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSite',
@@ -965,60 +1480,43 @@ export const get12 = oc
   .output(zGetSiteResponse)
 
 export const site = {
-  get: get12,
+  get: get14,
 }
 
 /**
- * Get system feature flags and configuration
+ * Get the non-sensitive bootstrap snapshot exposed before authentication
  *
- * Get system feature flags and configuration
- * Returns the current system feature flags and configuration
- * that control various functionalities across the platform.
- *
- * Returns:
- * dict: System feature configuration object
- *
+ * Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
  * This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,
  * except it is intended for use by the web app, instead of the console dashboard.
  *
- * NOTE: This endpoint is unauthenticated by design, as it provides system features
- * data required for webapp initialization.
- *
- * Authentication would create circular dependency (can't authenticate without webapp loading).
- *
- * Only non-sensitive configuration data should be returned by this endpoint.
+ * Authentication configuration must be available before the authentication flow can be selected.
  */
-export const get13 = oc
+export const get15 = oc
   .route({
     description:
-      'Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can\'t authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.',
+      'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nAuthentication configuration must be available before the authentication flow can be selected.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSystemFeatures',
     path: '/system-features',
-    summary: 'Get system feature flags and configuration',
+    summary: 'Get the non-sensitive bootstrap snapshot exposed before authentication',
     tags: ['web'],
   })
   .output(zGetSystemFeaturesResponse)
 
 export const systemFeatures = {
-  get: get13,
+  get: get15,
 }
 
 /**
  * Convert text to audio
  *
  * Convert text to audio using text-to-speech service.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post19 = oc
+export const post27 = oc
   .route({
-    deprecated: true,
-    description:
-      'Convert text to audio using text-to-speech service.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Convert text to audio using text-to-speech service.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTextToAudio',
@@ -1028,15 +1526,22 @@ export const post19 = oc
   })
   .input(z.object({ body: zPostTextToAudioBody }))
   .output(zPostTextToAudioResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const textToAudio = {
-  post: post19,
+  post: post27,
 }
 
 /**
  * Retrieve the access mode for a web application (public or restricted).
  */
-export const get14 = oc
+export const get16 = oc
   .route({
     description: 'Retrieve the access mode for a web application (public or restricted).',
     inputStructure: 'detailed',
@@ -1045,17 +1550,18 @@ export const get14 = oc
     path: '/webapp/access-mode',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }))
+  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }).optional())
   .output(zGetWebappAccessModeResponse)
+  .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const accessMode = {
-  get: get14,
+  get: get16,
 }
 
 /**
  * Check if user has permission to access a web application.
  */
-export const get15 = oc
+export const get17 = oc
   .route({
     description: 'Check if user has permission to access a web application.',
     inputStructure: 'detailed',
@@ -1068,7 +1574,7 @@ export const get15 = oc
   .output(zGetWebappPermissionResponse)
 
 export const permission = {
-  get: get15,
+  get: get17,
 }
 
 export const webapp = {
@@ -1082,16 +1588,10 @@ export const webapp = {
  * GET /api/workflow/<task_id>/events
  *
  * Returns Server-Sent Events stream.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get16 = oc
+export const get18 = oc
   .route({
-    deprecated: true,
-    description:
-      'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkflowByTaskIdEvents',
@@ -1101,9 +1601,10 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetWorkflowByTaskIdEventsPath }))
   .output(zGetWorkflowByTaskIdEventsResponse)
+  .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const events = {
-  get: get16,
+  get: get18,
 }
 
 export const byTaskId3 = {
@@ -1118,16 +1619,10 @@ export const workflow = {
  * Run workflow
  *
  * Execute a workflow with provided inputs and files.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post20 = oc
+export const post28 = oc
   .route({
-    deprecated: true,
-    description:
-      'Execute a workflow with provided inputs and files.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Execute a workflow with provided inputs and files.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkflowsRun',
@@ -1137,9 +1632,21 @@ export const post20 = oc
   })
   .input(z.object({ body: zPostWorkflowsRunBody }))
   .output(zPostWorkflowsRunResponse)
+  .errors({
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    trigger_workflow_service_mode_unavailable: {
+      status: 403,
+      data: zTriggerWorkflowServiceModeUnavailableError,
+    },
+  })
 
 export const run = {
-  post: post20,
+  post: post28,
 }
 
 /**
@@ -1147,7 +1654,7 @@ export const run = {
  *
  * Stop a running workflow task.
  */
-export const post21 = oc
+export const post29 = oc
   .route({
     description: 'Stop a running workflow task.',
     inputStructure: 'detailed',
@@ -1159,9 +1666,10 @@ export const post21 = oc
   })
   .input(z.object({ params: zPostWorkflowsTasksByTaskIdStopPath }))
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
+  .errors({ not_workflow_app: { status: 400, data: zNotWorkflowAppError } })
 
 export const stop3 = {
-  post: post21,
+  post: post29,
 }
 
 export const byTaskId4 = {
@@ -1186,6 +1694,8 @@ export const contract = {
   files,
   forgotPassword,
   form,
+  humanInputForms,
+  humanInput: humanInput2,
   login,
   logout,
   messages,

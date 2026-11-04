@@ -7,36 +7,39 @@ separate ``agent-backend.v1`` event stream.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import (
     CancelRunRequest,
     CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
+    RunCancelledEvent,
+    RunCancelledEventData,
     RunEvent,
     RunFailedEvent,
     RunFailedEventData,
-    RunPausedEvent,
-    RunPausedEventData,
     RunStartedEvent,
     RunStatusResponse,
     RunSucceededEvent,
     RunSucceededEventData,
 )
+from dify_agent.protocol.snapshot import SessionSnapshot
 
 _FIXED_TIME = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 class FakeAgentBackendScenario(StrEnum):
-    """Deterministic fake scenarios for API-side integration tests."""
+    """Deterministic fake scenarios for API-side integration tests.
+
+    ``PAUSED`` represents the API workflow effect. On the Dify Agent wire
+    protocol it is a succeeded run carrying a deferred external tool call.
+    """
 
     SUCCESS = "success"
     FAILED = "failed"
-    PAUSED = "paused"
 
 
 class FakeAgentBackendRunClient:
@@ -66,9 +69,39 @@ class FakeAgentBackendRunClient:
         del request
         return CancelRunResponse(run_id=run_id, status="cancelled")
 
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        """Return a deterministic cleanup-complete cancellation event."""
+        del after
+        request = request or CancelRunRequest()
+        _ = self.cancel_run(run_id, request)
+        return RunCancelledEvent(
+            id="cancel-0",
+            run_id=run_id,
+            created_at=_FIXED_TIME,
+            data=RunCancelledEventData(
+                reason=request.reason,
+                message=request.message,
+                session_snapshot=SessionSnapshot(),
+            ),
+        )
+
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
         """Yield the deterministic public ``RunEvent`` sequence for ``run_id``."""
         for event in self._events(run_id):
+            if should_stop is not None and should_stop():
+                return
             if after is not None and event.id is not None and event.id <= after:
                 continue
             yield event
@@ -92,13 +125,6 @@ class FakeAgentBackendRunClient:
                     updated_at=_FIXED_TIME,
                     error="fake failure",
                 )
-            case FakeAgentBackendScenario.PAUSED:
-                return RunStatusResponse(
-                    run_id=run_id,
-                    status="paused",
-                    created_at=_FIXED_TIME,
-                    updated_at=_FIXED_TIME,
-                )
 
     def _events(self, run_id: str) -> tuple[RunEvent, ...]:
         match self.scenario:
@@ -111,7 +137,7 @@ class FakeAgentBackendRunClient:
                         created_at=_FIXED_TIME,
                         data=RunSucceededEventData(
                             output={"text": "hello agent"},
-                            session_snapshot=CompositorSessionSnapshot(layers=[]),
+                            session_snapshot=SessionSnapshot(),
                         ),
                     ),
                 )
@@ -122,20 +148,10 @@ class FakeAgentBackendRunClient:
                         id="2-0",
                         run_id=run_id,
                         created_at=_FIXED_TIME,
-                        data=RunFailedEventData(error="fake failure", reason="unit_test"),
-                    ),
-                )
-            case FakeAgentBackendScenario.PAUSED:
-                return (
-                    RunStartedEvent(id="1-0", run_id=run_id, created_at=_FIXED_TIME),
-                    RunPausedEvent(
-                        id="2-0",
-                        run_id=run_id,
-                        created_at=_FIXED_TIME,
-                        data=RunPausedEventData(
-                            reason="human_input_required",
-                            message="Agent requested human input.",
-                            session_snapshot=CompositorSessionSnapshot(layers=[]),
+                        data=RunFailedEventData(
+                            error="fake failure",
+                            reason="unit_test",
+                            session_snapshot=SessionSnapshot(),
                         ),
                     ),
                 )

@@ -2,6 +2,43 @@
 
 import * as z from 'zod'
 
+/**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * WorkspaceListItemResponse
+ */
+export const zWorkspaceListItemResponse = z.object({
+  created_at: z.int().nullish(),
+  id: z.string(),
+  name: z.string().nullish(),
+  status: z.string().nullish(),
+})
+
+/**
+ * WorkspacePaginationResponse
+ */
+export const zWorkspacePaginationResponse = z.object({
+  data: z.array(zWorkspaceListItemResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
 export const zGetAllWorkspacesQuery = z.object({
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
@@ -10,4 +47,4 @@ export const zGetAllWorkspacesQuery = z.object({
 /**
  * Success
  */
-export const zGetAllWorkspacesResponse = z.record(z.string(), z.unknown())
+export const zGetAllWorkspacesResponse = zWorkspacePaginationResponse

@@ -2,12 +2,41 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
+import {
+  zAccessDeniedError,
+  zAgentVersionNotFoundError,
+  zAppMoreLikeThisDisabledError,
+  zAppSuggestedQuestionsAfterAnswerDisabledError,
+  zAppUnavailableError,
+  zAudioTooLargeError,
+  zCompletionRequestError,
+  zConversationCursorNotFoundError,
+  zConversationFirstMessageNotFoundError,
+  zConversationNameRequiredError,
+  zConversationNotFoundError,
+  zInstalledAppNotFoundError,
+  zInstalledAppUnavailableError,
+  zInvalidCursorError,
+  zMessageCursorNotFoundError,
+  zMessageFeedbackRatingRequiredError,
+  zMessageNotFoundError,
+  zModelCurrentlyNotSupportError,
+  zNoAudioUploadedError,
+  zNotChatAppError,
+  zNotCompletionAppError,
+  zNotWorkflowAppError,
+  zProviderNotInitializeError,
+  zProviderNotSupportSpeechToTextError,
+  zProviderNotSupportTextToSpeechError,
+  zProviderQuotaExceededError,
+  zRateLimitError,
+  zSpeechToTextDisabledError,
+  zUnsupportedAudioTypeError,
+  zWebAppAccessUnavailableError,
+} from './zod.gen.ts'
 import {
   zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath,
   zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse,
-  zDeleteInstalledAppsByInstalledAppIdPath,
-  zDeleteInstalledAppsByInstalledAppIdResponse,
   zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath,
   zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse,
   zGetInstalledAppsByInstalledAppIdConversationsPath,
@@ -25,10 +54,14 @@ import {
   zGetInstalledAppsByInstalledAppIdMetaResponse,
   zGetInstalledAppsByInstalledAppIdParametersPath,
   zGetInstalledAppsByInstalledAppIdParametersResponse,
+  zGetInstalledAppsByInstalledAppIdPath,
+  zGetInstalledAppsByInstalledAppIdResponse,
   zGetInstalledAppsByInstalledAppIdSavedMessagesPath,
   zGetInstalledAppsByInstalledAppIdSavedMessagesQuery,
   zGetInstalledAppsByInstalledAppIdSavedMessagesResponse,
+  zGetInstalledAppsQuery,
   zGetInstalledAppsResponse,
+  zPatchInstalledAppsByInstalledAppIdBody,
   zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinPath,
   zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse,
   zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath,
@@ -64,19 +97,10 @@ import {
   zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse,
   zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath,
   zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse,
-  zPostInstalledAppsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postInstalledAppsByInstalledAppIdAudioToText',
@@ -85,6 +109,25 @@ export const post = oc
   })
   .input(z.object({ params: zPostInstalledAppsByInstalledAppIdAudioToTextPath }))
   .output(zPostInstalledAppsByInstalledAppIdAudioToTextResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_speech_to_text: {
+      status: 400,
+      data: zProviderNotSupportSpeechToTextError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
+    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const audioToText = {
   post,
@@ -100,6 +143,12 @@ export const post2 = oc
   })
   .input(z.object({ params: zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath }))
   .output(zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const stop = {
   post: post2,
@@ -109,16 +158,8 @@ export const byTaskId = {
   stop,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postInstalledAppsByInstalledAppIdChatMessages',
@@ -132,6 +173,18 @@ export const post3 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdChatMessagesResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const chatMessages = {
   post: post3,
@@ -148,6 +201,12 @@ export const post4 = oc
   })
   .input(z.object({ params: zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPath }))
   .output(zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const stop2 = {
   post: post4,
@@ -157,16 +216,8 @@ export const byTaskId2 = {
   stop: stop2,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postInstalledAppsByInstalledAppIdCompletionMessages',
@@ -180,22 +231,25 @@ export const post5 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const completionMessages = {
   post: post5,
   byTaskId: byTaskId2,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post6 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postInstalledAppsByInstalledAppIdConversationsByCIdName',
@@ -209,6 +263,18 @@ export const post6 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_name_required: { status: 400, data: zConversationNameRequiredError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const name = {
   post: post6,
@@ -224,6 +290,13 @@ export const patch = oc
   })
   .input(z.object({ params: zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinPath }))
   .output(zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const pin = {
   patch,
@@ -239,6 +312,13 @@ export const patch2 = oc
   })
   .input(z.object({ params: zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath }))
   .output(zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const unpin = {
   patch: patch2,
@@ -255,6 +335,13 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath }))
   .output(zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const byCId = {
   delete: delete_,
@@ -263,16 +350,8 @@ export const byCId = {
   unpin,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getInstalledAppsByInstalledAppIdConversations',
@@ -286,6 +365,13 @@ export const get = oc
     }),
   )
   .output(zGetInstalledAppsByInstalledAppIdConversationsResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const conversations = {
   get,
@@ -307,21 +393,21 @@ export const post7 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+    message_not_found: { status: 404, data: zMessageNotFoundError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const feedbacks = {
   post: post7,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThis',
@@ -335,6 +421,19 @@ export const get2 = oc
     }),
   )
   .output(zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    message_not_found: { status: 404, data: zMessageNotFoundError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const moreLikeThis = {
   get: get2,
@@ -354,6 +453,23 @@ export const get3 = oc
     }),
   )
   .output(zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    message_not_found: { status: 404, data: zMessageNotFoundError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const suggestedQuestions = {
   get: get3,
@@ -365,16 +481,8 @@ export const byMessageId = {
   suggestedQuestions,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getInstalledAppsByInstalledAppIdMessages',
@@ -388,6 +496,15 @@ export const get4 = oc
     }),
   )
   .output(zGetInstalledAppsByInstalledAppIdMessagesResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    message_cursor_not_found: { status: 404, data: zMessageCursorNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const messages = {
   get: get4,
@@ -396,16 +513,9 @@ export const messages = {
 
 /**
  * Get app meta
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getInstalledAppsByInstalledAppIdMeta',
@@ -415,6 +525,12 @@ export const get5 = oc
   })
   .input(z.object({ params: zGetInstalledAppsByInstalledAppIdMetaPath }))
   .output(zGetInstalledAppsByInstalledAppIdMetaResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const meta = {
   get: get5,
@@ -422,16 +538,9 @@ export const meta = {
 
 /**
  * Retrieve app parameters
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get6 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getInstalledAppsByInstalledAppIdParameters',
@@ -441,6 +550,12 @@ export const get6 = oc
   })
   .input(z.object({ params: zGetInstalledAppsByInstalledAppIdParametersPath }))
   .output(zGetInstalledAppsByInstalledAppIdParametersResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const parameters = {
   get: get6,
@@ -457,21 +572,19 @@ export const delete2 = oc
   })
   .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath }))
   .output(zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const byMessageId2 = {
   delete: delete2,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get7 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getInstalledAppsByInstalledAppIdSavedMessages',
@@ -485,6 +598,12 @@ export const get7 = oc
     }),
   )
   .output(zGetInstalledAppsByInstalledAppIdSavedMessagesResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const post8 = oc
   .route({
@@ -501,6 +620,12 @@ export const post8 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdSavedMessagesResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const savedMessages = {
   get: get7,
@@ -508,16 +633,8 @@ export const savedMessages = {
   byMessageId: byMessageId2,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post9 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postInstalledAppsByInstalledAppIdTextToAudio',
@@ -531,6 +648,21 @@ export const post9 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdTextToAudioResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_text_to_speech: {
+      status: 400,
+      data: zProviderNotSupportTextToSpeechError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const textToAudio = {
   post: post9,
@@ -538,16 +670,9 @@ export const textToAudio = {
 
 /**
  * Run workflow
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post10 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postInstalledAppsByInstalledAppIdWorkflowsRun',
@@ -562,6 +687,17 @@ export const post10 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const run = {
   post: post10,
@@ -581,6 +717,12 @@ export const post11 = oc
   })
   .input(z.object({ params: zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath }))
   .output(zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const stop3 = {
   post: post11,
@@ -599,39 +741,46 @@ export const workflows = {
   tasks,
 }
 
-export const delete3 = oc
+export const get8 = oc
   .route({
     inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteInstalledAppsByInstalledAppId',
+    method: 'GET',
+    operationId: 'getInstalledAppsByInstalledAppId',
     path: '/installed-apps/{installed_app_id}',
-    successStatus: 204,
     tags: ['console'],
   })
-  .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdPath }))
-  .output(zDeleteInstalledAppsByInstalledAppIdResponse)
+  .input(z.object({ params: zGetInstalledAppsByInstalledAppIdPath }))
+  .output(zGetInstalledAppsByInstalledAppIdResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    installed_app_unavailable: { status: 404, data: zInstalledAppUnavailableError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const patch3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchInstalledAppsByInstalledAppId',
     path: '/installed-apps/{installed_app_id}',
     tags: ['console'],
   })
-  .input(z.object({ params: zPatchInstalledAppsByInstalledAppIdPath }))
+  .input(
+    z.object({
+      body: zPatchInstalledAppsByInstalledAppIdBody,
+      params: zPatchInstalledAppsByInstalledAppIdPath,
+    }),
+  )
   .output(zPatchInstalledAppsByInstalledAppIdResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const byInstalledAppId = {
-  delete: delete3,
+  get: get8,
   patch: patch3,
   audioToText,
   chatMessages,
@@ -645,7 +794,7 @@ export const byInstalledAppId = {
   workflows,
 }
 
-export const get8 = oc
+export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -653,29 +802,15 @@ export const get8 = oc
     path: '/installed-apps',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetInstalledAppsQuery.optional() }).optional())
   .output(zGetInstalledAppsResponse)
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post12 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postInstalledApps',
-    path: '/installed-apps',
-    tags: ['console'],
+  .errors({
+    invalid_cursor: { status: 400, data: zInvalidCursorError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
   })
-  .output(zPostInstalledAppsResponse)
 
 export const installedApps = {
-  get: get8,
-  post: post12,
+  get: get9,
   byInstalledAppId,
 }
 

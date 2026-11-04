@@ -1,0 +1,81 @@
+'use client'
+
+import type { SnippetPublishStatus } from '../query-params'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+
+type SnippetPublishStatusFilterProps = {
+  value: SnippetPublishStatus
+  onChange: (value: SnippetPublishStatus) => void
+}
+
+const chipClassName =
+  'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 transition-colors'
+
+const SnippetPublishStatusFilter = ({ value, onChange }: SnippetPublishStatusFilterProps) => {
+  const { t } = useTranslation(['app', 'snippet', 'workflow'])
+
+  const options = useMemo(
+    () =>
+      [
+        { value: 'all', text: t(($) => $['types.all'], { ns: 'app' }) },
+        { value: 'published', text: t(($) => $['common.published'], { ns: 'workflow' }) },
+        { value: 'draft', text: t(($) => $.draft, { ns: 'snippet' }) },
+      ] satisfies Array<{ value: SnippetPublishStatus; text: string }>,
+    [t],
+  )
+
+  const activeOption = options.find((option) => option.value === value)
+  const isSelected = value !== 'all'
+  const defaultLabel = `${t(($) => $['common.published'], { ns: 'workflow' })} / ${t(($) => $.draft, { ns: 'snippet' })}`
+  const triggerLabel = isSelected ? activeOption?.text : defaultLabel
+
+  return (
+    <Menu>
+      <MenuTrigger
+        render={
+          <button
+            type="button"
+            className={cn(
+              chipClassName,
+              isSelected
+                ? 'border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-state-base-hover'
+                : 'border-transparent bg-components-input-bg-normal text-text-tertiary hover:bg-components-input-bg-hover',
+            )}
+          />
+        }
+      >
+        <span className="px-1 text-text-tertiary">{triggerLabel}</span>
+        <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
+      </MenuTrigger>
+      <MenuContent align="start" className="w-55">
+        <MenuRadioGroup<SnippetPublishStatus>
+          value={value}
+          onValueChange={(nextValue) => onChange(nextValue)}
+        >
+          {options.map((option) => (
+            <MenuRadioItem<SnippetPublishStatus>
+              key={option.value}
+              value={option.value}
+              closeOnClick
+            >
+              <span>{option.text}</span>
+              <MenuRadioItemIndicator />
+            </MenuRadioItem>
+          ))}
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
+  )
+}
+
+export default SnippetPublishStatusFilter

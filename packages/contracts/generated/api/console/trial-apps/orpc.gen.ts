@@ -2,10 +2,82 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
+  zAgentVersionNotFoundError,
+  zAppNotFoundError,
+  zAppOwnerUnavailableError,
+  zAppSiteUnavailableError,
+  zAppSuggestedQuestionsAfterAnswerDisabledError,
+  zAppUnavailableError,
+  zAudioTooLargeError,
+  zCompletionRequestError,
+  zFileExtensionBlockedError,
+  zFileTooLargeError,
+  zFilenameNotExistsError,
+  zModelCurrentlyNotSupportError,
+  zNeedAddIdsError,
+  zNoAudioUploadedError,
+  zNoFileUploadedError,
+  zNotChatAppError,
+  zNotCompletionAppError,
+  zNotWorkflowAppError,
+  zProviderNotInitializeError,
+  zProviderNotSupportSpeechToTextError,
+  zProviderNotSupportTextToSpeechError,
+  zProviderQuotaExceededError,
+  zRateLimitError,
+  zRecommendedAppNotFoundError,
+  zRemoteFileAccessDeniedError,
+  zRemoteFileInvalidResponseError,
+  zRemoteFileInvalidUrlError,
+  zRemoteFileNotFoundError,
+  zRemoteFileUnavailableError,
+  zRemoteFileUrlBlockedError,
+  zRosterAgentPackageExportFailedError,
+  zSpeechToTextDisabledError,
+  zTooManyFilesError,
+  zTrialAppFeatureDisabledError,
+  zTrialAppLimitExceededError,
+  zTrialAppNotAllowedError,
+  zUnsupportedAudioTypeError,
+  zUnsupportedFileTypeError,
+} from './zod.gen.ts'
+import {
+  zGetTrialAppsByAppIdAgentComposerPath,
+  zGetTrialAppsByAppIdAgentComposerResponse,
+  zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadPath,
+  zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadQuery,
+  zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponse,
+  zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewPath,
+  zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewQuery,
+  zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponse,
+  zGetTrialAppsByAppIdAgentConfigFilesPath,
+  zGetTrialAppsByAppIdAgentConfigFilesQuery,
+  zGetTrialAppsByAppIdAgentConfigFilesResponse,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadPath,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadQuery,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponse,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentPath,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentQuery,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponse,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadPath,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadQuery,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewPath,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewQuery,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectPath,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectQuery,
+  zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponse,
+  zGetTrialAppsByAppIdAgentConfigSkillsPath,
+  zGetTrialAppsByAppIdAgentConfigSkillsQuery,
+  zGetTrialAppsByAppIdAgentConfigSkillsResponse,
   zGetTrialAppsByAppIdDatasetsPath,
+  zGetTrialAppsByAppIdDatasetsQuery,
   zGetTrialAppsByAppIdDatasetsResponse,
+  zGetTrialAppsByAppIdExportPath,
+  zGetTrialAppsByAppIdExportQuery,
+  zGetTrialAppsByAppIdExportResponse,
   zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath,
   zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse,
   zGetTrialAppsByAppIdParametersPath,
@@ -19,11 +91,19 @@ import {
   zPostTrialAppsByAppIdAudioToTextPath,
   zPostTrialAppsByAppIdAudioToTextResponse,
   zPostTrialAppsByAppIdChatMessagesBody,
+  zPostTrialAppsByAppIdChatMessagesByTaskIdStopPath,
+  zPostTrialAppsByAppIdChatMessagesByTaskIdStopResponse,
   zPostTrialAppsByAppIdChatMessagesPath,
   zPostTrialAppsByAppIdChatMessagesResponse,
   zPostTrialAppsByAppIdCompletionMessagesBody,
   zPostTrialAppsByAppIdCompletionMessagesPath,
   zPostTrialAppsByAppIdCompletionMessagesResponse,
+  zPostTrialAppsByAppIdFilesUploadBody,
+  zPostTrialAppsByAppIdFilesUploadPath,
+  zPostTrialAppsByAppIdFilesUploadResponse,
+  zPostTrialAppsByAppIdRemoteFilesUploadBody,
+  zPostTrialAppsByAppIdRemoteFilesUploadPath,
+  zPostTrialAppsByAppIdRemoteFilesUploadResponse,
   zPostTrialAppsByAppIdTextToAudioBody,
   zPostTrialAppsByAppIdTextToAudioPath,
   zPostTrialAppsByAppIdTextToAudioResponse,
@@ -32,18 +112,273 @@ import {
   zPostTrialAppsByAppIdWorkflowsRunResponse,
   zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath,
   zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentComposer',
+    path: '/trial-apps/{app_id}/agent-composer',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetTrialAppsByAppIdAgentComposerPath }))
+  .output(zGetTrialAppsByAppIdAgentComposerResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
+
+export const agentComposer = {
+  get,
+}
+
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigFilesByNameDownload',
+    path: '/trial-apps/{app_id}/agent/config/files/{name}/download',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadPath,
+      query: zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
+
+export const download = {
+  get: get2,
+}
+
+export const get3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigFilesByNamePreview',
+    path: '/trial-apps/{app_id}/agent/config/files/{name}/preview',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewPath,
+      query: zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
+
+export const preview = {
+  get: get3,
+}
+
+export const byName = {
+  download,
+  preview,
+}
+
+export const get4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigFiles',
+    path: '/trial-apps/{app_id}/agent/config/files',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigFilesPath,
+      query: zGetTrialAppsByAppIdAgentConfigFilesQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigFilesResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
+
+export const files = {
+  get: get4,
+  byName,
+}
+
+export const get5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigSkillsByNameDownload',
+    path: '/trial-apps/{app_id}/agent/config/skills/{name}/download',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadPath,
+      query: zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
+
+export const download2 = {
+  get: get5,
+}
+
+export const get6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigSkillsByNameFilesContent',
+    path: '/trial-apps/{app_id}/agent/config/skills/{name}/files/content',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentPath,
+      query: zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentQuery,
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
+
+export const content = {
+  get: get6,
+}
+
+export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigSkillsByNameFilesDownload',
+    path: '/trial-apps/{app_id}/agent/config/skills/{name}/files/download',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadPath,
+      query: zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadQuery,
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
+
+export const download3 = {
+  get: get7,
+}
+
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigSkillsByNameFilesPreview',
+    path: '/trial-apps/{app_id}/agent/config/skills/{name}/files/preview',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewPath,
+      query: zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewQuery,
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
+
+export const preview2 = {
+  get: get8,
+}
+
+export const files2 = {
+  content,
+  download: download3,
+  preview: preview2,
+}
+
+export const get9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigSkillsByNameInspect',
+    path: '/trial-apps/{app_id}/agent/config/skills/{name}/inspect',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectPath,
+      query: zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
+
+export const inspect = {
+  get: get9,
+}
+
+export const byName2 = {
+  download: download2,
+  files: files2,
+  inspect,
+}
+
+export const get10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdAgentConfigSkills',
+    path: '/trial-apps/{app_id}/agent/config/skills',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdAgentConfigSkillsPath,
+      query: zGetTrialAppsByAppIdAgentConfigSkillsQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdAgentConfigSkillsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
+
+export const skills = {
+  get: get10,
+  byName: byName2,
+}
+
+export const config = {
+  files,
+  skills,
+}
+
+export const agent = {
+  config,
+}
+
 export const post = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTrialAppsByAppIdAudioToText',
@@ -52,21 +387,56 @@ export const post = oc
   })
   .input(z.object({ params: zPostTrialAppsByAppIdAudioToTextPath }))
   .output(zPostTrialAppsByAppIdAudioToTextResponse)
+  .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_speech_to_text: {
+      status: 400,
+      data: zProviderNotSupportSpeechToTextError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+  })
 
 export const audioToText = {
   post,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdChatMessagesByTaskIdStop',
+    path: '/trial-apps/{app_id}/chat-messages/{task_id}/stop',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostTrialAppsByAppIdChatMessagesByTaskIdStopPath }))
+  .output(zPostTrialAppsByAppIdChatMessagesByTaskIdStopResponse)
+  .errors({
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
+
+export const stop = {
+  post: post2,
+}
+
+export const byTaskId = {
+  stop,
+}
+
+export const post3 = oc
+  .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTrialAppsByAppIdChatMessages',
@@ -80,21 +450,26 @@ export const post2 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdChatMessagesResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
 export const chatMessages = {
-  post: post2,
+  post: post3,
+  byTaskId,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post3 = oc
+export const post4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTrialAppsByAppIdCompletionMessages',
@@ -108,44 +483,110 @@ export const post3 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdCompletionMessagesResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
 export const completionMessages = {
-  post: post3,
+  post: post4,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get = oc
+export const get11 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialAppsByAppIdDatasets',
     path: '/trial-apps/{app_id}/datasets',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetTrialAppsByAppIdDatasetsPath }))
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdDatasetsPath,
+      query: zGetTrialAppsByAppIdDatasetsQuery.optional(),
+    }),
+  )
   .output(zGetTrialAppsByAppIdDatasetsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    need_add_ids: { status: 400, data: zNeedAddIdsError },
+  })
 
 export const datasets = {
-  get,
+  get: get11,
+}
+
+export const get12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdExport',
+    path: '/trial-apps/{app_id}/export',
+    tags: ['console'],
+  })
+  .input(
+    z.object({ params: zGetTrialAppsByAppIdExportPath, query: zGetTrialAppsByAppIdExportQuery }),
+  )
+  .output(zGetTrialAppsByAppIdExportResponse)
+  .errors({
+    recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError },
+    roster_agent_package_export_failed: { status: 500, data: zRosterAgentPackageExportFailedError },
+  })
+
+export const export_ = {
+  get: get12,
 }
 
 /**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
+ * Upload a file into the tenant that owns the trial app
  */
-export const get2 = oc
+export const post5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdFilesUpload',
+    path: '/trial-apps/{app_id}/files/upload',
+    successStatus: 201,
+    summary: 'Upload a file into the tenant that owns the trial app',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdFilesUploadBody,
+      params: zPostTrialAppsByAppIdFilesUploadPath,
+    }),
+  )
+  .output(zPostTrialAppsByAppIdFilesUploadResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
+
+export const upload = {
+  post: post5,
+}
+
+export const files3 = {
+  upload,
+}
+
+export const get13 = oc
+  .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialAppsByAppIdMessagesByMessageIdSuggestedQuestions',
@@ -154,9 +595,25 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse)
+  .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
 export const suggestedQuestions = {
-  get: get2,
+  get: get13,
 }
 
 export const byMessageId = {
@@ -169,16 +626,9 @@ export const messages = {
 
 /**
  * Retrieve app parameters
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get3 = oc
+export const get14 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialAppsByAppIdParameters',
@@ -188,25 +638,67 @@ export const get3 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdParametersPath }))
   .output(zGetTrialAppsByAppIdParametersResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const parameters = {
-  get: get3,
+  get: get14,
+}
+
+/**
+ * Upload a remote file into the tenant that owns the trial app
+ */
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdRemoteFilesUpload',
+    path: '/trial-apps/{app_id}/remote-files/upload',
+    successStatus: 201,
+    summary: 'Upload a remote file into the tenant that owns the trial app',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdRemoteFilesUploadBody,
+      params: zPostTrialAppsByAppIdRemoteFilesUploadPath,
+    }),
+  )
+  .output(zPostTrialAppsByAppIdRemoteFilesUploadResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
+
+export const upload2 = {
+  post: post6,
+}
+
+export const remoteFiles = {
+  upload: upload2,
 }
 
 /**
  * Retrieve app site info
  *
  * Returns the site configuration for the application including theme, icons, and text.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get4 = oc
+export const get15 = oc
   .route({
-    deprecated: true,
     description:
-      'Returns the site configuration for the application including theme, icons, and text.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Returns the site configuration for the application including theme, icons, and text.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialAppsByAppIdSite',
@@ -216,21 +708,18 @@ export const get4 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdSitePath }))
   .output(zGetTrialAppsByAppIdSiteResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_owner_unavailable: { status: 403, data: zAppOwnerUnavailableError },
+    app_site_unavailable: { status: 403, data: zAppSiteUnavailableError },
+  })
 
 export const site = {
-  get: get4,
+  get: get15,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const post4 = oc
+export const post7 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTrialAppsByAppIdTextToAudio',
@@ -244,23 +733,31 @@ export const post4 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdTextToAudioResponse)
+  .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_text_to_speech: {
+      status: 400,
+      data: zProviderNotSupportTextToSpeechError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
 export const textToAudio = {
-  post: post4,
+  post: post7,
 }
 
 /**
  * Run workflow
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post5 = oc
+export const post8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTrialAppsByAppIdWorkflowsRun',
@@ -275,23 +772,28 @@ export const post5 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdWorkflowsRunResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
 export const run = {
-  post: post5,
+  post: post8,
 }
 
 /**
  * Stop workflow task
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const post6 = oc
+export const post9 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTrialAppsByAppIdWorkflowsTasksByTaskIdStop',
@@ -301,77 +803,83 @@ export const post6 = oc
   })
   .input(z.object({ params: zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath }))
   .output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
+  .errors({
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
-export const stop = {
-  post: post6,
+export const stop2 = {
+  post: post9,
 }
 
-export const byTaskId = {
-  stop,
+export const byTaskId2 = {
+  stop: stop2,
 }
 
 export const tasks = {
-  byTaskId,
+  byTaskId: byTaskId2,
 }
 
 /**
- * Get workflow detail
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
+ * Get a detached workflow definition after catalog preview admission
  */
-export const get5 = oc
+export const get16 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialAppsByAppIdWorkflows',
     path: '/trial-apps/{app_id}/workflows',
-    summary: 'Get workflow detail',
+    summary: 'Get a detached workflow definition after catalog preview admission',
     tags: ['console'],
   })
   .input(z.object({ params: zGetTrialAppsByAppIdWorkflowsPath }))
   .output(zGetTrialAppsByAppIdWorkflowsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const workflows = {
-  get: get5,
+  get: get16,
   run,
   tasks,
 }
 
 /**
- * Get app detail
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
+ * Get app detail using the viewer's workspace for tool configuration
  */
-export const get6 = oc
+export const get17 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialAppsByAppId',
     path: '/trial-apps/{app_id}',
-    summary: 'Get app detail',
+    summary: "Get app detail using the viewer's workspace for tool configuration",
     tags: ['console'],
   })
   .input(z.object({ params: zGetTrialAppsByAppIdPath }))
   .output(zGetTrialAppsByAppIdResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_site_unavailable: { status: 403, data: zAppSiteUnavailableError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const byAppId = {
-  get: get6,
+  get: get17,
+  agentComposer,
+  agent,
   audioToText,
   chatMessages,
   completionMessages,
   datasets,
+  export: export_,
+  files: files3,
   messages,
   parameters,
+  remoteFiles,
   site,
   textToAudio,
   workflows,

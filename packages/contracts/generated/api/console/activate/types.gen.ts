@@ -6,9 +6,9 @@ export type ClientOptions = {
 
 export type ActivatePayload = {
   email?: string | null
-  interface_language: string
-  name: string
-  timezone: string
+  interface_language?: string | null
+  name?: string | null
+  timezone?: string | null
   token: string
   workspace_id?: string | null
 }
@@ -17,13 +17,45 @@ export type ActivationResponse = {
   result: string
 }
 
+export type AccountInFreezeError = ErrorResponse & {
+  code: 'account_in_freeze'
+  status: 400
+}
+
+export type EmailDomainSuspendedError = ErrorResponse & {
+  code: 'email_domain_suspended'
+  status: 400
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type AlreadyActivateError = ErrorResponse & {
+  code: 'already_activate'
+  status: 403
+}
+
+export type InvitationAccountMismatchError = ErrorResponse & {
+  code: 'invitation_account_mismatch'
+  status: 403
+}
+
 export type ActivationCheckResponse = {
-  data?: ActivationCheckData
+  data?: ActivationCheckData | null
   is_valid: boolean
 }
 
 export type ActivationCheckData = {
+  account_status?: string | null
   email: string | null
+  requires_setup?: boolean | null
   workspace_id: string | null
   workspace_name: string | null
 }
@@ -36,9 +68,9 @@ export type PostActivateData = {
 }
 
 export type PostActivateErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: AccountInFreezeError | EmailDomainSuspendedError | ErrorResponse
+  403: AlreadyActivateError | InvitationAccountMismatchError | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostActivateError = PostActivateErrors[keyof PostActivateErrors]
@@ -53,12 +85,18 @@ export type GetActivateCheckData = {
   body?: never
   path?: never
   query: {
-    email?: string | null
+    email?: string
     token: string
-    workspace_id?: string | null
+    workspace_id?: string
   }
   url: '/activate/check'
 }
+
+export type GetActivateCheckErrors = {
+  default: ErrorResponse
+}
+
+export type GetActivateCheckError = GetActivateCheckErrors[keyof GetActivateCheckErrors]
 
 export type GetActivateCheckResponses = {
   200: ActivationCheckResponse

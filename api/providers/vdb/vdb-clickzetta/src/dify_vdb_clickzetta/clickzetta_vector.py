@@ -8,10 +8,11 @@ import re
 import threading
 import time
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 import clickzetta  # type: ignore
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from clickzetta.connector.v0.connection import Connection  # type: ignore
@@ -361,12 +362,13 @@ class ClickzettaVector(BaseVector):
                 first_pass = json.loads(raw_metadata)
 
                 # Handle double-encoded JSON
-                if isinstance(first_pass, str):
-                    metadata = parse_metadata_json(first_pass)
-                elif isinstance(first_pass, dict):
-                    metadata = first_pass
-                else:
-                    metadata = {}
+                match first_pass:
+                    case str():
+                        metadata = parse_metadata_json(first_pass)
+                    case dict():
+                        metadata = first_pass
+                    case _:
+                        metadata = {}
             else:
                 metadata = {}
         except (json.JSONDecodeError, ValueError, TypeError):
@@ -419,7 +421,7 @@ class ClickzettaVector(BaseVector):
                     break
             except queue.Empty:
                 continue
-            except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
+            except (RuntimeError, ValueError, TypeError, ConnectionError):
                 logger.exception("Write worker error")
 
     def _execute_write(self, func, *args, **kwargs):
@@ -436,6 +438,7 @@ class ClickzettaVector(BaseVector):
             raise result
         return result
 
+    @override
     def get_type(self) -> str:
         """Return the vector database type."""
         return "clickzetta"
@@ -469,6 +472,7 @@ class ClickzettaVector(BaseVector):
                 )
                 return False
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         """Create the collection and add initial documents."""
         # Execute table creation through write queue to avoid concurrent conflicts
@@ -606,6 +610,7 @@ class ClickzettaVector(BaseVector):
                 logger.warning("Failed to create inverted index: %s", e)
                 # Continue without inverted index - full-text search will fall back to LIKE
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
         """Add documents with embeddings to the collection."""
         if not documents:
@@ -653,7 +658,7 @@ class ClickzettaVector(BaseVector):
         data_rows = []
         vector_dimension = len(batch_embeddings[0]) if batch_embeddings and batch_embeddings[0] else 768
 
-        for doc, embedding, doc_id in zip(batch_docs, batch_embeddings, batch_doc_ids):
+        for doc, embedding, doc_id in zip(batch_docs, batch_embeddings, batch_doc_ids, strict=False):
             # Optimized: minimal checks for common case, fallback for edge cases
             metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
 
@@ -716,6 +721,7 @@ class ClickzettaVector(BaseVector):
                     logger.exception("Sample data row: %s", data_rows[0] if data_rows else "None")
                     raise
 
+    @override
     def text_exists(self, id: str) -> bool:
         """Check if a document exists by ID."""
         # Check if table exists first
@@ -732,6 +738,7 @@ class ClickzettaVector(BaseVector):
                 result = cursor.fetchone()
                 return result[0] > 0 if result else False
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         """Delete documents by IDs."""
         if not ids:
@@ -757,6 +764,7 @@ class ClickzettaVector(BaseVector):
             with connection.cursor() as cursor:
                 cursor.execute(sql, binding_params=safe_ids)
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         """Delete documents by metadata field."""
         # Check if table exists before attempting delete
@@ -780,6 +788,7 @@ class ClickzettaVector(BaseVector):
                 )
                 cursor.execute(sql, binding_params=[value])
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """Search for documents by vector similarity."""
         # Check if table exists first
@@ -865,6 +874,7 @@ class ClickzettaVector(BaseVector):
 
         return documents
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """Search for documents using full-text search with inverted index."""
         if not self._config.enable_inverted_index:
@@ -934,12 +944,13 @@ class ClickzettaVector(BaseVector):
                                 # First parse may yield a string (double-encoded JSON)
                                 first_pass = json.loads(row[2])
 
-                                if isinstance(first_pass, str):
-                                    metadata = parse_metadata_json(first_pass)
-                                elif isinstance(first_pass, dict):
-                                    metadata = first_pass
-                                else:
-                                    metadata = {}
+                                match first_pass:
+                                    case str():
+                                        metadata = parse_metadata_json(first_pass)
+                                    case dict():
+                                        metadata = first_pass
+                                    case _:
+                                        metadata = {}
                             else:
                                 metadata = {}
                         except (json.JSONDecodeError, ValueError, TypeError):
@@ -1031,6 +1042,7 @@ class ClickzettaVector(BaseVector):
 
         return documents
 
+    @override
     def delete(self):
         """Delete the entire collection."""
         with self.get_connection_context() as connection:
@@ -1057,7 +1069,10 @@ class ClickzettaVector(BaseVector):
 class ClickzettaVectorFactory(AbstractVectorFactory):
     """Factory for creating Clickzetta vector instances."""
 
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaseVector:
+    @override
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> BaseVector:
         """Initialize a Clickzetta vector instance."""
         # Get configuration from environment variables or dataset config
         config = ClickzettaConfig(

@@ -1,7 +1,6 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import type { VarInInspect } from '@/types/workflow'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
@@ -31,33 +30,32 @@ export const TextEditorSection = ({
   isTruncated,
   onTextChange,
 }: TextEditorSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
-    <>
-      {isTruncated && <LargeDataAlert className="absolute inset-x-3 top-1" />}
-      {currentVar.value_type === 'string'
-        ? (
-            <DisplayContent
-              previewType={PreviewType.Markdown}
-              varType={currentVar.value_type}
-              mdString={typeof value === 'string' ? value : String(value ?? '')}
-              readonly={textEditorDisabled}
-              handleTextChange={onTextChange}
-              className={cn(isTruncated && 'pt-[36px]')}
-            />
-          )
-        : (
-            <Textarea
-              aria-label={t('errorMsg.fields.variableValue', { ns: 'workflow' })}
-              readOnly={textEditorDisabled}
-              disabled={textEditorDisabled || isTruncated}
-              className={cn('h-full', isTruncated && 'pt-[48px]')}
-              value={typeof value === 'number' ? value : String(value ?? '')}
-              onValueChange={value => onTextChange(value)}
-            />
-          )}
-    </>
+    <div className="flex h-full flex-col">
+      {isTruncated && <LargeDataAlert className="mx-3 mt-1 mb-1 shrink-0" />}
+      <div className="min-h-0 grow">
+        {currentVar.value_type === 'string' ? (
+          <DisplayContent
+            previewType={PreviewType.Markdown}
+            varType={currentVar.value_type}
+            mdString={typeof value === 'string' ? value : String(value ?? '')}
+            readonly={textEditorDisabled || isTruncated}
+            handleTextChange={onTextChange}
+          />
+        ) : (
+          <Textarea
+            aria-label={t(($) => $['errorMsg.fields.variableValue'], { ns: 'workflow' })}
+            readOnly={textEditorDisabled}
+            disabled={textEditorDisabled || isTruncated}
+            className="h-full"
+            value={typeof value === 'number' ? value : String(value ?? '')}
+            onValueChange={(value) => onTextChange(value)}
+          />
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -66,12 +64,9 @@ type BoolArraySectionProps = {
   onChange: (nextValue: boolean[]) => void
 }
 
-export const BoolArraySection = ({
-  values,
-  onChange,
-}: BoolArraySectionProps) => {
+export const BoolArraySection = ({ values, onChange }: BoolArraySectionProps) => {
   return (
-    <div className="w-[295px] space-y-1">
+    <div className="w-73.75 space-y-1">
       {values.map((value, index) => (
         <BoolValue
           key={`${index}-${String(value)}`}
@@ -134,7 +129,7 @@ export const JsonEditorSection = ({
 type FileEditorSectionProps = {
   currentVar: VarInInspect
   fileValue: FileEntity[]
-  fileUploadConfig?: FileUploadConfigResponse
+  fileUploadConfig?: UploadConfig
   textEditorDisabled: boolean
   onChange: (files: FileEntity[]) => void
 }
@@ -147,7 +142,7 @@ export const FileEditorSection = ({
   onChange,
 }: FileEditorSectionProps) => {
   return (
-    <div className="max-w-[460px]">
+    <div className="max-w-115">
       <FileUploaderInAttachmentWrapper
         value={fileValue}
         onChange={onChange}
@@ -165,7 +160,10 @@ export const FileEditorSection = ({
             ...(FILE_EXTS[SupportUploadFileTypes.video] ?? []),
           ],
           allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-          number_limits: currentVar.value_type === 'file' ? 1 : fileUploadConfig?.workflow_file_upload_limit || 5,
+          number_limits:
+            currentVar.value_type === 'file'
+              ? 1
+              : fileUploadConfig?.workflow_file_upload_limit || 5,
           fileUploadConfig,
           preview_config: {
             mode: PreviewMode.NewPage,

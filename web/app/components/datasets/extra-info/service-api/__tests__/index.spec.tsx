@@ -1,246 +1,81 @@
-import { Popover } from '@langgenius/dify-ui/popover'
-import { render, screen, waitFor } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
+import { ServiceApi } from '../index'
 
-import Card from '../card'
-import ServiceApi from '../index'
+let mockPermissionKeys = ['dataset.api_key.manage']
 
-// Mock Setup
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-  }),
-  usePathname: () => '/test',
-  useSearchParams: () => new URLSearchParams(),
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockPermissionKeys,
+  }))
+})
+
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: {
+    call: async (path: string[]) => {
+      if (path.join('.') === 'datasets.apiKeys.get') return { data: [] }
+      throw new Error(`Unexpected API call: ${path.join('.')}`)
+    },
+  },
 }))
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({ currentWorkspace: { id: 'workspace-1' } }))
+})
 
-// Mock next/link
-vi.mock('@/next/link', () => ({
-  default: ({ children, href, ...props }: { children: React.ReactNode, href: string, [key: string]: unknown }) => (
-    <a href={href} {...props}>{children}</a>
-  ),
-}))
-
-// Mock API access URL hook
 vi.mock('@/hooks/use-api-access-url', () => ({
-  useDatasetApiAccessUrl: vi.fn(() => 'https://docs.dify.ai/api-reference/datasets'),
+  useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
 }))
-
-// Mock SecretKeyModal to avoid complex modal rendering
-vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (
-    isShow
-      ? (
-          <div data-testid="secret-key-modal">
-            <button onClick={onClose} data-testid="close-modal-btn">Close</button>
-          </div>
-        )
-      : null
-  ),
-}))
-
-const renderCard = (ui: React.ReactElement) =>
-  render(<Popover open>{ui}</Popover>)
 
 describe('ServiceApi', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockPermissionKeys = ['dataset.api_key.manage']
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
-    })
-
-    it('should render service API title', () => {
-      render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
-    })
-
-    it('should render Indicator component', () => {
-      const { container } = render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      const triggerContainer = container.querySelector('.relative.flex.h-8')
-      expect(triggerContainer).toBeInTheDocument()
-    })
-
-    it('should render trigger button with proper styling', () => {
-      const { container } = render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      const trigger = container.querySelector('.cursor-pointer')
-      expect(trigger).toBeInTheDocument()
-    })
-
-    it('should render with border and background styles', () => {
-      const { container } = render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      const trigger = container.querySelector('[class*="border-components-button-secondary-border-hover"]')
-      expect(trigger).toBeInTheDocument()
-    })
-  })
-
-  describe('Props Variations', () => {
-    it('should show Indicator when apiBaseUrl is provided', () => {
-      const { container } = render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      const triggerContainer = container.querySelector('.relative.flex.h-8')
-      expect(triggerContainer).toBeInTheDocument()
-    })
-
-    it('should show Indicator when apiBaseUrl is empty', () => {
-      const { container } = render(<ServiceApi apiBaseUrl="" />)
-      const triggerContainer = container.querySelector('.relative.flex.h-8')
-      expect(triggerContainer).toBeInTheDocument()
-    })
-
-    it('should handle long apiBaseUrl without breaking layout', () => {
-      const longUrl = 'https://api.example.com/v1/very/long/path/to/endpoint/that/might/break/layout'
-      render(<ServiceApi apiBaseUrl={longUrl} />)
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
-    })
-
-    it('should handle special characters in apiBaseUrl', () => {
-      const specialUrl = 'https://api.example.com?query=test&param=value#anchor'
-      render(<ServiceApi apiBaseUrl={specialUrl} />)
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should open popup on trigger click', async () => {
-      const user = userEvent.setup()
-
-      render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-
-      const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
-      if (trigger)
-        await user.click(trigger)
-
-      await waitFor(() => {
-        expect(screen.getByText(/serviceApi\.card\.title/i)).toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Portal and Card Integration', () => {
-    it('should pass apiBaseUrl prop to Card component', async () => {
-      const user = userEvent.setup()
-      const testUrl = 'https://test-api.example.com'
-
-      render(<ServiceApi apiBaseUrl={testUrl} />)
-
-      const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
-      if (trigger)
-        await user.click(trigger)
-
-      await waitFor(() => {
-        expect(screen.getByText(testUrl)).toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should render correctly with empty apiBaseUrl', () => {
-      render(<ServiceApi apiBaseUrl="" />)
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
-    })
-
-    it('should maintain state across prop changes', () => {
-      const { rerender } = render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
-
-      rerender(<ServiceApi apiBaseUrl="https://new-api.example.com" />)
-
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
-    })
-  })
-})
-
-describe('Card (service-api)', () => {
-  const onOpenSecretKeyModal = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
-      expect(screen.getByText(/serviceApi\.card\.title/i)).toBeInTheDocument()
-    })
-
-    it('should display apiBaseUrl in endpoint field', () => {
-      const testUrl = 'https://api.example.com'
-      renderCard(<Card apiBaseUrl={testUrl} onOpenSecretKeyModal={onOpenSecretKeyModal} />)
-      expect(screen.getByText(testUrl)).toBeInTheDocument()
-    })
-
-    it('should render API Key button', () => {
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
-      expect(screen.getByText(/serviceApi\.card\.apiKey/i)).toBeInTheDocument()
-    })
-
-    it('should render API Reference button', () => {
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
-      expect(screen.getByText(/serviceApi\.card\.apiReference/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onOpenSecretKeyModal when API Key button is clicked', async () => {
-      const user = userEvent.setup()
-
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
-
-      const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
-      if (apiKeyButton)
-        await user.click(apiKeyButton)
-
-      expect(onOpenSecretKeyModal).toHaveBeenCalledTimes(1)
-    })
-
-    it('should have correct href for API Reference link', () => {
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
-
-      const apiRefLink = screen.getByText(/serviceApi\.card\.apiReference/i).closest('a')
-      expect(apiRefLink).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
-    })
-  })
-})
-
-describe('ServiceApi Integration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should close popover and open modal when API Key button is clicked', async () => {
+  it('opens secret-key management from the service API details', async () => {
     const user = userEvent.setup()
+    render(
+      <QueryClientProvider client={createTestQueryClient()}>
+        <ServiceApi apiBaseUrl="https://api.example.com" />
+      </QueryClientProvider>,
+    )
 
-    render(<ServiceApi apiBaseUrl="https://api.example.com" />)
+    const trigger = screen.getByRole('button', { name: 'dataset.serviceApi.title' })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
 
-    // Open popover
-    const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
-    if (trigger)
-      await user.click(trigger)
+    await user.click(trigger)
 
-    await waitFor(() => {
-      expect(screen.getByText(/serviceApi\.card\.apiKey/i)).toBeInTheDocument()
-    })
+    expect(screen.getByText('https://api.example.com')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'dataset.serviceApi.card.apiReference' }),
+    ).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
+    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' }))
 
-    // Click API Key button (wrapped by PopoverClose)
-    const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
-    if (apiKeyButton)
-      await user.click(apiKeyButton)
+    const dialog = await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
+    expect(dialog).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(trigger).toHaveFocus()
+  })
 
-    // Modal should appear
-    await waitFor(() => {
-      expect(screen.getByTestId('secret-key-modal')).toBeInTheDocument()
-    })
+  it('prevents secret-key management without workspace permission', async () => {
+    const user = userEvent.setup()
+    mockPermissionKeys = []
+    render(
+      <QueryClientProvider client={createTestQueryClient()}>
+        <ServiceApi apiBaseUrl="https://api.example.com" />
+      </QueryClientProvider>,
+    )
 
-    // Popover should be closed — Card title no longer in document
-    await waitFor(() => {
-      expect(screen.queryByText(/serviceApi\.card\.title/i)).not.toBeInTheDocument()
-    })
+    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
+
+    expect(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' })).toBeDisabled()
+    expect(
+      screen.queryByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' }),
+    ).not.toBeInTheDocument()
   })
 })

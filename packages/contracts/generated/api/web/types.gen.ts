@@ -17,9 +17,95 @@ export type AccessTokenResultResponse = {
   result: string
 }
 
+export type AccountBannedError = ErrorResponse & {
+  code: 'account_banned'
+  status: 400
+}
+
+export type AgentNotPublishedError = ErrorResponse & {
+  code: 'agent_not_published'
+  status: 400
+}
+
+export type AgentThought = {
+  answer?: string | null
+  chain_id?: string | null
+  created_at?: number | null
+  files: Array<string>
+  id: string
+  message_id: string
+  observation?: string | null
+  position: number
+  thought?: string | null
+  tool?: string | null
+  tool_input?: string | null
+  tool_labels: AnyJsonValue
+}
+
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
+}
+
+export type AlreadySubmittedError = ErrorResponse & {
+  code: 'already_submitted'
+  status: 409
+}
+
+export type AnyJsonValue = unknown
+
 export type AppAccessModeQuery = {
   appCode?: string | null
   appId?: string | null
+}
+
+export type AppMetaResponse = {
+  tool_icons?: {
+    [key: string]: unknown
+  }
+}
+
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
+
+export type AppMoreLikeThisDisabledError = ErrorResponse & {
+  code: 'app_more_like_this_disabled'
+  status: 403
+}
+
+export type AppPermissionQuery = {
+  appId: string
+}
+
+export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
+  code: 'app_suggested_questions_after_answer_disabled'
+  status: 403
+}
+
+export type AppUnavailableError = ErrorResponse & {
+  code: 'app_unavailable'
+  status: 400
+}
+
+export type AudioToTextResponse = {
+  text: string
+}
+
+export type AudioTooLargeError = ErrorResponse & {
+  code: 'audio_too_large'
+  status: 413
+}
+
+export type AuthenticationFailedError = ErrorResponse & {
+  code: 'authentication_failed'
+  status: 401
 }
 
 export type BooleanResultResponse = {
@@ -33,6 +119,8 @@ export type BrandingModel = {
   login_page_logo: string
   workspace_logo: string
 }
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type ChatMessagePayload = {
   conversation_id?: string | null
@@ -60,6 +148,27 @@ export type CompletionMessagePayload = {
   retriever_from?: string
 }
 
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
+export type ConversationCursorNotFoundError = ErrorResponse & {
+  code: 'conversation_cursor_not_found'
+  status: 404
+}
+
+export type ConversationFirstMessageNotFoundError = ErrorResponse & {
+  code: 'conversation_first_message_not_found'
+  status: 404
+}
+
+export type ConversationInfiniteScrollPagination = {
+  data: Array<SimpleConversation>
+  has_more: boolean
+  limit: number
+}
+
 export type ConversationListQuery = {
   last_id?: string | null
   limit?: number
@@ -67,9 +176,30 @@ export type ConversationListQuery = {
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
 }
 
-export type ConversationRenamePayload = {
+export type ConversationNotFoundError = ErrorResponse & {
+  code: 'conversation_not_found'
+  status: 404
+}
+
+export type ConversationRenamePayload = (
+  | {
+      auto_generate: true
+      name?: string | null
+    }
+  | {
+      auto_generate?: false
+      name: string
+    }
+) & {
   auto_generate?: boolean
   name?: string | null
+}
+
+export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
+
+export type EmailCodeError = ErrorResponse & {
+  code: 'email_code_error'
+  status: 400
 }
 
 export type EmailCodeLoginSendPayload = {
@@ -83,6 +213,74 @@ export type EmailCodeLoginVerifyPayload = {
   token: string
 }
 
+export type EmailPasswordResetLimitError = ErrorResponse & {
+  code: 'email_password_reset_limit'
+  status: 429
+}
+
+export type EmailSendIpLimitError = ErrorResponse & {
+  code: 'email_send_ip_limit'
+  status: 429
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type EventStreamResponse = string
+
+export type ExecutionContentType = 'human_input'
+
+export type ExpiredError = ErrorResponse & {
+  code: 'expired'
+  status: 410
+}
+
+export type FileExtensionBlockedError = ErrorResponse & {
+  code: 'file_extension_blocked'
+  status: 400
+}
+
+export type FileInput = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file_input'
+}
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInput = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  number_limits: number
+  output_variable_name: string
+  type?: 'file_list_input'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
+}
+
 export type FileResponse = {
   conversation_id?: string | null
   created_at?: number | null
@@ -94,11 +292,21 @@ export type FileResponse = {
   name: string
   original_url?: string | null
   preview_url?: string | null
+  reference?: string | null
   size: number
   source_url?: string | null
   tenant_id?: string | null
   user_id?: string | null
 }
+
+export type FileTooLargeError = ErrorResponse & {
+  code: 'file_too_large'
+  status: 413
+}
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
 export type FileWithSignedUrl = {
   created_at: number | null
@@ -109,6 +317,11 @@ export type FileWithSignedUrl = {
   name: string
   size: number
   url: string | null
+}
+
+export type FilenameNotExistsError = ErrorResponse & {
+  code: 'filename_not_exists_error'
+  status: 400
 }
 
 export type ForgotPasswordCheckPayload = {
@@ -128,23 +341,252 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
-export type LicenseLimitationModel = {
-  enabled: boolean
-  limit: number
-  size: number
+export type FormAccessRequestResponse = {
+  challenge_token: string
+  expires_in_seconds: number
+  resend_after_seconds: number
 }
 
-export type LicenseModel = {
-  expired_at: string
-  status: LicenseStatus
-  workspaces: LicenseLimitationModel
+export type FormDefinitionResponse = {
+  expiration_time: number
+  form_content?: string | null
+  inputs?: Array<FormInputConfig>
+  resolved_default_values?: {
+    [key: string]: string
+  }
+  user_actions?: Array<UserActionConfig>
+}
+
+export type FormInputConfig =
+  | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+  | ({
+      type: 'select'
+    } & SelectInputConfig)
+  | ({
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
+
+export type FormPart =
+  | ({
+      type: 'markdown_fragment'
+    } & MarkdownFragment)
+  | ({
+      type: 'paragraph_input'
+    } & ParagraphInput)
+  | ({
+      type: 'select_input'
+    } & SelectInput)
+  | ({
+      type: 'file_input'
+    } & FileInput)
+  | ({
+      type: 'file_list_input'
+    } & FileListInput)
+
+export type FormSubmitResponse = {
+  [key: string]: unknown
+}
+
+export type FormUploadTokenResponse = {
+  expires_at: number
+  upload_token: string
+}
+
+export type GeneratedAppResponse = ShallowJsonValue
+
+export type HumanInputAccessDeliveryFailedError = ErrorResponse & {
+  code: 'human_input_access_delivery_failed'
+  status: 503
+}
+
+export type HumanInputAccessRateLimitExceededError = ErrorResponse & {
+  code: 'human_input_access_rate_limit_exceeded'
+  status: 429
+}
+
+export type HumanInputChallengeExpiredError = ErrorResponse & {
+  code: 'human_input_challenge_expired'
+  status: 400
+}
+
+export type HumanInputChallengeStaleError = ErrorResponse & {
+  code: 'human_input_challenge_stale'
+  status: 400
+}
+
+export type HumanInputContent = {
+  form_definition?: HumanInputFormDefinition | null
+  form_submission_data?: HumanInputFormSubmissionData | null
+  submitted: boolean
+  type?: ExecutionContentType
+  workflow_run_id: string
+}
+
+export type HumanInputFileUploadFormPayload = {
+  url?: string | null
+}
+
+export type HumanInputFormDefinition = {
+  actions?: Array<UserActionConfig>
+  display_in_ui?: boolean
+  expiration_time: number
+  form_content: string
+  form_id: string
+  form_token?: string | null
+  form_version?: '1' | '2'
+  inputs?: Array<FormInputConfig>
+  node_id: string
+  node_title: string
+  resolved_default_values?: {
+    [key: string]: unknown
+  }
+}
+
+export type HumanInputFormDefinitionResponse = {
+  expiration_time: number
+  form_content: string
+  inputs: Array<FormInputConfig>
+  resolved_default_values: {
+    [key: string]: string
+  }
+  site?: WebAppSiteResponse | null
+  user_actions: Array<UserActionConfig>
+}
+
+export type HumanInputFormExpiredError = ErrorResponse & {
+  code: 'human_input_form_expired'
+  status: 412
+}
+
+export type HumanInputFormNotFoundError = ErrorResponse & {
+  code: 'human_input_form_not_found'
+  status: 404
+}
+
+export type HumanInputFormSubmissionData = {
+  action_id: string
+  action_text: string
+  node_id: string
+  node_title: string
+  rendered_content: string
+  submitted_data?: {
+    [key: string]: JsonValue
+  } | null
+}
+
+export type HumanInputFormSubmitPayload = {
+  action: string
+  inputs: {
+    [key: string]: JsonValue
+  }
+}
+
+export type HumanInputFormSubmitResponse = {
+  [key: string]: unknown
+}
+
+export type HumanInputFormSubmittedError = ErrorResponse & {
+  code: 'human_input_form_submitted'
+  status: 412
+}
+
+export type HumanInputInvalidOtpError = ErrorResponse & {
+  code: 'human_input_invalid_otp'
+  status: 400
+}
+
+export type HumanInputUploadTokenResponse = {
+  expires_at: number
+  upload_token: string
+}
+
+export type HumanInputV2FormSubmitRequest = {
+  action: string
+  challenge_token?: string | null
+  inputs: {
+    [key: string]: JsonValue
+  }
+  otp_code?: string | null
+}
+
+export type HumanInputV2RemoteUploadPayload = {
+  url: string
+}
+
+export type HumanInputV2UnavailableError = ErrorResponse & {
+  code: 'human_input_v2_unavailable'
+  status: 503
+}
+
+export type InvalidEmailError = ErrorResponse & {
+  code: 'invalid_email'
+  status: 400
+}
+
+export type InvalidFormDataError = ErrorResponse & {
+  code: 'invalid_form_data'
+  status: 400
+}
+
+export type InvalidInputError = ErrorResponse & {
+  code: 'invalid_input'
+  status: 400
+}
+
+export type InvalidOrExpiredTokenError = ErrorResponse & {
+  code: 'invalid_or_expired_token'
+  status: 400
+}
+
+export type InvalidParamError = ErrorResponse & {
+  code: 'invalid_param'
+  status: 400
+}
+
+export type InvalidUploadTokenError = ErrorResponse & {
+  code: 'invalid_upload_token'
+  status: 403
+}
+
+export type JsonValueType = unknown
+
+export type JsonValue = unknown
+
+export type KnowledgeFsCitation = {
+  artifact_hash: string
+  control_space_id: string
+  document_asset_id: string
+  document_title?: string | null
+  document_version?: number | null
+  end_offset?: number | null
+  id: string
+  node_id: string
+  page_number?: number | null
+  parse_artifact_id?: string | null
+  section_path?: Array<string>
+  space_name: string
+  start_offset?: number | null
 }
 
 export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
 
+export type LicenseStatusModel = {
+  status: LicenseStatus
+}
+
 export type LoginPayload = {
   email: string
   password: string
+}
+
+export type LoginStatusQuery = {
+  app_code?: string | null
+  user_id?: string | null
 }
 
 export type LoginStatusResponse = {
@@ -152,9 +594,36 @@ export type LoginStatusResponse = {
   logged_in: boolean
 }
 
+export type MalformedUploadTokenError = ErrorResponse & {
+  code: 'malformed_upload_token'
+  status: 400
+}
+
+export type MarkdownFragment = {
+  text: string
+  type?: 'markdown_fragment'
+}
+
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
+}
+
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
+}
+
+export type MessageFile = {
+  belongs_to?: string | null
+  filename: string
+  id: string
+  mime_type?: string | null
+  size?: number | null
+  transfer_method: string
+  type: string
+  upload_file_id?: string | null
+  url?: string | null
 }
 
 export type MessageListQuery = {
@@ -167,19 +636,427 @@ export type MessageMoreLikeThisQuery = {
   response_mode: 'blocking' | 'streaming'
 }
 
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type NoAudioUploadedError = ErrorResponse & {
+  code: 'no_audio_uploaded'
+  status: 400
+}
+
+export type NoFileUploadedError = ErrorResponse & {
+  code: 'no_file_uploaded'
+  status: 400
+}
+
+export type NotChatAppError = ErrorResponse & {
+  code: 'not_chat_app'
+  status: 400
+}
+
+export type NotCompletionAppError = ErrorResponse & {
+  code: 'not_completion_app'
+  status: 400
+}
+
+export type NotWorkflowAppError = ErrorResponse & {
+  code: 'not_workflow_app'
+  status: 400
+}
+
+export type ParagraphInput = {
+  default_value: string | null
+  output_variable_name: string
+  type?: 'paragraph_input'
+}
+
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
+}
+
+export type Parameters = {
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
+  opening_statement?: string | null
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  show_thoughts?: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
+  suggested_questions: Array<string>
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
+  system_parameters: SystemParameters
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<
+    | {
+        'text-input': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        select: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        paragraph: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        number: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        external_data_tool: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        file: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        'file-list': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        checkbox: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        json_object: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+  >
+}
+
+export type PassportAccessTokenResponse = {
+  access_token: string
+}
+
+export type PassportQuery = {
+  user_id?: string | null
+}
+
+export type PasswordMismatchError = ErrorResponse & {
+  code: 'password_mismatch'
+  status: 400
+}
+
+export type PasswordResetRateLimitExceededError = ErrorResponse & {
+  code: 'password_reset_rate_limit_exceeded'
+  status: 429
+}
+
 export type PluginInstallationPermissionModel = {
   plugin_installation_scope: PluginInstallationScope
   restrict_to_marketplace_only: boolean
 }
 
-export type PluginInstallationScope
-  = | 'all'
-    | 'none'
-    | 'official_and_specific_partners'
-    | 'official_only'
+export type PluginInstallationScope =
+  | 'all'
+  | 'none'
+  | 'official_and_specific_partners'
+  | 'official_only'
 
-export type PluginManagerModel = {
-  enabled: boolean
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderNotSupportSpeechToTextError = ErrorResponse & {
+  code: 'provider_not_support_speech_to_text'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type RateLimitError = ErrorResponse & {
+  code: 'rate_limit_error'
+  status: 429
+}
+
+export type RemoteFileAccessDeniedError = ErrorResponse & {
+  code: 'remote_file_access_denied'
+  status: 400
 }
 
 export type RemoteFileInfo = {
@@ -187,21 +1064,146 @@ export type RemoteFileInfo = {
   file_type: string
 }
 
+export type RemoteFileInvalidResponseError = ErrorResponse & {
+  code: 'remote_file_invalid_response'
+  status: 502
+}
+
+export type RemoteFileInvalidUrlError = ErrorResponse & {
+  code: 'remote_file_invalid_url'
+  status: 400
+}
+
+export type RemoteFileNotFoundError = ErrorResponse & {
+  code: 'remote_file_not_found'
+  status: 404
+}
+
+export type RemoteFileUnavailableError = ErrorResponse & {
+  code: 'remote_file_unavailable'
+  status: 502
+}
+
 export type RemoteFileUploadPayload = {
   url: string
+}
+
+export type RemoteFileUrlBlockedError = ErrorResponse & {
+  code: 'remote_file_url_blocked'
+  status: 400
+}
+
+export type ResolvedForm = {
+  actions: Array<UserAction>
+  legacy_form_content: string
+  parts: Array<FormPart>
+  title: string
 }
 
 export type ResultResponse = {
   result: string
 }
 
+export type RetrieverResource = {
+  content?: string | null
+  created_at?: number | null
+  data_source_type?: string | null
+  dataset_id?: string | null
+  dataset_name?: string | null
+  doc_metadata?: {
+    [key: string]: JsonValueType
+  } | null
+  document_asset_id?: string | null
+  document_id?: string | null
+  document_name?: string | null
+  document_revision?: number | null
+  document_version?: number | null
+  files?: Array<{
+    [key: string]: JsonValueType
+  }> | null
+  hit_count?: number | null
+  id?: string
+  index_node_hash?: string | null
+  knowledge_fs_citation?: KnowledgeFsCitation | null
+  message_id?: string
+  page?: number | null
+  position: number
+  retriever_from?: string | null
+  score?: number | null
+  segment_id?: string | null
+  segment_position?: number | null
+  summary?: string | null
+  title?: string | null
+  word_count?: number | null
+}
+
+export type SsoProtocol = 'oauth2' | 'oidc' | 'saml'
+
 export type SavedMessageCreatePayload = {
   message_id: string
+}
+
+export type SavedMessageInfiniteScrollPagination = {
+  data: Array<SavedMessageItem>
+  has_more: boolean
+  limit: number
+}
+
+export type SavedMessageItem = {
+  answer: string
+  created_at?: number | null
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  query: string
 }
 
 export type SavedMessageListQuery = {
   last_id?: string | null
   limit?: number
+}
+
+export type SelectInput = {
+  default_value: string | null
+  options: Array<string>
+  output_variable_name: string
+  type?: 'select_input'
+}
+
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
+export type ShallowJsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
+      [key: string]: unknown
+    }
+  | Array<unknown>
+  | null
+
+export type SimpleConversation = {
+  created_at?: number | null
+  id: string
+  inputs: {
+    [key: string]: AnyJsonValue
+  }
+  introduction?: string | null
+  name: string
+  status: string
+  updated_at?: number | null
+}
+
+export type SimpleFeedback = {
+  rating?: string | null
 }
 
 export type SimpleResultDataResponse = {
@@ -213,33 +1215,58 @@ export type SimpleResultResponse = {
   result: string
 }
 
+export type SpeechToTextDisabledError = ErrorResponse & {
+  code: 'speech_to_text_disabled'
+  status: 400
+}
+
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
+
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
+}
+
 export type SuggestedQuestionsResponse = {
   data: Array<string>
 }
 
 export type SystemFeatureModel = {
-  app_dsl_version: string
+  agent_tracing_api_collection_enabled: boolean
   branding: BrandingModel
+  deployment_edition: DeploymentEdition
+  enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
   enable_creators_platform: boolean
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_explore_banner: boolean
+  enable_learn_app: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
-  enable_trial_app: boolean
-  is_allow_create_workspace: boolean
+  enable_step_by_step_tour: boolean
   is_allow_register: boolean
   is_email_setup: boolean
-  license: LicenseModel
-  max_plugin_package_size: number
+  license: LicenseStatusModel
   plugin_installation_permission: PluginInstallationPermissionModel
-  plugin_manager: PluginManagerModel
+  rbac_enabled: boolean
   sso_enforced_for_signin: boolean
-  sso_enforced_for_signin_protocol: string
-  trial_models: Array<string>
+  sso_enforced_for_signin_protocol: SsoProtocol | null
   webapp_auth: WebAppAuthModel
+}
+
+export type SystemParameters = {
+  audio_file_size_limit: number
+  file_size_limit: number
+  image_file_size_limit: number
+  video_file_size_limit: number
+  workflow_file_upload_limit: number
 }
 
 export type TextToAudioPayload = {
@@ -248,6 +1275,45 @@ export type TextToAudioPayload = {
   text?: string | null
   voice?: string | null
 }
+
+export type TooManyFilesError = ErrorResponse & {
+  code: 'too_many_files'
+  status: 400
+}
+
+export type TriggerWorkflowServiceModeUnavailableError = ErrorResponse & {
+  code: 'trigger_workflow_service_mode_unavailable'
+  status: 403
+}
+
+export type UnsupportedAudioTypeError = ErrorResponse & {
+  code: 'unsupported_audio_type'
+  status: 415
+}
+
+export type UnsupportedFileTypeError = ErrorResponse & {
+  code: 'unsupported_file_type'
+  status: 415
+}
+
+export type UploadTokenRequiredError = ErrorResponse & {
+  code: 'upload_token_required'
+  status: 401
+}
+
+export type UserAction = {
+  button_style: ButtonStyle
+  id: string
+  title: string
+}
+
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type ValueSourceType = 'constant' | 'variable'
 
 export type VerificationTokenResponse = {
   email: string
@@ -258,22 +1324,199 @@ export type VerificationTokenResponse = {
 export type WebAppAuthModel = {
   allow_email_code_login: boolean
   allow_email_password_login: boolean
+  allow_public_access: boolean
   allow_sso: boolean
   enabled: boolean
   sso_config: WebAppAuthSsoModel
 }
 
 export type WebAppAuthSsoModel = {
-  protocol: string
+  protocol: SsoProtocol | null
+}
+
+export type WebAppCustomConfigResponse = {
+  remove_webapp_brand: boolean
+  replace_webapp_logo?: string | null
+}
+
+export type WebAppHumanInputV2FormDefinitionResponse = {
+  expiration_time: number
+  resolved_form: ResolvedForm
+}
+
+export type WebAppHumanInputV2SubmitPayload = {
+  action: string
+  inputs: {
+    [key: string]: JsonValue
+  }
+}
+
+export type WebAppHumanInputV2SubmitResponse = {
+  [key: string]: unknown
+}
+
+export type WebAppSiteResponse = {
+  app_id: string
+  can_replace_logo: boolean
+  custom_config?: WebAppCustomConfigResponse | null
+  enable_site: boolean
+  end_user_id?: string | null
+  mode: AppMode
+  model_config?: WebModelConfigResponse | null
+  plan: string
+  site: WebSiteResponse
+}
+
+export type WebFormRateLimitExceededError = ErrorResponse & {
+  code: 'web_form_rate_limit_exceeded'
+  status: 429
+}
+
+export type WebMessageInfiniteScrollPagination = {
+  data: Array<WebMessageListItem>
+  has_more: boolean
+  limit: number
+}
+
+export type WebMessageListItem = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  answer_tokens?: number
+  conversation_id: string
+  created_at?: number | null
+  currency?: string | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  message_tokens?: number
+  metadata?: JsonValueType | null
+  parent_message_id?: string | null
+  provider_response_latency?: number
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
+  total_price?: string | null
+  readonly total_tokens: number
+}
+
+export type WebModelConfigResponse = {
+  model?: unknown
+  more_like_this?: unknown
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  suggested_questions?: unknown
+  suggested_questions_after_answer?: unknown
+  user_input_form?: unknown
+}
+
+export type WebSiteResponse = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  icon_url?: string | null
+  input_placeholder?: string | null
+  privacy_policy?: string | null
+  prompt_public?: boolean | null
+  show_workflow_steps?: boolean | null
+  title: string
+  use_icon_as_answer_icon?: boolean | null
+}
+
+export type WorkflowNotActiveError = ErrorResponse & {
+  code: 'workflow_not_active'
+  status: 409
 }
 
 export type WorkflowRunPayload = {
-  files?: Array<{
-    [key: string]: unknown
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
+}
+
+export type FormSubmitResponseWritable = {
+  [key: string]: unknown
+}
+
+export type GeneratedAppResponseWritable = ShallowJsonValue
+
+export type HumanInputFormSubmitResponseWritable = {
+  [key: string]: unknown
+}
+
+export type WebAppHumanInputV2SubmitResponseWritable = {
+  [key: string]: unknown
+}
+
+export type WebMessageInfiniteScrollPaginationWritable = {
+  data: Array<WebMessageListItemWritable>
+  has_more: boolean
+  limit: number
+}
+
+export type WebMessageListItemWritable = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  answer_tokens?: number
+  conversation_id: string
+  created_at?: number | null
+  currency?: string | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  message_tokens?: number
+  metadata?: JsonValueType | null
+  parent_message_id?: string | null
+  provider_response_latency?: number
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
+  total_price?: string | null
 }
 
 export type PostAudioToTextData = {
@@ -284,32 +1527,27 @@ export type PostAudioToTextData = {
 }
 
 export type PostAudioToTextErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+    | SpeechToTextDisabledError
+    | ErrorResponse
+  401: ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAudioToTextError = PostAudioToTextErrors[keyof PostAudioToTextErrors]
 
 export type PostAudioToTextResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AudioToTextResponse
 }
 
 export type PostAudioToTextResponse = PostAudioToTextResponses[keyof PostAudioToTextResponses]
@@ -322,29 +1560,26 @@ export type PostChatMessagesData = {
 }
 
 export type PostChatMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | AgentNotPublishedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotChatAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  429: RateLimitError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostChatMessagesError = PostChatMessagesErrors[keyof PostChatMessagesErrors]
 
 export type PostChatMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
@@ -359,32 +1594,22 @@ export type PostChatMessagesByTaskIdStopData = {
 }
 
 export type PostChatMessagesByTaskIdStopErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostChatMessagesByTaskIdStopError
-  = PostChatMessagesByTaskIdStopErrors[keyof PostChatMessagesByTaskIdStopErrors]
+export type PostChatMessagesByTaskIdStopError =
+  PostChatMessagesByTaskIdStopErrors[keyof PostChatMessagesByTaskIdStopErrors]
 
 export type PostChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostChatMessagesByTaskIdStopResponse
-  = PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
+export type PostChatMessagesByTaskIdStopResponse =
+  PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
 
 export type PostCompletionMessagesData = {
   body: CompletionMessagePayload
@@ -394,34 +1619,29 @@ export type PostCompletionMessagesData = {
 }
 
 export type PostCompletionMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotCompletionAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostCompletionMessagesError
-  = PostCompletionMessagesErrors[keyof PostCompletionMessagesErrors]
+export type PostCompletionMessagesError =
+  PostCompletionMessagesErrors[keyof PostCompletionMessagesErrors]
 
 export type PostCompletionMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
-export type PostCompletionMessagesResponse
-  = PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
+export type PostCompletionMessagesResponse =
+  PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
 
 export type PostCompletionMessagesByTaskIdStopData = {
   body?: never
@@ -433,32 +1653,22 @@ export type PostCompletionMessagesByTaskIdStopData = {
 }
 
 export type PostCompletionMessagesByTaskIdStopErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: NotCompletionAppError | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostCompletionMessagesByTaskIdStopError
-  = PostCompletionMessagesByTaskIdStopErrors[keyof PostCompletionMessagesByTaskIdStopErrors]
+export type PostCompletionMessagesByTaskIdStopError =
+  PostCompletionMessagesByTaskIdStopErrors[keyof PostCompletionMessagesByTaskIdStopErrors]
 
 export type PostCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostCompletionMessagesByTaskIdStopResponse
-  = PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
+export type PostCompletionMessagesByTaskIdStopResponse =
+  PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
 
 export type GetConversationsData = {
   body?: never
@@ -466,36 +1676,24 @@ export type GetConversationsData = {
   query?: {
     last_id?: string
     limit?: number
-    pinned?: 'false' | 'true'
+    pinned?: boolean
     sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
   }
   url: '/conversations'
 }
 
 export type GetConversationsErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  404: ConversationCursorNotFoundError | ConversationNotFoundError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetConversationsError = GetConversationsErrors[keyof GetConversationsErrors]
 
 export type GetConversationsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ConversationInfiniteScrollPagination
 }
 
 export type GetConversationsResponse = GetConversationsResponses[keyof GetConversationsResponses]
@@ -510,37 +1708,25 @@ export type DeleteConversationsByCIdData = {
 }
 
 export type DeleteConversationsByCIdErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type DeleteConversationsByCIdError
-  = DeleteConversationsByCIdErrors[keyof DeleteConversationsByCIdErrors]
+export type DeleteConversationsByCIdError =
+  DeleteConversationsByCIdErrors[keyof DeleteConversationsByCIdErrors]
 
 export type DeleteConversationsByCIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
-export type DeleteConversationsByCIdResponse
-  = DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
+export type DeleteConversationsByCIdResponse =
+  DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
 
 export type PostConversationsByCIdNameData = {
-  body?: never
+  body: ConversationRenamePayload
   path: {
     c_id: string
   }
@@ -552,34 +1738,23 @@ export type PostConversationsByCIdNameData = {
 }
 
 export type PostConversationsByCIdNameErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  404: ConversationFirstMessageNotFoundError | ConversationNotFoundError | ErrorResponse
+  422: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostConversationsByCIdNameError
-  = PostConversationsByCIdNameErrors[keyof PostConversationsByCIdNameErrors]
+export type PostConversationsByCIdNameError =
+  PostConversationsByCIdNameErrors[keyof PostConversationsByCIdNameErrors]
 
 export type PostConversationsByCIdNameResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleConversation
 }
 
-export type PostConversationsByCIdNameResponse
-  = PostConversationsByCIdNameResponses[keyof PostConversationsByCIdNameResponses]
+export type PostConversationsByCIdNameResponse =
+  PostConversationsByCIdNameResponses[keyof PostConversationsByCIdNameResponses]
 
 export type PatchConversationsByCIdPinData = {
   body?: never
@@ -591,32 +1766,22 @@ export type PatchConversationsByCIdPinData = {
 }
 
 export type PatchConversationsByCIdPinErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PatchConversationsByCIdPinError
-  = PatchConversationsByCIdPinErrors[keyof PatchConversationsByCIdPinErrors]
+export type PatchConversationsByCIdPinError =
+  PatchConversationsByCIdPinErrors[keyof PatchConversationsByCIdPinErrors]
 
 export type PatchConversationsByCIdPinResponses = {
   200: ResultResponse
 }
 
-export type PatchConversationsByCIdPinResponse
-  = PatchConversationsByCIdPinResponses[keyof PatchConversationsByCIdPinResponses]
+export type PatchConversationsByCIdPinResponse =
+  PatchConversationsByCIdPinResponses[keyof PatchConversationsByCIdPinResponses]
 
 export type PatchConversationsByCIdUnpinData = {
   body?: never
@@ -628,32 +1793,22 @@ export type PatchConversationsByCIdUnpinData = {
 }
 
 export type PatchConversationsByCIdUnpinErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PatchConversationsByCIdUnpinError
-  = PatchConversationsByCIdUnpinErrors[keyof PatchConversationsByCIdUnpinErrors]
+export type PatchConversationsByCIdUnpinError =
+  PatchConversationsByCIdUnpinErrors[keyof PatchConversationsByCIdUnpinErrors]
 
 export type PatchConversationsByCIdUnpinResponses = {
   200: ResultResponse
 }
 
-export type PatchConversationsByCIdUnpinResponse
-  = PatchConversationsByCIdUnpinResponses[keyof PatchConversationsByCIdUnpinResponses]
+export type PatchConversationsByCIdUnpinResponse =
+  PatchConversationsByCIdUnpinResponses[keyof PatchConversationsByCIdUnpinResponses]
 
 export type PostEmailCodeLoginData = {
   body: EmailCodeLoginSendPayload
@@ -663,12 +1818,10 @@ export type PostEmailCodeLoginData = {
 }
 
 export type PostEmailCodeLoginErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostEmailCodeLoginError = PostEmailCodeLoginErrors[keyof PostEmailCodeLoginErrors]
@@ -677,8 +1830,8 @@ export type PostEmailCodeLoginResponses = {
   200: SimpleResultDataResponse
 }
 
-export type PostEmailCodeLoginResponse
-  = PostEmailCodeLoginResponses[keyof PostEmailCodeLoginResponses]
+export type PostEmailCodeLoginResponse =
+  PostEmailCodeLoginResponses[keyof PostEmailCodeLoginResponses]
 
 export type PostEmailCodeLoginValidityData = {
   body: EmailCodeLoginVerifyPayload
@@ -688,26 +1841,21 @@ export type PostEmailCodeLoginValidityData = {
 }
 
 export type PostEmailCodeLoginValidityErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: AccountBannedError | EmailCodeError | InvalidEmailError | ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostEmailCodeLoginValidityError
-  = PostEmailCodeLoginValidityErrors[keyof PostEmailCodeLoginValidityErrors]
+export type PostEmailCodeLoginValidityError =
+  PostEmailCodeLoginValidityErrors[keyof PostEmailCodeLoginValidityErrors]
 
 export type PostEmailCodeLoginValidityResponses = {
   200: AccessTokenResultResponse
 }
 
-export type PostEmailCodeLoginValidityResponse
-  = PostEmailCodeLoginValidityResponses[keyof PostEmailCodeLoginValidityResponses]
+export type PostEmailCodeLoginValidityResponse =
+  PostEmailCodeLoginValidityResponses[keyof PostEmailCodeLoginValidityResponses]
 
 export type PostFilesUploadData = {
   body?: never
@@ -717,15 +1865,15 @@ export type PostFilesUploadData = {
 }
 
 export type PostFilesUploadErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | TooManyFilesError
+    | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostFilesUploadError = PostFilesUploadErrors[keyof PostFilesUploadErrors]
@@ -744,15 +1892,11 @@ export type PostForgotPasswordData = {
 }
 
 export type PostForgotPasswordErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  429: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
+  404: ErrorResponse
+  429: EmailSendIpLimitError | PasswordResetRateLimitExceededError | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostForgotPasswordError = PostForgotPasswordErrors[keyof PostForgotPasswordErrors]
@@ -761,8 +1905,8 @@ export type PostForgotPasswordResponses = {
   200: SimpleResultDataResponse
 }
 
-export type PostForgotPasswordResponse
-  = PostForgotPasswordResponses[keyof PostForgotPasswordResponses]
+export type PostForgotPasswordResponse =
+  PostForgotPasswordResponses[keyof PostForgotPasswordResponses]
 
 export type PostForgotPasswordResetsData = {
   body: ForgotPasswordResetPayload
@@ -772,26 +1916,21 @@ export type PostForgotPasswordResetsData = {
 }
 
 export type PostForgotPasswordResetsErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: InvalidOrExpiredTokenError | PasswordMismatchError | ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostForgotPasswordResetsError
-  = PostForgotPasswordResetsErrors[keyof PostForgotPasswordResetsErrors]
+export type PostForgotPasswordResetsError =
+  PostForgotPasswordResetsErrors[keyof PostForgotPasswordResetsErrors]
 
 export type PostForgotPasswordResetsResponses = {
   200: SimpleResultResponse
 }
 
-export type PostForgotPasswordResetsResponse
-  = PostForgotPasswordResetsResponses[keyof PostForgotPasswordResetsResponses]
+export type PostForgotPasswordResetsResponse =
+  PostForgotPasswordResetsResponses[keyof PostForgotPasswordResetsResponses]
 
 export type PostForgotPasswordValidityData = {
   body: ForgotPasswordCheckPayload
@@ -801,23 +1940,189 @@ export type PostForgotPasswordValidityData = {
 }
 
 export type PostForgotPasswordValidityErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
+  400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError | ErrorResponse
+  401: ErrorResponse
+  429: EmailPasswordResetLimitError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostForgotPasswordValidityError
-  = PostForgotPasswordValidityErrors[keyof PostForgotPasswordValidityErrors]
+export type PostForgotPasswordValidityError =
+  PostForgotPasswordValidityErrors[keyof PostForgotPasswordValidityErrors]
 
 export type PostForgotPasswordValidityResponses = {
   200: VerificationTokenResponse
 }
 
-export type PostForgotPasswordValidityResponse
-  = PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
+export type PostForgotPasswordValidityResponse =
+  PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
+
+export type GetFormHumanInputV2PublicByFormTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/public/{form_token}'
+}
+
+export type GetFormHumanInputV2PublicByFormTokenErrors = {
+  404: HumanInputFormNotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetFormHumanInputV2PublicByFormTokenError =
+  GetFormHumanInputV2PublicByFormTokenErrors[keyof GetFormHumanInputV2PublicByFormTokenErrors]
+
+export type GetFormHumanInputV2PublicByFormTokenResponses = {
+  200: FormDefinitionResponse
+}
+
+export type GetFormHumanInputV2PublicByFormTokenResponse =
+  GetFormHumanInputV2PublicByFormTokenResponses[keyof GetFormHumanInputV2PublicByFormTokenResponses]
+
+export type PostFormHumanInputV2PublicByFormTokenData = {
+  body: HumanInputV2FormSubmitRequest
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/public/{form_token}'
+}
+
+export type PostFormHumanInputV2PublicByFormTokenErrors = {
+  400:
+    | HumanInputChallengeExpiredError
+    | HumanInputChallengeStaleError
+    | HumanInputInvalidOtpError
+    | InvalidInputError
+    | ErrorResponse
+  404: HumanInputFormNotFoundError | ErrorResponse
+  409: WorkflowNotActiveError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  422: ErrorResponse
+  503: HumanInputV2UnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputV2PublicByFormTokenError =
+  PostFormHumanInputV2PublicByFormTokenErrors[keyof PostFormHumanInputV2PublicByFormTokenErrors]
+
+export type PostFormHumanInputV2PublicByFormTokenResponses = {
+  200: FormSubmitResponse
+}
+
+export type PostFormHumanInputV2PublicByFormTokenResponse =
+  PostFormHumanInputV2PublicByFormTokenResponses[keyof PostFormHumanInputV2PublicByFormTokenResponses]
+
+export type PostFormHumanInputV2PublicByFormTokenAccessRequestData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/public/{form_token}/access-request'
+}
+
+export type PostFormHumanInputV2PublicByFormTokenAccessRequestErrors = {
+  404: HumanInputFormNotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  429: HumanInputAccessRateLimitExceededError | ErrorResponse
+  503: HumanInputAccessDeliveryFailedError | HumanInputV2UnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputV2PublicByFormTokenAccessRequestError =
+  PostFormHumanInputV2PublicByFormTokenAccessRequestErrors[keyof PostFormHumanInputV2PublicByFormTokenAccessRequestErrors]
+
+export type PostFormHumanInputV2PublicByFormTokenAccessRequestResponses = {
+  200: FormAccessRequestResponse
+}
+
+export type PostFormHumanInputV2PublicByFormTokenAccessRequestResponse =
+  PostFormHumanInputV2PublicByFormTokenAccessRequestResponses[keyof PostFormHumanInputV2PublicByFormTokenAccessRequestResponses]
+
+export type PostFormHumanInputV2PublicByFormTokenUploadTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/public/{form_token}/upload-token'
+}
+
+export type PostFormHumanInputV2PublicByFormTokenUploadTokenErrors = {
+  403: InvalidUploadTokenError | ErrorResponse
+  404: HumanInputFormNotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputV2PublicByFormTokenUploadTokenError =
+  PostFormHumanInputV2PublicByFormTokenUploadTokenErrors[keyof PostFormHumanInputV2PublicByFormTokenUploadTokenErrors]
+
+export type PostFormHumanInputV2PublicByFormTokenUploadTokenResponses = {
+  200: FormUploadTokenResponse
+}
+
+export type PostFormHumanInputV2PublicByFormTokenUploadTokenResponse =
+  PostFormHumanInputV2PublicByFormTokenUploadTokenResponses[keyof PostFormHumanInputV2PublicByFormTokenUploadTokenResponses]
+
+export type GetFormHumanInputV2ByFormTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/{form_token}'
+}
+
+export type GetFormHumanInputV2ByFormTokenErrors = {
+  401: ErrorResponse
+  404: ErrorResponse
+  409: AlreadySubmittedError | ErrorResponse
+  410: ExpiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetFormHumanInputV2ByFormTokenError =
+  GetFormHumanInputV2ByFormTokenErrors[keyof GetFormHumanInputV2ByFormTokenErrors]
+
+export type GetFormHumanInputV2ByFormTokenResponses = {
+  200: WebAppHumanInputV2FormDefinitionResponse
+}
+
+export type GetFormHumanInputV2ByFormTokenResponse =
+  GetFormHumanInputV2ByFormTokenResponses[keyof GetFormHumanInputV2ByFormTokenResponses]
+
+export type PostFormHumanInputV2ByFormTokenData = {
+  body: WebAppHumanInputV2SubmitPayload
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/{form_token}'
+}
+
+export type PostFormHumanInputV2ByFormTokenErrors = {
+  400: InvalidInputError | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  409: AlreadySubmittedError | WorkflowNotActiveError | ErrorResponse
+  410: ExpiredError | ErrorResponse
+  422: ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputV2ByFormTokenError =
+  PostFormHumanInputV2ByFormTokenErrors[keyof PostFormHumanInputV2ByFormTokenErrors]
+
+export type PostFormHumanInputV2ByFormTokenResponses = {
+  200: WebAppHumanInputV2SubmitResponse
+}
+
+export type PostFormHumanInputV2ByFormTokenResponse =
+  PostFormHumanInputV2ByFormTokenResponses[keyof PostFormHumanInputV2ByFormTokenResponses]
 
 export type GetFormHumanInputByFormTokenData = {
   body?: never
@@ -828,17 +2133,26 @@ export type GetFormHumanInputByFormTokenData = {
   url: '/form/human_input/{form_token}'
 }
 
-export type GetFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+export type GetFormHumanInputByFormTokenErrors = {
+  403: ErrorResponse
+  404: ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  429: WebFormRateLimitExceededError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetFormHumanInputByFormTokenResponse
-  = GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
+export type GetFormHumanInputByFormTokenError =
+  GetFormHumanInputByFormTokenErrors[keyof GetFormHumanInputByFormTokenErrors]
+
+export type GetFormHumanInputByFormTokenResponses = {
+  200: HumanInputFormDefinitionResponse
+}
+
+export type GetFormHumanInputByFormTokenResponse =
+  GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
 
 export type PostFormHumanInputByFormTokenData = {
-  body?: never
+  body: HumanInputFormSubmitPayload
   path: {
     form_token: string
   }
@@ -846,14 +2160,172 @@ export type PostFormHumanInputByFormTokenData = {
   url: '/form/human_input/{form_token}'
 }
 
-export type PostFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+export type PostFormHumanInputByFormTokenErrors = {
+  400: InvalidFormDataError | ErrorResponse
+  404: ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  429: WebFormRateLimitExceededError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostFormHumanInputByFormTokenResponse
-  = PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+export type PostFormHumanInputByFormTokenError =
+  PostFormHumanInputByFormTokenErrors[keyof PostFormHumanInputByFormTokenErrors]
+
+export type PostFormHumanInputByFormTokenResponses = {
+  200: HumanInputFormSubmitResponse
+}
+
+export type PostFormHumanInputByFormTokenResponse =
+  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+
+export type PostFormHumanInputByFormTokenUploadTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human_input/{form_token}/upload-token'
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenErrors = {
+  404: ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  429: WebFormRateLimitExceededError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenError =
+  PostFormHumanInputByFormTokenUploadTokenErrors[keyof PostFormHumanInputByFormTokenUploadTokenErrors]
+
+export type PostFormHumanInputByFormTokenUploadTokenResponses = {
+  200: HumanInputUploadTokenResponse
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenResponse =
+  PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
+
+export type PostHumanInputFormsFilesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/human-input-forms/files'
+}
+
+export type PostHumanInputFormsFilesErrors = {
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | MalformedUploadTokenError
+    | NoFileUploadedError
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+    | TooManyFilesError
+    | ErrorResponse
+  401: UploadTokenRequiredError | ErrorResponse
+  403: InvalidUploadTokenError | ErrorResponse
+  404: RemoteFileNotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostHumanInputFormsFilesError =
+  PostHumanInputFormsFilesErrors[keyof PostHumanInputFormsFilesErrors]
+
+export type PostHumanInputFormsFilesResponses = {
+  201: FileResponse
+}
+
+export type PostHumanInputFormsFilesResponse =
+  PostHumanInputFormsFilesResponses[keyof PostHumanInputFormsFilesResponses]
+
+export type PostHumanInputV2FilesData = {
+  body?: {
+    file?: Blob | File
+    url?: string
+  }
+  headers: {
+    Authorization: string
+  }
+  path?: never
+  query?: never
+  url: '/human-input/v2/files'
+}
+
+export type PostHumanInputV2FilesErrors = {
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | MalformedUploadTokenError
+    | NoFileUploadedError
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+    | TooManyFilesError
+    | ErrorResponse
+  401: UploadTokenRequiredError | ErrorResponse
+  403: InvalidUploadTokenError | ErrorResponse
+  404: HumanInputFormNotFoundError | RemoteFileNotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostHumanInputV2FilesError =
+  PostHumanInputV2FilesErrors[keyof PostHumanInputV2FilesErrors]
+
+export type PostHumanInputV2FilesResponses = {
+  201: FileWithSignedUrl
+}
+
+export type PostHumanInputV2FilesResponse =
+  PostHumanInputV2FilesResponses[keyof PostHumanInputV2FilesResponses]
+
+export type PostHumanInputV2FilesRemoteData = {
+  body: HumanInputV2RemoteUploadPayload
+  headers: {
+    Authorization: string
+  }
+  path?: never
+  query?: never
+  url: '/human-input/v2/files/remote'
+}
+
+export type PostHumanInputV2FilesRemoteErrors = {
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | MalformedUploadTokenError
+    | NoFileUploadedError
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+    | TooManyFilesError
+    | ErrorResponse
+  401: UploadTokenRequiredError | ErrorResponse
+  403: InvalidUploadTokenError | ErrorResponse
+  404: HumanInputFormNotFoundError | RemoteFileNotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostHumanInputV2FilesRemoteError =
+  PostHumanInputV2FilesRemoteErrors[keyof PostHumanInputV2FilesRemoteErrors]
+
+export type PostHumanInputV2FilesRemoteResponses = {
+  201: FileWithSignedUrl
+}
+
+export type PostHumanInputV2FilesRemoteResponse =
+  PostHumanInputV2FilesRemoteResponses[keyof PostHumanInputV2FilesRemoteResponses]
 
 export type PostLoginData = {
   body: LoginPayload
@@ -863,18 +2335,10 @@ export type PostLoginData = {
 }
 
 export type PostLoginErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: AccountBannedError | ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostLoginError = PostLoginErrors[keyof PostLoginErrors]
@@ -888,14 +2352,18 @@ export type PostLoginResponse = PostLoginResponses[keyof PostLoginResponses]
 export type GetLoginStatusData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    app_code?: string
+    user_id?: string
+  }
   url: '/login/status'
 }
 
 export type GetLoginStatusErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetLoginStatusError = GetLoginStatusErrors[keyof GetLoginStatusErrors]
@@ -912,6 +2380,12 @@ export type PostLogoutData = {
   query?: never
   url: '/logout'
 }
+
+export type PostLogoutErrors = {
+  default: ErrorResponse
+}
+
+export type PostLogoutError = PostLogoutErrors[keyof PostLogoutErrors]
 
 export type PostLogoutResponses = {
   200: SimpleResultResponse
@@ -931,35 +2405,23 @@ export type GetMessagesData = {
 }
 
 export type GetMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: AppUnavailableError | NotChatAppError | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetMessagesError = GetMessagesErrors[keyof GetMessagesErrors]
 
 export type GetMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WebMessageInfiniteScrollPagination
 }
 
 export type GetMessagesResponse = GetMessagesResponses[keyof GetMessagesResponses]
 
 export type PostMessagesByMessageIdFeedbacksData = {
-  body?: never
+  body: MessageFeedbackPayload
   path: {
     message_id: string
   }
@@ -971,32 +2433,23 @@ export type PostMessagesByMessageIdFeedbacksData = {
 }
 
 export type PostMessagesByMessageIdFeedbacksErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostMessagesByMessageIdFeedbacksError
-  = PostMessagesByMessageIdFeedbacksErrors[keyof PostMessagesByMessageIdFeedbacksErrors]
+export type PostMessagesByMessageIdFeedbacksError =
+  PostMessagesByMessageIdFeedbacksErrors[keyof PostMessagesByMessageIdFeedbacksErrors]
 
 export type PostMessagesByMessageIdFeedbacksResponses = {
   200: ResultResponse
 }
 
-export type PostMessagesByMessageIdFeedbacksResponse
-  = PostMessagesByMessageIdFeedbacksResponses[keyof PostMessagesByMessageIdFeedbacksResponses]
+export type PostMessagesByMessageIdFeedbacksResponse =
+  PostMessagesByMessageIdFeedbacksResponses[keyof PostMessagesByMessageIdFeedbacksResponses]
 
 export type GetMessagesByMessageIdMoreLikeThisData = {
   body?: never
@@ -1010,34 +2463,30 @@ export type GetMessagesByMessageIdMoreLikeThisData = {
 }
 
 export type GetMessagesByMessageIdMoreLikeThisErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotCompletionAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  403: AppMoreLikeThisDisabledError | ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetMessagesByMessageIdMoreLikeThisError
-  = GetMessagesByMessageIdMoreLikeThisErrors[keyof GetMessagesByMessageIdMoreLikeThisErrors]
+export type GetMessagesByMessageIdMoreLikeThisError =
+  GetMessagesByMessageIdMoreLikeThisErrors[keyof GetMessagesByMessageIdMoreLikeThisErrors]
 
 export type GetMessagesByMessageIdMoreLikeThisResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
-export type GetMessagesByMessageIdMoreLikeThisResponse
-  = GetMessagesByMessageIdMoreLikeThisResponses[keyof GetMessagesByMessageIdMoreLikeThisResponses]
+export type GetMessagesByMessageIdMoreLikeThisResponse =
+  GetMessagesByMessageIdMoreLikeThisResponses[keyof GetMessagesByMessageIdMoreLikeThisResponses]
 
 export type GetMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
@@ -1049,32 +2498,30 @@ export type GetMessagesByMessageIdSuggestedQuestionsData = {
 }
 
 export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotChatAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetMessagesByMessageIdSuggestedQuestionsError
-  = GetMessagesByMessageIdSuggestedQuestionsErrors[keyof GetMessagesByMessageIdSuggestedQuestionsErrors]
+export type GetMessagesByMessageIdSuggestedQuestionsError =
+  GetMessagesByMessageIdSuggestedQuestionsErrors[keyof GetMessagesByMessageIdSuggestedQuestionsErrors]
 
 export type GetMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
 }
 
-export type GetMessagesByMessageIdSuggestedQuestionsResponse
-  = GetMessagesByMessageIdSuggestedQuestionsResponses[keyof GetMessagesByMessageIdSuggestedQuestionsResponses]
+export type GetMessagesByMessageIdSuggestedQuestionsResponse =
+  GetMessagesByMessageIdSuggestedQuestionsResponses[keyof GetMessagesByMessageIdSuggestedQuestionsResponses]
 
 export type GetMetaData = {
   body?: never
@@ -1084,29 +2531,17 @@ export type GetMetaData = {
 }
 
 export type GetMetaErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: AppUnavailableError | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetMetaError = GetMetaErrors[keyof GetMetaErrors]
 
 export type GetMetaResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AppMetaResponse
 }
 
 export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses]
@@ -1119,29 +2554,17 @@ export type GetParametersData = {
 }
 
 export type GetParametersErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: AgentNotPublishedError | AppUnavailableError | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetParametersError = GetParametersErrors[keyof GetParametersErrors]
 
 export type GetParametersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Parameters
 }
 
 export type GetParametersResponse = GetParametersResponses[keyof GetParametersResponses]
@@ -1149,60 +2572,58 @@ export type GetParametersResponse = GetParametersResponses[keyof GetParametersRe
 export type GetPassportData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    user_id?: string
+  }
   url: '/passport'
 }
 
 export type GetPassportErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: ErrorResponse
+  404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetPassportError = GetPassportErrors[keyof GetPassportErrors]
 
 export type GetPassportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PassportAccessTokenResponse
 }
 
 export type GetPassportResponse = GetPassportResponses[keyof GetPassportResponses]
 
 export type PostRemoteFilesUploadData = {
-  body?: never
+  body: RemoteFileUploadPayload
   path?: never
   query?: never
   url: '/remote-files/upload'
 }
 
 export type PostRemoteFilesUploadErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | FileExtensionBlockedError
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+    | ErrorResponse
+  404: RemoteFileNotFoundError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  422: ErrorResponse
+  500: ErrorResponse
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostRemoteFilesUploadError
-  = PostRemoteFilesUploadErrors[keyof PostRemoteFilesUploadErrors]
+export type PostRemoteFilesUploadError =
+  PostRemoteFilesUploadErrors[keyof PostRemoteFilesUploadErrors]
 
 export type PostRemoteFilesUploadResponses = {
   201: FileWithSignedUrl
 }
 
-export type PostRemoteFilesUploadResponse
-  = PostRemoteFilesUploadResponses[keyof PostRemoteFilesUploadResponses]
+export type PostRemoteFilesUploadResponse =
+  PostRemoteFilesUploadResponses[keyof PostRemoteFilesUploadResponses]
 
 export type GetRemoteFilesByUrlData = {
   body?: never
@@ -1214,15 +2635,15 @@ export type GetRemoteFilesByUrlData = {
 }
 
 export type GetRemoteFilesByUrlErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+    | ErrorResponse
+  404: RemoteFileNotFoundError | ErrorResponse
+  500: ErrorResponse
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetRemoteFilesByUrlError = GetRemoteFilesByUrlErrors[keyof GetRemoteFilesByUrlErrors]
@@ -1231,8 +2652,8 @@ export type GetRemoteFilesByUrlResponses = {
   200: RemoteFileInfo
 }
 
-export type GetRemoteFilesByUrlResponse
-  = GetRemoteFilesByUrlResponses[keyof GetRemoteFilesByUrlResponses]
+export type GetRemoteFilesByUrlResponse =
+  GetRemoteFilesByUrlResponses[keyof GetRemoteFilesByUrlResponses]
 
 export type GetSavedMessagesData = {
   body?: never
@@ -1245,35 +2666,23 @@ export type GetSavedMessagesData = {
 }
 
 export type GetSavedMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: NotCompletionAppError | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetSavedMessagesError = GetSavedMessagesErrors[keyof GetSavedMessagesErrors]
 
 export type GetSavedMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SavedMessageInfiniteScrollPagination
 }
 
 export type GetSavedMessagesResponse = GetSavedMessagesResponses[keyof GetSavedMessagesResponses]
 
 export type PostSavedMessagesData = {
-  body?: never
+  body: SavedMessageCreatePayload
   path?: never
   query: {
     message_id: string
@@ -1282,21 +2691,11 @@ export type PostSavedMessagesData = {
 }
 
 export type PostSavedMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: NotCompletionAppError | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostSavedMessagesError = PostSavedMessagesErrors[keyof PostSavedMessagesErrors]
@@ -1317,34 +2716,22 @@ export type DeleteSavedMessagesByMessageIdData = {
 }
 
 export type DeleteSavedMessagesByMessageIdErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: NotCompletionAppError | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type DeleteSavedMessagesByMessageIdError
-  = DeleteSavedMessagesByMessageIdErrors[keyof DeleteSavedMessagesByMessageIdErrors]
+export type DeleteSavedMessagesByMessageIdError =
+  DeleteSavedMessagesByMessageIdErrors[keyof DeleteSavedMessagesByMessageIdErrors]
 
 export type DeleteSavedMessagesByMessageIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
-export type DeleteSavedMessagesByMessageIdResponse
-  = DeleteSavedMessagesByMessageIdResponses[keyof DeleteSavedMessagesByMessageIdResponses]
+export type DeleteSavedMessagesByMessageIdResponse =
+  DeleteSavedMessagesByMessageIdResponses[keyof DeleteSavedMessagesByMessageIdResponses]
 
 export type GetSiteData = {
   body?: never
@@ -1354,29 +2741,18 @@ export type GetSiteData = {
 }
 
 export type GetSiteErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetSiteError = GetSiteErrors[keyof GetSiteErrors]
 
 export type GetSiteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WebAppSiteResponse
 }
 
 export type GetSiteResponse = GetSiteResponses[keyof GetSiteResponses]
@@ -1389,9 +2765,8 @@ export type GetSystemFeaturesData = {
 }
 
 export type GetSystemFeaturesErrors = {
-  500: {
-    [key: string]: unknown
-  }
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetSystemFeaturesError = GetSystemFeaturesErrors[keyof GetSystemFeaturesErrors]
@@ -1410,18 +2785,16 @@ export type PostTextToAudioData = {
 }
 
 export type PostTextToAudioErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostTextToAudioError = PostTextToAudioErrors[keyof PostTextToAudioErrors]
@@ -1445,12 +2818,11 @@ export type GetWebappAccessModeData = {
 }
 
 export type GetWebappAccessModeErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: InvalidParamError | ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetWebappAccessModeError = GetWebappAccessModeErrors[keyof GetWebappAccessModeErrors]
@@ -1459,8 +2831,8 @@ export type GetWebappAccessModeResponses = {
   200: AccessModeResponse
 }
 
-export type GetWebappAccessModeResponse
-  = GetWebappAccessModeResponses[keyof GetWebappAccessModeResponses]
+export type GetWebappAccessModeResponse =
+  GetWebappAccessModeResponses[keyof GetWebappAccessModeResponses]
 
 export type GetWebappPermissionData = {
   body?: never
@@ -1472,15 +2844,11 @@ export type GetWebappPermissionData = {
 }
 
 export type GetWebappPermissionErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  401: ErrorResponse
+  500: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetWebappPermissionError = GetWebappPermissionErrors[keyof GetWebappPermissionErrors]
@@ -1489,8 +2857,8 @@ export type GetWebappPermissionResponses = {
   200: BooleanResultResponse
 }
 
-export type GetWebappPermissionResponse
-  = GetWebappPermissionResponses[keyof GetWebappPermissionResponses]
+export type GetWebappPermissionResponse =
+  GetWebappPermissionResponses[keyof GetWebappPermissionResponses]
 
 export type GetWorkflowByTaskIdEventsData = {
   body?: never
@@ -1501,14 +2869,20 @@ export type GetWorkflowByTaskIdEventsData = {
   url: '/workflow/{task_id}/events'
 }
 
-export type GetWorkflowByTaskIdEventsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+export type GetWorkflowByTaskIdEventsErrors = {
+  400: InvalidParamError | ErrorResponse
+  default: ErrorResponse
 }
 
-export type GetWorkflowByTaskIdEventsResponse
-  = GetWorkflowByTaskIdEventsResponses[keyof GetWorkflowByTaskIdEventsResponses]
+export type GetWorkflowByTaskIdEventsError =
+  GetWorkflowByTaskIdEventsErrors[keyof GetWorkflowByTaskIdEventsErrors]
+
+export type GetWorkflowByTaskIdEventsResponses = {
+  200: EventStreamResponse
+}
+
+export type GetWorkflowByTaskIdEventsResponse =
+  GetWorkflowByTaskIdEventsResponses[keyof GetWorkflowByTaskIdEventsResponses]
 
 export type PostWorkflowsRunData = {
   body: WorkflowRunPayload
@@ -1518,29 +2892,25 @@ export type PostWorkflowsRunData = {
 }
 
 export type PostWorkflowsRunErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotWorkflowAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  401: ErrorResponse
+  403: TriggerWorkflowServiceModeUnavailableError | ErrorResponse
+  404: ErrorResponse
+  429: RateLimitError | ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkflowsRunError = PostWorkflowsRunErrors[keyof PostWorkflowsRunErrors]
 
 export type PostWorkflowsRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
@@ -1555,29 +2925,19 @@ export type PostWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostWorkflowsTasksByTaskIdStopErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: NotWorkflowAppError | ErrorResponse
+  401: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostWorkflowsTasksByTaskIdStopError
-  = PostWorkflowsTasksByTaskIdStopErrors[keyof PostWorkflowsTasksByTaskIdStopErrors]
+export type PostWorkflowsTasksByTaskIdStopError =
+  PostWorkflowsTasksByTaskIdStopErrors[keyof PostWorkflowsTasksByTaskIdStopErrors]
 
 export type PostWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostWorkflowsTasksByTaskIdStopResponse
-  = PostWorkflowsTasksByTaskIdStopResponses[keyof PostWorkflowsTasksByTaskIdStopResponses]
+export type PostWorkflowsTasksByTaskIdStopResponse =
+  PostWorkflowsTasksByTaskIdStopResponses[keyof PostWorkflowsTasksByTaskIdStopResponses]

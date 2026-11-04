@@ -2,25 +2,35 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
+import { zRecommendedAppNotFoundError } from './zod.gen.ts'
 import {
   zGetExploreAppsByAppIdPath,
   zGetExploreAppsByAppIdResponse,
+  zGetExploreAppsLearnDifyQuery,
+  zGetExploreAppsLearnDifyResponse,
   zGetExploreAppsQuery,
   zGetExploreAppsResponse,
+  zGetExploreBannersQuery,
   zGetExploreBannersResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getExploreAppsLearnDify',
+    path: '/explore/apps/learn-dify',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetExploreAppsLearnDifyQuery.optional() }).optional())
+  .output(zGetExploreAppsLearnDifyResponse)
+
+export const learnDify = {
+  get,
+}
+
+export const get2 = oc
+  .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getExploreAppsByAppId',
@@ -29,12 +39,13 @@ export const get = oc
   })
   .input(z.object({ params: zGetExploreAppsByAppIdPath }))
   .output(zGetExploreAppsByAppIdResponse)
+  .errors({ recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError } })
 
 export const byAppId = {
-  get,
+  get: get2,
 }
 
-export const get2 = oc
+export const get3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -42,26 +53,20 @@ export const get2 = oc
     path: '/explore/apps',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetExploreAppsQuery.optional() }))
+  .input(z.object({ query: zGetExploreAppsQuery.optional() }).optional())
   .output(zGetExploreAppsResponse)
 
 export const apps = {
-  get: get2,
+  get: get3,
+  learnDify,
   byAppId,
 }
 
 /**
  * Get banner list
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
-export const get3 = oc
+export const get4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getExploreBanners',
@@ -69,10 +74,11 @@ export const get3 = oc
     summary: 'Get banner list',
     tags: ['default'],
   })
+  .input(z.object({ query: zGetExploreBannersQuery.optional() }).optional())
   .output(zGetExploreBannersResponse)
 
 export const banners = {
-  get: get3,
+  get: get4,
 }
 
 export const explore = {

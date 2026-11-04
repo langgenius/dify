@@ -14,8 +14,48 @@ export type InstructionGeneratePayload = {
   node_id?: string
 }
 
+export type GeneratorResponse = unknown
+
+export type ErrorMessageResponse = {
+  error: string
+}
+
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type InstructionTemplatePayload = {
   type: string
+}
+
+export type SimpleDataResponse = {
+  data: string
 }
 
 export type ModelConfig = {
@@ -37,25 +77,25 @@ export type PostInstructionGenerateData = {
 }
 
 export type PostInstructionGenerateErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  402: {
-    [key: string]: unknown
-  }
+  400:
+    | ErrorMessageResponse
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostInstructionGenerateError
-  = PostInstructionGenerateErrors[keyof PostInstructionGenerateErrors]
+export type PostInstructionGenerateError =
+  PostInstructionGenerateErrors[keyof PostInstructionGenerateErrors]
 
 export type PostInstructionGenerateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratorResponse
 }
 
-export type PostInstructionGenerateResponse
-  = PostInstructionGenerateResponses[keyof PostInstructionGenerateResponses]
+export type PostInstructionGenerateResponse =
+  PostInstructionGenerateResponses[keyof PostInstructionGenerateResponses]
 
 export type PostInstructionGenerateTemplateData = {
   body: InstructionTemplatePayload
@@ -65,19 +105,16 @@ export type PostInstructionGenerateTemplateData = {
 }
 
 export type PostInstructionGenerateTemplateErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: ErrorResponse
+  default: ErrorResponse
 }
 
-export type PostInstructionGenerateTemplateError
-  = PostInstructionGenerateTemplateErrors[keyof PostInstructionGenerateTemplateErrors]
+export type PostInstructionGenerateTemplateError =
+  PostInstructionGenerateTemplateErrors[keyof PostInstructionGenerateTemplateErrors]
 
 export type PostInstructionGenerateTemplateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleDataResponse
 }
 
-export type PostInstructionGenerateTemplateResponse
-  = PostInstructionGenerateTemplateResponses[keyof PostInstructionGenerateTemplateResponses]
+export type PostInstructionGenerateTemplateResponse =
+  PostInstructionGenerateTemplateResponses[keyof PostInstructionGenerateTemplateResponses]

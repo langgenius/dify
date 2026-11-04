@@ -1,12 +1,8 @@
-import type { CommonResponse } from '@/models/common'
-import type { IndexingStatusResponse } from '@/models/datasets'
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { ConsoleClientContext } from '@/service/console'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import {
-  fetchIndexingStatus,
-  pauseDocIndexing,
-  resumeDocIndexing,
-} from '@/service/datasets'
+import { fetchIndexingStatus, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
 
 const NAME_SPACE = 'embedding'
 
@@ -14,17 +10,16 @@ const EMBEDDING_STATUSES = ['indexing', 'splitting', 'parsing', 'cleaning'] as c
 const TERMINAL_STATUSES = ['completed', 'error', 'paused'] as const
 
 export const isEmbeddingStatus = (status?: string): boolean => {
-  return EMBEDDING_STATUSES.includes(status as typeof EMBEDDING_STATUSES[number])
+  return EMBEDDING_STATUSES.includes(status as (typeof EMBEDDING_STATUSES)[number])
 }
 
 export const isTerminalStatus = (status?: string): boolean => {
-  return TERMINAL_STATUSES.includes(status as typeof TERMINAL_STATUSES[number])
+  return TERMINAL_STATUSES.includes(status as (typeof TERMINAL_STATUSES)[number])
 }
 
 export const calculatePercent = (completed?: number, total?: number): number => {
-  if (!total || total === 0)
-    return 0
-  const percent = Math.round((completed || 0) * 100 / total)
+  if (!total || total === 0) return 0
+  const percent = Math.round(((completed || 0) * 100) / total)
   return Math.min(percent, 100)
 }
 
@@ -44,14 +39,17 @@ export const useEmbeddingStatus = ({
   const queryClient = useQueryClient()
   const isPolling = useRef(false)
   const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
   const queryKey = useMemo(
     () => [NAME_SPACE, 'indexing-status', datasetId, documentId] as const,
     [datasetId, documentId],
   )
 
-  const query = useQuery<IndexingStatusResponse>({
+  const query = useQuery<DocumentStatusResponse>({
     queryKey,
     queryFn: () => fetchIndexingStatus({ datasetId: datasetId!, documentId: documentId! }),
     enabled: enabled && !!datasetId && !!documentId,
@@ -70,7 +68,10 @@ export const useEmbeddingStatus = ({
   const isCompleted = status === 'completed'
   const isPaused = status === 'paused'
   const isError = status === 'error'
-  const percent = calculatePercent(query.data?.completed_segments, query.data?.total_segments)
+  const percent = calculatePercent(
+    query.data?.completed_segments ?? undefined,
+    query.data?.total_segments ?? undefined,
+  )
 
   // Handle completion callback
   useEffect(() => {
@@ -106,42 +107,40 @@ export const useEmbeddingStatus = ({
 }
 
 type UsePauseResumeOptions = {
+  context?: ConsoleClientContext
   datasetId?: string
   documentId?: string
   onSuccess?: () => void
   onError?: (error: Error) => void
 }
 
-export const usePauseIndexing = ({ datasetId, documentId, onSuccess, onError }: UsePauseResumeOptions) => {
-  return useMutation<CommonResponse, Error>({
+export const usePauseIndexing = ({
+  context,
+  datasetId,
+  documentId,
+  onSuccess,
+  onError,
+}: UsePauseResumeOptions) => {
+  return useMutation<unknown, Error>({
     mutationKey: [NAME_SPACE, 'pause', datasetId, documentId],
-    mutationFn: () => pauseDocIndexing({ datasetId: datasetId!, documentId: documentId! }),
+    mutationFn: () => pauseDocIndexing({ datasetId: datasetId!, documentId: documentId! }, context),
     onSuccess,
     onError,
   })
 }
 
-export const useResumeIndexing = ({ datasetId, documentId, onSuccess, onError }: UsePauseResumeOptions) => {
-  return useMutation<CommonResponse, Error>({
+export const useResumeIndexing = ({
+  context,
+  datasetId,
+  documentId,
+  onSuccess,
+  onError,
+}: UsePauseResumeOptions) => {
+  return useMutation<unknown, Error>({
     mutationKey: [NAME_SPACE, 'resume', datasetId, documentId],
-    mutationFn: () => resumeDocIndexing({ datasetId: datasetId!, documentId: documentId! }),
+    mutationFn: () =>
+      resumeDocIndexing({ datasetId: datasetId!, documentId: documentId! }, context),
     onSuccess,
     onError,
   })
-}
-
-export const useInvalidateEmbeddingStatus = () => {
-  const queryClient = useQueryClient()
-  return useCallback((datasetId?: string, documentId?: string) => {
-    if (datasetId && documentId) {
-      queryClient.invalidateQueries({
-        queryKey: [NAME_SPACE, 'indexing-status', datasetId, documentId],
-      })
-    }
-    else {
-      queryClient.invalidateQueries({
-        queryKey: [NAME_SPACE, 'indexing-status'],
-      })
-    }
-  }, [queryClient])
 }

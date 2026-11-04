@@ -1,89 +1,86 @@
 'use client'
 import type { MeterTone } from '@langgenius/dify-ui/meter'
-import type { ComponentType, FC, ReactNode } from 'react'
+import type { FC, ReactNode } from 'react'
+import type { BillingQuota } from '../quota'
 import { cn } from '@langgenius/dify-ui/cn'
-import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
-import { NUM_INFINITE } from '../config'
 
-type Props = {
+type Props = Readonly<{
   className?: string
-  Icon: ComponentType<{ className?: string }>
+  iconClassName: string
   name: string
   tooltip?: string
-  usage: number
-  total: number
+  quota: BillingQuota
   unit?: string
   unitPosition?: 'inline' | 'suffix'
   resetHint?: string
-  resetInDays?: number
   hideIcon?: boolean
   // Props for the 50MB threshold display logic
   storageMode?: boolean
   storageThreshold?: number
   storageTooltip?: string
   isSandboxPlan?: boolean
-}
+  usageUnknown?: boolean
+}>
 
 const UsageInfo: FC<Props> = ({
   className,
-  Icon,
+  iconClassName,
   name,
   tooltip,
-  usage,
-  total,
+  quota,
   unit,
   unitPosition = 'suffix',
   resetHint,
-  resetInDays,
   hideIcon = false,
   storageMode = false,
   storageThreshold = 50,
   storageTooltip,
   isSandboxPlan = false,
+  usageUnknown = false,
 }) => {
-  const { t } = useTranslation()
+  const labelId = React.useId()
 
-  const isBelowThreshold = storageMode && usage < storageThreshold
-  const isSandboxFull = storageMode && isSandboxPlan && usage >= storageThreshold
+  const { t } = useTranslation(['billing'])
+  const { usage, limit, resetInDays } = quota
 
-  // Single source of truth: sandbox full is visually clamped to 100%; all other
-  // determinate cases show the real percent capped at 100. Tone derives from
-  // this, so we never need a separate tone override.
-  const rawPercent = total > 0 ? (usage / total) * 100 : 0
-  const effectivePercent = isSandboxFull ? 100 : Math.min(rawPercent, 100)
-  const tone: MeterTone
-    = effectivePercent >= 100
-      ? 'error'
-      : effectivePercent >= 80
-        ? 'warning'
-        : 'neutral'
+  const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
+  const isSandboxFull = !usageUnknown && storageMode && isSandboxPlan && usage >= storageThreshold
+  const storageHelp = !usageUnknown && storageMode ? storageTooltip : undefined
 
-  const isUnlimited = total === NUM_INFINITE
-  let totalDisplay: string | number = isUnlimited ? t('plansCommon.unlimited', { ns: 'billing' }) : total
-  if (!isUnlimited && unit && unitPosition === 'inline')
-    totalDisplay = `${total}${unit}`
+  // Zero count quotas have no remaining capacity; storage keeps its separate limit convention.
+  const isZeroQuota = !storageMode && limit === 0
+  const rawPercent = limit !== 'unlimited' && limit > 0 ? (usage / limit) * 100 : 0
+  const effectivePercent = isSandboxFull || isZeroQuota ? 100 : Math.min(rawPercent, 100)
+  const tone: MeterTone =
+    effectivePercent >= 100 ? 'error' : effectivePercent >= 80 ? 'warning' : 'neutral'
+
+  const isUnlimited = limit === 'unlimited'
+  let totalDisplay: string | number = isUnlimited
+    ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
+    : limit
+  if (!isUnlimited && unit && unitPosition === 'inline') totalDisplay = `${limit}${unit}`
   const showUnit = !!unit && !isUnlimited && unitPosition === 'suffix'
-  const resetText = resetHint ?? (typeof resetInDays === 'number' ? t('usagePage.resetsIn', { ns: 'billing', count: resetInDays }) : undefined)
+  const resetText =
+    resetHint ??
+    (typeof resetInDays === 'number'
+      ? t(($) => $['usagePage.resetsIn'], { ns: 'billing', count: resetInDays })
+      : undefined)
 
-  const rightInfo: ReactNode = resetText
-    ? (
-        <div className="ml-auto flex-1 text-right system-xs-regular text-text-tertiary">
-          {resetText}
-        </div>
-      )
-    : showUnit
-      ? (
-          <div className="ml-auto system-xs-medium text-text-tertiary">
-            {unit}
-          </div>
-        )
-      : null
+  const rightInfo: ReactNode = resetText ? (
+    <div className="ml-auto flex-1 text-right system-xs-regular text-text-tertiary">
+      {resetText}
+    </div>
+  ) : showUnit ? (
+    <div className="ml-auto system-xs-medium text-text-tertiary">{unit}</div>
+  ) : null
 
   const usageDisplay: ReactNode = (() => {
+    if (usageUnknown) return <span>--</span>
+
     if (storageMode) {
       if (isSandboxFull) {
         return (
@@ -91,9 +88,7 @@ const UsageInfo: FC<Props> = ({
             <span>{storageThreshold}</span>
             <span className="system-md-regular text-text-quaternary">/</span>
             <span>
-              {storageThreshold}
-              {' '}
-              {unit}
+              {storageThreshold} {unit}
             </span>
           </div>
         )
@@ -101,11 +96,7 @@ const UsageInfo: FC<Props> = ({
       if (isBelowThreshold) {
         return (
           <div className="flex items-center gap-1">
-            <span>
-              &lt;
-              {' '}
-              {storageThreshold}
-            </span>
+            <span>&lt; {storageThreshold}</span>
             {!isSandboxPlan && (
               <>
                 <span className="system-md-regular text-text-quaternary">/</span>
@@ -134,61 +125,55 @@ const UsageInfo: FC<Props> = ({
     )
   })()
 
-  const bar: ReactNode = isBelowThreshold
-    ? (
-        // Decorative "< N MB" placeholder — not a meter, not a progressbar.
-        <div
-          aria-hidden="true"
-          className="overflow-hidden rounded-md bg-components-progress-bar-bg"
-        >
-          <div
-            className={cn(
-              'h-1 rounded-md bg-progress-bar-indeterminate-stripe',
-              isSandboxPlan ? 'w-full' : 'w-7.5',
-            )}
-          />
-        </div>
-      )
-    : (
-        <MeterRoot value={effectivePercent} max={100} aria-label={name}>
-          <MeterTrack>
-            <MeterIndicator tone={tone} />
-          </MeterTrack>
-        </MeterRoot>
-      )
-
-  const wrapWithStorageTooltip = (children: ReactNode) => {
-    if (storageMode && storageTooltip) {
-      return (
-        <Tooltip>
-          <TooltipTrigger render={<div className="cursor-default">{children}</div>} />
-          <TooltipContent className="w-50 max-w-50">
-            {storageTooltip}
-          </TooltipContent>
-        </Tooltip>
-      )
-    }
-    return children
-  }
+  const bar: ReactNode = isBelowThreshold ? (
+    // Decorative "< N MB" placeholder — not a meter, not a progressbar.
+    <div aria-hidden="true" className="overflow-hidden rounded-md bg-components-progress-bar-bg">
+      <div
+        className={cn(
+          'h-1 rounded-md bg-progress-bar-indeterminate-stripe',
+          isSandboxPlan ? 'w-full' : 'w-7.5',
+        )}
+      />
+    </div>
+  ) : (
+    <Meter value={effectivePercent} max={100} aria-label={name}>
+      <MeterTrack>
+        <MeterIndicator tone={tone} />
+      </MeterTrack>
+    </Meter>
+  )
 
   return (
-    <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>
-      {!hideIcon && Icon && (
-        <Icon className="size-4 text-text-tertiary" />
+    <div
+      role="group"
+      aria-label={name}
+      className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}
+    >
+      {!hideIcon && iconClassName && (
+        <span aria-hidden className={cn(iconClassName, 'size-4 text-text-tertiary')} />
       )}
-      <div className="flex items-center gap-1">
-        <div className="system-xs-medium text-text-tertiary">{name}</div>
-        {tooltip && (
-          <Infotip aria-label={tooltip} popupClassName="w-[180px] max-w-[180px]">
-            {tooltip}
-          </Infotip>
-        )}
-      </div>
-      <div className="flex items-center gap-1 system-md-semibold text-text-primary">
-        {wrapWithStorageTooltip(usageDisplay)}
-        {rightInfo}
-      </div>
-      {wrapWithStorageTooltip(bar)}
+      <dl className="flex flex-col gap-2">
+        <dt className="flex items-center gap-1 system-xs-medium text-text-tertiary">
+          <span id={labelId}>{name}</span>
+          {(tooltip || storageHelp) && (
+            <Infotip>
+              <InfotipTrigger aria-labelledby={labelId} />
+              <InfotipContent aria-labelledby={labelId} className="w-45">
+                {tooltip && <p>{tooltip}</p>}
+                {storageHelp && <p>{storageHelp}</p>}
+              </InfotipContent>
+            </Infotip>
+          )}
+        </dt>
+        <dd
+          data-testid="billing-quota-value"
+          className="flex items-center gap-1 system-md-semibold text-text-primary"
+        >
+          {usageDisplay}
+          {rightInfo}
+        </dd>
+      </dl>
+      {!usageUnknown && bar}
     </div>
   )
 }

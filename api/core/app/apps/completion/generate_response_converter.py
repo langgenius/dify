@@ -57,8 +57,8 @@ class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter[Comple
     @classmethod
     @override
     def convert_stream_full_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict[str, Any] | str, None, None]:
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, Any] | str]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -88,8 +88,8 @@ class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter[Comple
     @classmethod
     @override
     def convert_stream_simple_response(
-        cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict[str, Any] | str, None, None]:
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, Any] | str]:
         """
         Convert stream simple response.
         :param stream_response: stream response
@@ -109,17 +109,18 @@ class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter[Comple
                 "created_at": chunk.created_at,
             }
 
-            if isinstance(sub_stream_response, MessageEndStreamResponse):
-                sub_stream_response_dict = sub_stream_response.model_dump(mode="json")
-                metadata = sub_stream_response_dict.get("metadata", {})
-                if not isinstance(metadata, dict):
-                    metadata = {}
-                sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
-                response_chunk.update(sub_stream_response_dict)
-            elif isinstance(sub_stream_response, ErrorStreamResponse):
-                data = cls._error_to_stream_response(sub_stream_response.err)
-                response_chunk.update(data)
-            else:
-                response_chunk.update(sub_stream_response.model_dump(mode="json"))
+            match sub_stream_response:
+                case MessageEndStreamResponse():
+                    sub_stream_response_dict = sub_stream_response.model_dump(mode="json")
+                    metadata = sub_stream_response_dict.get("metadata", {})
+                    if not isinstance(metadata, dict):
+                        metadata = {}
+                    sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
+                    response_chunk.update(sub_stream_response_dict)
+                case ErrorStreamResponse():
+                    data = cls._error_to_stream_response(sub_stream_response.err)
+                    response_chunk.update(data)
+                case _:
+                    response_chunk.update(sub_stream_response.model_dump(mode="json"))
 
             yield response_chunk

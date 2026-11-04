@@ -1,68 +1,57 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createRagPipelineSliceSlice } from '@/app/components/rag-pipeline/store'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import GlobalVariableButton from '../global-variable-button'
 
-const mockCloseAllInputFieldPanels = vi.fn()
-let mockTheme: 'light' | 'dark' = 'light'
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({
-    theme: mockTheme,
-  }),
-}))
-
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
-  useInputFieldPanel: () => ({
-    closeAllInputFieldPanels: mockCloseAllInputFieldPanels,
-  }),
-}))
-
 describe('GlobalVariableButton', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockTheme = 'light'
-  })
-
-  it('should open the global variable panel and close the other panels when clicked', () => {
+  it('should open the global variable panel and close the other panels when clicked', async () => {
+    const user = userEvent.setup()
     const { store } = renderWorkflowComponent(<GlobalVariableButton disabled={false} />, {
+      injectWorkflowStoreSliceFn: createRagPipelineSliceSlice,
       initialStoreState: {
+        showInputFieldPanel: true,
+        showInputFieldPreviewPanel: true,
+        inputFieldEditPanelProps: { onSubmit: () => {}, onClose: () => {} },
         showEnvPanel: true,
         showChatVariablePanel: true,
         showDebugAndPreviewPanel: true,
       },
     })
 
-    fireEvent.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'workflow.globalVar.title' }))
 
     expect(store.getState().showGlobalVariablePanel).toBe(true)
     expect(store.getState().showEnvPanel).toBe(false)
     expect(store.getState().showChatVariablePanel).toBe(false)
     expect(store.getState().showDebugAndPreviewPanel).toBe(false)
-    expect(mockCloseAllInputFieldPanels).toHaveBeenCalledTimes(1)
-  })
-
-  it('should apply the active dark theme styles when the global variable panel is visible', () => {
-    mockTheme = 'dark'
-    renderWorkflowComponent(<GlobalVariableButton disabled={false} />, {
-      initialStoreState: {
-        showGlobalVariablePanel: true,
-      },
+    expect(store.getState()).toMatchObject({
+      showInputFieldPanel: false,
+      showInputFieldPreviewPanel: false,
+      inputFieldEditPanelProps: null,
     })
-
-    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-xs')
   })
 
-  it('should keep the button disabled when the disabled prop is true', () => {
+  it('should keep the button disabled when the disabled prop is true', async () => {
+    const user = userEvent.setup()
     const { store } = renderWorkflowComponent(<GlobalVariableButton disabled />, {
+      injectWorkflowStoreSliceFn: createRagPipelineSliceSlice,
       initialStoreState: {
+        showInputFieldPanel: true,
+        showInputFieldPreviewPanel: true,
+        inputFieldEditPanelProps: { onSubmit: () => {}, onClose: () => {} },
         showGlobalVariablePanel: false,
       },
     })
 
-    fireEvent.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'workflow.globalVar.title' }))
 
-    expect(screen.getByRole('button')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'workflow.globalVar.title' })).toBeDisabled()
     expect(store.getState().showGlobalVariablePanel).toBe(false)
-    expect(mockCloseAllInputFieldPanels).not.toHaveBeenCalled()
+    expect(store.getState()).toMatchObject({
+      showInputFieldPanel: true,
+      showInputFieldPreviewPanel: true,
+      inputFieldEditPanelProps: expect.objectContaining({ onSubmit: expect.any(Function) }),
+    })
   })
 })

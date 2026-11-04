@@ -1,57 +1,93 @@
-import { describe, expect, it } from 'vitest'
-import { newError } from './base.js'
-import { ErrorCode } from './codes.js'
-import { renderEnvelope, toEnvelope } from './envelope.js'
+import { expect, it } from 'vite-plus/test'
+import { ioService } from '@/plugins/io'
+import { OutputMode } from '@/plugins/output'
+import { bufferStreams } from '@/sys/io/streams'
+import { BaseError, HttpClientError } from './base'
+import { ErrorCode } from './codes'
+import { printEnvelope } from './envelope'
 
-describe('error envelope', () => {
-  it('emits required fields only when minimal', () => {
-    const err = newError(ErrorCode.Unknown, 'boom')
-    expect(toEnvelope(err)).toEqual({
-      error: { code: 'unknown', message: 'boom' },
-    })
+it('prints one JSON line with details and schema and returns the exit code', async () => {
+  const streams = bufferStreams()
+  const code = await printEnvelope(
+    new BaseError({
+      code: ErrorCode.InputInvalid,
+      message: 'bad',
+      details: [{ type: 'required', loc: ['inputs'], msg: 'missing' }],
+      schema: { type: 'object' },
+    }),
+    ioService(streams, { out: OutputMode.Json, err: OutputMode.Json }),
+    { verbose: false },
+  )
+  expect(code).toBe(2)
+  expect(JSON.parse(streams.errBuf())).toEqual({
+    error: {
+      code: 'input_invalid',
+      message: 'bad',
+      details: [{ type: 'required', loc: ['inputs'], msg: 'missing' }],
+      schema: { type: 'object' },
+    },
   })
+})
 
-  it('includes hint / http_status / method / url when present', () => {
-    const err = newError(ErrorCode.NetworkTimeout, 'timed out')
-      .withHint('check your network')
-      .withHttpStatus(504)
-      .withRequest('POST', 'https://api.dify.ai/v1/x')
-    expect(toEnvelope(err)).toEqual({
-      error: {
-        code: 'network_timeout',
-        message: 'timed out',
-        hint: 'check your network',
-        http_status: 504,
-        method: 'POST',
-        url: 'https://api.dify.ai/v1/x',
-      },
-    })
+it('hides raw_response unless verbose and redacts the bearer', async () => {
+  const err = new HttpClientError({
+    code: ErrorCode.ServerError,
+    message: 'x',
+    httpStatus: 500,
+    rawResponse: 'Bearer abc',
   })
+  const quiet = bufferStreams()
+  await printEnvelope(err, ioService(quiet, { out: OutputMode.Json, err: OutputMode.Json }), {
+    verbose: false,
+  })
+  expect(JSON.parse(quiet.errBuf()).error.raw_response).toBeUndefined()
+  const loud = bufferStreams()
+  await printEnvelope(err, ioService(loud, { out: OutputMode.Json, err: OutputMode.Json }), {
+    verbose: true,
+  })
+  expect(JSON.parse(loud.errBuf()).error.raw_response).toBe('Bearer [redacted]')
+})
 
-  it('renderEnvelope returns a single-line JSON string', () => {
-    const err = newError(ErrorCode.AuthExpired, 'session expired')
-      .withHint('run difyctl auth login')
-    const out = renderEnvelope(err)
-    expect(out).toBe(
-      '{"error":{"code":"auth_expired","message":"session expired","hint":"run difyctl auth login"}}',
-    )
-    expect(out).not.toContain('\n')
+it('offers --verbose in text when the raw response is hidden, and shows it redacted when asked', async () => {
+  const err = new HttpClientError({
+    code: ErrorCode.ServerError,
+    message: 'boom',
+    httpStatus: 500,
+    rawResponse: 'Bearer abc body',
   })
+  const quiet = bufferStreams()
+  await printEnvelope(err, ioService(quiet, { out: OutputMode.Json, err: OutputMode.Text }), {
+    verbose: false,
+  })
+  expect(quiet.errBuf()).toContain('hint: run again with --verbose to see the raw server response')
+  expect(quiet.errBuf()).not.toContain('raw_response:')
 
-  it('renderEnvelope output round-trips through JSON.parse to an ErrorEnvelope shape', () => {
-    const err = newError(ErrorCode.UsageInvalidFlag, 'bad flag').withHint('see --help')
-    const parsed = JSON.parse(renderEnvelope(err))
-    expect(parsed).toEqual({
-      error: { code: 'usage_invalid_flag', message: 'bad flag', hint: 'see --help' },
-    })
+  const loud = bufferStreams()
+  await printEnvelope(err, ioService(loud, { out: OutputMode.Json, err: OutputMode.Text }), {
+    verbose: true,
   })
+  expect(loud.errBuf()).toContain('raw_response: Bearer [redacted] body')
+  expect(loud.errBuf()).not.toContain('--verbose to see')
+})
 
-  it('omits undefined optional fields entirely (no `hint: null`)', () => {
-    const err = newError(ErrorCode.Server5xx, 'upstream broke')
-    const envelope = toEnvelope(err)
-    expect(envelope.error).not.toHaveProperty('hint')
-    expect(envelope.error).not.toHaveProperty('http_status')
-    expect(envelope.error).not.toHaveProperty('method')
-    expect(envelope.error).not.toHaveProperty('url')
-  })
+it('wraps unknown errors as unknown with exit 1', async () => {
+  const streams = bufferStreams()
+  const code = await printEnvelope(
+    new Error('boom'),
+    ioService(streams, { out: OutputMode.Json, err: OutputMode.Json }),
+    { verbose: false },
+  )
+  expect(code).toBe(1)
+  expect(JSON.parse(streams.errBuf()).error.code).toBe('unknown')
+})
+
+it('renders the text form on stderr when the err channel is text, exit code unchanged', async () => {
+  const streams = bufferStreams()
+  const code = await printEnvelope(
+    new BaseError({ code: ErrorCode.InputInvalid, message: 'bad' }),
+    ioService(streams, { out: OutputMode.Json, err: OutputMode.Text }),
+    { verbose: false },
+  )
+  expect(code).toBe(2)
+  expect(streams.errBuf()).toBe('input_invalid: bad\n')
 })

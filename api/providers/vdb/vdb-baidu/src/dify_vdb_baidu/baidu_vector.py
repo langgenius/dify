@@ -2,7 +2,7 @@ import json
 import logging
 import time
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any, override
 
 import numpy as np
 from pydantic import BaseModel, model_validator
@@ -26,6 +26,7 @@ from pymochow.model.schema import (
     VectorIndex,
 )  # type: ignore
 from pymochow.model.table import AnnSearch, BM25SearchRequest, HNSWSearchParams, Partition, Row  # type: ignore
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field as VDBField
@@ -37,6 +38,9 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+if TYPE_CHECKING:
+    from pymochow.model.schema import IndexField
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +86,7 @@ class BaiduVector(BaseVector):
         self._client = self._init_client(config)
         self._db = self._init_database()
 
+    @override
     def get_type(self) -> str:
         return VectorType.BAIDU
 
@@ -92,10 +97,12 @@ class BaiduVector(BaseVector):
         }
         return result
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self._create_table(len(embeddings[0]))
         self.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         total_count = len(documents)
         batch_size = 1000
@@ -116,23 +123,25 @@ class BaiduVector(BaseVector):
                 rows.append(row)
             table.upsert(rows=rows)
 
+    @override
     def text_exists(self, id: str) -> bool:
         res = self._db.table(self._collection_name).query(primary_key={VDBField.PRIMARY_KEY: id})
-        if res and res.code == 0:
-            return True
-        return False
+        return bool(res and res.code == 0)
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         quoted_ids = [f"'{id}'" for id in ids]
         self._db.table(self._collection_name).delete(filter=f"{VDBField.PRIMARY_KEY} IN({', '.join(quoted_ids)})")
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         # Escape double quotes in value to prevent injection
         escaped_value = value.replace('"', '\\"')
         self._db.table(self._collection_name).delete(filter=f'metadata["{key}"] = "{escaped_value}"')
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         query_vector = [float(val) if isinstance(val, np.float64) else val for val in query_vector]
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -154,6 +163,7 @@ class BaiduVector(BaseVector):
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._get_search_res(res, score_threshold)
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         # document ids filter
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -189,6 +199,7 @@ class BaiduVector(BaseVector):
                 docs.append(doc)
         return docs
 
+    @override
     def delete(self):
         try:
             self._db.drop_table(table_name=self._collection_name)
@@ -228,7 +239,7 @@ class BaiduVector(BaseVector):
 
     def _table_existed(self) -> bool:
         try:
-            table = self._db.table(self._collection_name)
+            self._db.table(self._collection_name)
         except ServerError as e:
             if e.code == ServerErrCode.TABLE_NOT_EXIST:
                 return False
@@ -265,43 +276,44 @@ class BaiduVector(BaseVector):
 
             # Construct field schema
             fields = []
-            fields.append(
-                Field(
-                    VDBField.PRIMARY_KEY,
-                    FieldType.STRING,
-                    primary_key=True,
-                    partition_key=True,
-                    auto_increment=False,
-                    not_null=True,
+            fields.extend(
+                (
+                    Field(
+                        VDBField.PRIMARY_KEY,
+                        FieldType.STRING,
+                        primary_key=True,
+                        partition_key=True,
+                        auto_increment=False,
+                        not_null=True,
+                    ),
+                    Field(VDBField.CONTENT_KEY, FieldType.TEXT, not_null=False),
+                    Field(VDBField.METADATA_KEY, FieldType.JSON, not_null=False),
+                    Field(VDBField.VECTOR, FieldType.FLOAT_VECTOR, not_null=True, dimension=dimension),
                 )
             )
-            fields.append(Field(VDBField.CONTENT_KEY, FieldType.TEXT, not_null=False))
-            fields.append(Field(VDBField.METADATA_KEY, FieldType.JSON, not_null=False))
-            fields.append(Field(VDBField.VECTOR, FieldType.FLOAT_VECTOR, not_null=True, dimension=dimension))
 
             # Construct vector index params
-            indexes = []
-            indexes.append(
-                VectorIndex(
-                    index_name=self.vector_index,
-                    index_type=index_type,
-                    field=VDBField.VECTOR,
-                    metric_type=metric_type,
-                    params=HNSWParams(m=16, efconstruction=200),
-                    auto_build=True,
-                    auto_build_index_policy=AutoBuildRowCountIncrement(
-                        row_count_increment=self._client_config.auto_build_row_count_increment,
-                        row_count_increment_ratio=self._client_config.auto_build_row_count_increment_ratio,
+            indexes: list[IndexField] = []
+            indexes.extend(
+                [
+                    VectorIndex(
+                        index_name=self.vector_index,
+                        index_type=index_type,
+                        field=VDBField.VECTOR,
+                        metric_type=metric_type,
+                        params=HNSWParams(m=16, efconstruction=200),
+                        auto_build=True,
+                        auto_build_index_policy=AutoBuildRowCountIncrement(
+                            row_count_increment=self._client_config.auto_build_row_count_increment,
+                            row_count_increment_ratio=self._client_config.auto_build_row_count_increment_ratio,
+                        ),
                     ),
-                )
-            )
-
-            # Filtering index
-            indexes.append(
-                FilteringIndex(
-                    index_name=self.filtering_index,
-                    fields=[VDBField.METADATA_KEY],
-                )
+                    # Filtering index
+                    FilteringIndex(
+                        index_name=self.filtering_index,
+                        fields=[VDBField.METADATA_KEY],
+                    ),
+                ]
             )
 
             # Get analyzer and parse_mode from config
@@ -368,7 +380,10 @@ class BaiduVector(BaseVector):
 
 
 class BaiduVectorFactory(AbstractVectorFactory):
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaiduVector:
+    @override
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> BaiduVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

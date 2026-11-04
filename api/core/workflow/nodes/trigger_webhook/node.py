@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, override
 
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.file_reference import resolve_file_record_id
@@ -25,12 +25,14 @@ class TriggerWebhookNode(Node[WebhookData]):
 
     _file_reference_factory: FileReferenceFactoryProtocol
 
+    @override
     def post_init(self) -> None:
         from core.workflow.node_runtime import DifyFileReferenceFactory
 
         self._file_reference_factory = DifyFileReferenceFactory(self.run_context)
 
     @classmethod
+    @override
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "type": "webhook",
@@ -48,9 +50,11 @@ class TriggerWebhookNode(Node[WebhookData]):
         }
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "1"
 
+    @override
     def _run(self) -> NodeRunResult:
         """
         Run the webhook node.
@@ -60,11 +64,11 @@ class TriggerWebhookNode(Node[WebhookData]):
         happens in the trigger controller.
         """
         # Get webhook data from variable pool (injected by Celery task)
-        webhook_inputs = dict(self.graph_runtime_state.variable_pool.get_by_prefix(self.id))
+        webhook_inputs = dict(self.runtime_state.variable_pool.get_by_prefix(self.id))
 
         # Extract webhook-specific outputs based on node configuration
         outputs = self._extract_configured_outputs(webhook_inputs)
-        system_inputs = self.graph_runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
+        system_inputs = self.runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
 
         for variable_name, value in system_inputs.items():
             outputs[f"{SYSTEM_VARIABLE_NODE_ID}.{variable_name}"] = value

@@ -1,11 +1,18 @@
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import {
-  memo,
-} from 'react'
+import { memo } from 'react'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+
+const parseContent = (content: string | object) => {
+  if (typeof content !== 'string') return content
+  try {
+    return JSON.parse(content)
+  } catch {
+    return content
+  }
+}
 
 const ResultTab = ({
   data,
@@ -44,7 +51,7 @@ const ResultTab = ({
             readOnly
             title={<div>JSON OUTPUT</div>}
             language={CodeLanguage.json}
-            value={content}
+            value={parseContent(content)}
             isJSONStringifyBeauty
           />
         </div>

@@ -1,0 +1,93 @@
+'use client'
+
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
+import { getEnterpriseDocUrl } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { getDocLanguage } from '@/i18n/language'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { getAppACLCapabilities } from '@/utils/permission'
+import { BuiltInEnvironmentCard } from './built-in-environment-card'
+import { EnvironmentTable } from './environment-table'
+import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './hooks/use-refresh-app-environments-after-deployment-polling'
+import { useUndeployWorkflow } from './hooks/use-undeploy-workflow'
+import { AppDeployStateBoundary } from './state'
+
+function AppDeployContent({
+  appId,
+  canViewAccessPoint,
+}: {
+  appId: string
+  canViewAccessPoint: boolean
+}) {
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
+  const locale = useLocale()
+  const docLanguage = getDocLanguage(locale)
+  const deployOverviewDocUrl = getEnterpriseDocUrl('/use/deploy/overview', docLanguage)
+  useRefreshAppEnvironmentsAfterDeploymentPolling(appId)
+  const undeployWorkflow = useUndeployWorkflow(appId)
+
+  return (
+    <div className="flex h-full min-w-0 flex-col overflow-y-auto bg-components-panel-bg">
+      <header className="flex shrink-0 flex-col gap-y-0.5 px-6 pt-3 pb-2">
+        <div className="flex h-6 items-center">
+          <h1 className="title-xl-semi-bold text-text-primary">
+            {tCommon(($) => $['appMenus.deploy'])}
+          </h1>
+        </div>
+        <p className="flex flex-wrap items-center gap-x-1 system-xs-regular text-text-tertiary">
+          <span>{t(($) => $['studio.description'])}</span>
+          <a
+            href={deployOverviewDocUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center text-text-accent hover:underline focus-visible:ring-1 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            {tCommon(($) => $['operation.learnMore'])}
+          </a>
+        </p>
+      </header>
+
+      <div className="flex min-h-0 grow flex-col gap-4 px-6 py-2 max-md:min-h-max">
+        <BuiltInEnvironmentCard canViewAccessPoint={canViewAccessPoint} />
+        <EnvironmentTable
+          appId={appId}
+          canViewAccessPoint={canViewAccessPoint}
+          onUndeploy={undeployWorkflow}
+        />
+      </div>
+    </div>
+  )
+}
+
+export default function AppDeploy() {
+  const { appId } = useParams<{ appId: string }>()
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+
+  const { canDeploy, canViewAccessPoint } = getAppACLCapabilities(appDetail.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail.maintainer,
+    workspacePermissionKeys,
+  })
+
+  if ((appDetail.mode !== 'workflow' && appDetail.mode !== 'advanced-chat') || !canDeploy)
+    return null
+
+  return (
+    <AppDeployStateBoundary appId={appDetail.id}>
+      <AppDeployContent appId={appDetail.id} canViewAccessPoint={canViewAccessPoint} />
+    </AppDeployStateBoundary>
+  )
+}
