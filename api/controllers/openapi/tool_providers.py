@@ -159,7 +159,7 @@ def tool_rows(
     providers: Iterable[ToolProviderApiEntity], *, words: str, provider: str | None, language: str | None
 ) -> list[ToolRow]:
     rows = [tool_row(p, tool, language) for p in providers if provider is None or p.id == provider for tool in p.tools]
-    rows = [r for r in rows if matches(words, r.name, r.label, r.provider, r.provider_label)]
+    rows = [r for r in rows if matches(words, r.name, r.label, r.description, r.provider, r.provider_label)]
     return sorted(rows, key=lambda r: (r.provider, r.name))
 
 

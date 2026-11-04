@@ -1577,7 +1577,9 @@ class ToolCredentialUpdatePayload(BaseModel):
 class ToolListQuery(PageQuery):
     model_config = ConfigDict(extra="forbid")
 
-    query: str = Field("", description="Words to match in the tool name or label, or the provider id or label")
+    query: str = Field(
+        "", description="Words to match in the tool name, label or description, or the provider id or label"
+    )
     provider_type: ToolSource | None = Field(None, description="Only tools of this provider type")
     provider: str | None = Field(None, description="Only this provider's tools")
 
