@@ -12,8 +12,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy import Table
-from sqlalchemy.engine import Engine
+from sqlalchemy import delete
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden, Unauthorized
 
@@ -24,7 +23,6 @@ from controllers.service_api.app.error import AgentNotPublishedError, AppUnavail
 from controllers.service_api.app.site import AppSiteApi
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
-from models.base import TypeBase
 from models.model import App, AppMode
 from services.app_definition_query_service import (
     AppDefinitionNotPublishedError,
@@ -71,12 +69,6 @@ class AppDatabase:
             session.execute(table.delete().where(table.c.id == object_id))
 
 
-def _mapped_table(model: type[TypeBase]) -> Table:
-    table = model.__table__
-    assert isinstance(table, Table)
-    return table
-
-
 @pytest.fixture
 def flask_app() -> Flask:
     app = Flask(__name__)
@@ -85,25 +77,17 @@ def flask_app() -> Flask:
 
 
 @pytest.fixture
-def app_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[AppDatabase]:
-    """Create the minimal authentication schema and bind its database reference."""
+def app_db(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> Iterator[AppDatabase]:
+    """Bind the service-API database reference to the shared SQLite database."""
 
-    tables = [
-        _mapped_table(Tenant),
-        _mapped_table(Account),
-        _mapped_table(TenantAccountJoin),
-        _mapped_table(App),
-    ]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    registry = scoped_session(maker)
+    registry = scoped_session(sqlite_session_factory)
     binding = _DatabaseBinding(session=registry)
     monkeypatch.setattr("controllers.service_api.wraps.db", binding)
 
     tenant_id = str(uuid4())
     app_id = str(uuid4())
     owner_id = str(uuid4())
-    with maker.begin() as session:
+    with sqlite_session_factory.begin() as session:
         tenant = Tenant(name="Visible tenant")
         tenant.id = tenant_id
         owner = Account(name="Test Author", email="owner@example.com")
@@ -135,7 +119,7 @@ def app_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[A
         )
 
     database = AppDatabase(
-        session_maker=maker,
+        session_maker=sqlite_session_factory,
         tenant_id=tenant_id,
         app_id=app_id,
     )
@@ -360,6 +344,7 @@ def test_get_site_configuration_maps_missing_site_to_forbidden(
 def test_authentication_rejects_empty_or_invisible_database_state(
     flask_app: Flask,
     authenticated_controller: AppDatabase,
+    sqlite_session: Session,
     state: str,
 ) -> None:
     expected_error: type[Exception] = Forbidden
@@ -370,8 +355,8 @@ def test_authentication_rejects_empty_or_invisible_database_state(
     elif state == "archived":
         authenticated_controller.update_tenant(status=TenantStatus.ARCHIVE)
     else:
-        with authenticated_controller.session_maker.begin() as session:
-            session.execute(_mapped_table(TenantAccountJoin).delete())
+        sqlite_session.execute(delete(TenantAccountJoin))
+        sqlite_session.commit()
         expected_error = Unauthorized
 
     with flask_app.test_request_context("/info", headers={"Authorization": "Bearer token"}):

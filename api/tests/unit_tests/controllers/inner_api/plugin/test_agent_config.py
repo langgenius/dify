@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import inspect
 from collections.abc import Callable
+from inspect import unwrap as _raw
 from unittest.mock import patch
 
 import pytest
@@ -23,10 +23,6 @@ from services.agent_config_service import AgentConfigServiceError
 
 MODULE = "controllers.inner_api.plugin.agent_config"
 app = Flask(__name__)
-
-
-def _raw[T: Callable[..., object]](method: T) -> T:
-    return inspect.unwrap(method)
 
 
 def test_manifest_happy_path_calls_service() -> None:

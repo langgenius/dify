@@ -498,10 +498,12 @@ class TestTagResponseAndRoutes:
         assert payload["binding_count"] == "1"
 
     def test_binding_routes_keep_contract(self) -> None:
-        assert vars(TagBindingCollectionApi.post)["__apidoc__"]["id"] == "create_tag_binding"
-        assert vars(TagBindingRemoveApi.post)["__apidoc__"]["id"] == "remove_tag_bindings"
-        assert vars(TagBindingCollectionApi.post)["__apidoc__"].get("deprecated") is not True
-        assert vars(TagBindingRemoveApi.post)["__apidoc__"].get("deprecated") is not True
+        post_doc = TagBindingCollectionApi.post.__apidoc__  # pyrefly: ignore[missing-attribute]
+        remove_doc = TagBindingRemoveApi.post.__apidoc__  # pyrefly: ignore[missing-attribute]
+        assert post_doc["id"] == "create_tag_binding"
+        assert remove_doc["id"] == "remove_tag_bindings"
+        assert post_doc.get("deprecated") is not True
+        assert remove_doc.get("deprecated") is not True
 
         route_map = {
             resource.__name__: urls
