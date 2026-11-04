@@ -1227,7 +1227,10 @@ class NodeOptionQuery(PageQuery):
         description="The mode of the app the nodes go into"
     )
     kind: NodeOptionKind | None = Field(None, description="Only options of this kind")
-    keyword: str | None = Field(None, description="Words to match in the label, ignoring case")
+    keyword: str | None = Field(
+        None,
+        description="Text to find in the label, tool or provider name, node type, or agent name, ignoring case",
+    )
 
     @field_validator("app_mode")
     @classmethod

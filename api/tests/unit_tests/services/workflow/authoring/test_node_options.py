@@ -3,7 +3,7 @@ from collections.abc import Sequence
 
 import pytest
 
-from core.tools.entities.api_entities import ToolProviderApiEntity
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
@@ -87,6 +87,25 @@ def _time_provider() -> ToolProviderApiEntity:
     )
 
 
+def _jina_provider() -> ToolProviderApiEntity:
+    tool = ToolApiEntity(
+        author="langgenius",
+        name="jina_search",
+        label=I18nObject(en_US="Search the web"),
+        description=I18nObject(en_US="Searches the web"),
+    )
+    return ToolProviderApiEntity(
+        id="langgenius/jina/jina",
+        author="langgenius",
+        name="jina",
+        description=I18nObject(en_US="jina"),
+        icon="",
+        label=I18nObject(en_US="Web Reader"),
+        type=ToolProviderType.BUILT_IN,
+        tools=[tool],
+    )
+
+
 @pytest.fixture
 def tools(monkeypatch: pytest.MonkeyPatch) -> list[ToolSource]:
     listed: list[ToolSource] = []
@@ -99,6 +118,14 @@ def tools(monkeypatch: pytest.MonkeyPatch) -> list[ToolSource]:
 
     monkeypatch.setattr(ToolSource, "list_providers", list_providers)
     return listed
+
+
+@pytest.fixture
+def jina_tools(monkeypatch: pytest.MonkeyPatch) -> None:
+    def list_providers(self: ToolSource, **_kwargs: str) -> list[ToolProviderApiEntity]:
+        return [_jina_provider()] if self is ToolSource.BUILTIN else []
+
+    monkeypatch.setattr(ToolSource, "list_providers", list_providers)
 
 
 def _options(
@@ -295,6 +322,37 @@ def test_keyword_filters_labels_case_insensitively() -> None:
         (NodeOptionKind.TOOL, "Current Time"),
     ]
     assert roster.calls[0]["keyword"] == "TIME"
+
+
+@pytest.mark.usefixtures("jina_tools")
+@pytest.mark.parametrize("keyword", ["jina", "JINA_SEARCH", "search the", "langgenius/jina"])
+def test_keyword_finds_a_tool_by_its_provider_or_tool_name_or_label(keyword: str) -> None:
+    rows = _options(kind=NodeOptionKind.TOOL, keyword=keyword, roster=_NoRoster())
+
+    assert [r.label for r in rows] == ["Search the web"]
+
+
+@pytest.mark.usefixtures("jina_tools")
+def test_keyword_that_names_nothing_the_tool_carries_finds_nothing() -> None:
+    assert _options(kind=NodeOptionKind.TOOL, keyword="firecrawl", roster=_NoRoster()) == []
+
+
+def test_keyword_finds_a_block_by_its_node_type() -> None:
+    rows = _options(kind=NodeOptionKind.BLOCK, keyword="HTTP-REQ", roster=_NoRoster())
+
+    assert [r.type for r in rows] == ["http-request"]
+
+
+def test_keyword_finds_the_note_by_its_node_type() -> None:
+    rows = _options(kind=NodeOptionKind.NOTE, keyword="custom", roster=_NoRoster())
+
+    assert [r.type for r in rows] == ["custom-note"]
+
+
+def test_keyword_finds_an_agent_by_its_name() -> None:
+    rows = _options(kind=NodeOptionKind.AGENT, keyword="keeper", roster=_Roster())
+
+    assert [r.label for r in rows] == ["Time Keeper"]
 
 
 def test_blocks_never_offer_a_type_another_kind_seeds() -> None:
