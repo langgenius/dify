@@ -27,7 +27,6 @@ from extensions.ext_redis import redis_client
 from extensions.redis_names import serialize_redis_name
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-
 from libs.datetime_utils import to_utc_timestamp
 
 if TYPE_CHECKING:
