@@ -35,7 +35,14 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
     def __init__(self, fixed_separator: str = "\n\n", separators: list[str] | None = None, **kwargs: Any):
         """Create a new TextSplitter."""
         super().__init__(**kwargs)
-        self._fixed_separator = codecs.decode(fixed_separator, "unicode_escape")
+        # The decode exists so a UI-typed literal "\\n\\n" becomes a real
+        # newline pair. `unicode_escape` re-reads its input as latin-1, which
+        # mangles every non-ASCII separator ("。" becomes "ã\x80\x82") and
+        # silently disables splitting — including for "。", one of this class's
+        # own default separators. Escape processing only ever concerns ASCII.
+        self._fixed_separator = (
+            codecs.decode(fixed_separator, "unicode_escape") if fixed_separator.isascii() else fixed_separator
+        )
         self._separators = separators or ["\n\n", "\n", "。", ". ", " ", ""]
 
     @override

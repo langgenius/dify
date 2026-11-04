@@ -904,6 +904,25 @@ class TestFixedRecursiveCharacterTextSplitter:
         assert len(result) > 0
         assert all(isinstance(chunk, str) for chunk in result)
 
+    def test_non_ascii_separator_is_preserved(self):
+        """`unicode_escape` re-reads input as latin-1 and mangles non-ASCII separators.
+
+        "。" is one of this class's own default separators, so decoding it
+        unconditionally silently disables splitting.
+        """
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="。", chunk_size=50, chunk_overlap=5)
+
+        assert splitter._fixed_separator == "。"
+
+        result = splitter.split_text("这是第一句。这是第二句。这是第三句。")
+        assert result[:3] == ["这是第一句", "这是第二句", "这是第三句"]
+
+    def test_ascii_separator_still_unescapes(self):
+        """The escape handling must keep working for ASCII input."""
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="\\n\\n", chunk_size=50, chunk_overlap=5)
+
+        assert splitter._fixed_separator == "\n\n"
+
     def test_space_separator_handling(self):
         """Test special handling of space separator."""
         text = "word1  word2   word3    word4"  # Multiple spaces
