@@ -25,7 +25,7 @@ from repositories.end_user_connection_repository import EndUserConnectionReposit
 from repositories.end_user_execution_lock import lock_end_user, translate_end_user_lock_errors
 from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionIdentityError
-from services.web_migration_service import GuestMigrationSource, MigrationCounts
+from services.web_migration_service import GuestMigrationNotReadyError, GuestMigrationSource, MigrationCounts
 
 _MIGRATION_APP_MODES = (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT)
 
@@ -48,6 +48,23 @@ def guest_chat_conversations(guest: WebConnectionContext) -> tuple[sa.ColumnElem
     )
 
 
+def unfinished_guest_runs(guest: WebConnectionContext) -> tuple[sa.ColumnElement[bool], ...]:
+    return (
+        WorkflowRun.tenant_id == guest.tenant_id,
+        WorkflowRun.app_id == guest.app_id,
+        WorkflowRun.created_by_role == CreatorUserRole.END_USER,
+        WorkflowRun.created_by == guest.end_user_id,
+        WorkflowRun.status.not_in(
+            (
+                WorkflowExecutionStatus.SUCCEEDED,
+                WorkflowExecutionStatus.FAILED,
+                WorkflowExecutionStatus.STOPPED,
+                WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+            )
+        ),
+    )
+
+
 class WebMigrationRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._sessions = session_factory
@@ -55,7 +72,7 @@ class WebMigrationRepository:
     def get_claim_source(self, *, app_code: str, app_id: str, end_user_id: str) -> GuestMigrationSource | None:
         with self._sessions() as session:
             identity = session.execute(
-                sa.select(App.tenant_id, App.name)
+                sa.select(App.tenant_id, App.name, App.mode)
                 .join(Site, Site.app_id == App.id)
                 .join(EndUser, sa.and_(EndUser.app_id == App.id, EndUser.tenant_id == App.tenant_id))
                 .where(
@@ -87,7 +104,18 @@ class WebMigrationRepository:
             conversations = session.scalar(
                 sa.select(sa.func.count()).select_from(Conversation).where(*guest_chat_conversations(guest))
             )
-            return GuestMigrationSource(guest, app_code, identity.name, connections or 0, conversations or 0)
+            return GuestMigrationSource(
+                guest, app_code, identity.name, connections or 0, conversations or 0, AppMode(identity.mode)
+            )
+
+    def active_task_ids(self, source: GuestMigrationSource) -> tuple[str | None, ...]:
+        guest = source.context
+        with self._sessions() as session:
+            return tuple(
+                session.scalars(
+                    sa.select(WorkflowRun.task_id).where(*unfinished_guest_runs(guest)).order_by(WorkflowRun.id)
+                )
+            )
 
     @translate_end_user_lock_errors()
     def claim_guest(self, source: GuestMigrationSource, *, account_end_user_id: str) -> MigrationCounts:
@@ -145,47 +173,12 @@ class WebMigrationRepository:
             ):
                 raise ConnectionIdentityError()
             account = WebConnectionContext(guest.tenant_id, app.id, target.id, target.account_id)
-            # Run admission is not serialized with migration. This snapshot may miss
-            # a concurrent start; a Run finishing meanwhile is skipped until retry.
-            active_runs = tuple(
-                session.scalars(
-                    sa.select(WorkflowRun.id).where(
-                        WorkflowRun.tenant_id == guest.tenant_id,
-                        WorkflowRun.app_id == guest.app_id,
-                        WorkflowRun.created_by_role == CreatorUserRole.END_USER,
-                        WorkflowRun.created_by == guest.end_user_id,
-                        WorkflowRun.status.not_in(
-                            (
-                                WorkflowExecutionStatus.SUCCEEDED,
-                                WorkflowExecutionStatus.FAILED,
-                                WorkflowExecutionStatus.STOPPED,
-                                WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
-                            )
-                        ),
-                    )
-                )
-            )
-            active_conversation_ids: set[str] = set()
-            for run_chunk in batched(active_runs, 500, strict=False):
-                active_conversation_ids.update(
-                    session.scalars(
-                        sa.select(Message.conversation_id).where(
-                            Message.app_id == guest.app_id,
-                            Message.workflow_run_id.in_(run_chunk),
-                        )
-                    )
-                )
-            # Do not lock a skipped conversation: its active producer may still use it.
-            candidates = (
-                session.execute(sa.select(Conversation.id).where(*guest_history_roots(guest)).order_by(Conversation.id))
-                .scalars()
-                .all()
-            )
-            skipped = tuple(
-                conversation_id for conversation_id in candidates if conversation_id in active_conversation_ids
-            )
+            # A new Run may have appeared after the last readiness poll. Startup
+            # remains unfenced, so this check only narrows that race window.
+            if session.scalar(sa.select(sa.exists().where(*unfinished_guest_runs(guest)))):
+                raise GuestMigrationNotReadyError()
             eligible = tuple(
-                conversation_id for conversation_id in candidates if conversation_id not in active_conversation_ids
+                session.scalars(sa.select(Conversation.id).where(*guest_history_roots(guest)).order_by(Conversation.id))
             )
             chat_count = 0
             connections = EndUserConnectionRepository.transfer_guest_connections(session, guest, account)
@@ -302,4 +295,4 @@ class WebMigrationRepository:
             ):
                 raise ConnectionIdentityError()
             EndUserConnectionRepository.transfer_guest_defaults(session, guest, account)
-            return MigrationCounts(connections, chat_count, skipped, len(active_runs))
+            return MigrationCounts(connections, chat_count)

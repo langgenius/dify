@@ -842,6 +842,7 @@ def build_application_services(
             passports=web_passport,
             tokens=web_passport_tokens,
             identities=web_identity,
+            tasks=AppTaskControlService(redis_client=redis),
         ),
         end_user_connections=end_user_connections,
         end_user_connection_preflight=end_user_connection_preflight,

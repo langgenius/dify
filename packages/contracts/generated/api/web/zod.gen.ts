@@ -185,6 +185,7 @@ export const zConnectionClaimErrorResponse = z.object({
     'connection_conflict',
     'end_user_busy',
     'end_user_login_required',
+    'migration_not_ready',
     'unauthorized',
     'web_app_access_denied',
   ]),
@@ -220,14 +221,12 @@ export const zConnectionClaimPreflightDetails = z.object({
  */
 export const zConnectionClaimSuccessResponse = z.object({
   access_token: z.string(),
-  active_run_count: z.int().gte(0),
   app_code: z.string(),
   claimed_connections: z.int().gte(0),
   claimed_conversations: z.int().gte(0),
   index: z.int().gte(0),
-  skipped_conversation_count: z.int().gte(0),
-  skipped_conversation_ids: z.array(z.string()),
   status: z.literal('success'),
+  stop_requested_run_count: z.int().gte(0),
 })
 
 /**

@@ -13,6 +13,7 @@ import pytest
 import sqlalchemy as sa
 from flask import Flask
 from flask.testing import FlaskClient
+from redis.client import Pipeline
 from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import TestResponse
@@ -37,6 +38,7 @@ from models.workflow import Workflow, WorkflowType
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.web_migration_repository import WebMigrationRepository
 from repositories.web_passport_repository import WebPassportRepository
+from services.app_task_service import AppTaskControlService
 from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionConflictError
 from services.end_user_connections.management import ConnectionService
@@ -105,6 +107,7 @@ def harness(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> Iterator[ClaimHarness]:
     config_overrides(
         SECRET_KEY="guest-connection-claim-test-key-with-32-bytes",
@@ -115,7 +118,33 @@ def harness(
         CONSOLE_API_URL="https://console.example.com",
         COOKIE_DOMAIN="",
     )
+    from services import app_task_service, web_migration_service
+
+    def execute_pipeline(pipeline: "Pipeline[bytes]") -> list[object]:
+        for command, _options in pipeline.command_stack:
+            redis_transport[1](*command)
+        pipeline.command_stack.clear()
+        return []
+
+    monkeypatch.setattr(Pipeline, "execute", execute_pipeline)
+    monkeypatch.setattr(type(app_task_service.db), "engine", property(lambda _: sqlite_session_factory.kw["bind"]))
     oauth = make_oauth_harness(sqlite_session_factory, monkeypatch)
+
+    def finish_cancelled_runs(_delay: float) -> None:
+        from graphon.enums import WorkflowExecutionStatus
+        from models.workflow import WorkflowRun
+
+        with sqlite_session_factory.begin() as session:
+            session.execute(
+                sa.update(WorkflowRun)
+                .where(
+                    WorkflowRun.status == WorkflowExecutionStatus.RUNNING,
+                    WorkflowRun.stop_requested_at.is_not(None),
+                )
+                .values(status=WorkflowExecutionStatus.STOPPED, finished_at=datetime.now(UTC))
+            )
+
+    monkeypatch.setattr(web_migration_service, "sleep", finish_cancelled_runs)
     account = oauth.base.context
     with sqlite_session_factory.begin() as session:
         session.execute(sa.update(App).where(App.id == account.app_id).values(mode=AppMode.ADVANCED_CHAT))
@@ -161,6 +190,7 @@ def harness(
             passports=passports,
             tokens=tokens,
             identities=identity,
+            tasks=AppTaskControlService(redis_client=redis_transport[0]),
         ),
         web_login_handoff=WebLoginHandoffService(
             grants=RedisWebLoginGrantStore(redis=redis_client),
@@ -1088,6 +1118,7 @@ def persist_migration_history(harness: ClaimHarness, owner: WebConnectionContext
         )
         run = WorkflowRun(
             id=str(uuid4()),
+            task_id=str(uuid4()),
             tenant_id=owner.tenant_id,
             app_id=owner.app_id,
             workflow_id=harness.oauth.base.workflow_id,
@@ -1272,13 +1303,21 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(h
 
 
 def test_conversation_failure_rolls_back_entire_passport(harness: ClaimHarness) -> None:
+    from graphon.enums import WorkflowExecutionStatus
     from models.model import UploadFile
     from models.web import PinnedConversation, SavedMessage
+    from models.workflow import WorkflowRun
 
     base = harness.oauth.base
     selected = base.service.create_api_key(base.context, base.command())
-    conversation_id, message_id, _, upload_id = persist_migration_history(harness, base.context)
+    conversation_id, message_id, run_id, upload_id = persist_migration_history(harness, base.context)
     save_choices(harness, base.context, selected.id, conversation_id)
+    with base.sessions.begin() as session:
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id == run_id)
+            .values(status=WorkflowExecutionStatus.RUNNING, finished_at=None)
+        )
     engine = base.sessions.kw["bind"]
 
     def fail_conversation(
@@ -1300,6 +1339,7 @@ def test_conversation_failure_rolls_back_entire_passport(harness: ClaimHarness) 
     assert result["status"] == "failed"
     assert base.service.get_connection(base.context, selected.id).id == selected.id
     with base.sessions() as session:
+        assert session.scalar(sa.select(WorkflowRun.stop_requested_at).where(WorkflowRun.id == run_id)) is not None
         assert (
             session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == upload_id))
             == base.context.end_user_id
@@ -1329,7 +1369,7 @@ def test_full_claim_rejects_resource_selection(harness: ClaimHarness) -> None:
 
 @pytest.mark.parametrize("with_connections", [False, True])
 @pytest.mark.parametrize("state", ["running", "paused"])
-def test_claim_skips_only_unfinished_conversations_and_retry_transfers_them(
+def test_claim_stops_unfinished_runs_and_transfers_all_conversations(
     harness: ClaimHarness, with_connections: bool, state: str
 ) -> None:
     from graphon.enums import WorkflowExecutionStatus
@@ -1354,14 +1394,12 @@ def test_claim_skips_only_unfinished_conversations_and_retry_transfers_them(
     assert response.status_code == 200
     result = response.get_json()["data"][0]
     assert result["status"] == "success"
-    assert (result["claimed_connections"], result["claimed_conversations"]) == (int(with_connections), 1)
-    assert result["skipped_conversation_count"] == 1
-    assert result["skipped_conversation_ids"] == [active_id]
-    assert result["active_run_count"] == 1
+    assert (result["claimed_connections"], result["claimed_conversations"]) == (int(with_connections), 2)
+    assert result["stop_requested_run_count"] == 1
     with base.sessions() as session:
         assert (
             session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == active_id))
-            == base.context.end_user_id
+            == harness.account.end_user_id
         )
         assert (
             session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == idle_id))
@@ -1372,7 +1410,10 @@ def test_claim_skips_only_unfinished_conversations_and_retry_transfers_them(
                 session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == file_id))
                 == harness.account.end_user_id
             )
-        for conversation_id, owner in ((active_id, base.context.end_user_id), (idle_id, harness.account.end_user_id)):
+        for conversation_id, owner in (
+            (active_id, harness.account.end_user_id),
+            (idle_id, harness.account.end_user_id),
+        ):
             assert (
                 session.scalar(
                     sa.select(PinnedConversation.created_by).where(
@@ -1382,7 +1423,7 @@ def test_claim_skips_only_unfinished_conversations_and_retry_transfers_them(
                 == owner
             )
         for message_id, owner in (
-            (active_message, base.context.end_user_id),
+            (active_message, harness.account.end_user_id),
             (idle_message, harness.account.end_user_id),
         ):
             assert (
@@ -1400,71 +1441,14 @@ def test_claim_skips_only_unfinished_conversations_and_retry_transfers_them(
         )
     if connection is not None:
         assert base.service.get_connection(harness.account, connection.id).id == connection.id
+    with base.sessions() as session:
+        run = session.get(WorkflowRun, run_id)
+        assert run is not None
+        assert run.stop_requested_at is not None
+        assert run.status == WorkflowExecutionStatus.STOPPED
+        assert run.created_by == base.context.end_user_id
     repeated = harness.claim().get_json()["data"][0]
-    assert repeated["skipped_conversation_ids"] == [active_id]
-    assert (
-        repeated["claimed_connections"],
-        repeated["claimed_conversations"],
-        repeated["skipped_conversation_count"],
-    ) == (0, 0, 1)
-    with base.sessions.begin() as session:
-        session.execute(
-            sa.update(WorkflowRun)
-            .where(WorkflowRun.id == run_id)
-            .values(
-                status=WorkflowExecutionStatus.SUCCEEDED,
-                finished_at=datetime.now(UTC),
-            )
-        )
-    retry = harness.claim().get_json()["data"][0]
-    assert (
-        retry["claimed_connections"],
-        retry["claimed_conversations"],
-        retry["skipped_conversation_count"],
-        retry["active_run_count"],
-    ) == (0, 1, 0, 0)
-    assert retry["skipped_conversation_ids"] == []
-    with base.sessions() as session:
-        assert (
-            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == active_id))
-            == harness.account.end_user_id
-        )
-
-
-def test_claim_skips_run_started_after_initial_source_check(harness: ClaimHarness) -> None:
-    from graphon.enums import WorkflowExecutionStatus
-    from models.model import UploadFile
-    from models.workflow import WorkflowRun
-
-    base = harness.oauth.base
-    conversation_id, _, run_id, upload_id = persist_migration_history(harness, base.context)
-    repository = WebMigrationRepository(session_factory=base.sessions)
-    source = repository.get_claim_source(
-        app_code=harness.oauth.app_code, app_id=base.context.app_id, end_user_id=base.context.end_user_id
-    )
-    assert source is not None
-    with base.sessions.begin() as session:
-        session.execute(
-            sa.update(WorkflowRun)
-            .where(WorkflowRun.id == run_id)
-            .values(
-                status=WorkflowExecutionStatus.RUNNING,
-                finished_at=None,
-            )
-        )
-    result = repository.claim_guest(source, account_end_user_id=harness.account.end_user_id)
-    assert result.conversations == 0
-    assert result.skipped_conversations == (conversation_id,)
-    assert result.active_runs == 1
-    with base.sessions() as session:
-        assert (
-            session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == upload_id))
-            == harness.account.end_user_id
-        )
-        assert (
-            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
-            == base.context.end_user_id
-        )
+    assert (repeated["claimed_connections"], repeated["claimed_conversations"]) == (0, 0)
 
 
 def test_claim_transfers_persistent_file_ownership(harness: ClaimHarness) -> None:
@@ -1628,7 +1612,7 @@ def test_preparation_without_an_admitted_run_does_not_block_claim(harness: Claim
     assert harness.claim().status_code == 200
 
 
-def test_best_effort_handles_more_than_one_conversation_chunk(harness: ClaimHarness) -> None:
+def test_claim_stops_active_run_and_handles_more_than_one_conversation_chunk(harness: ClaimHarness) -> None:
     from graphon.enums import WorkflowExecutionStatus
     from models.workflow import WorkflowRun
 
@@ -1658,9 +1642,8 @@ def test_best_effort_handles_more_than_one_conversation_chunk(harness: ClaimHarn
             ]
         )
     result = harness.claim().get_json()["data"][0]
-    assert result["claimed_conversations"] == 501
-    assert result["skipped_conversation_count"] == 1
-    assert result["skipped_conversation_ids"] == [active_id]
+    assert result["claimed_conversations"] == 502
+    assert result["stop_requested_run_count"] == 1
     with base.sessions() as session:
         assert (
             session.scalar(
@@ -1671,7 +1654,7 @@ def test_best_effort_handles_more_than_one_conversation_chunk(harness: ClaimHarn
                     Conversation.from_end_user_id == harness.account.end_user_id,
                 )
             )
-            == 501
+            == 502
         )
 
 
@@ -1701,6 +1684,7 @@ def test_batch_preflight_failure_still_prevents_all_transfers_with_an_active_run
     assert response.get_json()["code"] == "connection_claim_preflight_failed"
     assert base.service.get_connection(base.context, connection.id).id == connection.id
     with base.sessions() as session:
+        assert session.scalar(sa.select(WorkflowRun.stop_requested_at).where(WorkflowRun.id == run_id)) is None
         assert (
             session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
             == base.context.end_user_id
@@ -1710,7 +1694,10 @@ def test_batch_preflight_failure_still_prevents_all_transfers_with_an_active_run
         )
 
 
-def test_batch_continues_after_a_passport_with_an_active_conversation(harness: ClaimHarness) -> None:
+@pytest.mark.parametrize("stop_failure", [False, True])
+def test_batch_continues_after_stopping_or_rejecting_an_active_passport(
+    harness: ClaimHarness, stop_failure: bool
+) -> None:
     from graphon.enums import WorkflowExecutionStatus
     from models.workflow import WorkflowRun
 
@@ -1722,6 +1709,7 @@ def test_batch_continues_after_a_passport_with_an_active_conversation(harness: C
             .where(WorkflowRun.id == run_id)
             .values(
                 status=WorkflowExecutionStatus.RUNNING,
+                task_id=None if stop_failure else str(uuid4()),
                 finished_at=None,
             )
         )
@@ -1751,22 +1739,304 @@ def test_batch_continues_after_a_passport_with_an_active_conversation(harness: C
     )
     assert response.status_code == 200
     first, second = response.get_json()["data"]
-    assert (first["status"], first["skipped_conversation_ids"], first["claimed_conversations"]) == (
-        "success",
-        [active_id],
-        0,
-    )
-    assert (second["status"], second["skipped_conversation_count"], second["claimed_conversations"]) == (
+    if stop_failure:
+        assert first["status"] == "failed"
+        assert first["error"]["code"] == "connection_claim_unavailable"
+    else:
+        assert (first["status"], first["stop_requested_run_count"], first["claimed_conversations"]) == ("success", 1, 1)
+    assert (second["status"], second["stop_requested_run_count"], second["claimed_conversations"]) == (
         "success",
         0,
         1,
     )
     with base.sessions() as session:
-        assert (
-            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == active_id))
-            == base.context.end_user_id
+        assert session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == active_id)) == (
+            base.context.end_user_id if stop_failure else harness.account.end_user_id
         )
         assert (
             session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == second_conversation))
             == harness.account.end_user_id
+        )
+
+
+@pytest.mark.parametrize("failure", ["missing_task", "transport", "scheduled"])
+def test_stop_failure_keeps_guest_resources_and_allows_retry(
+    harness: ClaimHarness,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    failure: str,
+) -> None:
+    from redis.exceptions import ConnectionError as RedisConnectionError
+
+    from graphon.enums import WorkflowExecutionStatus
+    from models.model import UploadFile
+    from models.workflow import WorkflowRun
+
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    conversation_id, _, run_id, file_id = persist_migration_history(harness, base.context)
+    task_id = str(uuid4())
+    with base.sessions.begin() as session:
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id == run_id)
+            .values(
+                status=WorkflowExecutionStatus.SCHEDULED if failure == "scheduled" else WorkflowExecutionStatus.RUNNING,
+                task_id=None if failure == "missing_task" else task_id,
+                finished_at=None,
+            )
+        )
+    if failure == "transport":
+        redis_transport[1].side_effect = RedisConnectionError("Cancellation transport unavailable")
+    result = harness.claim().get_json()["data"][0]
+    assert result["status"] == "failed"
+    assert result["error"]["code"] == "connection_claim_unavailable"
+    assert base.service.get_connection(base.context, selected.id).id == selected.id
+    with base.sessions() as session:
+        assert (
+            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
+            == base.context.end_user_id
+        )
+        assert (
+            session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == file_id)) == base.context.end_user_id
+        )
+    redis_transport[1].side_effect = None
+    with base.sessions.begin() as session:
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id == run_id)
+            .values(task_id=task_id, status=WorkflowExecutionStatus.RUNNING)
+        )
+    retried = harness.claim().get_json()["data"][0]
+    assert (
+        retried["status"],
+        retried["claimed_connections"],
+        retried["claimed_conversations"],
+        retried["stop_requested_run_count"],
+    ) == ("success", 1, 1, 1)
+
+
+def test_claim_stops_only_source_guest_runs(harness: ClaimHarness) -> None:
+    from graphon.enums import WorkflowExecutionStatus
+    from models.workflow import WorkflowRun
+
+    base = harness.oauth.base
+    _, _, guest_run, _ = persist_migration_history(harness, base.context)
+    _, _, account_run, _ = persist_migration_history(harness, harness.account)
+    with base.sessions.begin() as session:
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id.in_((guest_run, account_run)))
+            .values(status=WorkflowExecutionStatus.RUNNING, finished_at=None)
+        )
+    result = harness.claim().get_json()["data"][0]
+    assert result["stop_requested_run_count"] == 1
+    with base.sessions() as session:
+        assert session.scalar(sa.select(WorkflowRun.stop_requested_at).where(WorkflowRun.id == guest_run)) is not None
+        assert session.scalar(sa.select(WorkflowRun.stop_requested_at).where(WorkflowRun.id == account_run)) is None
+
+
+def test_claim_stops_standalone_workflow_run(harness: ClaimHarness) -> None:
+    from graphon.enums import WorkflowExecutionStatus
+    from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+    from models.workflow import WorkflowRun
+
+    base = harness.oauth.base
+    run_id = str(uuid4())
+    with base.sessions.begin() as session:
+        session.execute(sa.update(App).where(App.id == base.context.app_id).values(mode=AppMode.WORKFLOW))
+        session.add(
+            WorkflowRun(
+                id=run_id,
+                task_id=str(uuid4()),
+                tenant_id=base.context.tenant_id,
+                app_id=base.context.app_id,
+                workflow_id=base.workflow_id,
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                version="published",
+                graph="{}",
+                inputs="{}",
+                outputs="{}",
+                status=WorkflowExecutionStatus.RUNNING,
+                created_by_role=CreatorUserRole.END_USER,
+                created_by=base.context.end_user_id,
+            )
+        )
+    result = harness.claim().get_json()["data"][0]
+    assert (result["status"], result["claimed_conversations"], result["stop_requested_run_count"]) == ("success", 0, 1)
+    with base.sessions() as session:
+        assert session.scalar(sa.select(WorkflowRun.stop_requested_at).where(WorkflowRun.id == run_id)) is not None
+
+
+def test_claim_waits_for_run_completion_before_transferring(
+    harness: ClaimHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from graphon.enums import WorkflowExecutionStatus
+    from models.workflow import WorkflowRun
+    from services import web_migration_service
+
+    base = harness.oauth.base
+    connection = base.service.create_api_key(base.context, base.command())
+    conversation_id, _, run_id, _ = persist_migration_history(harness, base.context)
+    with base.sessions.begin() as session:
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id == run_id)
+            .values(status=WorkflowExecutionStatus.RUNNING, finished_at=None)
+        )
+    finish = web_migration_service.sleep
+    now = [0.0]
+    delays: list[float] = []
+
+    def wait(delay: float) -> None:
+        delays.append(delay)
+        now[0] += delay
+        assert base.service.get_connection(base.context, connection.id).id == connection.id
+        with base.sessions() as session:
+            assert (
+                session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
+                == base.context.end_user_id
+            )
+        if len(delays) == 2:
+            finish(delay)
+
+    monkeypatch.setattr(web_migration_service, "monotonic", lambda: now[0])
+    monkeypatch.setattr(web_migration_service, "sleep", wait)
+    item = harness.claim().get_json()["data"][0]
+    assert (
+        item["status"],
+        item["claimed_connections"],
+        item["claimed_conversations"],
+        item["stop_requested_run_count"],
+    ) == ("success", 1, 1, 1)
+    assert delays == [0.1, 0.1]
+    with base.sessions() as session:
+        assert (
+            session.scalar(sa.select(WorkflowRun.status).where(WorkflowRun.id == run_id))
+            == WorkflowExecutionStatus.STOPPED
+        )
+
+
+@pytest.mark.parametrize("second_active", [False, True])
+def test_readiness_timeout_preserves_resources_and_shares_one_batch_budget(
+    harness: ClaimHarness, monkeypatch: pytest.MonkeyPatch, second_active: bool
+) -> None:
+    from graphon.enums import WorkflowExecutionStatus
+    from models.model import UploadFile
+    from models.workflow import WorkflowRun
+    from services import web_migration_service
+
+    base = harness.oauth.base
+    connection = base.service.create_api_key(base.context, base.command())
+    conversation_id, _, run_id, file_id = persist_migration_history(harness, base.context)
+    with base.sessions.begin() as session:
+        second_guest = EndUser(
+            tenant_id=base.context.tenant_id,
+            app_id=base.context.app_id,
+            type=EndUserType.BROWSER,
+            session_id=str(uuid4()),
+        )
+        session.add(second_guest)
+        session.flush()
+        second_id = second_guest.id
+    second_context = replace(base.context, end_user_id=second_id)
+    second_conversation, _, second_run, _ = persist_migration_history(harness, second_context)
+    with base.sessions.begin() as session:
+        run_ids = (run_id, second_run) if second_active else (run_id,)
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id.in_(run_ids))
+            .values(status=WorkflowExecutionStatus.RUNNING, finished_at=None)
+        )
+    second_token = harness.signer.issue(
+        {
+            "sub": "Web API Passport",
+            "app_id": base.context.app_id,
+            "app_code": harness.oauth.app_code,
+            "end_user_id": second_id,
+        }
+    )
+    now = [0.0]
+    delays: list[float] = []
+
+    def wait(delay: float) -> None:
+        delays.append(delay)
+        now[0] += delay
+
+    monkeypatch.setattr(web_migration_service, "monotonic", lambda: now[0])
+    monkeypatch.setattr(web_migration_service, "sleep", wait)
+    response = harness.client.post(
+        "/api/migration/claim",
+        headers={"Authorization": f"Bearer {harness.proof}"},
+        json={"passports": [harness.guest_passport, second_token]},
+    )
+    assert response.status_code == 200
+    first, second = response.get_json()["data"]
+    assert first["status"] == "failed"
+    assert first["error"]["code"] == "migration_not_ready"
+    assert first["error"]["status"] == 409
+    if second_active:
+        assert second["status"] == "failed"
+        assert second["error"]["code"] == "migration_not_ready"
+    else:
+        assert (second["status"], second["claimed_conversations"]) == ("success", 1)
+    assert sum(delays) == pytest.approx(5.0)
+    assert all(0 < delay <= 0.1 for delay in delays)
+    assert base.service.get_connection(base.context, connection.id).id == connection.id
+    with base.sessions() as session:
+        assert session.scalar(sa.select(WorkflowRun.stop_requested_at).where(WorkflowRun.id == run_id)) is not None
+        assert (
+            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
+            == base.context.end_user_id
+        )
+        assert (
+            session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == file_id)) == base.context.end_user_id
+        )
+        assert session.scalar(
+            sa.select(Conversation.from_end_user_id).where(Conversation.id == second_conversation)
+        ) == (second_id if second_active else harness.account.end_user_id)
+    with base.sessions.begin() as session:
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id == run_id)
+            .values(status=WorkflowExecutionStatus.STOPPED, finished_at=datetime.now(UTC))
+        )
+    retried = harness.claim().get_json()["data"][0]
+    assert (
+        retried["status"],
+        retried["claimed_connections"],
+        retried["claimed_conversations"],
+        retried["stop_requested_run_count"],
+    ) == ("success", 1, 1, 0)
+
+
+def test_transfer_rejects_run_started_after_readiness(harness: ClaimHarness) -> None:
+    from graphon.enums import WorkflowExecutionStatus
+    from models.model import UploadFile
+    from models.workflow import WorkflowRun
+    from services.web_migration_service import GuestMigrationNotReadyError
+
+    base = harness.oauth.base
+    conversation_id, _, run_id, file_id = persist_migration_history(harness, base.context)
+    repository = WebMigrationRepository(session_factory=base.sessions)
+    source = repository.get_claim_source(
+        app_code=harness.oauth.app_code, app_id=base.context.app_id, end_user_id=base.context.end_user_id
+    )
+    assert source is not None
+    assert repository.active_task_ids(source) == ()
+    with base.sessions.begin() as session:
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id == run_id)
+            .values(status=WorkflowExecutionStatus.RUNNING, finished_at=None)
+        )
+    with pytest.raises(GuestMigrationNotReadyError):
+        repository.claim_guest(source, account_end_user_id=harness.account.end_user_id)
+    with base.sessions() as session:
+        assert (
+            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
+            == base.context.end_user_id
+        )
+        assert (
+            session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == file_id)) == base.context.end_user_id
         )

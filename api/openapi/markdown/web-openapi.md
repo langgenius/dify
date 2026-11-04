@@ -912,7 +912,7 @@ Retrieve the metadata for a specific app.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /migration/claim
-Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Each Passport atomically transfers Connections, files and eligible conversations with their personal state. Conversations with unfinished Guest runs stay with the Guest and are reported as skipped. Existing Guest runs may fail if they later need a transferred Connection or file. Concurrent migration or identity updates may report end_user_busy without waiting. Run discovery is best effort and may miss concurrent starts. Success includes the App code, Account App Passport, transferred counts, skipped count and active Run count. Keep the Guest Passport and retry with the same Account after active runs finish to transfer their remaining conversations or files. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Before transfer, request cancellation of persisted unfinished Guest Workflow/Chatflow Runs through the existing stop flow, then poll until no unfinished Guest Runs remain. The batch shares a five-second readiness window with 100ms polling outside migration transactions. Timeout returns migration_not_ready (nested status 409) for that item without transferring its resources. Stop failure also prevents that Passport from transferring resources. Each Passport atomically transfers Connections, files and all conversations with their personal state. Run terminal status is checked again inside each transfer transaction. Concurrent migration or identity updates may report end_user_busy without waiting. Run discovery is best effort and may miss concurrent starts; startup is not locked. Success includes the App code, Account App Passport, transferred counts and accepted stop count. Cancellation is not rolled back if the subsequent migration fails. Keep the Guest Passport to retry remaining resources with the same Account. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
 
 #### Request Body
 
@@ -1550,7 +1550,7 @@ Completion request failed.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string, <br>**Available values:** "app_not_found", "connection_claim_unavailable", "connection_conflict", "end_user_busy", "end_user_login_required", "unauthorized", "web_app_access_denied" | *Enum:* `"app_not_found"`, `"connection_claim_unavailable"`, `"connection_conflict"`, `"end_user_busy"`, `"end_user_login_required"`, `"unauthorized"`, `"web_app_access_denied"` | Yes |
+| code | string, <br>**Available values:** "app_not_found", "connection_claim_unavailable", "connection_conflict", "end_user_busy", "end_user_login_required", "migration_not_ready", "unauthorized", "web_app_access_denied" | *Enum:* `"app_not_found"`, `"connection_claim_unavailable"`, `"connection_conflict"`, `"end_user_busy"`, `"end_user_login_required"`, `"migration_not_ready"`, `"unauthorized"`, `"web_app_access_denied"` | Yes |
 | message | string |  | Yes |
 | status | integer |  | Yes |
 
@@ -1593,14 +1593,12 @@ Guest migration preflight failed. No resources were transferred.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_token | string |  | Yes |
-| active_run_count | integer | Guest Runs still unfinished at the migration snapshot | Yes |
 | app_code | string |  | Yes |
 | claimed_connections | integer | Number transferred by this item; zero when no Guest Connections remain | Yes |
 | claimed_conversations | integer | Chat conversations transferred for supported Workflow/Chatflow Apps | Yes |
 | index | integer |  | Yes |
-| skipped_conversation_count | integer | Guest conversations retained because a Run is unfinished | Yes |
-| skipped_conversation_ids | [ string ] | Guest conversation IDs retained at the migration snapshot; retry after their Runs finish | Yes |
 | status | string |  | Yes |
+| stop_requested_run_count | integer | Guest Runs with accepted stop requests; transfer waits until Guest Runs are terminal | Yes |
 
 #### ConnectionClaimUnavailableError
 

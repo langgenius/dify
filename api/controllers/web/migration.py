@@ -25,6 +25,7 @@ from services.web_migration_service import (
     ConnectionClaimFailure,
     ConnectionClaimPreflightError,
     ConnectionClaimUnavailableError,
+    GuestMigrationNotReadyError,
 )
 from services.web_passport_service import (
     WebPassportAccessDeniedError,
@@ -51,13 +52,10 @@ class ConnectionClaimSuccessResponse(ResponseModel):
     claimed_conversations: int = Field(
         ge=0, description="Chat conversations transferred for supported Workflow/Chatflow Apps"
     )
-    skipped_conversation_count: int = Field(
-        ge=0, description="Guest conversations retained because a Run is unfinished"
+    stop_requested_run_count: int = Field(
+        ge=0,
+        description="Guest Runs with accepted stop requests; transfer waits until Guest Runs are terminal",
     )
-    skipped_conversation_ids: list[str] = Field(
-        description="Guest conversation IDs retained at the migration snapshot; retry after their Runs finish"
-    )
-    active_run_count: int = Field(ge=0, description="Guest Runs still unfinished at the migration snapshot")
     claimed_connections: int = Field(
         ge=0, description="Number transferred by this item; zero when no Guest Connections remain"
     )
@@ -70,6 +68,7 @@ class ConnectionClaimErrorResponse(ResponseModel):
         "connection_conflict",
         "end_user_busy",
         "end_user_login_required",
+        "migration_not_ready",
         "unauthorized",
         "web_app_access_denied",
     ]
@@ -108,6 +107,8 @@ class ConnectionClaimResponse(ResponseModel):
 
 def claim_error_response(failure: ConnectionClaimFailure) -> ConnectionClaimErrorResponse:
     error = failure.error
+    if isinstance(error, GuestMigrationNotReadyError):
+        return ConnectionClaimErrorResponse(code="migration_not_ready", status=409, message=str(error))
     if isinstance(error, EndUserBusyError):
         return ConnectionClaimErrorResponse(code="end_user_busy", status=409, message=str(error))
     if isinstance(error, ConnectionIdentityError):
@@ -154,14 +155,18 @@ class ConnectionClaimApi(Resource):
         "Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. "
         "An unavailable preflight dependency returns 503; neither failure starts a transfer. "
         "Items run in input order with independent transactions; every item returns its index and success or failure. "
-        "Each Passport atomically transfers Connections, files and eligible conversations with their personal state. "
-        "Conversations with unfinished Guest runs stay with the Guest and are reported as skipped. "
-        "Existing Guest runs may fail if they later need a transferred Connection or file. "
+        "Before transfer, request cancellation of persisted unfinished Guest Workflow/Chatflow Runs "
+        "through the existing stop flow, then poll until no unfinished Guest Runs remain. "
+        "The batch shares a five-second readiness window with 100ms polling outside migration transactions. "
+        "Timeout returns migration_not_ready (nested status 409) for that item without transferring its resources. "
+        "Stop failure also prevents that Passport from transferring resources. "
+        "Each Passport atomically transfers Connections, files and all conversations with their personal state. "
+        "Run terminal status is checked again inside each transfer transaction. "
         "Concurrent migration or identity updates may report end_user_busy without waiting. "
-        "Run discovery is best effort and may miss concurrent starts. "
-        "Success includes the App code, Account App Passport, transferred counts, skipped count and active Run count. "
-        "Keep the Guest Passport and retry with the same Account after active runs finish "
-        "to transfer their remaining conversations or files. "
+        "Run discovery is best effort and may miss concurrent starts; startup is not locked. "
+        "Success includes the App code, Account App Passport, transferred counts and accepted stop count. "
+        "Cancellation is not rolled back if the subsequent migration fails. "
+        "Keep the Guest Passport to retry remaining resources with the same Account. "
         "The Guest Passport is not bound to the Account by migration. "
         "Retries transfer only resources still owned by the Guest; empty resource categories report zero. "
         "New Guest resources are included. "
@@ -212,9 +217,7 @@ class ConnectionClaimApi(Resource):
                         access_token=result.access_token,
                         claimed_connections=result.claimed_connections,
                         claimed_conversations=result.claimed_conversations,
-                        skipped_conversation_count=len(result.skipped_conversations),
-                        skipped_conversation_ids=list(result.skipped_conversations),
-                        active_run_count=result.active_runs,
+                        stop_requested_run_count=result.stop_requested_runs,
                     )
                 )
         return (
