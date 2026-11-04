@@ -383,7 +383,7 @@ class AppPackageFillApi(Resource):
     placed again as the canvas's Organize does, and each note is framed around the nodes it covers.
 
     Nothing is saved. Filling a filled package changes nothing. Returns 400 ``app_package_invalid`` for a
-    package that cannot be read, including one whose ``app.yaml`` is not a YAML mapping or uses YAML anchors or
+    package that cannot be read, including one whose ``app.yaml`` is not a YAML mapping or uses YAML
     aliases, and 413 for one over this server's limits. A package already at the entry
     limit without a ``manifest.yaml`` is refused with 413, because fill adds one.
     """

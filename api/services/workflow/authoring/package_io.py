@@ -7,7 +7,7 @@ import lzma
 import zipfile
 import zlib
 from collections.abc import Iterator, Sequence
-from typing import IO, Any, Final
+from typing import IO, Any, Final, override
 
 import yaml
 from pydantic import ValidationError
@@ -44,7 +44,9 @@ _ZIP_ERRORS: Final = (
     lzma.LZMAError,
 )
 _YAML_ERRORS: Final = (UnicodeDecodeError, yaml.YAMLError, ValueError, RecursionError)
-_APP_USES_ALIASES: Final = f"{APP_PATH} uses YAML anchors or aliases; write each value out"
+_APP_USES_ALIASES: Final = f"{APP_PATH} uses YAML aliases; write each value out"
+_APP_NOT_YAML: Final = f"{APP_PATH} is not valid YAML: {{problem}}"
+_PROBLEM_AT: Final = "{problem} (line {line}, column {column})"
 _APP_NOT_MAPPING: Final = f"{APP_PATH} must be a YAML mapping"
 
 
@@ -160,10 +162,32 @@ def read_app_document(content: bytes) -> dict[str, Any]:
     except PackageYamlAliasError as error:
         raise PackageUnreadableError(_APP_USES_ALIASES) from error
     except _YAML_ERRORS as error:
-        raise PackageUnreadableError(f"{APP_PATH} is not valid YAML: {error}") from error
+        raise PackageUnreadableError(_APP_NOT_YAML.format(problem=_problem(error))) from error
     if not isinstance(document, dict):
         raise PackageUnreadableError(_APP_NOT_MAPPING)
     return document
+
+
+def _problem(error: Exception) -> str:
+    """One line: what PyYAML found, and where when it says."""
+    if not isinstance(error, yaml.MarkedYAMLError):
+        return str(error).partition("\n")[0]
+    problem = error.problem or error.context or type(error).__name__
+    mark = error.problem_mark
+    if mark is None:
+        return problem
+    return _PROBLEM_AT.format(problem=problem, line=mark.line + 1, column=mark.column + 1)
+
+
+class _NoAliasDumper(yaml.Dumper):
+    @override
+    def ignore_aliases(self, data: object) -> bool:
+        return True
+
+
+def dump_app_document(document: dict[str, Any]) -> bytes:
+    """The `app.yaml` bytes of `document`, a value shared between keys written out in each, as the reader requires."""
+    return yaml.dump(document, Dumper=_NoAliasDumper, allow_unicode=True).encode()
 
 
 def _load_yaml(content: bytes) -> object:

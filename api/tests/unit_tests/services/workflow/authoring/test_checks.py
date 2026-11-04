@@ -409,7 +409,7 @@ def test_an_unreadable_app_yaml_is_refused(content: str, dsl: DslCheckRequest) -
 @pytest.mark.parametrize(
     ("content", "cause"),
     [
-        pytest.param(_shared_value_app_yaml().decode(), "anchors or aliases", id="alias"),
+        pytest.param(_shared_value_app_yaml().decode(), "uses YAML aliases", id="alias"),
         pytest.param("{not yaml", "not valid YAML", id="syntax"),
         pytest.param("- a list\n", "YAML mapping", id="not-a-mapping"),
         pytest.param("app: 1\napp: 2\n", "duplicate YAML key: app", id="duplicate-key"),

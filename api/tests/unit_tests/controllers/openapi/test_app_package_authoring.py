@@ -51,7 +51,7 @@ from services.workflow.graph_check import IssueCode
 from tests.helpers.unit.model_factories import make_workflow
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.services.test_app_package_service import _package_storage
-from tests.unit_tests.services.workflow.authoring.test_fill_package import _skeleton_dsl
+from tests.unit_tests.services.workflow.authoring.test_fill_package import _shared_value_app_yaml, _skeleton_dsl
 
 pytestmark = pytest.mark.usefixtures("bare_workspace_credentials")
 
@@ -187,10 +187,9 @@ def test_fill_names_a_package_without_a_readable_app_name_app_ifpkg(app: Flask, 
 
 
 def test_fill_and_check_refuse_an_app_yaml_with_aliases_and_name_the_cause(app: Flask) -> None:
-    shared = {"type": "text"}
-    aliased = yaml.safe_dump({"app": {"mode": "workflow", "name": "x"}, "a": shared, "b": shared}).encode()
+    aliased = _shared_value_app_yaml()
 
-    with pytest.raises(AppPackageInvalid, match="anchors or aliases") as from_fill:
+    with pytest.raises(AppPackageInvalid, match="uses YAML aliases") as from_fill:
         _fill(app, _folder({_APP: aliased}))
     with pytest.raises(AppPackageInvalid) as from_check:
         _check(app, _folder({_APP: aliased}))
