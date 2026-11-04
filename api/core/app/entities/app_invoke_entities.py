@@ -19,6 +19,7 @@ from core.credit_usage import (
 from core.entities.provider_configuration import ProviderModelBundle
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
+from models.agent_config_entities import AgentSoulModelConfig
 from models.model import AppMode
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
 
@@ -286,6 +287,11 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
     ``agent_session_scope_config_version_id`` identifies the draft or immutable
     config version whose Workspace Binding should be reused for this session.
 
+    ``agent_build_model`` is the model a Build chat turn runs on instead of the
+    Agent Soul model. ``None`` means the turn uses the Agent Soul model. It is
+    request-scoped, only set for ``build_draft`` turns, and never persisted to
+    Agent config.
+
     Uploaded files use the inherited ``files`` field. The Agent App runtime
     sends supported images directly to vision models and preserves the sandbox
     locator fallback for all other files.
@@ -296,6 +302,7 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     agent_session_scope_config_version_id: str | None = None
     agent_llm_gateway_enabled: bool = False
+    agent_build_model: AgentSoulModelConfig | None = None
 
 
 class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import inspect
+from collections.abc import Callable, Mapping
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
@@ -10,6 +12,7 @@ from unittest.mock import MagicMock
 import pytest
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
+from flask import Flask
 from pytest_mock import MockerFixture
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
@@ -26,12 +29,18 @@ from core.app.apps.agent_app.app_generator import (
     AgentAppNotPublishedError,
 )
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import (
+    AgentAppGenerateEntity,
+    InvokeFrom,
+    ModelConfigWithCredentialsEntity,
+    UserFrom,
+)
 from core.app.entities.queue_entities import (
     QueueAnnotationReplyEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
+from core.errors.error import ProviderTokenNotInitError
 from core.moderation.base import ModerationError
 from models import Account as _app_generator_Account
 from models import AppModelConfig
@@ -48,7 +57,7 @@ from models.agent import (
     AgentWorkingResourceStatus,
     AgentWorkspaceBinding,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
 from models.enums import AppStatus, ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation
 from services.agent.workspace_service import (
@@ -69,6 +78,19 @@ manager is replaced with a no-op so the thread body can run inline.
 
 
 MODULE = "core.app.apps.agent_app.app_generator"
+
+_AGENT_MODEL = {
+    "plugin_id": "langgenius/openai",
+    "model_provider": "langgenius/openai/openai",
+    "model": "gpt-agent",
+    "model_settings": {"temperature": 0.7},
+}
+_BUILD_MODEL = {
+    "plugin_id": "langgenius/anthropic",
+    "model_provider": "langgenius/anthropic/anthropic",
+    "model": "claude-build",
+    "model_settings": {"temperature": 0.1},
+}
 
 
 class _TraceRecorder:
@@ -402,6 +424,132 @@ class TestAppGeneratorCases:
             assert generate_entity.call_args.kwargs["extras"] == {"auto_generate_conversation_name": True}
             assert [request["extras"] for request in scope_requests] == [{"auto_generate_conversation_name": True}]
 
+    class TestBuildModel:
+        """Build chat can run on a request-scoped model without changing the Agent's configured model."""
+
+        @staticmethod
+        def _wire(
+            generator: AgentAppGenerator,
+            mocker: MockerFixture,
+            *,
+            config_version_kind: str,
+            reject_model: Callable[[AgentAppConfig], None] | None = None,
+        ):
+            agent_soul = AgentSoulConfig.model_validate({"model": _AGENT_MODEL})
+            mocker.patch.object(
+                generator,
+                "_resolve_agent",
+                return_value=(_agent(), "build-draft-1", config_version_kind, agent_soul),
+            )
+            mocker.patch.object(generator, "_prepare_user_inputs", return_value={})
+            init_records = mocker.patch.object(
+                generator, "_init_generate_records", return_value=(_conversation(), _message())
+            )
+            mocker.patch.object(generator, "_handle_response", return_value="raw")
+            validated_configs: list[AgentAppConfig] = []
+
+            def convert(app_config: AgentAppConfig) -> ModelConfigWithCredentialsEntity:
+                validated_configs.append(app_config)
+                if reject_model is not None:
+                    reject_model(app_config)
+                return make_model_config(provider=app_config.model.provider, model=app_config.model.model, mode="chat")
+
+            # The real converter checks workspace credentials and model status for the synthesized config.
+            mocker.patch(f"{MODULE}.ModelConfigConverter.convert", side_effect=convert)
+            mocker.patch(f"{MODULE}.MessageBasedAppQueueManager")
+            thread = mocker.patch(f"{MODULE}.threading.Thread")
+            mocker.patch(f"{MODULE}.AgentAppGenerateResponseConverter.convert", return_value={"result": "ok"})
+            return agent_soul, validated_configs, init_records, thread
+
+        @staticmethod
+        def _generate(
+            generator: AgentAppGenerator,
+            *,
+            build_model: Mapping[str, object] | None,
+            invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
+        ):
+            args: dict[str, object] = {"query": "build it", "inputs": {}, "draft_type": "debug_build"}
+            if build_model is not None:
+                args["build_model"] = build_model
+            return generator.generate(
+                app_model=_app_generator_app(),
+                user=_app_generator_account(),
+                args=args,
+                invoke_from=invoke_from,
+                session=_session(),
+                streaming=True,
+            )
+
+        def test_build_draft_turn_validates_and_carries_request_build_model(
+            self, generator: AgentAppGenerator, mocker: MockerFixture
+        ) -> None:
+            agent_soul, validated_configs, _, thread = self._wire(generator, mocker, config_version_kind="build_draft")
+
+            assert self._generate(generator, build_model=_BUILD_MODEL) == {"result": "ok"}
+
+            [app_config] = validated_configs
+            assert (app_config.model.provider, app_config.model.model) == (
+                "langgenius/anthropic/anthropic",
+                "claude-build",
+            )
+            assert app_config.model.parameters == {"temperature": 0.1}
+            entity = thread.call_args.kwargs["kwargs"]["application_generate_entity"]
+            assert entity.agent_build_model == AgentSoulModelConfig.model_validate(_BUILD_MODEL)
+            assert entity.model_conf.model == "claude-build"
+            thread.return_value.start.assert_called_once()
+            # The build draft's own Agent Soul keeps the Agent's configured model.
+            assert agent_soul.model == AgentSoulModelConfig.model_validate(_AGENT_MODEL)
+
+        def test_build_draft_turn_without_build_model_keeps_agent_soul_model(
+            self, generator: AgentAppGenerator, mocker: MockerFixture
+        ) -> None:
+            _, validated_configs, _, thread = self._wire(generator, mocker, config_version_kind="build_draft")
+
+            self._generate(generator, build_model=None)
+
+            [app_config] = validated_configs
+            assert (app_config.model.provider, app_config.model.model) == ("langgenius/openai/openai", "gpt-agent")
+            assert thread.call_args.kwargs["kwargs"]["application_generate_entity"].agent_build_model is None
+
+        @pytest.mark.parametrize(
+            ("config_version_kind", "invoke_from"),
+            [("draft", InvokeFrom.DEBUGGER), ("snapshot", InvokeFrom.WEB_APP)],
+        )
+        def test_build_model_is_rejected_outside_build_draft_turns(
+            self,
+            generator: AgentAppGenerator,
+            mocker: MockerFixture,
+            config_version_kind: str,
+            invoke_from: InvokeFrom,
+        ) -> None:
+            _, validated_configs, init_records, thread = self._wire(
+                generator, mocker, config_version_kind=config_version_kind
+            )
+
+            with pytest.raises(AgentAppGeneratorError, match="build_model"):
+                self._generate(generator, build_model=_BUILD_MODEL, invoke_from=invoke_from)
+
+            assert validated_configs == []
+            init_records.assert_not_called()
+            thread.assert_not_called()
+
+        def test_unavailable_build_model_fails_without_falling_back(
+            self, generator: AgentAppGenerator, mocker: MockerFixture
+        ) -> None:
+            def reject_model(app_config: AgentAppConfig) -> None:
+                raise ProviderTokenNotInitError(f"Model {app_config.model.model} credentials is not initialized.")
+
+            _, validated_configs, init_records, thread = self._wire(
+                generator, mocker, config_version_kind="build_draft", reject_model=reject_model
+            )
+
+            with pytest.raises(ProviderTokenNotInitError, match="claude-build"):
+                self._generate(generator, build_model=_BUILD_MODEL)
+
+            assert len(validated_configs) == 1
+            init_records.assert_not_called()
+            thread.assert_not_called()
+
     class TestGenerateWorker:
         @pytest.fixture(autouse=True)
         def patch_context(self, mocker: MockerFixture):
@@ -496,6 +644,44 @@ class TestAppGeneratorCases:
 
             assert runner.run.call_args.kwargs["agent_config_snapshot_id"] == "s"
             assert runner.run.call_args.kwargs["session_scope_snapshot_id"] is None
+
+        @pytest.mark.parametrize(
+            ("agent_build_model", "expected_model"),
+            [
+                (AgentSoulModelConfig.model_validate(_BUILD_MODEL), _BUILD_MODEL),
+                (None, _AGENT_MODEL),
+            ],
+            ids=["with-build-model", "without-build-model"],
+        )
+        def test_worker_runs_build_draft_turn_on_requested_model_only(
+            self,
+            generator: AgentAppGenerator,
+            mocker: MockerFixture,
+            agent_build_model: AgentSoulModelConfig | None,
+            expected_model: dict[str, object],
+        ) -> None:
+            runner, _ = self._wire(generator, mocker)
+            build_draft_soul = AgentSoulConfig.model_validate({"model": _AGENT_MODEL, "config_note": "keep me"})
+            generator._resolve_agent_by_id.side_effect = lambda **_kwargs: (
+                _agent(agent_id="a"),
+                _app_generator_snapshot(snapshot_id="s", agent_id="a"),
+                build_draft_soul,
+            )
+
+            generator._generate_worker(
+                flask_app=Flask(__name__),
+                context=contextvars.copy_context(),
+                application_generate_entity=_build_draft_entity(agent_build_model),
+                queue_manager=_FakeQueueManager(),
+                conversation_id="conv",
+                message_id="msg",
+                user_from=UserFrom.ACCOUNT,
+            )
+
+            run_soul = runner.run.call_args.kwargs["agent_soul"]
+            assert run_soul.model == AgentSoulModelConfig.model_validate(expected_model)
+            assert run_soul.config_note == "keep me"
+            assert build_draft_soul.model == AgentSoulModelConfig.model_validate(_AGENT_MODEL)
 
         def test_worker_passes_files_to_backend_runner_without_rewriting_query(self, generator, mocker: MockerFixture):
             runner, _ = self._wire(generator, mocker, guard_query="你看得见这张图片吗")
@@ -619,6 +805,33 @@ def _make_entity(query: str) -> AgentAppGenerateEntity:
         ),
         agent_id="agent-1",
         agent_config_snapshot_id="snapshot-1",
+    )
+
+
+def _build_draft_entity(agent_build_model: AgentSoulModelConfig | None) -> AgentAppGenerateEntity:
+    return AgentAppGenerateEntity(
+        task_id="task-1",
+        app_config=AgentAppConfig(
+            tenant_id="tenant",
+            app_id="app1",
+            app_mode=AppMode.AGENT,
+            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+            app_model_config_dict={},
+            model=ModelConfigEntity(provider="langgenius/openai/openai", model="gpt-agent", mode="chat"),
+            prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+        ),
+        model_conf=make_model_config(provider="langgenius/openai/openai", model="gpt-agent", mode="chat"),
+        inputs={},
+        files=[],
+        query="query",
+        user_id="user",
+        stream=True,
+        invoke_from=InvokeFrom.DEBUGGER,
+        trace_scope=_trace_scope(),
+        agent_id="a",
+        agent_config_snapshot_id="s",
+        agent_config_version_kind="build_draft",
+        agent_build_model=agent_build_model,
     )
 
 

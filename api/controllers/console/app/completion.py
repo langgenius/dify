@@ -52,6 +52,7 @@ from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
 from models.agent import AgentConfigDraftType
+from models.agent_config_entities import AgentSoulModelConfig
 from models.model import App, AppMode
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
@@ -108,6 +109,13 @@ class ChatMessagePayload(BaseMessagePayload):
         default="draft",
         description="Agent App debug config source. Use debug_build while the Agent is in build mode.",
     )
+    build_model: AgentSoulModelConfig | None = Field(
+        default=None,
+        description=(
+            "Agent build chat only (draft_type=debug_build): run this turn on this model instead of the "
+            "Agent's configured model. Not saved to the Agent. Omit to use the Agent's model."
+        ),
+    )
 
     @field_validator("conversation_id", "parent_message_id")
     @classmethod
@@ -141,7 +149,17 @@ context needed by later runs, such as:
 After config persistence completes, respond FINISHED."""
 
 
-register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
+class AgentBuildChatFinalizePayload(BaseModel):
+    build_model: AgentSoulModelConfig | None = Field(
+        default=None,
+        description=(
+            "Run the finalization turn on this model instead of the Agent's configured model. "
+            "Not saved to the Agent. Omit to use the Agent's model."
+        ),
+    )
+
+
+register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload, AgentBuildChatFinalizePayload)
 register_response_schema_models(console_ns, SimpleResultResponse)
 
 
@@ -320,6 +338,7 @@ class AgentBuildChatFinalizeApi(Resource):
     @console_ns.doc("finalize_agent_build_chat")
     @console_ns.doc(description="Run a build-draft Agent App turn that asks the agent to push config updates")
     @console_ns.doc(params={"agent_id": "Agent ID"})
+    @console_ns.expect(console_ns.models[AgentBuildChatFinalizePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "Agent, build draft, or conversation not found")
@@ -331,7 +350,15 @@ class AgentBuildChatFinalizeApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @with_session
-    def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
+    @model_validate(AgentBuildChatFinalizePayload)
+    def post(
+        self,
+        req_data: AgentBuildChatFinalizePayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        agent_id: UUID,
+    ):
         app_model = AgentRosterService(session).get_agent_runtime_app_model(
             tenant_id=current_tenant_id, agent_id=str(agent_id)
         )
@@ -341,6 +368,7 @@ class AgentBuildChatFinalizeApi(Resource):
             current_user=current_user,
             app_model=app_model,
             agent_id=str(agent_id),
+            build_model=req_data.build_model,
         )
 
 
@@ -435,6 +463,11 @@ def _create_chat_message(
     raw_payload = console_ns.payload or {}
     args_model = ChatMessagePayload.model_validate(raw_payload)
     args = args_model.model_dump(exclude_none=True, by_alias=True)
+    if args_model.build_model is not None and (
+        AppMode.value_of(app_model.mode) != AppMode.AGENT or args_model.draft_type != "debug_build"
+    ):
+        # Other chats would silently ignore it; Preview must run the Agent's configured model.
+        raise BadRequest("build_model is only supported for Agent build chat (draft_type=debug_build).")
 
     if AppMode.value_of(app_model.mode) == AppMode.AGENT:
         draft_type = AgentConfigDraftType(args_model.draft_type)
@@ -476,8 +509,23 @@ def _create_chat_message(
 
 
 def _create_build_chat_finalization_message(
-    *, session: Session, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
+    *,
+    session: Session,
+    current_user: Account,
+    app_model: App,
+    current_tenant_id: str,
+    agent_id: str,
+    build_model: AgentSoulModelConfig | None,
 ):
+    """Run the Build chat finalization turn and wait for it to finish.
+
+    ``build_model`` is the request-scoped Build chat model; ``None`` runs the
+    turn on the build draft's Agent Soul model. Either way nothing about the
+    model is written to Agent config. Returns the success body once the turn
+    reaches ``message_end``; raises ``CompletionRequestError`` when the stream
+    reports an error or ends early, and the mapped provider errors when the
+    model is unavailable.
+    """
     debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
         session=session,
         current_tenant_id=current_tenant_id,
@@ -494,6 +542,8 @@ def _create_build_chat_finalization_message(
         "conversation_id": debug_conversation_id,
         "auto_generate_name": False,
     }
+    if build_model is not None:
+        args["build_model"] = build_model.model_dump(mode="json", exclude_none=True)
     external_trace_id = get_external_trace_id(request)
     if external_trace_id:
         args["external_trace_id"] = external_trace_id

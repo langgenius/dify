@@ -1629,6 +1629,17 @@ export const zAgentComposerAgentResponse = z.object({
 })
 
 /**
+ * AgentSoulModelCredentialRef
+ *
+ * Reference to model credentials resolved only at runtime.
+ */
+export const zAgentSoulModelCredentialRef = z.object({
+  id: z.string().max(255).nullish(),
+  provider: z.string().max(255).nullish(),
+  type: z.string().min(1).max(64),
+})
+
+/**
  * AppVariableConfig
  */
 export const zAppVariableConfig = z.object({
@@ -2439,6 +2450,53 @@ export const zAppJsonObjectFormResponse = z.object({
 })
 
 /**
+ * AgentModelResponseFormatConfig
+ */
+export const zAgentModelResponseFormatConfig = z.object({
+  type: z.string().max(64).nullish(),
+})
+
+/**
+ * AgentSoulModelSettings
+ *
+ * Model parameters for the Agent Soul model.
+ *
+ * Model plugins can declare arbitrary parameters via ``parameter_rules``
+ * (e.g. Qwen/Tongyi's ``enable_thinking``) beyond the common OpenAI-style
+ * fields typed below, so extra keys must round-trip through persistence
+ * rather than being dropped.
+ */
+export const zAgentSoulModelSettings = z.object({
+  frequency_penalty: z.number().nullish(),
+  max_tokens: z.int().nullish(),
+  presence_penalty: z.number().nullish(),
+  response_format: z.union([z.string(), zAgentModelResponseFormatConfig]).nullish(),
+  stop: z.array(z.string()).nullish(),
+  temperature: z.number().nullish(),
+  top_p: z.number().nullish(),
+})
+
+/**
+ * AgentSoulModelConfig
+ *
+ * Stable model selection for Agent runtime without storing secret values.
+ */
+export const zAgentSoulModelConfig = z.object({
+  credential_ref: zAgentSoulModelCredentialRef.nullish(),
+  model: z.string().min(1).max(255),
+  model_provider: z.string().min(1).max(255),
+  model_settings: zAgentSoulModelSettings.optional(),
+  plugin_id: z.string().min(1).max(255),
+})
+
+/**
+ * AgentBuildChatFinalizePayload
+ */
+export const zAgentBuildChatFinalizePayload = z.object({
+  build_model: zAgentSoulModelConfig.nullish(),
+})
+
+/**
  * AgentEnvVariableConfig
  */
 export const zAgentEnvVariableConfig = z.object({
@@ -2528,17 +2586,6 @@ export const zAgentSoulMemoryConfig = z.object({
 })
 
 /**
- * AgentSoulModelCredentialRef
- *
- * Reference to model credentials resolved only at runtime.
- */
-export const zAgentSoulModelCredentialRef = z.object({
-  id: z.string().max(255).nullish(),
-  provider: z.string().max(255).nullish(),
-  type: z.string().min(1).max(64),
-})
-
-/**
  * AgentSandboxProviderConfig
  */
 export const zAgentSandboxProviderConfig = z.object({
@@ -2621,6 +2668,20 @@ export const zAgentFileRefConfig = z.object({
 export const zWorkflowNodeJobMetadata = z.object({
   agent_soul: z.record(z.string(), z.unknown()).nullish(),
   file_refs: z.array(zAgentFileRefConfig).nullish(),
+})
+
+/**
+ * DeclaredOutputCheckConfig
+ *
+ * File-output content check via a model-based comparison against a benchmark file.
+ *
+ * Per the PRD output configuration section, output checks are **file-only** and optional. Stage 4 §4.3.
+ */
+export const zDeclaredOutputCheckConfig = z.object({
+  benchmark_file_ref: zAgentFileRefConfig.nullish(),
+  enabled: z.boolean().optional().default(false),
+  model_ref: zAgentSoulModelConfig.nullish(),
+  prompt: z.string().nullish(),
 })
 
 /**
@@ -3147,60 +3208,6 @@ export const zAgentKnowledgeDatasetConfig = z.object({
   description: z.string().nullish(),
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
-})
-
-/**
- * AgentModelResponseFormatConfig
- */
-export const zAgentModelResponseFormatConfig = z.object({
-  type: z.string().max(64).nullish(),
-})
-
-/**
- * AgentSoulModelSettings
- *
- * Model parameters for the Agent Soul model.
- *
- * Model plugins can declare arbitrary parameters via ``parameter_rules``
- * (e.g. Qwen/Tongyi's ``enable_thinking``) beyond the common OpenAI-style
- * fields typed below, so extra keys must round-trip through persistence
- * rather than being dropped.
- */
-export const zAgentSoulModelSettings = z.object({
-  frequency_penalty: z.number().nullish(),
-  max_tokens: z.int().nullish(),
-  presence_penalty: z.number().nullish(),
-  response_format: z.union([z.string(), zAgentModelResponseFormatConfig]).nullish(),
-  stop: z.array(z.string()).nullish(),
-  temperature: z.number().nullish(),
-  top_p: z.number().nullish(),
-})
-
-/**
- * AgentSoulModelConfig
- *
- * Stable model selection for Agent runtime without storing secret values.
- */
-export const zAgentSoulModelConfig = z.object({
-  credential_ref: zAgentSoulModelCredentialRef.nullish(),
-  model: z.string().min(1).max(255),
-  model_provider: z.string().min(1).max(255),
-  model_settings: zAgentSoulModelSettings.optional(),
-  plugin_id: z.string().min(1).max(255),
-})
-
-/**
- * DeclaredOutputCheckConfig
- *
- * File-output content check via a model-based comparison against a benchmark file.
- *
- * Per the PRD output configuration section, output checks are **file-only** and optional. Stage 4 §4.3.
- */
-export const zDeclaredOutputCheckConfig = z.object({
-  benchmark_file_ref: zAgentFileRefConfig.nullish(),
-  enabled: z.boolean().optional().default(false),
-  model_ref: zAgentSoulModelConfig.nullish(),
-  prompt: z.string().nullish(),
 })
 
 /**
@@ -4041,6 +4048,8 @@ export const zPostAgentByAgentIdAudioToTextPath = z.object({
  * Audio transcription successful
  */
 export const zPostAgentByAgentIdAudioToTextResponse = zAudioTranscriptResponse
+
+export const zPostAgentByAgentIdBuildChatFinalizeBody = zAgentBuildChatFinalizePayload
 
 export const zPostAgentByAgentIdBuildChatFinalizePath = z.object({
   agent_id: z.uuid(),

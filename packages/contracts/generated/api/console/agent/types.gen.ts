@@ -204,6 +204,10 @@ export type UnsupportedAudioTypeError = ErrorResponse & {
   status: 415
 }
 
+export type AgentBuildChatFinalizePayload = {
+  build_model?: AgentSoulModelConfig | null
+}
+
 export type SimpleResultResponse = {
   result: string
 }
@@ -948,6 +952,14 @@ export type AgentInviteOptionResponse = {
   workflow_node_id?: string | null
 }
 
+export type AgentSoulModelConfig = {
+  credential_ref?: AgentSoulModelCredentialRef | null
+  model: string
+  model_provider: string
+  model_settings?: AgentSoulModelSettings
+  plugin_id: string
+}
+
 export type AgentSoulConfig = {
   app_features?: AgentSoulAppFeaturesConfig
   app_variables?: Array<AppVariableConfig>
@@ -1576,6 +1588,23 @@ export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'work
 
 export type AgentStatus = 'active' | 'archived'
 
+export type AgentSoulModelCredentialRef = {
+  id?: string | null
+  provider?: string | null
+  type: string
+}
+
+export type AgentSoulModelSettings = {
+  frequency_penalty?: number | null
+  max_tokens?: number | null
+  presence_penalty?: number | null
+  response_format?: string | AgentModelResponseFormatConfig | null
+  stop?: Array<string> | null
+  temperature?: number | null
+  top_p?: number | null
+  [key: string]: unknown
+}
+
 export type AgentSoulAppFeaturesConfig = {
   file_upload?: AgentFileUploadFeatureConfig
   opening_statement?: string | null
@@ -1636,14 +1665,6 @@ export type AgentSoulMemoryConfig = {
   artifacts?: Array<AgentMemoryArtifactConfig>
   budget?: string | null
   scope?: string | null
-}
-
-export type AgentSoulModelConfig = {
-  credential_ref?: AgentSoulModelCredentialRef | null
-  model: string
-  model_provider: string
-  model_settings?: AgentSoulModelSettings
-  plugin_id: string
 }
 
 export type AgentSoulPromptConfig = {
@@ -2066,6 +2087,11 @@ export type AppUserInputFormConfigResponse = {
   [key: string]: unknown
 }
 
+export type AgentModelResponseFormatConfig = {
+  type?: string | null
+  [key: string]: unknown
+}
+
 export type AgentFileUploadFeatureConfig = {
   allowed_file_extensions?: Array<string>
   allowed_file_types?: Array<FileType>
@@ -2153,23 +2179,6 @@ export type AgentMemoryArtifactConfig = {
   name?: string | null
   type?: string | null
   url?: string | null
-  [key: string]: unknown
-}
-
-export type AgentSoulModelCredentialRef = {
-  id?: string | null
-  provider?: string | null
-  type: string
-}
-
-export type AgentSoulModelSettings = {
-  frequency_penalty?: number | null
-  max_tokens?: number | null
-  presence_penalty?: number | null
-  response_format?: string | AgentModelResponseFormatConfig | null
-  stop?: Array<string> | null
-  temperature?: number | null
-  top_p?: number | null
   [key: string]: unknown
 }
 
@@ -2422,11 +2431,6 @@ export type AgentKnowledgeRetrievalConfig = {
   score_threshold?: number | null
   top_k?: number | null
   weights?: AgentKnowledgeWeightedScoreConfig | null
-}
-
-export type AgentModelResponseFormatConfig = {
-  type?: string | null
-  [key: string]: unknown
 }
 
 export type AgentSoulDifyToolCredentialRef = {
@@ -2976,7 +2980,7 @@ export type PostAgentByAgentIdAudioToTextResponse =
   PostAgentByAgentIdAudioToTextResponses[keyof PostAgentByAgentIdAudioToTextResponses]
 
 export type PostAgentByAgentIdBuildChatFinalizeData = {
-  body?: never
+  body: AgentBuildChatFinalizePayload
   path: {
     agent_id: string
   }
