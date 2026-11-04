@@ -80,7 +80,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 )
 from services.errors.base import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
-from services.errors.dataset import DatasetNameDuplicateError
+from services.errors.dataset import DatasetIndexingInProgressError, DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 from services.feature_service import FeatureService
@@ -1273,6 +1273,24 @@ class DatasetService:
             return False
 
         DatasetService.check_dataset_permission(dataset, user, session)
+
+        # Refuse to delete while any document is still queued or actively indexing.
+        # Deleting now would let in-flight indexing tasks keep writing vectors for a
+        # dataset whose cleanup has already been scheduled (see #38518).
+        indexing_in_flight = DocumentService._INDEXING_STATUSES + (IndexingStatus.WAITING,)
+        has_indexing_document = session.scalar(
+            select(Document.id)
+            .where(
+                Document.dataset_id == dataset.id,
+                Document.indexing_status.in_(indexing_in_flight),
+            )
+            .limit(1)
+        )
+        if has_indexing_document:
+            raise DatasetIndexingInProgressError(
+                "The dataset has documents that are still indexing. "
+                "Wait until indexing completes or fails before deleting the dataset."
+            )
 
         dataset_was_deleted.send(dataset)
 
