@@ -10,7 +10,12 @@ import { sseRenderer } from './sse'
 import { textRenderer } from './text'
 
 /** The operation being rendered and the input it was called with. */
-export type RenderCall = Readonly<{ opId: string; input: Readonly<Record<string, unknown>> }>
+export type RenderCall = Readonly<{
+  opId: string
+  input: Readonly<Record<string, unknown>>
+  /** The credential came from DIFY_TOKEN, so what it may call is not known. */
+  tokenFromEnv: boolean
+}>
 
 export type Renderer = (
   res: Response,

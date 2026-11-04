@@ -30,7 +30,7 @@ function matchesOnly(name: string, only: readonly string[] | undefined): boolean
 // A run that dies mid-stream still folds to whatever arrived: the events already
 // seen are real, so they are reported as an `incomplete` result rather than thrown
 // away behind a network error.
-export const sseRenderer: Renderer = async (res, io, options, { input }) => {
+export const sseRenderer: Renderer = async (res, io, options, { input, tokenFromEnv }) => {
   const result = newFoldResult()
   const stream = options.stream ?? false
 
@@ -49,7 +49,7 @@ export const sseRenderer: Renderer = async (res, io, options, { input }) => {
   }
 
   if (result.status === FOLD_STATUS.Incomplete && !failed) io.notice(STREAM_CLOSED_EARLY)
-  foldBrokenStream(result, input)
+  if (!tokenFromEnv) foldBrokenStream(result, input)
 
   if (!stream) await io.document(finishFold(result))
   return exitCodeFor(result)
