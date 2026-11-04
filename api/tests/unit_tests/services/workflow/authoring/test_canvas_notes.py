@@ -1,7 +1,9 @@
 import copy
+import io
 import itertools
 import json
 import math
+import zipfile
 from pathlib import Path
 from typing import TypedDict
 
@@ -10,8 +12,9 @@ import yaml
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from graphon.enums import BuiltinNodeTypes
+from libs.archive_writer import ArchiveLimits, entries_from_folder
 from models.model import AppMode
-from services.workflow.authoring import FillContext
+from services.workflow.authoring import FillContext, fill_package
 from services.workflow.authoring.canvas_notes import (
     NODE_HEIGHT,
     NODE_WIDTH,
@@ -20,11 +23,14 @@ from services.workflow.authoring.canvas_notes import (
     NoteSize,
     is_lexical,
     lexical_text,
+    text_loads,
 )
 from services.workflow.authoring.fill import fill_graph_document
 from services.workflow.graph_check import CANVAS_NOTE_TYPE
 
 CTX = FillContext(tenant_id="tenant-1", account_id="account-1")
+LIMITS = ArchiveLimits(max_entries=8, max_bytes=1024 * 1024)
+APP = "app.yaml"
 FIXTURES = Path(__file__).parents[4] / "fixtures" / "workflow"
 NOTES_EXPORT = "book_translation_iteration_note_workflow.yml"
 # The fixture's yellow note: two lines with an empty one between them, all plain text.
@@ -66,21 +72,42 @@ def _chain(*extra: _Node) -> list[_Node]:
     return [*itertools.starmap(_node, zip(CHAIN, types, strict=True)), *extra]
 
 
-def _fill(nodes: list[_Node]) -> dict[str, _Node]:
-    """Fill a workflow of `nodes`, the first four of them in a chain; the nodes by id, as filled in place."""
+def _document(nodes: list[_Node]) -> dict[str, object]:
     edges = [{"source": source, "target": target} for source, target in itertools.pairwise(CHAIN)]
-    document: dict[str, object] = {
+    return {
         "kind": "app",
         "version": CURRENT_APP_DSL_VERSION,
         "app": {"mode": AppMode.WORKFLOW.value, "name": "Skeleton"},
         "workflow": {"graph": {"nodes": nodes, "edges": edges}},
     }
-    fill_graph_document(document, CTX)
+
+
+def _fill(nodes: list[_Node]) -> dict[str, _Node]:
+    """Fill a workflow of `nodes`, the first four of them in a chain; the nodes by id, as filled in place."""
+    fill_graph_document(_document(nodes), CTX)
     return {node["id"]: node for node in nodes}
 
 
 def _filled(*extra: _Node) -> dict[str, _Node]:
     return _fill(_chain(*extra))
+
+
+def _fill_app(app: bytes) -> bytes:
+    """The `app.yaml` a package holding only `app` fills to."""
+    archive = fill_package(entries_from_folder({APP: io.BytesIO(app)}), CTX, limits=LIMITS)
+    with zipfile.ZipFile(io.BytesIO(archive)) as members:
+        return members.read(APP)
+
+
+def _exported(app: bytes) -> bytes:
+    """`app` as an export after its import gives it back: the stored document dumped as the export dumps it."""
+    return yaml.dump(yaml.safe_load(app), allow_unicode=True).encode()
+
+
+def _note_text(app: bytes, note_id: str) -> str:
+    nodes = yaml.safe_load(app)["workflow"]["graph"]["nodes"]
+    [text] = [node["data"]["text"] for node in nodes if node["id"] == note_id]
+    return text
 
 
 def _frame(*nodes: _Node) -> dict[str, float]:
@@ -226,6 +253,28 @@ def test_plain_text_that_reads_as_json_other_than_an_object_is_converted(text: s
     note = _filled(_note("plain", text=text))["plain"]
 
     assert note["data"]["text"] == lexical_text(text)
+
+
+def test_an_exported_note_fills_again_byte_for_byte_with_text_check_accepts() -> None:
+    app = yaml.dump(_document(_chain(_note("intake", "start", "first", text="one\ntwo"))), allow_unicode=True)
+    exported = _exported(_fill_app(app.encode()))
+
+    filled_again = _fill_app(exported)
+
+    assert filled_again == exported
+    assert text_loads({"text": _note_text(filled_again, "intake")})
+    assert _note_text(filled_again, "intake") == lexical_text("one\ntwo")
+
+
+def test_an_exported_note_whose_text_is_edited_to_plain_text_is_converted() -> None:
+    app = yaml.dump(_document(_chain(_note("intake", "start", "first", text="one"))), allow_unicode=True)
+    document = yaml.safe_load(_exported(_fill_app(app.encode())))
+    [note] = [node for node in document["workflow"]["graph"]["nodes"] if node["id"] == "intake"]
+    note["data"]["text"] = "edited"
+
+    filled_again = _fill_app(yaml.dump(document, allow_unicode=True).encode())
+
+    assert _note_text(filled_again, "intake") == lexical_text("edited")
 
 
 def test_a_json_object_is_kept_as_written_for_check_to_report() -> None:
