@@ -18,7 +18,7 @@ from services.workflow.authoring.canvas_defaults import (
 )
 from services.workflow.authoring.fill import fill_graph_document
 from services.workflow.authoring.node_options import AgentInviteOptions, NodeOptionKind, list_node_options
-from services.workflow.node_defaults import editor_defaults, rewrite_old_shapes
+from services.workflow.node_defaults import editor_defaults, editor_empties, rewrite_old_shapes
 
 CTX = FillContext(tenant_id="tenant-1", account_id="account-1")
 GENERATED = json.loads(Path(canvas_defaults.__file__).with_name("canvas_defaults.json").read_text())
@@ -96,8 +96,6 @@ def test_a_bare_seed_fills_to_the_canvas_node(node: CanvasNode) -> None:
     filled = with_canvas_defaults({"type": node.value})
 
     assert filled == {"type": node.value, **node.data}
-    for key, value in node.data.items():
-        assert filled[key] == value
 
 
 V2_ONLY_KEYS = {"recipients_spec", "message_template", "debug_mode"}
@@ -126,6 +124,22 @@ def test_a_human_input_node_of_an_unknown_version_is_left_alone(version: object)
     data = {"type": BuiltinNodeTypes.HUMAN_INPUT, "version": version}
 
     assert with_canvas_defaults(data) == data
+
+
+def test_a_filled_human_input_node_has_the_keys_of_its_version_only() -> None:
+    filled = _filled_data(
+        [
+            {"id": "v1", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT}},
+            {"id": "v1-written", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT, "version": "1"}},
+            {"id": "v2", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT, "version": "2"}},
+        ]
+    )
+
+    assert V2_ONLY_KEYS.isdisjoint(filled["v1"])
+    assert V2_ONLY_KEYS.isdisjoint(filled["v1-written"])
+    assert "delivery_methods" in filled["v1"]
+    assert set(filled["v2"]) >= V2_ONLY_KEYS
+    assert "delivery_methods" not in filled["v2"]
 
 
 def test_the_version_is_ignored_for_a_type_with_one_edition() -> None:
@@ -216,6 +230,35 @@ def test_a_wrong_type_value_is_kept(model: object) -> None:
     filled = with_canvas_defaults({"type": BuiltinNodeTypes.LLM, "model": model})
 
     assert filled["model"] == model
+
+
+def test_an_llm_for_a_completion_model_gets_no_chat_prompt() -> None:
+    written = {"type": BuiltinNodeTypes.LLM, "model": {"mode": "completion", "name": "m"}}
+
+    filled = with_canvas_defaults(written)
+
+    assert "prompt_template" not in filled
+    assert filled["model"] == {
+        "mode": "completion",
+        "name": "m",
+        "provider": "",
+        "completion_params": {"temperature": 0.7},
+    }
+    assert filled["vision"] == CanvasNode.LLM.data["vision"]
+
+
+@pytest.mark.parametrize("model", [{"mode": "chat"}, {"name": "m"}, "gpt", None])
+def test_an_llm_not_written_for_a_completion_model_gets_the_chat_prompt(model: object) -> None:
+    filled = with_canvas_defaults({"type": BuiltinNodeTypes.LLM, "model": model})
+
+    assert filled["prompt_template"] == CanvasNode.LLM.data["prompt_template"]
+
+
+def test_a_prompt_written_for_a_completion_model_is_kept() -> None:
+    prompt = {"text": "Say hi"}
+    written = {"type": BuiltinNodeTypes.LLM, "model": {"mode": "completion"}, "prompt_template": prompt}
+
+    assert with_canvas_defaults(written)["prompt_template"] == prompt
 
 
 def test_the_input_and_the_table_are_not_changed_by_a_fill() -> None:
@@ -318,7 +361,7 @@ def test_old_shapes_are_rewritten_apart_from_the_empty_containers() -> None:
     assert rewrite_old_shapes({"type": BuiltinNodeTypes.CODE}) == {"type": BuiltinNodeTypes.CODE}
     assert rewrite_old_shapes({"type": None}) == {"type": None}
     assert editor_defaults({"type": BuiltinNodeTypes.IF_ELSE}) == {"type": BuiltinNodeTypes.IF_ELSE, "cases": []}
-    assert editor_defaults(legacy) == editor_defaults(rewritten)
+    assert editor_defaults(legacy) == editor_empties(rewritten)
 
 
 def test_a_bare_if_else_fills_to_the_canvas_case() -> None:

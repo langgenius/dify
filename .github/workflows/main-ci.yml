@@ -199,6 +199,8 @@ jobs:
               - '.github/workflows/main-ci.yml'
             web-style:
               - 'web/**'
+              - 'api/services/workflow/authoring/canvas_defaults.json'
+              - 'cli/.bun-version'
               - 'e2e/**'
               - 'sdks/nodejs-client/**'
               - 'packages/**'
