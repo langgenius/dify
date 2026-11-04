@@ -143,6 +143,7 @@ def test_a_node_without_a_required_field_the_canvas_gives_no_default_gets_a_hint
     issues = _issues_of(check, "extractor")
     missing = [issue for issue in issues if issue.code == IssueCode.NODE_DATA_INVALID]
     assert missing
+    assert {issue.code for issue in issues} == {IssueCode.NODE_DATA_INVALID}
     assert all(issue.hint is not None and issue.hint.required for issue in missing)
     [parameters] = [issue for issue in missing if issue.loc == ("nodes", "extractor", "data", "parameters")]
     assert parameters.hint is not None

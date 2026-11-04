@@ -7,7 +7,7 @@ locs are written by hand from each node's `checkValid`, which is code with trans
 from __future__ import annotations
 
 import copy
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from importlib import resources
@@ -17,6 +17,7 @@ from pydantic import TypeAdapter
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.entities.llm_entities import LLMMode
 from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
 
 type Loc = tuple[str | int, ...]
@@ -24,7 +25,6 @@ type Loc = tuple[str | int, ...]
 WILDCARD: Final = "*"
 _TYPE_KEY: Final = "type"
 _VERSION_KEY: Final = "version"
-_ANY_VERSION: Final = ""
 _HUMAN_INPUT_V2_ENTRY: Final = "human-input-v2"
 _DEFAULTS_FILE: Final = "canvas_defaults.json"
 _DEFAULTS: Final = TypeAdapter(dict[str, dict[str, object]]).validate_json(
@@ -32,13 +32,29 @@ _DEFAULTS: Final = TypeAdapter(dict[str, dict[str, object]]).validate_json(
 )
 
 
+def _nothing_withheld(_written: Mapping[str, object]) -> frozenset[str]:
+    return frozenset()
+
+
+def _completion_model_has_no_chat_prompt(written: Mapping[str, object]) -> frozenset[str]:
+    """The canvas prompt is a chat message list; a node written for a completion model needs a text prompt."""
+    model = written.get("model")
+    if isinstance(model, Mapping) and model.get("mode") == LLMMode.COMPLETION:
+        return frozenset({"prompt_template"})
+    return frozenset()
+
+
 @dataclass(frozen=True)
 class CanvasEdition:
-    """What the canvas gives a node of one version of a block type, from the web entry `entry`."""
+    """What the canvas gives a node of one version of a block type, from the web entry `entry`.
 
-    version: str
+    `withheld` names the canvas keys not to write for the node as written, because the canvas value would not suit it.
+    """
+
+    version: str | None
     entry: str
     purpose: tuple[Loc, ...]
+    withheld: Callable[[Mapping[str, object]], frozenset[str]] = _nothing_withheld
 
     @property
     def data(self) -> Mapping[str, object]:
@@ -52,22 +68,24 @@ class CanvasNode(StrEnum):
     each item of a list. Conditions that depend on other fields (an operator that takes no value, a mode) are not
     listed.
 
-    A type whose versions differ lists one `CanvasEdition` per version; `data` and `purpose` are those of the
-    first, which is the version a node without one has. `edition` picks by a node's version.
+    A member is given either the purpose locs of its one edition, or one `CanvasEdition` per version when the versions
+    differ. `data` and `purpose` are those of the first edition, which is the version a node without one has.
+    `edition` picks by a node's version.
     """
 
     data: Mapping[str, object]
     purpose: tuple[Loc, ...]
-    editions: Mapping[str, CanvasEdition]
+    editions: Mapping[str | None, CanvasEdition]
 
     def __new__(cls, value: str, *parts: Loc | CanvasEdition) -> Self:
         member = str.__new__(cls, value)
         member._value_ = value
+        locs = [part for part in parts if not isinstance(part, CanvasEdition)]
         editions = [part for part in parts if isinstance(part, CanvasEdition)]
+        if locs and editions:
+            raise TypeError(f"{value}: purpose locs and editions cannot be mixed")
         if not editions:
-            editions = [
-                CanvasEdition(_ANY_VERSION, value, tuple(part for part in parts if not isinstance(part, CanvasEdition)))
-            ]
+            editions = [CanvasEdition(None, value, tuple(locs))]
         member.editions = {edition.version: edition for edition in editions}
         member.data = editions[0].data
         member.purpose = editions[0].purpose
@@ -75,16 +93,12 @@ class CanvasNode(StrEnum):
 
     def edition(self, version: object = None) -> CanvasEdition | None:
         """The edition for a node's version; None when this type has editions and the version is not one of them."""
-        if _ANY_VERSION in self.editions:
-            return self.editions[_ANY_VERSION]
-        key = self.default_version if version is None else version
+        if None in self.editions:
+            return self.editions[None]
+        key = next(iter(self.editions)) if version is None else version
         if not isinstance(key, str):
             return None
         return self.editions.get(key)
-
-    @property
-    def default_version(self) -> str:
-        return next(iter(self.editions))
 
     # answer/default.ts:21
     ANSWER = (BuiltinNodeTypes.ANSWER, ("answer",))
@@ -152,8 +166,17 @@ class CanvasNode(StrEnum):
     KNOWLEDGE_RETRIEVAL_V2 = (KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE, ("control_space_ids",))
     # list-operator/default.ts:43; the filter condition is required only when the filter is on (:50-75)
     LIST_OPERATOR = (BuiltinNodeTypes.LIST_OPERATOR, ("variable",))
-    # llm/default.ts:92-99 (provider), 101-117 (a prompt text is empty when it is "")
-    LLM = (BuiltinNodeTypes.LLM, ("model", "provider"), ("prompt_template", WILDCARD, "text"))
+    LLM = (
+        BuiltinNodeTypes.LLM,
+        # llm/default.ts:92-99 (provider), 101-117 (a prompt is empty when every message's text is ""); a prompt for a
+        # completion model is not the canvas's chat list (:103-111)
+        CanvasEdition(
+            None,
+            BuiltinNodeTypes.LLM,
+            (("model", "provider"), ("prompt_template",)),
+            withheld=_completion_model_has_no_chat_prompt,
+        ),
+    )
     # loop/default.ts:36, 51, 57
     LOOP = (
         BuiltinNodeTypes.LOOP,
@@ -192,9 +215,9 @@ class CanvasNode(StrEnum):
     )
     # trigger-schedule/default.ts:155; the cron expression is required only in cron mode (:171-176)
     TRIGGER_SCHEDULE = (TRIGGER_SCHEDULE_NODE_TYPE, ("mode",))
-    # trigger-webhook/default.ts:32
-    TRIGGER_WEBHOOK = (TRIGGER_WEBHOOK_NODE_TYPE, ("webhook_url",))
-    # variable-assigner/default.ts:54-59
+    # trigger-webhook/default.ts:32 checks the webhook_url, which the server supplies
+    TRIGGER_WEBHOOK = (TRIGGER_WEBHOOK_NODE_TYPE,)
+    # variable-assigner/default.ts:54-59; a grouped aggregator checks each group's variables instead (:42-52)
     VARIABLE_AGGREGATOR = (BuiltinNodeTypes.VARIABLE_AGGREGATOR, ("variables",), ("variables", WILDCARD))
 
 
@@ -231,7 +254,10 @@ def with_canvas_defaults(data: Mapping[str, object]) -> dict[str, object]:
     edition = node.edition(data.get(_VERSION_KEY))
     if edition is None:
         return filled
+    withheld = edition.withheld(data)
     for key, canvas in edition.data.items():
+        if key in withheld:
+            continue
         if key not in filled:
             filled[key] = copy.deepcopy(canvas)
             continue

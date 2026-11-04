@@ -37,6 +37,15 @@ describe('generated node defaults', () => {
     ).toEqual({ url: '', variables: [], on: false })
   })
 
+  it('drops null array items at any depth', () => {
+    expect(
+      canvasDefault({ items: [null, 'a', { list: [null, 1], gone: null }], empty: [null] }),
+    ).toEqual({
+      items: ['a', { list: [1] }],
+      empty: [],
+    })
+  })
+
   it('renders sorted keys with a trailing newline', () => {
     const rendered = renderNodeDefaults({
       end: { outputs: [] },

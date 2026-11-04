@@ -20,6 +20,7 @@ from services.workflow.authoring.node_options import (
     list_node_options,
 )
 from services.workflow.authoring.plugins import fill_plugin_values
+from tests.unit_tests.services.workflow.authoring.test_canvas_defaults import V2_ONLY_KEYS
 
 CTX = FillContext(tenant_id="tenant-1", account_id="account-1")
 AGENTS: list[dict[str, str | None]] = [
@@ -171,7 +172,7 @@ def test_a_human_input_block_seed_has_the_version_two_fields() -> None:
     [option] = [o for o in _options(kind=NodeOptionKind.BLOCK, roster=_NoRoster()) if o.type == "human-input"]
 
     assert option.seed["version"] == "2"
-    assert {"recipients_spec", "message_template", "debug_mode"} <= set(option.seed)
+    assert set(option.seed) >= V2_ONLY_KEYS
     assert "delivery_methods" not in option.seed
 
 

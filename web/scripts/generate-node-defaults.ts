@@ -16,7 +16,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function cleaned(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(cleaned)
+  if (Array.isArray(value)) return value.filter((item) => item != null).map(cleaned)
   if (!isRecord(value)) return value
   return Object.fromEntries(
     Object.entries(value)
