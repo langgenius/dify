@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from constants import COOKIE_NAME_ACCESS_TOKEN
 from core.logging.context import clear_request_context, get_identity_context
 from extensions import ext_login
+from extensions.ext_application_services import ApplicationServices
 from extensions.ext_login import unauthorized_handler
 from models.account import TenantAccountRole
 from models.enums import EndUserType
@@ -130,7 +131,9 @@ def test_admin_api_key_header_takes_precedence_over_console_cookie(
 
 
 @pytest.mark.parametrize("route", ["personal", "inherited", "workspace", "function", "missing"])
-def test_console_account_loader_respects_handler_admission_metadata(route: str) -> None:
+def test_console_account_loader_respects_handler_admission_metadata(
+    route: str, account_application_services: ApplicationServices
+) -> None:
     from flask.views import MethodView
 
     class PersonalView(MethodView):
@@ -149,7 +152,7 @@ def test_console_account_loader_respects_handler_admission_metadata(route: str) 
     app.add_url_rule("/personal", view_func=PersonalView.as_view("personal"))
     app.add_url_rule("/inherited", view_func=InheritedView.as_view("inherited"))
     app.add_url_rule("/function", view_func=lambda: "ok")
-    loader = mock.Mock(return_value=None)
+    loader = account_application_services.accounts.identity.get_account_by_id
     ext_login.bind_account_only_loader(app, loader)
     path = "/personal" if route == "workspace" else f"/{route}"
     method = "POST" if route == "workspace" else "GET"

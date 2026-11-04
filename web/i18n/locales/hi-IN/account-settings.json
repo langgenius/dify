@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "अनुमत",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "यह टोकन कहीं और बदला गया है। सहेजने से पहले नवीनतम संस्करण फिर से लोड करें।",
+  "personalAccessToken.copyFailed": "कॉपी नहीं हो सका। कृपया फिर से कोशिश करें।",
   "personalAccessToken.copyNow": "इसे अभी कॉपी करें। आप इसे फिर से नहीं देख पाएँगे।",
   "personalAccessToken.createButton": "टोकन बनाएँ",
   "personalAccessToken.createTitle": "व्यक्तिगत एक्सेस टोकन बनाएँ",

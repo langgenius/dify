@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "Diizinkan",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "Token ini diubah di tempat lain. Muat ulang versi terbaru sebelum menyimpan.",
+  "personalAccessToken.copyFailed": "Gagal menyalin. Silakan coba lagi.",
   "personalAccessToken.copyNow": "Salin sekarang. Anda tidak akan dapat melihatnya lagi.",
   "personalAccessToken.createButton": "Buat token",
   "personalAccessToken.createTitle": "Buat token akses pribadi",

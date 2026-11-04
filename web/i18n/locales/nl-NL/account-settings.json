@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "Toegestaan",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "Dit token is elders gewijzigd. Laad de nieuwste versie voordat je opslaat.",
+  "personalAccessToken.copyFailed": "Kopiëren mislukt. Probeer het opnieuw.",
   "personalAccessToken.copyNow": "Kopieer het nu. Je kunt het later niet meer bekijken.",
   "personalAccessToken.createButton": "Token maken",
   "personalAccessToken.createTitle": "Persoonlijk toegangstoken maken",

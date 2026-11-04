@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "อนุญาต",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "โทเค็นนี้ถูกแก้ไขจากที่อื่น โปรดโหลดเวอร์ชันล่าสุดก่อนบันทึก",
+  "personalAccessToken.copyFailed": "คัดลอกไม่สำเร็จ โปรดลองอีกครั้ง",
   "personalAccessToken.copyNow": "คัดลอกตอนนี้ คุณจะไม่สามารถดูได้อีก",
   "personalAccessToken.createButton": "สร้างโทเค็น",
   "personalAccessToken.createTitle": "สร้างโทเค็นการเข้าถึงส่วนบุคคล",

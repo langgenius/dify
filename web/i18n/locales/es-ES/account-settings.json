@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "Permitido",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "Este token se modificó en otro lugar. Carga la última versión antes de guardar.",
+  "personalAccessToken.copyFailed": "No se pudo copiar. Inténtalo de nuevo.",
   "personalAccessToken.copyNow": "Cópialo ahora. No volverás a verlo.",
   "personalAccessToken.createButton": "Crear token",
   "personalAccessToken.createTitle": "Crear token de acceso personal",

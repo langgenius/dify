@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "ອະນຸຍາດ",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "ໂທເຄັນນີ້ຖືກແກ້ໄຂຈາກບ່ອນອື່ນ. ກະລຸນາໂຫຼດສະບັບຫຼ້າສຸດກ່ອນບັນທຶກ.",
+  "personalAccessToken.copyFailed": "ສຳເນົາບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່.",
   "personalAccessToken.copyNow": "ຄັດລອກຕອນນີ້. ທ່ານຈະບໍ່ເຫັນມັນອີກ.",
   "personalAccessToken.createButton": "ສ້າງໂທເຄັນ",
   "personalAccessToken.createTitle": "ສ້າງໂທເຄັນເຂົ້າເຖິງສ່ວນບຸກຄົນ",

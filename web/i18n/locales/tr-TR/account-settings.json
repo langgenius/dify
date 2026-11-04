@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "İzin verildi",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "Bu belirteç başka bir yerde değiştirildi. Kaydetmeden önce en son sürümü yeniden yükleyin.",
+  "personalAccessToken.copyFailed": "Kopyalama başarısız oldu. Lütfen tekrar deneyin.",
   "personalAccessToken.copyNow": "Şimdi kopyalayın. Bir daha göremezsiniz.",
   "personalAccessToken.createButton": "Belirteç oluştur",
   "personalAccessToken.createTitle": "Kişisel erişim belirteci oluştur",

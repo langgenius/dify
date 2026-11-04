@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "مسموح",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "تم تعديل هذا الرمز في مكان آخر. أعد تحميل أحدث نسخة قبل الحفظ.",
+  "personalAccessToken.copyFailed": "تعذّر النسخ. حاول مرة أخرى.",
   "personalAccessToken.copyNow": "انسخ هذا الرمز الآن. لن تتمكن من رؤيته مرة أخرى.",
   "personalAccessToken.createButton": "إنشاء رمز",
   "personalAccessToken.createTitle": "إنشاء رمز وصول شخصي",

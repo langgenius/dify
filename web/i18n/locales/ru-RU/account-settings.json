@@ -65,6 +65,7 @@
   "personalAccessToken.allowed": "Разрешено",
   "personalAccessToken.appRunner": "App Runner",
   "personalAccessToken.conflict": "Этот токен изменён в другом месте. Загрузите последнюю версию перед сохранением.",
+  "personalAccessToken.copyFailed": "Не удалось скопировать. Попробуйте ещё раз.",
   "personalAccessToken.copyNow": "Скопируйте сейчас. Вы больше не сможете его увидеть.",
   "personalAccessToken.createButton": "Создать токен",
   "personalAccessToken.createTitle": "Создать персональный токен доступа",
