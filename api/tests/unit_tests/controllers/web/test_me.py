@@ -75,7 +75,16 @@ def test_remove_app_hides_personal_lists_but_preserves_data_and_shared_discovery
 def test_connections_support_only_query_and_disconnect(client: FlaskClient, harness: ConsumerHarness) -> None:
     base = harness.oauth.base
     created = base.service.create_api_key(base.context, base.command())
-    listed = client.get("/api/me/connections?limit=1")
+    providers = client.get("/api/me/connections?limit=1")
+    assert providers.status_code == 200
+    provider = providers.get_json()["data"][0]
+    assert provider["provider"] == created.provider
+    assert provider["connections_count"] == 1
+    assert provider["label"]["en_US"] == "Calendar"
+    assert provider["description"]["en_US"] == "Calendar"
+    assert "filename=icon.svg" in provider["icon"]
+    assert provider["icon_dark"] is None
+    listed = client.get(f"/api/me/connections/providers/{created.provider}/connections?limit=1")
     assert listed.status_code == 200
     listed_connection = listed.get_json()["data"][0]
     assert listed_connection == {
@@ -121,7 +130,9 @@ def test_connection_group_routes_reuse_the_list_key(client: FlaskClient, harness
             )
             for index, connection in enumerate(connections)
         )
-    listed = client.get("/api/me/connections").get_json()
+    providers = client.get("/api/me/connections").get_json()
+    assert providers["data"][0]["connections_count"] == 1
+    listed = client.get(f"/api/me/connections/providers/{connections[0].provider}/connections").get_json()
     assert len(listed["data"]) == 1
     group = listed["data"][0]
     assert group["webapps_count"] == 1
@@ -143,6 +154,50 @@ def test_malformed_connection_group_key_does_not_match_routes(client: FlaskClien
     path = "/api/me/connections/invalid"
     assert client.get(path + "/apps").status_code == 404
     assert client.delete(path).status_code == 404
+
+
+@pytest.mark.parametrize("query", ["limit=0", "limit=101", "cursor=", "provider=other", "unknown=value"])
+def test_provider_summary_rejects_invalid_queries(client: FlaskClient, query: str) -> None:
+    assert client.get(f"/api/me/connections?{query}").status_code == 400
+
+
+def test_provider_connection_list_filters_and_validates_cursors(client: FlaskClient, harness: ConsumerHarness) -> None:
+    base = harness.oauth.base
+    created = [base.service.create_api_key(base.context, base.command()) for _ in range(2)]
+    path = f"/api/me/connections/providers/{created[0].provider}/connections"
+    first = client.get(path + "?limit=1").get_json()
+    assert first["has_more"] is True
+    second = client.get(path, query_string={"limit": 1, "cursor": first["next_cursor"]}).get_json()
+    assert second["has_more"] is False
+    assert {row["key"] for page in (first, second) for row in page["data"]} == {row.id for row in created}
+    other_path = "/api/me/connections/providers/vendor/other/calendar/connections"
+    assert client.get(other_path).get_json()["data"] == []
+    assert client.get(other_path, query_string={"cursor": first["next_cursor"]}).status_code == 400
+    assert client.get(path + "?cursor=invalid").status_code == 400
+    assert client.get(path + "?provider=other").status_code == 400
+
+
+def test_provider_queries_require_account_cookie(client: FlaskClient, harness: ConsumerHarness) -> None:
+    client.delete_cookie(COOKIE_NAME_WEBAPP_ACCESS_TOKEN)
+    assert client.get("/api/me/connections").status_code == 401
+    provider = harness.oauth.providers.controller.entity.identity.name
+    assert client.get(f"/api/me/connections/providers/{provider}/connections").status_code == 401
+
+
+def test_connection_discovery_schema_documents_each_level(client: FlaskClient) -> None:
+    schema = client.get("/api/openapi.json").get_json()
+    summary = schema["paths"]["/me/connections"]["get"]
+    assert {parameter["name"] for parameter in summary["parameters"]} == {"cursor", "limit"}
+    assert summary["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ConsumerConnectionProvidersResponse"
+    }
+    provider_path = schema["paths"]["/me/connections/providers/{provider}/connections"]
+    connections = provider_path["get"]
+    parameters = [*provider_path.get("parameters", []), *connections["parameters"]]
+    assert all(parameter["in"] in {"query", "path"} for parameter in parameters)
+    assert {parameter["name"] for parameter in parameters} == {"provider", "cursor", "limit"}
+    assert "requestBody" not in connections
+    assert "/me/connections/{connection_key}/apps" in schema["paths"]
 
 
 @pytest.mark.parametrize("source", [None, "webapp", "webapp_account", "webapp_login_token", "unknown"])

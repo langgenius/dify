@@ -35,7 +35,12 @@ from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.types import StringUUID
 from models.workflow import Workflow
-from services.consumer_service import ConsumerConnectionGroup, ConsumerConnectionKey, ConsumerIdentity
+from services.consumer_service import (
+    ConsumerConnectionGroup,
+    ConsumerConnectionKey,
+    ConsumerConnectionProviderGroup,
+    ConsumerIdentity,
+)
 from services.end_user_connections.claim import ConnectionClaimSource
 from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary, ListConnectionsInput
 from services.end_user_connections.entities import (
@@ -93,6 +98,50 @@ class EndUserConnectionRepository:
             context = AccountConnectionContext(tenant_id, identity.account_id, connection_id)
             self._require_management_context(session, context, lock=False)
             return context
+
+    def account_connection_providers(
+        self, identity: ConsumerIdentity, *, after: str | None, limit: int
+    ) -> tuple[ConsumerConnectionProviderGroup, ...]:
+        """Count owned display groups per Provider before pagination, without loading secrets.
+
+        Account scope spans tenants but never includes Guest Connections. Empty
+        account labels retain one group per member, as in account_connection_groups.
+        Metadata scopes come only from this Account's Connections on the page.
+        """
+        label = sa.func.coalesce(sa.func.nullif(EndUserConnection.account_label, ""), "")
+        connection_id = sa.case((label == "", sa.cast(EndUserConnection.id, sa.String(36))), else_="")
+        owned = (
+            EndUserConnection.account_id == identity.account_id,
+            EndUserConnection.end_user_id.is_(None),
+        )
+        grouped = sa.select(EndUserConnection.provider).where(*owned)
+        if after is not None:
+            grouped = grouped.where(EndUserConnection.provider > after)
+        groups = grouped.group_by(
+            EndUserConnection.provider, EndUserConnection.credential_type, label, connection_id
+        ).subquery()
+        stmt = (
+            sa.select(groups.c.provider, sa.func.count())
+            .group_by(groups.c.provider)
+            .order_by(groups.c.provider)
+            .limit(limit)
+        )
+        with self._sessions() as session:
+            rows = session.execute(stmt).all()
+            scopes: dict[str, list[str]] = {}
+            if rows:
+                tenants = session.execute(
+                    sa.select(EndUserConnection.provider, EndUserConnection.tenant_id)
+                    .where(*owned, EndUserConnection.provider.in_([provider for provider, _count in rows]))
+                    .distinct()
+                    .order_by(EndUserConnection.provider, EndUserConnection.tenant_id)
+                )
+                for provider, tenant_id in tenants:
+                    scopes.setdefault(provider, []).append(tenant_id)
+            return tuple(
+                ConsumerConnectionProviderGroup(provider, count, tuple(scopes.get(provider, ())))
+                for provider, count in rows
+            )
 
     def account_connection_groups(
         self, identity: ConsumerIdentity, *, provider: str | None, after: ConsumerConnectionKey | None, limit: int

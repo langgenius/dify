@@ -317,6 +317,25 @@ export type ConsumerAppsResponse = {
   next_cursor: string | null
 }
 
+export type ConsumerConnectionProviderResponse = {
+  connections_count: number
+  description: {
+    [key: string]: string
+  }
+  icon: string | null
+  icon_dark: string | null
+  label: {
+    [key: string]: string
+  }
+  provider: string
+}
+
+export type ConsumerConnectionProvidersResponse = {
+  data: Array<ConsumerConnectionProviderResponse>
+  has_more: boolean
+  next_cursor: string | null
+}
+
 export type ConsumerConnectionResponse = {
   account_label: string | null
   connection_type: ConnectionCredentialType
@@ -2813,7 +2832,6 @@ export type GetMeConnectionsData = {
   query?: {
     cursor?: string
     limit?: number
-    provider?: string
   }
   url: '/me/connections'
 }
@@ -2825,10 +2843,36 @@ export type GetMeConnectionsErrors = {
 export type GetMeConnectionsError = GetMeConnectionsErrors[keyof GetMeConnectionsErrors]
 
 export type GetMeConnectionsResponses = {
-  200: ConsumerConnectionsResponse
+  200: ConsumerConnectionProvidersResponse
 }
 
 export type GetMeConnectionsResponse = GetMeConnectionsResponses[keyof GetMeConnectionsResponses]
+
+export type GetMeConnectionsProvidersByProviderConnectionsData = {
+  body?: never
+  path: {
+    provider: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/me/connections/providers/{provider}/connections'
+}
+
+export type GetMeConnectionsProvidersByProviderConnectionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetMeConnectionsProvidersByProviderConnectionsError =
+  GetMeConnectionsProvidersByProviderConnectionsErrors[keyof GetMeConnectionsProvidersByProviderConnectionsErrors]
+
+export type GetMeConnectionsProvidersByProviderConnectionsResponses = {
+  200: ConsumerConnectionsResponse
+}
+
+export type GetMeConnectionsProvidersByProviderConnectionsResponse =
+  GetMeConnectionsProvidersByProviderConnectionsResponses[keyof GetMeConnectionsProvidersByProviderConnectionsResponses]
 
 export type DeleteMeConnectionsByConnectionKeyData = {
   body?: never

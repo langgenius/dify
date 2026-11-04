@@ -296,6 +296,27 @@ export const zConsumerAppsResponse = z.object({
 })
 
 /**
+ * ConsumerConnectionProviderResponse
+ */
+export const zConsumerConnectionProviderResponse = z.object({
+  connections_count: z.int().gte(1),
+  description: z.record(z.string(), z.string()),
+  icon: z.string().nullable(),
+  icon_dark: z.string().nullable(),
+  label: z.record(z.string(), z.string()),
+  provider: z.string(),
+})
+
+/**
+ * ConsumerConnectionProvidersResponse
+ */
+export const zConsumerConnectionProvidersResponse = z.object({
+  data: z.array(zConsumerConnectionProviderResponse),
+  has_more: z.boolean(),
+  next_cursor: z.string().nullable(),
+})
+
+/**
  * ConsumerConnectionResponse
  */
 export const zConsumerConnectionResponse = z.object({
@@ -2922,15 +2943,28 @@ export const zPutMeAppsByAppIdFavoritePath = z.object({
 export const zPutMeAppsByAppIdFavoriteResponse = z.void()
 
 export const zGetMeConnectionsQuery = z.object({
-  cursor: z.string().min(1).max(1024).optional(),
+  cursor: z.string().min(1).max(255).optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
-  provider: z.string().min(1).max(255).optional(),
+})
+
+/**
+ * Account Connection Providers
+ */
+export const zGetMeConnectionsResponse = zConsumerConnectionProvidersResponse
+
+export const zGetMeConnectionsProvidersByProviderConnectionsPath = z.object({
+  provider: z.string(),
+})
+
+export const zGetMeConnectionsProvidersByProviderConnectionsQuery = z.object({
+  cursor: z.string().min(1).max(2048).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
 /**
  * Account Connections
  */
-export const zGetMeConnectionsResponse = zConsumerConnectionsResponse
+export const zGetMeConnectionsProvidersByProviderConnectionsResponse = zConsumerConnectionsResponse
 
 export const zDeleteMeConnectionsByConnectionKeyPath = z.object({
   connection_key: z.uuid(),

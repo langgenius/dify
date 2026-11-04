@@ -13,7 +13,11 @@ Bearer format: API_KEY
 Web application API operations
 
 ### [GET] /account/profile
+**Return the Account profile authenticated by the WebApp login cookie**
+
 Get the authenticated WebApp user's profile
+The profile is Account-scoped, so neither an App Passport nor X-App-Code is required.
+A missing, invalid, expired, or unavailable Account identity returns 401.
 
 #### Responses
 
@@ -876,6 +880,23 @@ Remove an App from personal recent and favorite lists without deleting its data.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /me/connections
+List personal Connection Providers with localized labels, descriptions, public icons and Connection-group counts across owned tenants. Guests are excluded. Unavailable Providers retain their counts with a Provider-ID label, an empty description and null icons. No App associations are loaded.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account Connection Providers | **application/json**: [ConsumerConnectionProvidersResponse](#consumerconnectionprovidersresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /me/connections/providers/{provider}/connections
 List personal Connections grouped by Provider, account label and Connection type. Connections without an account label form individual groups. WebApp counts include only accessible Apps.
 
 #### Parameters
@@ -884,7 +905,7 @@ List personal Connections grouped by Provider, account label and Connection type
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| provider | query |  | No | string |
+| provider | path |  | Yes | string |
 
 #### Responses
 
@@ -894,7 +915,7 @@ List personal Connections grouped by Provider, account label and Connection type
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /me/connections/{connection_key}
-Disconnect all owned Connections matching a group key returned by /me/connections. Cookie-authenticated browser mutations require the configured WebApp Origin.
+Disconnect all owned Connections matching a group key from a Provider's list. Cookie-authenticated browser mutations require the configured WebApp Origin.
 
 #### Parameters
 
@@ -912,7 +933,7 @@ Disconnect all owned Connections matching a group key returned by /me/connection
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /me/connections/{connection_key}/apps
-List accessible WebApps associated with a Connection group returned by /me/connections.
+List accessible WebApps associated with a Connection group from a Provider's list.
 
 #### Parameters
 
@@ -1885,6 +1906,25 @@ The connection requirements changed. Refresh and confirm again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [ConsumerAppResponse](#consumerappresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
+
+#### ConsumerConnectionProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connections_count | integer | Number of personal Connection groups under this Provider. | Yes |
+| description | object |  | Yes |
+| icon | string | Public plugin icon URL; null if the Provider is unavailable. | Yes |
+| icon_dark | string | Public dark icon URL; null if unavailable or not declared. | Yes |
+| label | object |  | Yes |
+| provider | string |  | Yes |
+
+#### ConsumerConnectionProvidersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConsumerConnectionProviderResponse](#consumerconnectionproviderresponse) ] |  | Yes |
 | has_more | boolean |  | Yes |
 | next_cursor | string |  | Yes |
 
