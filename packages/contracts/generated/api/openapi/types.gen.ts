@@ -1226,9 +1226,19 @@ export type NodeTypeDetailResponse = {
   version: string
 }
 
+export type NodeTypeFieldItemRow = {
+  default?: unknown
+  description?: string | null
+  loc: Array<string | number>
+  options?: Array<string>
+  required: boolean
+  type: string | null
+}
+
 export type NodeTypeFieldRow = {
   default?: unknown
   description?: string | null
+  items?: Array<NodeTypeFieldItemRow>
   loc: Array<string | number>
   options?: Array<string>
   purpose: boolean
