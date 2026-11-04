@@ -28,7 +28,6 @@ from controllers.console.wraps import (
 from controllers.web import web_ns
 from controllers.web.error import WebAppAccessServiceUnavailableError, WebAppNotFoundError
 from controllers.web.flask_admission import web_anonymous_admission
-from controllers.web.wraps import WebApiResource
 from core.logging.context import get_request_id, get_trace_id
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
@@ -43,7 +42,6 @@ from libs.token import (
     extract_webapp_passport,
 )
 from machinery.context import AccountRequestContext, RequestContext
-from models.model import App, EndUser
 from services.account_errors import AccountNotFoundError
 from services.entities.account_login_entities import LoginMode
 from services.entities.auth_entities import LoginPayloadBase
@@ -54,6 +52,8 @@ from services.web_authentication_service import (
     WebInvalidEmailError,
     WebInvalidTokenError,
 )
+from services.web_identity_service import WebIdentityError
+from services.web_passport_service import WebPassportUnauthorizedError
 from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
 
 _ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
@@ -116,16 +116,23 @@ register_response_schema_models(
 
 
 @web_ns.route("/account/profile")
-class WebAccountProfileApi(WebApiResource):
+class WebAccountProfileApi(Resource):
     @web_ns.doc(description="Get the authenticated WebApp user's profile")
     @web_ns.response(HTTPStatus.OK, "Account profile", web_ns.models[WebAccountProfileResponse.__name__])
-    def get(self, _app_model: App, end_user: EndUser):
-        if not end_user.account_id:
-            raise Unauthorized("Account login required.")
+    def get(self):
+        """Return the Account profile authenticated by the WebApp login cookie.
+
+        The profile is Account-scoped, so neither an App Passport nor X-App-Code is required.
+        A missing, invalid, expired, or unavailable Account identity returns 401.
+        """
+        try:
+            identity = application_services().consumer.authenticate(extract_webapp_cookie_token(request))
+        except (WebIdentityError, WebPassportUnauthorizedError):
+            raise Unauthorized("Account login required.") from None
         context = AccountRequestContext(
             request_id=get_request_id(),
             trace_id=get_trace_id(),
-            account_id=end_user.account_id,
+            account_id=identity.account_id,
         )
         try:
             account = application_services().accounts.profile.get(context)
