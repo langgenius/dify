@@ -1,0 +1,28 @@
+{
+  "provider": "lark",
+  "authenticated_event": {
+    "provider": "lark",
+    "provider_tenant_id": "tenant_lark_sanitized",
+    "event_id": "evt_lark_stream",
+    "event_type": "card.action.trigger",
+    "occurred_at": "2026-10-15T00:00:00",
+    "received_at": "2026-10-15T00:00:01",
+    "ingress_kind": "stream",
+    "payload": "{\"schema\": \"2.0\", \"header\": {\"event_id\": \"evt_lark_stream\", \"token\": \"sanitized-lark-verification-token\", \"create_time\": \"1792022400000000\", \"event_type\": \"card.action.trigger\", \"tenant_key\": \"tenant_lark_sanitized\", \"app_id\": \"cli_sanitized_lark_app\"}, \"event\": {\"operator\": {\"tenant_key\": \"tenant_lark_sanitized\", \"user_id\": \"lark_user\", \"open_id\": \"open_lark_user\", \"union_id\": \"union_lark_user\"}, \"token\": \"sanitized\", \"action\": {\"value\": {\"__dify.human_input.action\": {\"action_id\": \"reject\", \"correlation_token\": \"lark-live-stream-correlation\", \"version\": 1}}, \"tag\": \"button\", \"timezone\": \"sanitized\", \"name\": \"reject\", \"form_value\": {\"comment\": \"Ready to ship\", \"decision\": \"hold\"}}, \"host\": \"sanitized\", \"context\": {\"open_message_id\": \"om_lark_stream_card\", \"open_chat_id\": \"oc_lark_chat\"}}}"
+  },
+  "stream": {
+    "callback": "register_p2_card_action_trigger",
+    "object_type": "lark_oapi.event.callback.model.p2_card_action_trigger.P2CardActionTrigger",
+    "sdk_serialization": {
+      "method": "lark_oapi.JSON.marshal",
+      "value": "{\"schema\": \"2.0\", \"header\": {\"event_id\": \"evt_lark_stream\", \"token\": \"sanitized-lark-verification-token\", \"create_time\": \"1792022400000000\", \"event_type\": \"card.action.trigger\", \"tenant_key\": \"tenant_lark_sanitized\", \"app_id\": \"cli_sanitized_lark_app\"}, \"event\": {\"operator\": {\"tenant_key\": \"tenant_lark_sanitized\", \"user_id\": \"lark_user\", \"open_id\": \"open_lark_user\", \"union_id\": \"union_lark_user\"}, \"token\": \"sanitized\", \"action\": {\"value\": {\"__dify.human_input.action\": {\"action_id\": \"reject\", \"correlation_token\": \"lark-live-stream-correlation\", \"version\": 1}}, \"tag\": \"button\", \"timezone\": \"sanitized\", \"name\": \"reject\", \"form_value\": {\"comment\": \"Ready to ship\", \"decision\": \"hold\"}}, \"host\": \"sanitized\", \"context\": {\"open_message_id\": \"om_lark_stream_card\", \"open_chat_id\": \"oc_lark_chat\"}}}"
+    },
+    "callback_response": {
+      "object_type": "lark_oapi.event.callback.model.p2_card_action_trigger.P2CardActionTriggerResponse",
+      "sdk_serialization": {
+        "method": "lark_oapi.JSON.marshal",
+        "value": "{}"
+      }
+    }
+  }
+}

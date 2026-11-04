@@ -3,24 +3,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from flask_restx import fields
 from pydantic import field_validator
 
 from fields.base import ResponseModel
 from graphon.variables.types import SegmentType
-from libs.helper import TimestampField, to_timestamp
+from libs.helper import to_timestamp
 
 from ._value_type_serializer import serialize_value_type
-
-conversation_variable_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "value_type": fields.String(attribute=serialize_value_type),
-    "value": fields.String,
-    "description": fields.String,
-    "created_at": TimestampField,
-    "updated_at": TimestampField,
-}
 
 
 class ConversationVariableResponse(ResponseModel):
@@ -69,6 +58,21 @@ class ConversationVariableResponse(ResponseModel):
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
+
+
+class WorkflowConversationVariableResponse(ResponseModel):
+    id: str
+    name: str
+    value_type: str
+    value: Any
+    description: str
+
+    @field_validator("value_type", mode="before")
+    @classmethod
+    def _serialize_value_type(cls, value: Any) -> str:
+        if hasattr(value, "exposed_type"):
+            return str(value.exposed_type())
+        return str(value)
 
 
 class PaginatedConversationVariableResponse(ResponseModel):

@@ -1,4 +1,6 @@
+import { Suspense } from 'react'
 import * as React from 'react'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import OverviewView from './view'
 
 export type IDevelopProps = {
@@ -8,12 +10,12 @@ export type IDevelopProps = {
 const Overview = async (props: IDevelopProps) => {
   const params = await props.params
 
-  const {
-    appId,
-  } = params
+  const { appId } = params
 
   return (
-    <OverviewView appId={appId} />
+    <Suspense fallback={<LoadingPlaceholder className="h-full" />}>
+      <OverviewView appId={appId} />
+    </Suspense>
   )
 }
 

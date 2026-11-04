@@ -1,11 +1,14 @@
 'use client'
 
-import type { Form as BaseFormNS } from '@base-ui/react/form'
 import { Form as BaseForm } from '@base-ui/react/form'
 
-export const Form = BaseForm
+const Form = BaseForm
 
-export type FormProps = BaseFormNS.Props
-export type FormActions = BaseFormNS.Actions
-export type FormValidationMode = BaseFormNS.ValidationMode
-export type FormSubmitEventDetails = BaseFormNS.SubmitEventDetails
+type FormActions = BaseForm.Actions
+type FormSubmitEventReason = BaseForm.SubmitEventReason
+type FormSubmitEventDetails = BaseForm.SubmitEventDetails
+
+type FormProps<FormValues extends BaseForm.Values = BaseForm.Values> = BaseForm.Props<FormValues>
+
+export { Form }
+export type { FormActions, FormProps, FormSubmitEventDetails, FormSubmitEventReason }

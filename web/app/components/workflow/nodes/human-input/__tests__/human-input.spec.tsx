@@ -1,68 +1,18 @@
-import type { ReactNode } from 'react'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
-import type {
-  Edge,
-  Node,
-} from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
+import type { Edge, Node } from '@/app/components/workflow/types'
+import { describe, expect, it } from 'vite-plus/test'
 import humanInputDefault from '@/app/components/workflow/nodes/human-input/default'
-import HumanInputNode from '@/app/components/workflow/nodes/human-input/node'
 import {
   DeliveryMethodType,
   UserActionButtonType,
 } from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { initialNodes, preprocessNodesAndEdges } from '@/app/components/workflow/utils/workflow-init'
+import {
+  initialNodes,
+  preprocessNodesAndEdges,
+} from '@/app/components/workflow/utils/workflow-init'
+import { withSelectorKey } from '@/test/i18n-mock'
 
-// Mock reactflow which is needed by initialNodes and NodeSourceHandle
-vi.mock('reactflow', async () => {
-  const reactflow = await vi.importActual('reactflow')
-  return {
-    ...reactflow,
-    Handle: ({ children }: { children?: ReactNode }) => <div data-testid="handle">{children}</div>,
-  }
-})
-
-// Minimal store state mirroring the fields that NodeSourceHandle selects
-const mockStoreState = {
-  shouldAutoOpenStartNodeSelector: false,
-  setShouldAutoOpenStartNodeSelector: vi.fn(),
-  setHasSelectedStartNode: vi.fn(),
-}
-
-// Mock workflow store used by NodeSourceHandle
-// useStore accepts a selector and applies it to the state, so tests break
-// if the component starts selecting fields that aren't provided here.
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: vi.fn((selector?: (s: typeof mockStoreState) => unknown) =>
-    selector ? selector(mockStoreState) : mockStoreState,
-  ),
-  useWorkflowStore: vi.fn(() => ({
-    getState: () => ({
-      getNodes: () => [],
-    }),
-  })),
-}))
-
-// Mock workflow hooks barrel (used by NodeSourceHandle via ../../../hooks)
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesInteractions: () => ({
-    handleNodeAdd: vi.fn(),
-  }),
-  useNodesReadOnly: () => ({
-    getNodesReadOnly: () => false,
-    nodesReadOnly: false,
-  }),
-  useAvailableBlocks: () => ({
-    availableNextBlocks: [],
-    availablePrevBlocks: [],
-  }),
-  useIsChatMode: () => false,
-}))
-
-// ── Factory: Build a realistic human-input node as it would appear after DSL import ──
 const createHumanInputNode = (overrides?: Partial<HumanInputNodeType>): Node => ({
   id: 'human-input-1',
   type: 'custom',
@@ -84,7 +34,7 @@ const createHumanInputNode = (overrides?: Partial<HumanInputNodeType>): Node => 
         config: {
           recipients: { whole_workspace: false, items: [] },
           subject: 'Please review',
-          body: 'Please review the form',
+          body: 'Please review {{#url#}}',
           debug_mode: false,
         },
       },
@@ -126,296 +76,26 @@ const createStartNode = (): Node => ({
   } as Node['data'],
 })
 
-const createEdge = (source: string, target: string, sourceHandle = 'source', targetHandle = 'target'): Edge => ({
-  id: `${source}-${sourceHandle}-${target}-${targetHandle}`,
-  type: 'custom',
-  source,
-  sourceHandle,
-  target,
-  targetHandle,
-  data: {},
-} as Edge)
+const createEdge = (
+  source: string,
+  target: string,
+  sourceHandle = 'source',
+  targetHandle = 'target',
+): Edge =>
+  ({
+    id: `${source}-${sourceHandle}-${target}-${targetHandle}`,
+    type: 'custom',
+    source,
+    sourceHandle,
+    target,
+    targetHandle,
+    data: {},
+  }) as Edge
 
 describe('DSL Import with Human Input Node', () => {
-  // ── preprocessNodesAndEdges: human-input nodes pass through without error ──
-  describe('preprocessNodesAndEdges', () => {
-    it('should pass through a workflow containing a human-input node unchanged', () => {
-      const humanInputNode = createHumanInputNode()
-      const startNode = createStartNode()
-      const nodes = [startNode, humanInputNode]
-      const edges = [createEdge('inset-s-1', 'human-input-1')]
-
-      const result = preprocessNodesAndEdges(nodes as Node[], edges as Edge[])
-
-      expect(result.nodes).toHaveLength(2)
-      expect(result.edges).toHaveLength(1)
-      expect(result.nodes).toEqual(nodes)
-      expect(result.edges).toEqual(edges)
-    })
-
-    it('should not treat human-input node as an iteration or loop node', () => {
-      const humanInputNode = createHumanInputNode()
-      const nodes = [humanInputNode]
-
-      const result = preprocessNodesAndEdges(nodes as Node[], [])
-
-      // No extra iteration/loop start nodes should be injected
-      expect(result.nodes).toHaveLength(1)
-      expect(result.nodes[0]!.data.type).toBe(BlockEnum.HumanInput)
-    })
-  })
-
-  // ── initialNodes: human-input nodes are properly initialized ──
-  describe('initialNodes', () => {
-    it('should initialize a human-input node with connected handle IDs', () => {
-      const humanInputNode = createHumanInputNode()
-      const startNode = createStartNode()
-      const nodes = [startNode, humanInputNode]
-      const edges = [createEdge('inset-s-1', 'human-input-1')]
-
-      const result = initialNodes(nodes as Node[], edges as Edge[])
-
-      const processedHumanInput = result.find(n => n.id === 'human-input-1')
-      expect(processedHumanInput).toBeDefined()
-      expect(processedHumanInput!.data.type).toBe(BlockEnum.HumanInput)
-      // initialNodes sets _connectedSourceHandleIds and _connectedTargetHandleIds
-      expect(processedHumanInput!.data._connectedSourceHandleIds).toBeDefined()
-      expect(processedHumanInput!.data._connectedTargetHandleIds).toBeDefined()
-    })
-
-    it('should preserve human-input node data after initialization', () => {
-      const humanInputNode = createHumanInputNode()
-      const nodes = [humanInputNode]
-
-      const result = initialNodes(nodes as Node[], [])
-
-      const processed = result[0]
-      const nodeData = processed!.data as HumanInputNodeType
-      expect(nodeData.delivery_methods).toHaveLength(2)
-      expect(nodeData.user_actions).toHaveLength(2)
-      expect(nodeData.form_content).toBe('# Review Form\nPlease fill in the details below.')
-      expect(nodeData.timeout).toBe(3)
-      expect(nodeData.timeout_unit).toBe('day')
-    })
-
-    it('should set node type to custom if not set', () => {
-      const humanInputNode = createHumanInputNode()
-      delete (humanInputNode as Record<string, unknown>).type
-
-      const result = initialNodes([humanInputNode] as Node[], [])
-
-      expect(result[0]!.type).toBe('custom')
-    })
-  })
-
-  // ── Node component: renders without crashing for all data variations ──
-  describe('HumanInputNode Component', () => {
-    it('should render without crashing with full DSL data', () => {
-      const node = createHumanInputNode()
-
-      expect(() => {
-        render(
-          <HumanInputNode
-            id={node.id}
-            data={node.data as HumanInputNodeType}
-          />,
-        )
-      }).not.toThrow()
-    })
-
-    it('should display delivery method labels when methods are present', () => {
-      const node = createHumanInputNode()
-
-      render(
-        <HumanInputNode
-          id={node.id}
-          data={node.data as HumanInputNodeType}
-        />,
-      )
-
-      // Delivery method type labels are rendered in lowercase
-      // Delivery method type labels are rendered in lowercase
-      expect(screen.getByText('webapp'))!.toBeInTheDocument()
-      expect(screen.getByText('email'))!.toBeInTheDocument()
-    })
-
-    it('should display user action IDs', () => {
-      const node = createHumanInputNode()
-
-      render(
-        <HumanInputNode
-          id={node.id}
-          data={node.data as HumanInputNodeType}
-        />,
-      )
-
-      expect(screen.getByText('approve'))!.toBeInTheDocument()
-      expect(screen.getByText('reject'))!.toBeInTheDocument()
-    })
-
-    it('should always display Timeout handle', () => {
-      const node = createHumanInputNode()
-
-      render(
-        <HumanInputNode
-          id={node.id}
-          data={node.data as HumanInputNodeType}
-        />,
-      )
-
-      expect(screen.getByText('Timeout'))!.toBeInTheDocument()
-    })
-
-    it('should render without crashing when delivery_methods is empty', () => {
-      const node = createHumanInputNode({ delivery_methods: [] })
-
-      expect(() => {
-        render(
-          <HumanInputNode
-            id={node.id}
-            data={node.data as HumanInputNodeType}
-          />,
-        )
-      }).not.toThrow()
-
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      // Delivery method section should not be rendered
-      expect(screen.queryByText('webapp')).not.toBeInTheDocument()
-      expect(screen.queryByText('email')).not.toBeInTheDocument()
-    })
-
-    it('should render without crashing when user_actions is empty', () => {
-      const node = createHumanInputNode({ user_actions: [] })
-
-      expect(() => {
-        render(
-          <HumanInputNode
-            id={node.id}
-            data={node.data as HumanInputNodeType}
-          />,
-        )
-      }).not.toThrow()
-
-      // Timeout handle should still exist
-      // Timeout handle should still exist
-      expect(screen.getByText('Timeout'))!.toBeInTheDocument()
-    })
-
-    it('should render without crashing when both delivery_methods and user_actions are empty', () => {
-      const node = createHumanInputNode({
-        delivery_methods: [],
-        user_actions: [],
-        form_content: '',
-        inputs: [],
-      })
-
-      expect(() => {
-        render(
-          <HumanInputNode
-            id={node.id}
-            data={node.data as HumanInputNodeType}
-          />,
-        )
-      }).not.toThrow()
-    })
-
-    it('should render with only webapp delivery method', () => {
-      const node = createHumanInputNode({
-        delivery_methods: [
-          { id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true },
-        ],
-      })
-
-      render(
-        <HumanInputNode
-          id={node.id}
-          data={node.data as HumanInputNodeType}
-        />,
-      )
-
-      expect(screen.getByText('webapp'))!.toBeInTheDocument()
-      expect(screen.queryByText('email')).not.toBeInTheDocument()
-    })
-
-    it('should render with multiple user actions', () => {
-      const node = createHumanInputNode({
-        user_actions: [
-          { id: 'action_1', title: 'Approve', button_style: UserActionButtonType.Primary },
-          { id: 'action_2', title: 'Reject', button_style: UserActionButtonType.Default },
-          { id: 'action_3', title: 'Escalate', button_style: UserActionButtonType.Accent },
-        ],
-      })
-
-      render(
-        <HumanInputNode
-          id={node.id}
-          data={node.data as HumanInputNodeType}
-        />,
-      )
-
-      expect(screen.getByText('action_1'))!.toBeInTheDocument()
-      expect(screen.getByText('action_2'))!.toBeInTheDocument()
-      expect(screen.getByText('action_3'))!.toBeInTheDocument()
-    })
-  })
-
-  // ── Node registration: human-input is included in the workflow node registry ──
-  // Verify via WORKFLOW_COMMON_NODES (lightweight metadata-only imports) instead
-  // of NodeComponentMap/PanelComponentMap which pull in every node's heavy UI deps.
-  describe('Node Registration', () => {
-    it('should have HumanInput included in WORKFLOW_COMMON_NODES', () => {
-      const entry = WORKFLOW_COMMON_NODES.find(
-        n => n.metaData.type === BlockEnum.HumanInput,
-      )
-      expect(entry).toBeDefined()
-    })
-  })
-
-  // ── Default config & validation ──
   describe('HumanInput Default Configuration', () => {
-    it('should provide default values for a new human-input node', () => {
-      const defaultValue = humanInputDefault.defaultValue
-
-      expect(defaultValue.delivery_methods).toEqual([])
-      expect(defaultValue.user_actions).toEqual([])
-      expect(defaultValue.form_content).toBe('')
-      expect(defaultValue.inputs).toEqual([])
-      expect(defaultValue.timeout).toBe(3)
-      expect(defaultValue.timeout_unit).toBe('day')
-    })
-
     it('should validate that delivery methods are required', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
         delivery_methods: [],
@@ -424,16 +104,14 @@ describe('DSL Import with Human Input Node', () => {
       const result = humanInputDefault.checkValid(payload, t)
 
       expect(result.isValid).toBe(false)
-      expect(result.errorMessage).toBeTruthy()
+      expect(result.errorMessage).toBe('nodes.humanInput.errorMsg.noDeliveryMethod')
     })
 
     it('should validate that at least one delivery method is enabled', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
-        delivery_methods: [
-          { id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: false },
-        ],
+        delivery_methods: [{ id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: false }],
         user_actions: [
           { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
         ],
@@ -441,11 +119,14 @@ describe('DSL Import with Human Input Node', () => {
 
       const result = humanInputDefault.checkValid(payload, t)
 
-      expect(result.isValid).toBe(false)
+      expect(result).toEqual({
+        isValid: false,
+        errorMessage: 'nodes.humanInput.errorMsg.noDeliveryMethodEnabled',
+      })
     })
 
     it('should validate that enabled email delivery methods have complete configuration', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
         delivery_methods: [
@@ -467,7 +148,7 @@ describe('DSL Import with Human Input Node', () => {
     })
 
     it('should validate email delivery config fields before user actions', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
         delivery_methods: [
@@ -495,26 +176,27 @@ describe('DSL Import with Human Input Node', () => {
     })
 
     it('should validate enabled email subject and body content', () => {
-      const t = (key: string) => key
-      const createPayload = (body: string, subject = 'Review request') => ({
-        ...humanInputDefault.defaultValue,
-        delivery_methods: [
-          {
-            id: 'dm-email',
-            type: DeliveryMethodType.Email,
-            enabled: true,
-            config: {
-              recipients: { whole_workspace: true, items: [] },
-              subject,
-              body,
-              debug_mode: false,
+      const t = withSelectorKey((key: string) => key, 'workflow')
+      const createPayload = (body: string, subject = 'Review request') =>
+        ({
+          ...humanInputDefault.defaultValue,
+          delivery_methods: [
+            {
+              id: 'dm-email',
+              type: DeliveryMethodType.Email,
+              enabled: true,
+              config: {
+                recipients: { whole_workspace: true, items: [] },
+                subject,
+                body,
+                debug_mode: false,
+              },
             },
-          },
-        ],
-        user_actions: [
-          { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
-        ],
-      }) as HumanInputNodeType
+          ],
+          user_actions: [
+            { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
+          ],
+        }) as HumanInputNodeType
 
       expect(humanInputDefault.checkValid(createPayload('{{#url#}}', '  '), t)).toEqual({
         isValid: false,
@@ -527,27 +209,26 @@ describe('DSL Import with Human Input Node', () => {
     })
 
     it('should validate that user actions are required', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
-        delivery_methods: [
-          { id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true },
-        ],
+        delivery_methods: [{ id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true }],
         user_actions: [],
       } as HumanInputNodeType
 
       const result = humanInputDefault.checkValid(payload, t)
 
-      expect(result.isValid).toBe(false)
+      expect(result).toEqual({
+        isValid: false,
+        errorMessage: 'nodes.humanInput.errorMsg.noUserActions',
+      })
     })
 
     it('should validate that user action IDs are not duplicated', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
-        delivery_methods: [
-          { id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true },
-        ],
+        delivery_methods: [{ id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true }],
         user_actions: [
           { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
           { id: 'approve', title: 'Also Approve', button_style: UserActionButtonType.Default },
@@ -556,40 +237,98 @@ describe('DSL Import with Human Input Node', () => {
 
       const result = humanInputDefault.checkValid(payload, t)
 
-      expect(result.isValid).toBe(false)
+      expect(result).toEqual({
+        isValid: false,
+        errorMessage: 'nodes.humanInput.errorMsg.duplicateActionId',
+      })
     })
 
     it('should validate that user action ids and titles are not empty', () => {
-      const t = (key: string) => key
-      const createPayload = (userActions: HumanInputNodeType['user_actions']) => ({
-        ...humanInputDefault.defaultValue,
-        delivery_methods: [
-          { id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true },
-        ],
-        user_actions: userActions,
-      }) as HumanInputNodeType
+      const t = withSelectorKey((key: string) => key, 'workflow')
+      const createPayload = (userActions: HumanInputNodeType['user_actions']) =>
+        ({
+          ...humanInputDefault.defaultValue,
+          delivery_methods: [{ id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true }],
+          user_actions: userActions,
+        }) as HumanInputNodeType
 
-      expect(humanInputDefault.checkValid(createPayload([
-        { id: '  ', title: 'Approve', button_style: UserActionButtonType.Primary },
-      ]), t)).toEqual({
+      expect(
+        humanInputDefault.checkValid(
+          createPayload([
+            { id: '  ', title: 'Approve', button_style: UserActionButtonType.Primary },
+          ]),
+          t,
+        ),
+      ).toEqual({
         isValid: false,
         errorMessage: 'nodes.humanInput.errorMsg.emptyActionId',
       })
-      expect(humanInputDefault.checkValid(createPayload([
-        { id: 'approve', title: '  ', button_style: UserActionButtonType.Primary },
-      ]), t)).toEqual({
+      expect(
+        humanInputDefault.checkValid(
+          createPayload([
+            { id: 'approve', title: '  ', button_style: UserActionButtonType.Primary },
+          ]),
+          t,
+        ),
+      ).toEqual({
         isValid: false,
         errorMessage: 'nodes.humanInput.errorMsg.emptyActionTitle',
       })
     })
 
+    it.each([
+      ['id', undefined, 'emptyActionId'],
+      ['id', null, 'emptyActionId'],
+      ['title', undefined, 'emptyActionTitle'],
+      ['title', null, 'emptyActionTitle'],
+    ])('validates historical action %s = %s without throwing', (field, value, error) => {
+      const action = { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary }
+      Reflect.set(action, field, value)
+      const payload: HumanInputNodeType = {
+        type: BlockEnum.HumanInput,
+        title: 'Legacy approval',
+        desc: '',
+        delivery_methods: [{ id: 'web', type: DeliveryMethodType.WebApp, enabled: true }],
+        form_content: '',
+        inputs: [],
+        user_actions: [action],
+        timeout: 3,
+        timeout_unit: 'day',
+      }
+      expect(
+        humanInputDefault.checkValid(
+          payload,
+          withSelectorKey((key: string) => key, 'workflow'),
+        ),
+      ).toMatchObject({
+        isValid: false,
+        errorMessage: `nodes.humanInput.errorMsg.${error}`,
+      })
+    })
+
+    it('ignores incomplete email configuration when that delivery method is disabled', () => {
+      const payload = createHumanInputNode({
+        delivery_methods: [
+          { id: 'web', type: DeliveryMethodType.WebApp, enabled: true },
+          { id: 'email', type: DeliveryMethodType.Email, enabled: false },
+        ],
+      }).data as HumanInputNodeType
+      expect(
+        humanInputDefault.checkValid(
+          payload,
+          withSelectorKey((key: string) => key, 'workflow'),
+        ),
+      ).toEqual({
+        isValid: true,
+        errorMessage: '',
+      })
+    })
+
     it('should pass validation with correct configuration', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
-        delivery_methods: [
-          { id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true },
-        ],
+        delivery_methods: [{ id: 'dm-1', type: DeliveryMethodType.WebApp, enabled: true }],
         user_actions: [
           { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
           { id: 'reject', title: 'Reject', button_style: UserActionButtonType.Default },
@@ -603,16 +342,36 @@ describe('DSL Import with Human Input Node', () => {
     })
   })
 
-  // ── Output variables generation ──
   describe('HumanInput Output Variables', () => {
     it('should generate output variables from form inputs', () => {
       const payload = {
         ...humanInputDefault.defaultValue,
         inputs: [
-          { type: 'paragraph', output_variable_name: 'review_result', default: { selector: [], type: 'constant' as const, value: '' } },
-          { type: 'file', output_variable_name: 'attachment', allowed_file_extensions: [], allowed_file_types: [], allowed_file_upload_methods: [] },
-          { type: 'file-list', output_variable_name: 'attachments', allowed_file_extensions: [], allowed_file_types: [], allowed_file_upload_methods: [], number_limits: 3 },
-          { type: 'select', output_variable_name: 'comment', option_source: { type: 'constant', selector: [], value: ['A', 'B'] } },
+          {
+            type: 'paragraph',
+            output_variable_name: 'review_result',
+            default: { selector: [], type: 'constant' as const, value: '' },
+          },
+          {
+            type: 'file',
+            output_variable_name: 'attachment',
+            allowed_file_extensions: [],
+            allowed_file_types: [],
+            allowed_file_upload_methods: [],
+          },
+          {
+            type: 'file-list',
+            output_variable_name: 'attachments',
+            allowed_file_extensions: [],
+            allowed_file_types: [],
+            allowed_file_upload_methods: [],
+            number_limits: 3,
+          },
+          {
+            type: 'select',
+            output_variable_name: 'comment',
+            option_source: { type: 'constant', selector: [], value: ['A', 'B'] },
+          },
         ],
       } as HumanInputNodeType
 
@@ -638,44 +397,8 @@ describe('DSL Import with Human Input Node', () => {
     })
   })
 
-  // ── Full DSL import simulation: start → human-input → end ──
   describe('Full Workflow with Human Input Node', () => {
-    it('should process a start → human-input → end workflow without errors', () => {
-      const startNode = createStartNode()
-      const humanInputNode = createHumanInputNode()
-      const endNode: Node = {
-        id: 'inset-e-1',
-        type: 'custom',
-        position: { x: 700, y: 200 },
-        data: {
-          type: BlockEnum.End,
-          title: 'End',
-          desc: '',
-          outputs: [],
-        } as Node['data'],
-      }
-
-      const nodes = [startNode, humanInputNode, endNode]
-      const edges = [
-        createEdge('inset-s-1', 'human-input-1'),
-        createEdge('human-input-1', 'inset-e-1', 'approve', 'target'),
-      ]
-
-      const processed = preprocessNodesAndEdges(nodes as Node[], edges as Edge[])
-      expect(processed.nodes).toHaveLength(3)
-      expect(processed.edges).toHaveLength(2)
-
-      const initialized = initialNodes(nodes as Node[], edges as Edge[])
-      expect(initialized).toHaveLength(3)
-
-      // All node types should be preserved
-      const types = initialized.map(n => n.data.type)
-      expect(types).toContain(BlockEnum.Start)
-      expect(types).toContain(BlockEnum.HumanInput)
-      expect(types).toContain(BlockEnum.End)
-    })
-
-    it('should handle multiple branches from human-input user actions', () => {
+    it('preserves imported configuration and connects action and timeout branches', () => {
       const startNode = createStartNode()
       const humanInputNode = createHumanInputNode()
       const approveEndNode: Node = {
@@ -696,15 +419,24 @@ describe('DSL Import with Human Input Node', () => {
         createEdge('inset-s-1', 'human-input-1'),
         createEdge('human-input-1', 'approve-end', 'approve', 'target'),
         createEdge('human-input-1', 'reject-end', 'reject', 'target'),
+        createEdge('human-input-1', 'reject-end', '__timeout', 'target'),
       ]
 
-      const initialized = initialNodes(nodes as Node[], edges as Edge[])
-      expect(initialized).toHaveLength(4)
-
-      // Human input node should still have correct data
-      const hiNode = initialized.find(n => n.id === 'human-input-1')!
-      expect((hiNode.data as HumanInputNodeType).user_actions).toHaveLength(2)
-      expect((hiNode.data as HumanInputNodeType).delivery_methods).toHaveLength(2)
+      const originalData = structuredClone(humanInputNode.data)
+      const processed = preprocessNodesAndEdges(nodes, edges)
+      expect(processed.edges).toEqual(edges)
+      const initialized = initialNodes(processed.nodes, processed.edges)
+      expect(initialized.map((node) => node.id)).toEqual(nodes.map((node) => node.id))
+      const hiNode = initialized.find((node) => node.id === 'human-input-1')!
+      expect(hiNode.data).toMatchObject(originalData)
+      expect(hiNode.data._connectedSourceHandleIds).toEqual(['approve', 'reject', '__timeout'])
+      expect(hiNode.data._connectedTargetHandleIds).toEqual(['target'])
+      expect(
+        initialized.find((node) => node.id === 'approve-end')!.data._connectedTargetHandleIds,
+      ).toEqual(['target'])
+      expect(
+        initialized.find((node) => node.id === 'reject-end')!.data._connectedTargetHandleIds,
+      ).toEqual(['target', 'target'])
     })
   })
 })

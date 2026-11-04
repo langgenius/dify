@@ -1,81 +1,65 @@
 import type { CommandSearchResult } from '../types'
-import type { SlashCommandHandler } from './types'
-import { RiComputerLine, RiMoonLine, RiSunLine } from '@remixicon/react'
-import * as React from 'react'
-import { getI18n } from 'react-i18next'
-import { registerCommands, unregisterCommands } from './command-bus'
-
-// Theme dependency types
-type ThemeDeps = {
-  setTheme?: (value: 'light' | 'dark' | 'system') => void
-}
+import type { CommandContext, SlashCommand } from './types'
 
 const THEME_ITEMS = [
   {
     id: 'system',
     titleKey: 'gotoAnything.actions.themeSystem',
     descKey: 'gotoAnything.actions.themeSystemDesc',
-    icon: <RiComputerLine className="size-4 text-text-tertiary" />,
+    iconClassName: 'i-ri-computer-line',
   },
   {
     id: 'light',
     titleKey: 'gotoAnything.actions.themeLight',
     descKey: 'gotoAnything.actions.themeLightDesc',
-    icon: <RiSunLine className="size-4 text-text-tertiary" />,
+    iconClassName: 'i-ri-sun-line',
   },
   {
     id: 'dark',
     titleKey: 'gotoAnything.actions.themeDark',
     descKey: 'gotoAnything.actions.themeDarkDesc',
-    icon: <RiMoonLine className="size-4 text-text-tertiary" />,
+    iconClassName: 'i-ri-moon-line',
   },
 ] as const
 
-const buildThemeCommands = (query: string, locale?: string): CommandSearchResult[] => {
-  const i18n = getI18n()
+const buildThemeCommands = (query: string, context: CommandContext): CommandSearchResult[] => {
   const q = query.toLowerCase()
-  const list = THEME_ITEMS.filter(item =>
-    !q
-    || i18n.t(item.titleKey, { ns: 'app', lng: locale }).toLowerCase().includes(q)
-    || item.id.includes(q),
+  const list = THEME_ITEMS.filter(
+    (item) =>
+      !q ||
+      context
+        .t(($) => $[item.titleKey], { ns: 'app', lng: context.locale })
+        .toLowerCase()
+        .includes(q) ||
+      item.id.includes(q),
   )
-  return list.map(item => ({
+  return list.map((item) => ({
     id: item.id,
-    title: i18n.t(item.titleKey, { ns: 'app', lng: locale }),
-    description: i18n.t(item.descKey, { ns: 'app', lng: locale }),
+    title: context.t(($) => $[item.titleKey], { ns: 'app', lng: context.locale }),
+    description: context.t(($) => $[item.descKey], { ns: 'app', lng: context.locale }),
     type: 'command' as const,
     icon: (
       <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-        {item.icon}
+        <span aria-hidden className={`${item.iconClassName} size-4 text-text-tertiary`} />
       </div>
     ),
-    data: { command: 'theme.set', args: { value: item.id } },
+    data: { command: 'theme', args: { value: item.id } },
   }))
 }
 
 /**
  * Theme command handler
- * Integrates UI building, search, and registration logic
  */
-export const themeCommand: SlashCommandHandler<ThemeDeps> = {
+export const themeCommand: SlashCommand = {
   name: 'theme',
   description: 'Switch between light and dark themes',
-  mode: 'submenu', // Explicitly set submenu mode
-
-  async search(args: string, locale: string = 'en') {
-    // Return theme options directly, regardless of parameters
-    return buildThemeCommands(args, locale)
+  mode: 'submenu',
+  execute(args, context) {
+    const item = THEME_ITEMS.find((item) => item.id === args.value)
+    if (item) context.setTheme(item.id)
   },
 
-  register(deps: ThemeDeps) {
-    registerCommands({
-      'theme.set': async (args) => {
-        deps.setTheme?.(args?.value)
-      },
-    })
-  },
-
-  unregister() {
-    unregisterCommands(['theme.set'])
+  search(args: string, context) {
+    return buildThemeCommands(args, context)
   },
 }

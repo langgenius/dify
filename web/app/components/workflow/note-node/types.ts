@@ -8,7 +8,7 @@ export const NoteTheme = {
   pink: 'pink',
   violet: 'violet',
 } as const
-export type NoteTheme = typeof NoteTheme[keyof typeof NoteTheme]
+export type NoteTheme = (typeof NoteTheme)[keyof typeof NoteTheme]
 
 export type NoteNodeType = CommonNodeType & {
   text: string

@@ -1,41 +1,52 @@
-import { debounce, parseAsArrayOf, parseAsString, useQueryStates } from 'nuqs'
-import { useCallback, useMemo, useState } from 'react'
-import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
-
-const snippetListQueryParsers = {
-  tagIDs: parseAsArrayOf(parseAsString, ';')
-    .withDefault([])
-    .withOptions({ history: 'push' }),
-  keywords: parseAsString.withDefault('').withOptions({
-    limitUrlUpdates: debounce(SNIPPET_LIST_SEARCH_DEBOUNCE_MS),
-  }),
-}
+import type { SnippetPublishStatus } from '../query-params'
+import { throttle, useQueryStates } from 'nuqs'
+import { useCallback, useMemo } from 'react'
+import { snippetListQueryParsers } from '../query-params'
 
 export function useSnippetsQueryState() {
-  const [urlQuery, setUrlQuery] = useQueryStates(snippetListQueryParsers)
-  const [creatorIDs, setCreatorIDs] = useState<string[]>([])
+  const [query, setQuery] = useQueryStates(snippetListQueryParsers)
 
-  const setKeywords = useCallback((keywords: string) => {
-    setUrlQuery({ keywords })
-  }, [setUrlQuery])
+  const setKeywords = useCallback(
+    (keywords: string) => {
+      void setQuery({ keywords })
+    },
+    [setQuery],
+  )
 
-  const setTagIDs = useCallback((tagIDs: string[]) => {
-    setUrlQuery({ tagIDs })
-  }, [setUrlQuery])
+  const setTagIDs = useCallback(
+    (tagIDs: string[]) => {
+      void setQuery({ tagIDs })
+    },
+    [setQuery],
+  )
 
-  const handleSetCreatorIDs = useCallback((creatorIDs: string[]) => {
-    setCreatorIDs(creatorIDs)
-  }, [])
+  const setCreatorIDs = useCallback(
+    (creatorIDs: string[]) => {
+      void setQuery({ creatorIDs })
+    },
+    [setQuery],
+  )
 
-  const query = useMemo(() => ({
-    ...urlQuery,
-    creatorIDs,
-  }), [creatorIDs, urlQuery])
+  const setPublishStatus = useCallback(
+    (publishStatus: SnippetPublishStatus) => {
+      void setQuery({ publishStatus })
+    },
+    [setQuery],
+  )
+  const flush = useCallback(
+    () => setQuery(query, { history: 'replace', limitUrlUpdates: throttle(0) }),
+    [query, setQuery],
+  )
 
-  return useMemo(() => ({
-    query,
-    setKeywords,
-    setTagIDs,
-    setCreatorIDs: handleSetCreatorIDs,
-  }), [handleSetCreatorIDs, query, setKeywords, setTagIDs])
+  return useMemo(
+    () => ({
+      query,
+      setKeywords,
+      setTagIDs,
+      setCreatorIDs,
+      setPublishStatus,
+      flush,
+    }),
+    [flush, query, setCreatorIDs, setKeywords, setPublishStatus, setTagIDs],
+  )
 }

@@ -1,11 +1,16 @@
-import { describe, expect, it } from 'vitest'
-import { resolveBuildInfo } from '../../scripts/lib/resolve-buildinfo.js'
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vite-plus/test'
+import { BUILD_CHANNELS, resolveBuildInfo } from '../../scripts/lib/resolve-buildinfo.js'
+
+const CLI_ROOT = new URL('../../', import.meta.url)
+const RELEASE_NAMING = fileURLToPath(new URL('scripts/release-naming.mjs', CLI_ROOT))
 
 const FIXED_DATE = new Date('2026-05-09T12:00:00.000Z')
 const fixedNow = () => FIXED_DATE
 const noGit = () => null
 // Stub the package.json reader so tests exercise the "no sources" path
-// without coupling to the live cli/package.json#difyctl.compat values.
+// without coupling to the live cli/package.json#difyctl.channel value.
 const noPkg = () => ({})
 
 describe('resolveBuildInfo', () => {
@@ -26,8 +31,6 @@ describe('resolveBuildInfo', () => {
       commit: 'abcdef0123456789',
       buildDate: '2026-01-01T00:00:00.000Z',
       channel: 'stable',
-      minDify: '0.0.0',
-      maxDify: '0.0.0',
     })
   })
 
@@ -35,10 +38,8 @@ describe('resolveBuildInfo', () => {
     const calls: string[] = []
     const git = (cmd: string) => {
       calls.push(cmd)
-      if (cmd.startsWith('git describe'))
-        return 'v1.0.0-5-gabc1234-dirty'
-      if (cmd.startsWith('git rev-parse'))
-        return '1234567890abcdef'
+      if (cmd.startsWith('git describe')) return 'v1.0.0-5-gabc1234-dirty'
+      if (cmd.startsWith('git rev-parse')) return '1234567890abcdef'
       return null
     }
     const info = resolveBuildInfo({ env: {}, git, now: fixedNow, pkg: noPkg })
@@ -47,13 +48,8 @@ describe('resolveBuildInfo', () => {
       commit: '1234567890abcdef',
       buildDate: '2026-05-09T12:00:00.000Z',
       channel: 'dev',
-      minDify: '0.0.0',
-      maxDify: '0.0.0',
     })
-    expect(calls).toStrictEqual([
-      'git describe --tags --dirty --always',
-      'git rev-parse HEAD',
-    ])
+    expect(calls).toStrictEqual(['git describe --tags --dirty --always', 'git rev-parse HEAD'])
   })
 
   it('uses string defaults when env unset, git unavailable, and package.json empty', () => {
@@ -63,8 +59,6 @@ describe('resolveBuildInfo', () => {
       commit: 'none',
       buildDate: '2026-05-09T12:00:00.000Z',
       channel: 'dev',
-      minDify: '0.0.0',
-      maxDify: '0.0.0',
     })
   })
 
@@ -76,8 +70,23 @@ describe('resolveBuildInfo', () => {
 
   it('throws on removed nightly channel', () => {
     expect(() =>
-      resolveBuildInfo({ env: { DIFYCTL_CHANNEL: 'nightly' }, git: noGit, now: fixedNow, pkg: noPkg }),
+      resolveBuildInfo({
+        env: { DIFYCTL_CHANNEL: 'nightly' },
+        git: noGit,
+        now: fixedNow,
+        pkg: noPkg,
+      }),
     ).toThrow(/invalid DIFYCTL_CHANNEL: nightly/)
+  })
+
+  it('accepts alpha channel', () => {
+    const info = resolveBuildInfo({
+      env: { DIFYCTL_CHANNEL: 'alpha' },
+      git: noGit,
+      now: fixedNow,
+      pkg: noPkg,
+    })
+    expect(info.channel).toBe('alpha')
   })
 
   it('accepts rc channel', () => {
@@ -108,52 +117,39 @@ describe('resolveBuildInfo', () => {
     expect(info.channel).toBe('dev')
   })
 
-  it('reads minDify and maxDify from env', () => {
-    const info = resolveBuildInfo({
-      env: {
-        DIFYCTL_VERSION: '0.1.0-rc.1',
-        DIFYCTL_CHANNEL: 'rc',
-        DIFYCTL_COMMIT: 'abc',
-        DIFYCTL_BUILD_DATE: '2026-01-01T00:00:00.000Z',
-        DIFYCTL_MIN_DIFY: '1.6.0',
-        DIFYCTL_MAX_DIFY: '1.7.0',
-      },
-      git: noGit,
-      now: fixedNow,
-      pkg: noPkg,
-    })
-    expect(info.minDify).toBe('1.6.0')
-    expect(info.maxDify).toBe('1.7.0')
-  })
-
-  it('defaults minDify and maxDify to 0.0.0 when env and package.json are unset', () => {
-    const info = resolveBuildInfo({ env: {}, git: noGit, now: fixedNow, pkg: noPkg })
-    expect(info.minDify).toBe('0.0.0')
-    expect(info.maxDify).toBe('0.0.0')
-  })
-
-  it('falls back to package.json#difyctl.compat when env unset', () => {
-    const pkg = () => ({ difyctl: { compat: { minDify: '1.6.0', maxDify: '1.7.0' }, channel: 'rc' } })
+  it('falls back to package.json#difyctl.channel when env unset', () => {
+    const pkg = () => ({ difyctl: { channel: 'rc' } })
     const info = resolveBuildInfo({ env: {}, git: noGit, now: fixedNow, pkg })
-    expect(info.minDify).toBe('1.6.0')
-    expect(info.maxDify).toBe('1.7.0')
     expect(info.channel).toBe('rc')
   })
 
-  it('env wins over package.json for compat range and channel', () => {
-    const pkg = () => ({ difyctl: { compat: { minDify: '1.6.0', maxDify: '1.7.0' }, channel: 'rc' } })
+  it('env wins over package.json for channel', () => {
+    const pkg = () => ({ difyctl: { channel: 'rc' } })
     const info = resolveBuildInfo({
-      env: {
-        DIFYCTL_MIN_DIFY: '2.0.0',
-        DIFYCTL_MAX_DIFY: '2.1.0',
-        DIFYCTL_CHANNEL: 'stable',
-      },
+      env: { DIFYCTL_CHANNEL: 'stable' },
       git: noGit,
       now: fixedNow,
       pkg,
     })
-    expect(info.minDify).toBe('2.0.0')
-    expect(info.maxDify).toBe('2.1.0')
     expect(info.channel).toBe('stable')
+  })
+})
+
+function releaseNamingChannels(): string[] {
+  return execFileSync('node', [RELEASE_NAMING, 'channels'], { encoding: 'utf8' })
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+}
+
+const sorted = (names: readonly string[]) => [...names].sort()
+
+describe('channel list parity', () => {
+  const LOCAL_ONLY_CHANNEL = 'dev'
+
+  it('released channels are the build channels minus the local-only one', () => {
+    expect(sorted(releaseNamingChannels())).toStrictEqual(
+      sorted(BUILD_CHANNELS.filter((name) => name !== LOCAL_ONLY_CHANNEL)),
+    )
   })
 })

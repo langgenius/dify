@@ -1,5 +1,11 @@
 'use client'
-import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin, VersionInfo } from '../../../types'
+import type {
+  Dependency,
+  GitHubItemAndMarketPlaceDependency,
+  PackageDependency,
+  Plugin,
+  VersionInfo,
+} from '../../../types'
 import * as React from 'react'
 import { useImperativeHandle } from 'react'
 import LoadingError from '../../base/loading-error'
@@ -61,8 +67,7 @@ const InstallByDSLList = ({
   return (
     <>
       {allPlugins.map((d, index) => {
-        if (errorIndexes.includes(index))
-          return <LoadingError key={index} />
+        if (errorIndexes.includes(index)) return <LoadingError key={index} />
 
         const plugin = plugins[index]
         const checked = isPluginSelected(index)
@@ -88,8 +93,10 @@ const InstallByDSLList = ({
               key={index}
               checked={checked}
               onCheckedChange={handleSelect(index)}
-              payload={{ ...plugin, from: d.type } as Plugin}
-              version={(d as GitHubItemAndMarketPlaceDependency).value.version! || plugin?.version || ''}
+              payload={plugin}
+              version={
+                (d as GitHubItemAndMarketPlaceDependency).value.version! || plugin?.version || ''
+              }
               versionInfo={versionInfo}
             />
           )

@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 
-type EntryArgs = { service: string, username: string }
+type EntryArgs = { service: string; username: string }
 
 const passwords = new Map<string, string>()
 const constructed: EntryArgs[] = []
@@ -17,20 +17,17 @@ class FakeEntry {
   }
 
   setPassword(value: string): void {
-    if (setPasswordError !== null)
-      throw setPasswordError
+    if (setPasswordError !== null) throw setPasswordError
     passwords.set(this.key, value)
   }
 
   getPassword(): string | null {
-    if (getPasswordError !== null)
-      throw getPasswordError
+    if (getPasswordError !== null) throw getPasswordError
     return passwords.get(this.key) ?? null
   }
 
   deletePassword(): boolean {
-    if (!passwords.has(this.key))
-      return false
+    if (!passwords.has(this.key)) return false
     passwords.delete(this.key)
     return true
   }
@@ -75,7 +72,7 @@ describe('KeychainTokenStore', () => {
     await expect(store.remove('h', 'absent')).resolves.not.toThrow()
   })
 
-  it('uses the legacy entry name tokens.<host>.<email> (back-compat)', async () => {
+  it('names the entry tokens.<host>.<email>', async () => {
     const store = new KeychainTokenStore(SERVICE)
     await store.write('https://cloud.dify.ai', 'a@x.com', 'dfoa_secret')
     expect(constructed).toContainEqual({
@@ -114,8 +111,7 @@ describe('KeychainTokenStore', () => {
     let caught: unknown
     try {
       await store.read('h', 'e')
-    }
-    catch (err) {
+    } catch (err) {
       caught = err
     }
     expect(caught).toBeInstanceOf(BaseError)
@@ -128,11 +124,18 @@ describe('KeychainTokenStore', () => {
     let caught: unknown
     try {
       await store.write('h', 'e', 'dfoa_secret')
-    }
-    catch (err) {
+    } catch (err) {
       caught = err
     }
     expect(caught).toBeInstanceOf(BaseError)
     expect((caught as BaseError).code).toBe(ErrorCode.KeyringUnavailable)
+  })
+})
+
+it('a locked keychain points at login --no-keyring', async () => {
+  getPasswordError = new Error('keyring locked')
+  await expect(new KeychainTokenStore(SERVICE).read('h', 'e')).rejects.toMatchObject({
+    code: ErrorCode.KeyringUnavailable,
+    hint: expect.stringContaining('login --server <url> --no-keyring'),
   })
 })

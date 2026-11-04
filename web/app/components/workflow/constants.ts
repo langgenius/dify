@@ -9,8 +9,8 @@ export const X_OFFSET = 60
 export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
 export const Y_OFFSET = 39
 export const START_INITIAL_POSITION = { x: 80, y: 282 }
-export const ITERATION_NODE_Z_INDEX = 1
-export const ITERATION_CHILDREN_Z_INDEX = 1002
+// React Flow elevates selected nodes by 1000, so nested graph elements use the next layer.
+export const NESTED_ELEMENT_Z_INDEX = 1001
 export const ITERATION_PADDING = {
   top: 65,
   right: 16,
@@ -18,8 +18,6 @@ export const ITERATION_PADDING = {
   left: 16,
 }
 
-export const LOOP_NODE_Z_INDEX = 1
-export const LOOP_CHILDREN_Z_INDEX = 1002
 export const LOOP_PADDING = {
   top: 65,
   right: 16,
@@ -34,10 +32,10 @@ export const isInWorkflowPage = () => {
   const pathname = globalThis.location.pathname
   return /^\/app\/[^/]+\/workflow$/.test(pathname) || /^\/workflow\/[^/]+$/.test(pathname)
 }
-export const getGlobalVars = (isChatMode: boolean): Var[] => {
+export const getGlobalVars = (isChatflow: boolean): Var[] => {
   const isInWorkflow = isInWorkflowPage()
   const vars: Var[] = [
-    ...(isChatMode
+    ...(isChatflow
       ? [
           {
             variable: 'sys.dialogue_count',
@@ -65,7 +63,7 @@ export const getGlobalVars = (isChatMode: boolean): Var[] => {
       variable: 'sys.workflow_run_id',
       type: VarType.string,
     },
-    ...((isInWorkflow && !isChatMode)
+    ...(isInWorkflow && !isChatflow
       ? [
           {
             variable: 'sys.timestamp',
@@ -102,12 +100,13 @@ export const RETRIEVAL_OUTPUT_STRUCT = `{
   }
 }`
 
-export const SUPPORT_OUTPUT_VARS_NODE = [
+export const SUPPORT_OUTPUT_VARS_NODE: BlockEnum[] = [
   BlockEnum.Start,
   BlockEnum.TriggerWebhook,
   BlockEnum.TriggerPlugin,
   BlockEnum.LLM,
   BlockEnum.KnowledgeRetrieval,
+  BlockEnum.KnowledgeRetrievalV2,
   BlockEnum.Code,
   BlockEnum.TemplateTransform,
   BlockEnum.HttpRequest,
@@ -124,6 +123,7 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.AgentV2,
   BlockEnum.DataSource,
   BlockEnum.HumanInput,
+  BlockEnum.HumanInputV2,
 ]
 
 export const AGENT_OUTPUT_STRUCT: Var[] = [

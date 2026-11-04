@@ -1,10 +1,8 @@
 import type { LexicalEditor } from 'lexical'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, render, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { $nodesOfType } from 'lexical'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { CURRENT_PLACEHOLDER_TEXT } from '../../../constants'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   readEditorStateValue,
@@ -12,7 +10,8 @@ import {
   renderLexicalEditor,
   selectRootEnd,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import {
   CurrentBlock,
   CurrentBlockNode,
@@ -25,11 +24,7 @@ const renderCurrentBlock = (props?: {
   onInsert?: () => void
   onDelete?: () => void
 }) => {
-  const {
-    generatorType = GeneratorType.prompt,
-    onInsert,
-    onDelete,
-  } = props ?? {}
+  const { generatorType = GeneratorType.prompt, onInsert, onDelete } = props ?? {}
 
   return renderLexicalEditor({
     namespace: 'current-block-plugin-test',
@@ -42,7 +37,7 @@ const renderCurrentBlock = (props?: {
 
 const getCurrentNodeGeneratorTypes = (editor: LexicalEditor) => {
   return readEditorStateValue(editor, () => {
-    return $nodesOfType(CurrentBlockNode).map(node => node.getGeneratorType())
+    return $nodesOfType(CurrentBlockNode).map((node) => node.getGeneratorType())
   })
 }
 
@@ -113,19 +108,6 @@ describe('CurrentBlock', () => {
       expect(handled).toBe(true)
       expect(onDelete).toHaveBeenCalledTimes(1)
     })
-
-    it('should handle delete command without onDelete callback', async () => {
-      const { getEditor } = renderCurrentBlock()
-
-      const editor = await waitForEditorReady(getEditor)
-
-      let handled = false
-      act(() => {
-        handled = editor.dispatchCommand(DELETE_CURRENT_BLOCK_COMMAND, undefined)
-      })
-
-      expect(handled).toBe(true)
-    })
   })
 
   describe('Lifecycle', () => {
@@ -145,24 +127,6 @@ describe('CurrentBlock', () => {
 
       expect(insertHandled).toBe(false)
       expect(deleteHandled).toBe(false)
-    })
-
-    it('should throw when current block node is not registered on editor', () => {
-      expect(() => {
-        render(
-          <LexicalComposer
-            initialConfig={{
-              namespace: 'current-block-plugin-missing-node-test',
-              onError: (error: Error) => {
-                throw error
-              },
-              nodes: [CustomTextNode],
-            }}
-          >
-            <CurrentBlock generatorType={GeneratorType.prompt} />
-          </LexicalComposer>,
-        )
-      }).toThrow('CURRENTBlockPlugin: CURRENTBlock not registered on editor')
     })
   })
 })

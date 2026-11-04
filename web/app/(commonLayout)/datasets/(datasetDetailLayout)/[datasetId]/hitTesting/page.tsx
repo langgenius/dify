@@ -8,13 +8,9 @@ type Props = Readonly<{
 const HitTesting = async (props: Props) => {
   const params = await props.params
 
-  const {
-    datasetId,
-  } = params
+  const { datasetId } = params
 
-  return (
-    <Main datasetId={datasetId} />
-  )
+  return <Main datasetId={datasetId} />
 }
 
 export default HitTesting

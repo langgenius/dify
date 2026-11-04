@@ -1,0 +1,770 @@
+'use client'
+
+import type {
+  AgentAppDetailWithSite,
+  AgentConfigSnapshotSummaryResponse,
+  AgentSoulConfig,
+} from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentComposerBindingResponse,
+  WorkflowAgentComposerResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
+import type { AgentPreviewChatController } from '@/features/agent-v2/agent-detail/configure/components/preview/chat-conversation'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
+import { ScopeProvider } from 'jotai-scope'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
+import {
+  agentSoulConfigToFormState,
+  formStateToAgentSoulConfig,
+} from '@/features/agent-v2/agent-composer/conversions'
+import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
+import {
+  agentComposerDraftAtom,
+  rebaseAgentComposerDraftAtom,
+} from '@/features/agent-v2/agent-composer/store'
+import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
+import { AgentConfigureClearSessionConfirmDialog } from '@/features/agent-v2/agent-detail/configure/components/confirm-clear-session-dialog'
+import { AgentOrchestratePanel } from '@/features/agent-v2/agent-detail/configure/components/orchestrate'
+import { AgentBuildDraftBar } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-bar'
+import { AgentBuildPanelBackground } from '@/features/agent-v2/agent-detail/configure/components/preview/build-background'
+import { AgentPreviewHeader } from '@/features/agent-v2/agent-detail/configure/components/preview/header'
+import { AgentConfigureRightPanelChat } from '@/features/agent-v2/agent-detail/configure/components/preview/right-panel-chat'
+import {
+  AgentConfigurePreviewBody,
+  AgentConfigurePreviewSurface,
+} from '@/features/agent-v2/agent-detail/configure/components/preview/surface'
+import { invalidateAgentWorkingDirectoryFiles } from '@/features/agent-v2/agent-detail/configure/components/preview/working-directory-cache'
+import { AgentWorkingDirectoryPanel } from '@/features/agent-v2/agent-detail/configure/components/preview/working-directory-panel'
+import {
+  agentConfigureConversationIdsAtom,
+  agentConfigureRightPanelModeAtom,
+  agentConfigureSoulSourceOverrideAtom,
+  resetAgentConfigureConversationAtom,
+  setAgentConfigureConversationIdAtom,
+  workflowInlineAgentConfigureScopedAtoms,
+} from '@/features/agent-v2/agent-detail/configure/state'
+import { useAgentConfigureBuildDraftData } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-build-draft'
+import { useAgentConfigureSessionController } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-session-controller'
+import {
+  trackAgentBuildModeRun,
+  trackAgentPreviewModeRun,
+  useInlineAgentScope,
+} from '@/features/agent-v2/analytics'
+import { useAgentBuildDraftRefresh } from '@/features/agent-v2/build-draft-refresh'
+import { useCanCreateAgents } from '@/features/agent-v2/permissions'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
+import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
+import { InlineAgentLoading } from './inline-agent-loading'
+
+type WorkflowRosterAgentOrchestratePanelContentProps = {
+  agentId?: string
+  nodeId: string
+  open: boolean
+}
+
+type WorkflowInlineAgentConfigureWorkspaceProps = {
+  agentId?: string
+  resource?: Extract<EditorResource, { kind: 'app' | 'snippet' }>
+  inlineComposerState?: WorkflowAgentComposerResponse
+  nodeId: string
+  onSaved?: (binding: AgentComposerBindingResponse) => void
+  onSaveInlineToRoster?: () => void
+  open: boolean
+}
+
+export function WorkflowRosterAgentOrchestratePanelContent(
+  props: WorkflowRosterAgentOrchestratePanelContentProps,
+) {
+  const { agentId, nodeId, open } = props
+  const rosterComposerQuery = useQuery(
+    consoleQuery.agent.byAgentId.composer.get.queryOptions({
+      input:
+        open && agentId
+          ? {
+              params: {
+                agent_id: agentId,
+              },
+            }
+          : skipToken,
+    }),
+  )
+  const composerState = rosterComposerQuery.data
+  const agentSoulConfig = composerState?.agent_soul
+  const activeConfigSnapshot =
+    'active_config_snapshot' in (composerState ?? {})
+      ? (composerState?.active_config_snapshot as
+          | AgentConfigSnapshotSummaryResponse
+          | null
+          | undefined)
+      : undefined
+
+  if (!agentId || !agentSoulConfig) {
+    return (
+      <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
+        <LoadingPlaceholder className="h-full" />
+      </div>
+    )
+  }
+
+  const initialAgentSoulConfig = agentSoulConfig as AgentSoulConfig
+  const composerSessionKey = `${agentId ?? nodeId}:${activeConfigSnapshot?.id ?? 'draft'}`
+
+  return (
+    <AgentComposerProvider
+      key={composerSessionKey}
+      initialDraft={agentSoulConfigToFormState(initialAgentSoulConfig)}
+    >
+      <WorkflowRosterAgentOrchestratePanelContentInner
+        agentId={agentId}
+        composerState={composerState}
+      />
+    </AgentComposerProvider>
+  )
+}
+
+function WorkflowRosterAgentOrchestratePanelContentInner({
+  agentId,
+  composerState,
+}: {
+  agentId: string
+  composerState?: {
+    agent?: {
+      name?: string | null
+    } | null
+  }
+}) {
+  const { currentModel, setConfigureModel } = useAgentOrchestrateModelOptions()
+
+  return (
+    <AgentOrchestratePanel
+      agentId={agentId}
+      agentName={composerState?.agent?.name}
+      currentModel={currentModel}
+      readOnly
+      showHeader={false}
+      showPublishBar={false}
+      className="h-full max-w-none min-w-0 flex-none rounded-none border-0"
+      onSelectModel={setConfigureModel}
+    />
+  )
+}
+
+export function WorkflowInlineAgentConfigureWorkspace(
+  props: WorkflowInlineAgentConfigureWorkspaceProps,
+) {
+  const { agentId, inlineComposerState, nodeId } = props
+  const composerState = inlineComposerState
+  const agentSoulConfig = composerState?.agent_soul as AgentSoulConfig | undefined
+  const activeConfigSnapshot =
+    'active_config_snapshot' in (composerState ?? {})
+      ? (composerState?.active_config_snapshot as
+          | AgentConfigSnapshotSummaryResponse
+          | null
+          | undefined)
+      : undefined
+
+  if (!agentId) {
+    return <InlineAgentLoading />
+  }
+
+  const composerSessionKey = `${nodeId}:${agentId}`
+
+  return (
+    <ScopeProvider
+      key={composerSessionKey}
+      atoms={workflowInlineAgentConfigureScopedAtoms}
+      name="WorkflowInlineAgentConfigure"
+    >
+      <WorkflowInlineAgentConfigureWorkspaceComposerScope
+        {...props}
+        activeConfigSnapshot={activeConfigSnapshot}
+        agentId={agentId}
+        agentSoulConfig={agentSoulConfig}
+      />
+    </ScopeProvider>
+  )
+}
+
+function WorkflowInlineAgentConfigureWorkspaceComposerScope({
+  agentId,
+  agentSoulConfig,
+  activeConfigSnapshot,
+  ...props
+}: Omit<WorkflowInlineAgentConfigureWorkspaceProps, 'agentId'> & {
+  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  agentId: string
+  agentSoulConfig?: AgentSoulConfig
+}) {
+  const soulSourceOverride = useAtomValue(agentConfigureSoulSourceOverrideAtom)
+  const rightPanelMode = useAtomValue(agentConfigureRightPanelModeAtom)
+  const setSoulSourceOverride = useSetAtom(agentConfigureSoulSourceOverrideAtom)
+  const buildDraft = useAgentConfigureBuildDraftData({
+    agentId,
+    activeVersionId: activeConfigSnapshot?.id,
+    composerAgentSoulConfig: agentSoulConfig,
+    isBuildMode: props.open && rightPanelMode === 'build',
+    isViewingVersion: false,
+    normalAgentSoulConfig: agentSoulConfig,
+    setSoulSourceOverride,
+    soulSourceOverride,
+  })
+  const composerSessionKey = `${props.nodeId}:${agentId}`
+
+  if (!agentSoulConfig || buildDraft.isPending) {
+    return <InlineAgentLoading />
+  }
+
+  return (
+    <ScopeProvider
+      atoms={[
+        [
+          agentConfigureConversationIdsAtom,
+          {
+            build: props.inlineComposerState?.debug_conversation_id ?? null,
+            preview: null,
+          },
+        ],
+      ]}
+      name="WorkflowInlineAgentConfigureConversation"
+    >
+      <AgentComposerProvider
+        key={composerSessionKey}
+        initialDraft={agentSoulConfigToFormState(buildDraft.agentSoulConfig)}
+      >
+        <WorkflowInlineAgentConfigureWorkspaceContent
+          {...props}
+          agentId={agentId}
+          agentSoulConfig={agentSoulConfig}
+          buildDraft={buildDraft}
+        />
+      </AgentComposerProvider>
+    </ScopeProvider>
+  )
+}
+
+function WorkflowInlineAgentConfigureWorkspaceContent({
+  agentId,
+  agentSoulConfig,
+  buildDraft,
+  resource,
+  inlineComposerState,
+  nodeId,
+  onSaved,
+  onSaveInlineToRoster,
+  open,
+}: Omit<WorkflowInlineAgentConfigureWorkspaceProps, 'agentId'> & {
+  agentId: string
+  agentSoulConfig: AgentSoulConfig
+  buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
+}) {
+  const { t } = useTranslation(['common'])
+  const { t: tAgent } = useTranslation(['agentV2'])
+  const agentScope = useInlineAgentScope()
+  const queryClient = useQueryClient()
+  const jotaiStore = useJotaiStore()
+  const setBuildDraftSoulSourceOverride = buildDraft.setSoulSourceOverride
+  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
+  const composerState = inlineComposerState
+  const [clearPreviewChat, setClearPreviewChat] = useState(false)
+  const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(
+    null,
+  )
+  const rightPanelChatControllerRef = useRef<AgentPreviewChatController>(null)
+  const appId = resource?.kind === 'app' ? resource.appId : undefined
+  const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
+  const [rightPanelMode, setRightPanelMode] = useAtom(agentConfigureRightPanelModeAtom)
+  const previewEnabled = systemFeatures?.deployment_edition !== 'COMMUNITY'
+  const [showWorkingDirectory, setShowWorkingDirectory] = useState(false)
+
+  const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
+  const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
+  const rebaseComposerDraft = useSetAtom(rebaseAgentComposerDraftAtom)
+  const { currentModel, setConfigureModel } = useAgentOrchestrateModelOptions()
+  const [isApplyingInlineBuildDraft, setIsApplyingInlineBuildDraft] = useState(false)
+  const { saveAgentSoulConfig, saveDraft } = useWorkflowInlineAgentConfigureSync({
+    nodeId,
+    baseConfig: agentSoulConfig,
+    currentModel,
+    onDraftSaved: (composerState) => {
+      const binding = composerState.binding
+      if (
+        binding?.binding_type !== 'inline_agent' ||
+        !binding.agent_id ||
+        !binding.current_snapshot_id
+      ) {
+        return
+      }
+
+      onSaved?.(binding)
+    },
+    enabled: open && !!agentSoulConfig && !buildDraft.isActive,
+  })
+  const refreshDebugConversationMutation = useMutation(
+    consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
+      onSuccess: ({
+        debug_conversation_has_messages,
+        debug_conversation_id,
+        debug_conversation_message_count,
+      }) => {
+        queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
+          consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+          (agentDetail) => {
+            if (!agentDetail) return agentDetail
+
+            return {
+              ...agentDetail,
+              debug_conversation_has_messages,
+              debug_conversation_id,
+              debug_conversation_message_count,
+            }
+          },
+        )
+        if (!resource) return
+
+        if (resource.kind === 'snippet') {
+          queryClient.setQueryData<WorkflowAgentComposerResponse | undefined>(
+            consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+              {
+                input: {
+                  params: {
+                    snippet_id: resource.snippetId,
+                    node_id: nodeId,
+                  },
+                },
+              },
+            ),
+            (composerState) =>
+              composerState
+                ? {
+                    ...composerState,
+                    debug_conversation_has_messages,
+                    debug_conversation_id,
+                    debug_conversation_message_count,
+                  }
+                : composerState,
+          )
+          return
+        }
+
+        if (resource.kind === 'app') {
+          queryClient.setQueryData<WorkflowAgentComposerResponse | undefined>(
+            consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+              input: {
+                params: {
+                  app_id: resource.appId,
+                  node_id: nodeId,
+                },
+              },
+            }),
+            (composerState) =>
+              composerState
+                ? {
+                    ...composerState,
+                    debug_conversation_has_messages,
+                    debug_conversation_id,
+                    debug_conversation_message_count,
+                  }
+                : composerState,
+          )
+        }
+      },
+    }),
+  )
+  const {
+    mutateAsync: refreshDebugConversationRequestAsync,
+    isPending: isRefreshingBuildConversation,
+  } = refreshDebugConversationMutation
+  const refreshDebugConversationAsync = useCallback(
+    () => refreshDebugConversationRequestAsync({ params: { agent_id: agentId } }),
+    [agentId, refreshDebugConversationRequestAsync],
+  )
+  const resetBuildChatState = useCallback(async () => {
+    await refreshDebugConversationAsync().catch(() => undefined)
+    setCompletedBuildConversationId(null)
+    setConversationId({ mode: 'build', conversationId: null })
+    setClearPreviewChat(true)
+  }, [refreshDebugConversationAsync, setClearPreviewChat, setConversationId])
+  const rebaseComposerDraftFromSoulConfig = useCallback(
+    (agentSoulConfig?: AgentSoulConfig) => {
+      rebaseComposerDraft({
+        draft: agentSoulConfigToFormState(agentSoulConfig),
+      })
+    },
+    [rebaseComposerDraft],
+  )
+  const sessionController = useAgentConfigureSessionController({
+    buildDraftAgentSoulConfig: buildDraft.buildDraftAgentSoulConfig,
+    hasActiveBuildDraft: buildDraft.hasActiveBuildDraft,
+    isBuildDraftActive: buildDraft.isActive,
+    mode: rightPanelMode,
+    normalAgentSoulConfig: agentSoulConfig,
+    onModeChange: setRightPanelMode,
+  })
+  const {
+    buildCallbackGeneration,
+    buildDraftActionsDisabled,
+    changeMode,
+    confirmSwitchToPreview: confirmSessionSwitchToPreview,
+    finishBuildAction,
+    isBuildCallbackCurrent,
+    resetBuildSession: resetSessionController,
+    runBuildPreparation,
+    setShowSwitchToPreviewConfirm,
+    showSwitchToPreviewConfirm,
+    waitForPendingPreviewDraftSave,
+  } = sessionController
+  const resetBuildSession = useCallback(
+    () => resetSessionController(resetBuildChatState),
+    [resetBuildChatState, resetSessionController],
+  )
+  const { cancelBuildDraftRefresh, refreshBuildDraftAfterBuildChat } = useAgentBuildDraftRefresh({
+    refetchBuildDraft: buildDraft.refetch,
+    rebaseComposerDraft: rebaseComposerDraftFromSoulConfig,
+  })
+  const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+    input: {
+      params: {
+        agent_id: agentId,
+      },
+    },
+  })
+  const { mutateAsync: saveBuildDraft } = useMutation(
+    consoleQuery.agent.byAgentId.buildDraft.put.mutationOptions(),
+  )
+  const { mutateAsync: discardBuildDraft, isPending: isDiscardingBuildDraft } = useMutation(
+    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({ context: { silent: true } }),
+  )
+  const getInlineAgentSoulDraft = useCallback(
+    () =>
+      formStateToAgentSoulConfig({
+        baseConfig: agentSoulConfig,
+        formState: jotaiStore.get(agentComposerDraftAtom),
+        currentModel,
+      }),
+    [agentSoulConfig, currentModel, jotaiStore],
+  )
+  const prepareInlineBuildDraftBeforeRun = useCallback(async () => {
+    await waitForPendingPreviewDraftSave()
+    cancelBuildDraftRefresh()
+    const configSnapshot = getInlineAgentSoulDraft()
+    const savedComposerState = await saveDraft()
+    const preparedAgentSoulConfig = savedComposerState?.agent_soul ?? configSnapshot
+    const buildDraftState = await saveBuildDraft({
+      params: {
+        agent_id: agentId,
+      },
+      body: {
+        variant: 'agent_app',
+        save_strategy: 'save_to_current_version',
+        agent_soul: preparedAgentSoulConfig,
+      },
+    })
+    const savedBuildAgentSoulConfig = buildDraftState.agent_soul ?? preparedAgentSoulConfig
+    queryClient.setQueryData(buildDraftQueryOptions.queryKey, buildDraftState)
+    rebaseComposerDraftFromSoulConfig(savedBuildAgentSoulConfig)
+    setBuildDraftSoulSourceOverride('build-draft')
+    return savedBuildAgentSoulConfig
+  }, [
+    agentId,
+    buildDraftQueryOptions.queryKey,
+    cancelBuildDraftRefresh,
+    getInlineAgentSoulDraft,
+    queryClient,
+    rebaseComposerDraftFromSoulConfig,
+    saveBuildDraft,
+    saveDraft,
+    setBuildDraftSoulSourceOverride,
+    waitForPendingPreviewDraftSave,
+  ])
+  const applyInlineBuildDraft = async () => {
+    cancelBuildDraftRefresh()
+    setIsApplyingInlineBuildDraft(true)
+    try {
+      const latestBuildDraft = await buildDraft.refetch()
+      const agentSoulConfig = latestBuildDraft.data?.agent_soul
+      if (latestBuildDraft.isError || !agentSoulConfig) return
+
+      const savedComposerState = await saveAgentSoulConfig(agentSoulConfig)
+      await discardBuildDraft({
+        params: {
+          agent_id: agentId,
+        },
+      })
+      await resetBuildSession().catch(() => undefined)
+      setBuildDraftSoulSourceOverride('draft')
+      queryClient.removeQueries({
+        queryKey: buildDraftQueryOptions.queryKey,
+      })
+      rebaseComposerDraftFromSoulConfig(savedComposerState?.agent_soul ?? agentSoulConfig)
+      toast.success(t(($) => $['api.actionSuccess']))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $['api.actionFailed']))
+    } finally {
+      setIsApplyingInlineBuildDraft(false)
+    }
+  }
+  const discardInlineBuildDraft = useCallback(async () => {
+    cancelBuildDraftRefresh()
+    try {
+      await discardBuildDraft({
+        params: {
+          agent_id: agentId,
+        },
+      })
+      await resetBuildSession().catch(() => undefined)
+      setBuildDraftSoulSourceOverride('draft')
+      queryClient.removeQueries({
+        queryKey: buildDraftQueryOptions.queryKey,
+      })
+      rebaseComposerDraftFromSoulConfig(agentSoulConfig)
+      toast.success(t(($) => $['api.actionSuccess']))
+      return true
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $['api.actionFailed']))
+      return false
+    }
+  }, [
+    agentId,
+    agentSoulConfig,
+    buildDraftQueryOptions.queryKey,
+    cancelBuildDraftRefresh,
+    discardBuildDraft,
+    queryClient,
+    rebaseComposerDraftFromSoulConfig,
+    resetBuildSession,
+    setBuildDraftSoulSourceOverride,
+    t,
+  ])
+  const stopBuildChat = useCallback(() => {
+    rightPanelChatControllerRef.current?.stop()
+  }, [])
+  const changeRightPanelMode = useCallback(
+    (nextMode: typeof rightPanelMode) =>
+      changeMode(nextMode, {
+        discardBuildDraft: discardInlineBuildDraft,
+        rebaseComposerDraft: rebaseComposerDraftFromSoulConfig,
+        savePreviewDraft: saveDraft,
+        stopBuildChat,
+      }),
+    [
+      changeMode,
+      discardInlineBuildDraft,
+      rebaseComposerDraftFromSoulConfig,
+      saveDraft,
+      stopBuildChat,
+    ],
+  )
+  const confirmSwitchToPreview = useCallback(
+    () => confirmSessionSwitchToPreview(discardInlineBuildDraft, stopBuildChat),
+    [confirmSessionSwitchToPreview, discardInlineBuildDraft, stopBuildChat],
+  )
+  const hasRestartCurrentChatTarget =
+    rightPanelMode === 'build'
+      ? (inlineComposerState?.debug_conversation_has_messages ?? false) || buildDraft.isActive
+      : !!conversationIds.preview
+  const isRestartCurrentChatDisabled =
+    !hasRestartCurrentChatTarget ||
+    buildDraftActionsDisabled ||
+    isApplyingInlineBuildDraft ||
+    isDiscardingBuildDraft ||
+    isRefreshingBuildConversation
+  const buildConversationHasAgentResponse =
+    !!conversationIds.build &&
+    (conversationIds.build === completedBuildConversationId ||
+      (conversationIds.build === inlineComposerState?.debug_conversation_id &&
+        (inlineComposerState?.debug_conversation_has_messages ?? false)))
+  const showWorkingDirectoryAction =
+    rightPanelMode === 'build' && !!buildDraft.id && buildConversationHasAgentResponse
+  const restartCurrentChat = () => {
+    if (isRestartCurrentChatDisabled) return
+
+    if (rightPanelMode === 'build' && buildDraft.isActive) {
+      void discardInlineBuildDraft()
+      return
+    }
+
+    if (rightPanelMode === 'build') void refreshDebugConversationAsync().catch(() => undefined)
+    resetConversation(rightPanelMode)
+    setClearPreviewChat(true)
+  }
+
+  const handleConversationComplete = (
+    mode: 'build' | 'preview',
+    completedConversationId: string,
+  ) => {
+    if (mode !== 'build' || !isBuildCallbackCurrent(buildCallbackGeneration)) return
+
+    setCompletedBuildConversationId(completedConversationId)
+    invalidateAgentWorkingDirectoryFiles({
+      conversationId: completedConversationId,
+      queryClient,
+    })
+    refreshBuildDraftAfterBuildChat(() => finishBuildAction(buildCallbackGeneration))
+  }
+  const handleConversationIdChange = (mode: 'build' | 'preview', conversationId: string) => {
+    if (mode === 'build' && !isBuildCallbackCurrent(buildCallbackGeneration)) return
+    setConversationId({ mode, conversationId })
+  }
+  const saveDraftBeforeChatRun =
+    rightPanelMode === 'build'
+      ? async () => {
+          const preparedBuildDraft = await runBuildPreparation({
+            generation: buildCallbackGeneration,
+            markBuildChatStarted: true,
+            prepare: prepareInlineBuildDraftBeforeRun,
+          })
+          trackAgentBuildModeRun(agentScope)
+          return preparedBuildDraft
+        }
+      : async () => {
+          await saveDraft()
+          trackAgentPreviewModeRun(agentScope)
+        }
+  const handleSendInterrupted = () => {
+    finishBuildAction(buildCallbackGeneration)
+  }
+
+  return (
+    <>
+      <section className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden rounded-[inherit] bg-background-body p-1">
+        <AgentOrchestratePanel
+          agentId={agentId}
+          appId={appId}
+          nodeId={nodeId}
+          agentName={composerState?.agent?.name}
+          currentModel={currentModel}
+          readOnly={buildDraft.isActive}
+          isBuildDraftActive={buildDraft.isActive}
+          buildDraftChangedKeys={buildDraft.changedKeys}
+          showPublishBar={false}
+          bottomAction={
+            buildDraft.isActive ? (
+              <AgentBuildDraftBar
+                changeSummary={buildDraft.changeSummary}
+                changesCount={buildDraft.changesCount}
+                disabled={buildDraftActionsDisabled}
+                isApplying={isApplyingInlineBuildDraft}
+                isDiscarding={isDiscardingBuildDraft}
+                onApply={() => {
+                  void applyInlineBuildDraft()
+                }}
+                onDiscard={() => {
+                  void discardInlineBuildDraft()
+                }}
+              />
+            ) : undefined
+          }
+          headerAction={
+            onSaveInlineToRoster ? (
+              <WorkflowInlineAgentConfigureMoreAction onSaveInlineToRoster={onSaveInlineToRoster} />
+            ) : undefined
+          }
+          className="max-w-140 min-w-0 flex-[0_0_min(41.08280255%,560px)]"
+          onSelectModel={setConfigureModel}
+        />
+        <AgentConfigurePreviewSurface className="min-w-0 flex-1">
+          <AgentBuildPanelBackground visible={rightPanelMode === 'build'} />
+          <AgentPreviewHeader
+            mode={rightPanelMode}
+            previewEnabled={previewEnabled}
+            onModeChange={changeRightPanelMode}
+            onOpenWorkingDirectory={() => setShowWorkingDirectory(true)}
+            onRefresh={restartCurrentChat}
+            refreshDisabled={isRestartCurrentChatDisabled}
+            showWorkingDirectoryAction={showWorkingDirectoryAction}
+          />
+          <AgentConfigurePreviewBody>
+            <AgentConfigureRightPanelChat
+              agentId={agentId}
+              answerActionPosition="below"
+              agentName={composerState?.agent?.name}
+              agentSoulConfig={buildDraft.agentSoulConfig}
+              clearChatList={clearPreviewChat}
+              controllerRef={rightPanelChatControllerRef}
+              conversationIds={conversationIds}
+              mode={rightPanelMode}
+              onClearChatListChange={setClearPreviewChat}
+              onConversationComplete={handleConversationComplete}
+              onConversationIdChange={handleConversationIdChange}
+              onSaveDraftBeforeRun={saveDraftBeforeChatRun}
+              onSendInterrupted={handleSendInterrupted}
+            />
+          </AgentConfigurePreviewBody>
+        </AgentConfigurePreviewSurface>
+      </section>
+      {buildDraft.id && (
+        <AgentWorkingDirectoryPanel
+          source={{ type: 'agent', agentId, callerType: 'build_draft', callerId: buildDraft.id }}
+          open={showWorkingDirectory}
+          onOpenChange={setShowWorkingDirectory}
+        />
+      )}
+      <AgentConfigureClearSessionConfirmDialog
+        open={showSwitchToPreviewConfirm}
+        title={tAgent(($) => $['agentDetail.configure.switchToPreviewConfirm.title'])}
+        onOpenChange={setShowSwitchToPreviewConfirm}
+        onConfirm={confirmSwitchToPreview}
+      />
+    </>
+  )
+}
+
+function WorkflowInlineAgentConfigureMoreAction({
+  onSaveInlineToRoster,
+}: {
+  onSaveInlineToRoster: () => void
+}) {
+  const { t } = useTranslation(['common', 'agentRoster'])
+  const canCreateAgents = useCanCreateAgents()
+
+  if (!canCreateAgents) return null
+
+  return (
+    <Menu modal={false}>
+      <MenuTrigger
+        render={
+          <IconButton aria-label={t(($) => $['operation.more'])}>
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </IconButton>
+        }
+      />
+      <MenuContent align="end" className="w-max min-w-44">
+        <MenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
+          <span
+            aria-hidden
+            className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary"
+          />
+          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}</span>
+        </MenuItem>
+      </MenuContent>
+    </Menu>
+  )
+}
+
+function useAgentOrchestrateModelOptions() {
+  const [model, setModel] = useAtom(agentComposerModelAtom)
+  const { data: defaultTextGenerationModel } = useDefaultModel(ModelTypeEnum.textGeneration)
+  const defaultModel = defaultTextGenerationModel
+    ? {
+        provider: defaultTextGenerationModel.provider.provider,
+        model: defaultTextGenerationModel.model,
+      }
+    : undefined
+  const currentModel = model ?? defaultModel
+
+  return {
+    currentModel,
+    setConfigureModel: setModel,
+  }
+}

@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { AgentV2NodeType } from './types'
 import { BlockEnum } from '../../types'
@@ -7,24 +8,41 @@ import { hasValidAgentBinding } from './types'
 const metaData = genNodeMetaData({
   sort: 3,
   type: BlockEnum.AgentV2,
+  helpLinkUri: 'agent#new-agent',
 })
 
 const nodeDefault: NodeDefault<AgentV2NodeType> = {
   metaData,
   defaultValue: {
+    agent_binding: {
+      binding_type: 'inline_agent',
+    },
     agent_node_kind: 'dify_agent',
     version: '2',
   },
-  checkValid(payload, t) {
+  checkValid(payload, t: TFunction<['workflow']>) {
     if (!hasValidAgentBinding(payload)) {
       return {
         isValid: false,
-        errorMessage: t('errorMsg.fieldRequired', {
+        errorMessage: t(($) => $['errorMsg.fieldRequired'], {
           ns: 'workflow',
-          field: t('nodes.agent.roster.label', { ns: 'workflow' }),
+          field: t(($) => $['nodes.agent.roster.label'], { ns: 'workflow' }),
         }),
       }
     }
+
+    const routes = payload.agent_output_routes
+    if (
+      routes?.enabled &&
+      ((routes.routes?.length ?? 0) < 2 || routes.routes?.some((route) => !route.name?.trim()))
+    )
+      return {
+        isValid: false,
+        errorMessage: t(($) => $['errorMsg.fieldRequired'], {
+          ns: 'workflow',
+          field: t(($) => $['nodes.agent.outputRoutes.title'], { ns: 'workflow' }),
+        }),
+      }
 
     return {
       isValid: true,

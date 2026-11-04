@@ -11,14 +11,13 @@ type Props = Readonly<{
   onChange: (key: string, value: number) => void
   enable: boolean
   disabled?: boolean
+  max?: number
 }>
 
-const maxTopK = env.NEXT_PUBLIC_TOP_K_MAX_VALUE
 const VALUE_LIMIT = {
   default: 2,
   step: 1,
   min: 1,
-  max: maxTopK,
 }
 
 const TopKItem: FC<Props> = ({
@@ -27,21 +26,23 @@ const TopKItem: FC<Props> = ({
   enable,
   onChange,
   disabled = false,
+  max = env.NEXT_PUBLIC_TOP_K_MAX_VALUE,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const handleParamChange = (key: string, value: number) => {
     let notOutRangeValue = Number.parseInt(value.toFixed(0))
     notOutRangeValue = Math.max(VALUE_LIMIT.min, notOutRangeValue)
-    notOutRangeValue = Math.min(VALUE_LIMIT.max, notOutRangeValue)
+    notOutRangeValue = Math.min(max, notOutRangeValue)
     onChange(key, notOutRangeValue)
   }
   return (
     <ParamItem
       className={className}
       id="top_k"
-      name={t('datasetConfig.top_k', { ns: 'appDebug' })}
-      tip={t('datasetConfig.top_kTip', { ns: 'appDebug' }) as string}
+      name={t(($) => $['datasetConfig.top_k'], { ns: 'appDebug' })}
+      tip={t(($) => $['datasetConfig.top_kTip'], { ns: 'appDebug' }) as string}
       {...VALUE_LIMIT}
+      max={max}
       value={value}
       enable={enable}
       disabled={disabled}

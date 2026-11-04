@@ -4,7 +4,25 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type SchemaDefinitionsResponse = unknown
+export type SchemaDefinitionsResponse = Array<SchemaDefinitionItemResponse>
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type SchemaDefinitionItemResponse = {
+  label: string
+  name: string
+  schema: {
+    [key: string]: unknown
+  }
+}
 
 export type GetSpecSchemaDefinitionsData = {
   body?: never
@@ -13,9 +31,16 @@ export type GetSpecSchemaDefinitionsData = {
   url: '/spec/schema-definitions'
 }
 
+export type GetSpecSchemaDefinitionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetSpecSchemaDefinitionsError =
+  GetSpecSchemaDefinitionsErrors[keyof GetSpecSchemaDefinitionsErrors]
+
 export type GetSpecSchemaDefinitionsResponses = {
   200: SchemaDefinitionsResponse
 }
 
-export type GetSpecSchemaDefinitionsResponse
-  = GetSpecSchemaDefinitionsResponses[keyof GetSpecSchemaDefinitionsResponses]
+export type GetSpecSchemaDefinitionsResponse =
+  GetSpecSchemaDefinitionsResponses[keyof GetSpecSchemaDefinitionsResponses]

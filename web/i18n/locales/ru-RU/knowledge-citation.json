@@ -1,0 +1,4 @@
+{
+  "documentLoadErrorDescription": "Не удалось загрузить этот документ. Повторите попытку.",
+  "documentNotFoundDescription": "Возможно, документ удалён или у вас нет доступа."
+}

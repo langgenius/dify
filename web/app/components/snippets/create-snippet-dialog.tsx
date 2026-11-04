@@ -1,19 +1,30 @@
 'use client'
-
-import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetCanvasData } from '@/models/snippet'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useKeyPress } from 'ahooks'
-import { useCallback, useState } from 'react'
+import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+const CREATE_SNIPPET_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 export type CreateSnippetDialogPayload = {
   name: string
   description: string
   graph: SnippetCanvasData
-  input_fields?: SnippetInputField[]
+  input_fields?: InputVar[]
 }
 
 type CreateSnippetDialogInitialValue = {
@@ -24,7 +35,7 @@ type CreateSnippetDialogInitialValue = {
 type CreateSnippetDialogProps = {
   isOpen: boolean
   selectedGraph?: SnippetCanvasData
-  inputFields?: SnippetInputField[]
+  inputFields?: InputVar[]
   onClose: () => void
   onConfirm: (payload: CreateSnippetDialogPayload) => void
   isSubmitting?: boolean
@@ -39,7 +50,7 @@ const defaultGraph: SnippetCanvasData = {
   viewport: { x: 0, y: 0, zoom: 1 },
 }
 
-function CreateSnippetDialog({
+export function CreateSnippetDialog({
   isOpen,
   selectedGraph,
   inputFields,
@@ -50,26 +61,28 @@ function CreateSnippetDialog({
   confirmText,
   initialValue,
 }: CreateSnippetDialogProps) {
-  const { t } = useTranslation()
+  const nameInputId = useId()
+  const descriptionInputId = useId()
+  const { t } = useTranslation(['common', 'workflow'])
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(initialValue?.name ?? '')
   const [description, setDescription] = useState(initialValue?.description ?? '')
 
-  const resetForm = useCallback(() => {
+  function resetForm() {
     setName('')
     setDescription('')
-  }, [])
+  }
 
-  const handleClose = useCallback(() => {
+  function handleClose() {
     resetForm()
     onClose()
-  }, [onClose, resetForm])
+  }
 
-  const handleConfirm = useCallback(() => {
+  function handleConfirm() {
     const trimmedName = name.trim()
     const trimmedDescription = description.trim()
 
-    if (!trimmedName)
-      return
+    if (!trimmedName || isSubmitting) return
 
     const payload = {
       name: trimmedName,
@@ -79,75 +92,91 @@ function CreateSnippetDialog({
     }
 
     onConfirm(payload)
-  }, [description, inputFields, name, onConfirm, selectedGraph])
-
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
-    if (!isOpen)
-      return
-
-    if (isSubmitting)
-      return
-
-    handleConfirm()
-  })
+  }
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={open => !open && handleClose()}>
-        <DialogContent className="w-120 max-w-120 p-0">
-          <DialogCloseButton />
-
-          <div className="px-6 pt-6 pb-3">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {title || t('snippet.createDialogTitle', { ns: 'workflow' })}
+      <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+        <DialogContent
+          onKeyDown={(event) => {
+            if (
+              !isOpen ||
+              isSubmitting ||
+              !name.trim() ||
+              event.defaultPrevented ||
+              event.nativeEvent.isComposing ||
+              !(event.target instanceof Node) ||
+              !event.currentTarget.contains(event.target) ||
+              !matchesKeyboardEvent(event.nativeEvent, CREATE_SNIPPET_HOTKEY)
+            )
+              return
+            event.preventDefault()
+            event.stopPropagation()
+            if (event.repeat) return
+            handleConfirm()
+          }}
+          initialFocus={nameInputRef}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {title || t(($) => $['snippet.createDialogTitle'], { ns: 'workflow' })}
             </DialogTitle>
-          </div>
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
+          </DialogHeader>
 
-          <div className="space-y-4 px-6 py-2">
+          <DialogBody className="space-y-4">
             <div>
-              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-                {t('snippet.nameLabel', { ns: 'workflow' })}
-              </div>
+              <label
+                htmlFor={nameInputId}
+                className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+              >
+                {t(($) => $['snippet.nameLabel'], { ns: 'workflow' })}
+              </label>
               <Input
+                ref={nameInputRef}
+                id={nameInputId}
                 value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder={t('snippet.namePlaceholder', { ns: 'workflow' }) || ''}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t(($) => $['snippet.namePlaceholder'], { ns: 'workflow' })}
                 disabled={isSubmitting}
-                autoFocus
               />
             </div>
 
             <div>
-              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-                {t('snippet.descriptionLabel', { ns: 'workflow' })}
-              </div>
+              <label
+                htmlFor={descriptionInputId}
+                className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+              >
+                {t(($) => $['snippet.descriptionLabel'], { ns: 'workflow' })}
+              </label>
               <Textarea
+                id={descriptionInputId}
                 className="resize-none"
                 value={description}
-                onValueChange={value => setDescription(value)}
-                placeholder={t('snippet.descriptionPlaceholder', { ns: 'workflow' }) || ''}
+                onValueChange={(value) => setDescription(value)}
+                placeholder={t(($) => $['snippet.descriptionPlaceholder'], { ns: 'workflow' })}
                 disabled={isSubmitting}
               />
             </div>
-          </div>
+          </DialogBody>
 
-          <div className="flex items-center justify-end gap-2 px-6 pb-6">
+          <DialogFooter>
             <Button disabled={isSubmitting} onClick={handleClose}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button
               variant="primary"
-              disabled={!name.trim() || isSubmitting}
+              disabled={!name.trim()}
               loading={isSubmitting}
               onClick={handleConfirm}
             >
-              {confirmText || t('snippet.confirm', { ns: 'workflow' })}
+              {confirmText || t(($) => $['snippet.confirm'], { ns: 'workflow' })}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
   )
 }
-
-export default CreateSnippetDialog

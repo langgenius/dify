@@ -1,103 +1,68 @@
-from __future__ import annotations
+"""Unit tests for the thin web-passport Flask adapter."""
 
 from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from controllers.web.error import WebAppAuthRequiredError
-from controllers.web.passport import (
-    PassportService,
-    decode_enterprise_webapp_user_id,
-    exchange_token_for_existing_web_user,
-    generate_session_id,
+from controllers.web.passport import PassportResource
+from services.entities.passport_entities import WebPassportRequest, WebPassportResult
+from services.web_passport_service import (
+    WebPassportAuthenticationRequiredError,
+    WebPassportNotFoundError,
+    WebPassportUnauthorizedError,
 )
-from services.webapp_auth_service import WebAppAuthType
 
 
-def test_decode_enterprise_webapp_user_id_none() -> None:
-    assert decode_enterprise_webapp_user_id(None) is None
+def test_passport_resource_parses_input_and_serializes_result(app: Flask) -> None:
+    service = MagicMock()
+    service.issue.return_value = WebPassportResult(access_token="issued-token")
+    services = SimpleNamespace(web_passport=service)
+
+    with (
+        app.test_request_context(
+            "/passport?user_id=session-1",
+            headers={"X-App-Code": "app-code", "Authorization": "Bearer login-token"},
+        ),
+        patch("controllers.web.passport.application_services", return_value=services),
+        patch("controllers.web.passport.extract_webapp_access_token", return_value="login-token"),
+    ):
+        result = PassportResource().get()
+
+    assert result == {"access_token": "issued-token"}
+    service.issue.assert_called_once_with(
+        WebPassportRequest(app_code="app-code", user_session_id="session-1", access_token="login-token")
+    )
 
 
-def test_decode_enterprise_webapp_user_id_invalid_source(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(PassportService, "verify", lambda *_args, **_kwargs: {"token_source": "bad"})
-    with pytest.raises(Unauthorized):
-        decode_enterprise_webapp_user_id("token")
+def test_passport_resource_requires_app_code(app: Flask) -> None:
+    with app.test_request_context("/passport"), pytest.raises(Unauthorized, match="X-App-Code"):
+        PassportResource().get()
 
 
-def test_decode_enterprise_webapp_user_id_valid(monkeypatch: pytest.MonkeyPatch) -> None:
-    decoded = {"token_source": "webapp_login_token", "user_id": "u1"}
-    monkeypatch.setattr(PassportService, "verify", lambda *_args, **_kwargs: decoded)
-    assert decode_enterprise_webapp_user_id("token") == decoded
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [
+        (WebPassportAuthenticationRequiredError("login required"), WebAppAuthRequiredError),
+        (WebPassportUnauthorizedError("bad token"), Unauthorized),
+        (WebPassportNotFoundError(), NotFound),
+    ],
+)
+def test_passport_resource_translates_application_errors(
+    service_error: Exception,
+    http_error: type[Exception],
+    app: Flask,
+) -> None:
+    service = MagicMock()
+    service.issue.side_effect = service_error
+    services = SimpleNamespace(web_passport=service)
 
-
-def test_exchange_token_public_flow(monkeypatch: pytest.MonkeyPatch) -> None:
-    site = SimpleNamespace(id="s1", app_id="a1", code="code", status="normal")
-    app_model = SimpleNamespace(id="a1", status="normal", enable_site=True)
-
-    def _scalar_side_effect(*_args, **_kwargs):
-        if not hasattr(_scalar_side_effect, "calls"):
-            _scalar_side_effect.calls = 0
-        _scalar_side_effect.calls += 1
-        return site if _scalar_side_effect.calls == 1 else app_model
-
-    db_session = SimpleNamespace(scalar=_scalar_side_effect)
-    monkeypatch.setattr("controllers.web.passport.db", SimpleNamespace(session=db_session))
-    monkeypatch.setattr("controllers.web.passport._exchange_for_public_app_token", lambda *_args, **_kwargs: "resp")
-
-    decoded = {"auth_type": "public"}
-    result = exchange_token_for_existing_web_user("code", decoded, WebAppAuthType.PUBLIC)
-    assert result == "resp"
-
-
-def test_exchange_token_requires_external(monkeypatch: pytest.MonkeyPatch) -> None:
-    site = SimpleNamespace(id="s1", app_id="a1", code="code", status="normal")
-    app_model = SimpleNamespace(id="a1", status="normal", enable_site=True)
-
-    def _scalar_side_effect(*_args, **_kwargs):
-        if not hasattr(_scalar_side_effect, "calls"):
-            _scalar_side_effect.calls = 0
-        _scalar_side_effect.calls += 1
-        return site if _scalar_side_effect.calls == 1 else app_model
-
-    db_session = SimpleNamespace(scalar=_scalar_side_effect)
-    monkeypatch.setattr("controllers.web.passport.db", SimpleNamespace(session=db_session))
-
-    decoded = {"auth_type": "internal"}
-    with pytest.raises(WebAppAuthRequiredError):
-        exchange_token_for_existing_web_user("code", decoded, WebAppAuthType.EXTERNAL)
-
-
-def test_exchange_token_missing_session_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    site = SimpleNamespace(id="s1", app_id="a1", code="code", status="normal")
-    app_model = SimpleNamespace(id="a1", status="normal", enable_site=True, tenant_id="t1")
-
-    def _scalar_side_effect(*_args, **_kwargs):
-        if not hasattr(_scalar_side_effect, "calls"):
-            _scalar_side_effect.calls = 0
-        _scalar_side_effect.calls += 1
-        if _scalar_side_effect.calls == 1:
-            return site
-        if _scalar_side_effect.calls == 2:
-            return app_model
-        return None
-
-    db_session = SimpleNamespace(scalar=_scalar_side_effect, add=lambda *_a, **_k: None, commit=lambda: None)
-    monkeypatch.setattr("controllers.web.passport.db", SimpleNamespace(session=db_session))
-
-    decoded = {"auth_type": "internal"}
-    with pytest.raises(NotFound):
-        exchange_token_for_existing_web_user("code", decoded, WebAppAuthType.INTERNAL)
-
-
-def test_generate_session_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    counts = [1, 0]
-
-    def _scalar(*_args, **_kwargs):
-        return counts.pop(0)
-
-    db_session = SimpleNamespace(scalar=_scalar)
-    monkeypatch.setattr("controllers.web.passport.db", SimpleNamespace(session=db_session))
-
-    session_id = generate_session_id()
-    assert session_id
+    with (
+        app.test_request_context("/passport", headers={"X-App-Code": "app-code"}),
+        patch("controllers.web.passport.application_services", return_value=services),
+        pytest.raises(http_error),
+    ):
+        PassportResource().get()

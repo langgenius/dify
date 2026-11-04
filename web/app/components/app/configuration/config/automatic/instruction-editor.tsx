@@ -13,16 +13,14 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type Props = Readonly<{
+  'aria-labelledby'?: string
   editorKey: string
   value: string
   onChange: (text: string) => void
   generatorType: GeneratorType
   availableVars: NodeOutPutVar[]
   availableNodes: Node[]
-  getVarType?: (params: {
-    nodeId: string
-    valueSelector: ValueSelector
-  }) => Type
+  getVarType?: (params: { nodeId: string; valueSelector: ValueSelector }) => Type
   isShowCurrentBlock: boolean
   isShowLastRunBlock: boolean
 }>
@@ -30,6 +28,7 @@ type Props = Readonly<{
 const i18nPrefix = 'generate'
 
 const InstructionEditor: FC<Props> = ({
+  'aria-labelledby': ariaLabelledBy,
   editorKey,
   generatorType,
   value,
@@ -40,26 +39,32 @@ const InstructionEditor: FC<Props> = ({
   isShowCurrentBlock,
   isShowLastRunBlock,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'appGeneration'])
   const { eventEmitter } = useEventEmitterContextContext()
 
   const isCode = generatorType === 'code'
-  const placeholder = isCode
-    ? (
-        <div className="system-sm-regular leading-6! whitespace-break-spaces text-text-placeholder">
-          {t(`${i18nPrefix}.codeGenInstructionPlaceHolderLine`, { ns: 'appDebug' })}
+  const placeholder = isCode ? (
+    <div className="system-sm-regular leading-6! whitespace-break-spaces text-text-placeholder">
+      {t(($) => $[`${i18nPrefix}.codeGenInstructionPlaceHolderLine`], { ns: 'appGeneration' })}
+    </div>
+  ) : (
+    <div className="system-sm-regular text-text-placeholder">
+      <div className="leading-6">
+        {t(($) => $[`${i18nPrefix}.instructionPlaceHolderTitle`], { ns: 'appGeneration' })}
+      </div>
+      <div className="mt-2">
+        <div>
+          {t(($) => $[`${i18nPrefix}.instructionPlaceHolderLine1`], { ns: 'appGeneration' })}
         </div>
-      )
-    : (
-        <div className="system-sm-regular text-text-placeholder">
-          <div className="leading-6">{t(`${i18nPrefix}.instructionPlaceHolderTitle`, { ns: 'appDebug' })}</div>
-          <div className="mt-2">
-            <div>{t(`${i18nPrefix}.instructionPlaceHolderLine1`, { ns: 'appDebug' })}</div>
-            <div>{t(`${i18nPrefix}.instructionPlaceHolderLine2`, { ns: 'appDebug' })}</div>
-            <div>{t(`${i18nPrefix}.instructionPlaceHolderLine3`, { ns: 'appDebug' })}</div>
-          </div>
+        <div>
+          {t(($) => $[`${i18nPrefix}.instructionPlaceHolderLine2`], { ns: 'appGeneration' })}
         </div>
-      )
+        <div>
+          {t(($) => $[`${i18nPrefix}.instructionPlaceHolderLine3`], { ns: 'appGeneration' })}
+        </div>
+      </div>
+    </div>
+  )
 
   const handleInsertVariable = () => {
     eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId: editorKey } as any)
@@ -68,12 +73,16 @@ const InstructionEditor: FC<Props> = ({
   return (
     <div className="relative">
       <PromptEditor
+        aria-labelledby={ariaLabelledBy}
+        aria-label={
+          ariaLabelledBy ? undefined : t(($) => $['generate.instruction'], { ns: 'appGeneration' })
+        }
         wrapperClassName="border border-components-input-bg-normal! bg-components-input-bg-normal hover:border-components-input-bg-hover! rounded-[10px] px-4 pt-3"
         key={editorKey}
         instanceId={editorKey}
         placeholder={placeholder}
         placeholderClassName="px-4 pt-3"
-        className={cn('min-h-[240px] pb-8')}
+        className={cn('min-h-60 pb-8')}
         value={value}
         workflowVariableBlock={{
           show: true,
@@ -89,7 +98,7 @@ const InstructionEditor: FC<Props> = ({
             }
             if (node.data.type === BlockEnum.Start) {
               acc.sys = {
-                title: t('blocks.start', { ns: 'workflow' }),
+                title: t(($) => $['blocks.start'], { ns: 'workflow' }),
                 type: BlockEnum.Start,
               }
             }
@@ -111,15 +120,15 @@ const InstructionEditor: FC<Props> = ({
         isSupportFileVar={false}
       />
       <div className="absolute bottom-0 left-4 flex h-8 items-center space-x-0.5 system-xs-regular text-components-input-text-placeholder">
-        <span>{t('generate.press', { ns: 'appDebug' })}</span>
+        <span>{t(($) => $['generate.press'], { ns: 'appGeneration' })}</span>
         <Kbd className="text-text-placeholder">/</Kbd>
-        <span>{t('generate.to', { ns: 'appDebug' })}</span>
+        <span>{t(($) => $['generate.to'], { ns: 'appGeneration' })}</span>
         <button
           type="button"
           className="ml-1! cursor-pointer border-none bg-transparent p-0 text-left hover:border-b hover:border-dotted hover:border-text-tertiary hover:text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={handleInsertVariable}
         >
-          {t('generate.insertContext', { ns: 'appDebug' })}
+          {t(($) => $['generate.insertContext'], { ns: 'appGeneration' })}
         </button>
       </div>
     </div>
