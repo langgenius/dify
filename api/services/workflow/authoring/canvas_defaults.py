@@ -18,7 +18,6 @@ from pydantic import TypeAdapter
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.llm_environment_variable import parse_llm_model_selector, should_resolve_llm_model_selector
 from graphon.enums import BuiltinNodeTypes
-from graphon.model_runtime.entities.llm_entities import LLMMode
 from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
 
 type Loc = tuple[str | int, ...]
@@ -34,7 +33,6 @@ _HUMAN_INPUT_V2_ENTRY: Final = "human-input-v2"
 _START_NODE_ID_KEY: Final = "start_node_id"
 _ITERATOR_SELECTOR_KEY: Final = "iterator_selector"
 _OUTPUT_SELECTOR_KEY: Final = "output_selector"
-_DELIVERY_METHODS_KEY: Final = "delivery_methods"
 _MODEL_SELECTOR_KEY: Final = "model_selector"
 _VARIABLES_KEY: Final = "variables"
 _ADVANCED_SETTINGS_KEY: Final = "advanced_settings"
@@ -48,30 +46,6 @@ _DEFAULTS_FILE: Final = "canvas_defaults.json"
 _DEFAULTS: Final = TypeAdapter(dict[str, dict[str, object]]).validate_json(
     resources.files(__package__).joinpath(_DEFAULTS_FILE).read_text(encoding="utf-8")
 )
-
-
-def _nothing_withheld(_written: Mapping[str, object]) -> frozenset[str]:
-    return frozenset()
-
-
-def _start_child_is_written_by_the_agent(_written: Mapping[str, object]) -> frozenset[str]:
-    """A container's start child is a node id; the canvas's empty id is no default, and it hides the missing child."""
-    return frozenset({_START_NODE_ID_KEY})
-
-
-def _iteration_references_are_written_by_the_agent(written: Mapping[str, object]) -> frozenset[str]:
-    """Like the start child, the selectors an iteration reads and writes have no default; the canvas's empty ones make
-    the node unreadable to check.
-    """
-    return _start_child_is_written_by_the_agent(written) | {_ITERATOR_SELECTOR_KEY, _OUTPUT_SELECTOR_KEY}
-
-
-def _completion_model_has_no_chat_prompt(written: Mapping[str, object]) -> frozenset[str]:
-    """The canvas prompt is a chat message list; a node written for a completion model needs a text prompt."""
-    model = written.get("model")
-    if isinstance(model, Mapping) and model.get("mode") == LLMMode.COMPLETION:
-        return frozenset({"prompt_template"})
-    return frozenset()
 
 
 def _is_empty(value: object) -> bool:
@@ -158,19 +132,14 @@ def _empty_ungrouped_variable(written: Mapping[str, object], loc: Loc) -> list[L
 class CanvasEdition:
     """What the canvas gives a node of one version of a block type, from the web entry `entry`.
 
-    `withheld` names the canvas keys not to write for the node as written, because the canvas value would not suit it.
     `emptiness` holds the purpose locs whose emptiness is not the generic rule's, each with its own finder of the
     empty locs it names in the node.
-    `untaken` names the keys the editor's empty containers give every node of the type but this version does not
-    take; fill leaves them out, while import and the draft hash keep them.
     """
 
     version: str | None
     entry: str
     purpose: tuple[Loc, ...]
-    withheld: Callable[[Mapping[str, object]], frozenset[str]] = _nothing_withheld
     emptiness: Mapping[Loc, EmptyLocs] = field(default_factory=dict)
-    untaken: frozenset[str] = frozenset()
 
     @property
     def data(self) -> Mapping[str, object]:
@@ -264,7 +233,6 @@ class CanvasNode(StrEnum):
                 ("user_actions", WILDCARD, "id"),
                 ("user_actions", WILDCARD, "title"),
             ),
-            untaken=frozenset({_DELIVERY_METHODS_KEY}),
         ),
     )
     # if-else/default.ts:43, 47, 56, 62; the value is required only for some operators (:84-89)
@@ -278,12 +246,9 @@ class CanvasNode(StrEnum):
     # iteration/default.ts:32, 39; the canvas sets start_node_id itself, and a run fails without it
     ITERATION = (
         BuiltinNodeTypes.ITERATION,
-        CanvasEdition(
-            None,
-            BuiltinNodeTypes.ITERATION,
-            ((_ITERATOR_SELECTOR_KEY,), (_OUTPUT_SELECTOR_KEY,), (_START_NODE_ID_KEY,)),
-            withheld=_iteration_references_are_written_by_the_agent,
-        ),
+        (_ITERATOR_SELECTOR_KEY,),
+        (_OUTPUT_SELECTOR_KEY,),
+        (_START_NODE_ID_KEY,),
     )
     # knowledge-retrieval/default.ts:35; the model is required only for single retrieval (:41-45)
     KNOWLEDGE_RETRIEVAL = (BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, ("dataset_ids",))
@@ -300,7 +265,6 @@ class CanvasNode(StrEnum):
             None,
             BuiltinNodeTypes.LLM,
             (("model", "provider"), ("model", "name"), ("prompt_template",)),
-            withheld=_completion_model_has_no_chat_prompt,
             emptiness={
                 ("model", "provider"): _empty_llm_model,
                 ("model", "name"): _empty_llm_model,
@@ -311,17 +275,10 @@ class CanvasNode(StrEnum):
     # loop/default.ts:36, 51, 57; start_node_id as for iteration
     LOOP = (
         BuiltinNodeTypes.LOOP,
-        CanvasEdition(
-            None,
-            BuiltinNodeTypes.LOOP,
-            (
-                (_START_NODE_ID_KEY,),
-                ("loop_variables", WILDCARD, "label"),
-                ("break_conditions", WILDCARD, "variable_selector"),
-                ("break_conditions", WILDCARD, "comparison_operator"),
-            ),
-            withheld=_start_child_is_written_by_the_agent,
-        ),
+        (_START_NODE_ID_KEY,),
+        ("loop_variables", WILDCARD, "label"),
+        ("break_conditions", WILDCARD, "variable_selector"),
+        ("break_conditions", WILDCARD, "comparison_operator"),
     )
     # loop-end/default.ts:15 checks nothing
     LOOP_END = (BuiltinNodeTypes.LOOP_END,)
@@ -412,10 +369,7 @@ def with_canvas_defaults(data: Mapping[str, object]) -> dict[str, object]:
     edition = _edition_of(data)
     if edition is None:
         return filled
-    withheld = edition.withheld(data)
     for key, canvas in edition.data.items():
-        if key in withheld:
-            continue
         if key not in filled:
             filled[key] = copy.deepcopy(canvas)
             continue
@@ -426,25 +380,11 @@ def with_canvas_defaults(data: Mapping[str, object]) -> dict[str, object]:
 
 
 def canvas_example(data: Mapping[str, object], loc: Loc) -> object | None:
-    """A copy of the canvas value at `loc` for a node as written; None where the canvas has none, or where the
-    canvas value is one fill withholds from this node because it would not suit it.
-    """
+    """A copy of the canvas value at `loc` for a node as written; None where the canvas has none."""
     edition = _edition_of(data)
     if edition is None:
-        return None
-    if loc and loc[0] in edition.withheld(data):
         return None
     return _value_at(edition, loc)
-
-
-def untaken_keys(data: Mapping[str, object]) -> frozenset[str]:
-    """The keys the node's version does not take though the editor's empty containers give them; none for a type or
-    version the canvas does not know.
-    """
-    edition = _edition_of(data)
-    if edition is None:
-        return frozenset()
-    return edition.untaken
 
 
 def purpose_fields(data: Mapping[str, object]) -> frozenset[str | int]:

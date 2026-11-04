@@ -113,7 +113,7 @@ def rewrite_old_shapes(data: Mapping[str, Any]) -> dict[str, Any]:
     return dict(normalize(data))
 
 
-def editor_empties(data: Mapping[str, Any]) -> dict[str, Any]:
+def _editor_empties(data: Mapping[str, Any]) -> dict[str, Any]:
     """`data` plus the empty containers the editor reads for its type; keys already present win."""
     node_type = data.get("type")
     if not isinstance(node_type, str):
@@ -123,7 +123,7 @@ def editor_empties(data: Mapping[str, Any]) -> dict[str, Any]:
 
 def editor_defaults(data: Mapping[str, Any]) -> dict[str, Any]:
     """Old shapes rewritten and the empty containers the editor reads added; keys already present win."""
-    return editor_empties(rewrite_old_shapes(data))
+    return _editor_empties(rewrite_old_shapes(data))
 
 
 def fill_node_data(data: Mapping[str, Any]) -> dict[str, Any]:

@@ -14,7 +14,7 @@ from configs import dify_config
 from libs.archive_writer import ArchiveEntry, ArchiveLimits
 from models.model import AppMode
 from services.dsl_content import DSL_MAX_SIZE
-from services.workflow.authoring.canvas_defaults import untaken_keys, with_canvas_defaults
+from services.workflow.authoring.canvas_defaults import with_canvas_defaults
 from services.workflow.authoring.canvas_layout import lay_out_nodes
 from services.workflow.authoring.canvas_notes import fill_canvas_notes, fill_note_covers
 from services.workflow.authoring.graph_wiring import fill_graph_wiring
@@ -30,7 +30,7 @@ from services.workflow.authoring.package_io import (
 )
 from services.workflow.authoring.plugins import fill_plugin_values
 from services.workflow.graph_check import GRAPH_MODES
-from services.workflow.node_defaults import editor_empties, rewrite_old_shapes
+from services.workflow.node_defaults import rewrite_old_shapes
 
 if TYPE_CHECKING:
     from services.workflow.authoring import FillContext
@@ -157,9 +157,7 @@ def _fill_node(node: object, ctx: FillContext) -> None:
     data = node.get("data")
     if not isinstance(data, dict):
         return
-    canvas = with_canvas_defaults(rewrite_old_shapes(data))
-    untaken = untaken_keys(canvas) - canvas.keys()
-    node["data"] = {key: value for key, value in editor_empties(canvas).items() if key not in untaken}
+    node["data"] = with_canvas_defaults(rewrite_old_shapes(data))
     fill_plugin_values(node["data"], ctx)
 
 

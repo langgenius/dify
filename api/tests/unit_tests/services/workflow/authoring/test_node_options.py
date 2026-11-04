@@ -20,7 +20,6 @@ from services.workflow.authoring.node_options import (
     list_node_options,
 )
 from services.workflow.authoring.plugins import fill_plugin_values
-from tests.unit_tests.services.workflow.authoring.conftest import written_canvas
 
 CTX = FillContext(tenant_id="tenant-1", account_id="account-1")
 AGENTS: list[dict[str, str | None]] = [
@@ -166,7 +165,7 @@ def test_a_block_seed_is_the_canvas_node() -> None:
         edition = node.edition(option.version)
         assert edition is not None, option.type
         plain = {"type": option.type, "version": option.version, "title": option.label}
-        assert option.seed == {**plain, **written_canvas(edition, plain)}
+        assert option.seed == {**plain, **edition.data}
 
 
 def test_a_human_input_block_seed_has_the_version_two_fields() -> None:
