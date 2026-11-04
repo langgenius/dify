@@ -218,7 +218,7 @@
   "agentDetail.configure.skills.addMenu.upload.description": "SKILL.md içeren bir .zip paketi. Bu uygulamaya gömülür ve kitaplıkla birlikte güncellenmez.",
   "agentDetail.configure.skills.addMenu.upload.label": "skill.zip yükle",
   "agentDetail.configure.skills.addMenu.workspace.description": "Paylaşılan bir beceriyi yeniden kullanır ve yayımlanan güncellemelerini takip eder.",
-  "agentDetail.configure.skills.addMenu.workspace.label": "Kitaplıktan ekle",
+  "agentDetail.configure.skills.addMenu.workspace.label": "From skill library",
   "agentDetail.configure.skills.detail.files": "Dosyalar",
   "agentDetail.configure.skills.empty.description": "Beceriler, ajana çalışırken çağırabileceği yeniden kullanılabilir uzmanlık sağlar",
   "agentDetail.configure.skills.empty.title": "Henüz beceri yok",

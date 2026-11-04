@@ -76,7 +76,7 @@
   "stepByStepTour.tasks.knowledge.description": "Uygulamalarınızın kendi belgelerinizden yanıt vermesi için bir knowledge base oluşturun.",
   "stepByStepTour.tasks.knowledge.noPermission.description": "Bilgi tabanı oluşturmak veya yönetmek için izniniz olan bir çalışma alanına geçin ya da çalışma alanı sahibiniz veya yöneticinizle iletişime geçin.",
   "stepByStepTour.tasks.knowledge.noPermission.primaryActionLabel": "Anladım",
-  "stepByStepTour.tasks.knowledge.noPermission.title": "Bilgi için izin gerekiyor",
+  "stepByStepTour.tasks.knowledge.noPermission.title": "Knowledge izin gerektirir",
   "stepByStepTour.tasks.knowledge.primaryActionLabel": "Göz atın",
   "stepByStepTour.tasks.knowledge.title": "Kendi verilerinizi ekleyin",
   "stepByStepTour.tasks.studio.description": "Tüm uygulamalarınız Studio'da bulunur — onları burada düzenleyin, organize edin ve yayınlayın.",
