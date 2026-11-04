@@ -4,8 +4,8 @@ from urllib.parse import quote
 
 from flask import Response
 
-HTML_MIME_TYPES = frozenset({"text/html", "application/xhtml+xml"})
-HTML_EXTENSIONS = frozenset({"html", "htm"})
+HTML_MIME_TYPES: frozenset[str] = frozenset(("text/html", "application/xhtml+xml"))
+HTML_EXTENSIONS: frozenset[str] = frozenset(("html", "htm"))
 
 
 def _normalize_mime_type(mime_type: str | None) -> str:

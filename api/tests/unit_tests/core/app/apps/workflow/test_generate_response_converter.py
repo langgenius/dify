@@ -9,7 +9,7 @@ from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppStreamResponse,
 )
-from dify_graph.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 
 
 class TestWorkflowGenerateResponseConverter:
@@ -62,7 +62,7 @@ class TestWorkflowGenerateResponseConverter:
             ),
         )
 
-        def stream() -> Generator[WorkflowAppStreamResponse, None, None]:
+        def stream() -> Generator[WorkflowAppStreamResponse]:
             yield WorkflowAppStreamResponse(workflow_run_id="r1", stream_response=PingStreamResponse(task_id="t1"))
             yield WorkflowAppStreamResponse(workflow_run_id="r1", stream_response=node_start)
             yield WorkflowAppStreamResponse(workflow_run_id="r1", stream_response=node_finish)

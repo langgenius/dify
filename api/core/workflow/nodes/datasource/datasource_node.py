@@ -1,22 +1,27 @@
-from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable, Generator, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, override
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, SystemVariableKey, WorkflowNodeExecutionMetadataKey
-from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
-from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
+from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.system_variables import SystemVariableKey, get_system_segment
+from graphon.enums import (
+    BuiltinNodeTypes,
+    NodeExecutionType,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from graphon.node_events import NodeRunResult, StreamCompletedEvent
+from graphon.nodes.base.node import Node
+from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 
 from .entities import DatasourceNodeData, DatasourceParameter, OnlineDriveDownloadFileParam
 from .exc import DatasourceNodeError
 
 if TYPE_CHECKING:
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
 
 class DatasourceNode(Node[DatasourceNodeData]):
@@ -29,36 +34,40 @@ class DatasourceNode(Node[DatasourceNodeData]):
 
     def __init__(
         self,
-        id: str,
-        config: NodeConfigDict,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
-    ):
+        node_id: str,
+        data: DatasourceNodeData,
+        *,
+        init_params: "InitParams",
+        runtime_state: "RuntimeState",
+        datasource_credentials: Callable[[str, str, str, str | None], dict[str, Any]],
+    ) -> None:
         super().__init__(
-            id=id,
-            config=config,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            node_id=node_id,
+            data=data,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
         self.datasource_manager = DatasourceManager
+        self._datasource_credentials = datasource_credentials
 
+    @override
     def populate_start_event(self, event) -> None:
         event.provider_id = f"{self.node_data.plugin_id}/{self.node_data.provider_name}"
         event.provider_type = self.node_data.provider_type
 
+    @override
     def _run(self) -> Generator:
         """
         Run the datasource node
         """
-
-        dify_ctx = self.require_dify_context()
+        dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         node_data = self.node_data
-        variable_pool = self.graph_runtime_state.variable_pool
-        datasource_type_segment = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE])
+        variable_pool = self.runtime_state.variable_pool
+        datasource_type_segment = get_system_segment(variable_pool, SystemVariableKey.DATASOURCE_TYPE)
         if not datasource_type_segment:
             raise DatasourceNodeError("Datasource type is not set")
         datasource_type = str(datasource_type_segment.value) if datasource_type_segment.value else None
-        datasource_info_segment = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_INFO])
+        datasource_info_segment = get_system_segment(variable_pool, SystemVariableKey.DATASOURCE_INFO)
         if not datasource_info_segment:
             raise DatasourceNodeError("Datasource info is not set")
         datasource_info_value = datasource_info_segment.value
@@ -109,9 +118,9 @@ class DatasourceNode(Node[DatasourceNodeData]):
                         datasource_type=datasource_type.value,
                         provider_id=provider_id,
                         tenant_id=dify_ctx.tenant_id,
-                        provider=node_data.provider_name,
-                        plugin_id=node_data.plugin_id,
-                        credential_id=credential_id,
+                        credentials=self._datasource_credentials(
+                            dify_ctx.tenant_id, node_data.provider_name, node_data.plugin_id, credential_id
+                        ),
                         parameters_for_log=parameters_for_log,
                         datasource_info=datasource_info,
                         variable_pool=variable_pool,
@@ -131,12 +140,14 @@ class DatasourceNode(Node[DatasourceNodeData]):
                         )
                     )
                 case DatasourceProviderType.LOCAL_FILE:
-                    related_id = datasource_info.get("related_id")
-                    if not related_id:
+                    file_id = resolve_file_record_id(
+                        datasource_info.get("reference") or datasource_info.get("related_id")
+                    )
+                    if not file_id:
                         raise DatasourceNodeError("File is not exist")
 
                     file_info = self.datasource_manager.get_upload_file_by_id(
-                        file_id=related_id, tenant_id=dify_ctx.tenant_id
+                        file_id=file_id, tenant_id=dify_ctx.tenant_id
                     )
                     variable_pool.add([self._node_id, "file"], file_info)
                     # variable_pool.add([self.node_id, "file"], file_info.to_dict())
@@ -175,6 +186,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
             )
 
     @classmethod
+    @override
     def _extract_variable_selector_to_variable_mapping(
         cls,
         *,
@@ -211,5 +223,6 @@ class DatasourceNode(Node[DatasourceNodeData]):
         return result
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "1"

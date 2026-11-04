@@ -1,42 +1,20 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider, PreferredProviderTypeEnum } from '../../declarations'
-import type { CardVariant, CredentialPanelState } from '../use-credential-panel-state'
-import { memo, useCallback, useState } from 'react'
+import type { CredentialPanelState } from '../use-credential-panel-state'
+import { Button } from '@langgenius/dify-ui/button'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQuery } from '@tanstack/react-query'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+import { modelProviderDetailsQueryOptions } from '../../utils'
+import { getButtonConfig } from './button-config'
 import DropdownContent from './dropdown-content'
 
 type ModelAuthDropdownProps = {
-  provider: ModelProvider
+  provider: ModelProviderSummaryResponse | ModelProvider
   state: CredentialPanelState
   isChangingPriority: boolean
   onChangePriority: (key: PreferredProviderTypeEnum) => void
-}
-
-function getButtonConfig(variant: CardVariant, hasCredentials: boolean, t: (key: string, opts?: Record<string, string>) => string) {
-  if (variant === 'api-required-add') {
-    return {
-      text: t('modelProvider.auth.addApiKey', { ns: 'common' }),
-      variant: 'primary' as const,
-    }
-  }
-
-  if (variant === 'api-required-configure') {
-    return {
-      text: t('operation.config', { ns: 'common' }),
-      variant: 'secondary-accent' as const,
-    }
-  }
-
-  const text = hasCredentials
-    ? t('operation.config', { ns: 'common' })
-    : t('modelProvider.auth.addApiKey', { ns: 'common' })
-
-  return { text, variant: 'secondary' as const }
 }
 
 function ModelAuthDropdown({
@@ -45,38 +23,57 @@ function ModelAuthDropdown({
   isChangingPriority,
   onChangePriority,
 }: ModelAuthDropdownProps) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
-  const handleClose = useCallback(() => setOpen(false), [])
-
+  const { t } = useTranslation(['common', 'modelProvider'])
+  const [requestedOpen, setRequestedOpen] = useState(false)
+  const isFullProvider = !('is_configured' in provider) || 'provider_credential_schema' in provider
+  const detailQuery = useQuery({
+    ...modelProviderDetailsQueryOptions(),
+    enabled: requestedOpen && !isFullProvider,
+    retry: false,
+  })
+  const currentProvider = isFullProvider
+    ? provider
+    : detailQuery.data?.data.find((item) => item.provider === provider.provider)
+  const loading = requestedOpen && !isFullProvider && detailQuery.isLoading
+  const open = requestedOpen && (isFullProvider || !detailQuery.isPending)
   const buttonConfig = getButtonConfig(state.variant, state.hasCredentials, t)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setRequestedOpen}>
       <PopoverTrigger
-        render={(
+        render={
           <Button
-            className="flex grow"
+            className="flex w-full min-w-0 justify-center px-2"
             size="small"
             variant={buttonConfig.variant}
             title={buttonConfig.text}
+            loading={loading}
           >
-            <span className="i-ri-equalizer-2-line mr-1 h-3.5 w-3.5 shrink-0" />
-            <span className="w-0 grow truncate text-left">
-              {buttonConfig.text}
-            </span>
+            <span className="i-ri-equalizer-2-line size-3.5 shrink-0" />
+            <span className="min-w-0 truncate">{buttonConfig.text}</span>
           </Button>
-        )}
+        }
       />
-      <PopoverContent placement="bottom-end">
-        <DropdownContent
-          provider={provider}
-          state={state}
-          isChangingPriority={isChangingPriority}
-          onChangePriority={onChangePriority}
-          onClose={handleClose}
-        />
+      <PopoverContent align="end">
+        <PopoverTitle className="sr-only">{buttonConfig.text}</PopoverTitle>
+        {currentProvider ? (
+          <DropdownContent
+            provider={currentProvider}
+            state={state}
+            isChangingPriority={isChangingPriority}
+            onChangePriority={onChangePriority}
+            onClose={() => setRequestedOpen(false)}
+          />
+        ) : (
+          <div className="flex w-80 flex-col items-start gap-3 p-4" role="alert">
+            <span className="system-sm-medium text-text-primary">
+              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </span>
+            <Button size="small" variant="secondary" onClick={() => void detailQuery.refetch()}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   )

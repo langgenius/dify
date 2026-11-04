@@ -1,11 +1,11 @@
 import { act, waitFor } from '@testing-library/react'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   readRootTextContent,
   renderLexicalEditor,
   selectRootEnd,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import VariableBlock, {
   INSERT_VARIABLE_BLOCK_COMMAND,
   INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
@@ -15,9 +15,7 @@ const renderVariableBlock = () => {
   return renderLexicalEditor({
     namespace: 'variable-block-plugin-test',
     nodes: [CustomTextNode],
-    children: (
-      <VariableBlock />
-    ),
+    children: <VariableBlock />,
   })
 }
 

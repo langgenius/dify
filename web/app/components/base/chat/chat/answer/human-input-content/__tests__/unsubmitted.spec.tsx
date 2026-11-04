@@ -1,66 +1,41 @@
 import type { InputVarType } from '@/app/components/workflow/types'
-import type { AppContextValue } from '@/context/app-context'
 import type { HumanInputFormData } from '@/types/workflow'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
-import { useSelector } from '@/context/app-context'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { UnsubmittedHumanInputContent } from '../unsubmitted'
 
-// Mock AppContext's useSelector to control user profile data
-vi.mock('@/context/app-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/app-context')>()
-  return {
-    ...actual,
-    useSelector: vi.fn(),
-  }
-})
-
 describe('UnsubmittedHumanInputContent Integration', () => {
-  const user = userEvent.setup()
-
   // Helper to create valid form data
-  const createMockFormData = (overrides = {}): HumanInputFormData => ({
-    form_id: 'form_123',
-    node_id: 'node_456',
-    node_title: 'Input Form',
-    form_content: 'Fill this out: {{#$output.user_name#}}',
-    inputs: [
-      {
-        type: 'paragraph' as InputVarType,
-        output_variable_name: 'user_name',
-        default: {
-          type: 'constant',
-          value: 'Default value',
-          selector: [],
+  const createMockFormData = (overrides = {}): HumanInputFormData =>
+    ({
+      form_id: 'form_123',
+      node_id: 'node_456',
+      node_title: 'Input Form',
+      form_content: 'Fill this out: {{#$output.user_name#}}',
+      inputs: [
+        {
+          type: 'paragraph' as InputVarType,
+          output_variable_name: 'user_name',
+          default: {
+            type: 'constant',
+            value: 'Default value',
+            selector: [],
+          },
         },
-      },
-    ],
-    actions: [
-      { id: 'btn_1', title: 'Submit', button_style: UserActionButtonType.Primary },
-    ],
-    form_token: 'token_123',
-    resolved_default_values: {},
-    expiration_time: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
-    display_in_ui: true,
-    ...overrides,
-  } as unknown as HumanInputFormData)
+      ],
+      actions: [{ id: 'btn_1', title: 'Submit', button_style: UserActionButtonType.Primary }],
+      form_token: 'token_123',
+      resolved_default_values: {},
+      expiration_time: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
+      display_in_ui: true,
+      ...overrides,
+    }) as unknown as HumanInputFormData
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useSelector).mockImplementation((selector: (value: AppContextValue) => unknown) => {
-      return selector({
-        userProfile: {
-          id: 'user_123',
-          name: 'Test User',
-          email: 'test@example.com',
-          avatar: '',
-          avatar_url: '',
-          is_password_set: false,
-        },
-      } as AppContextValue)
-    })
   })
 
   describe('Rendering', () => {
@@ -121,7 +96,7 @@ describe('UnsubmittedHumanInputContent Integration', () => {
         />,
       )
 
-      expect(screen.getByText('common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
+      expect(screen.getByText('workflow.common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
     })
 
     it('should render "Expired" state when expiration time is in the past', () => {
@@ -133,7 +108,42 @@ describe('UnsubmittedHumanInputContent Integration', () => {
   })
 
   describe('Interactions', () => {
+    it.each([
+      { error: new Error('Approval expired'), message: 'Approval expired' },
+      { error: new Response(null, { status: 410 }), message: 'common.api.actionFailed' },
+    ])(
+      'keeps legacy transport errors out of the form and allows retry ($message)',
+      async ({ error }) => {
+        const user = userEvent.setup()
+        const handleSubmit = vi.fn().mockRejectedValueOnce(error).mockResolvedValueOnce(undefined)
+
+        render(
+          <UnsubmittedHumanInputContent formData={createMockFormData()} onSubmit={handleSubmit} />,
+        )
+
+        const input = screen.getByRole('textbox')
+        await user.clear(input)
+        await user.type(input, 'Preserved value')
+        const submitButton = screen.getByRole('button', { name: 'Submit' })
+        await user.click(submitButton)
+
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+        await waitFor(() => expect(submitButton).toBeEnabled())
+        expect(input).toHaveValue('Preserved value')
+        await user.click(submitButton)
+
+        await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+
+        expect(handleSubmit).toHaveBeenCalledTimes(2)
+        expect(handleSubmit).toHaveBeenLastCalledWith('token_123', {
+          action: 'btn_1',
+          inputs: { user_name: 'Preserved value' },
+        })
+      },
+    )
+
     it('should update input values and call onSubmit', async () => {
+      const user = userEvent.setup()
       const handleSubmit = vi.fn().mockImplementation(() => Promise.resolve())
       const data = createMockFormData()
 
@@ -153,10 +163,14 @@ describe('UnsubmittedHumanInputContent Integration', () => {
     })
 
     it('should handle loading state during submission', async () => {
+      const user = userEvent.setup()
       let resolveSubmit: (value: void | PromiseLike<void>) => void
-      const handleSubmit = vi.fn().mockImplementation(() => new Promise<void>((resolve) => {
-        resolveSubmit = resolve
-      }))
+      const handleSubmit = vi.fn().mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSubmit = resolve
+          }),
+      )
       const data = createMockFormData()
 
       render(<UnsubmittedHumanInputContent formData={data} onSubmit={handleSubmit} />)
@@ -165,48 +179,14 @@ describe('UnsubmittedHumanInputContent Integration', () => {
       await user.click(submitBtn)
 
       expect(submitBtn).toBeDisabled()
-      expect(handleSubmit).toHaveBeenCalled()
+      await user.click(submitBtn)
+      expect(handleSubmit).toHaveBeenCalledOnce()
 
-      await waitFor(() => {
+      await act(async () => {
         resolveSubmit!()
       })
 
       await waitFor(() => expect(submitBtn).not.toBeDisabled())
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle missing resolved_default_values', () => {
-      const data = createMockFormData({ resolved_default_values: undefined })
-      render(<UnsubmittedHumanInputContent formData={data} onSubmit={vi.fn()} />)
-      expect(screen.getByText('Submit')).toBeInTheDocument()
-    })
-
-    it('should return null in ContentItem if field is not found', () => {
-      const data = createMockFormData({
-        form_content: '{{#$output.unknown_field#}}',
-        inputs: [],
-      })
-      const { container } = render(<UnsubmittedHumanInputContent formData={data} onSubmit={vi.fn()} />)
-      // The form will be empty (except for buttons) because unknown_field is not in inputs
-      expect(container.querySelector('textarea')).not.toBeInTheDocument()
-    })
-
-    it('should render text-input type in initializeInputs correctly', () => {
-      const data = createMockFormData({
-        inputs: [
-          {
-            type: 'text-input',
-            output_variable_name: 'var1',
-            label: 'Var 1',
-            required: true,
-            default: { type: 'fixed', value: 'fixed_val' },
-          },
-        ],
-      })
-      render(<UnsubmittedHumanInputContent formData={data} onSubmit={vi.fn()} />)
-      // initializeInputs is tested indirectly here.
-      // We can't easily assert the internal state of HumanInputForm, but we can verify it doesn't crash.
     })
   })
 })

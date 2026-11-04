@@ -1,8 +1,9 @@
-from unittest.mock import MagicMock, patch
+from http import HTTPStatus
+from inspect import unwrap
+from unittest.mock import MagicMock, create_autospec, patch
+from uuid import UUID
 
-import pytest
-from flask import Flask
-from werkzeug.local import LocalProxy
+from flask import Flask, Response
 
 from controllers.console.auth.data_source_oauth import (
     OAuthDataSource,
@@ -10,183 +11,162 @@ from controllers.console.auth.data_source_oauth import (
     OAuthDataSourceCallback,
     OAuthDataSourceSync,
 )
+from extensions.ext_application_services import ApplicationServices
+from machinery.context import RequestContext
+from services.data_source.entities.oauth import DataSourceOAuthCallback
+from services.data_source.oauth_service import (
+    DataSourceOAuthError,
+    InvalidDataSourceOAuthCodeError,
+    InvalidDataSourceOAuthProviderError,
+)
+from tests.helpers.unit.config_override import config_overrides_context
 
 
-class TestOAuthDataSource:
-    @pytest.fixture
-    def app(self):
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
+def _request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id=None,
+        account_id="account-1",
+        active_workspace_id="workspace-1",
+    )
 
-    @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
-    @patch("flask_login.current_user")
-    @patch("libs.login.current_user")
-    @patch("libs.login.check_csrf_token")
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.data_source_oauth.dify_config.NOTION_INTEGRATION_TYPE", None)
-    def test_get_oauth_url_successful(
-        self, mock_db, mock_csrf, mock_libs_user, mock_flask_user, mock_get_providers, app
+
+def _services(service: MagicMock) -> MagicMock:
+    services = create_autospec(ApplicationServices, instance=True, spec_set=True)
+    services.data_sources.resolve_oauth.return_value = service
+    return services
+
+
+def test_get_delegates_to_application_service_and_serializes_response() -> None:
+    service = MagicMock()
+    service.start_authorization.return_value = "https://notion.example/authorize"
+    context = _request_context()
+
+    with patch(
+        "controllers.console.auth.data_source_oauth.application_services",
+        return_value=_services(service),
     ):
-        mock_oauth_provider = MagicMock()
-        mock_oauth_provider.get_authorization_url.return_value = "http://oauth.provider/auth"
-        mock_get_providers.return_value = {"notion": mock_oauth_provider}
+        result = unwrap(OAuthDataSource.get)(OAuthDataSource(), context, "notion")
 
-        from models.account import Account, AccountStatus
-
-        mock_account = MagicMock(spec=Account)
-        mock_account.id = "user_123"
-        mock_account.status = AccountStatus.ACTIVE
-        mock_account.is_admin_or_owner = True
-        mock_account.current_tenant.current_role = "owner"
-        mock_libs_user.return_value = mock_account
-        mock_flask_user.return_value = mock_account
-
-        # also patch current_account_with_tenant
-        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, MagicMock())):
-            with app.test_request_context("/console/api/oauth/data-source/notion", method="GET"):
-                proxy_mock = LocalProxy(lambda: mock_account)
-                with patch("libs.login.current_user", proxy_mock):
-                    api_instance = OAuthDataSource()
-                    response = api_instance.get("notion")
-
-        assert response[0]["data"] == "http://oauth.provider/auth"
-        assert response[1] == 200
-        mock_oauth_provider.get_authorization_url.assert_called_once()
-
-    @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
-    @patch("flask_login.current_user")
-    @patch("libs.login.check_csrf_token")
-    @patch("controllers.console.wraps.db")
-    def test_get_oauth_url_invalid_provider(self, mock_db, mock_csrf, mock_flask_user, mock_get_providers, app):
-        mock_get_providers.return_value = {"notion": MagicMock()}
-
-        from models.account import Account, AccountStatus
-
-        mock_account = MagicMock(spec=Account)
-        mock_account.id = "user_123"
-        mock_account.status = AccountStatus.ACTIVE
-        mock_account.is_admin_or_owner = True
-        mock_account.current_tenant.current_role = "owner"
-
-        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, MagicMock())):
-            with app.test_request_context("/console/api/oauth/data-source/unknown_provider", method="GET"):
-                proxy_mock = LocalProxy(lambda: mock_account)
-                with patch("libs.login.current_user", proxy_mock):
-                    api_instance = OAuthDataSource()
-                    response = api_instance.get("unknown_provider")
-
-        assert response[0]["error"] == "Invalid provider"
-        assert response[1] == 400
+    assert result == ({"data": "https://notion.example/authorize"}, HTTPStatus.OK)
+    service.start_authorization.assert_called_once_with(context)
 
 
-class TestOAuthDataSourceCallback:
-    @pytest.fixture
-    def app(self):
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
+def test_get_maps_unknown_provider_to_bad_request() -> None:
+    service = MagicMock()
+    services = _services(service)
+    services.data_sources.resolve_oauth.side_effect = InvalidDataSourceOAuthProviderError
 
-    @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
-    def test_oauth_callback_successful(self, mock_get_providers, app):
-        provider_mock = MagicMock()
-        mock_get_providers.return_value = {"notion": provider_mock}
+    with patch(
+        "controllers.console.auth.data_source_oauth.application_services",
+        return_value=services,
+    ):
+        result = unwrap(OAuthDataSource.get)(OAuthDataSource(), _request_context(), "unknown")
 
-        with app.test_request_context("/console/api/oauth/data-source/notion/callback?code=mock_code", method="GET"):
-            api_instance = OAuthDataSourceCallback()
-            response = api_instance.get("notion")
-
-        assert response.status_code == 302
-        assert "code=mock_code" in response.location
-
-    @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
-    def test_oauth_callback_missing_code(self, mock_get_providers, app):
-        provider_mock = MagicMock()
-        mock_get_providers.return_value = {"notion": provider_mock}
-
-        with app.test_request_context("/console/api/oauth/data-source/notion/callback", method="GET"):
-            api_instance = OAuthDataSourceCallback()
-            response = api_instance.get("notion")
-
-        assert response.status_code == 302
-        assert "error=Access denied" in response.location
-
-    @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
-    def test_oauth_callback_invalid_provider(self, mock_get_providers, app):
-        mock_get_providers.return_value = {"notion": MagicMock()}
-
-        with app.test_request_context("/console/api/oauth/data-source/invalid/callback?code=mock_code", method="GET"):
-            api_instance = OAuthDataSourceCallback()
-            response = api_instance.get("invalid")
-
-        assert response[0]["error"] == "Invalid provider"
-        assert response[1] == 400
+    assert result == ({"error": "Invalid provider"}, HTTPStatus.BAD_REQUEST)
 
 
-class TestOAuthDataSourceBinding:
-    @pytest.fixture
-    def app(self):
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
+def test_callback_parses_query_and_returns_flask_redirect() -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    service.complete_callback.return_value = DataSourceOAuthCallback(provider="notion", code="code-1", error=None)
 
-    @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
-    def test_get_binding_successful(self, mock_get_providers, app):
-        mock_provider = MagicMock()
-        mock_provider.get_access_token.return_value = None
-        mock_get_providers.return_value = {"notion": mock_provider}
+    with (
+        app.test_request_context("/?code=code-1"),
+        config_overrides_context(CONSOLE_WEB_URL="https://console.example/root?lang=en#top"),
+        patch(
+            "controllers.console.auth.data_source_oauth.application_services",
+            return_value=_services(service),
+        ),
+    ):
+        response = OAuthDataSourceCallback().get("notion")
 
-        with app.test_request_context("/console/api/oauth/data-source/notion/binding?code=auth_code_123", method="GET"):
-            api_instance = OAuthDataSourceBinding()
-            response = api_instance.get("notion")
-
-        assert response[0]["result"] == "success"
-        assert response[1] == 200
-        mock_provider.get_access_token.assert_called_once_with("auth_code_123")
-
-    @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
-    def test_get_binding_missing_code(self, mock_get_providers, app):
-        mock_get_providers.return_value = {"notion": MagicMock()}
-
-        with app.test_request_context("/console/api/oauth/data-source/notion/binding?code=", method="GET"):
-            api_instance = OAuthDataSourceBinding()
-            response = api_instance.get("notion")
-
-        assert response[0]["error"] == "Invalid code"
-        assert response[1] == 400
+    assert isinstance(response, Response)
+    assert response.status_code == HTTPStatus.FOUND
+    assert response.location == "https://console.example/root?lang=en&type=notion&code=code-1#top"
+    service.complete_callback.assert_called_once_with(code="code-1", error=None)
 
 
-class TestOAuthDataSourceSync:
-    @pytest.fixture
-    def app(self):
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
+def test_binding_parses_query_and_delegates_with_request_context() -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    context = _request_context()
 
-    @patch("controllers.console.auth.data_source_oauth.get_oauth_providers")
-    @patch("libs.login.check_csrf_token")
-    @patch("controllers.console.wraps.db")
-    def test_sync_successful(self, mock_db, mock_csrf, mock_get_providers, app):
-        mock_provider = MagicMock()
-        mock_provider.sync_data_source.return_value = None
-        mock_get_providers.return_value = {"notion": mock_provider}
+    with (
+        app.test_request_context("/?code=code-1"),
+        patch(
+            "controllers.console.auth.data_source_oauth.application_services",
+            return_value=_services(service),
+        ),
+    ):
+        result = unwrap(OAuthDataSourceBinding.get)(OAuthDataSourceBinding(), context, "notion")
 
-        from models.account import Account, AccountStatus
+    assert result == ({"result": "success"}, HTTPStatus.OK)
+    service.bind.assert_called_once_with(context, code="code-1")
 
-        mock_account = MagicMock(spec=Account)
-        mock_account.id = "user_123"
-        mock_account.status = AccountStatus.ACTIVE
-        mock_account.is_admin_or_owner = True
-        mock_account.current_tenant.current_role = "owner"
 
-        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, MagicMock())):
-            with app.test_request_context("/console/api/oauth/data-source/notion/binding_123/sync", method="GET"):
-                proxy_mock = LocalProxy(lambda: mock_account)
-                with patch("libs.login.current_user", proxy_mock):
-                    api_instance = OAuthDataSourceSync()
-                    # The route pattern uses <uuid:binding_id>, so we just pass a string for unit testing
-                    response = api_instance.get("notion", "binding_123")
+def test_binding_maps_invalid_code_to_bad_request() -> None:
+    app = Flask(__name__)
+    service = MagicMock()
 
-        assert response[0]["result"] == "success"
-        assert response[1] == 200
-        mock_provider.sync_data_source.assert_called_once_with("binding_123")
+    with (
+        app.test_request_context("/?code="),
+        patch(
+            "controllers.console.auth.data_source_oauth.application_services",
+            return_value=_services(service),
+        ),
+    ):
+        result = unwrap(OAuthDataSourceBinding.get)(OAuthDataSourceBinding(), _request_context(), "notion")
+
+    assert result == ({"error": "Invalid code"}, HTTPStatus.BAD_REQUEST)
+    service.bind.assert_not_called()
+
+
+def test_binding_maps_application_code_error_to_bad_request() -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    service.bind.side_effect = InvalidDataSourceOAuthCodeError
+
+    with (
+        app.test_request_context("/?code=code-1"),
+        patch(
+            "controllers.console.auth.data_source_oauth.application_services",
+            return_value=_services(service),
+        ),
+    ):
+        result = unwrap(OAuthDataSourceBinding.get)(OAuthDataSourceBinding(), _request_context(), "notion")
+
+    assert result == ({"error": "Invalid code"}, HTTPStatus.BAD_REQUEST)
+
+
+def test_sync_converts_route_uuid_and_delegates() -> None:
+    service = MagicMock()
+    context = _request_context()
+    binding_id = UUID("11111111-1111-1111-1111-111111111111")
+
+    with patch(
+        "controllers.console.auth.data_source_oauth.application_services",
+        return_value=_services(service),
+    ):
+        result = unwrap(OAuthDataSourceSync.get)(OAuthDataSourceSync(), context, "notion", binding_id)
+
+    assert result == ({"result": "success"}, HTTPStatus.OK)
+    service.sync.assert_called_once_with(context, binding_id=str(binding_id))
+
+
+def test_sync_hides_provider_failure_details() -> None:
+    service = MagicMock()
+    service.sync.side_effect = DataSourceOAuthError("provider details")
+    binding_id = UUID("11111111-1111-1111-1111-111111111111")
+
+    with (
+        patch(
+            "controllers.console.auth.data_source_oauth.application_services",
+            return_value=_services(service),
+        ),
+        patch("controllers.console.auth.data_source_oauth.logger.exception") as log_exception,
+    ):
+        result = unwrap(OAuthDataSourceSync.get)(OAuthDataSourceSync(), _request_context(), "notion", binding_id)
+
+    assert result == ({"error": "OAuth data source process failed"}, HTTPStatus.BAD_REQUEST)
+    log_exception.assert_called_once()

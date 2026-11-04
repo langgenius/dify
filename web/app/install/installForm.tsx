@@ -1,58 +1,77 @@
 'use client'
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
-import { useStore } from '@tanstack/react-form'
+import { zPostSetupBody } from '@dify/contracts/api/console/setup/zod.gen'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldValidity,
+} from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
-import Button from '@/app/components/base/button'
-import { formContext, useAppForm } from '@/app/components/base/form'
-import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
-import Input from '@/app/components/base/input'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { validPassword } from '@/config'
 import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
-
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
-import { cn } from '@/utils/classnames'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { encryptPassword as encodePassword } from '@/utils/encryption'
-import Loading from '../components/base/loading'
 
-const accountFormSchema = z.object({
-  email: z.email('error.emailInValid')
-    .min(1, {
-      error: 'error.emailInValid',
-    }),
-  name: z.string().min(1, {
-    error: 'error.nameEmpty',
-  }),
-  password: z.string().min(8, {
-    error: 'error.passwordLengthInValid',
-  }).regex(validPassword, 'error.passwordInvalid'),
+const accountFormSchema = zPostSetupBody.pick({ email: true, name: true, password: true }).extend({
+  email: zPostSetupBody.shape.email.pipe(z.email()),
+  name: zPostSetupBody.shape.name.min(1),
+  password: zPostSetupBody.shape.password.min(8).regex(validPassword),
 })
 
-const InstallForm = () => {
-  useDocumentTitle('')
-  const { t, i18n } = useTranslation()
-  const router = useRouter()
-  const [showPassword, setShowPassword] = React.useState(false)
-  const [loading, setLoading] = React.useState(true)
+type AccountFormValues = z.infer<typeof accountFormSchema>
 
-  const form = useAppForm({
-    defaultValues: {
-      name: '',
-      password: '',
-      email: '',
-    },
-    validators: {
-      onSubmit: zodSubmitValidator(accountFormSchema),
-    },
-    onSubmit: async ({ value }) => {
+const InstallForm = () => {
+  const { t, i18n } = useTranslation(['login'])
+  const pageTitle = t(($) => $.setAdminAccount, { ns: 'login' })
+  useDocumentTitle(pageTitle)
+  const { replace } = useRouter()
+  const queryClient = useQueryClient()
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const setupStatus = useQuery(
+    consoleQuery.setup.get.queryOptions({
+      staleTime: 0,
+      retry: false,
+      throwOnError: true,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    }),
+  )
+  const initStatus = useQuery(
+    consoleQuery.init.get.queryOptions({
+      enabled:
+        setupStatus.isSuccess && !setupStatus.isFetching && setupStatus.data.step !== 'finished',
+      staleTime: 0,
+      retry: false,
+      throwOnError: true,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    }),
+  )
+
+  const handleSubmit = async (value: AccountFormValues) => {
+    if (isSubmitting) return
+
+    setIsSubmitting(true)
+    try {
       // First, setup the admin account
-      await setup({
+      await consoleClient.setup.post({
         body: {
           ...value,
           language: i18n.language,
@@ -60,175 +79,159 @@ const InstallForm = () => {
       })
 
       // Then, automatically login with the same credentials
-      const loginRes = await login({
-        url: '/login',
+      const loginRes = await consoleClient.login.post({
         body: {
           email: value.email,
           password: encodePassword(value.password),
         },
       })
 
-      // Store tokens and redirect to apps if login successful
+      // Store tokens and redirect if login successful
       if (loginRes.result === 'success') {
-        router.replace('/apps')
-      }
-      else {
+        await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
+        replace('/')
+      } else {
         // Fallback to signin page if auto-login fails
-        router.replace('/signin')
+        replace('/signin')
       }
-    },
-  })
-
-  const isSubmitting = useStore(form.store, state => state.isSubmitting)
-  const emailErrors = useStore(form.store, state => state.fieldMeta.email?.errors)
-  const nameErrors = useStore(form.store, state => state.fieldMeta.name?.errors)
-  const passwordErrors = useStore(form.store, state => state.fieldMeta.password?.errors)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   useEffect(() => {
-    fetchSetupStatus().then((res: SetupStatusResponse) => {
-      if (res.step === 'finished') {
-        localStorage.setItem('setup_status', 'finished')
-        router.push('/signin')
-      }
-      else {
-        fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
-          if (res.status === 'not_started')
-            router.push('/init')
-        })
-      }
-      setLoading(false)
-    })
-  }, [])
+    if (!setupStatus.isSuccess || setupStatus.isFetching) return
+    if (setupStatus.data.step === 'finished') {
+      replace('/signin')
+    } else if (
+      initStatus.isSuccess &&
+      !initStatus.isFetching &&
+      initStatus.data.status === 'not_started'
+    ) {
+      replace('/init')
+    }
+  }, [
+    replace,
+    setupStatus.isSuccess,
+    setupStatus.isFetching,
+    setupStatus.data,
+    initStatus.isSuccess,
+    initStatus.isFetching,
+    initStatus.data,
+  ])
 
-  return (
-    loading
-      ? <Loading />
-      : (
-          <>
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-              <h2 className="text-[32px] font-bold text-text-primary">{t('setAdminAccount', { ns: 'login' })}</h2>
-              <p className="mt-1 text-sm text-text-secondary">{t('setAdminAccountDesc', { ns: 'login' })}</p>
+  const canSetup =
+    setupStatus.isSuccess &&
+    !setupStatus.isFetching &&
+    setupStatus.data.step !== 'finished' &&
+    initStatus.isSuccess &&
+    !initStatus.isFetching &&
+    initStatus.data.status !== 'not_started'
+
+  return !canSetup ? (
+    <LoadingPlaceholder className="grow" />
+  ) : (
+    <>
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h1 className="text-[32px] font-bold text-text-primary">{pageTitle}</h1>
+        <p className="mt-1 text-sm text-text-secondary">
+          {t(($) => $.setAdminAccountDesc, { ns: 'login' })}
+        </p>
+      </div>
+      <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="relative">
+          <Form<AccountFormValues> onFormSubmit={(value) => void handleSubmit(value)}>
+            <Field
+              name="email"
+              validate={(value) =>
+                accountFormSchema.shape.email.validate(value)
+                  ? null
+                  : t(($) => $['error.emailInValid'], { ns: 'login' })
+              }
+              className="mb-5"
+            >
+              <FieldLabel>{t(($) => $.email, { ns: 'login' })}</FieldLabel>
+              <Input
+                type="email"
+                autoComplete="email"
+                spellCheck={false}
+                required
+                placeholder={t(($) => $.emailPlaceholder, { ns: 'login' })}
+              />
+              <FieldError>{t(($) => $['error.emailInValid'], { ns: 'login' })}</FieldError>
+            </Field>
+
+            <Field
+              name="name"
+              validate={(value) =>
+                accountFormSchema.shape.name.validate(value)
+                  ? null
+                  : t(($) => $['error.nameEmpty'], { ns: 'login' })
+              }
+              className="mb-5"
+            >
+              <FieldLabel>{t(($) => $.name, { ns: 'login' })}</FieldLabel>
+              <Input
+                autoComplete="name"
+                required
+                maxLength={30}
+                placeholder={t(($) => $.namePlaceholder, { ns: 'login' })}
+              />
+              <FieldError>{t(($) => $['error.nameEmpty'], { ns: 'login' })}</FieldError>
+            </Field>
+
+            <Field
+              name="password"
+              validate={(value) =>
+                accountFormSchema.shape.password.validate(value)
+                  ? null
+                  : t(($) => $['error.passwordInvalid'], { ns: 'login' })
+              }
+              className="mb-5"
+            >
+              <FieldLabel>{t(($) => $.password, { ns: 'login' })}</FieldLabel>
+              <PasswordField>
+                <PasswordFieldInput
+                  autoComplete="new-password"
+                  required
+                  minLength={8}
+                  placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' })}
+                />
+                <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+              </PasswordField>
+              <FieldValidity>
+                {({ validity }) =>
+                  validity.valid === false ? null : (
+                    <FieldDescription className="text-text-secondary">
+                      {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                    </FieldDescription>
+                  )
+                }
+              </FieldValidity>
+              <FieldError>{t(($) => $['error.passwordInvalid'], { ns: 'login' })}</FieldError>
+            </Field>
+
+            <div>
+              <Button variant="primary" type="submit" loading={isSubmitting} className="w-full">
+                {t(($) => $.installBtn, { ns: 'login' })}
+              </Button>
             </div>
-            <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
-              <div className="relative">
-                <formContext.Provider value={form}>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      if (isSubmitting)
-                        return
-                      form.handleSubmit()
-                    }}
-                  >
-                    <div className="mb-5">
-                      <label htmlFor="email" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                        {t('email', { ns: 'login' })}
-                      </label>
-                      <div className="mt-1">
-                        <form.AppField name="email">
-                          {field => (
-                            <Input
-                              id="email"
-                              value={field.state.value}
-                              onChange={e => field.handleChange(e.target.value)}
-                              onBlur={field.handleBlur}
-                              placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
-                            />
-                          )}
-                        </form.AppField>
-                        {emailErrors && emailErrors.length > 0 && (
-                          <span className="text-sm text-red-400">
-                            {t(`${emailErrors[0]}` as 'error.emailInValid', { ns: 'login' })}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mb-5">
-                      <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                        {t('name', { ns: 'login' })}
-                      </label>
-                      <div className="relative mt-1">
-                        <form.AppField name="name">
-                          {field => (
-                            <Input
-                              id="name"
-                              value={field.state.value}
-                              onChange={e => field.handleChange(e.target.value)}
-                              onBlur={field.handleBlur}
-                              placeholder={t('namePlaceholder', { ns: 'login' }) || ''}
-                            />
-                          )}
-                        </form.AppField>
-                      </div>
-                      {nameErrors && nameErrors.length > 0 && (
-                        <span className="text-sm text-red-400">
-                          {t(`${nameErrors[0]}` as 'error.nameEmpty', { ns: 'login' })}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mb-5">
-                      <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                        {t('password', { ns: 'login' })}
-                      </label>
-                      <div className="relative mt-1">
-                        <form.AppField name="password">
-                          {field => (
-                            <Input
-                              id="password"
-                              type={showPassword ? 'text' : 'password'}
-                              value={field.state.value}
-                              onChange={e => field.handleChange(e.target.value)}
-                              onBlur={field.handleBlur}
-                              placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
-                            />
-                          )}
-                        </form.AppField>
-
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="text-text-quaternary hover:text-text-tertiary focus:text-text-tertiary focus:outline-none"
-                          >
-                            {showPassword ? '👀' : '😝'}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className={cn('mt-1 text-xs text-text-secondary', {
-                        '!text-sm text-red-400': passwordErrors && passwordErrors.length > 0,
-                      })}
-                      >
-                        {t('error.passwordInvalid', { ns: 'login' })}
-                      </div>
-                    </div>
-
-                    <div>
-                      <Button variant="primary" type="submit" disabled={isSubmitting} loading={isSubmitting} className="w-full">
-                        {t('installBtn', { ns: 'login' })}
-                      </Button>
-                    </div>
-                  </form>
-                </formContext.Provider>
-                <div className="mt-2 block w-full text-xs text-text-secondary">
-                  {t('license.tip', { ns: 'login' })}
-                &nbsp;
-                  <Link
-                    className="text-text-accent"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href={LICENSE_LINK}
-                  >
-                    {t('license.link', { ns: 'login' })}
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </>
-        )
+          </Form>
+          <div className="mt-2 block w-full text-xs text-text-secondary">
+            {t(($) => $['license.tip'], { ns: 'login' })}
+            &nbsp;
+            <Link
+              className="text-text-accent"
+              target="_blank"
+              rel="noopener noreferrer"
+              href={LICENSE_LINK}
+            >
+              {t(($) => $['license.link'], { ns: 'login' })}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </>
   )
 }
 

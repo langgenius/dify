@@ -1,29 +1,10 @@
 import { render, screen } from '@testing-library/react'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { VariableLabelInNode, VariableLabelInText } from '../index'
+import userEvent from '@testing-library/user-event'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { VariableLabelInEditor, VariableLabelInSelect, VariableLabelInText } from '../index'
 
 describe('variable-label index', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // The barrel exports should render the node and text variants with the expected variable metadata.
   describe('Rendering', () => {
-    it('should render the node variant with node label and variable type', () => {
-      render(
-        <VariableLabelInNode
-          nodeType={BlockEnum.Code}
-          nodeTitle="Source Node"
-          variables={['source-node', 'answer']}
-          variableType={VarType.string}
-        />,
-      )
-
-      expect(screen.getByText('Source Node')).toBeInTheDocument()
-      expect(screen.getByText('answer')).toBeInTheDocument()
-      expect(screen.getByText('String')).toBeInTheDocument()
-    })
-
     it('should render the text variant with the shortened variable path', () => {
       render(
         <VariableLabelInText
@@ -38,6 +19,38 @@ describe('variable-label index', () => {
       expect(screen.getByTestId('exception-variable')).toBeInTheDocument()
       expect(screen.getByText('Source Node')).toBeInTheDocument()
       expect(screen.getByText('answer')).toBeInTheDocument()
+    })
+
+    it('should render the select variant with the full variable path', () => {
+      render(
+        <VariableLabelInSelect
+          nodeType={BlockEnum.Code}
+          nodeTitle="Source Node"
+          variables={['source-node', 'payload', 'answer']}
+        />,
+      )
+
+      expect(screen.getByText('payload.answer')).toBeInTheDocument()
+    })
+
+    it('discloses the variable validation error on hover', async () => {
+      const user = userEvent.setup()
+      render(
+        <VariableLabelInEditor
+          nodeType={BlockEnum.Code}
+          nodeTitle="Source Node"
+          variables={['source-node', 'payload']}
+          isSelected
+          errorMsg="Invalid variable"
+          rightSlot={<span>suffix</span>}
+        />,
+      )
+
+      expect(screen.getByText('suffix')).toBeInTheDocument()
+
+      await user.hover(screen.getByText('payload'))
+
+      expect(await screen.findByText('Invalid variable')).toBeVisible()
     })
   })
 })

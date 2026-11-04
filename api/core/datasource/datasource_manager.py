@@ -1,11 +1,12 @@
 import logging
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from threading import Lock
 from typing import Any, cast
 
 from sqlalchemy import select
 
 import contexts
+from core.app.file_access import DatabaseFileAccessController
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
 from core.datasource.entities.datasource_entities import (
@@ -24,18 +25,17 @@ from core.datasource.utils.message_transformer import DatasourceFileMessageTrans
 from core.datasource.website_crawl.website_crawl_provider import WebsiteCrawlDatasourcePluginProviderController
 from core.db.session_factory import session_factory
 from core.plugin.impl.datasource import PluginDatasourceManager
+from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.datasource.entities import DatasourceParameter, OnlineDriveDownloadFileParam
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import WorkflowNodeExecutionMetadataKey
-from dify_graph.file import File
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from factories import file_factory
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType, get_file_type_by_mime_type
+from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from models.model import UploadFile
 from models.tools import ToolFile
-from services.datasource_provider_service import DatasourceProviderService
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class DatasourceManager:
@@ -114,7 +114,7 @@ class DatasourceManager:
         """
         get the datasource runtime
 
-        :param provider_type: the type of the provider
+        :param datasource_type: the type of the datasource
         :param provider_id: the id of the provider
         :param datasource_name: the name of the datasource
         :param tenant_id: the tenant id
@@ -146,9 +146,7 @@ class DatasourceManager:
         datasource_type: str,
         provider_id: str,
         tenant_id: str,
-        provider: str,
-        plugin_id: str,
-        credential_id: str,
+        credentials: Mapping[str, Any],
         datasource_param: DatasourceParameter | None = None,
         online_drive_request: OnlineDriveDownloadFileParam | None = None,
     ) -> Generator[DatasourceMessage, None, Any]:
@@ -165,21 +163,13 @@ class DatasourceManager:
             datasource_type=ds_type,
         )
 
-        dsp_service = DatasourceProviderService()
-        credentials = dsp_service.get_datasource_credentials(
-            tenant_id=tenant_id,
-            provider=provider,
-            plugin_id=plugin_id,
-            credential_id=credential_id,
-        )
-
         if ds_type == DatasourceProviderType.ONLINE_DOCUMENT:
             doc_runtime = cast(OnlineDocumentDatasourcePlugin, runtime)
             if credentials:
-                doc_runtime.runtime.credentials = credentials
+                doc_runtime.runtime.credentials = dict(credentials)
             if datasource_param is None:
                 raise ValueError("datasource_param is required for ONLINE_DOCUMENT streaming")
-            inner_gen: Generator[DatasourceMessage, None, None] = doc_runtime.get_online_document_page_content(
+            inner_gen: Generator[DatasourceMessage] = doc_runtime.get_online_document_page_content(
                 user_id=user_id,
                 datasource_parameters=GetOnlineDocumentPageContentRequest(
                     workspace_id=datasource_param.workspace_id,
@@ -191,7 +181,7 @@ class DatasourceManager:
         elif ds_type == DatasourceProviderType.ONLINE_DRIVE:
             drive_runtime = cast(OnlineDriveDatasourcePlugin, runtime)
             if credentials:
-                drive_runtime.runtime.credentials = credentials
+                drive_runtime.runtime.credentials = dict(credentials)
             if online_drive_request is None:
                 raise ValueError("online_drive_request is required for ONLINE_DRIVE streaming")
             inner_gen = drive_runtime.online_drive_download_file(
@@ -220,15 +210,13 @@ class DatasourceManager:
         datasource_type: str,
         provider_id: str,
         tenant_id: str,
-        provider: str,
-        plugin_id: str,
-        credential_id: str,
+        credentials: Mapping[str, Any],
         parameters_for_log: dict[str, Any],
         datasource_info: dict[str, Any],
         variable_pool: Any,
         datasource_param: DatasourceParameter | None = None,
         online_drive_request: OnlineDriveDownloadFileParam | None = None,
-    ) -> Generator[StreamChunkEvent | StreamCompletedEvent, None, None]:
+    ) -> Generator[StreamChunkEvent | StreamCompletedEvent]:
         ds_type = DatasourceProviderType.value_of(datasource_type)
 
         messages = cls.stream_online_results(
@@ -237,9 +225,7 @@ class DatasourceManager:
             datasource_type=datasource_type,
             provider_id=provider_id,
             tenant_id=tenant_id,
-            provider=provider,
-            plugin_id=plugin_id,
-            credential_id=credential_id,
+            credentials=credentials,
             datasource_param=datasource_param,
             online_drive_request=online_drive_request,
         )
@@ -279,11 +265,15 @@ class DatasourceManager:
                     if datasource_file is not None:
                         mapping = {
                             "tool_file_id": datasource_file_id,
-                            "type": file_factory.get_file_type_by_mime_type(mime_type),
+                            "type": get_file_type_by_mime_type(mime_type),
                             "transfer_method": FileTransferMethod.TOOL_FILE,
                             "url": url,
                         }
-                        file_out = file_factory.build_from_mapping(mapping=mapping, tenant_id=tenant_id)
+                        file_out = file_factory.build_from_mapping(
+                            mapping=mapping,
+                            tenant_id=tenant_id,
+                            access_controller=_file_access_controller,
+                        )
             elif mtype == DatasourceMessage.MessageType.TEXT:
                 assert isinstance(message.message, DatasourceMessage.TextMessage)
                 yield StreamChunkEvent(selector=[node_id, "text"], chunk=message.message.text, is_final=False)
@@ -340,22 +330,21 @@ class DatasourceManager:
     @classmethod
     def get_upload_file_by_id(cls, file_id: str, tenant_id: str) -> File:
         with session_factory.create_session() as session:
-            upload_file = (
-                session.query(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id).first()
+            upload_file = session.scalar(
+                select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id).limit(1)
             )
             if not upload_file:
                 raise ValueError(f"UploadFile not found for file_id={file_id}, tenant_id={tenant_id}")
 
         file_info = File(
-            id=upload_file.id,
+            file_id=upload_file.id,
             filename=upload_file.name,
             extension="." + upload_file.extension,
             mime_type=upload_file.mime_type,
-            tenant_id=tenant_id,
-            type=FileType.CUSTOM,
+            file_type=FileType.CUSTOM,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             remote_url=upload_file.source_url,
-            related_id=upload_file.id,
+            reference=build_file_reference(record_id=str(upload_file.id)),
             size=upload_file.size,
             storage_key=upload_file.key,
             url=upload_file.source_url,

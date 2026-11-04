@@ -1,4 +1,13 @@
+from typing import TypedDict
+
 from pydantic import BaseModel, Field, model_validator
+
+
+class I18nObjectDict(TypedDict):
+    zh_Hans: str | None
+    en_US: str
+    pt_BR: str | None
+    ja_JP: str | None
 
 
 class I18nObject(BaseModel):
@@ -18,5 +27,11 @@ class I18nObject(BaseModel):
         self.ja_JP = self.ja_JP or self.en_US
         return self
 
-    def to_dict(self):
-        return {"zh_Hans": self.zh_Hans, "en_US": self.en_US, "pt_BR": self.pt_BR, "ja_JP": self.ja_JP}
+    def to_dict(self) -> I18nObjectDict:
+        result: I18nObjectDict = {
+            "zh_Hans": self.zh_Hans,
+            "en_US": self.en_US,
+            "pt_BR": self.pt_BR,
+            "ja_JP": self.ja_JP,
+        }
+        return result

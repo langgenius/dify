@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from textwrap import dedent
-from typing import Any
+from typing import Any, override
 
 from core.helper.code_executor.template_transformer import TemplateTransformer
 
@@ -10,7 +10,8 @@ class Jinja2TemplateTransformer(TemplateTransformer):
     _template_b64_placeholder: str = "{{template_b64}}"
 
     @classmethod
-    def transform_response(cls, response: str):
+    @override
+    def transform_response(cls, response: str) -> dict[str, Any]:
         """
         Transform response to dict
         :param response: response
@@ -19,6 +20,7 @@ class Jinja2TemplateTransformer(TemplateTransformer):
         return {"result": cls.extract_result_str_from_response(response)}
 
     @classmethod
+    @override
     def assemble_runner_script(cls, code: str, inputs: Mapping[str, Any]) -> str:
         """
         Override base class to use base64 encoding for template code.
@@ -34,17 +36,19 @@ class Jinja2TemplateTransformer(TemplateTransformer):
         return script
 
     @classmethod
+    @override
     def get_runner_script(cls) -> str:
         runner_script = dedent(f"""
-            import jinja2
             import json
             from base64 import b64decode
+            from jinja2.sandbox import SandboxedEnvironment
 
             # declare main function
             def main(**inputs):
                 # Decode base64-encoded template to handle special characters safely
                 template_code = b64decode('{cls._template_b64_placeholder}').decode('utf-8')
-                template = jinja2.Template(template_code)
+                env = SandboxedEnvironment()
+                template = env.from_string(template_code)
                 return template.render(**inputs)
 
             # decode and prepare input dict
@@ -61,14 +65,16 @@ class Jinja2TemplateTransformer(TemplateTransformer):
         return runner_script
 
     @classmethod
+    @override
     def get_preload_script(cls) -> str:
         preload_script = dedent("""
-            import jinja2
+            from jinja2.sandbox import SandboxedEnvironment
             from base64 import b64decode
 
             def _jinja2_preload_():
-                # prepare jinja2 environment, load template and render before to avoid sandbox issue
-                template = jinja2.Template('{{s}}')
+                # prepare jinja2 sandboxed environment, load template and render
+                env = SandboxedEnvironment()
+                template = env.from_string('{{s}}')
                 template.render(s='a')
 
             if __name__ == '__main__':

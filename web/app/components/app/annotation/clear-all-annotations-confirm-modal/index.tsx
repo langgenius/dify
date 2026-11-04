@@ -1,32 +1,37 @@
 'use client'
 
-import type { FC } from 'react'
-import * as React from 'react'
+import {
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 
-type Props = {
-  isShow: boolean
-  onHide: () => void
+type Props = Readonly<{
+  isPending: boolean
   onConfirm: () => void
-}
+}>
 
-const ClearAllAnnotationsConfirmModal: FC<Props> = ({
-  isShow,
-  onHide,
-  onConfirm,
-}) => {
-  const { t } = useTranslation()
+export function ClearAllAnnotationsConfirmContent({ isPending, onConfirm }: Props) {
+  const { t } = useTranslation(['appAnnotation', 'common'])
+  const title = t(($) => $['table.header.clearAllConfirm'], { ns: 'appAnnotation' })
 
   return (
-    <Confirm
-      isShow={isShow}
-      onCancel={onHide}
-      onConfirm={onConfirm}
-      type="danger"
-      title={t('table.header.clearAllConfirm', { ns: 'appAnnotation' })}
-    />
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{title}</AlertDialogTitle>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancelButton disabled={isPending}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </AlertDialogCancelButton>
+        <AlertDialogConfirmButton loading={isPending} onClick={onConfirm}>
+          {t(($) => $['operation.confirm'], { ns: 'common' })}
+        </AlertDialogConfirmButton>
+      </AlertDialogFooter>
+    </AlertDialogContent>
   )
 }
-
-export default React.memo(ClearAllAnnotationsConfirmModal)

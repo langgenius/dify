@@ -1,183 +1,415 @@
-"""Unit tests for controllers.web.conversation endpoints."""
+"""Unit tests for Pydantic models defined in controllers.web modules.
+
+Covers validation logic, field defaults, constraints, and custom validators
+for all ~15 Pydantic models across the web controller layer.
+"""
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from flask import Flask
-from werkzeug.exceptions import NotFound
+from pydantic import ValidationError
 
-from controllers.web.conversation import (
-    ConversationApi,
-    ConversationListApi,
-    ConversationPinApi,
-    ConversationRenameApi,
-    ConversationUnPinApi,
+# ---------------------------------------------------------------------------
+# app.py models
+# ---------------------------------------------------------------------------
+from controllers.web.app import AppAccessModeQuery
+
+# ---------------------------------------------------------------------------
+# audio.py models
+# ---------------------------------------------------------------------------
+from controllers.web.audio import TextToAudioPayload
+
+# ---------------------------------------------------------------------------
+# completion.py models
+# ---------------------------------------------------------------------------
+from controllers.web.completion import ChatMessagePayload, CompletionMessagePayload
+
+# ---------------------------------------------------------------------------
+# conversation.py models
+# ---------------------------------------------------------------------------
+from controllers.web.conversation import ConversationListQuery, ConversationRenamePayload
+
+# ---------------------------------------------------------------------------
+# forgot_password.py models
+# ---------------------------------------------------------------------------
+from controllers.web.forgot_password import (
+    ForgotPasswordCheckPayload,
+    ForgotPasswordResetPayload,
+    ForgotPasswordSendPayload,
 )
-from controllers.web.error import NotChatAppError
-from services.errors.conversation import ConversationNotExistsError
-
-
-def _chat_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
-
-
-def _completion_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="completion")
-
-
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1")
-
 
 # ---------------------------------------------------------------------------
-# ConversationListApi
+# login.py models
 # ---------------------------------------------------------------------------
-class TestConversationListApi:
-    def test_non_chat_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context("/conversations"):
-            with pytest.raises(NotChatAppError):
-                ConversationListApi().get(_completion_app(), _end_user())
+from controllers.web.login import EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload, LoginPayload
 
-    @patch("controllers.web.conversation.WebConversationService.pagination_by_last_id")
-    @patch("controllers.web.conversation.db")
-    def test_happy_path(self, mock_db: MagicMock, mock_paginate: MagicMock, app: Flask) -> None:
-        conv_id = str(uuid4())
-        conv = SimpleNamespace(
-            id=conv_id,
-            name="Test",
-            inputs={},
-            status="normal",
-            introduction="",
-            created_at=1700000000,
-            updated_at=1700000000,
+# ---------------------------------------------------------------------------
+# message.py models
+# ---------------------------------------------------------------------------
+from controllers.web.message import MessageFeedbackPayload, MessageListQuery, MessageMoreLikeThisQuery
+
+# ---------------------------------------------------------------------------
+# remote_files.py models
+# ---------------------------------------------------------------------------
+from controllers.web.remote_files import RemoteFileUploadPayload
+
+# ---------------------------------------------------------------------------
+# saved_message.py models
+# ---------------------------------------------------------------------------
+from controllers.web.saved_message import SavedMessageCreatePayload, SavedMessageListQuery
+
+# ---------------------------------------------------------------------------
+# workflow.py models
+# ---------------------------------------------------------------------------
+from controllers.web.workflow import WorkflowRunPayload
+
+
+class TestAppAccessModeQuery:
+    def test_alias_resolution(self) -> None:
+        q = AppAccessModeQuery.model_validate({"appId": "abc", "appCode": "xyz"})
+        assert q.app_id == "abc"
+        assert q.app_code == "xyz"
+
+    def test_defaults_to_none(self) -> None:
+        q = AppAccessModeQuery.model_validate({})
+        assert q.app_id is None
+        assert q.app_code is None
+
+    def test_accepts_snake_case(self) -> None:
+        q = AppAccessModeQuery(app_id="id1", app_code="code1")
+        assert q.app_id == "id1"
+        assert q.app_code == "code1"
+
+
+class TestTextToAudioPayload:
+    def test_defaults(self) -> None:
+        p = TextToAudioPayload.model_validate({})
+        assert p.message_id is None
+        assert p.voice is None
+        assert p.text is None
+        assert p.streaming is None
+
+    def test_valid_uuid_message_id(self) -> None:
+        uid = str(uuid4())
+        p = TextToAudioPayload(message_id=uid)
+        assert p.message_id == uid
+
+    def test_none_message_id_passthrough(self) -> None:
+        p = TextToAudioPayload(message_id=None)
+        assert p.message_id is None
+
+    def test_invalid_uuid_message_id(self) -> None:
+        with pytest.raises(ValidationError, match="not a valid uuid"):
+            TextToAudioPayload(message_id="not-a-uuid")
+
+
+class TestCompletionMessagePayload:
+    def test_defaults(self) -> None:
+        p = CompletionMessagePayload(inputs={})
+        assert p.query == ""
+        assert p.files is None
+        assert p.response_mode is None
+        assert p.retriever_from == "web_app"
+
+    def test_accepts_full_payload(self) -> None:
+        p = CompletionMessagePayload(
+            inputs={"key": "val"},
+            query="test",
+            files=[{"id": "f1"}],
+            response_mode="streaming",
         )
-        mock_paginate.return_value = SimpleNamespace(limit=20, has_more=False, data=[conv])
-        mock_db.engine = "engine"
+        assert p.response_mode == "streaming"
+        assert p.files == [{"id": "f1"}]
 
-        session_mock = MagicMock()
-        session_ctx = MagicMock()
-        session_ctx.__enter__ = MagicMock(return_value=session_mock)
-        session_ctx.__exit__ = MagicMock(return_value=False)
-
-        with (
-            app.test_request_context("/conversations?limit=20"),
-            patch("controllers.web.conversation.Session", return_value=session_ctx),
-        ):
-            result = ConversationListApi().get(_chat_app(), _end_user())
-
-        assert result["limit"] == 20
-        assert result["has_more"] is False
+    def test_invalid_response_mode(self) -> None:
+        with pytest.raises(ValidationError):
+            CompletionMessagePayload(inputs={}, response_mode="invalid")  # pyrefly: ignore[bad-argument-type]
 
 
-# ---------------------------------------------------------------------------
-# ConversationApi (delete)
-# ---------------------------------------------------------------------------
-class TestConversationApi:
-    def test_non_chat_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context(f"/conversations/{uuid4()}"):
-            with pytest.raises(NotChatAppError):
-                ConversationApi().delete(_completion_app(), _end_user(), uuid4())
+class TestChatMessagePayload:
+    def test_valid_uuid_fields(self) -> None:
+        cid = str(uuid4())
+        pid = str(uuid4())
+        p = ChatMessagePayload(inputs={}, query="hi", conversation_id=cid, parent_message_id=pid)
+        assert p.conversation_id == cid
+        assert p.parent_message_id == pid
 
-    @patch("controllers.web.conversation.ConversationService.delete")
-    def test_delete_success(self, mock_delete: MagicMock, app: Flask) -> None:
-        c_id = uuid4()
-        with app.test_request_context(f"/conversations/{c_id}"):
-            result, status = ConversationApi().delete(_chat_app(), _end_user(), c_id)
+    def test_none_uuid_fields(self) -> None:
+        p = ChatMessagePayload(inputs={}, query="hi")
+        assert p.conversation_id is None
+        assert p.parent_message_id is None
 
-        assert status == 204
-        assert result["result"] == "success"
+    def test_invalid_conversation_id(self) -> None:
+        with pytest.raises(ValidationError, match="not a valid uuid"):
+            ChatMessagePayload(inputs={}, query="hi", conversation_id="bad")
 
-    @patch("controllers.web.conversation.ConversationService.delete", side_effect=ConversationNotExistsError())
-    def test_delete_not_found(self, mock_delete: MagicMock, app: Flask) -> None:
-        c_id = uuid4()
-        with app.test_request_context(f"/conversations/{c_id}"):
-            with pytest.raises(NotFound, match="Conversation Not Exists"):
-                ConversationApi().delete(_chat_app(), _end_user(), c_id)
+    def test_invalid_parent_message_id(self) -> None:
+        with pytest.raises(ValidationError, match="not a valid uuid"):
+            ChatMessagePayload(inputs={}, query="hi", parent_message_id="bad")
 
-
-# ---------------------------------------------------------------------------
-# ConversationRenameApi
-# ---------------------------------------------------------------------------
-class TestConversationRenameApi:
-    def test_non_chat_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context(f"/conversations/{uuid4()}/name", method="POST", json={"name": "x"}):
-            with pytest.raises(NotChatAppError):
-                ConversationRenameApi().post(_completion_app(), _end_user(), uuid4())
-
-    @patch("controllers.web.conversation.ConversationService.rename")
-    @patch("controllers.web.conversation.web_ns")
-    def test_rename_success(self, mock_ns: MagicMock, mock_rename: MagicMock, app: Flask) -> None:
-        c_id = uuid4()
-        mock_ns.payload = {"name": "New Name", "auto_generate": False}
-        conv = SimpleNamespace(
-            id=str(c_id),
-            name="New Name",
-            inputs={},
-            status="normal",
-            introduction="",
-            created_at=1700000000,
-            updated_at=1700000000,
-        )
-        mock_rename.return_value = conv
-
-        with app.test_request_context(f"/conversations/{c_id}/name", method="POST", json={"name": "New Name"}):
-            result = ConversationRenameApi().post(_chat_app(), _end_user(), c_id)
-
-        assert result["name"] == "New Name"
-
-    @patch(
-        "controllers.web.conversation.ConversationService.rename",
-        side_effect=ConversationNotExistsError(),
-    )
-    @patch("controllers.web.conversation.web_ns")
-    def test_rename_not_found(self, mock_ns: MagicMock, mock_rename: MagicMock, app: Flask) -> None:
-        c_id = uuid4()
-        mock_ns.payload = {"name": "X", "auto_generate": False}
-
-        with app.test_request_context(f"/conversations/{c_id}/name", method="POST", json={"name": "X"}):
-            with pytest.raises(NotFound, match="Conversation Not Exists"):
-                ConversationRenameApi().post(_chat_app(), _end_user(), c_id)
+    def test_query_required(self) -> None:
+        with pytest.raises(ValidationError):
+            ChatMessagePayload(inputs={})  # pyrefly: ignore[missing-argument]
 
 
-# ---------------------------------------------------------------------------
-# ConversationPinApi / ConversationUnPinApi
-# ---------------------------------------------------------------------------
-class TestConversationPinApi:
-    def test_non_chat_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context(f"/conversations/{uuid4()}/pin", method="PATCH"):
-            with pytest.raises(NotChatAppError):
-                ConversationPinApi().patch(_completion_app(), _end_user(), uuid4())
+class TestConversationListQuery:
+    def test_defaults(self) -> None:
+        q = ConversationListQuery()
+        assert q.last_id is None
+        assert q.limit == 20
+        assert q.pinned is None
+        assert q.sort_by == "-updated_at"
 
-    @patch("controllers.web.conversation.WebConversationService.pin")
-    def test_pin_success(self, mock_pin: MagicMock, app: Flask) -> None:
-        c_id = uuid4()
-        with app.test_request_context(f"/conversations/{c_id}/pin", method="PATCH"):
-            result = ConversationPinApi().patch(_chat_app(), _end_user(), c_id)
+    def test_limit_lower_bound(self) -> None:
+        with pytest.raises(ValidationError):
+            ConversationListQuery(limit=0)  # pyrefly: ignore[bad-argument-type]
 
-        assert result["result"] == "success"
+    def test_limit_upper_bound(self) -> None:
+        with pytest.raises(ValidationError):
+            ConversationListQuery(limit=101)  # pyrefly: ignore[bad-argument-type]
 
-    @patch("controllers.web.conversation.WebConversationService.pin", side_effect=ConversationNotExistsError())
-    def test_pin_not_found(self, mock_pin: MagicMock, app: Flask) -> None:
-        c_id = uuid4()
-        with app.test_request_context(f"/conversations/{c_id}/pin", method="PATCH"):
-            with pytest.raises(NotFound):
-                ConversationPinApi().patch(_chat_app(), _end_user(), c_id)
+    def test_limit_boundaries_valid(self) -> None:
+        assert ConversationListQuery(limit=1).limit == 1
+        assert ConversationListQuery(limit=100).limit == 100
+
+    def test_valid_sort_by_options(self) -> None:
+        for opt in ("created_at", "-created_at", "updated_at", "-updated_at"):
+            assert ConversationListQuery(sort_by=opt).sort_by == opt
+
+    def test_invalid_sort_by(self) -> None:
+        with pytest.raises(ValidationError):
+            ConversationListQuery(sort_by="invalid")  # pyrefly: ignore[bad-argument-type]
+
+    def test_valid_last_id(self) -> None:
+        uid = str(uuid4())
+        assert ConversationListQuery(last_id=uid).last_id == uid
+
+    def test_invalid_last_id(self) -> None:
+        with pytest.raises(ValidationError, match="not a valid uuid"):
+            ConversationListQuery(last_id="not-uuid")
 
 
-class TestConversationUnPinApi:
-    def test_non_chat_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context(f"/conversations/{uuid4()}/unpin", method="PATCH"):
-            with pytest.raises(NotChatAppError):
-                ConversationUnPinApi().patch(_completion_app(), _end_user(), uuid4())
+class TestConversationRenamePayload:
+    def test_auto_generate_true_no_name_required(self) -> None:
+        p = ConversationRenamePayload(auto_generate=True)
+        assert p.name is None
 
-    @patch("controllers.web.conversation.WebConversationService.unpin")
-    def test_unpin_success(self, mock_unpin: MagicMock, app: Flask) -> None:
-        c_id = uuid4()
-        with app.test_request_context(f"/conversations/{c_id}/unpin", method="PATCH"):
-            result = ConversationUnPinApi().patch(_chat_app(), _end_user(), c_id)
+    def test_auto_generate_false_requires_name(self) -> None:
+        with pytest.raises(ValidationError, match="name is required"):
+            ConversationRenamePayload(auto_generate=False)
 
-        assert result["result"] == "success"
+    def test_auto_generate_false_blank_name_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="name is required"):
+            ConversationRenamePayload(auto_generate=False, name="   ")
+
+    def test_auto_generate_false_with_valid_name(self) -> None:
+        p = ConversationRenamePayload(auto_generate=False, name="My Chat")
+        assert p.name == "My Chat"
+
+    def test_defaults(self) -> None:
+        p = ConversationRenamePayload(name="test")
+        assert p.auto_generate is False
+        assert p.name == "test"
+
+
+class TestMessageListQuery:
+    def test_valid_query(self) -> None:
+        cid = str(uuid4())
+        q = MessageListQuery(conversation_id=cid)
+        assert q.conversation_id == cid
+        assert q.first_id is None
+        assert q.limit == 20
+
+    def test_invalid_conversation_id(self) -> None:
+        with pytest.raises(ValidationError, match="must be a valid UUID"):
+            MessageListQuery(conversation_id="bad")
+
+    def test_limit_bounds(self) -> None:
+        cid = str(uuid4())
+        with pytest.raises(ValidationError):
+            MessageListQuery(conversation_id=cid, limit=0)  # pyrefly: ignore[bad-argument-type]
+        with pytest.raises(ValidationError):
+            MessageListQuery(conversation_id=cid, limit=101)  # pyrefly: ignore[bad-argument-type]
+
+    def test_valid_first_id(self) -> None:
+        cid = str(uuid4())
+        fid = str(uuid4())
+        q = MessageListQuery(conversation_id=cid, first_id=fid)
+        assert q.first_id == fid
+
+    def test_invalid_first_id(self) -> None:
+        cid = str(uuid4())
+        with pytest.raises(ValidationError, match="must be a valid UUID"):
+            MessageListQuery(conversation_id=cid, first_id="invalid")
+
+
+class TestMessageFeedbackPayload:
+    def test_defaults(self) -> None:
+        p = MessageFeedbackPayload()
+        assert p.rating is None
+        assert p.content is None
+
+    def test_valid_ratings(self) -> None:
+        assert MessageFeedbackPayload(rating="like").rating == "like"
+        assert MessageFeedbackPayload(rating="dislike").rating == "dislike"
+
+    def test_invalid_rating(self) -> None:
+        with pytest.raises(ValidationError):
+            MessageFeedbackPayload(rating="neutral")  # pyrefly: ignore[bad-argument-type]
+
+
+class TestMessageMoreLikeThisQuery:
+    def test_valid_modes(self) -> None:
+        assert MessageMoreLikeThisQuery(response_mode="blocking").response_mode == "blocking"
+        assert MessageMoreLikeThisQuery(response_mode="streaming").response_mode == "streaming"
+
+    def test_invalid_mode(self) -> None:
+        with pytest.raises(ValidationError):
+            MessageMoreLikeThisQuery(response_mode="invalid")  # pyrefly: ignore[bad-argument-type]
+
+    def test_required(self) -> None:
+        with pytest.raises(ValidationError):
+            MessageMoreLikeThisQuery()  # pyrefly: ignore[missing-argument]
+
+
+class TestRemoteFileUploadPayload:
+    def test_valid_url(self) -> None:
+        p = RemoteFileUploadPayload(url="https://example.com/file.pdf")
+        assert p.url == "https://example.com/file.pdf"
+
+    def test_url_syntax_is_validated_by_remote_file_service(self) -> None:
+        payload = RemoteFileUploadPayload(url="not-a-url")
+
+        assert payload.url == "not-a-url"
+
+    def test_url_required(self) -> None:
+        with pytest.raises(ValidationError):
+            RemoteFileUploadPayload()  # pyrefly: ignore[missing-argument]
+
+
+class TestSavedMessageListQuery:
+    def test_defaults(self) -> None:
+        q = SavedMessageListQuery()
+        assert q.last_id is None
+        assert q.limit == 20
+
+    def test_limit_bounds(self) -> None:
+        with pytest.raises(ValidationError):
+            SavedMessageListQuery(limit=0)  # pyrefly: ignore[bad-argument-type]
+        with pytest.raises(ValidationError):
+            SavedMessageListQuery(limit=101)  # pyrefly: ignore[bad-argument-type]
+
+    def test_valid_last_id(self) -> None:
+        uid = str(uuid4())
+        q = SavedMessageListQuery(last_id=uid)
+        assert q.last_id == uid
+
+    def test_empty_last_id(self) -> None:
+        q = SavedMessageListQuery(last_id="")
+        assert q.last_id == ""
+
+
+class TestSavedMessageCreatePayload:
+    def test_valid_message_id(self) -> None:
+        uid = str(uuid4())
+        p = SavedMessageCreatePayload(message_id=uid)
+        assert p.message_id == uid
+
+    def test_required(self) -> None:
+        with pytest.raises(ValidationError):
+            SavedMessageCreatePayload()  # pyrefly: ignore[missing-argument]
+
+
+class TestWorkflowRunPayload:
+    def test_defaults(self) -> None:
+        p = WorkflowRunPayload(inputs={})
+        assert p.inputs == {}
+        assert p.files is None
+
+    def test_with_files(self) -> None:
+        p = WorkflowRunPayload(inputs={"k": "v"}, files=[{"id": "f1"}])
+        assert p.files == [{"id": "f1"}]
+
+    def test_inputs_required(self) -> None:
+        with pytest.raises(ValidationError):
+            WorkflowRunPayload()  # pyrefly: ignore[missing-argument]
+
+
+class TestForgotPasswordSendPayload:
+    def test_valid_email(self) -> None:
+        p = ForgotPasswordSendPayload(email="user@example.com")
+        assert p.email == "user@example.com"
+
+    def test_invalid_email(self) -> None:
+        with pytest.raises(ValidationError, match="not a valid email"):
+            ForgotPasswordSendPayload(email="not-an-email")
+
+    def test_language_optional(self) -> None:
+        p = ForgotPasswordSendPayload(email="a@b.com")
+        assert p.language is None
+
+
+class TestForgotPasswordCheckPayload:
+    def test_valid(self) -> None:
+        p = ForgotPasswordCheckPayload(email="a@b.com", code="1234", token="tok")
+        assert p.email == "a@b.com"
+        assert p.code == "1234"
+        assert p.token == "tok"
+
+    def test_empty_token_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            ForgotPasswordCheckPayload(email="a@b.com", code="1234", token="")
+
+
+class TestForgotPasswordResetPayload:
+    def test_valid_passwords(self) -> None:
+        p = ForgotPasswordResetPayload(token="tok", new_password="Valid1234", password_confirm="Valid1234")
+        assert p.new_password == "Valid1234"
+
+    def test_weak_password_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="Password must contain"):
+            ForgotPasswordResetPayload(token="tok", new_password="short", password_confirm="short")
+
+    def test_letters_only_password_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="Password must contain"):
+            ForgotPasswordResetPayload(token="tok", new_password="abcdefghi", password_confirm="abcdefghi")
+
+    def test_digits_only_password_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="Password must contain"):
+            ForgotPasswordResetPayload(token="tok", new_password="123456789", password_confirm="123456789")
+
+
+class TestLoginPayload:
+    def test_valid(self) -> None:
+        p = LoginPayload(email="a@b.com", password="Valid1234")
+        assert p.email == "a@b.com"
+
+    def test_invalid_email(self) -> None:
+        with pytest.raises(ValidationError, match="not a valid email"):
+            LoginPayload(email="bad", password="Valid1234")
+
+    def test_weak_password(self) -> None:
+        with pytest.raises(ValidationError, match="Password must contain"):
+            LoginPayload(email="a@b.com", password="weak")
+
+
+class TestEmailCodeLoginSendPayload:
+    def test_valid(self) -> None:
+        p = EmailCodeLoginSendPayload(email="a@b.com")
+        assert p.language is None
+
+    def test_with_language(self) -> None:
+        p = EmailCodeLoginSendPayload(email="a@b.com", language="zh-Hans")
+        assert p.language == "zh-Hans"
+
+
+class TestEmailCodeLoginVerifyPayload:
+    def test_valid(self) -> None:
+        p = EmailCodeLoginVerifyPayload(email="a@b.com", code="1234", token="tok")
+        assert p.code == "1234"
+
+    def test_empty_token_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            EmailCodeLoginVerifyPayload(email="a@b.com", code="1234", token="")

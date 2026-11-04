@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from dify_graph.variables.variables import VariableBase
+from graphon.variables.variables import VariableBase
 from models import ConversationVariable
 
 
@@ -15,7 +15,8 @@ class ConversationVariableUpdater:
 
     def update(self, conversation_id: str, variable: VariableBase) -> None:
         stmt = select(ConversationVariable).where(
-            ConversationVariable.id == variable.id, ConversationVariable.conversation_id == conversation_id
+            ConversationVariable.id == ConversationVariable.storage_id(variable),
+            ConversationVariable.conversation_id == conversation_id,
         )
         with self._session_maker() as session:
             row = session.scalar(stmt)

@@ -1,21 +1,29 @@
 'use client'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Member } from '@/models/common'
 import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
-import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import {
+  isReRankModelSelected,
+  normalizeRetrievalConfigForSave,
+} from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { DatasetPermission } from '@/models/datasets'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { useMembers } from '@/service/use-common'
+import { getErrorMessage } from '@/utils/error-message'
+import { getDatasetACLCapabilities } from '@/utils/permission'
+import { toIconInfo, toRetrievalConfig, toSummaryIndexSetting } from '../../../dataset-fields'
 import { checkShowMultiModalTip } from '../../utils'
 
 const DEFAULT_APP_ICON: IconInfo = {
@@ -25,11 +33,29 @@ const DEFAULT_APP_ICON: IconInfo = {
   icon_url: '',
 }
 
-export const useFormState = () => {
-  const { t } = useTranslation()
-  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
-  const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
-  const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
+export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResponse) => {
+  const { t } = useTranslation(['appDebug', 'common', 'datasetSettings'])
+  const mutateDatasets = useDatasetDetailContextWithSelector((state) => state.mutateDatasetRes)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const datasetACLCapabilities = useMemo(
+    () =>
+      getDatasetACLCapabilities(currentDataset?.permission_keys, {
+        currentUserId,
+        resourceMaintainer: currentDataset?.maintainer,
+        workspacePermissionKeys,
+      }),
+    [
+      currentDataset?.maintainer,
+      currentDataset?.permission_keys,
+      currentUserId,
+      workspacePermissionKeys,
+    ],
+  )
+  const canEditSettings = datasetACLCapabilities.canEdit
 
   // Basic form state
   const [loading, setLoading] = useState(false)
@@ -37,27 +63,37 @@ export const useFormState = () => {
   const [description, setDescription] = useState(currentDataset?.description ?? '')
 
   // Icon state
-  const [iconInfo, setIconInfo] = useState(currentDataset?.icon_info || DEFAULT_APP_ICON)
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const previousAppIcon = useRef(DEFAULT_APP_ICON)
+  const [iconInfo, setIconInfo] = useState(
+    toIconInfo(currentDataset?.icon_info) ?? DEFAULT_APP_ICON,
+  )
 
   // Permission state
-  const [permission, setPermission] = useState(currentDataset?.permission)
-  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset?.partial_member_list || [])
+  const [permission, setPermission] = useState<PermissionLevel | undefined>(
+    currentDataset.permission,
+  )
+  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
+    currentDataset?.partial_member_list || [],
+  )
 
   // External retrieval state
-  const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
-  const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
-  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
+  const [topK, setTopK] = useState(currentDataset?.external_retrieval_model?.top_k ?? 2)
+  const [scoreThreshold, setScoreThreshold] = useState(
+    currentDataset?.external_retrieval_model?.score_threshold ?? 0.5,
+  )
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(
+    currentDataset?.external_retrieval_model?.score_threshold_enabled ?? false,
+  )
 
   // Indexing and retrieval state
-  const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
+  const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique ?? undefined)
   const [keywordNumber, setKeywordNumber] = useState(currentDataset?.keyword_number ?? 10)
-  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
+  const [retrievalConfig, setRetrievalConfig] = useState<RetrievalConfig>(() =>
+    toRetrievalConfig(currentDataset.retrieval_model_dict),
+  )
   const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
     currentDataset?.embedding_model
       ? {
-          provider: currentDataset.embedding_model_provider,
+          provider: currentDataset.embedding_model_provider ?? '',
           model: currentDataset.embedding_model,
         }
       : {
@@ -67,26 +103,41 @@ export const useFormState = () => {
   )
 
   // Summary index state
-  const [summaryIndexSetting, setSummaryIndexSetting] = useState(currentDataset?.summary_index_setting)
+  const [summaryIndexSetting, setSummaryIndexSetting] = useState<
+    SummaryIndexSettingType | undefined
+  >(
+    () =>
+      currentDataset.summary_index_setting &&
+      toSummaryIndexSetting(currentDataset.summary_index_setting),
+  )
 
   // Model lists
-  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { data: membersData } = useMembers()
-  const invalidDatasetList = useInvalidDatasetList()
+  const { data: rerankModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: embeddingModelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: membersData } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
 
   // Derive member list from API data
-  const memberList = useMemo<Member[]>(() => {
+  const memberList = useMemo<AccountWithRoleResponse[]>(() => {
     return membersData?.accounts ?? []
   }, [membersData])
 
-  // Icon handlers
-  const handleOpenAppIconPicker = useCallback(() => {
-    setShowAppIconPicker(true)
-    previousAppIcon.current = iconInfo
-  }, [iconInfo])
-
-  const handleSelectAppIcon = useCallback((icon: AppIconSelection) => {
+  const handleSelectAppIcon = useCallback((icon: IconPickerValue) => {
     const newIconInfo: IconInfo = {
       icon_type: icon.type,
       icon: icon.type === 'emoji' ? icon.icon : icon.fileId,
@@ -94,41 +145,37 @@ export const useFormState = () => {
       icon_url: icon.type === 'emoji' ? undefined : icon.url,
     }
     setIconInfo(newIconInfo)
-    setShowAppIconPicker(false)
-  }, [])
-
-  const handleCloseAppIconPicker = useCallback(() => {
-    setIconInfo(previousAppIcon.current)
-    setShowAppIconPicker(false)
   }, [])
 
   // External retrieval settings handler
-  const handleSettingsChange = useCallback((data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => {
-    if (data.top_k !== undefined)
-      setTopK(data.top_k)
-    if (data.score_threshold !== undefined)
-      setScoreThreshold(data.score_threshold)
-    if (data.score_threshold_enabled !== undefined)
-      setScoreThresholdEnabled(data.score_threshold_enabled)
-  }, [])
+  const handleSettingsChange = useCallback(
+    (data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
+      if (data.top_k !== undefined) setTopK(data.top_k)
+      if (data.score_threshold !== undefined) setScoreThreshold(data.score_threshold)
+      if (data.score_threshold_enabled !== undefined)
+        setScoreThresholdEnabled(data.score_threshold_enabled)
+    },
+    [],
+  )
 
   // Summary index setting handler
   const handleSummaryIndexSettingChange = useCallback((payload: SummaryIndexSettingType) => {
-    setSummaryIndexSetting(prev => ({ ...prev, ...payload }))
+    setSummaryIndexSetting((prev) => ({ ...prev, ...payload }))
   }, [])
 
   // Save handler
   const handleSave = async () => {
-    if (loading)
-      return
+    if (!canEditSettings) return
+
+    if (loading) return
 
     if (!name?.trim()) {
-      toast.error(t('form.nameError', { ns: 'datasetSettings' }))
+      toast.error(t(($) => $['form.nameError'], { ns: 'datasetSettings' }))
       return
     }
 
     if (!isReRankModelSelected({ rerankModelList, retrievalConfig, indexMethod })) {
-      toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
+      toast.error(t(($) => $['datasetConfig.rerankModelRequired'], { ns: 'appDebug' }))
       return
     }
 
@@ -136,6 +183,10 @@ export const useFormState = () => {
       retrievalConfig.weights.vector_setting.embedding_provider_name = embeddingModel.provider || ''
       retrievalConfig.weights.vector_setting.embedding_model_name = embeddingModel.model || ''
     }
+
+    // Hybrid Search renders no rerank on/off switch, so `reranking_enable` is only ever written
+    // when the retrieval method is switched. Derive it from the selected rerank model on save.
+    const retrievalConfigForSave = normalizeRetrievalConfigForSave(retrievalConfig)
 
     try {
       setLoading(true)
@@ -147,8 +198,10 @@ export const useFormState = () => {
         permission,
         indexing_technique: indexMethod,
         retrieval_model: {
-          ...retrievalConfig,
-          score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
+          ...retrievalConfigForSave,
+          score_threshold: retrievalConfigForSave.score_threshold_enabled
+            ? retrievalConfigForSave.score_threshold
+            : 0,
         },
         embedding_model: embeddingModel.model,
         embedding_model_provider: embeddingModel.provider,
@@ -156,9 +209,10 @@ export const useFormState = () => {
         summary_index_setting: summaryIndexSetting,
       }
 
-      if (currentDataset!.provider === 'external') {
-        body.external_knowledge_id = currentDataset!.external_knowledge_info.external_knowledge_id
-        body.external_knowledge_api_id = currentDataset!.external_knowledge_info.external_knowledge_api_id
+      if (currentDataset.provider === 'external') {
+        body.external_knowledge_id = currentDataset.external_knowledge_info?.external_knowledge_id
+        body.external_knowledge_api_id =
+          currentDataset.external_knowledge_info?.external_knowledge_api_id
         body.external_retrieval_model = {
           top_k: topK,
           score_threshold: scoreThreshold,
@@ -166,27 +220,27 @@ export const useFormState = () => {
         }
       }
 
-      if (permission === DatasetPermission.partialMembers) {
+      if (permission === PermissionLevel.partialMembers) {
         body.partial_member_list = selectedMemberIDs.map((id) => {
           return {
             user_id: id,
-            role: memberList.find(member => member.id === id)?.role,
+            role: memberList.find((member) => member.id === id)?.role,
           }
         })
       }
 
-      await updateDatasetSetting({ datasetId: currentDataset!.id, body })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      await updateDatasetSetting({ datasetId: currentDataset.id, body }, { silent: true })
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
 
       if (mutateDatasets) {
         await mutateDatasets()
         invalidDatasetList()
       }
-    }
-    catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
-    }
-    finally {
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
+    } finally {
       setLoading(false)
     }
   }
@@ -204,12 +258,19 @@ export const useFormState = () => {
       embeddingModelList,
       rerankModelList,
     })
-  }, [embeddingModel, rerankModelList, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, embeddingModelList, indexMethod])
+  }, [
+    embeddingModel,
+    rerankModelList,
+    retrievalConfig.reranking_enable,
+    retrievalConfig.reranking_model,
+    embeddingModelList,
+    indexMethod,
+  ])
 
   return {
     // Context values
     currentDataset,
-    isCurrentWorkspaceDatasetOperator,
+    canEditSettings,
 
     // Loading state
     loading,
@@ -222,10 +283,7 @@ export const useFormState = () => {
 
     // Icon
     iconInfo,
-    showAppIconPicker,
-    handleOpenAppIconPicker,
     handleSelectAppIcon,
-    handleCloseAppIconPicker,
 
     // Permission
     permission,

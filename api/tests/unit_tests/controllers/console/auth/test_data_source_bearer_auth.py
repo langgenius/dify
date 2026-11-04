@@ -1,209 +1,239 @@
-from unittest.mock import MagicMock, patch
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from inspect import unwrap
+from unittest.mock import create_autospec, patch
+from uuid import UUID
 
 import pytest
-from flask import Flask
+from pydantic import ValidationError
 
 from controllers.console.auth.data_source_bearer_auth import (
+    ApiKeyAuthBindingPayload,
     ApiKeyAuthDataSource,
     ApiKeyAuthDataSourceBinding,
     ApiKeyAuthDataSourceBindingDelete,
 )
-from controllers.console.auth.error import ApiKeyAuthFailedError
+from controllers.console.auth.error import (
+    DataSourceApiKeyAuthCredentialsRejectedRequestError,
+    DataSourceApiKeyAuthProviderNotSupportedError,
+    DataSourceApiKeyAuthProviderUnavailableRequestError,
+    InvalidDataSourceApiKeyAuthCredentialsRequestError,
+)
+from libs.exception import BaseHTTPException
+from machinery.context import RequestContext
+from services.auth.errors import (
+    DataSourceApiKeyAuthCredentialValidationError,
+    DataSourceApiKeyAuthProviderUnavailableError,
+    InvalidDataSourceApiKeyAuthCredentialsError,
+    UnsupportedDataSourceApiKeyAuthProviderError,
+)
+from services.data_source.auth.api_key_service import DataSourceApiKeyAuthService
+from services.data_source.entities.api_key_auth import (
+    DataSourceApiKeyAuthBindingCreate,
+    DataSourceApiKeyAuthBindingRecord,
+    DataSourceApiKeyAuthCredentials,
+)
 
 
-class TestApiKeyAuthDataSource:
-    @pytest.fixture
-    def app(self):
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        return app
+def _request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id="tenant-1",
+    )
 
-    @patch("libs.login.check_csrf_token")
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.get_provider_auth_list")
-    def test_get_api_key_auth_data_source(self, mock_get_list, mock_db, mock_csrf, app):
-        from models.account import Account, AccountStatus
 
-        mock_account = MagicMock(spec=Account)
-        mock_account.id = "user_123"
-        mock_account.status = AccountStatus.ACTIVE
-        mock_account.is_admin_or_owner = True
-        mock_account.current_tenant.current_role = "owner"
+@dataclass(frozen=True)
+class _DataSources:
+    api_key_auth: DataSourceApiKeyAuthService
 
-        mock_binding = MagicMock()
-        mock_binding.id = "bind_123"
-        mock_binding.category = "api_key"
-        mock_binding.provider = "custom_provider"
-        mock_binding.disabled = False
-        mock_binding.created_at.timestamp.return_value = 1620000000
-        mock_binding.updated_at.timestamp.return_value = 1620000001
 
-        mock_get_list.return_value = [mock_binding]
+@dataclass(frozen=True)
+class _ApplicationServices:
+    data_sources: _DataSources
 
-        with (
-            patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, "tenant_123")),
-            patch(
-                "controllers.console.auth.data_source_bearer_auth.current_account_with_tenant",
-                return_value=(mock_account, "tenant_123"),
+
+def _application_services(service: DataSourceApiKeyAuthService) -> _ApplicationServices:
+    return _ApplicationServices(data_sources=_DataSources(api_key_auth=service))
+
+
+def test_list_data_source_auth_passes_context_and_serializes_application_result() -> None:
+    api = ApiKeyAuthDataSource()
+    method = unwrap(api.get)
+    request_context = _request_context()
+    service = create_autospec(DataSourceApiKeyAuthService, instance=True, spec_set=True)
+    service.list_bindings.return_value = (
+        DataSourceApiKeyAuthBindingRecord(
+            id="binding-1",
+            category="api_key",
+            provider="custom",
+            disabled=False,
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            updated_at=datetime(2026, 1, 2, tzinfo=UTC),
+        ),
+    )
+
+    with patch(
+        "controllers.console.auth.data_source_bearer_auth.application_services",
+        return_value=_application_services(service),
+    ):
+        result = method(api, request_context)
+
+    service.list_bindings.assert_called_once_with(request_context)
+    assert result == {
+        "sources": [
+            {
+                "id": "binding-1",
+                "category": "api_key",
+                "provider": "custom",
+                "disabled": False,
+                "created_at": 1767225600,
+                "updated_at": 1767312000,
+            }
+        ]
+    }
+
+
+def test_create_data_source_auth_binding_passes_context_and_command() -> None:
+    api = ApiKeyAuthDataSourceBinding()
+    method = unwrap(api.post)
+    payload = {
+        "category": "api_key",
+        "provider": "custom",
+        "credentials": {
+            "auth_type": "api_key",
+            "config": {"api_key": "secret", "base_url": "https://example.com"},
+        },
+    }
+    request_context = _request_context()
+    req_data = ApiKeyAuthBindingPayload.model_validate(payload)
+    service = create_autospec(DataSourceApiKeyAuthService, instance=True, spec_set=True)
+
+    with patch(
+        "controllers.console.auth.data_source_bearer_auth.application_services",
+        return_value=_application_services(service),
+    ):
+        result, status = method(api, req_data, request_context)
+
+    service.create_binding.assert_called_once_with(
+        request_context,
+        DataSourceApiKeyAuthBindingCreate(
+            category="api_key",
+            provider="custom",
+            credentials=DataSourceApiKeyAuthCredentials(
+                "api_key",
+                "secret",
+                {"base_url": "https://example.com"},
             ),
-        ):
-            with app.test_request_context("/console/api/api-key-auth/data-source", method="GET"):
-                proxy_mock = MagicMock()
-                proxy_mock._get_current_object.return_value = mock_account
-                with patch("libs.login.current_user", proxy_mock):
-                    api_instance = ApiKeyAuthDataSource()
-                    response = api_instance.get()
-
-        assert "sources" in response
-        assert len(response["sources"]) == 1
-        assert response["sources"][0]["provider"] == "custom_provider"
-
-    @patch("libs.login.check_csrf_token")
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.get_provider_auth_list")
-    def test_get_api_key_auth_data_source_empty(self, mock_get_list, mock_db, mock_csrf, app):
-        from models.account import Account, AccountStatus
-
-        mock_account = MagicMock(spec=Account)
-        mock_account.id = "user_123"
-        mock_account.status = AccountStatus.ACTIVE
-        mock_account.is_admin_or_owner = True
-        mock_account.current_tenant.current_role = "owner"
-
-        mock_get_list.return_value = None
-
-        with (
-            patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, "tenant_123")),
-            patch(
-                "controllers.console.auth.data_source_bearer_auth.current_account_with_tenant",
-                return_value=(mock_account, "tenant_123"),
-            ),
-        ):
-            with app.test_request_context("/console/api/api-key-auth/data-source", method="GET"):
-                proxy_mock = MagicMock()
-                proxy_mock._get_current_object.return_value = mock_account
-                with patch("libs.login.current_user", proxy_mock):
-                    api_instance = ApiKeyAuthDataSource()
-                    response = api_instance.get()
-
-        assert "sources" in response
-        assert len(response["sources"]) == 0
+        ),
+    )
+    assert result == {"result": "success"}
+    assert status == 200
 
 
-class TestApiKeyAuthDataSourceBinding:
-    @pytest.fixture
-    def app(self):
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        return app
+def test_create_data_source_auth_binding_maps_unsupported_provider_to_bad_request() -> None:
+    api = ApiKeyAuthDataSourceBinding()
+    method = unwrap(api.post)
+    request_context = _request_context()
+    req_data = ApiKeyAuthBindingPayload(
+        category="api_key",
+        provider="unsupported",
+        credentials={"auth_type": "api_key", "config": {"api_key": "secret"}},
+    )
+    service = create_autospec(DataSourceApiKeyAuthService, instance=True, spec_set=True)
+    service.create_binding.side_effect = UnsupportedDataSourceApiKeyAuthProviderError(req_data.provider)
 
-    @patch("libs.login.check_csrf_token")
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.create_provider_auth")
-    @patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.validate_api_key_auth_args")
-    def test_create_binding_successful(self, mock_validate, mock_create, mock_db, mock_csrf, app):
-        from models.account import Account, AccountStatus
+    with (
+        patch(
+            "controllers.console.auth.data_source_bearer_auth.application_services",
+            return_value=_application_services(service),
+        ),
+        pytest.raises(DataSourceApiKeyAuthProviderNotSupportedError) as exc_info,
+    ):
+        method(api, req_data, request_context)
 
-        mock_account = MagicMock(spec=Account)
-        mock_account.id = "user_123"
-        mock_account.status = AccountStatus.ACTIVE
-        mock_account.is_admin_or_owner = True
-        mock_account.current_tenant.current_role = "owner"
-
-        with (
-            patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, "tenant_123")),
-            patch(
-                "controllers.console.auth.data_source_bearer_auth.current_account_with_tenant",
-                return_value=(mock_account, "tenant_123"),
-            ),
-        ):
-            with app.test_request_context(
-                "/console/api/api-key-auth/data-source/binding",
-                method="POST",
-                json={"category": "api_key", "provider": "custom", "credentials": {"key": "value"}},
-            ):
-                proxy_mock = MagicMock()
-                proxy_mock._get_current_object.return_value = mock_account
-                with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
-                    api_instance = ApiKeyAuthDataSourceBinding()
-                    response = api_instance.post()
-
-        assert response[0]["result"] == "success"
-        assert response[1] == 200
-        mock_validate.assert_called_once()
-        mock_create.assert_called_once()
-
-    @patch("libs.login.check_csrf_token")
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.create_provider_auth")
-    @patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.validate_api_key_auth_args")
-    def test_create_binding_failure(self, mock_validate, mock_create, mock_db, mock_csrf, app):
-        from models.account import Account, AccountStatus
-
-        mock_account = MagicMock(spec=Account)
-        mock_account.id = "user_123"
-        mock_account.status = AccountStatus.ACTIVE
-        mock_account.is_admin_or_owner = True
-        mock_account.current_tenant.current_role = "owner"
-
-        mock_create.side_effect = ValueError("Invalid structure")
-
-        with (
-            patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, "tenant_123")),
-            patch(
-                "controllers.console.auth.data_source_bearer_auth.current_account_with_tenant",
-                return_value=(mock_account, "tenant_123"),
-            ),
-        ):
-            with app.test_request_context(
-                "/console/api/api-key-auth/data-source/binding",
-                method="POST",
-                json={"category": "api_key", "provider": "custom", "credentials": {"key": "value"}},
-            ):
-                proxy_mock = MagicMock()
-                proxy_mock._get_current_object.return_value = mock_account
-                with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
-                    api_instance = ApiKeyAuthDataSourceBinding()
-                    with pytest.raises(ApiKeyAuthFailedError, match="Invalid structure"):
-                        api_instance.post()
+    assert exc_info.value.code == 400
 
 
-class TestApiKeyAuthDataSourceBindingDelete:
-    @pytest.fixture
-    def app(self):
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        return app
+@pytest.mark.parametrize(
+    ("service_error", "request_error", "expected_status"),
+    [
+        (
+            InvalidDataSourceApiKeyAuthCredentialsError("Invalid auth type"),
+            InvalidDataSourceApiKeyAuthCredentialsRequestError,
+            400,
+        ),
+        (
+            DataSourceApiKeyAuthCredentialValidationError("Credentials rejected"),
+            DataSourceApiKeyAuthCredentialsRejectedRequestError,
+            400,
+        ),
+        (
+            DataSourceApiKeyAuthProviderUnavailableError("firecrawl"),
+            DataSourceApiKeyAuthProviderUnavailableRequestError,
+            502,
+        ),
+    ],
+)
+def test_create_data_source_auth_binding_maps_domain_errors(
+    service_error: Exception,
+    request_error: type[BaseHTTPException],
+    expected_status: int,
+) -> None:
+    api = ApiKeyAuthDataSourceBinding()
+    method = unwrap(api.post)
+    request_context = _request_context()
+    req_data = ApiKeyAuthBindingPayload(
+        category="api_key",
+        provider="firecrawl",
+        credentials={"auth_type": "bearer", "config": {"api_key": "secret"}},
+    )
+    service = create_autospec(DataSourceApiKeyAuthService, instance=True, spec_set=True)
+    service.create_binding.side_effect = service_error
 
-    @patch("libs.login.check_csrf_token")
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.delete_provider_auth")
-    def test_delete_binding_successful(self, mock_delete, mock_db, mock_csrf, app):
-        from models.account import Account, AccountStatus
+    with (
+        patch(
+            "controllers.console.auth.data_source_bearer_auth.application_services",
+            return_value=_application_services(service),
+        ),
+        pytest.raises(request_error) as exc_info,
+    ):
+        method(api, req_data, request_context)
 
-        mock_account = MagicMock(spec=Account)
-        mock_account.id = "user_123"
-        mock_account.status = AccountStatus.ACTIVE
-        mock_account.is_admin_or_owner = True
-        mock_account.current_tenant.current_role = "owner"
+    assert exc_info.value.code == expected_status
 
-        with (
-            patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, "tenant_123")),
-            patch(
-                "controllers.console.auth.data_source_bearer_auth.current_account_with_tenant",
-                return_value=(mock_account, "tenant_123"),
-            ),
-        ):
-            with app.test_request_context("/console/api/api-key-auth/data-source/binding_123", method="DELETE"):
-                proxy_mock = MagicMock()
-                proxy_mock._get_current_object.return_value = mock_account
-                with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
-                    api_instance = ApiKeyAuthDataSourceBindingDelete()
-                    response = api_instance.delete("binding_123")
 
-        assert response[0]["result"] == "success"
-        assert response[1] == 204
-        mock_delete.assert_called_once_with("tenant_123", "binding_123")
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"category": "", "provider": "firecrawl", "credentials": {"auth_type": "bearer", "config": {"api_key": "key"}}},
+        {"category": "api_key", "provider": "", "credentials": {"auth_type": "bearer", "config": {"api_key": "key"}}},
+        {"category": "api_key", "provider": "firecrawl", "credentials": {"config": {"api_key": "key"}}},
+        {"category": "api_key", "provider": "firecrawl", "credentials": {"auth_type": "bearer", "config": {}}},
+        {"category": "api_key", "provider": "firecrawl", "credentials": {"auth_type": "bearer", "config": "invalid"}},
+    ],
+)
+def test_api_key_auth_binding_payload_rejects_invalid_structure(payload: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        ApiKeyAuthBindingPayload.model_validate(payload)
+
+
+def test_delete_data_source_auth_binding_passes_context_and_binding_id() -> None:
+    api = ApiKeyAuthDataSourceBindingDelete()
+    method = unwrap(api.delete)
+    request_context = _request_context()
+    binding_id = UUID("31a00aeb-0865-4dd2-952a-5e0de34c57cc")
+    service = create_autospec(DataSourceApiKeyAuthService, instance=True, spec_set=True)
+
+    with patch(
+        "controllers.console.auth.data_source_bearer_auth.application_services",
+        return_value=_application_services(service),
+    ):
+        result, status = method(api, request_context, binding_id)
+
+    service.delete_binding.assert_called_once_with(request_context, str(binding_id))
+    assert result == ""
+    assert status == 204

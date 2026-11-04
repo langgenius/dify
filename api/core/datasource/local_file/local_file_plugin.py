@@ -1,3 +1,5 @@
+from typing import override
+
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
@@ -22,8 +24,10 @@ class LocalFileDatasourcePlugin(DatasourcePlugin):
         self.tenant_id = tenant_id
         self.plugin_unique_identifier = plugin_unique_identifier
 
+    @override
     def datasource_provider_type(self) -> str:
         return DatasourceProviderType.LOCAL_FILE
 
+    @override
     def get_icon_url(self, tenant_id: str) -> str:
         return self.icon

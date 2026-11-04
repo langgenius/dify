@@ -1,5 +1,7 @@
 """Configuration for InterSystems IRIS vector database."""
 
+from typing import Any
+
 from pydantic import Field, PositiveInt, model_validator
 from pydantic_settings import BaseSettings
 
@@ -64,7 +66,7 @@ class IrisVectorConfig(BaseSettings):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate IRIS configuration values.
 
         Args:

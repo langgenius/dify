@@ -5,6 +5,7 @@ from typing import Any
 
 import httpx
 
+from configs import dify_config
 from core.helper.trace_id_helper import generate_traceparent_header
 from services.errors.enterprise import (
     EnterpriseAPIBadRequestError,
@@ -12,9 +13,34 @@ from services.errors.enterprise import (
     EnterpriseAPIForbiddenError,
     EnterpriseAPINotFoundError,
     EnterpriseAPIUnauthorizedError,
+    EnterpriseServiceError,
 )
 
+
+class MCPTokenError(EnterpriseServiceError):
+    """Generic failure of the IssueMCPToken RPC."""
+
+
+class MCPNoRefreshTokenError(MCPTokenError):
+    """User has no stored SSO refresh_token; ask them to re-authenticate."""
+
+    def __init__(self, description: str = ""):
+        super().__init__(description, status_code=428)
+
+
+class MCPIdentityRefreshError(MCPTokenError):
+    """IdP rejected the refresh attempt (revoked/expired session)."""
+
+    def __init__(self, description: str = ""):
+        super().__init__(description, status_code=401)
+
+
 logger = logging.getLogger(__name__)
+
+# Headers recognised by dify-enterprise's /inner/api/rbac/* endpoints.
+# Keep in sync with pkg/enterprise/service/rbac_inner_handlers.go.
+INNER_TENANT_ID_HEADER = "X-Inner-Tenant-Id"
+INNER_ACCOUNT_ID_HEADER = "X-Inner-Account-Id"
 
 
 class BaseRequest:
@@ -49,8 +75,16 @@ class BaseRequest:
         *,
         timeout: float | httpx.Timeout | None = None,
         raise_for_status: bool = False,
+        extra_headers: Mapping[str, str] | None = None,
     ) -> Any:
         headers = {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key}
+        if extra_headers:
+            # Explicitly ignore empty values so callers can pass optional
+            # headers (e.g. `X-Inner-Account-Id`) without having to branch.
+            for key, value in extra_headers.items():
+                if value is None or value == "":
+                    continue
+                headers[key] = value
         url = f"{cls.base_url}{endpoint}"
         mounts = cls._build_mounts()
 
@@ -63,12 +97,14 @@ class BaseRequest:
             logger.debug("Failed to generate traceparent header", exc_info=True)
 
         with httpx.Client(mounts=mounts) as client:
-            # IMPORTANT:
-            # - In httpx, passing timeout=None disables timeouts (infinite) and overrides the library default.
-            # - To preserve httpx's default timeout behavior for existing call sites, only pass the kwarg when set.
-            request_kwargs: dict[str, Any] = {"json": json, "params": params, "headers": headers}
-            if timeout is not None:
-                request_kwargs["timeout"] = timeout
+            # Callers that pass an explicit timeout keep it; everyone else gets the
+            # configured budget rather than httpx's implicit 5s default.
+            request_kwargs: dict[str, Any] = {
+                "json": json,
+                "params": params,
+                "headers": headers,
+                "timeout": timeout if timeout is not None else dify_config.ENTERPRISE_REQUEST_TIMEOUT,
+            }
 
             response = client.request(method, url, **request_kwargs)
 
@@ -119,8 +155,66 @@ class BaseRequest:
 
 class EnterpriseRequest(BaseRequest):
     base_url = os.environ.get("ENTERPRISE_API_URL", "ENTERPRISE_API_URL")
+    rbac_base_url = os.environ.get("ENTERPRISE_RBAC_API_URL", base_url)
     secret_key = os.environ.get("ENTERPRISE_API_SECRET_KEY", "ENTERPRISE_API_SECRET_KEY")
     secret_key_header = "Enterprise-Api-Secret-Key"
+
+    @classmethod
+    def send_inner_rbac_request(
+        cls,
+        method: str,
+        endpoint: str,
+        *,
+        tenant_id: str,
+        account_id: str | None = None,
+        json: Any | None = None,
+        params: Mapping[str, Any] | None = None,
+        timeout: float | httpx.Timeout | None = None,
+    ) -> Any:
+        """Call an /inner/api/rbac/* endpoint on dify-enterprise.
+
+        Inner RBAC endpoints require three headers on top of the standard
+        Enterprise-Api-Secret-Key: the tenant the call targets and (optionally)
+        the account acting on behalf of the workspace. This helper centralises
+        both the assertions and the header wiring so callers only have to
+        supply business payload.
+        """
+        if not tenant_id:
+            raise ValueError("tenant_id must be provided for inner RBAC requests")
+
+        inner_headers: dict[str, str] = {INNER_TENANT_ID_HEADER: tenant_id}
+        if account_id:
+            inner_headers[INNER_ACCOUNT_ID_HEADER] = account_id
+
+        if (
+            not cls.rbac_base_url.startswith("http")
+            and not cls.rbac_base_url.startswith("https")
+            and not cls.rbac_base_url
+        ):
+            raise ValueError("ENTERPRISE_RBAC_API_URL is required when RBAC_ENABLED=true")
+
+        url = f"{cls.rbac_base_url}{endpoint}"
+        mounts = cls._build_mounts()
+
+        try:
+            traceparent = generate_traceparent_header()
+            if traceparent:
+                inner_headers = dict(inner_headers)
+                inner_headers["traceparent"] = traceparent
+        except Exception:
+            logger.debug("Failed to generate traceparent header", exc_info=True)
+
+        with httpx.Client(mounts=mounts) as client:
+            request_kwargs: dict[str, Any] = {
+                "json": json,
+                "params": params,
+                "headers": {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key, **inner_headers},
+                "timeout": timeout if timeout is not None else dify_config.ENTERPRISE_RBAC_REQUEST_TIMEOUT,
+            }
+            response = client.request(method, url, **request_kwargs)
+            if not response.is_success:
+                cls._handle_error_response(response)
+        return response.json()
 
 
 class EnterprisePluginManagerRequest(BaseRequest):

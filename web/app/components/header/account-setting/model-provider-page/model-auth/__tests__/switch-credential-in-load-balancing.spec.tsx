@@ -1,246 +1,101 @@
-import type { CustomModel, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ComponentProps } from 'react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import {
+  createCredentialProvider,
+  credential,
+  customModel,
+  renderCredentialComponent,
+} from '../../__tests__/credential-test-env'
 import SwitchCredentialInLoadBalancing from '../switch-credential-in-load-balancing'
 
-// Mock components
-vi.mock('../authorized', () => ({
-  default: ({ renderTrigger, onItemClick, items }: { renderTrigger: () => React.ReactNode, onItemClick: (c: unknown) => void, items: { credentials: unknown[] }[] }) => (
-    <div data-testid="authorized-mock">
-      <div data-testid="trigger-container" onClick={() => onItemClick(items[0].credentials[0])}>
-        {renderTrigger()}
-      </div>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: { color: string }) => <div data-testid={`indicator-${color}`} />,
-}))
-
-vi.mock('@remixicon/react', () => ({
-  RiArrowDownSLine: () => <div data-testid="arrow-icon" />,
-}))
-
-describe('SwitchCredentialInLoadBalancing', () => {
-  const mockProvider = {
-    provider: 'openai',
-    allow_custom_token: true,
-  } as unknown as ModelProvider
-
-  const mockModel = {
-    model: 'gpt-4',
-    model_type: ModelTypeEnum.textGeneration,
-  } as unknown as CustomModel
-
-  const mockCredentials = [
-    { credential_id: 'cred-1', credential_name: 'Key 1' },
-    { credential_id: 'cred-2', credential_name: 'Key 2' },
-  ]
-
-  const mockSetCustomModelCredential = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
+const requests = vi.hoisted(() => ({ read: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.models.credentials.get': requests.read,
+    }),
+  }
+})
+beforeEach(() => {
+  requests.read.mockResolvedValue({
+    credentials: { api_key: 'saved-secret' },
+    available_credentials: [credential],
   })
+})
 
-  it('should render selected credential name correctly', () => {
-    render(
+const other = { credential_id: 'cred-2', credential_name: 'Key 2' }
+function renderSwitch(
+  overrides: Partial<ComponentProps<typeof SwitchCredentialInLoadBalancing>> = {},
+  permissions = ['credential.use', 'credential.create', 'credential.manage'],
+) {
+  function Caller() {
+    const [selected, setSelected] = useState<
+      ComponentProps<typeof SwitchCredentialInLoadBalancing>['customModelCredential']
+    >(overrides.customModelCredential ?? credential)
+    return (
       <SwitchCredentialInLoadBalancing
-        provider={mockProvider}
-        model={mockModel}
-        credentials={mockCredentials}
-        customModelCredential={mockCredentials[0]}
-        setCustomModelCredential={mockSetCustomModelCredential}
-      />,
+        provider={createCredentialProvider()}
+        model={customModel}
+        credentials={[credential, other]}
+        {...overrides}
+        customModelCredential={selected}
+        setCustomModelCredential={setSelected}
+      />
     )
-
-    expect(screen.getByText('Key 1')).toBeInTheDocument()
-    expect(screen.getByTestId('indicator-green')).toBeInTheDocument()
+  }
+  return renderCredentialComponent(<Caller />, { workspacePermissionKeys: permissions })
+}
+it('shows that the selected credential has been removed', () => {
+  renderSwitch({ customModelCredential: { credential_id: 'removed', credential_name: 'Removed' } })
+  expect(screen.getByText(/authRemoved/)).toBeInTheDocument()
+})
+it('opens credential creation when the list is empty', async () => {
+  const user = userEvent.setup()
+  renderSwitch({ credentials: [] })
+  await user.click(screen.getByRole('button', { name: /auth.addCredential/ }))
+  expect(await screen.findByLabelText(/API key/)).toHaveValue('')
+})
+it('persists the selected credential in the trigger and in the reopened menu', async () => {
+  const user = userEvent.setup()
+  renderSwitch()
+  await user.click(screen.getByRole('button', { name: 'Key 1' }))
+  await user.click(screen.getByRole('button', { name: 'Key 2' }))
+  expect(screen.getByRole('button', { name: 'Key 2' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Key 1' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Key 2' }))
+  expect(screen.getByRole('button', { name: 'Key 1' })).toBeInTheDocument()
+})
+it('lets manage-only users edit credentials without selecting or adding them', async () => {
+  const user = userEvent.setup()
+  renderSwitch({}, ['credential.manage'])
+  await user.click(screen.getByRole('button', { name: 'Key 1' }))
+  expect(screen.queryByRole('button', { name: 'Key 2' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /addModelCredential/ })).not.toBeInTheDocument()
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.edit' })[0]!)
+  expect(await screen.findByRole('textbox', { name: /authorizationName/ })).toHaveValue('Key 1')
+  expect(await screen.findByLabelText(/API key/)).toHaveValue('saved-secret')
+})
+it('explains unavailable credentials when custom tokens are disallowed', async () => {
+  const user = userEvent.setup()
+  renderSwitch({
+    credentials: [],
+    provider: createCredentialProvider({ allow_custom_token: false }),
   })
-
-  it('should render auth removed status when selected credential is not in list', () => {
-    render(
-      <SwitchCredentialInLoadBalancing
-        provider={mockProvider}
-        model={mockModel}
-        credentials={mockCredentials}
-        customModelCredential={{ credential_id: 'dead-cred', credential_name: 'Dead Key' }}
-        setCustomModelCredential={mockSetCustomModelCredential}
-      />,
-    )
-
-    expect(screen.getByText(/modelProvider.auth.authRemoved/)).toBeInTheDocument()
-    expect(screen.getByTestId('indicator-red')).toBeInTheDocument()
-  })
-
-  it('should render unavailable status when credentials list is empty', () => {
-    render(
-      <SwitchCredentialInLoadBalancing
-        provider={mockProvider}
-        model={mockModel}
-        credentials={[]}
-        customModelCredential={undefined}
-        setCustomModelCredential={mockSetCustomModelCredential}
-      />,
-    )
-
-    expect(screen.getByText(/auth.credentialUnavailableInButton/)).toBeInTheDocument()
-    expect(screen.queryByTestId(/indicator-/)).not.toBeInTheDocument()
-  })
-
-  it('should call setCustomModelCredential when an item is selected in Authorized', () => {
-    render(
-      <SwitchCredentialInLoadBalancing
-        provider={mockProvider}
-        model={mockModel}
-        credentials={mockCredentials}
-        customModelCredential={mockCredentials[0]}
-        setCustomModelCredential={mockSetCustomModelCredential}
-      />,
-    )
-
-    fireEvent.click(screen.getByTestId('trigger-container'))
-    expect(mockSetCustomModelCredential).toHaveBeenCalledWith(mockCredentials[0])
-  })
-
-  it('should show tooltip when empty and custom credentials not allowed', () => {
-    const restrictedProvider = { ...mockProvider, allow_custom_token: false }
-    render(
-      <SwitchCredentialInLoadBalancing
-        provider={restrictedProvider}
-        model={mockModel}
-        credentials={[]}
-        customModelCredential={undefined}
-        setCustomModelCredential={mockSetCustomModelCredential}
-      />,
-    )
-
-    fireEvent.mouseEnter(screen.getByText(/auth.credentialUnavailableInButton/))
-    expect(screen.getByText('plugin.auth.credentialUnavailable')).toBeInTheDocument()
-  })
-
-  // Empty credentials with allowed custom: no tooltip but still shows unavailable text
-  it('should show unavailable status without tooltip when custom credentials are allowed', () => {
-    // Act
-    render(
-      <SwitchCredentialInLoadBalancing
-        provider={mockProvider}
-        model={mockModel}
-        credentials={[]}
-        customModelCredential={undefined}
-        setCustomModelCredential={mockSetCustomModelCredential}
-      />,
-    )
-
-    // Assert
-    expect(screen.getByText(/auth.credentialUnavailableInButton/)).toBeInTheDocument()
-    expect(screen.queryByText('plugin.auth.credentialUnavailable')).not.toBeInTheDocument()
-  })
-
-  // not_allowed_to_use=true: indicator is red and destructive button text is shown
-  it('should show red indicator and unavailable button text when credential has not_allowed_to_use=true', () => {
-    const unavailableCredential = { credential_id: 'cred-1', credential_name: 'Key 1', not_allowed_to_use: true }
-
-    render(
-      <SwitchCredentialInLoadBalancing
-        provider={mockProvider}
-        model={mockModel}
-        credentials={[unavailableCredential]}
-        customModelCredential={unavailableCredential}
-        setCustomModelCredential={mockSetCustomModelCredential}
-      />,
-    )
-
-    expect(screen.getByTestId('indicator-red')).toBeInTheDocument()
-    expect(screen.getByText(/auth.credentialUnavailableInButton/)).toBeInTheDocument()
-  })
-
-  // from_enterprise=true on the selected credential: Enterprise badge appears in the trigger
-  it('should show Enterprise badge when selected credential has from_enterprise=true', () => {
-    const enterpriseCredential = { credential_id: 'cred-1', credential_name: 'Enterprise Key', from_enterprise: true }
-
-    render(
-      <SwitchCredentialInLoadBalancing
-        provider={mockProvider}
-        model={mockModel}
-        credentials={[enterpriseCredential]}
-        customModelCredential={enterpriseCredential}
-        setCustomModelCredential={mockSetCustomModelCredential}
-      />,
-    )
-
-    expect(screen.getByText('Enterprise')).toBeInTheDocument()
-  })
-
-  // non-empty credentials with allow_custom_token=false: no tooltip (tooltip only for empty+notAllowCustom)
-  it('should not show unavailable tooltip when credentials are non-empty and allow_custom_token=false', () => {
-    const restrictedProvider = { ...mockProvider, allow_custom_token: false }
-
-    render(
-      <SwitchCredentialInLoadBalancing
-        provider={restrictedProvider}
-        model={mockModel}
-        credentials={mockCredentials}
-        customModelCredential={mockCredentials[0]}
-        setCustomModelCredential={mockSetCustomModelCredential}
-      />,
-    )
-
-    fireEvent.mouseEnter(screen.getByText('Key 1'))
-    expect(screen.queryByText('plugin.auth.credentialUnavailable')).not.toBeInTheDocument()
-    expect(screen.getByText('Key 1')).toBeInTheDocument()
-  })
-
-  it('should pass undefined currentCustomConfigurationModelFixedFields when model is undefined', () => {
-    render(
-      <SwitchCredentialInLoadBalancing
-        provider={mockProvider}
-        // @ts-expect-error testing runtime handling when model is omitted
-        model={undefined}
-        credentials={mockCredentials}
-        customModelCredential={mockCredentials[0]}
-        setCustomModelCredential={mockSetCustomModelCredential}
-      />,
-    )
-
-    // Component still renders (Authorized receives undefined currentCustomConfigurationModelFixedFields)
-    expect(screen.getByTestId('authorized-mock')).toBeInTheDocument()
-    expect(screen.getByText('Key 1')).toBeInTheDocument()
-  })
-
-  it('should treat undefined credentials as empty list', () => {
-    render(
-      <SwitchCredentialInLoadBalancing
-        provider={mockProvider}
-        model={mockModel}
-        credentials={undefined}
-        customModelCredential={undefined}
-        setCustomModelCredential={mockSetCustomModelCredential}
-      />,
-    )
-
-    // credentials is undefined → empty=true → unavailable text shown
-    expect(screen.getByText(/auth.credentialUnavailableInButton/)).toBeInTheDocument()
-    expect(screen.queryByTestId(/indicator-/)).not.toBeInTheDocument()
-  })
-
-  it('should render nothing for credential_name when it is empty string', () => {
-    const credWithEmptyName = { credential_id: 'cred-1', credential_name: '' }
-
-    render(
-      <SwitchCredentialInLoadBalancing
-        provider={mockProvider}
-        model={mockModel}
-        credentials={[credWithEmptyName]}
-        customModelCredential={credWithEmptyName}
-        setCustomModelCredential={mockSetCustomModelCredential}
-      />,
-    )
-
-    // indicator-green shown (not authRemoved, not unavailable, not empty)
-    expect(screen.getByTestId('indicator-green')).toBeInTheDocument()
-    // credential_name is empty so nothing printed for name
-    expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
-  })
+  const button = screen.getByRole('button', { name: /credentialUnavailableInButton/ })
+  await user.hover(button)
+  expect(await screen.findByText('plugin.auth.credentialUnavailable')).toBeInTheDocument()
+  await user.click(button)
+  expect(screen.queryByLabelText(/API key/)).not.toBeInTheDocument()
+})
+it.each([
+  { selected: { ...credential, not_allowed_to_use: true }, text: /credentialUnavailableInButton/ },
+  { selected: { ...credential, from_enterprise: true }, text: 'Enterprise' },
+])('displays the selected credential status: $text', ({ selected, text }) => {
+  renderSwitch({ credentials: [selected], customModelCredential: selected })
+  expect(screen.getByText(text)).toBeInTheDocument()
 })

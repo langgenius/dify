@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import override
 
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
@@ -10,8 +11,10 @@ from core.trigger.constants import (
 class CreatorUserRole(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"
+    DATASET_API_KEY = "dataset_api_key"
 
     @classmethod
+    @override
     def _missing_(cls, value):
         if value == "end-user":
             return cls.END_USER
@@ -91,14 +94,6 @@ class AppStatus(StrEnum):
     NORMAL = "normal"
 
 
-class AppMCPServerStatus(StrEnum):
-    """AppMCPServer Status Enum"""
-
-    NORMAL = "normal"
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-
-
 class ConversationStatus(StrEnum):
     """Conversation Status Enum"""
 
@@ -113,6 +108,7 @@ class DataSourceType(StrEnum):
     WEBSITE_CRAWL = "website_crawl"
     LOCAL_FILE = "local_file"
     ONLINE_DOCUMENT = "online_document"
+    ONLINE_DRIVE = "online_drive"
 
 
 class ProcessRuleMode(StrEnum):
@@ -158,6 +154,15 @@ class FeedbackFromSource(StrEnum):
     ADMIN = "admin"
 
 
+class CustomizeTokenStrategy(StrEnum):
+    """Site token customization strategy"""
+
+    MUST = "must"
+    ALLOW = "allow"
+    NOT_ALLOW = "not_allow"
+    UUID = "uuid"
+
+
 class FeedbackRating(StrEnum):
     """MessageFeedback rating"""
 
@@ -175,6 +180,7 @@ class InvokeFrom(StrEnum):
     DEBUGGER = "debugger"
     PUBLISHED_PIPELINE = "published"
     VALIDATION = "validation"
+    OPENAPI = "openapi"
 
     @classmethod
     def value_of(cls, value: str) -> "InvokeFrom":
@@ -187,8 +193,23 @@ class InvokeFrom(StrEnum):
             InvokeFrom.EXPLORE: "explore_app",
             InvokeFrom.TRIGGER: "trigger",
             InvokeFrom.SERVICE_API: "api",
+            InvokeFrom.OPENAPI: "openapi",
         }
         return source_mapping.get(self, "dev")
+
+
+class EndUserType(StrEnum):
+    """Persisted type values for the ``end_users.type`` column."""
+
+    APP_DEPLOY = "app-deploy"
+    BROWSER = "browser"
+    MCP = "mcp"
+    OPENAPI = "openapi"
+    SERVICE_API = "service-api"
+    TRIGGER = "trigger"
+
+
+DEFAULT_END_USER_SESSION_ID = "DEFAULT-USER"
 
 
 class DocumentDocType(StrEnum):
@@ -212,6 +233,8 @@ class TagType(StrEnum):
 
     KNOWLEDGE = "knowledge"
     APP = "app"
+    SNIPPET = "snippet"
+    SKILL = "skill"
 
 
 class DatasetMetadataType(StrEnum):
@@ -220,6 +243,13 @@ class DatasetMetadataType(StrEnum):
     STRING = "string"
     NUMBER = "number"
     TIME = "time"
+
+
+class SegmentType(StrEnum):
+    """Document segment type"""
+
+    AUTOMATIC = "automatic"
+    CUSTOMIZED = "customized"
 
 
 class SegmentStatus(StrEnum):
@@ -259,6 +289,7 @@ class TidbAuthBindingStatus(StrEnum):
 
     CREATING = "CREATING"
     ACTIVE = "ACTIVE"
+    FAILED = "FAILED"
 
 
 class MessageFileBelongsTo(StrEnum):
@@ -307,6 +338,13 @@ class MessageChainType(StrEnum):
     SYSTEM = "system"
 
 
+class PromptType(StrEnum):
+    """Prompt configuration type"""
+
+    SIMPLE = "simple"
+    ADVANCED = "advanced"
+
+
 class ProviderQuotaType(StrEnum):
     PAID = "paid"
     """hosted paid quota"""
@@ -323,3 +361,25 @@ class ProviderQuotaType(StrEnum):
             if member.value == value:
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
+
+
+class ApiTokenType(StrEnum):
+    """API Token type"""
+
+    APP = "app"
+    DATASET = "dataset"
+
+
+class ApiTokenBindingResourceType(StrEnum):
+    """Kind of knowledge base a dataset API key binding row points at."""
+
+    DATASET = "dataset"
+    KNOWLEDGE_FS_SPACE = "knowledge_fs_space"
+
+
+class PermissionEnum(StrEnum):
+    """Shared permission levels for resources (datasets, credentials, etc.)"""
+
+    ONLY_ME = "only_me"
+    ALL_TEAM = "all_team_members"
+    PARTIAL_TEAM = "partial_members"

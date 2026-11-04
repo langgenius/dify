@@ -12,183 +12,200 @@ const ENTRY_NODE_WRAPPER_OFFSET = {
   y: 21, // Actual measured: pt-0.5 (2px) + status bar height (~19px)
 } as const
 
+type HelpLineNodeCollections = {
+  showHorizontalHelpLineNodes: Node[]
+  showVerticalHelpLineNodes: Node[]
+}
+
+type NodeAlignPosition = {
+  x: number
+  y: number
+}
+
+const ALIGN_THRESHOLD = 5
+
+const getEntryNodeDimension = (node: Node, dimension: 'width' | 'height') => {
+  const offset = dimension === 'width' ? ENTRY_NODE_WRAPPER_OFFSET.x : ENTRY_NODE_WRAPPER_OFFSET.y
+
+  return (node[dimension] ?? 0) - offset
+}
+
+const getAlignedNodes = ({
+  nodes,
+  node,
+  nodeAlignPos,
+  axis,
+  getNodeAlignPosition,
+}: {
+  nodes: Node[]
+  node: Node
+  nodeAlignPos: NodeAlignPosition
+  axis: 'x' | 'y'
+  getNodeAlignPosition: (node: Node) => NodeAlignPosition
+}) => {
+  return nodes
+    .filter((candidate) => {
+      if (candidate.id === node.id) return false
+      if (candidate.data.isInIteration || candidate.data.isInLoop) return false
+
+      const candidateAlignPos = getNodeAlignPosition(candidate)
+      const diff = Math.ceil(candidateAlignPos[axis]) - Math.ceil(nodeAlignPos[axis])
+      return diff < ALIGN_THRESHOLD && diff > -ALIGN_THRESHOLD
+    })
+    .sort((a, b) => {
+      const aPos = getNodeAlignPosition(a)
+      const bPos = getNodeAlignPosition(b)
+      return axis === 'y' ? aPos.x - bPos.x : aPos.y - bPos.y
+    })
+}
+
+const buildHorizontalHelpLine = ({
+  alignedNodes,
+  node,
+  getNodeAlignPosition,
+  isEntryNode,
+}: {
+  alignedNodes: Node[]
+  node: Node
+  getNodeAlignPosition: (node: Node) => NodeAlignPosition
+  isEntryNode: (node: Node) => boolean
+}) => {
+  if (!alignedNodes.length) return undefined
+
+  const allNodes = [...alignedNodes, node]
+  const left = Math.min(...allNodes.map((candidate) => getNodeAlignPosition(candidate).x))
+  const right = Math.max(
+    ...allNodes.map(
+      (candidate) =>
+        getNodeAlignPosition(candidate).x +
+        (isEntryNode(candidate)
+          ? getEntryNodeDimension(candidate, 'width')
+          : (candidate.width ?? 0)),
+    ),
+  )
+
+  return {
+    top: getNodeAlignPosition(alignedNodes[0]!).y,
+    left,
+    width: right - left,
+  }
+}
+
+const buildVerticalHelpLine = ({
+  alignedNodes,
+  node,
+  getNodeAlignPosition,
+  isEntryNode,
+}: {
+  alignedNodes: Node[]
+  node: Node
+  getNodeAlignPosition: (node: Node) => NodeAlignPosition
+  isEntryNode: (node: Node) => boolean
+}) => {
+  if (!alignedNodes.length) return undefined
+
+  const allNodes = [...alignedNodes, node]
+  const top = Math.min(...allNodes.map((candidate) => getNodeAlignPosition(candidate).y))
+  const bottom = Math.max(
+    ...allNodes.map(
+      (candidate) =>
+        getNodeAlignPosition(candidate).y +
+        (isEntryNode(candidate)
+          ? getEntryNodeDimension(candidate, 'height')
+          : (candidate.height ?? 0)),
+    ),
+  )
+
+  return {
+    top,
+    left: getNodeAlignPosition(alignedNodes[0]!).x,
+    height: bottom - top,
+  }
+}
+
 export const useHelpline = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
 
   // Check if a node is an entry node (Start or Trigger)
   const isEntryNode = useCallback((node: Node): boolean => {
-    return isTriggerNode(node.data.type as any) || node.data.type === BlockEnum.Start
+    return isTriggerNode(node.data.type) || node.data.type === BlockEnum.Start
   }, [])
 
   // Get the actual alignment position of a node (accounting for wrapper offset)
-  const getNodeAlignPosition = useCallback((node: Node) => {
-    if (isEntryNode(node)) {
+  const getNodeAlignPosition = useCallback(
+    (node: Node) => {
+      if (isEntryNode(node)) {
+        return {
+          x: node.position.x + ENTRY_NODE_WRAPPER_OFFSET.x,
+          y: node.position.y + ENTRY_NODE_WRAPPER_OFFSET.y,
+        }
+      }
       return {
-        x: node.position.x + ENTRY_NODE_WRAPPER_OFFSET.x,
-        y: node.position.y + ENTRY_NODE_WRAPPER_OFFSET.y,
+        x: node.position.x,
+        y: node.position.y,
       }
-    }
-    return {
-      x: node.position.x,
-      y: node.position.y,
-    }
-  }, [isEntryNode])
+    },
+    [isEntryNode],
+  )
 
-  const handleSetHelpline = useCallback((node: Node) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
-    const {
-      setHelpLineHorizontal,
-      setHelpLineVertical,
-    } = workflowStore.getState()
+  const handleSetHelpline = useCallback(
+    (node: Node) => {
+      const { getNodes } = store.getState()
+      const nodes = getNodes()
+      const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
 
-    if (node.data.isInIteration) {
+      if (node.data.isInIteration || node.data.isInLoop) {
+        setHelpLineHorizontal(undefined)
+        setHelpLineVertical(undefined)
+        return {
+          showHorizontalHelpLineNodes: [],
+          showVerticalHelpLineNodes: [],
+        }
+      }
+
+      // Get the actual alignment position for the dragging node
+      const nodeAlignPos = getNodeAlignPosition(node)
+
+      const showHorizontalHelpLineNodes = getAlignedNodes({
+        nodes,
+        node,
+        nodeAlignPos,
+        axis: 'y',
+        getNodeAlignPosition,
+      })
+      const showVerticalHelpLineNodes = getAlignedNodes({
+        nodes,
+        node,
+        nodeAlignPos,
+        axis: 'x',
+        getNodeAlignPosition,
+      })
+
+      setHelpLineHorizontal(
+        buildHorizontalHelpLine({
+          alignedNodes: showHorizontalHelpLineNodes,
+          node,
+          getNodeAlignPosition,
+          isEntryNode,
+        }),
+      )
+      setHelpLineVertical(
+        buildVerticalHelpLine({
+          alignedNodes: showVerticalHelpLineNodes,
+          node,
+          getNodeAlignPosition,
+          isEntryNode,
+        }),
+      )
+
       return {
-        showHorizontalHelpLineNodes: [],
-        showVerticalHelpLineNodes: [],
-      }
-    }
-
-    if (node.data.isInLoop) {
-      return {
-        showHorizontalHelpLineNodes: [],
-        showVerticalHelpLineNodes: [],
-      }
-    }
-
-    // Get the actual alignment position for the dragging node
-    const nodeAlignPos = getNodeAlignPosition(node)
-
-    const showHorizontalHelpLineNodes = nodes.filter((n) => {
-      if (n.id === node.id)
-        return false
-
-      if (n.data.isInIteration)
-        return false
-
-      if (n.data.isInLoop)
-        return false
-
-      // Get actual alignment position for comparison node
-      const nAlignPos = getNodeAlignPosition(n)
-      const nY = Math.ceil(nAlignPos.y)
-      const nodeY = Math.ceil(nodeAlignPos.y)
-
-      if (nY - nodeY < 5 && nY - nodeY > -5)
-        return true
-
-      return false
-    }).sort((a, b) => {
-      const aPos = getNodeAlignPosition(a)
-      const bPos = getNodeAlignPosition(b)
-      return aPos.x - bPos.x
-    })
-
-    const showHorizontalHelpLineNodesLength = showHorizontalHelpLineNodes.length
-    if (showHorizontalHelpLineNodesLength > 0) {
-      const first = showHorizontalHelpLineNodes[0]
-      const last = showHorizontalHelpLineNodes[showHorizontalHelpLineNodesLength - 1]
-
-      // Use actual alignment positions for help line rendering
-      const firstPos = getNodeAlignPosition(first)
-      const lastPos = getNodeAlignPosition(last)
-
-      // For entry nodes, we need to subtract the offset from width since lastPos already includes it
-      const lastIsEntryNode = isEntryNode(last)
-      const lastNodeWidth = lastIsEntryNode ? last.width! - ENTRY_NODE_WRAPPER_OFFSET.x : last.width!
-
-      const helpLine = {
-        top: firstPos.y,
-        left: firstPos.x,
-        width: lastPos.x + lastNodeWidth - firstPos.x,
-      }
-
-      if (nodeAlignPos.x < firstPos.x) {
-        const firstIsEntryNode = isEntryNode(first)
-        const firstNodeWidth = firstIsEntryNode ? first.width! - ENTRY_NODE_WRAPPER_OFFSET.x : first.width!
-        helpLine.left = nodeAlignPos.x
-        helpLine.width = firstPos.x + firstNodeWidth - nodeAlignPos.x
-      }
-
-      if (nodeAlignPos.x > lastPos.x) {
-        const nodeIsEntryNode = isEntryNode(node)
-        const nodeWidth = nodeIsEntryNode ? node.width! - ENTRY_NODE_WRAPPER_OFFSET.x : node.width!
-        helpLine.width = nodeAlignPos.x + nodeWidth - firstPos.x
-      }
-
-      setHelpLineHorizontal(helpLine)
-    }
-    else {
-      setHelpLineHorizontal()
-    }
-
-    const showVerticalHelpLineNodes = nodes.filter((n) => {
-      if (n.id === node.id)
-        return false
-      if (n.data.isInIteration)
-        return false
-      if (n.data.isInLoop)
-        return false
-
-      // Get actual alignment position for comparison node
-      const nAlignPos = getNodeAlignPosition(n)
-      const nX = Math.ceil(nAlignPos.x)
-      const nodeX = Math.ceil(nodeAlignPos.x)
-
-      if (nX - nodeX < 5 && nX - nodeX > -5)
-        return true
-
-      return false
-    }).sort((a, b) => {
-      const aPos = getNodeAlignPosition(a)
-      const bPos = getNodeAlignPosition(b)
-      return aPos.x - bPos.x
-    })
-    const showVerticalHelpLineNodesLength = showVerticalHelpLineNodes.length
-
-    if (showVerticalHelpLineNodesLength > 0) {
-      const first = showVerticalHelpLineNodes[0]
-      const last = showVerticalHelpLineNodes[showVerticalHelpLineNodesLength - 1]
-
-      // Use actual alignment positions for help line rendering
-      const firstPos = getNodeAlignPosition(first)
-      const lastPos = getNodeAlignPosition(last)
-
-      // For entry nodes, we need to subtract the offset from height since lastPos already includes it
-      const lastIsEntryNode = isEntryNode(last)
-      const lastNodeHeight = lastIsEntryNode ? last.height! - ENTRY_NODE_WRAPPER_OFFSET.y : last.height!
-
-      const helpLine = {
-        top: firstPos.y,
-        left: firstPos.x,
-        height: lastPos.y + lastNodeHeight - firstPos.y,
-      }
-
-      if (nodeAlignPos.y < firstPos.y) {
-        const firstIsEntryNode = isEntryNode(first)
-        const firstNodeHeight = firstIsEntryNode ? first.height! - ENTRY_NODE_WRAPPER_OFFSET.y : first.height!
-        helpLine.top = nodeAlignPos.y
-        helpLine.height = firstPos.y + firstNodeHeight - nodeAlignPos.y
-      }
-
-      if (nodeAlignPos.y > lastPos.y) {
-        const nodeIsEntryNode = isEntryNode(node)
-        const nodeHeight = nodeIsEntryNode ? node.height! - ENTRY_NODE_WRAPPER_OFFSET.y : node.height!
-        helpLine.height = nodeAlignPos.y + nodeHeight - firstPos.y
-      }
-
-      setHelpLineVertical(helpLine)
-    }
-    else {
-      setHelpLineVertical()
-    }
-
-    return {
-      showHorizontalHelpLineNodes,
-      showVerticalHelpLineNodes,
-    }
-  }, [store, workflowStore, getNodeAlignPosition])
+        showHorizontalHelpLineNodes,
+        showVerticalHelpLineNodes,
+      } satisfies HelpLineNodeCollections
+    },
+    [store, workflowStore, getNodeAlignPosition, isEntryNode],
+  )
 
   return {
     handleSetHelpline,

@@ -1,24 +1,38 @@
 'use client'
-import type { FC } from 'react'
-import type { Props as PaginationProps } from '@/app/components/base/pagination'
-import type { SimpleDocumentDetail } from '@/models/datasets'
-import { useBoolean } from 'ahooks'
-import * as React from 'react'
-import { useCallback, useState } from 'react'
+
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { RenameDocumentPayload } from './rename-document-form'
+import type { SortType } from '@/service/datasets'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Pagination } from '@langgenius/dify-ui/pagination'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
-import Pagination from '@/app/components/base/pagination'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ChunkingMode, DocumentActionType } from '@/models/datasets'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
-import s from '../style.module.css'
 import { DocumentTableRow, SortHeader } from './document-list/components'
 import { useDocumentActions, useDocumentSelection, useDocumentSort } from './document-list/hooks'
-import RenameModal from './rename-modal'
+import { RenameDocumentForm } from './rename-document-form'
 
-type LocalDoc = SimpleDocumentDetail & { percent?: number }
+type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
+
+type PaginationProps = {
+  className?: string
+  current: number
+  total: number
+  limit?: number
+  onChange: (page: number) => void
+  onLimitChange?: (limit: number) => void
+}
 
 type DocumentListProps = {
   embeddingAvailable: boolean
@@ -27,16 +41,17 @@ type DocumentListProps = {
   onSelectedIdChange: (selectedIds: string[]) => void
   datasetId: string
   pagination: PaginationProps
+  onDelete: (id: string, row: HTMLTableRowElement | null) => void
   onUpdate: () => void
   onManageMetadata: () => void
   remoteSortValue: string
-  onSortChange: (value: string) => void
+  onSortChange: (value: SortType) => void
 }
 
 /**
  * Document list component including basic information
  */
-const DocumentList: FC<DocumentListProps> = ({
+const DocumentList = ({
   embeddingAvailable,
   documents = [],
   selectedIds,
@@ -44,12 +59,34 @@ const DocumentList: FC<DocumentListProps> = ({
   datasetId,
   pagination,
   onUpdate,
+  onDelete,
   onManageMetadata,
   remoteSortValue,
   onSortChange,
-}) => {
-  const { t } = useTranslation()
-  const datasetConfig = useDatasetDetailContext(s => s.dataset)
+}: DocumentListProps) => {
+  const { t } = useTranslation(['common', 'datasetDocuments', 'dataset', 'knowledgeSpace'])
+  const pageSize = pagination.limit ?? 10
+  const totalPages = Math.max(Math.ceil(pagination.total / pageSize), 1)
+  const datasetConfig = useDatasetDetailContext((s) => s.dataset)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const datasetACLCapabilities = useMemo(
+    () =>
+      getDatasetACLCapabilities(datasetConfig?.permission_keys, {
+        currentUserId,
+        resourceMaintainer: datasetConfig?.maintainer,
+        workspacePermissionKeys,
+      }),
+    [
+      datasetConfig?.maintainer,
+      datasetConfig?.permission_keys,
+      currentUserId,
+      workspacePermissionKeys,
+    ],
+  )
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa
@@ -61,19 +98,13 @@ const DocumentList: FC<DocumentListProps> = ({
   })
 
   // Selection
-  const {
-    isAllSelected,
-    isSomeSelected,
-    onSelectAll,
-    onSelectOne,
-    hasErrorDocumentsSelected,
-    downloadableSelectedIds,
-    clearSelection,
-  } = useDocumentSelection({
-    documents,
-    selectedIds,
-    onSelectedIdChange,
-  })
+  const { hasErrorDocumentsSelected, downloadableSelectedIds, clearSelection } =
+    useDocumentSelection({
+      documents,
+      selectedIds,
+      onSelectedIdChange,
+    })
+  const documentIds = useMemo(() => documents.map((doc) => doc.id), [documents])
 
   // Actions
   const { handleAction, handleBatchReIndex, handleBatchDownload } = useDocumentActions({
@@ -85,135 +116,199 @@ const DocumentList: FC<DocumentListProps> = ({
   })
 
   // Batch edit metadata
-  const {
-    isShowEditModal,
-    showEditModal,
-    hideEditModal,
-    originalList,
-    handleSave,
-  } = useBatchEditDocumentMetadata({
-    datasetId,
-    docList: documents.filter(doc => selectedIds.includes(doc.id)),
-    selectedDocumentIds: selectedIds,
-    onUpdate,
-  })
+  const { isShowEditModal, showEditModal, hideEditModal, originalList, handleSave } =
+    useBatchEditDocumentMetadata({
+      datasetId,
+      docList: documents.filter((doc) => selectedIds.includes(doc.id)),
+      selectedDocumentIds: selectedIds,
+      onUpdate,
+    })
 
-  // Rename modal
-  const [currDocument, setCurrDocument] = useState<LocalDoc | null>(null)
-  const [isShowRenameModal, {
-    setTrue: setShowRenameModalTrue,
-    setFalse: setShowRenameModalFalse,
-  }] = useBoolean(false)
-
-  const handleShowRenameModal = useCallback((doc: LocalDoc) => {
-    setCurrDocument(doc)
-    setShowRenameModalTrue()
-  }, [setShowRenameModalTrue])
+  const [renameDialog] = useState(() => createDialogHandle<RenameDocumentPayload>())
+  const handleShowRenameModal = (doc: LocalDoc) =>
+    renameDialog.openWithPayload({ id: doc.id, name: doc.name })
 
   const handleRenamed = useCallback(() => {
     onUpdate()
   }, [onUpdate])
 
   return (
-    <div className="relative mt-3 flex h-full w-full flex-col">
-      <div className="relative h-0 grow overflow-x-auto">
-        <table className={`w-full min-w-[700px] max-w-full border-collapse border-0 text-sm ${s.documentTable}`}>
-          <thead className="h-8 border-b border-divider-subtle text-xs font-medium uppercase leading-8 text-text-tertiary">
-            <tr>
-              <td className="w-12">
-                <div className="flex items-center" onClick={e => e.stopPropagation()}>
+    <div className="relative mt-3 flex size-full flex-col">
+      <div role="status" aria-atomic="true" className="sr-only">
+        {t(($) => $.documentsSelected, {
+          ns: 'knowledgeSpace',
+          count: selectedIds.length,
+        })}
+      </div>
+      <CheckboxGroup
+        value={selectedIds}
+        onValueChange={(nextSelectedIds) => onSelectedIdChange(nextSelectedIds)}
+        allValues={documentIds}
+        className="relative h-0 grow overflow-x-auto"
+      >
+        <table className="w-full max-w-full min-w-175 border-collapse border-0 text-sm">
+          <thead className="h-8 border-b border-divider-subtle text-xs/8 font-medium text-text-tertiary uppercase">
+            <tr className="[&>th]:box-border [&>th]:max-w-50 [&>th]:py-0 [&>th]:ps-3 [&>th]:pe-2.5 [&>th]:text-start [&>th]:font-[weight:inherit]">
+              <th className="w-12">
+                <div className="flex items-center gap-2">
                   {embeddingAvailable && (
                     <Checkbox
-                      className="mr-2 shrink-0"
-                      checked={isAllSelected}
-                      indeterminate={!isAllSelected && isSomeSelected}
-                      onCheck={onSelectAll}
+                      className="shrink-0"
+                      parent
+                      aria-label={t(($) => $['operation.selectAll'], { ns: 'common' })}
                     />
                   )}
                   #
                 </div>
-              </td>
-              <td>
-                {t('list.table.header.fileName', { ns: 'datasetDocuments' })}
-              </td>
-              <td className="w-[130px]">{t('list.table.header.chunkingMode', { ns: 'datasetDocuments' })}</td>
-              <td className="w-24">{t('list.table.header.words', { ns: 'datasetDocuments' })}</td>
-              <td className="w-44">
+              </th>
+              <th>{t(($) => $['list.table.header.fileName'], { ns: 'datasetDocuments' })}</th>
+              <th className="w-32.5">
+                {t(($) => $['list.table.header.chunkingMode'], { ns: 'datasetDocuments' })}
+              </th>
+              <th className="w-24">
+                {t(($) => $['list.table.header.words'], { ns: 'datasetDocuments' })}
+              </th>
+              <th
+                className="w-44"
+                aria-sort={
+                  sortField === 'hit_count'
+                    ? sortOrder === 'asc'
+                      ? 'ascending'
+                      : 'descending'
+                    : undefined
+                }
+              >
                 <SortHeader
                   field="hit_count"
-                  label={t('list.table.header.hitCount', { ns: 'datasetDocuments' })}
+                  label={t(($) => $['list.table.header.hitCount'], { ns: 'datasetDocuments' })}
                   currentSortField={sortField}
                   sortOrder={sortOrder}
                   onSort={handleSort}
                 />
-              </td>
-              <td className="w-44">
+              </th>
+              <th
+                className="w-44"
+                aria-sort={
+                  sortField === 'created_at'
+                    ? sortOrder === 'asc'
+                      ? 'ascending'
+                      : 'descending'
+                    : undefined
+                }
+              >
                 <SortHeader
                   field="created_at"
-                  label={t('list.table.header.uploadTime', { ns: 'datasetDocuments' })}
+                  label={t(($) => $['list.table.header.uploadTime'], { ns: 'datasetDocuments' })}
                   currentSortField={sortField}
                   sortOrder={sortOrder}
                   onSort={handleSort}
                 />
-              </td>
-              <td className="w-40">{t('list.table.header.status', { ns: 'datasetDocuments' })}</td>
-              <td className="w-20">{t('list.table.header.action', { ns: 'datasetDocuments' })}</td>
+              </th>
+              <th className="w-40">
+                {t(($) => $['list.table.header.status'], { ns: 'datasetDocuments' })}
+              </th>
+              <th className="w-20">
+                {t(($) => $['list.table.header.action'], { ns: 'datasetDocuments' })}
+              </th>
             </tr>
           </thead>
-          <tbody className="text-text-secondary">
+          <tbody className="text-text-secondary [&>tr>td]:box-border [&>tr>td]:max-w-50 [&>tr>td]:py-1.25 [&>tr>td]:ps-3 [&>tr>td]:pe-2.5">
             {documents.map((doc, index) => (
               <DocumentTableRow
                 key={doc.id}
                 doc={doc}
                 index={index}
                 datasetId={datasetId}
-                isSelected={selectedIds.includes(doc.id)}
                 isGeneralMode={isGeneralMode}
                 isQAMode={isQAMode}
                 embeddingAvailable={embeddingAvailable}
-                selectedIds={selectedIds}
-                onSelectOne={onSelectOne}
-                onSelectedIdChange={onSelectedIdChange}
                 onShowRenameModal={handleShowRenameModal}
                 onUpdate={onUpdate}
+                onDelete={(row) => onDelete(doc.id, row)}
               />
             ))}
           </tbody>
         </table>
-      </div>
+      </CheckboxGroup>
 
       {selectedIds.length > 0 && (
         <BatchAction
-          className="absolute bottom-16 left-0 z-20"
+          className="absolute inset-s-0 bottom-16 z-20"
           selectedIds={selectedIds}
-          onArchive={handleAction(DocumentActionType.archive)}
-          onBatchSummary={handleAction(DocumentActionType.summary)}
-          onBatchEnable={handleAction(DocumentActionType.enable)}
-          onBatchDisable={handleAction(DocumentActionType.disable)}
-          onBatchDownload={downloadableSelectedIds.length > 0 ? handleBatchDownload : undefined}
-          onBatchDelete={handleAction(DocumentActionType.delete)}
-          onEditMetadata={showEditModal}
-          onBatchReIndex={hasErrorDocumentsSelected ? handleBatchReIndex : undefined}
+          onArchive={
+            datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.archive) : undefined
+          }
+          onBatchSummary={
+            datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.summary) : undefined
+          }
+          onBatchEnable={
+            datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.enable) : undefined
+          }
+          onBatchDisable={
+            datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.disable) : undefined
+          }
+          onBatchDownload={
+            datasetACLCapabilities.canDocumentDownload && downloadableSelectedIds.length > 0
+              ? handleBatchDownload
+              : undefined
+          }
+          onBatchDelete={
+            datasetACLCapabilities.canDeleteFile
+              ? handleAction(DocumentActionType.delete)
+              : undefined
+          }
+          onEditMetadata={datasetACLCapabilities.canEdit ? showEditModal : undefined}
+          onBatchReIndex={
+            datasetACLCapabilities.canEdit && hasErrorDocumentsSelected
+              ? handleBatchReIndex
+              : undefined
+          }
           onCancel={clearSelection}
         />
       )}
 
       {!!pagination.total && (
         <Pagination
-          {...pagination}
-          className="w-full shrink-0"
+          className="shrink-0"
+          page={pagination.current + 1}
+          totalPages={totalPages}
+          onPageChange={(page) => pagination.onChange(page - 1)}
+          labels={{
+            previous: t(($) => $['pagination.previous'], { ns: 'common' }),
+            next: t(($) => $['pagination.next'], { ns: 'common' }),
+            editPageNumber: (page, totalPages) =>
+              t(($) => $['pagination.editPageNumber'], { ns: 'common', page, totalPages }),
+            pageNumberInput: t(($) => $['pagination.pageNumber'], { ns: 'common' }),
+          }}
+          pageSize={
+            pagination.onLimitChange
+              ? {
+                  value: pageSize,
+                  options: [10, 25, 50],
+                  onValueChange: pagination.onLimitChange,
+                  label: t(($) => $['pagination.perPage'], { ns: 'common' }),
+                  ariaLabel: t(($) => $['pagination.perPage'], { ns: 'common' }),
+                }
+              : undefined
+          }
         />
       )}
 
-      {isShowRenameModal && currDocument && (
-        <RenameModal
-          datasetId={datasetId}
-          documentId={currDocument.id}
-          name={currDocument.name}
-          onClose={setShowRenameModalFalse}
-          onSaved={handleRenamed}
-        />
-      )}
+      <Dialog handle={renameDialog}>
+        {({ payload }) => (
+          <DialogContent>
+            {payload && (
+              <RenameDocumentForm
+                datasetId={datasetId}
+                documentId={payload.id}
+                name={payload.name}
+                onSaved={handleRenamed}
+                onClose={() => renameDialog.close()}
+              />
+            )}
+          </DialogContent>
+        )}
+      </Dialog>
 
       {isShowEditModal && (
         <EditMetadataBatchModal

@@ -1,5 +1,6 @@
+from typing import TypedDict
+
 from pydantic import BaseModel
-from typing_extensions import TypedDict
 
 from models.dataset import DocumentSegment
 

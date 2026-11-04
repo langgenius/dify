@@ -1,66 +1,122 @@
-import type { App, AppSSO } from '@/types/app'
-import { RiEqualizer2Line } from '@remixicon/react'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppInfoOperation } from './app-info-modals'
+import type { Operation } from './app-operations'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import AppIcon from '../../base/app-icon'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
+import AppInfoHeader from './app-info-header'
 import { getAppModeLabel } from './app-mode-labels'
 
 type AppInfoTriggerProps = {
-  appDetail: App & Partial<AppSSO>
+  appDetail: AppDetailWithSite
   expand: boolean
-  onClick: () => void
+  openModal: (modal: AppInfoOperation) => void
+  isExporting: boolean
+  exportCheck: () => void
 }
 
-const AppInfoTrigger = ({ appDetail, expand, onClick }: AppInfoTriggerProps) => {
-  const { t } = useTranslation()
+const AppInfoTrigger = ({
+  appDetail,
+  expand,
+  openModal,
+  isExporting,
+  exportCheck,
+}: AppInfoTriggerProps) => {
+  const { t } = useTranslation(['app', 'common', 'workflow'])
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const modeLabel = getAppModeLabel(appDetail.mode, t)
+  const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail.maintainer,
+    workspacePermissionKeys,
+  })
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
+
+  const mainOperations: Operation[] = [
+    ...(appACLCapabilities.canEdit
+      ? [
+          {
+            id: 'edit',
+            title: t(($) => $.editApp, { ns: 'app' }),
+            icon: 'i-ri-edit-line',
+            onClick: () => openModal('edit'),
+          },
+        ]
+      : []),
+    ...(canCreateApp
+      ? [
+          {
+            id: 'duplicate',
+            title: t(($) => $.duplicate, { ns: 'app' }),
+            icon: 'i-ri-file-copy-2-line',
+            onClick: () => openModal('duplicate'),
+          },
+        ]
+      : []),
+    ...(appACLCapabilities.canImportExportDSL
+      ? [
+          {
+            id: 'export',
+            title: t(($) => $.exportApp, { ns: 'app' }),
+            icon: 'i-ri-file-download-line',
+            onClick: exportCheck,
+            loading: isExporting,
+          },
+        ]
+      : []),
+    ...(appACLCapabilities.canImportExportDSL &&
+    (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')
+      ? [
+          {
+            id: 'import',
+            title: t(($) => $.importApp, { ns: 'app' }),
+            icon: 'i-ri-file-upload-line',
+            onClick: () => openModal('importDSL'),
+          },
+        ]
+      : []),
+  ]
+
+  const destructiveOperations: Operation[] = appACLCapabilities.canDelete
+    ? [
+        {
+          id: 'delete',
+          title: t(($) => $['operation.delete'], { ns: 'common' }),
+          icon: 'i-ri-delete-bin-line',
+          onClick: () => openModal('delete'),
+          variant: 'destructive',
+        },
+      ]
+    : []
+
+  const workflowConversionOperations: Operation[] =
+    appACLCapabilities.canEdit && (appDetail.mode === 'completion' || appDetail.mode === 'chat')
+      ? [
+          {
+            id: 'switch',
+            title: t(($) => $.switch, { ns: 'app' }),
+            icon: 'i-ri-exchange-2-line',
+            onClick: () => openModal('switch'),
+          },
+        ]
+      : []
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="block w-full"
-      aria-label={!expand ? `${appDetail.name} - ${modeLabel}` : undefined}
-    >
-      <div className="flex flex-col gap-2 rounded-lg p-1 hover:bg-state-base-hover">
-        <div className="flex items-center gap-1">
-          <div className={cn(!expand && 'ml-1')}>
-            <AppIcon
-              size={expand ? 'large' : 'small'}
-              iconType={appDetail.icon_type}
-              icon={appDetail.icon}
-              background={appDetail.icon_background}
-              imageUrl={appDetail.icon_url}
-            />
-          </div>
-          {expand && (
-            <div className="ml-auto flex items-center justify-center rounded-md p-0.5">
-              <div className="flex h-5 w-5 items-center justify-center">
-                <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
-              </div>
-            </div>
-          )}
-        </div>
-        {!expand && (
-          <div className="flex items-center justify-center">
-            <div className="flex h-5 w-5 items-center justify-center rounded-md p-0.5">
-              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
-            </div>
-          </div>
-        )}
-        {expand && (
-          <div className="flex flex-col items-start gap-1">
-            <div className="flex w-full">
-              <div className="truncate whitespace-nowrap text-text-secondary system-md-semibold">{appDetail.name}</div>
-            </div>
-            <div className="whitespace-nowrap text-text-tertiary system-2xs-medium-uppercase">
-              {getAppModeLabel(appDetail.mode, t)}
-            </div>
-          </div>
-        )}
-      </div>
-    </button>
+    <AppInfoHeader
+      expand={expand}
+      appName={appDetail.name}
+      modeLabel={modeLabel}
+      operationGroups={[mainOperations, destructiveOperations, workflowConversionOperations]}
+      icon={appDetail}
+    />
   )
 }
 

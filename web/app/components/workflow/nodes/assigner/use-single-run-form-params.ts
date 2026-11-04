@@ -8,10 +8,10 @@ import { WriteMode, writeModeTypesNum } from './types'
 type Params = {
   id: string
   payload: AssignerNodeType
-  runInputData: Record<string, any>
-  runInputDataRef: RefObject<Record<string, any>>
+  runInputData: Record<string, unknown>
+  runInputDataRef: RefObject<Record<string, unknown>>
   getInputVars: (textList: string[]) => InputVar[]
-  setRunInputData: (data: Record<string, any>) => void
+  setRunInputData: (data: Record<string, unknown>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
   varSelectorsToVarInputs: (variables: ValueSelector[]) => InputVar[]
 }
@@ -24,11 +24,17 @@ const useSingleRunFormParams = ({
 }: Params) => {
   const { inputs } = useNodeCrud<AssignerNodeType>(id, payload)
 
-  const vars = (inputs.items ?? []).filter((item) => {
-    return item.operation !== WriteMode.clear && item.operation !== WriteMode.set
-      && item.operation !== WriteMode.removeFirst && item.operation !== WriteMode.removeLast
-      && !writeModeTypesNum.includes(item.operation)
-  }).map(item => item.value as ValueSelector)
+  const vars = (inputs.items ?? [])
+    .filter((item) => {
+      return (
+        item.operation !== WriteMode.clear &&
+        item.operation !== WriteMode.set &&
+        item.operation !== WriteMode.removeFirst &&
+        item.operation !== WriteMode.removeLast &&
+        !writeModeTypesNum.includes(item.operation)
+      )
+    })
+    .map((item) => item.value as ValueSelector)
 
   const forms = useMemo(() => {
     const varInputs = varSelectorsToVarInputs(vars)

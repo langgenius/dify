@@ -1,18 +1,32 @@
 import type { NodeTracing } from '@/types/workflow'
-import { BlockEnum } from '@/app/components/workflow/types'
-import formatParallelNode from '../parallel'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
 
-export function addChildrenToIterationNode(iterationNode: NodeTracing, childrenNodes: NodeTracing[]): NodeTracing {
+export function addChildrenToIterationNode(
+  iterationNode: NodeTracing,
+  childrenNodes: NodeTracing[],
+): NodeTracing {
   const details: NodeTracing[][] = []
-  childrenNodes.forEach((item, index) => {
-    if (!item.execution_metadata)
-      return
-    const { iteration_index = 0 } = item.execution_metadata
-    const runIndex: number = iteration_index !== undefined ? iteration_index : index
-    if (!details[runIndex])
-      details[runIndex] = []
+  let lastResolvedIndex = -1
 
-    details[runIndex].push(item)
+  childrenNodes.forEach((item) => {
+    if (!item.execution_metadata) return
+    const { iteration_index } = item.execution_metadata
+    let runIndex: number
+
+    if (iteration_index !== undefined) {
+      runIndex = iteration_index
+    } else if (lastResolvedIndex >= 0) {
+      const currentGroup = details[lastResolvedIndex] || []
+      const seenSameNodeInCurrentGroup = currentGroup.some((node) => node.node_id === item.node_id)
+      runIndex = seenSameNodeInCurrentGroup ? lastResolvedIndex + 1 : lastResolvedIndex
+    } else {
+      runIndex = 0
+    }
+
+    if (!details[runIndex]) details[runIndex] = []
+
+    details[runIndex]!.push(item)
+    lastResolvedIndex = runIndex
   })
   return {
     ...iterationNode,
@@ -20,38 +34,63 @@ export function addChildrenToIterationNode(iterationNode: NodeTracing, childrenN
   }
 }
 
-const format = (list: NodeTracing[], t: any): NodeTracing[] => {
-  const iterationNodeIds = list
-    .filter(item => item.node_type === BlockEnum.Iteration)
-    .map(item => item.node_id)
-  const iterationChildrenNodeIds = list
-    .filter(item => item.execution_metadata?.iteration_id && iterationNodeIds.includes(item.execution_metadata.iteration_id))
-    .map(item => item.node_id)
-  // move iteration children nodes to iteration node's details field
-  const result = list
-    .filter(item => !iterationChildrenNodeIds.includes(item.node_id))
-    .map((item) => {
-      if (item.node_type === BlockEnum.Iteration) {
-        const childrenNodes = list.filter(child => child.execution_metadata?.iteration_id === item.node_id)
-        const error = childrenNodes.find(child => child.status === 'failed')
-        if (error) {
-          item.status = 'failed'
-          item.error = error.error
-        }
-        const addedChildrenList = addChildrenToIterationNode(item, childrenNodes)
-        // handle parallel node in iteration node
-        if (addedChildrenList.details && addedChildrenList.details.length > 0) {
-          addedChildrenList.details = addedChildrenList.details.map((row) => {
-            return formatParallelNode(row, t)
-          })
-        }
-        return addedChildrenList
-      }
-
-      return item
-    })
-
-  return result
+export const getIterationDurationMap = (nodeInfo: NodeTracing) => {
+  return nodeInfo.iterDurationMap || nodeInfo.execution_metadata?.iteration_duration_map || {}
 }
 
-export default format
+const getIterationExecutions = (
+  key: string,
+  nodeInfo: NodeTracing,
+  allExecutions: NodeTracing[] | undefined,
+) => {
+  if (!allExecutions) return []
+
+  const parallelExecutions = allExecutions.filter(
+    (execution) => execution.execution_metadata?.parallel_mode_run_id === key,
+  )
+  if (parallelExecutions.length) return parallelExecutions
+
+  const index = Number.parseInt(key, 10)
+  if (Number.isNaN(index)) return []
+
+  return allExecutions.filter(
+    (execution) =>
+      execution.execution_metadata?.iteration_id === nodeInfo.node_id &&
+      execution.execution_metadata?.iteration_index === index,
+  )
+}
+
+export const getIterationResultList = (nodeInfo: NodeTracing, allExecutions?: NodeTracing[]) => {
+  const iterationMetadata = nodeInfo.execution_metadata
+
+  if (!iterationMetadata?.iteration_duration_map) return nodeInfo.details || []
+
+  const iterations = Object.keys(iterationMetadata.iteration_duration_map)
+    .map((key) => getIterationExecutions(key, nodeInfo, allExecutions))
+    .filter((branchNodes) => branchNodes.length > 0)
+
+  if (!allExecutions || !nodeInfo.details?.length) return iterations
+
+  const listedIterationIndexes = new Set<number>()
+  iterations.forEach((iteration) => {
+    iteration.forEach((node) => {
+      if (node.execution_metadata?.iteration_index !== undefined)
+        listedIterationIndexes.add(node.execution_metadata.iteration_index)
+    })
+  })
+
+  nodeInfo.details.forEach((iteration, index) => {
+    if (
+      !listedIterationIndexes.has(index) &&
+      iteration.some((node) => node.status === NodeRunningStatus.Failed)
+    ) {
+      iterations.push(iteration)
+    }
+  })
+
+  return iterations.sort((a, b) => {
+    const aIndex = a[0]?.execution_metadata?.iteration_index ?? 0
+    const bIndex = b[0]?.execution_metadata?.iteration_index ?? 0
+    return aIndex - bIndex
+  })
+}

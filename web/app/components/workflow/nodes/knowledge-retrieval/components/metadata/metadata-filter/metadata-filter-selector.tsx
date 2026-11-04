@@ -1,105 +1,91 @@
+import { Button } from '@langgenius/dify-ui/button'
 import {
-  RiArrowDownSLine,
-  RiCheckLine,
-} from '@remixicon/react'
-import { useState } from 'react'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 type MetadataFilterSelectorProps = {
+  allowedModes?: readonly MetadataFilteringModeEnum[]
   value?: MetadataFilteringModeEnum
   onSelect: (value: MetadataFilteringModeEnum) => void
 }
 const MetadataFilterSelector = ({
+  allowedModes,
   value = MetadataFilteringModeEnum.disabled,
   onSelect,
 }: MetadataFilterSelectorProps) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['workflowModels'])
   const options = [
     {
       key: MetadataFilteringModeEnum.disabled,
-      value: t('nodes.knowledgeRetrieval.metadata.options.disabled.title', { ns: 'workflow' }),
-      desc: t('nodes.knowledgeRetrieval.metadata.options.disabled.subTitle', { ns: 'workflow' }),
+      value: t(($) => $['nodes.knowledgeRetrieval.metadata.options.disabled.title'], {
+        ns: 'workflowModels',
+      }),
+      desc: t(($) => $['nodes.knowledgeRetrieval.metadata.options.disabled.subTitle'], {
+        ns: 'workflowModels',
+      }),
     },
     {
       key: MetadataFilteringModeEnum.automatic,
-      value: t('nodes.knowledgeRetrieval.metadata.options.automatic.title', { ns: 'workflow' }),
-      desc: t('nodes.knowledgeRetrieval.metadata.options.automatic.subTitle', { ns: 'workflow' }),
+      value: t(($) => $['nodes.knowledgeRetrieval.metadata.options.automatic.title'], {
+        ns: 'workflowModels',
+      }),
+      desc: t(($) => $['nodes.knowledgeRetrieval.metadata.options.automatic.subTitle'], {
+        ns: 'workflowModels',
+      }),
     },
     {
       key: MetadataFilteringModeEnum.manual,
-      value: t('nodes.knowledgeRetrieval.metadata.options.manual.title', { ns: 'workflow' }),
-      desc: t('nodes.knowledgeRetrieval.metadata.options.manual.subTitle', { ns: 'workflow' }),
+      value: t(($) => $['nodes.knowledgeRetrieval.metadata.options.manual.title'], {
+        ns: 'workflowModels',
+      }),
+      desc: t(($) => $['nodes.knowledgeRetrieval.metadata.options.manual.subTitle'], {
+        ns: 'workflowModels',
+      }),
     },
   ]
 
-  const selectedOption = options.find(option => option.key === value)!
+  const visibleOptions = allowedModes
+    ? options.filter((option) => allowedModes.includes(option.key))
+    : options
+  const selectedOption =
+    visibleOptions.find((option) => option.key === value) ?? visibleOptions[0] ?? options[0]!
 
   return (
-    <PortalToFollowElem
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 0,
-      }}
-      open={open}
-      onOpenChange={setOpen}
-    >
-      <PortalToFollowElemTrigger
-        onClick={(e) => {
-          e.stopPropagation()
-          setOpen(!open)
-        }}
-        asChild
+    <Menu>
+      <MenuTrigger
+        render={<Button variant="secondary" size="small" onClick={(e) => e.stopPropagation()} />}
       >
-        <Button
-          variant="secondary"
-          size="small"
-        >
-          {selectedOption.value}
-          <RiArrowDownSLine className="h-3.5 w-3.5" />
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-10">
-        <div className="w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
-          {
-            options.map(option => (
-              <div
-                key={option.key}
-                className="flex cursor-pointer rounded-lg p-2 pr-3 hover:bg-state-base-hover"
-                onClick={() => {
-                  onSelect(option.key)
-                  setOpen(false)
-                }}
-              >
-                <div className="w-4 shrink-0">
-                  {
-                    option.key === value && (
-                      <RiCheckLine className="h-4 w-4 text-text-accent" />
-                    )
-                  }
-                </div>
-                <div className="grow">
-                  <div className="system-sm-semibold text-text-secondary">
-                    {option.value}
-                  </div>
-                  <div className="system-xs-regular text-text-tertiary">
-                    {option.desc}
-                  </div>
-                </div>
+        {selectedOption.value}
+        <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
+      </MenuTrigger>
+      <MenuContent className="w-70">
+        <MenuRadioGroup value={value} onValueChange={onSelect}>
+          {visibleOptions.map((option) => (
+            <MenuRadioItem
+              key={option.key}
+              value={option.key}
+              closeOnClick
+              className="h-auto items-start p-2 pr-3"
+            >
+              <div className="w-4 shrink-0">
+                <MenuRadioItemIndicator />
               </div>
-            ))
-          }
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+              <div className="grow">
+                <div className="system-sm-semibold text-text-secondary">{option.value}</div>
+                <div className="system-xs-regular text-text-tertiary">{option.desc}</div>
+              </div>
+            </MenuRadioItem>
+          ))}
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

@@ -1,34 +1,24 @@
 import { render, screen } from '@testing-library/react'
-import { BoxGroupField, FieldTitle } from '../index'
+import userEvent from '@testing-library/user-event'
+import { Field } from '../field'
 
 describe('layout index', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // The barrel exports should compose the public layout primitives without extra wrappers.
+  // The layout primitives should preserve their composition contracts and collapse behavior.
   describe('Rendering', () => {
-    it('should render BoxGroupField from the barrel export', () => {
+    it('should collapse and expand Field children when supportCollapse is enabled', async () => {
+      const user = userEvent.setup()
       render(
-        <BoxGroupField
-          fieldProps={{
-            fieldTitleProps: {
-              title: 'Input',
-            },
-          }}
-        >
-          Body content
-        </BoxGroupField>,
+        <Field supportCollapse fieldTitleProps={{ title: 'Advanced' }}>
+          <div>Extra details</div>
+        </Field>,
       )
 
-      expect(screen.getByText('Input')).toBeInTheDocument()
-      expect(screen.getByText('Body content')).toBeInTheDocument()
-    })
+      expect(screen.getByText('Extra details')).toBeInTheDocument()
 
-    it('should render FieldTitle from the barrel export', () => {
-      render(<FieldTitle title="Advanced" subTitle="Extra details" />)
+      await user.click(screen.getByText('Advanced'))
+      expect(screen.queryByText('Extra details')).not.toBeInTheDocument()
 
-      expect(screen.getByText('Advanced')).toBeInTheDocument()
+      await user.click(screen.getByText('Advanced'))
       expect(screen.getByText('Extra details')).toBeInTheDocument()
     })
   })

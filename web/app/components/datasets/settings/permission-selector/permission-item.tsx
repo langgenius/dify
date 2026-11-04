@@ -1,31 +1,58 @@
-import { RiCheckLine } from '@remixicon/react'
-import * as React from 'react'
+import type { ReactNode } from 'react'
+import type { PermissionLevel } from '@/models/permission'
+import { PopoverClose } from '@langgenius/dify-ui/popover'
+import { RadioItem } from '@langgenius/dify-ui/radio-group'
 
 type PermissionItemProps = {
-  leftIcon: React.ReactNode
+  value: PermissionLevel
+  leftIcon: ReactNode
   text: string
-  onClick: () => void
   isSelected: boolean
+  closeOnSelect?: boolean
 }
 
+const className =
+  'flex w-full touch-manipulation cursor-pointer items-center gap-x-1 rounded-lg border-none bg-transparent px-2 py-1 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+
 const PermissionItem = ({
+  value,
   leftIcon,
   text,
-  onClick,
   isSelected,
+  closeOnSelect = false,
 }: PermissionItemProps) => {
-  return (
-    <div
-      className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1 hover:bg-state-base-hover"
-      onClick={onClick}
-    >
+  const content = (
+    <>
       {leftIcon}
-      <div className="system-md-regular grow px-1 text-text-secondary">
-        {text}
-      </div>
-      {isSelected && <RiCheckLine className="size-4 text-text-accent" />}
-    </div>
+      <div className="grow px-1 system-md-regular text-text-secondary">{text}</div>
+      {isSelected && (
+        <span aria-hidden="true" className="i-ri-check-line size-4 text-text-accent" />
+      )}
+    </>
+  )
+
+  if (closeOnSelect) {
+    return (
+      <PopoverClose
+        render={
+          <RadioItem<PermissionLevel>
+            value={value}
+            nativeButton
+            render={<button type="button" />}
+          />
+        }
+        className={className}
+      >
+        {content}
+      </PopoverClose>
+    )
+  }
+
+  return (
+    <RadioItem<PermissionLevel> value={value} className={className}>
+      {content}
+    </RadioItem>
   )
 }
 
-export default React.memo(PermissionItem)
+export default PermissionItem

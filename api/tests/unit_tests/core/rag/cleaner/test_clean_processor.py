@@ -22,6 +22,23 @@ class TestCleanProcessor:
         expected = "normalpadding"
         assert CleanProcessor.clean(text_with_ufffe, None) == expected
 
+    def test_clean_preserves_valid_extended_characters(self):
+        """Default cleaning must not strip valid printable characters.
+
+        The invalid-symbol filter used to include the UTF-8 bytes of U+FFFE
+        (0xEF 0xBF 0xBE) inside a character class. On a decoded string those
+        bytes are the code points U+00EF, U+00BF and U+00BE, i.e. the valid
+        characters 'ï', '¿' and '¾', so words like "naïve" and Spanish
+        questions like "¿Cómo?" were being silently corrupted on ingest.
+        """
+        assert CleanProcessor.clean("naïve", None) == "naïve"
+        assert CleanProcessor.clean("¿Cómo estás?", None) == "¿Cómo estás?"
+        assert CleanProcessor.clean("¾ cup sugar", None) == "¾ cup sugar"
+        assert CleanProcessor.clean("ï¿¾", None) == "ï¿¾"
+
+        # The U+FFFE noncharacter is still stripped by its dedicated substitution.
+        assert CleanProcessor.clean("keep\ufffedrop", None) == "keepdrop"
+
     def test_clean_with_none_process_rule(self):
         """Test cleaning with None process_rule - only default cleaning applied."""
         text = "Hello<|World\x00"
@@ -114,6 +131,18 @@ class TestCleanProcessor:
         text = "Email: test@test.com, link: [Click](https://site.com)"
         expected = "Email: , link: [Click](https://site.com)"
         assert CleanProcessor.clean(text, process_rule) == expected
+
+    def test_clean_remove_urls_emails_keeps_email_like_text_in_markdown_urls(self):
+        """Email-like text inside protected Markdown link/image URLs must not be stripped."""
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
+
+        text = "[cal](https://x.io/a?u=bob@corp.com&z=1) and ![img](https://x.io/i.png?u=bob@corp.com)"
+        assert CleanProcessor.clean(text, process_rule) == text
+
+        # Emails in plain prose are still removed
+        assert CleanProcessor.clean("mail bob@corp.com [cal](https://x.io/?u=bob@corp.com)", process_rule) == (
+            "mail  [cal](https://x.io/?u=bob@corp.com)"
+        )
 
     def test_clean_remove_urls_emails_disabled(self):
         """Test remove_urls_emails rule when disabled."""
@@ -211,3 +240,16 @@ class TestCleanProcessor:
         text = "[Text with (parens) and symbols](https://example.com)"
         expected = "[Text with (parens) and symbols](https://example.com)"
         assert CleanProcessor.clean(text, process_rule) == expected
+
+    def test_clean_remove_urls_emails_preserves_markdown_image_links(self):
+        """Remove plain URLs and emails while preserving markdown image links."""
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
+        text = "Email test@example.com and remove https://remove.com but keep ![diagram](https://example.com/image.png)"
+        result = CleanProcessor.clean(text, process_rule)
+
+        assert result == "Email  and remove  but keep ![diagram](https://example.com/image.png)"
+
+    def test_filter_string_returns_input_text(self):
+        """Test filter_string passthrough behavior."""
+        processor = CleanProcessor()
+        assert processor.filter_string("raw text") == "raw text"

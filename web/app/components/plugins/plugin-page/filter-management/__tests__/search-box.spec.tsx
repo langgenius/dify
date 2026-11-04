@@ -1,5 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 describe('SearchBox', () => {
   let SearchBox: (typeof import('../search-box'))['default']
@@ -10,23 +12,32 @@ describe('SearchBox', () => {
     SearchBox = mod.default
   })
 
-  it('should render input with placeholder', () => {
-    render(<SearchBox searchQuery="" onChange={vi.fn()} />)
-
-    expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', 'plugin.search')
-  })
-
-  it('should display current search query', () => {
-    render(<SearchBox searchQuery="test query" onChange={vi.fn()} />)
-
-    expect(screen.getByRole('textbox')).toHaveValue('test query')
-  })
-
-  it('should call onChange when input changes', () => {
+  it('should expose a labeled search box and forward the edited query', async () => {
+    const user = userEvent.setup()
     const mockOnChange = vi.fn()
-    render(<SearchBox searchQuery="" onChange={mockOnChange} />)
+    const TestSearchBox = () => {
+      const [query, setQuery] = useState('test query')
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'new query' } })
+      return (
+        <SearchBox
+          searchQuery={query}
+          onChange={(nextQuery) => {
+            setQuery(nextQuery)
+            mockOnChange(nextQuery)
+          }}
+        />
+      )
+    }
+
+    render(<TestSearchBox />)
+
+    const searchBox = screen.getByRole('searchbox', { name: 'plugin.search' })
+    expect(searchBox).toHaveAttribute('placeholder', 'plugin.search')
+    expect(searchBox).toHaveValue('test query')
+
+    await user.clear(searchBox)
+    await user.type(searchBox, 'new query')
+
     expect(mockOnChange).toHaveBeenCalledWith('new query')
   })
 })

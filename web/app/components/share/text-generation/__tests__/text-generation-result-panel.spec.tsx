@@ -1,34 +1,33 @@
+import type { Task } from '../types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { AppSourceType } from '@/service/share'
+import { captureDownloads } from '@/test/download'
 import { Resolution, TransferMethod } from '@/types/app'
 import TextGenerationResultPanel from '../text-generation-result-panel'
 import { TaskStatus } from '../types'
 
-const resPropsSpy = vi.fn()
-const resDownloadPropsSpy = vi.fn()
+type CompletionHandlers = Parameters<typeof import('@/service/share').sendCompletionMessage>[1]
 
-vi.mock('@/app/components/share/text-generation/result', () => ({
-  default: (props: Record<string, unknown>) => {
-    resPropsSpy(props)
-    return <div data-testid={`res-${String(props.taskId ?? 'single')}`} />
-  },
+const sendCompletion = vi.hoisted(() =>
+  vi.fn<typeof import('@/service/share').sendCompletionMessage>(),
+)
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  sendCompletionMessage: sendCompletion,
 }))
-
-vi.mock('@/app/components/share/text-generation/run-batch/res-download', () => ({
-  default: (props: Record<string, unknown>) => {
-    resDownloadPropsSpy(props)
-    return <div data-testid="res-download-mock" />
-  },
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({ token: 'app-123' }),
+  usePathname: () => '/completion/app-123',
 }))
 
 const promptConfig: PromptConfig = {
   prompt_template: 'template',
-  prompt_variables: [
-    { key: 'name', name: 'Name', type: 'string', required: true },
-  ],
+  prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
 }
 
 const siteInfo: SiteInfo = {
@@ -45,7 +44,7 @@ const visionConfig: VisionSettings = {
   transfer_methods: [TransferMethod.local_file],
 }
 
-const batchTasks = [
+const batchTasks: Task[] = [
   {
     id: 1,
     status: TaskStatus.completed,
@@ -65,10 +64,10 @@ const baseProps = {
   appId: 'app-123',
   appSourceType: AppSourceType.webApp,
   completionFiles: [],
-  controlRetry: 88,
-  controlSend: 77,
-  controlStopResponding: 66,
-  exportRes: [{ 'Name': 'Alpha', 'share.generation.completionResult': 'Done' }],
+  controlRetry: 0,
+  controlSend: 0,
+  controlStopResponding: 0,
+  exportRes: [{ Name: 'Alpha', 'share.generation.completionResult': 'Hello Alpha' }],
   handleCompleted: vi.fn(),
   handleRetryAllFailedTask: vi.fn(),
   handleSaveMessage: vi.fn(async () => {}),
@@ -92,99 +91,106 @@ const baseProps = {
 }
 
 describe('TextGenerationResultPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  afterEach(() => vi.restoreAllMocks())
+
+  it('renders the single execution for the current inputs without batch controls', async () => {
+    let handlers!: CompletionHandlers
+    sendCompletion.mockImplementation(async (_data, callbacks) => {
+      handlers = callbacks
+    })
+    const { rerender } = render(<TextGenerationResultPanel {...baseProps} />)
+    rerender(<TextGenerationResultPanel {...baseProps} controlSend={1} />)
+
+    expect(sendCompletion).toHaveBeenCalledExactlyOnceWith(
+      { inputs: { name: 'Alice' } },
+      expect.any(Object),
+      AppSourceType.webApp,
+      'app-123',
+    )
+    await act(async () => {
+      handlers.onData?.('Hello Alice', true, { messageId: 'message-alice', taskId: 'task-alice' })
+      handlers.onCompleted?.()
+    })
+    expect(await screen.findByText('Hello Alice')).toBeVisible()
+    expect(screen.queryByText(/share.generation.executions/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.download' }),
+    ).not.toBeInTheDocument()
   })
 
-  it('should render a single result in run-once mode and pass non-batch props', () => {
-    render(<TextGenerationResultPanel {...baseProps} />)
+  it('renders per-task inputs, exports successful results and retries failed executions', async () => {
+    const user = userEvent.setup()
+    const downloads = captureDownloads()
+    let betaAttempt = 0
+    sendCompletion.mockImplementation(async ({ inputs }, handlers) => {
+      const { name } = inputs as { name: string }
+      if (name === 'Beta' && betaAttempt++ === 0) {
+        handlers.onError?.('offline')
+        return
+      }
+      handlers.onData?.(`Hello ${name}`, true, {
+        messageId: `message-${name}`,
+        taskId: `task-${name}`,
+      })
+      handlers.onCompleted?.()
+    })
+    function Batch() {
+      const [retry, setRetry] = useState(0)
+      const [tasks, setTasks] = useState(batchTasks)
+      return (
+        <TextGenerationResultPanel
+          {...baseProps}
+          allFailedTaskList={tasks.filter((task) => task.status === TaskStatus.failed)}
+          showTaskList={tasks}
+          handleCompleted={(_content, id, success) =>
+            setTasks((current) =>
+              current.map((task) =>
+                task.id === id
+                  ? { ...task, status: success ? TaskStatus.completed : TaskStatus.failed }
+                  : task,
+              ),
+            )
+          }
+          allSuccessTaskList={tasks.filter((task) => task.status === TaskStatus.completed)}
+          allTaskList={[
+            ...tasks,
+            { id: 3, status: TaskStatus.pending, params: { inputs: { name: 'Gamma' } } },
+          ]}
+          isCallBatchAPI
+          noPendingTask={false}
+          controlSend={1}
+          controlRetry={retry}
+          handleRetryAllFailedTask={() => setRetry((value) => value + 1)}
+        />
+      )
+    }
+    render(<Batch />)
 
-    expect(screen.getByTestId('res-single')).toBeInTheDocument()
-    expect(resPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
-      appId: 'app-123',
-      appSourceType: AppSourceType.webApp,
-      completionFiles: [],
-      controlSend: 77,
-      controlStopResponding: 66,
-      hideInlineStopButton: true,
-      inputs: { name: 'Alice' },
-      isCallBatchAPI: false,
-      moreLikeThisEnabled: true,
-      taskId: undefined,
-    }))
-    expect(screen.queryByTestId('res-download-mock')).not.toBeInTheDocument()
-  })
+    expect(await screen.findByText('Hello Alpha')).toBeVisible()
+    expect(screen.getByText('01')).toBeVisible()
+    expect(screen.getByText('02')).toBeVisible()
+    expect(screen.getByText('share.generation.executions:{"num":3}')).toBeVisible()
+    expect(screen.getByText('share.generation.batchFailed.info:{"num":1}')).toBeVisible()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
 
-  it('should render batch results, download entry, loading area, and retry banner', () => {
-    const handleRetryAllFailedTask = vi.fn()
-
-    render(
-      <TextGenerationResultPanel
-        {...baseProps}
-        allFailedTaskList={[batchTasks[1]]}
-        allSuccessTaskList={[batchTasks[0]]}
-        isCallBatchAPI
-        noPendingTask={false}
-        handleRetryAllFailedTask={handleRetryAllFailedTask}
-      />,
+    await user.click(screen.getByRole('button', { name: 'common.operation.download' }))
+    expect(downloads).toHaveLength(1)
+    expect(downloads[0]!.filename).toBe('result.csv')
+    expect(await downloads[0]!.blob.text()).toBe(
+      '\uFEFFName,share.generation.completionResult\r\nAlpha,Hello Alpha',
     )
 
-    expect(screen.getByTestId('res-1')).toBeInTheDocument()
-    expect(screen.getByTestId('res-2')).toBeInTheDocument()
-    expect(resPropsSpy).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      inputs: { name: 'Alpha' },
-      isError: false,
-      controlRetry: 0,
-      taskId: 1,
-      onRunControlChange: undefined,
-    }))
-    expect(resPropsSpy).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      inputs: { name: 'Beta' },
-      isError: true,
-      controlRetry: 88,
-      taskId: 2,
-    }))
-    expect(screen.getByText('share.generation.executions:{"num":2}')).toBeInTheDocument()
-    expect(screen.getByTestId('res-download-mock')).toBeInTheDocument()
-    expect(resDownloadPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
-      isMobile: false,
-      values: baseProps.exportRes,
-    }))
-    expect(screen.getByText('share.generation.batchFailed.info:{"num":1}')).toBeInTheDocument()
-    expect(screen.getByText('share.generation.batchFailed.retry')).toBeInTheDocument()
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('share.generation.batchFailed.retry'))
-    expect(handleRetryAllFailedTask).toHaveBeenCalledTimes(1)
-  })
-
-  it('should toggle mobile result panel handle between show and hide actions', () => {
-    const onHideResultPanel = vi.fn()
-    const onShowResultPanel = vi.fn()
-    const { rerender } = render(
-      <TextGenerationResultPanel
-        {...baseProps}
-        isPC={false}
-        isShowResultPanel={true}
-        onHideResultPanel={onHideResultPanel}
-        onShowResultPanel={onShowResultPanel}
-      />,
-    )
-
-    fireEvent.click(document.querySelector('.cursor-grab') as HTMLElement)
-    expect(onHideResultPanel).toHaveBeenCalledTimes(1)
-
-    rerender(
-      <TextGenerationResultPanel
-        {...baseProps}
-        isPC={false}
-        isShowResultPanel={false}
-        onHideResultPanel={onHideResultPanel}
-        onShowResultPanel={onShowResultPanel}
-      />,
-    )
-
-    fireEvent.click(document.querySelector('.cursor-grab') as HTMLElement)
-    expect(onShowResultPanel).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByText('share.generation.batchFailed.retry'))
+    await waitFor(() => expect(sendCompletion).toHaveBeenCalledTimes(3))
+    expect(sendCompletion.mock.calls.map(([data]) => data.inputs)).toEqual([
+      { name: 'Alpha' },
+      { name: 'Beta' },
+      { name: 'Beta' },
+    ])
+    expect(screen.getByText('Hello Alpha')).toBeVisible()
+    expect(await screen.findByText('Hello Beta')).toBeVisible()
+    expect(
+      screen.queryByText('share.generation.batchFailed.info:{"num":1}'),
+    ).not.toBeInTheDocument()
   })
 })

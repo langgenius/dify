@@ -1,67 +1,67 @@
-import type { FC } from 'react'
-import { RiHistoryLine } from '@remixicon/react'
-import { useKeyPress } from 'ahooks'
-import * as React from 'react'
-import { useCallback } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
-import Button from '../../base/button'
-import Tooltip from '../../base/tooltip'
-import ShortcutsName from '../shortcuts-name'
-import { getKeyboardKeyCodeBySystem } from '../utils'
+import { VERSION_HISTORY_HOTKEY } from '../hotkeys'
+import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 
 type VersionHistoryButtonProps = {
   onClick: () => Promise<unknown> | unknown
 }
 
-const VERSION_HISTORY_SHORTCUT = ['ctrl', '⇧', 'H']
-
-const PopupContent = React.memo(() => {
-  const { t } = useTranslation()
-  return (
-    <div className="flex items-center gap-x-1">
-      <div className="system-xs-medium px-0.5 text-text-secondary">
-        {t('common.versionHistory', { ns: 'workflow' })}
-      </div>
-      <ShortcutsName keys={VERSION_HISTORY_SHORTCUT} bgColor="gray" textColor="secondary" />
-    </div>
-  )
-})
-
-PopupContent.displayName = 'PopupContent'
-
-const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
-  onClick,
-}) => {
+export function VersionHistoryButton({ onClick }: VersionHistoryButtonProps) {
   const { theme } = useTheme()
-  const handleViewVersionHistory = useCallback(async () => {
-    await onClick?.()
-  }, [onClick])
+  const { t } = useTranslation(['workflow'])
+  const label = t(($) => $['common.versionHistory'], { ns: 'workflow' })
 
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.h`, (e) => {
-    e.preventDefault()
-    handleViewVersionHistory()
-  }, { exactMatch: true, useCapture: true })
+  useHotkey(
+    VERSION_HISTORY_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      void onClick()
+    },
+    {
+      ignoreInputs: true,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
   return (
-    <Tooltip
-      popupContent={<PopupContent />}
-      noDecoration
-      popupClassName="rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg
-    shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px] p-1.5"
-    >
-      <Button
-        className={cn(
-          'rounded-lg border border-transparent p-2',
-          theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
-        )}
-        onClick={handleViewVersionHistory}
-      >
-        <RiHistoryLine className="h-4 w-4 text-components-button-secondary-text" />
-      </Button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <IconButton
+            aria-label={label}
+            variant="secondary"
+            size="lg"
+            className={cn(
+              'inset-ring-1 inset-ring-transparent',
+              theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
+            )}
+            onClick={onClick}
+          >
+            <span
+              aria-hidden
+              className="i-ri-history-line size-4 text-components-button-secondary-text"
+            />
+          </IconButton>
+        }
+      />
+      <TooltipContent className="flex items-center gap-1">
+        <span className="px-0.5">{label}</span>
+        <ShortcutKbd
+          hotkey={VERSION_HISTORY_HOTKEY}
+
+          bgColor="gray"
+          textColor="secondary"
+        />
+      </TooltipContent>
     </Tooltip>
   )
 }
-
-export default VersionHistoryButton

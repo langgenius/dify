@@ -2,21 +2,40 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createDeferred } from '@/test/deferred'
 import { usePluginAuthAction } from '../../hooks/use-plugin-auth-action'
 import { AuthCategory } from '../../types'
 
 const mockDeletePluginCredential = vi.fn().mockResolvedValue({})
 const mockSetPluginDefaultCredential = vi.fn().mockResolvedValue({})
 const mockUpdatePluginCredential = vi.fn().mockResolvedValue({})
-const mockNotify = vi.fn()
-
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
 }))
 
+vi.mock('@/app/notifications', () => ({
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
+}))
 vi.mock('../../hooks/use-credential', () => ({
   useDeletePluginCredentialHook: () => ({
     mutateAsync: mockDeletePluginCredential,
@@ -48,16 +67,6 @@ describe('usePluginAuthAction', () => {
     vi.clearAllMocks()
   })
 
-  it('should initialize with default state', () => {
-    const { result } = renderHook(() => usePluginAuthAction(pluginPayload), {
-      wrapper: createWrapper(),
-    })
-
-    expect(result.current.doingAction).toBe(false)
-    expect(result.current.deleteCredentialId).toBeNull()
-    expect(result.current.editValues).toBeNull()
-  })
-
   it('should open and close confirm dialog', () => {
     const { result } = renderHook(() => usePluginAuthAction(pluginPayload), {
       wrapper: createWrapper(),
@@ -74,19 +83,7 @@ describe('usePluginAuthAction', () => {
     expect(result.current.deleteCredentialId).toBeNull()
   })
 
-  it('should handle edit action', () => {
-    const { result } = renderHook(() => usePluginAuthAction(pluginPayload), {
-      wrapper: createWrapper(),
-    })
-
-    const editVals = { key: 'value' }
-    act(() => {
-      result.current.handleEdit('cred-1', editVals)
-    })
-    expect(result.current.editValues).toEqual(editVals)
-  })
-
-  it('should handle remove action by setting deleteCredentialId', () => {
+  it('opens deletion confirmation for the credential being edited', () => {
     const { result } = renderHook(() => usePluginAuthAction(pluginPayload), {
       wrapper: createWrapper(),
     })
@@ -94,6 +91,7 @@ describe('usePluginAuthAction', () => {
     act(() => {
       result.current.handleEdit('cred-1', { key: 'value' })
     })
+    expect(result.current.editValues).toEqual({ key: 'value' })
 
     act(() => {
       result.current.handleRemove()
@@ -116,7 +114,7 @@ describe('usePluginAuthAction', () => {
     })
 
     expect(mockDeletePluginCredential).toHaveBeenCalledWith({ credential_id: 'cred-1' })
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+    expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
     expect(mockOnUpdate).toHaveBeenCalled()
     expect(result.current.deleteCredentialId).toBeNull()
   })
@@ -132,7 +130,7 @@ describe('usePluginAuthAction', () => {
     })
 
     expect(mockSetPluginDefaultCredential).toHaveBeenCalledWith('cred-1')
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+    expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
     expect(mockOnUpdate).toHaveBeenCalled()
   })
 
@@ -153,27 +151,38 @@ describe('usePluginAuthAction', () => {
       credential_id: 'cred-1',
       name: 'New Name',
     })
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+    expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
     expect(mockOnUpdate).toHaveBeenCalled()
   })
 
-  it('should prevent concurrent actions during doingAction', async () => {
+  it('prevents concurrent actions until the pending deletion completes', async () => {
+    const deletion = createDeferred<object>()
+    mockDeletePluginCredential.mockReturnValueOnce(deletion.promise)
     const { result } = renderHook(() => usePluginAuthAction(pluginPayload), {
       wrapper: createWrapper(),
     })
-
+    act(() => result.current.openConfirm('cred-1'))
+    let pending: Promise<void>
     act(() => {
-      result.current.handleSetDoingAction(true)
+      pending = result.current.handleConfirm()
     })
     expect(result.current.doingAction).toBe(true)
 
-    act(() => {
-      result.current.openConfirm('cred-1')
-    })
     await act(async () => {
       await result.current.handleConfirm()
+      await result.current.handleSetDefault('cred-2')
+      await result.current.handleRename({ credential_id: 'cred-2', name: 'New name' })
     })
-    expect(mockDeletePluginCredential).not.toHaveBeenCalled()
+    expect(mockDeletePluginCredential).toHaveBeenCalledExactlyOnceWith({ credential_id: 'cred-1' })
+    expect(mockSetPluginDefaultCredential).not.toHaveBeenCalled()
+    expect(mockUpdatePluginCredential).not.toHaveBeenCalled()
+
+    await act(async () => {
+      deletion.resolve({})
+      await pending
+    })
+    expect(result.current.doingAction).toBe(false)
+    expect(result.current.deleteCredentialId).toBeNull()
   })
 
   it('should handle confirm without pending credential ID', async () => {

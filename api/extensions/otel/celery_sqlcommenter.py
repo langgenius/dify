@@ -11,10 +11,14 @@ SQLAlchemy instrumentor appends comments to SQL statements.
 """
 
 import logging
-from typing import Any
+from typing import Any, TypedDict
 
+from celery.app.task import Task
 from celery.signals import task_postrun, task_prerun
 from opentelemetry import context
+from opentelemetry.instrumentation.celery import CeleryInstrumentor
+from opentelemetry.metrics import MeterProvider
+from opentelemetry.trace import TracerProvider
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 logger = logging.getLogger(__name__)
@@ -24,9 +28,17 @@ _SQLCOMMENTER_CONTEXT_KEY = "SQLCOMMENTER_ORM_TAGS_AND_VALUES"
 _TOKEN_ATTR = "_dify_sqlcommenter_context_token"
 
 
-def _build_celery_sqlcommenter_tags(task: Any) -> dict[str, str | int]:
+class CelerySqlcommenterTagsDict(TypedDict, total=False):
+    framework: str
+    task_name: str
+    traceparent: str
+    celery_retries: int
+    routing_key: str
+
+
+def _build_celery_sqlcommenter_tags(task: Any) -> CelerySqlcommenterTagsDict:
     """Build SQL commenter tags from the current Celery task and OpenTelemetry context."""
-    tags: dict[str, str | int] = {}
+    tags: CelerySqlcommenterTagsDict = {}
 
     try:
         tags["framework"] = f"celery:{_get_celery_version()}"
@@ -70,7 +82,7 @@ def _get_traceparent() -> str | None:
 
 def _on_task_prerun(*args: object, **kwargs: object) -> None:
     task = kwargs.get("task")
-    if not task:
+    if not isinstance(task, Task):
         return
 
     tags = _build_celery_sqlcommenter_tags(task)
@@ -80,35 +92,41 @@ def _on_task_prerun(*args: object, **kwargs: object) -> None:
     current = context.get_current()
     new_ctx = context.set_value(_SQLCOMMENTER_CONTEXT_KEY, tags, current)
     token = context.attach(new_ctx)
-    setattr(task, _TOKEN_ATTR, token)
+    # Celery reuses one Task instance across concurrent invocations. Its request
+    # is execution-local, so another invocation cannot overwrite this token.
+    setattr(task.request, _TOKEN_ATTR, token)
 
 
 def _on_task_postrun(*args: object, **kwargs: object) -> None:
     task = kwargs.get("task")
-    if not task:
+    if not isinstance(task, Task):
         return
 
-    token = getattr(task, _TOKEN_ATTR, None)
+    request = task.request
+    token = getattr(request, _TOKEN_ATTR, None)
     if token is None:
         return
 
-    try:
-        context.detach(token)
-    except Exception:
-        logger.debug("Failed to detach SQL commenter context", exc_info=True)
-    finally:
-        try:
-            delattr(task, _TOKEN_ATTR)
-        except AttributeError:
-            pass
+    delattr(request, _TOKEN_ATTR)
+    context.detach(token)
 
 
-def setup_celery_sqlcommenter() -> None:
+def setup_celery_sqlcommenter(*, tracer_provider: TracerProvider, meter_provider: MeterProvider) -> None:
     """
-    Connect Celery task_prerun and task_postrun handlers to inject SQL comment
-    context for worker queries. Call this from init_celery_worker after
-    CeleryInstrumentor().instrument() so our handlers run after the OTEL
-    instrumentor's and the trace context is already attached.
+    Install Celery instrumentation with SQL comments inside its activation scope.
+
+    Celery invokes signal receivers in registration order. The SQL context must
+    attach after OTel's task span is active, then detach before OTel restores its
+    parent. Registering both handlers after instrument() would restore an ended
+    task span during postrun instead of leaving the caller's context intact.
     """
-    task_prerun.connect(_on_task_prerun, weak=False)
+    instrumentor = CeleryInstrumentor()
+    if instrumentor.is_instrumented_by_opentelemetry:
+        # Auto-instrumentation may already own the signal order and providers.
+        # Keep its spans intact rather than add a context we cannot unwind first.
+        logger.warning("Celery is already instrumented; skipping SQL commenter signal registration")
+        return
+
     task_postrun.connect(_on_task_postrun, weak=False)
+    instrumentor.instrument(tracer_provider=tracer_provider, meter_provider=meter_provider)
+    task_prerun.connect(_on_task_prerun, weak=False)

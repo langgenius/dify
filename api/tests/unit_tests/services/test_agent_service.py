@@ -1,346 +1,183 @@
-"""
-Unit tests for services.agent_service
-"""
+"""Regression coverage for persisted historical Classic Agent tool logs."""
 
-from collections.abc import Callable
+from __future__ import annotations
+
+import json
 from datetime import datetime
-from unittest.mock import MagicMock, patch
 
 import pytest
-import pytz
+from sqlalchemy.orm import Session
 
-from core.plugin.impl.exc import PluginDaemonClientSideError
-from models import Account
-from models.model import App, Conversation, EndUser, Message, MessageAgentThought
-from services.agent_service import AgentService
+from models import App
+from models.enums import CreatorUserRole
+from models.model import AppMode, AppModelConfig, Conversation, ConversationFromSource, Message, MessageAgentThought
+from services import agent_service
+from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
 
-
-def _make_current_user_account(timezone: str = "UTC") -> Account:
-    account = Account(name="Test User", email="test@example.com")
-    account.timezone = timezone
-    return account
+_NOW = datetime(2026, 1, 1)
 
 
-def _make_app_model(app_model_config: MagicMock | None) -> MagicMock:
-    app_model = MagicMock(spec=App)
-    app_model.id = "app-123"
-    app_model.tenant_id = "tenant-123"
-    app_model.app_model_config = app_model_config
-    return app_model
-
-
-def _make_conversation(from_end_user_id: str | None, from_account_id: str | None) -> MagicMock:
-    conversation = MagicMock(spec=Conversation)
-    conversation.id = "conv-123"
-    conversation.app_id = "app-123"
-    conversation.from_end_user_id = from_end_user_id
-    conversation.from_account_id = from_account_id
-    return conversation
-
-
-def _make_message(agent_thoughts: list[MessageAgentThought]) -> MagicMock:
-    message = MagicMock(spec=Message)
-    message.id = "msg-123"
-    message.conversation_id = "conv-123"
-    message.created_at = datetime(2024, 1, 1, tzinfo=pytz.UTC)
-    message.provider_response_latency = 1.23
-    message.answer_tokens = 4
-    message.message_tokens = 6
-    message.agent_thoughts = agent_thoughts
-    message.message_files = ["file-a.txt"]
-    return message
-
-
-def _make_agent_thought() -> MagicMock:
-    agent_thought = MagicMock(spec=MessageAgentThought)
-    agent_thought.tokens = 3
-    agent_thought.tool_input = "raw-input"
-    agent_thought.observation = "raw-output"
-    agent_thought.thought = "thinking"
-    agent_thought.created_at = datetime(2024, 1, 1, tzinfo=pytz.UTC)
-    agent_thought.files = []
-    agent_thought.tools = ["tool_a", "dataset_tool"]
-    agent_thought.tool_labels = {"tool_a": "Tool A"}
-    agent_thought.tool_meta = {
-        "tool_a": {
-            "tool_config": {
-                "tool_provider_type": "custom",
-                "tool_provider": "provider-1",
-            },
-            "tool_parameters": {"param": "value"},
-            "time_cost": 2.5,
-        },
-        "dataset_tool": {
-            "tool_config": {
-                "tool_provider_type": "dataset-retrieval",
-                "tool_provider": "dataset-provider",
+def _persist_log(
+    session: Session, monkeypatch: pytest.MonkeyPatch, *, tool_still_configured: bool = False, end_user: bool = False
+) -> App:
+    account = make_account(name="Executor", timezone="UTC")
+    config = AppModelConfig(
+        app_id="app-1",
+        model=json.dumps({"provider": "openai", "name": "gpt-4", "mode": "chat"}),
+        agent_mode=json.dumps(
+            {
+                "enabled": True,
+                "strategy": "react",
+                "tools": [
+                    {"enabled": True, "tool_name": "old_tool", "provider_type": "api", "provider_id": "provider-id"}
+                ]
+                if tool_still_configured
+                else [],
             }
-        },
-    }
-    agent_thought.tool_inputs_dict = {"tool_a": {"q": "hello"}, "dataset_tool": {"k": "v"}}
-    agent_thought.tool_outputs_dict = {"tool_a": {"result": "ok"}}
-    return agent_thought
+        ),
+    )
+    app = make_app(app_model_config_id=config.id, mode=AppMode.AGENT_CHAT)
+    source = ConversationFromSource.API if end_user else ConversationFromSource.CONSOLE
+    conversation = make_conversation(
+        mode=AppMode.AGENT_CHAT,
+        from_source=source,
+        from_account_id=None if end_user else account.id,
+        from_end_user_id="end-user-1" if end_user else None,
+    )
+    message = make_message(
+        from_source=source,
+        from_account_id=None if end_user else account.id,
+        from_end_user_id="end-user-1" if end_user else None,
+        inputs={},
+        query="Question",
+        message=[],
+        answer="Answer",
+        provider_response_latency=0.1,
+        answer_tokens=1,
+        message_tokens=1,
+        created_at=_NOW,
+    )
+    thought = MessageAgentThought(
+        message_id=message.id,
+        position=1,
+        created_by_role=CreatorUserRole.END_USER if end_user else CreatorUserRole.ACCOUNT,
+        created_by="end-user-1" if end_user else account.id,
+        tool="old_tool",
+        tool_meta_str=json.dumps({"old_tool": {"tool_config": {}}}),
+        tool_input="{}",
+        observation="{}",
+        thought="historical thought",
+        tokens=1,
+    )
+    session.add_all([account, config, app, conversation, message, thought])
+    if end_user:
+        session.add(make_end_user(app_id=app.id, name="Visitor"))
+    session.commit()
+    session.expire_all()
+    monkeypatch.setattr(agent_service, "current_user", account)
+    return app
 
 
-def _build_query_side_effect(
-    conversation: Conversation | None,
-    message: Message | None,
-    executor: EndUser | Account | None,
-) -> Callable[..., MagicMock]:
-    def _query_side_effect(*args: object, **kwargs: object) -> MagicMock:
-        query = MagicMock()
-        query.where.return_value = query
-        if any(arg is Conversation for arg in args):
-            query.first.return_value = conversation
-        elif any(arg is Message for arg in args):
-            query.first.return_value = message
-        elif any(arg is EndUser for arg in args) or any(arg is Account for arg in args):
-            query.first.return_value = executor
-        return query
+@pytest.mark.parametrize("tool_still_configured", [False, True])
+@pytest.mark.parametrize("end_user", [False, True])
+def test_legacy_tool_log_without_provider_metadata_uses_configured_tool_or_blank_icon(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, tool_still_configured: bool, end_user: bool
+) -> None:
+    app = _persist_log(sqlite_session, monkeypatch, tool_still_configured=tool_still_configured, end_user=end_user)
+    calls: list[dict[str, str]] = []
 
-    return _query_side_effect
+    def get_tool_icon(*, tenant_id: str, provider_type: str, provider_id: str) -> str:
+        calls.append({"tenant_id": tenant_id, "provider_type": provider_type, "provider_id": provider_id})
+        return "icon-url"
 
+    monkeypatch.setattr(agent_service.ToolManager, "get_tool_icon", get_tool_icon)
 
-class TestAgentServiceGetAgentLogs:
-    """Test suite for AgentService.get_agent_logs."""
+    result = agent_service.AgentService.get_agent_logs(app, "conversation-1", "message-1", sqlite_session)
 
-    def test_get_agent_logs_should_raise_when_conversation_missing(self) -> None:
-        """Test missing conversation raises ValueError."""
-        # Arrange
-        app_model = _make_app_model(MagicMock())
-        with patch("services.agent_service.db") as mock_db:
-            query = MagicMock()
-            query.where.return_value = query
-            query.first.return_value = None
-            mock_db.session.query.return_value = query
-
-            # Act & Assert
-            with pytest.raises(ValueError):
-                AgentService.get_agent_logs(app_model, "missing-conv", "msg-1")
-
-    def test_get_agent_logs_should_raise_when_message_missing(self) -> None:
-        """Test missing message raises ValueError."""
-        # Arrange
-        app_model = _make_app_model(MagicMock())
-        conversation = _make_conversation(from_end_user_id="end-user-1", from_account_id=None)
-        with patch("services.agent_service.db") as mock_db:
-            conversation_query = MagicMock()
-            conversation_query.where.return_value = conversation_query
-            conversation_query.first.return_value = conversation
-
-            message_query = MagicMock()
-            message_query.where.return_value = message_query
-            message_query.first.return_value = None
-
-            mock_db.session.query.side_effect = [conversation_query, message_query]
-
-            # Act & Assert
-            with pytest.raises(ValueError):
-                AgentService.get_agent_logs(app_model, conversation.id, "missing-msg")
-
-    def test_get_agent_logs_should_raise_when_app_model_config_missing(self) -> None:
-        """Test missing app model config raises ValueError."""
-        # Arrange
-        app_model = _make_app_model(None)
-        conversation = _make_conversation(from_end_user_id="end-user-1", from_account_id=None)
-        message = _make_message([])
-        current_user = _make_current_user_account()
-
-        with patch("services.agent_service.db") as mock_db, patch("services.agent_service.current_user", current_user):
-            mock_db.session.query.side_effect = _build_query_side_effect(conversation, message, MagicMock())
-
-            # Act & Assert
-            with pytest.raises(ValueError):
-                AgentService.get_agent_logs(app_model, conversation.id, message.id)
-
-    def test_get_agent_logs_should_raise_when_agent_config_missing(self) -> None:
-        """Test missing agent config raises ValueError."""
-        # Arrange
-        app_model_config = MagicMock()
-        app_model_config.agent_mode_dict = {"strategy": "react"}
-        app_model_config.to_dict.return_value = {"tools": []}
-        app_model = _make_app_model(app_model_config)
-        conversation = _make_conversation(from_end_user_id="end-user-1", from_account_id=None)
-        message = _make_message([])
-        current_user = _make_current_user_account()
-
-        with (
-            patch("services.agent_service.db") as mock_db,
-            patch("services.agent_service.AgentConfigManager.convert", return_value=None),
-            patch("services.agent_service.current_user", current_user),
-        ):
-            mock_db.session.query.side_effect = _build_query_side_effect(conversation, message, MagicMock())
-
-            # Act & Assert
-            with pytest.raises(ValueError):
-                AgentService.get_agent_logs(app_model, conversation.id, message.id)
-
-    def test_get_agent_logs_should_return_logs_for_end_user_executor(self) -> None:
-        """Test agent logs returned for end-user executor with tool icons."""
-        # Arrange
-        agent_thought = _make_agent_thought()
-        message = _make_message([agent_thought])
-        conversation = _make_conversation(from_end_user_id="end-user-1", from_account_id=None)
-        executor = MagicMock(spec=EndUser)
-        executor.name = "End User"
-        app_model_config = MagicMock()
-        app_model_config.agent_mode_dict = {"strategy": "react"}
-        app_model_config.to_dict.return_value = {"tools": []}
-        app_model = _make_app_model(app_model_config)
-        current_user = _make_current_user_account()
-        agent_tool = MagicMock()
-        agent_tool.tool_name = "tool_a"
-        agent_tool.provider_type = "custom"
-        agent_tool.provider_id = "provider-2"
-        agent_config = MagicMock()
-        agent_config.tools = [agent_tool]
-
-        with (
-            patch("services.agent_service.db") as mock_db,
-            patch("services.agent_service.AgentConfigManager.convert", return_value=agent_config) as mock_convert,
-            patch("services.agent_service.ToolManager.get_tool_icon") as mock_get_icon,
-            patch("services.agent_service.current_user", current_user),
-        ):
-            mock_db.session.query.side_effect = _build_query_side_effect(conversation, message, executor)
-            mock_get_icon.side_effect = [None, "icon-a"]
-
-            # Act
-            result = AgentService.get_agent_logs(app_model, conversation.id, message.id)
-
-            # Assert
-            assert result["meta"]["status"] == "success"
-            assert result["meta"]["executor"] == "End User"
-            assert result["meta"]["total_tokens"] == 10
-            assert result["meta"]["agent_mode"] == "react"
-            assert result["meta"]["iterations"] == 1
-            assert result["files"] == ["file-a.txt"]
-            assert len(result["iterations"]) == 1
-            tool_calls = result["iterations"][0]["tool_calls"]
-            assert tool_calls[0]["tool_name"] == "tool_a"
-            assert tool_calls[0]["tool_icon"] == "icon-a"
-            assert tool_calls[1]["tool_name"] == "dataset_tool"
-            assert tool_calls[1]["tool_icon"] == ""
-            mock_convert.assert_called_once()
-
-    def test_get_agent_logs_should_return_account_executor_when_no_end_user(self) -> None:
-        """Test agent logs fall back to account executor when end user is missing."""
-        # Arrange
-        agent_thought = _make_agent_thought()
-        message = _make_message([agent_thought])
-        conversation = _make_conversation(from_end_user_id=None, from_account_id="account-1")
-        executor = MagicMock(spec=Account)
-        executor.name = "Account User"
-        app_model_config = MagicMock()
-        app_model_config.agent_mode_dict = {"strategy": "react"}
-        app_model_config.to_dict.return_value = {"tools": []}
-        app_model = _make_app_model(app_model_config)
-        current_user = _make_current_user_account()
-        agent_config = MagicMock()
-        agent_config.tools = []
-
-        with (
-            patch("services.agent_service.db") as mock_db,
-            patch("services.agent_service.AgentConfigManager.convert", return_value=agent_config),
-            patch("services.agent_service.ToolManager.get_tool_icon", return_value=""),
-            patch("services.agent_service.current_user", current_user),
-        ):
-            mock_db.session.query.side_effect = _build_query_side_effect(conversation, message, executor)
-
-            # Act
-            result = AgentService.get_agent_logs(app_model, conversation.id, message.id)
-
-            # Assert
-            assert result["meta"]["executor"] == "Account User"
-
-    def test_get_agent_logs_should_use_defaults_when_executor_and_tool_data_missing(self) -> None:
-        """Test unknown executor and missing tool details fall back to defaults."""
-        # Arrange
-        agent_thought = _make_agent_thought()
-        agent_thought.tool_labels = {}
-        agent_thought.tool_inputs_dict = {}
-        agent_thought.tool_outputs_dict = None
-        agent_thought.tool_meta = {"tool_a": {"error": "failed"}}
-        agent_thought.tools = ["tool_a"]
-
-        message = _make_message([agent_thought])
-        conversation = _make_conversation(from_end_user_id="end-user-1", from_account_id=None)
-        app_model_config = MagicMock()
-        app_model_config.agent_mode_dict = {}
-        app_model_config.to_dict.return_value = {"tools": []}
-        app_model = _make_app_model(app_model_config)
-        current_user = _make_current_user_account()
-        agent_config = MagicMock()
-        agent_config.tools = []
-
-        with (
-            patch("services.agent_service.db") as mock_db,
-            patch("services.agent_service.AgentConfigManager.convert", return_value=agent_config),
-            patch("services.agent_service.ToolManager.get_tool_icon", return_value=None),
-            patch("services.agent_service.current_user", current_user),
-        ):
-            mock_db.session.query.side_effect = _build_query_side_effect(conversation, message, None)
-
-            # Act
-            result = AgentService.get_agent_logs(app_model, conversation.id, message.id)
-
-            # Assert
-            assert result["meta"]["executor"] == "Unknown"
-            assert result["meta"]["agent_mode"] == "react"
-            tool_call = result["iterations"][0]["tool_calls"][0]
-            assert tool_call["status"] == "error"
-            assert tool_call["error"] == "failed"
-            assert tool_call["tool_label"] == "tool_a"
-            assert tool_call["tool_input"] == {}
-            assert tool_call["tool_output"] == {}
-            assert tool_call["time_cost"] == 0
-            assert tool_call["tool_parameters"] == {}
-            assert tool_call["tool_icon"] is None
+    assert result["iterations"][0]["tool_calls"][0]["tool_icon"] == ("icon-url" if tool_still_configured else "")
+    assert result["meta"]["executor"] == ("Visitor" if end_user else "Executor")
+    assert result["meta"]["total_tokens"] == 2
+    assert result["meta"]["iterations"] == 1
+    expected_calls: list[dict[str, str]] = (
+        [{"tenant_id": "tenant-1", "provider_type": "api", "provider_id": "provider-id"}]
+        if tool_still_configured
+        else []
+    )
+    assert calls == expected_calls
 
 
-class TestAgentServiceProviders:
-    """Test suite for AgentService provider methods."""
+@pytest.mark.parametrize("missing", ["conversation", "message"])
+def test_agent_logs_reject_missing_records(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, missing: str
+) -> None:
+    app = _persist_log(sqlite_session, monkeypatch)
+    conversation_id = "missing" if missing == "conversation" else "conversation-1"
+    message_id = "missing" if missing == "message" else "message-1"
 
-    def test_list_agent_providers_should_delegate_to_plugin_client(self) -> None:
-        """Test list_agent_providers delegates to PluginAgentClient."""
-        # Arrange
-        tenant_id = "tenant-1"
-        expected = [{"name": "provider"}]
-        with patch("services.agent_service.PluginAgentClient") as mock_client:
-            mock_client.return_value.fetch_agent_strategy_providers.return_value = expected
+    with pytest.raises(
+        ValueError, match="Conversation not found" if missing == "conversation" else "Message not found"
+    ):
+        agent_service.AgentService.get_agent_logs(app, conversation_id, message_id, sqlite_session)
 
-            # Act
-            result = AgentService.list_agent_providers("user-1", tenant_id)
 
-            # Assert
-            assert result == expected
-            mock_client.return_value.fetch_agent_strategy_providers.assert_called_once_with(tenant_id)
+@pytest.mark.parametrize("foreign", ["conversation", "message"])
+def test_agent_logs_reject_records_outside_the_requested_owner_chain(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, foreign: str
+) -> None:
+    app = _persist_log(sqlite_session, monkeypatch)
+    other_app = make_app(app_id="other-app")
+    other_conversation = make_conversation(
+        conversation_id="other-conversation", app_id=other_app.id, from_source=ConversationFromSource.CONSOLE
+    )
+    sqlite_session.add_all([other_app, other_conversation])
+    message = sqlite_session.get(Message, "message-1")
+    assert message is not None
+    message.app_id = other_app.id
+    if foreign == "conversation":
+        conversation = sqlite_session.get(Conversation, "conversation-1")
+        assert conversation is not None
+        conversation.app_id = other_app.id
+    else:
+        message.conversation_id = other_conversation.id
+    sqlite_session.commit()
+    sqlite_session.expire_all()
 
-    def test_get_agent_provider_should_return_provider_when_successful(self) -> None:
-        """Test get_agent_provider returns provider when successful."""
-        # Arrange
-        tenant_id = "tenant-1"
-        provider_name = "provider-a"
-        expected = {"name": provider_name}
-        with patch("services.agent_service.PluginAgentClient") as mock_client:
-            mock_client.return_value.fetch_agent_strategy_provider.return_value = expected
+    with pytest.raises(
+        ValueError, match="Conversation not found" if foreign == "conversation" else "Message not found"
+    ):
+        agent_service.AgentService.get_agent_logs(app, "conversation-1", "message-1", sqlite_session)
 
-            # Act
-            result = AgentService.get_agent_provider("user-1", tenant_id, provider_name)
 
-            # Assert
-            assert result == expected
-            mock_client.return_value.fetch_agent_strategy_provider.assert_called_once_with(tenant_id, provider_name)
-
-    def test_get_agent_provider_should_raise_value_error_on_plugin_error(self) -> None:
-        """Test get_agent_provider wraps PluginDaemonClientSideError into ValueError."""
-        # Arrange
-        tenant_id = "tenant-1"
-        provider_name = "provider-a"
-        with patch("services.agent_service.PluginAgentClient") as mock_client:
-            mock_client.return_value.fetch_agent_strategy_provider.side_effect = PluginDaemonClientSideError(
-                "plugin error"
+def test_agent_logs_read_only_the_messages_thoughts_in_position_order(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    app = _persist_log(sqlite_session, monkeypatch)
+    other_message = make_message(
+        message_id="other-message",
+        query="Other",
+        message=[],
+        answer="Other",
+        from_source=ConversationFromSource.CONSOLE,
+    )
+    sqlite_session.add(other_message)
+    for message_id, position, text in [
+        ("message-1", 3, "last"),
+        (other_message.id, 0, "foreign"),
+        ("message-1", 2, "middle"),
+    ]:
+        sqlite_session.add(
+            MessageAgentThought(
+                message_id=message_id,
+                position=position,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by="account-1",
+                thought=text,
             )
+        )
+    sqlite_session.commit()
+    sqlite_session.expire_all()
 
-            # Act & Assert
-            with pytest.raises(ValueError):
-                AgentService.get_agent_provider("user-1", tenant_id, provider_name)
+    result = agent_service.AgentService.get_agent_logs(app, "conversation-1", "message-1", sqlite_session)
+
+    assert [iteration["thought"] for iteration in result["iterations"]] == ["historical thought", "middle", "last"]
+    assert result["meta"]["iterations"] == 3

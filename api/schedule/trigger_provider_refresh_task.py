@@ -1,9 +1,7 @@
 import logging
 import math
-import time
 from collections.abc import Iterable, Sequence
 
-from celery import group
 from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import Session
@@ -13,14 +11,11 @@ from configs import dify_config
 from core.trigger.utils.locks import build_trigger_refresh_lock_keys
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.helper import current_timestamp
 from models.trigger import TriggerSubscription
 from tasks.trigger_subscription_refresh_tasks import trigger_subscription_refresh
 
 logger = logging.getLogger(__name__)
-
-
-def _now_ts() -> int:
-    return int(time.time())
 
 
 def _build_due_filter(now_ts: int):
@@ -54,7 +49,7 @@ def trigger_provider_refresh() -> None:
     """
     Scan due trigger subscriptions and enqueue refresh tasks with in-flight locks.
     """
-    now: int = _now_ts()
+    now: int = current_timestamp()
 
     batch_size: int = int(dify_config.TRIGGER_PROVIDER_REFRESH_BATCH_SIZE)
     lock_ttl: int = max(300, int(dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS))
@@ -91,20 +86,21 @@ def trigger_provider_refresh() -> None:
 
             jobs = [
                 trigger_subscription_refresh.s(tenant_id=tenant_id, subscription_id=subscription_id)
-                for (tenant_id, subscription_id), is_locked in zip(subscriptions, acquired)
+                for (tenant_id, subscription_id), is_locked in zip(subscriptions, acquired, strict=False)
                 if is_locked
             ]
-            result = group(jobs).apply_async()
+            with app.celery.producer_or_acquire() as producer:  # type: ignore
+                for job in jobs:
+                    job.apply_async(producer=producer)
             enqueued = len(jobs)
 
             logger.info(
-                "Trigger refresh page %d/%d: scanned=%d locks_acquired=%d enqueued=%d result=%s",
+                "Trigger refresh page %d/%d: scanned=%d locks_acquired=%d enqueued=%d",
                 page + 1,
                 pages,
                 len(subscriptions),
                 sum(1 for x in acquired if x),
                 enqueued,
-                result,
             )
 
     logger.info("Trigger refresh scan done: due=%d", total_due)

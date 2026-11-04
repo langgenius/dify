@@ -5,8 +5,8 @@ This service restores archived workflow run data from S3-compatible storage
 back to the database.
 """
 
+import contextlib
 import io
-import json
 import logging
 import time
 import zipfile
@@ -14,9 +14,10 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 import click
+from pydantic import TypeAdapter
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -40,6 +41,18 @@ from models.workflow import (
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
+
+
+class _TableInfo(TypedDict, total=False):
+    row_count: int
+
+
+class ArchiveManifest(TypedDict, total=False):
+    tables: dict[str, _TableInfo]
+    schema_version: str
+
+
+_manifest_adapter: TypeAdapter[ArchiveManifest] = TypeAdapter(ArchiveManifest)
 
 logger = logging.getLogger(__name__)
 
@@ -239,12 +252,12 @@ class WorkflowRunRestore:
         return self.workflow_run_repo
 
     @staticmethod
-    def _load_manifest_from_zip(archive: zipfile.ZipFile) -> dict[str, Any]:
+    def _load_manifest_from_zip(archive: zipfile.ZipFile) -> ArchiveManifest:
         try:
             data = archive.read("manifest.json")
         except KeyError as e:
             raise ValueError("manifest.json missing from archive bundle") from e
-        return json.loads(data.decode("utf-8"))
+        return _manifest_adapter.validate_json(data)
 
     def _restore_table_records(
         self,
@@ -325,14 +338,12 @@ class WorkflowRunRestore:
             if isinstance(column.type, DateTime):
                 value = result.get(column.key)
                 if isinstance(value, str):
-                    try:
+                    with contextlib.suppress(ValueError):
                         result[column.key] = datetime.fromisoformat(value)
-                    except ValueError:
-                        pass
 
         return result
 
-    def _get_schema_version(self, manifest: dict[str, Any]) -> str:
+    def _get_schema_version(self, manifest: ArchiveManifest) -> str:
         schema_version = manifest.get("schema_version")
         if not schema_version:
             logger.warning("Manifest missing schema_version; defaulting to 1.0")

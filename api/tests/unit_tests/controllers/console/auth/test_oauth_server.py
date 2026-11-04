@@ -1,417 +1,233 @@
+from datetime import UTC, datetime
+from http import HTTPStatus
+from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import NotFound
 
 from controllers.console.auth.oauth_server import (
+    OAuthProviderAppResponse,
     OAuthServerAppApi,
     OAuthServerUserAccountApi,
     OAuthServerUserAuthorizeApi,
     OAuthServerUserTokenApi,
 )
+from machinery.context import RequestContext
+from services.entities.oauth_server_entities import (
+    OAuthAuthorizationCode,
+    OAuthProviderAccount,
+    OAuthProviderAppPresentation,
+    OAuthTokenSet,
+)
+from services.oauth_server_service import OAuthServerClientNotFoundError, OAuthServerUnauthorizedError
 
 
-class TestOAuthServerAppApi:
-    @pytest.fixture
-    def app(self):
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
-
-    @pytest.fixture
-    def mock_oauth_provider_app(self):
-        from models.model import OAuthProviderApp
-
-        oauth_app = MagicMock(spec=OAuthProviderApp)
-        oauth_app.client_id = "test_client_id"
-        oauth_app.redirect_uris = ["http://localhost/callback"]
-        oauth_app.app_icon = "icon_url"
-        oauth_app.app_label = "Test App"
-        oauth_app.scope = "read,write"
-        return oauth_app
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    def test_successful_post(self, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
-
-        with app.test_request_context(
-            "/oauth/provider",
-            method="POST",
-            json={"client_id": "test_client_id", "redirect_uri": "http://localhost/callback"},
-        ):
-            api_instance = OAuthServerAppApi()
-            response = api_instance.post()
-
-        assert response["app_icon"] == "icon_url"
-        assert response["app_label"] == "Test App"
-        assert response["scope"] == "read,write"
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    def test_invalid_redirect_uri(self, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
-
-        with app.test_request_context(
-            "/oauth/provider",
-            method="POST",
-            json={"client_id": "test_client_id", "redirect_uri": "http://invalid/callback"},
-        ):
-            api_instance = OAuthServerAppApi()
-            with pytest.raises(BadRequest, match="redirect_uri is invalid"):
-                api_instance.post()
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    def test_invalid_client_id(self, mock_get_app, mock_db, app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = None
-
-        with app.test_request_context(
-            "/oauth/provider",
-            method="POST",
-            json={"client_id": "test_invalid_client_id", "redirect_uri": "http://localhost/callback"},
-        ):
-            api_instance = OAuthServerAppApi()
-            with pytest.raises(NotFound, match="client_id is invalid"):
-                api_instance.post()
+def _context() -> RequestContext:
+    return RequestContext("request-1", "trace-1", "account-1", "workspace-1")
 
 
-class TestOAuthServerUserAuthorizeApi:
-    @pytest.fixture
-    def app(self):
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
+def _services(service: MagicMock) -> SimpleNamespace:
+    return SimpleNamespace(oauth_server=service)
 
-    @pytest.fixture
-    def mock_oauth_provider_app(self):
-        oauth_app = MagicMock()
-        oauth_app.client_id = "test_client_id"
-        return oauth_app
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    @patch("controllers.console.auth.oauth_server.current_account_with_tenant")
-    @patch("controllers.console.wraps.current_account_with_tenant")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.sign_oauth_authorization_code")
-    @patch("libs.login.check_csrf_token")
-    def test_successful_authorize(
-        self, mock_csrf, mock_sign, mock_wrap_current, mock_current, mock_get_app, mock_db, app, mock_oauth_provider_app
+def test_provider_parses_payload_delegates_and_serializes() -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    service.get_provider.return_value = OAuthProviderAppPresentation(
+        app_icon="icon",
+        app_label={"en-US": "Test App"},
+        scope="read",
+        auto_authorize=True,
+    )
+
+    with (
+        app.test_request_context(json={"client_id": "client-1", "redirect_uri": "https://example.com/callback"}),
+        patch("controllers.console.auth.oauth_server.application_services", return_value=_services(service)),
     ):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
+        result = unwrap(OAuthServerAppApi.post)(OAuthServerAppApi())
 
-        mock_account = MagicMock()
-        mock_account.id = "user_123"
-        from models.account import AccountStatus
-
-        mock_account.status = AccountStatus.ACTIVE
-
-        mock_current.return_value = (mock_account, MagicMock())
-        mock_wrap_current.return_value = (mock_account, MagicMock())
-
-        mock_sign.return_value = "auth_code_123"
-
-        with app.test_request_context("/oauth/provider/authorize", method="POST", json={"client_id": "test_client_id"}):
-            with patch("libs.login.current_user", mock_account):
-                api_instance = OAuthServerUserAuthorizeApi()
-                response = api_instance.post()
-
-        assert response["code"] == "auth_code_123"
-        mock_sign.assert_called_once_with("test_client_id", "user_123")
+    assert result == (
+        {
+            "app_icon": "icon",
+            "app_label": {"en-US": "Test App"},
+            "scope": "read",
+            "auto_authorize": True,
+        },
+        HTTPStatus.OK,
+    )
+    service.get_provider.assert_called_once_with(
+        client_id="client-1",
+        redirect_uri="https://example.com/callback",
+    )
 
 
-class TestOAuthServerUserTokenApi:
-    @pytest.fixture
-    def app(self):
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
+def test_authorize_uses_admission_request_context() -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    service.authorize.return_value = OAuthAuthorizationCode(code="authorization-code")
+    context = _context()
 
-    @pytest.fixture
-    def mock_oauth_provider_app(self):
-        from models.model import OAuthProviderApp
+    with (
+        app.test_request_context(json={"client_id": "client-1"}),
+        patch("controllers.console.auth.oauth_server.application_services", return_value=_services(service)),
+    ):
+        result = unwrap(OAuthServerUserAuthorizeApi.post)(OAuthServerUserAuthorizeApi(), context)
 
-        oauth_app = MagicMock(spec=OAuthProviderApp)
-        oauth_app.client_id = "test_client_id"
-        oauth_app.client_secret = "test_secret"
-        oauth_app.redirect_uris = ["http://localhost/callback"]
-        return oauth_app
+    assert result == ({"code": "authorization-code"}, HTTPStatus.OK)
+    service.authorize.assert_called_once_with(context, client_id="client-1")
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.sign_oauth_access_token")
-    def test_authorization_code_grant(self, mock_sign, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
-        mock_sign.return_value = ("access_123", "refresh_123")
 
-        with app.test_request_context(
-            "/oauth/provider/token",
-            method="POST",
+def test_token_endpoint_delegates_grant_data() -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    service.exchange_token.return_value = OAuthTokenSet(
+        access_token="access-1",
+        token_type="Bearer",
+        expires_in=43200,
+        refresh_token="refresh-1",
+    )
+
+    with (
+        app.test_request_context(
             json={
-                "client_id": "test_client_id",
+                "client_id": "client-1",
                 "grant_type": "authorization_code",
-                "code": "auth_code",
-                "client_secret": "test_secret",
-                "redirect_uri": "http://localhost/callback",
-            },
-        ):
-            api_instance = OAuthServerUserTokenApi()
-            response = api_instance.post()
+                "code": "code-1",
+                "client_secret": "secret",
+                "redirect_uri": "https://example.com/callback",
+            }
+        ),
+        patch("controllers.console.auth.oauth_server.application_services", return_value=_services(service)),
+    ):
+        result = unwrap(OAuthServerUserTokenApi.post)(OAuthServerUserTokenApi())
 
-        assert response["access_token"] == "access_123"
-        assert response["refresh_token"] == "refresh_123"
-        assert response["token_type"] == "Bearer"
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    def test_authorization_code_grant_missing_code(self, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
-
-        with app.test_request_context(
-            "/oauth/provider/token",
-            method="POST",
-            json={
-                "client_id": "test_client_id",
-                "grant_type": "authorization_code",
-                "client_secret": "test_secret",
-                "redirect_uri": "http://localhost/callback",
-            },
-        ):
-            api_instance = OAuthServerUserTokenApi()
-            with pytest.raises(BadRequest, match="code is required"):
-                api_instance.post()
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    def test_authorization_code_grant_invalid_secret(self, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
-
-        with app.test_request_context(
-            "/oauth/provider/token",
-            method="POST",
-            json={
-                "client_id": "test_client_id",
-                "grant_type": "authorization_code",
-                "code": "auth_code",
-                "client_secret": "invalid_secret",
-                "redirect_uri": "http://localhost/callback",
-            },
-        ):
-            api_instance = OAuthServerUserTokenApi()
-            with pytest.raises(BadRequest, match="client_secret is invalid"):
-                api_instance.post()
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    def test_authorization_code_grant_invalid_redirect_uri(self, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
-
-        with app.test_request_context(
-            "/oauth/provider/token",
-            method="POST",
-            json={
-                "client_id": "test_client_id",
-                "grant_type": "authorization_code",
-                "code": "auth_code",
-                "client_secret": "test_secret",
-                "redirect_uri": "http://invalid/callback",
-            },
-        ):
-            api_instance = OAuthServerUserTokenApi()
-            with pytest.raises(BadRequest, match="redirect_uri is invalid"):
-                api_instance.post()
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.sign_oauth_access_token")
-    def test_refresh_token_grant(self, mock_sign, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
-        mock_sign.return_value = ("new_access", "new_refresh")
-
-        with app.test_request_context(
-            "/oauth/provider/token",
-            method="POST",
-            json={"client_id": "test_client_id", "grant_type": "refresh_token", "refresh_token": "refresh_123"},
-        ):
-            api_instance = OAuthServerUserTokenApi()
-            response = api_instance.post()
-
-        assert response["access_token"] == "new_access"
-        assert response["refresh_token"] == "new_refresh"
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    def test_refresh_token_grant_missing_token(self, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
-
-        with app.test_request_context(
-            "/oauth/provider/token",
-            method="POST",
-            json={
-                "client_id": "test_client_id",
-                "grant_type": "refresh_token",
-            },
-        ):
-            api_instance = OAuthServerUserTokenApi()
-            with pytest.raises(BadRequest, match="refresh_token is required"):
-                api_instance.post()
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    def test_invalid_grant_type(self, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
-
-        with app.test_request_context(
-            "/oauth/provider/token",
-            method="POST",
-            json={
-                "client_id": "test_client_id",
-                "grant_type": "invalid_grant",
-            },
-        ):
-            api_instance = OAuthServerUserTokenApi()
-            with pytest.raises(BadRequest, match="invalid grant_type"):
-                api_instance.post()
+    assert result == (
+        {
+            "access_token": "access-1",
+            "token_type": "Bearer",
+            "expires_in": 43200,
+            "refresh_token": "refresh-1",
+        },
+        HTTPStatus.OK,
+    )
+    service.exchange_token.assert_called_once_with(
+        client_id="client-1",
+        grant_type="authorization_code",
+        code="code-1",
+        client_secret="secret",
+        redirect_uri="https://example.com/callback",
+        refresh_token=None,
+    )
 
 
-class TestOAuthServerUserAccountApi:
-    @pytest.fixture
-    def app(self):
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
+def test_account_endpoint_parses_bearer_token_and_serializes_account() -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    service.get_account.return_value = OAuthProviderAccount(
+        id="account-1",
+        name="Test User",
+        email="test@example.com",
+        avatar="avatar",
+        interface_language="en-US",
+        timezone="UTC",
+        created_at=datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC),
+    )
 
-    @pytest.fixture
-    def mock_oauth_provider_app(self):
-        from models.model import OAuthProviderApp
+    with (
+        app.test_request_context(
+            json={"client_id": "client-1"},
+            headers={"Authorization": "Bearer access-1"},
+        ),
+        patch("controllers.console.auth.oauth_server.application_services", return_value=_services(service)),
+    ):
+        result = unwrap(OAuthServerUserAccountApi.post)(OAuthServerUserAccountApi())
 
-        oauth_app = MagicMock(spec=OAuthProviderApp)
-        oauth_app.client_id = "test_client_id"
-        return oauth_app
+    assert result == (
+        {
+            "id": "account-1",
+            "name": "Test User",
+            "email": "test@example.com",
+            "avatar": "avatar",
+            "interface_language": "en-US",
+            "timezone": "UTC",
+            "created_at": 1704164645,
+        },
+        HTTPStatus.OK,
+    )
+    service.get_account.assert_called_once_with(client_id="client-1", access_token="access-1")
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.validate_oauth_access_token")
-    def test_successful_account_retrieval(self, mock_validate, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
 
-        mock_account = MagicMock()
-        mock_account.name = "Test User"
-        mock_account.email = "test@example.com"
-        mock_account.avatar = "avatar_url"
-        mock_account.interface_language = "en-US"
-        mock_account.timezone = "UTC"
-        mock_validate.return_value = mock_account
+def test_account_endpoint_serializes_nullable_account_preferences() -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    service.get_account.return_value = OAuthProviderAccount(
+        id="account-1",
+        name="Test User",
+        email="test@example.com",
+        avatar=None,
+        interface_language=None,
+        timezone=None,
+        created_at=datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC),
+    )
 
-        with app.test_request_context(
-            "/oauth/provider/account",
-            method="POST",
-            json={"client_id": "test_client_id"},
-            headers={"Authorization": "Bearer valid_access_token"},
-        ):
-            api_instance = OAuthServerUserAccountApi()
-            response = api_instance.post()
+    with (
+        app.test_request_context(
+            json={"client_id": "client-1"},
+            headers={"Authorization": "Bearer access-1"},
+        ),
+        patch("controllers.console.auth.oauth_server.application_services", return_value=_services(service)),
+    ):
+        result = unwrap(OAuthServerUserAccountApi.post)(OAuthServerUserAccountApi())
 
-        assert response["name"] == "Test User"
-        assert response["email"] == "test@example.com"
-        assert response["avatar"] == "avatar_url"
+    assert result == (
+        {
+            "id": "account-1",
+            "name": "Test User",
+            "email": "test@example.com",
+            "avatar": None,
+            "interface_language": None,
+            "timezone": None,
+            "created_at": 1704164645,
+        },
+        HTTPStatus.OK,
+    )
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    def test_missing_authorization_header(self, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
 
-        with app.test_request_context("/oauth/provider/account", method="POST", json={"client_id": "test_client_id"}):
-            api_instance = OAuthServerUserAccountApi()
-            response = api_instance.post()
+def test_account_endpoint_returns_bearer_challenge_for_missing_header() -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    service.get_account.side_effect = OAuthServerUnauthorizedError("access_token is required")
 
-        assert response.status_code == 401
-        assert response.json["error"] == "Authorization header is required"
+    with (
+        app.test_request_context(json={"client_id": "client-1"}),
+        patch("controllers.console.auth.oauth_server.application_services", return_value=_services(service)),
+    ):
+        response = unwrap(OAuthServerUserAccountApi.post)(OAuthServerUserAccountApi())
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    def test_invalid_authorization_header_format(self, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.get_json() == {"error": "Authorization header is required"}
+    assert response.headers["WWW-Authenticate"] == "Bearer"
+    service.get_account.assert_called_once_with(client_id="client-1", access_token=None)
 
-        with app.test_request_context(
-            "/oauth/provider/account",
-            method="POST",
-            json={"client_id": "test_client_id"},
-            headers={"Authorization": "InvalidFormat"},
-        ):
-            api_instance = OAuthServerUserAccountApi()
-            response = api_instance.post()
 
-        assert response.status_code == 401
-        assert response.json["error"] == "Invalid Authorization header format"
+def test_account_endpoint_preserves_client_validation_before_bearer_challenge() -> None:
+    app = Flask(__name__)
+    service = MagicMock()
+    service.get_account.side_effect = OAuthServerClientNotFoundError("client_id is invalid")
 
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    def test_invalid_token_type(self, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
+    with (
+        app.test_request_context(json={"client_id": "missing"}),
+        patch("controllers.console.auth.oauth_server.application_services", return_value=_services(service)),
+    ):
+        with pytest.raises(NotFound, match="client_id is invalid"):
+            unwrap(OAuthServerUserAccountApi.post)(OAuthServerUserAccountApi())
 
-        with app.test_request_context(
-            "/oauth/provider/account",
-            method="POST",
-            json={"client_id": "test_client_id"},
-            headers={"Authorization": "Basic something"},
-        ):
-            api_instance = OAuthServerUserAccountApi()
-            response = api_instance.post()
 
-        assert response.status_code == 401
-        assert response.json["error"] == "token_type is invalid"
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    def test_missing_access_token(self, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
-
-        with app.test_request_context(
-            "/oauth/provider/account",
-            method="POST",
-            json={"client_id": "test_client_id"},
-            headers={"Authorization": "Bearer   "},
-        ):
-            api_instance = OAuthServerUserAccountApi()
-            response = api_instance.post()
-
-        assert response.status_code == 401
-        assert response.json["error"] == "Invalid Authorization header format"
-
-    @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app")
-    @patch("controllers.console.auth.oauth_server.OAuthServerService.validate_oauth_access_token")
-    def test_invalid_access_token(self, mock_validate, mock_get_app, mock_db, app, mock_oauth_provider_app):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
-        mock_get_app.return_value = mock_oauth_provider_app
-        mock_validate.return_value = None
-
-        with app.test_request_context(
-            "/oauth/provider/account",
-            method="POST",
-            json={"client_id": "test_client_id"},
-            headers={"Authorization": "Bearer invalid_token"},
-        ):
-            api_instance = OAuthServerUserAccountApi()
-            response = api_instance.post()
-
-        assert response.status_code == 401
-        assert response.json["error"] == "access_token or client_id is invalid"
+def test_oauth_provider_app_response_requires_auto_authorize() -> None:
+    # A missing field must fail validation instead of silently defaulting:
+    # an optional field would surface as `undefined` in the generated TS
+    # contract and silently disable silent authorization.
+    assert "auto_authorize" in OAuthProviderAppResponse.model_json_schema()["required"]

@@ -1,22 +1,27 @@
 import type { PipelineTemplate } from '@/models/pipeline'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Confirm from '@/app/components/base/confirm'
-import Modal from '@/app/components/base/modal'
-import { toast } from '@/app/components/base/ui/toast'
+import { selectPipelineTemplate } from '@/app/components/rag-pipeline/utils/query-select'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
-import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import {
-  useDeleteTemplate,
-  useExportTemplateDSL,
-  useInvalidCustomizedTemplateList,
-  usePipelineTemplateById,
-} from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import Actions from './actions'
 import Content from './content'
 import Details from './details'
@@ -28,56 +33,73 @@ type TemplateCardProps = {
   type: 'customized' | 'built-in'
 }
 
-const TemplateCard = ({
-  pipeline,
-  showMoreOperations = true,
-  type,
-}: TemplateCardProps) => {
-  const { t } = useTranslation()
+const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCardProps) => {
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const { push } = useRouter()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowConfirmDelete] = useState(false)
-  const [showDetailModal, setShowDetailModal] = useState(false)
 
-  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById({
-    template_id: pipeline.id,
-    type,
-  }, false)
-  const { mutateAsync: createDataset } = useCreatePipelineDatasetFromCustomized()
+  const queryClient = useQueryClient()
+  const { refetch: getPipelineTemplateInfo } = useQuery(
+    consoleQuery.rag.pipeline.templates.byTemplateId.get.queryOptions({
+      context: { silent: true },
+      input: { params: { template_id: pipeline.id }, query: { type } },
+      enabled: false,
+      select: selectPipelineTemplate,
+    }),
+  )
+  const { mutate: createDataset } = useMutation(
+    consoleQuery.rag.pipeline.dataset.post.mutationOptions({ context: { silent: true } }),
+  )
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const invalidDatasetList = useInvalidDatasetList()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
 
   const handleUseTemplate = useCallback(async () => {
-    const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
-    if (!pipelineTemplateInfo) {
-      toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
+    const { data: pipelineTemplateInfo, error } = await getPipelineTemplateInfo()
+    if (error || !pipelineTemplateInfo) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }),
+      )
       return
     }
     const request = {
       yaml_content: pipelineTemplateInfo.export_data,
     }
-    await createDataset(request, {
-      onSuccess: async (newDataset) => {
-        toast.success(t('creation.successTip', { ns: 'datasetPipeline' }))
-        invalidDatasetList()
-        if (newDataset.pipeline_id)
-          await handleCheckPluginDependencies(newDataset.pipeline_id, true)
-        trackEvent('create_datasets_with_pipeline', {
-          template_name: pipeline.name,
-          template_id: pipeline.id,
-          template_type: type,
-        })
-        push(`/datasets/${newDataset.dataset_id}/pipeline`)
+    createDataset(
+      { body: request },
+      {
+        onSuccess: async (newDataset) => {
+          toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
+          invalidDatasetList()
+          if (newDataset.pipeline_id)
+            await handleCheckPluginDependencies(newDataset.pipeline_id, true)
+          trackEvent('create_datasets_with_pipeline', {
+            template_name: pipeline.name,
+            template_id: pipeline.id,
+            template_type: type,
+          })
+          push(`/datasets/${newDataset.dataset_id}/pipeline`)
+        },
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ?? t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }),
+          )
+        },
       },
-      onError: () => {
-        toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
-      },
-    })
-  }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, invalidDatasetList, pipeline.name, pipeline.id, type])
-
-  const handleShowTemplateDetails = useCallback(() => {
-    setShowDetailModal(true)
-  }, [])
+    )
+  }, [
+    getPipelineTemplateInfo,
+    createDataset,
+    t,
+    handleCheckPluginDependencies,
+    push,
+    invalidDatasetList,
+    pipeline.name,
+    pipeline.id,
+    type,
+  ])
 
   const openEditModal = useCallback(() => {
     setShowEditModal(true)
@@ -87,25 +109,29 @@ const TemplateCard = ({
     setShowEditModal(false)
   }, [])
 
-  const closeDetailsModal = useCallback(() => {
-    setShowDetailModal(false)
-  }, [])
+  const { mutate: exportPipelineDSL, isPending: isExporting } = useMutation(
+    consoleQuery.rag.pipeline.customized.templates.byTemplateId.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
 
-  const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL()
-
-  const handleExportDSL = useCallback(async () => {
-    if (isExporting)
-      return
-    await exportPipelineDSL(pipeline.id, {
-      onSuccess: (res) => {
-        const blob = new Blob([res.data], { type: 'application/yaml' })
-        downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
-        toast.success(t('exportDSL.successTip', { ns: 'datasetPipeline' }))
+  const handleExportDSL = useCallback(() => {
+    if (isExporting) return
+    exportPipelineDSL(
+      { params: { template_id: pipeline.id } },
+      {
+        onSuccess: (res) => {
+          const blob = new Blob([res.data], { type: 'application/yaml' })
+          downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
+          toast.success(t(($) => $['exportDSL.successTip'], { ns: 'datasetPipeline' }))
+        },
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ?? t(($) => $['exportDSL.errorTip'], { ns: 'datasetPipeline' }),
+          )
+        },
       },
-      onError: () => {
-        toast.error(t('exportDSL.errorTip', { ns: 'datasetPipeline' }))
-      },
-    })
+    )
   }, [t, isExporting, pipeline.id, pipeline.name, exportPipelineDSL])
 
   const handleDelete = useCallback(() => {
@@ -116,69 +142,86 @@ const TemplateCard = ({
     setShowConfirmDelete(false)
   }, [])
 
-  const { mutateAsync: deletePipeline } = useDeleteTemplate()
-  const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
+  const { mutate: deletePipeline } = useMutation(
+    consoleQuery.rag.pipeline.customized.templates.byTemplateId.delete.mutationOptions(),
+  )
 
-  const onConfirmDelete = useCallback(async () => {
-    await deletePipeline(pipeline.id, {
-      onSuccess: () => {
-        invalidCustomizedTemplateList()
-        setShowConfirmDelete(false)
+  const onConfirmDelete = useCallback(() => {
+    deletePipeline(
+      { params: { template_id: pipeline.id } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.rag.pipeline.templates.get.queryKey({
+              input: { query: { type: 'customized' } },
+            }),
+          })
+          setShowConfirmDelete(false)
+        },
       },
-    })
-  }, [pipeline.id, deletePipeline, invalidCustomizedTemplateList])
+    )
+  }, [pipeline.id, deletePipeline, queryClient])
 
   return (
-    <div className="group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
+    <div className="group relative flex h-33 cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
       <Content
         name={pipeline.name}
         description={pipeline.description}
         iconInfo={pipeline.icon}
         chunkStructure={pipeline.chunk_structure}
       />
-      <Actions
-        onApplyTemplate={handleUseTemplate}
-        handleShowTemplateDetails={handleShowTemplateDetails}
-        showMoreOperations={showMoreOperations}
-        openEditModal={openEditModal}
-        handleExportDSL={handleExportDSL}
-        handleDelete={handleDelete}
-      />
-      {showEditModal && (
-        <Modal
-          isShow={showEditModal}
-          onClose={closeEditModal}
-          className="max-w-[520px] p-0"
-        >
-          <EditPipelineInfo
-            pipeline={pipeline}
-            onClose={closeEditModal}
-          />
-        </Modal>
-      )}
-      {showDeleteConfirm && (
-        <Confirm
-          title={t('deletePipeline.title', { ns: 'datasetPipeline' })}
-          content={t('deletePipeline.content', { ns: 'datasetPipeline' })}
-          isShow={showDeleteConfirm}
-          onConfirm={onConfirmDelete}
-          onCancel={onCancelDelete}
+      <Dialog>
+        <Actions
+          onApplyTemplate={handleUseTemplate}
+          showMoreOperations={showMoreOperations}
+          openEditModal={openEditModal}
+          handleExportDSL={handleExportDSL}
+          handleDelete={handleDelete}
         />
-      )}
-      {showDetailModal && (
-        <Modal
-          isShow={showDetailModal}
-          onClose={closeDetailsModal}
-          className="h-[calc(100vh-64px)] max-w-[1680px] rounded-3xl p-0"
+        <DialogContent
+          // oxlint-disable-next-line shadcn/no-restyle -- Full-page template preview keeps its larger radius.
+          className="h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] w-[1680px] overflow-hidden rounded-3xl"
         >
           <Details
             id={pipeline.id}
             type={type}
-            onClose={closeDetailsModal}
+            name={pipeline.name}
             onApplyTemplate={handleUseTemplate}
           />
-        </Modal>
+        </DialogContent>
+      </Dialog>
+      {showEditModal && (
+        <Dialog
+          open={showEditModal}
+          onOpenChange={(open) => {
+            if (!open) closeEditModal()
+          }}
+        >
+          <DialogContent className="w-130">
+            <EditPipelineInfo pipeline={pipeline} onClose={closeEditModal} />
+          </DialogContent>
+        </Dialog>
       )}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => !open && onCancelDelete()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['deletePipeline.title'], { ns: 'datasetPipeline' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(($) => $['deletePipeline.content'], { ns: 'datasetPipeline' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={onConfirmDelete}>
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
