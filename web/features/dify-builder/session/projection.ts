@@ -44,7 +44,7 @@ export const projectSessionView = (
   return next
 }
 
-export const isActiveRunStatus = (status: SessionView['run_status']) => status === 'processing'
+const isActiveRunStatus = (status: SessionView['run_status']) => status === 'processing'
 
 export const isActiveView = (view: SessionView) =>
   isActiveRunStatus(view.run_status) && !view.interrupted
