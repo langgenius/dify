@@ -119,7 +119,7 @@ Mocks must preserve the public contract needed by the test. A mock must not reim
 ## Dify Test Setup
 
 - Following [Vite+ testing configuration], tests under `web/` use two explicit projects; rendered component and feature tests default to `browser`, and non-DOM logic stays in `unit`. Both projects are configured in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `{app,features}/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
-- Browser string locators use Vitest 5's exact, case-sensitive matching. Use a regular expression or a per-locator `{ exact: false }` only when partial matching protects the intended behavior. Node tests use `@testing-library/jest-dom/vitest`; a regular-expression check against rendered text can use `expect(element.textContent).toMatch(pattern)` when the Vitest 5 browser matcher types conflict with jest-dom's `toHaveTextContent` overload.
+- Browser string locators use Vitest 5's exact, case-sensitive matching. Use a regular expression or a per-locator `{ exact: false }` only when partial matching protects the intended behavior. Node tests use `@testing-library/jest-dom/vitest`. In Browser Mode, `toHaveTextContent` checks the entire normalized text; use `toMatchTextContent` for a substring or regular expression. Use the latter for negated partial checks too: `not.toHaveTextContent` only rejects exact whole-text equality.
 - Tests in one browser file share a page. `web/vitest.browser.setup.ts` resets the viewport and pointer before each test; set the viewport a test depends on inside that test.
 - Browser failures keep screenshots and Playwright traces under `web/.vitest-browser/`. CI uploads that directory only when failure artifacts exist; Browser Mode does not own coverage or report merging.
 - New component and feature specs should generally use a sibling `__tests__/` directory. Existing colocated utility and hook specs may follow their owning module's convention. Cross-feature integration specs belong in `web/__tests__/`.
@@ -156,6 +156,8 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 
 ## Provenance
 
+- [#45517], `new-rag/upgrade/knowledge-upgrade-dialog`: Browser Mode must exclude a retired model with a partial-text matcher; negated whole-text equality would also accept a longer label containing that model.
+
 - [#45513], `image-uploader/uploader`: a same-file upload test needs an explicit native click and cleared-value assertion to catch removal of the input reset handler.
 
 ## References
@@ -174,6 +176,7 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 - [Testing Library user-event convenience APIs]
 
 [#45513]: https://github.com/langgenius/dify/pull/45513
+[#45517]: https://github.com/langgenius/dify/pull/45517
 [Browser Mode Admission]: #browser-mode-admission
 [Dify UI testing contract]: ../../packages/dify-ui/docs/testing.md
 [React Testing Library documentation]: https://testing-library.com/docs/react-testing-library/intro
