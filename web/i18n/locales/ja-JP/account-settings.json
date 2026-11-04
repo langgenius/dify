@@ -156,7 +156,6 @@
   "resourceAccessToken.resourcesWillAppearHere": "アクセスできるリソースがここに表示されます。",
   "resourceAccessToken.searchPlaceholder": "トークンを検索…",
   "resourceAccessToken.searchResourcesPlaceholder": "アプリまたはナレッジベースを検索…",
-  "resourceAccessToken.tabAllTypes": "すべてのタイプ",
   "resourceAccessToken.selectionPreservedError": "再試行してください。選択内容は変更されていません。",
   "resourceAccessToken.selectionPreservedLoading": "現在の選択内容は保持されます。",
   "resourceAccessToken.tabAllTypes": "すべての種類",

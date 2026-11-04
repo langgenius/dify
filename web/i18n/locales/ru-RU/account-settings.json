@@ -156,7 +156,6 @@
   "resourceAccessToken.resourcesWillAppearHere": "Здесь появятся ресурсы, к которым у вас есть доступ.",
   "resourceAccessToken.searchPlaceholder": "Поиск токенов…",
   "resourceAccessToken.searchResourcesPlaceholder": "Поиск приложений и баз знаний…",
-  "resourceAccessToken.tabAllTypes": "Все типы",
   "resourceAccessToken.selectionPreservedError": "Повторите попытку. Ваш выбор не изменился.",
   "resourceAccessToken.selectionPreservedLoading": "Текущий выбор сохранён.",
   "resourceAccessToken.tabAllTypes": "Все типы",

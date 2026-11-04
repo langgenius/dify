@@ -156,7 +156,6 @@
   "resourceAccessToken.resourcesWillAppearHere": "Resources you can access will appear here.",
   "resourceAccessToken.searchPlaceholder": "Search tokens...",
   "resourceAccessToken.searchResourcesPlaceholder": "Search apps or knowledge bases...",
-  "resourceAccessToken.tabAllTypes": "All Types",
   "resourceAccessToken.selectionPreservedError": "Try again. Your selection has not changed.",
   "resourceAccessToken.selectionPreservedLoading": "Your existing selection is preserved.",
   "resourceAccessToken.tabAllTypes": "All types",
