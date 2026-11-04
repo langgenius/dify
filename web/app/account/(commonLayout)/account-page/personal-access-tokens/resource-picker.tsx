@@ -105,10 +105,10 @@ export default function ResourcePicker({
           {!nested && (
             <p className="system-xs-regular break-words text-text-tertiary">
               {resource.resource_type === 'dataset'
-                ? t(($) => $['resourceAccessToken.knowledge'])
+                ? t(($) => $['resourceAccessToken.tabKnowledgeBases'])
                 : resource.resource_type === 'app_runner'
                   ? t(($) => $['personalAccessToken.appRunner'])
-                  : t(($) => $['resourceAccessToken.app'])}{' '}
+                  : t(($) => $['resourceAccessToken.tabApps'])}{' '}
               · {resource.workspace_name}
             </p>
           )}

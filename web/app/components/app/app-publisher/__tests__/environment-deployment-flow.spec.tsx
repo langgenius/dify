@@ -172,6 +172,7 @@ function createDeployment({
       enable_api: true,
       enable_site: true,
     },
+    deployment_id: 'deployment-staging',
     deployment: {
       current_version: deployed ? currentVersion : undefined,
       deployed_at: Math.floor(Date.now() / 1000),

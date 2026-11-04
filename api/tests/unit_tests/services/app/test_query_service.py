@@ -261,11 +261,12 @@ def test_personal_token_scope_intersects_account_visibility_before_pagination(
     selected: bool,
 ) -> None:
     tenant_id = str(uuid4())
-    app_id = persist_app(sqlite_session, tenant_id=tenant_id, maintainer="account-id")
+    app_id = persist_app(
+        sqlite_session, tenant_id=tenant_id, maintainer="account-id" if visibility == "own" else "other"
+    )
     persist_app(sqlite_session, tenant_id=tenant_id, maintainer="account-id")
     access.access_filter = AppAccessFilter(
         None if visibility == "unrestricted" else {app_id} if visibility == "whitelisted" else set(),
-        visibility == "own",
     )
     context = RequestContext(
         "req",

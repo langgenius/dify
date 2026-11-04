@@ -290,6 +290,7 @@ function environmentDeployment({
 }): EnvironmentDeployment {
   return {
     access,
+    deployment_id: `deployment-${id}`,
     deployment: {
       current_version: currentVersion,
       deployed_at: currentVersion ? ACTIVITY_AT : undefined,
@@ -416,6 +417,7 @@ const ACTION_MATRIX_CASES: Array<{
     ],
     name: 'undeployed',
     row: {
+      deployment_id: 'deployment-undeployed',
       access: { enable_api: false, enable_site: false },
       environment: {
         description: '',

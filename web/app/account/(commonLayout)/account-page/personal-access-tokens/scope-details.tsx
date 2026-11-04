@@ -121,9 +121,9 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
                       {detail.resources.map((resource) => {
                         const resourceType =
                           resource.resource_type === 'app'
-                            ? t(($) => $['resourceAccessToken.app'])
+                            ? t(($) => $['resourceAccessToken.tabApps'])
                             : resource.resource_type === 'dataset'
-                              ? t(($) => $['resourceAccessToken.knowledge'])
+                              ? t(($) => $['resourceAccessToken.tabKnowledgeBases'])
                               : t(($) => $['personalAccessToken.appRunner'])
                         const deployments =
                           resource.resource_type === 'app' && resource.app_runners?.length
