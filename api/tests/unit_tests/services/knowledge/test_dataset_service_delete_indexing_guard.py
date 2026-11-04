@@ -1,7 +1,5 @@
 """Unit tests for the delete-while-indexing guard in DatasetService.delete_dataset (#38518)."""
 
-from unittest.mock import Mock
-
 import pytest
 from sqlalchemy.orm import Session
 
@@ -45,13 +43,41 @@ def _persist_document(
     return document
 
 
+class _SignalRecorder:
+    """Stand-in for the real dataset deletion signal that only records dispatches."""
+
+    def __init__(self) -> None:
+        self.sent: list[tuple] = []
+
+    def send(self, *args) -> None:
+        self.sent.append(args)
+
+
+class _NoopDatasetApiKeyBindings:
+    """Stand-in for the API-key binding repository that performs no deletion."""
+
+    @staticmethod
+    def delete_keys_scoped_only_to(session: Session, dataset_id: str) -> None:
+        pass
+
+
+class _NoopResourceAccessTokenCleanupService:
+    """Stand-in for the resource access token cleanup service."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def delete_resource_relations(self, **kwargs) -> None:
+        pass
+
+
 @pytest.fixture
 def _patched_side_effects(monkeypatch: pytest.MonkeyPatch) -> None:
     """Neutralize permission checks and external side effects; the guard is what we test."""
-    monkeypatch.setattr(DatasetService, "check_dataset_permission", staticmethod(Mock()))
-    monkeypatch.setattr(module, "dataset_was_deleted", Mock())
-    monkeypatch.setattr(module, "dataset_api_key_bindings", Mock())
-    monkeypatch.setattr(module, "build_resource_access_token_cleanup_service", Mock(return_value=Mock()))
+    monkeypatch.setattr(DatasetService, "check_dataset_permission", staticmethod(lambda *_args, **_kwargs: None))
+    monkeypatch.setattr(module, "dataset_was_deleted", _SignalRecorder())
+    monkeypatch.setattr(module, "dataset_api_key_bindings", _NoopDatasetApiKeyBindings())
+    monkeypatch.setattr(module, "build_resource_access_token_cleanup_service", _NoopResourceAccessTokenCleanupService)
 
 
 @pytest.mark.usefixtures("_patched_side_effects")

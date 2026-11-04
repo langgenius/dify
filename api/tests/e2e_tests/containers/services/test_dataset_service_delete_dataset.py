@@ -9,7 +9,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from models import AccountStatus, TenantStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
-from models.enums import DataSourceType, DocumentCreatedFrom
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from services.knowledge.dataset_service import DatasetService
 
@@ -96,6 +96,7 @@ class DatasetDeleteIntegrationDataFactory:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             doc_form=doc_form,
+            indexing_status=IndexingStatus.COMPLETED,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.commit()
