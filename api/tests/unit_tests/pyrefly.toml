@@ -163,7 +163,6 @@ project-excludes = [
   "core/prompt/utils/test_extract_thread_messages.py",
   "core/rag/cleaner/test_clean_processor.py",
   "core/rag/data_post_processor/test_data_post_processor.py",
-  "core/rag/datasource/keyword/jieba/test_jieba_keyword_table_handler.py",
   "core/rag/datasource/test_retrieval_service.py",
   "core/rag/datasource/vdb/test_vector_factory.py",
   "core/rag/extractor/test_excel_extractor.py",
