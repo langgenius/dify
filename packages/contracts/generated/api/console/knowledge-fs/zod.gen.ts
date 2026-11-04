@@ -509,8 +509,9 @@ export const zKnowledgeFsTidyRetryResponse = z.object({
  * KnowledgeFSTidySettingsResponse
  */
 export const zKnowledgeFsTidySettingsResponse = z.object({
+  conflicts: z.boolean(),
   enabled: z.boolean(),
-  lastError: z.string().nullable(),
+  lastError: z.enum(['authorization_failed', 'model_unavailable', 'scan_failed']).nullable(),
   revision: z.int(),
   updatedAt: z.string(),
 })
@@ -520,6 +521,7 @@ export const zKnowledgeFsTidySettingsResponse = z.object({
  */
 export const zKnowledgeFsTidySettingsPayload = z.object({
   acknowledgeTokenUsage: z.boolean().optional().default(false),
+  conflicts: z.boolean().nullish(),
   enabled: z.boolean(),
   expectedRevision: z.int().gte(0),
 })
@@ -2495,7 +2497,7 @@ export const zKnowledgeFsTidyFindingResponse = z.object({
   right: zKnowledgeFsTidyEvidenceResponse,
   similarity: z.number().nullable(),
   stale: z.boolean().optional().default(false),
-  status: z.enum(['disabled', 'dismissed', 'open', 'reviewed']),
+  status: z.enum(['disabled', 'dismissed', 'open', 'outdated', 'reviewed']),
 })
 
 /**
@@ -2524,6 +2526,34 @@ export const zKnowledgeFsTidyScanResponse = z.object({
 export const zKnowledgeFsTidyScanListResponse = z.object({
   items: z.array(zKnowledgeFsTidyScanResponse),
   nextCursor: z.string().nullable(),
+})
+
+/**
+ * KnowledgeFSTidyDocumentProgressResponse
+ */
+export const zKnowledgeFsTidyDocumentProgressResponse = z.object({
+  complete: z.int(),
+  failed: z.int(),
+  pending: z.int(),
+  scanning: z.int(),
+})
+
+/**
+ * KnowledgeFSTidyFindingCountResponse
+ */
+export const zKnowledgeFsTidyFindingCountResponse = z.object({
+  count: z.int(),
+  kind: z.enum(['conflict', 'duplicate', 'similar']),
+  status: z.enum(['disabled', 'dismissed', 'open', 'outdated', 'reviewed']),
+})
+
+/**
+ * KnowledgeFSTidySummaryResponse
+ */
+export const zKnowledgeFsTidySummaryResponse = z.object({
+  documents: zKnowledgeFsTidyDocumentProgressResponse,
+  findings: z.array(zKnowledgeFsTidyFindingCountResponse),
+  modelCalls: z.int(),
 })
 
 export const zKnowledgeFsTraceSource = z.enum([
@@ -5118,7 +5148,8 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTidyFindingsQuery = z.object({
     .string()
     .regex(/^[a-f0-9]{64}$/)
     .optional(),
-  status: z.enum(['disabled', 'dismissed', 'open', 'reviewed']).optional(),
+  kind: z.enum(['conflict', 'duplicate', 'similar']).optional(),
+  status: z.enum(['disabled', 'dismissed', 'open', 'outdated', 'reviewed']).optional(),
 })
 
 /**
@@ -5155,8 +5186,8 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTidyScansPath = z.object({
 })
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdTidyScansQuery = z.object({
-  cursor: z.string().min(1).max(1000).optional(),
-  limit: z.int().gte(1).lte(100).optional().default(50),
+  cursor: z.string().optional(),
+  state: z.enum(['complete', 'failed', 'pending', 'scanning']).optional(),
 })
 
 /**
@@ -5187,6 +5218,16 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsPath = z.object(
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdTidySettingsResponse =
   zKnowledgeFsTidySettingsResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Tidy result
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryResponse =
+  zKnowledgeFsTidySummaryResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesPath = z.object({
   control_space_id: z.string(),

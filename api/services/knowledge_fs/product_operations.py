@@ -169,6 +169,17 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             max_response_bytes=1048576,
             stream_kind="json",
         ),
+        "getTidySummary": _operation(
+            "GET",
+            "getTidySummary",
+            KnowledgeFSProductPermission.READ,
+            "/knowledge-spaces/{id}/tidy/summary",
+            "json",
+            resource_resolver="knowledge_space",
+            max_request_bytes=16384,
+            max_response_bytes=1048576,
+            stream_kind="json",
+        ),
         "listTidyScans": _operation(
             "GET",
             "listTidyScans",

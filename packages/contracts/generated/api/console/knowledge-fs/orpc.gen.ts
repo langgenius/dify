@@ -184,6 +184,8 @@ import {
   zGetKnowledgeFsSpacesByControlSpaceIdTidyScansResponse,
   zGetKnowledgeFsSpacesByControlSpaceIdTidySettingsPath,
   zGetKnowledgeFsSpacesByControlSpaceIdTidySettingsResponse,
+  zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryPath,
+  zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryResponse,
   zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsPath,
   zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsQuery,
   zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsResponse,
@@ -3842,14 +3844,45 @@ export const settings2 = {
   patch: patch9,
 }
 
+/**
+ * Validate admitted input, forward scoped operation, and preserve upstream errors
+ */
+export const get54 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeFsSpacesByControlSpaceIdTidySummary',
+    path: '/knowledge-fs/spaces/{control_space_id}/tidy/summary',
+    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryPath }))
+  .output(zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
+
+export const summary = {
+  get: get54,
+}
+
 export const tidy = {
   findings,
   retry: retry4,
   scans,
   settings: settings2,
+  summary,
 }
 
-export const get54 = oc
+export const get55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3877,10 +3910,10 @@ export const get54 = oc
   })
 
 export const conflicts = {
-  get: get54,
+  get: get55,
 }
 
-export const get55 = oc
+export const get56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3908,10 +3941,10 @@ export const get55 = oc
   })
 
 export const evidence = {
-  get: get55,
+  get: get56,
 }
 
-export const get56 = oc
+export const get57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3939,10 +3972,10 @@ export const get56 = oc
   })
 
 export const missing = {
-  get: get56,
+  get: get57,
 }
 
-export const get57 = oc
+export const get58 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3965,13 +3998,13 @@ export const get57 = oc
   })
 
 export const byTraceId = {
-  get: get57,
+  get: get58,
   conflicts,
   evidence,
   missing,
 }
 
-export const get58 = oc
+export const get59 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4000,7 +4033,7 @@ export const get58 = oc
   })
 
 export const traces = {
-  get: get58,
+  get: get59,
   byTraceId,
 }
 
@@ -4217,7 +4250,7 @@ export const delete12 = oc
     knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
   })
 
-export const get59 = oc
+export const get60 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4265,7 +4298,7 @@ export const patch10 = oc
 
 export const byControlSpaceId = {
   delete: delete12,
-  get: get59,
+  get: get60,
   patch: patch10,
   appBindings,
   backgroundTasks,
@@ -4295,7 +4328,7 @@ export const byControlSpaceId = {
   uploadSessions,
 }
 
-export const get60 = oc
+export const get61 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -4336,7 +4369,7 @@ export const post42 = oc
   })
 
 export const spaces = {
-  get: get60,
+  get: get61,
   post: post42,
   byControlSpaceId,
 }

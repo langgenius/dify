@@ -16384,6 +16384,9 @@
                     "enabled": {
                       "type": "boolean"
                     },
+                    "conflicts": {
+                      "type": "boolean"
+                    },
                     "revision": {
                       "type": "integer"
                     },
@@ -16391,6 +16394,12 @@
                       "type": [
                         "string",
                         "null"
+                      ],
+                      "enum": [
+                        "scan_failed",
+                        "authorization_failed",
+                        "model_unavailable",
+                        null
                       ]
                     },
                     "updatedAt": {
@@ -16399,6 +16408,7 @@
                   },
                   "required": [
                     "enabled",
+                    "conflicts",
                     "revision",
                     "lastError",
                     "updatedAt"
@@ -16607,6 +16617,9 @@
                   "enabled": {
                     "type": "boolean"
                   },
+                  "conflicts": {
+                    "type": "boolean"
+                  },
                   "expectedRevision": {
                     "type": "integer",
                     "minimum": 0
@@ -16635,6 +16648,9 @@
                     "enabled": {
                       "type": "boolean"
                     },
+                    "conflicts": {
+                      "type": "boolean"
+                    },
                     "revision": {
                       "type": "integer"
                     },
@@ -16642,6 +16658,12 @@
                       "type": [
                         "string",
                         "null"
+                      ],
+                      "enum": [
+                        "scan_failed",
+                        "authorization_failed",
+                        "model_unavailable",
+                        null
                       ]
                     },
                     "updatedAt": {
@@ -16650,6 +16672,7 @@
                   },
                   "required": [
                     "enabled",
+                    "conflicts",
                     "revision",
                     "lastError",
                     "updatedAt"
@@ -16856,11 +16879,25 @@
                 "open",
                 "dismissed",
                 "reviewed",
-                "disabled"
+                "disabled",
+                "outdated"
               ]
             },
             "required": false,
             "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "duplicate",
+                "similar",
+                "conflict"
+              ]
+            },
+            "required": false,
+            "name": "kind",
             "in": "query"
           },
           {
@@ -16986,7 +17023,8 @@
                               "open",
                               "dismissed",
                               "reviewed",
-                              "disabled"
+                              "disabled",
+                              "outdated"
                             ]
                           },
                           "revision": {
@@ -17377,7 +17415,8 @@
                         "open",
                         "dismissed",
                         "reviewed",
-                        "disabled"
+                        "disabled",
+                        "outdated"
                       ]
                     },
                     "revision": {
@@ -17581,6 +17620,276 @@
         "x-knowledge-fs-required-scope": "knowledge-spaces:write"
       }
     },
+    "/knowledge-spaces/{id}/tidy/summary": {
+      "get": {
+        "operationId": "getTidySummary",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "description": "Optional caller trace identifier; invalid values are replaced by the gateway",
+            "in": "header",
+            "name": "x-trace-id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review queue counts and scan progress the caller may see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "findings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "dismissed",
+                              "reviewed",
+                              "disabled",
+                              "outdated"
+                            ]
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "duplicate",
+                              "similar",
+                              "conflict"
+                            ]
+                          },
+                          "count": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "kind",
+                          "count"
+                        ]
+                      }
+                    },
+                    "documents": {
+                      "type": "object",
+                      "properties": {
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "scanning": {
+                          "type": "integer"
+                        },
+                        "complete": {
+                          "type": "integer"
+                        },
+                        "failed": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "pending",
+                        "scanning",
+                        "complete",
+                        "failed"
+                      ]
+                    },
+                    "modelCalls": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "findings",
+                    "documents",
+                    "modelCalls"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-knowledge-fs-max-response-bytes": 1048576,
+        "x-knowledge-fs-required-scope": "knowledge-spaces:read"
+      }
+    },
     "/knowledge-spaces/{id}/tidy/scans": {
       "get": {
         "operationId": "listTidyScans",
@@ -17601,6 +17910,20 @@
             },
             "required": false,
             "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "scanning",
+                "complete",
+                "failed"
+              ]
+            },
+            "required": false,
+            "name": "state",
             "in": "query"
           },
           {
@@ -17874,7 +18197,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Retry up to 100 failed scans from saved checkpoints",
+            "description": "Resume scanning: retry up to 100 failed scans from saved checkpoints",
             "content": {
               "application/json": {
                 "schema": {

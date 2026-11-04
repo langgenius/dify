@@ -180,8 +180,10 @@ from services.knowledge_fs.tidy_dto import (
     KnowledgeFSTidyFindingResponse,
     KnowledgeFSTidyRetryResponse,
     KnowledgeFSTidyScanListResponse,
+    KnowledgeFSTidyScanQuery,
     KnowledgeFSTidySettingsPayload,
     KnowledgeFSTidySettingsResponse,
+    KnowledgeFSTidySummaryResponse,
 )
 
 _BUFFERED_UPLOAD_CAPABILITY_MIN_REMAINING = timedelta(seconds=15)
@@ -528,8 +530,21 @@ class KnowledgeFSDataFacade:
             )
         )
 
+    def get_tidy_summary(
+        self, *, tenant_id: str, account_id: str, control_space_id: str
+    ) -> KnowledgeFSTidySummaryResponse:
+        """Read review counts and scan progress restricted to evidence the caller may see."""
+        return KnowledgeFSTidySummaryResponse.model_validate(
+            self._interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                operation_id="getTidySummary",
+            )
+        )
+
     def list_tidy_scans(
-        self, *, tenant_id: str, account_id: str, control_space_id: str, cursor: str | None
+        self, *, tenant_id: str, account_id: str, control_space_id: str, query: KnowledgeFSTidyScanQuery
     ) -> KnowledgeFSTidyScanListResponse:
         """Read bounded scan progress; pending or failed scans are never represented as clean."""
         return KnowledgeFSTidyScanListResponse.model_validate(
@@ -538,7 +553,7 @@ class KnowledgeFSDataFacade:
                 account_id=account_id,
                 control_space_id=control_space_id,
                 operation_id="listTidyScans",
-                query=(("cursor", cursor),) if cursor else (),
+                query=tuple((k, str(v)) for k, v in query.model_dump(exclude_none=True).items()),
             )
         )
 

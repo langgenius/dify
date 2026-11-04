@@ -1172,6 +1172,23 @@
       "resourceType": "knowledge_space"
     },
     {
+      "action": "knowledge_spaces.tidy.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getTidySummary",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/tidy/summary",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "knowledge_fs.grep",
       "allowedCallerKinds": [
         "interactive",

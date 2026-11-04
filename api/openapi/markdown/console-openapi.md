@@ -10817,7 +10817,8 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
-| status | query |  | No | string, <br>**Available values:** "disabled", "dismissed", "open", "reviewed" |
+| kind | query |  | No | string, <br>**Available values:** "conflict", "duplicate", "similar" |
+| status | query |  | No | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" |
 | control_space_id | path |  | Yes | string |
 
 #### Responses
@@ -10886,7 +10887,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
-| limit | query |  | No | integer, <br>**Default:** 50 |
+| state | query |  | No | string, <br>**Available values:** "complete", "failed", "pending", "scanning" |
 | control_space_id | path |  | Yes | string |
 
 #### Responses
@@ -10940,6 +10941,26 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tidy result | **application/json**: [KnowledgeFSTidySettingsResponse](#knowledgefstidysettingsresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/summary
+**Validate admitted input, forward scoped operation, and preserve upstream errors**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidySummaryResponse](#knowledgefstidysummaryresponse)<br> |
 | 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -30248,6 +30269,15 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | documentId | string |  | No |
 | expectedRevision | integer |  | Yes |
 
+#### KnowledgeFSTidyDocumentProgressResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| complete | integer |  | Yes |
+| failed | integer |  | Yes |
+| pending | integer |  | Yes |
+| scanning | integer |  | Yes |
+
 #### KnowledgeFSTidyEvidenceResponse
 
 | Name | Type | Description | Required |
@@ -30259,6 +30289,14 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | start | integer |  | Yes |
 | text | string |  | Yes |
 | title | string |  | Yes |
+
+#### KnowledgeFSTidyFindingCountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | Yes |
+| kind | string, <br>**Available values:** "conflict", "duplicate", "similar" | *Enum:* `"conflict"`, `"duplicate"`, `"similar"` | Yes |
+| status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" | *Enum:* `"disabled"`, `"dismissed"`, `"open"`, `"outdated"`, `"reviewed"` | Yes |
 
 #### KnowledgeFSTidyFindingListResponse
 
@@ -30272,7 +30310,8 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
-| status | string, <br>**Available values:** "disabled", "dismissed", "open", "reviewed" |  | No |
+| kind | string, <br>**Available values:** "conflict", "duplicate", "similar" |  | No |
+| status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" |  | No |
 
 #### KnowledgeFSTidyFindingResponse
 
@@ -30288,7 +30327,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | right | [KnowledgeFSTidyEvidenceResponse](#knowledgefstidyevidenceresponse) |  | Yes |
 | similarity | number |  | Yes |
 | stale | boolean |  | No |
-| status | string, <br>**Available values:** "disabled", "dismissed", "open", "reviewed" | *Enum:* `"disabled"`, `"dismissed"`, `"open"`, `"reviewed"` | Yes |
+| status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" | *Enum:* `"disabled"`, `"dismissed"`, `"open"`, `"outdated"`, `"reviewed"` | Yes |
 
 #### KnowledgeFSTidyRetryResponse
 
@@ -30302,6 +30341,13 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | ---- | ---- | ----------- | -------- |
 | items | [ [KnowledgeFSTidyScanResponse](#knowledgefstidyscanresponse) ] |  | Yes |
 | nextCursor | string |  | Yes |
+
+#### KnowledgeFSTidyScanQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| state | string, <br>**Available values:** "complete", "failed", "pending", "scanning" |  | No |
 
 #### KnowledgeFSTidyScanResponse
 
@@ -30319,6 +30365,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | acknowledgeTokenUsage | boolean |  | No |
+| conflicts | boolean |  | No |
 | enabled | boolean |  | Yes |
 | expectedRevision | integer |  | Yes |
 
@@ -30326,10 +30373,19 @@ the file name and a short-lived signed preview URL for files the caller still ow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| conflicts | boolean |  | Yes |
 | enabled | boolean |  | Yes |
-| lastError | string |  | Yes |
+| lastError | string, <br>**Available values:** "authorization_failed", "model_unavailable", "scan_failed" |  | Yes |
 | revision | integer |  | Yes |
 | updatedAt | string |  | Yes |
+
+#### KnowledgeFSTidySummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | [KnowledgeFSTidyDocumentProgressResponse](#knowledgefstidydocumentprogressresponse) |  | Yes |
+| findings | [ [KnowledgeFSTidyFindingCountResponse](#knowledgefstidyfindingcountresponse) ] |  | Yes |
+| modelCalls | integer |  | Yes |
 
 #### KnowledgeFSTraceEntriesQuery
 

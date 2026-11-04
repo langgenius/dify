@@ -18,6 +18,11 @@ vi.mock('@/service/console', async (original) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'knowledgeFs.spaces.byControlSpaceId.tidy.settings.get': service.settings,
+      'knowledgeFs.spaces.byControlSpaceId.tidy.summary.get': async () => ({
+        findings: [],
+        documents: { pending: 0, scanning: 0, complete: 0, failed: 0 },
+        modelCalls: 0,
+      }),
       'knowledgeFs.spaces.byControlSpaceId.tidy.settings.patch': service.configure,
       'knowledgeFs.spaces.byControlSpaceId.tidy.findings.get': service.findings,
       'knowledgeFs.spaces.byControlSpaceId.tidy.scans.get': async () => ({
@@ -31,6 +36,7 @@ vi.mock('@/service/console', async (original) => {
 async function setup(withFinding = false) {
   service.settings.mockResolvedValue({
     enabled: false,
+    conflicts: true,
     revision: 0,
     lastError: null,
     updatedAt: '2026-11-03',
