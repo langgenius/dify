@@ -227,6 +227,8 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
         profile_data = profile.get_json()
         assert isinstance(profile_data, dict)
         assert profile_data["first_workspace_created_at"] is None
+        assert profile_data["has_owned_tenant"] is False
+        assert profile_data["has_tenant"] is False
     response = client.post(
         "/console/api/workspaces/activate",
         base_url="https://console.example.com",
@@ -251,6 +253,8 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
         profile_data = profile.get_json()
         assert isinstance(profile_data, dict)
         assert profile_data["first_workspace_created_at"] == activation_data["first_workspace_created_at"]
+        assert profile_data["has_owned_tenant"] is True
+        assert profile_data["has_tenant"] is True
     else:
         effects.prepare.assert_not_called()
     persisted = account_domain.repository.get(account.id)

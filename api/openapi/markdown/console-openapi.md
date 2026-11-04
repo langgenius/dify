@@ -302,7 +302,7 @@ Deprecated. Use PATCH /account/profile instead.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| 200 | Success | **application/json**: [AccountProfileResponse](#accountprofileresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -18446,6 +18446,26 @@ Account not link tenant.
 | interface_language | string |  | No |
 | interface_theme | string, <br>**Available values:** "dark", "light" | *Enum:* `"dark"`, `"light"` | No |
 | name | string |  | No |
+| timezone | string |  | No |
+
+#### AccountProfileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| avatar_url | string |  | Yes |
+| created_at | integer |  | No |
+| email | string |  | Yes |
+| first_workspace_created_at | integer | First owned workspace creation time or migrated legacy Builder baseline; null if neither is recorded. | No |
+| has_owned_tenant | boolean | Whether the Account owns an existing tenant, including archived tenants. Null means unavailable. | No |
+| has_tenant | boolean | Whether the Account has a tenant membership, including ownership. Null means unavailable. | No |
+| id | string |  | Yes |
+| interface_language | string |  | No |
+| interface_theme | string |  | No |
+| is_password_set | boolean |  | Yes |
+| last_login_at | integer |  | No |
+| last_login_ip | string |  | No |
+| name | string |  | Yes |
 | timezone | string |  | No |
 
 #### AccountResponse

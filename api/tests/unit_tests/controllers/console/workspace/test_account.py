@@ -94,6 +94,7 @@ from services.account_errors import (
 from services.entities.account_entities import (
     AccountEducationActivation,
     AccountIntegrationStatus,
+    AccountProfile,
     AccountProfileChanges,
     ChangeEmailVerification,
 )
@@ -106,6 +107,7 @@ from services.entities.auth_entities import (
     ChangeEmailTokenBase,
 )
 from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_account_snapshot
 
 
 def _build_account(email: str, account_id: str = "acc", tenant: Tenant | None = None) -> Account:
@@ -628,10 +630,10 @@ class TestAccountsCases:
             }
 
     class TestAccountProfileApi:
-        def test_get_profile_success(self, app: Flask, account_services: AccountServices):
+        def test_get_profile_success(self, app: Flask, account_services: AccountServices) -> None:
             api = AccountProfileApi()
             method = inspect.unwrap(api.get)
-            user = make_account()
+            user = AccountProfile.from_account(make_account_snapshot(), has_owned_tenant=False, has_tenant=False)
             request_context = RequestContext(
                 request_id="request-1",
                 trace_id=None,
@@ -647,6 +649,8 @@ class TestAccountsCases:
                 result = method(api, request_context)
 
             assert result["id"] == user.id
+            assert result["has_owned_tenant"] is False
+            assert result["has_tenant"] is False
             get_profile.assert_called_once_with(request_context)
 
     class TestAccountUpdateApis:

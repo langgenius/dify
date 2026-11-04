@@ -47,6 +47,17 @@ class AccountResponse(_AccountAvatarResponseMixin):
         return to_timestamp(value)
 
 
+class AccountProfileResponse(AccountResponse):
+    has_owned_tenant: bool | None = Field(
+        default=None,
+        description="Whether the Account owns an existing tenant, including archived tenants. Null means unavailable.",
+    )
+    has_tenant: bool | None = Field(
+        default=None,
+        description="Whether the Account has a tenant membership, including ownership. Null means unavailable.",
+    )
+
+
 class MemberRoleSummaryResponse(ResponseModel):
     id: str
     name: str

@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 
 from controllers.web import bp, login, wraps
 from machinery.context import AccountRequestContext
@@ -11,7 +12,7 @@ from services.account_errors import AccountNotFoundError
 
 
 @pytest.fixture
-def profile_client(monkeypatch: pytest.MonkeyPatch):
+def profile_client(monkeypatch: pytest.MonkeyPatch) -> tuple[FlaskClient, EndUser, Mock]:
     app_model = App(tenant_id="tenant-1")
     end_user = EndUser(account_id="account-1")
     profile = Mock()
@@ -25,9 +26,21 @@ def profile_client(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.parametrize("avatar", [None, "https://example.com/avatar.png", "file-id"])
-def test_profile_returns_console_avatar_fields(profile_client, monkeypatch: pytest.MonkeyPatch, avatar: str | None):
+@pytest.mark.parametrize("membership", ["none", "member", "owner"])
+def test_profile_returns_console_avatar_fields(
+    profile_client: tuple[FlaskClient, EndUser, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    avatar: str | None,
+    membership: str,
+) -> None:
     client, _, profile = profile_client
-    profile.get.return_value = SimpleNamespace(name="Alice", avatar=avatar, email="private@example.com")
+    profile.get.return_value = SimpleNamespace(
+        name="Alice",
+        avatar=avatar,
+        email="private@example.com",
+        has_owned_tenant=membership == "owner",
+        has_tenant=membership != "none",
+    )
     monkeypatch.setattr(login, "build_avatar_url", lambda value: f"signed:{value}" if value == "file-id" else value)
 
     response = client.get("/api/account/profile")
@@ -38,13 +51,15 @@ def test_profile_returns_console_avatar_fields(profile_client, monkeypatch: pyte
         "name": "Alice",
         "avatar": avatar,
         "avatar_url": "signed:file-id" if avatar == "file-id" else avatar,
+        "has_owned_tenant": membership == "owner",
+        "has_tenant": membership != "none",
     }
     context = profile.get.call_args.args[0]
     assert isinstance(context, AccountRequestContext)
     assert context.account_id == "account-1"
 
 
-def test_anonymous_profile_requires_account(profile_client):
+def test_anonymous_profile_requires_account(profile_client: tuple[FlaskClient, EndUser, Mock]) -> None:
     client, end_user, profile = profile_client
     end_user.account_id = None
 
@@ -52,7 +67,7 @@ def test_anonymous_profile_requires_account(profile_client):
     profile.get.assert_not_called()
 
 
-def test_deleted_account_requires_login(profile_client):
+def test_deleted_account_requires_login(profile_client: tuple[FlaskClient, EndUser, Mock]) -> None:
     client, _, profile = profile_client
     profile.get.side_effect = AccountNotFoundError
 

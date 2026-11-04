@@ -1162,6 +1162,8 @@ export type VerificationTokenResponse = {
 export type WebAccountProfileResponse = {
   avatar: string | null
   readonly avatar_url: string | null
+  has_owned_tenant?: boolean | null
+  has_tenant?: boolean | null
   name: string
 }
 
@@ -1662,6 +1664,8 @@ export type HumanInputFormSubmitResponseWritable = {
 
 export type WebAccountProfileResponseWritable = {
   avatar: string | null
+  has_owned_tenant?: boolean | null
+  has_tenant?: boolean | null
   name: string
 }
 

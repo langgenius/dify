@@ -235,6 +235,24 @@ export type InvalidAccountPasswordError = ErrorResponse & {
   status: 400
 }
 
+export type AccountProfileResponse = {
+  avatar?: string | null
+  readonly avatar_url: string | null
+  created_at?: number | null
+  email: string
+  first_workspace_created_at?: number | null
+  has_owned_tenant?: boolean | null
+  has_tenant?: boolean | null
+  id: string
+  interface_language?: string | null
+  interface_theme?: string | null
+  is_password_set: boolean
+  last_login_at?: number | null
+  last_login_ip?: string | null
+  name: string
+  timezone?: string | null
+}
+
 export type AccountProfilePatchPayload = {
   avatar?: string
   interface_language?: string
@@ -259,6 +277,23 @@ export type AccountResponseWritable = {
   created_at?: number | null
   email: string
   first_workspace_created_at?: number | null
+  id: string
+  interface_language?: string | null
+  interface_theme?: string | null
+  is_password_set: boolean
+  last_login_at?: number | null
+  last_login_ip?: string | null
+  name: string
+  timezone?: string | null
+}
+
+export type AccountProfileResponseWritable = {
+  avatar?: string | null
+  created_at?: number | null
+  email: string
+  first_workspace_created_at?: number | null
+  has_owned_tenant?: boolean | null
+  has_tenant?: boolean | null
   id: string
   interface_language?: string | null
   interface_theme?: string | null
@@ -709,7 +744,7 @@ export type GetAccountProfileErrors = {
 export type GetAccountProfileError = GetAccountProfileErrors[keyof GetAccountProfileErrors]
 
 export type GetAccountProfileResponses = {
-  200: AccountResponse
+  200: AccountProfileResponse
 }
 
 export type GetAccountProfileResponse = GetAccountProfileResponses[keyof GetAccountProfileResponses]

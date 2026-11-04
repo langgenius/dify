@@ -435,6 +435,27 @@ export const zInvalidAccountPasswordError = zErrorResponse.and(
 )
 
 /**
+ * AccountProfileResponse
+ */
+export const zAccountProfileResponse = z.object({
+  avatar: z.string().nullish(),
+  avatar_url: z.string().nullable(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  first_workspace_created_at: z.int().nullish(),
+  has_owned_tenant: z.boolean().nullish(),
+  has_tenant: z.boolean().nullish(),
+  id: z.string(),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
+  is_password_set: z.boolean(),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
+  name: z.string(),
+  timezone: z.string().nullish(),
+})
+
+/**
  * AccountProfilePatchPayload
  */
 export const zAccountProfilePatchPayload = z
@@ -479,6 +500,26 @@ export const zAccountResponseWritable = z.object({
   created_at: z.int().nullish(),
   email: z.string(),
   first_workspace_created_at: z.int().nullish(),
+  id: z.string(),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
+  is_password_set: z.boolean(),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
+  name: z.string(),
+  timezone: z.string().nullish(),
+})
+
+/**
+ * AccountProfileResponse
+ */
+export const zAccountProfileResponseWritable = z.object({
+  avatar: z.string().nullish(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  first_workspace_created_at: z.int().nullish(),
+  has_owned_tenant: z.boolean().nullish(),
+  has_tenant: z.boolean().nullish(),
   id: z.string(),
   interface_language: z.string().nullish(),
   interface_theme: z.string().nullish(),
@@ -623,7 +664,7 @@ export const zPostAccountPasswordResponse = zAccountResponse
 /**
  * Success
  */
-export const zGetAccountProfileResponse = zAccountResponse
+export const zGetAccountProfileResponse = zAccountProfileResponse
 
 export const zPatchAccountProfileBody = zAccountProfilePatchPayload
 

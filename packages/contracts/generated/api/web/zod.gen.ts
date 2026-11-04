@@ -1908,6 +1908,8 @@ export const zVerificationTokenResponse = z.object({
 export const zWebAccountProfileResponse = z.object({
   avatar: z.string().nullable(),
   avatar_url: z.string().nullable(),
+  has_owned_tenant: z.boolean().nullish(),
+  has_tenant: z.boolean().nullish(),
   name: z.string(),
 })
 
@@ -2514,6 +2516,8 @@ export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unkn
  */
 export const zWebAccountProfileResponseWritable = z.object({
   avatar: z.string().nullable(),
+  has_owned_tenant: z.boolean().nullish(),
+  has_tenant: z.boolean().nullish(),
   name: z.string(),
 })
 

@@ -21,6 +21,7 @@ from models.account import (
     TenantAccountJoin,
     TenantAccountRole,
     TenantPluginAutoUpgradeStrategy,
+    TenantStatus,
 )
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
@@ -482,6 +483,37 @@ def test_removed_workspace_does_not_reset_builder_origin(
 
     assert result.workspace_id is not None
     assert result.first_workspace_created_at == first_created_at
+
+
+@pytest.mark.parametrize("recorded_at", [None, datetime(2019, 1, 1)])
+@pytest.mark.parametrize("status", [TenantStatus.NORMAL, TenantStatus.ARCHIVE])
+def test_activation_preserves_or_recovers_history_before_creating_another_workspace(
+    gateway: tuple[WorkspaceProvisioningService, Signal],
+    sqlite_session_factory: sessionmaker[Session],
+    recorded_at: datetime | None,
+    status: TenantStatus,
+) -> None:
+    service, _ = gateway
+    historical_created_at = datetime(2020, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="Builder", email="builder@example.com", first_workspace_created_at=recorded_at)
+        historical = Tenant(name="Historical", status=status)
+        historical.created_at = historical_created_at
+        session.add_all([account, historical])
+        session.add(TenantAccountJoin(account_id=account.id, tenant_id=historical.id, role=TenantAccountRole.OWNER))
+        account_id, historical_id = account.id, historical.id
+
+    result = service.activate(account_id, name="Restored")
+    repeated = service.activate(account_id, name="Repeated")
+
+    assert result == repeated
+    assert result.first_workspace_created_at == (recorded_at or historical_created_at)
+    assert (result.workspace_id == historical_id) is (status == TenantStatus.NORMAL)
+    with sqlite_session_factory() as session:
+        persisted = session.get(Account, account_id)
+        assert persisted is not None
+        assert persisted.first_workspace_created_at == (recorded_at or historical_created_at)
+        assert persisted.initialized_at is None
 
 
 def test_activation_policy_failure_rolls_back_without_starting_builder_lifecycle(
