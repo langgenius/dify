@@ -31,6 +31,7 @@ GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
 MESSAGE_MODES: Final = frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION})
 CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP})
 CANVAS_NOTE_TYPE: Final = "custom-note"
+_START_NODE_ID_KEY: Final = "start_node_id"
 
 
 class IssueSeverity(StrEnum):
@@ -46,6 +47,7 @@ class IssueCode(StrEnum):
     EDGE_ENDPOINT_MISSING = "edge_endpoint_missing"
     BRANCH_HANDLE_INVALID = "branch_handle_invalid"
     REFERENCE_MISSING = "reference_missing"
+    REFERENCE_EMPTY = "reference_empty"
     CONTAINER_START_MISSING = "container_start_missing"
     OUTPUT_NAME_DUPLICATE = "output_name_duplicate"
     BRANCH_UNCONNECTED = "branch_unconnected"
@@ -56,7 +58,10 @@ class IssueCode(StrEnum):
         return IssueSeverity.WARNING if self in _WARNING_CODES else IssueSeverity.ERROR
 
 
-_WARNING_CODES: Final = frozenset({IssueCode.BRANCH_UNCONNECTED, IssueCode.RESOURCE_UNAVAILABLE})
+# An empty reference is a warning: the console saves a selector not chosen yet, and this check gates imports.
+_WARNING_CODES: Final = frozenset(
+    {IssueCode.BRANCH_UNCONNECTED, IssueCode.RESOURCE_UNAVAILABLE, IssueCode.REFERENCE_EMPTY}
+)
 
 
 @dataclass(frozen=True)
@@ -175,17 +180,26 @@ def _mode_issues(graph: _Graph) -> Iterable[GraphIssue]:
             )
 
 
+def _is_node(graph: _Graph, node_id: object) -> bool:
+    if not isinstance(node_id, str):
+        return False
+    return node_id in graph.nodes
+
+
 def _node_issues(graph: _Graph) -> Iterable[GraphIssue]:
     for node in graph.nodes.values():
         yield from node.issues
-        start = node.data.get("start_node_id")
-        if node.type in CONTAINER_NODE_TYPES and start and start not in graph.nodes:
-            yield GraphIssue(
-                IssueCode.CONTAINER_START_MISSING,
-                f"start_node_id {start!r} is not in the graph",
-                node.id,
-                data_loc(node.id, "start_node_id"),
-            )
+        if node.type not in CONTAINER_NODE_TYPES:
+            continue
+        loc = data_loc(node.id, _START_NODE_ID_KEY)
+        # A missing start_node_id is already reported as invalid data.
+        if any(issue.loc == loc for issue in node.issues):
+            continue
+        start = node.data.get(_START_NODE_ID_KEY)
+        if _is_node(graph, start):
+            continue
+        message = f"start_node_id {start!r} is not in the graph"
+        yield GraphIssue(IssueCode.CONTAINER_START_MISSING, message, node.id, loc)
 
 
 def _edge_issues(graph: _Graph) -> Iterable[GraphIssue]:
@@ -252,13 +266,19 @@ def _output_name_issues(graph: _Graph) -> Iterable[GraphIssue]:
 def _reference_issues(graph: _Graph) -> Iterable[GraphIssue]:
     for node in graph.nodes.values():
         for key, selector in node.references.items():
-            if selector and selector[0] not in ROOT_VARIABLE_NODE_IDS and selector[0] not in graph.nodes:
-                yield GraphIssue(
-                    IssueCode.REFERENCE_MISSING,
-                    f"{key} reads node {selector[0]!r}, which is not in the graph",
-                    node.id,
-                    data_loc(node.id),
-                )
+            if not selector:
+                yield GraphIssue(IssueCode.REFERENCE_EMPTY, f"{key} reads no variable", node.id, data_loc(node.id))
+                continue
+            if selector[0] in ROOT_VARIABLE_NODE_IDS:
+                continue
+            if selector[0] in graph.nodes:
+                continue
+            yield GraphIssue(
+                IssueCode.REFERENCE_MISSING,
+                f"{key} reads node {selector[0]!r}, which is not in the graph",
+                node.id,
+                data_loc(node.id),
+            )
 
 
 _CHECKS: Final[tuple[Callable[[_Graph], Iterable[GraphIssue]], ...]] = (

@@ -2,7 +2,7 @@ import io
 import itertools
 import zipfile
 from abc import ABC, abstractmethod
-from collections.abc import Mapping, Sequence, Sized
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from pathlib import Path
 from uuid import uuid4
@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.plugin.impl.tool import PluginToolManager
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
-from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
 from libs.archive_writer import ArchiveLimits
 from machinery.context import RequestContext
@@ -23,13 +22,12 @@ from repositories.app.dsl_import_repository import DslImportRepository
 from services.app.console_service import ConsoleAppNotFoundError
 from services.tools.tool_sources import resolve_tool
 from services.workflow.authoring import FillContext, PackageCheck, check_package, fill_package, tool_reference
-from services.workflow.authoring.canvas_defaults import CanvasNode, with_canvas_defaults
+from services.workflow.authoring.canvas_defaults import CanvasNode
 from services.workflow.authoring.checks import _CHECKS, AuthoringIssue, AuthoringIssueCode, Check, DslCheckRequest
 from services.workflow.authoring.fill import fill_graph_document
-from services.workflow.authoring.node_spec import FieldHint
 from services.workflow.authoring.package_io import PackageUnreadableError, new_manifest, read_package_entries
 from services.workflow.dsl_import import DslImportService, DslNotCheckableError
-from services.workflow.graph_check import CANVAS_NOTE_TYPE, IssueCode, IssueSeverity, check_graph, data_loc
+from services.workflow.graph_check import CANVAS_NOTE_TYPE, IssueCode, IssueSeverity, check_graph
 from tests.unit_tests.services.workflow.authoring.test_fill_package import _skeleton_dsl
 
 pytestmark = pytest.mark.usefixtures("bare_workspace_credentials")
@@ -39,15 +37,14 @@ CONTEXT = RequestContext("request-1", None, "account-1", "tenant-1")
 LIMITS = ArchiveLimits(max_entries=64, max_bytes=16 * 1024 * 1024)
 FIXTURES = Path(__file__).parents[4] / "fixtures" / "workflow"
 APP = "app.yaml"
-MISSING_ERROR_TYPE = "missing"
+MISSING_MESSAGE = "Field required"
 MANIFEST = "manifest.yaml"
 ITERATION_AND_NOTES_EXPORT = "book_translation_iteration_note_workflow.yml"
-# basic_chatflow.yml is left out of the clean exports and of the quiet purpose test: the export never picked a model.
-UNPICKED_MODEL_EXPORT = "basic_chatflow.yml"
 # Exports whose plugins resolve in a bare workspace and that check_graph passes; time is a built-in tool. Their
 # models are not set up in a bare workspace, so they carry resource_unavailable warnings.
 CLEAN_EXPORTS = [
     "array_iteration_formatting_workflow.yml",
+    "basic_chatflow.yml",
     "basic_llm_chat_workflow.yml",
     "chatflow_time_tool_static_output_workflow.yml",
     "dual_switch_variable_aggregator_workflow.yml",
@@ -63,7 +60,6 @@ END = {
     "id": "end",
     "data": {"type": BuiltinNodeTypes.END, "outputs": [{"variable": "out", "value_selector": ["start", "query"]}]},
 }
-BARE_END = {"id": "end", "data": {"type": BuiltinNodeTypes.END}}
 LLM_WITHOUT_MODEL = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM}}
 
 
@@ -144,21 +140,14 @@ def _tool(tool_name: str, **data: object) -> dict[str, object]:
     }
 
 
-def test_a_node_without_a_required_field_the_canvas_gives_no_default_gets_a_hinted_issue(
-    dsl: DslCheckRequest,
-) -> None:
+def test_a_missing_required_field_gets_a_hinted_issue(dsl: DslCheckRequest) -> None:
     extractor = {"id": "extractor", "data": {"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR}}
     check = _chain(dsl, START, extractor, END)
 
     issues = _issues_of(check, "extractor")
     missing = [issue for issue in issues if issue.code == IssueCode.NODE_DATA_INVALID]
     assert missing
-    assert {issue.code for issue in issues} == {IssueCode.NODE_DATA_INVALID, AuthoringIssueCode.FIELD_EMPTY}
-    assert _empty_locs(check, "extractor") == {
-        _data("extractor", "query"),
-        _data("extractor", "model", "provider"),
-        _data("extractor", "model", "name"),
-    }
+    assert {issue.code for issue in issues} == {IssueCode.NODE_DATA_INVALID}
     assert all(issue.hint is not None and issue.hint.required for issue in missing)
     [parameters] = [issue for issue in missing if issue.loc == ("nodes", "extractor", "data", "parameters")]
     assert parameters.hint is not None
@@ -239,310 +228,8 @@ def test_an_app_without_a_graph_mode_is_not_graph_checked(dsl: DslCheckRequest) 
     assert check == PackageCheck(valid=True, issues=(), node_specs=())
 
 
-def _empty_locs(check: PackageCheck, node_id: str) -> set[tuple[str | int, ...]]:
-    return {issue.loc for issue in _issues_of(check, node_id) if issue.code == AuthoringIssueCode.FIELD_EMPTY}
-
-
 def _data(node_id: str, *loc: str | int) -> tuple[str | int, ...]:
     return ("nodes", node_id, "data", *loc)
-
-
-def test_a_bare_llm_reports_model_and_prompt_as_empty(dsl: DslCheckRequest) -> None:
-    check = _chain(dsl, START, LLM_WITHOUT_MODEL, END)
-
-    assert _empty_locs(check, "llm") == {
-        _data("llm", "model", "provider"),
-        _data("llm", "model", "name"),
-        _data("llm", "prompt_template"),
-    }
-    issues = [issue for issue in _issues_of(check, "llm") if issue.code == AuthoringIssueCode.FIELD_EMPTY]
-    assert all(issue.hint is not None and issue.hint.example is not None for issue in issues)
-    assert all(issue.hint is not None and issue.hint.required for issue in issues)
-    assert all((issue.severity, issue.refuses_import) == (IssueSeverity.ERROR, False) for issue in issues)
-    assert check.valid is False
-
-
-def test_an_llm_with_memory_is_not_asked_for_a_prompt(dsl: DslCheckRequest) -> None:
-    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "memory": {"window": {"enabled": False, "size": 10}}}}
-
-    check = _chain(dsl, START, llm, END)
-
-    assert _data("llm", "prompt_template") not in _empty_locs(check, "llm")
-
-
-@pytest.mark.parametrize(
-    ("prompt", "empty"),
-    [
-        pytest.param([{"role": "system", "text": ""}, {"role": "user", "text": "  "}], True, id="all-blank"),
-        pytest.param([{"role": "system", "text": ""}, {"role": "user", "text": "Hi {{#start.q#}}"}], False, id="one"),
-        pytest.param(
-            [{"role": "user", "edition_type": "jinja2", "text": "x", "jinja2_text": ""}], True, id="jinja-empty"
-        ),
-        pytest.param(
-            [{"role": "user", "edition_type": "jinja2", "text": "", "jinja2_text": "{{ a }}"}], False, id="jinja"
-        ),
-        pytest.param({"text": ""}, True, id="completion-blank"),
-        pytest.param({"text": "Say hi"}, False, id="completion-text"),
-        pytest.param([], True, id="no-messages"),
-        pytest.param([{"role": "user", "text": "{{#x.y#}}"}], False, id="reference-only"),
-    ],
-)
-def test_an_llm_prompt_is_empty_only_when_no_message_has_text(
-    prompt: object, empty: bool, dsl: DslCheckRequest
-) -> None:
-    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "prompt_template": prompt}}
-
-    check = _chain(dsl, START, llm, END)
-
-    assert (_data("llm", "prompt_template") in _empty_locs(check, "llm")) is empty
-
-
-def _no_conditions() -> list[object]:
-    return []
-
-
-def test_an_if_else_case_without_conditions_is_reported_per_case(dsl: DslCheckRequest) -> None:
-    branch = {
-        "id": "if",
-        "data": {
-            "type": BuiltinNodeTypes.IF_ELSE,
-            "cases": [
-                {"case_id": "a", "logical_operator": "and", "conditions": _no_conditions()},
-                {"case_id": "b", "logical_operator": "and", "conditions": _no_conditions()},
-            ],
-        },
-    }
-
-    check = _check(dsl, [START, branch], [{"source": "start", "target": "if"}])
-
-    assert _empty_locs(check, "if") == {_data("if", "cases", 0, "conditions"), _data("if", "cases", 1, "conditions")}
-
-
-def test_an_end_without_outputs_and_an_answer_without_text_are_reported(dsl: DslCheckRequest) -> None:
-    workflow = _chain(dsl, START, BARE_END)
-    answer = {"id": "answer", "data": {"type": BuiltinNodeTypes.ANSWER}}
-    chatflow = _check_text(_dsl([START, answer], [{"source": "start", "target": "answer"}], AppMode.ADVANCED_CHAT), dsl)
-
-    assert _empty_locs(workflow, "end") == {_data("end", "outputs")}
-    assert _empty_locs(chatflow, "answer") == {_data("answer", "answer")}
-
-
-def _empty_hint(check: PackageCheck, node_id: str, *loc: str | int) -> FieldHint:
-    [hint] = [
-        issue.hint
-        for issue in _issues_of(check, node_id)
-        if issue.code == AuthoringIssueCode.FIELD_EMPTY and issue.loc == _data(node_id, *loc)
-    ]
-    assert hint is not None
-    return hint
-
-
-def test_an_end_without_outputs_is_hinted_with_the_output_item_fields(dsl: DslCheckRequest) -> None:
-    items = {item.loc: item for item in _empty_hint(_chain(dsl, START, BARE_END), "end", "outputs").items}
-
-    assert {("variable",), ("value_selector",)} <= items.keys()
-    assert items[("variable",)].required is True
-    assert items[("value_selector",)].type == "array"
-
-
-def test_an_if_else_case_without_conditions_is_hinted_with_the_condition_fields(dsl: DslCheckRequest) -> None:
-    branch = {
-        "id": "if",
-        "data": {
-            "type": BuiltinNodeTypes.IF_ELSE,
-            "cases": [{"case_id": "a", "logical_operator": "and", "conditions": _no_conditions()}],
-        },
-    }
-
-    hint = _empty_hint(
-        _check(dsl, [START, branch], [{"source": "start", "target": "if"}]), "if", "cases", 0, "conditions"
-    )
-
-    items = {item.loc: item for item in hint.items}
-    assert {("variable_selector",), ("comparison_operator",)} <= items.keys()
-    assert {"contains", "is", "empty"} <= set(items[("comparison_operator",)].options)
-    assert items[("comparison_operator",)].required is True
-
-
-@pytest.mark.parametrize(
-    ("text", "empty"),
-    [("{{#start.q#}}", False), ("Hello", False), ("   ", True), ("", True)],
-)
-def test_text_holding_only_a_reference_is_not_empty(text: str, empty: bool, dsl: DslCheckRequest) -> None:
-    answer = {"id": "answer", "data": {"type": BuiltinNodeTypes.ANSWER, "answer": text}}
-
-    check = _check_text(_dsl([START, answer], [{"source": "start", "target": "answer"}], AppMode.ADVANCED_CHAT), dsl)
-
-    assert (_data("answer", "answer") in _empty_locs(check, "answer")) is empty
-
-
-ITERATION = {"id": "loop", "data": {"type": BuiltinNodeTypes.ITERATION}}
-
-
-@pytest.mark.parametrize(
-    "extra",
-    [
-        pytest.param([_tool("current_time")], id="tool"),
-        pytest.param([{"id": "tool", "data": {"type": BuiltinNodeTypes.AGENT}}], id="agent"),
-        pytest.param([{"id": "tool", "data": {"type": KNOWLEDGE_INDEX_NODE_TYPE}}], id="knowledge-index"),
-        pytest.param(
-            [ITERATION, {"id": "tool", "parentId": "loop", "data": {"type": BuiltinNodeTypes.ITERATION_START}}],
-            id="iteration-start",
-        ),
-        pytest.param([{"id": "tool", "data": {"type": "node-from-the-future"}}], id="unknown"),
-    ],
-)
-def test_a_type_with_no_canvas_entry_gets_no_purpose_issue(
-    extra: list[dict[str, object]], dsl: DslCheckRequest
-) -> None:
-    check = _check(dsl, [START, *extra, END])
-
-    assert AuthoringIssueCode.FIELD_EMPTY not in {issue.code for issue in _issues_of(check, "tool")}
-
-
-def test_an_iterations_child_llm_gets_the_same_purpose_issues_as_a_top_level_one(dsl: DslCheckRequest) -> None:
-    child = {"id": "child", "parentId": "loop", "data": {"type": BuiltinNodeTypes.LLM}}
-
-    check = _check(dsl, [START, ITERATION, LLM_WITHOUT_MODEL, child, END])
-
-    top_level = {loc[3:] for loc in _empty_locs(check, "llm")}
-    assert top_level
-    assert {loc[3:] for loc in _empty_locs(check, "child")} == top_level
-
-
-def test_a_field_gets_one_issue_when_the_dsl_check_already_reported_it(dsl: DslCheckRequest) -> None:
-    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "model": "gpt"}}
-
-    check = _chain(dsl, START, llm, END)
-
-    invalid = [issue.loc for issue in _issues_of(check, "llm") if issue.code == IssueCode.NODE_DATA_INVALID]
-    assert _data("llm", "model") in invalid
-    assert {loc for loc in _empty_locs(check, "llm") if loc[:4] == _data("llm", "model")} == set()
-
-
-def test_a_node_data_invalid_hint_carries_the_canvas_example(dsl: DslCheckRequest) -> None:
-    classifier = {
-        "id": "classifier",
-        "data": {"type": BuiltinNodeTypes.QUESTION_CLASSIFIER, "classes": [{"id": "1", "label": "One"}]},
-    }
-
-    check = _chain(dsl, START, classifier, END)
-
-    [issue] = [
-        issue
-        for issue in _issues_of(check, "classifier")
-        if issue.code == IssueCode.NODE_DATA_INVALID and issue.loc == _data("classifier", "classes", 0, "name")
-    ]
-    assert issue.hint is not None
-    assert issue.hint.example == ""
-    assert _data("classifier", "classes", 0, "name") not in _empty_locs(check, "classifier")
-
-
-def test_an_unknown_node_version_gets_no_purpose_issue(dsl: DslCheckRequest) -> None:
-    future = {"id": "human", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT, "version": "99"}}
-
-    check = _chain(dsl, START, future, END)
-
-    assert _empty_locs(check, "human") == set()
-
-
-def _group(name: str, variables: list[list[str]]) -> dict[str, object]:
-    return {"group_name": name, "output_type": "string", "variables": variables}
-
-
-def _grouped_aggregator(*groups: dict[str, object]) -> dict[str, object]:
-    settings = {"group_enabled": True, "groups": list(groups)}
-    return {
-        "id": "agg",
-        "data": {"type": BuiltinNodeTypes.VARIABLE_AGGREGATOR, "variables": [], "advanced_settings": settings},
-    }
-
-
-def test_a_grouped_aggregator_with_full_groups_is_not_asked_for_its_own_variables(dsl: DslCheckRequest) -> None:
-    aggregator = _grouped_aggregator(_group("a", [["start", "query"]]), _group("b", [["start", "query"]]))
-
-    check = _chain(dsl, START, aggregator, END)
-
-    assert _empty_locs(check, "agg") == set()
-
-
-def test_a_grouped_aggregator_reports_each_empty_variable_of_a_group(dsl: DslCheckRequest) -> None:
-    aggregator = _grouped_aggregator(_group("a", [["start", "query"]]), _group("b", [["start", "query"], []]))
-
-    check = _chain(dsl, START, aggregator, END)
-
-    assert _empty_locs(check, "agg") == {_data("agg", "advanced_settings", "groups", 1, "variables", 1)}
-
-
-def test_a_grouped_aggregator_without_groups_reports_the_groups(dsl: DslCheckRequest) -> None:
-    check = _chain(dsl, START, _grouped_aggregator(), END)
-
-    assert _empty_locs(check, "agg") == {_data("agg", "advanced_settings", "groups")}
-
-
-def test_a_group_without_variables_is_not_reported_as_the_web_does_not(dsl: DslCheckRequest) -> None:
-    aggregator = _grouped_aggregator(_group("a", [["start", "query"]]), _group("b", []))
-
-    check = _chain(dsl, START, aggregator, END)
-
-    assert _empty_locs(check, "agg") == set()
-
-
-def test_an_ungrouped_aggregator_reports_its_own_variables(dsl: DslCheckRequest) -> None:
-    variables: list[list[str]] = [["start", "q"], []]
-    aggregator = {"id": "agg", "data": {"type": BuiltinNodeTypes.VARIABLE_AGGREGATOR, "variables": variables}}
-
-    check = _chain(dsl, START, aggregator, END)
-
-    assert _empty_locs(check, "agg") == {_data("agg", "variables", 1)}
-
-
-def test_an_llm_whose_model_comes_from_an_environment_variable_is_not_asked_for_one(dsl: DslCheckRequest) -> None:
-    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "model_selector": ["env", "MODEL"]}}
-
-    check = _chain(dsl, START, llm, END)
-
-    assert _empty_locs(check, "llm") == {_data("llm", "prompt_template")}
-
-
-@pytest.mark.parametrize("selector", [[], ["env"], ["env", ""], ["start", "MODEL"], "env"])
-def test_an_llm_with_a_selector_that_names_no_environment_model_is_asked_for_one(
-    selector: object, dsl: DslCheckRequest
-) -> None:
-    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "model_selector": selector}}
-
-    check = _chain(dsl, START, llm, END)
-
-    assert {_data("llm", "model", "provider"), _data("llm", "model", "name")} <= _empty_locs(check, "llm")
-
-
-@pytest.mark.parametrize("selector", [[], ["env"], ["env", ""], "env"])
-def test_a_malformed_environment_selector_asks_for_the_model_even_when_one_is_written(
-    selector: object, dsl: DslCheckRequest
-) -> None:
-    model = {"provider": "openai", "name": "gpt-4o", "mode": "chat"}
-    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "model": model, "model_selector": selector}}
-
-    check = _chain(dsl, START, llm, END)
-
-    assert {_data("llm", "model", "provider"), _data("llm", "model", "name")} <= _empty_locs(check, "llm")
-
-
-def test_an_old_style_selector_keeps_the_written_model(dsl: DslCheckRequest) -> None:
-    model = {"provider": "openai", "name": "gpt-4o", "mode": "chat"}
-    llm = {"id": "llm", "data": {"type": BuiltinNodeTypes.LLM, "model": model, "model_selector": ["start", "MODEL"]}}
-
-    check = _chain(dsl, START, llm, END)
-
-    assert not {_data("llm", "model", "provider"), _data("llm", "model", "name")} & _empty_locs(check, "llm")
-
-
-@pytest.mark.parametrize("container", [BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP])
-def test_a_filled_bare_container_still_needs_its_start_child(container: str, dsl: DslCheckRequest) -> None:
-    check = _check(dsl, [START, {"id": "box", "data": {"type": container}}, END])
-
-    invalid = {issue.loc for issue in _issues_of(check, "box") if issue.code == IssueCode.NODE_DATA_INVALID}
-    assert _data("box", "start_node_id") in invalid
 
 
 @pytest.mark.parametrize("member", list(CanvasNode))
@@ -552,82 +239,46 @@ def test_every_filled_bare_node_can_be_read(member: CanvasNode, dsl: DslCheckReq
     assert _data("node") not in {issue.loc for issue in _issues_of(check, "node")}
 
 
-@pytest.mark.parametrize("container", [BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP])
-def test_a_container_whose_start_id_was_written_empty_is_asked_for_it(container: str, dsl: DslCheckRequest) -> None:
-    selectors = {"iterator_selector": ["start", "items"], "output_selector": ["box", "item"]}
-    box = {"id": "box", "data": {"type": container, "start_node_id": "", **selectors}}
-
-    check = _check(dsl, [START, box, END])
-
-    assert _data("box", "start_node_id") in _empty_locs(check, "box")
-
-
 def _plain_seed(node: CanvasNode) -> dict[str, object]:
     version = get_node_type_classes_mapping()[node.value][LATEST_VERSION].version()
     return {"type": node.value, "version": version, "title": node.value}
 
 
-def _field(loc: tuple[str | int, ...]) -> str | int | None:
-    relative = loc[len(data_loc("node")) :]
-    return relative[0] if relative else None
-
-
-def _missing_fields(data: dict[str, object]) -> set[str | int | None]:
-    issues = check_graph({"nodes": [{"id": "node", "data": data}], "edges": []}, mode=AppMode.WORKFLOW)
-    return {
-        _field(issue.loc)
-        for issue in issues
-        if issue.code == IssueCode.NODE_DATA_INVALID
-        if issue.error_type == MISSING_ERROR_TYPE
-    }
-
-
-# Empty canvas values that are a true "none": a code node with no outputs, a request with no headers or params.
-NONE_DEFAULTS = frozenset(
-    {(CanvasNode.CODE, "outputs"), (CanvasNode.HTTP_REQUEST, "headers"), (CanvasNode.HTTP_REQUEST, "params")}
-)
-
-
-def _holds_nothing(data: Mapping[str, object], field: str | int | None) -> bool:
-    value = data.get(str(field))
-    if isinstance(value, Sized):
-        return len(value) == 0
-    return value is None
+# The required fields a filled bare seed of each block type still lacks; a type not listed lacks none.
+BARE_SEED_MISSING: dict[CanvasNode, list[tuple[str | int, ...]]] = {
+    CanvasNode.ANSWER: [("answer",)],
+    CanvasNode.CODE: [("code",), ("outputs",)],
+    CanvasNode.DOCUMENT_EXTRACTOR: [("variable_selector",)],
+    CanvasNode.HTTP_REQUEST: [("url",), ("headers",), ("params",)],
+    CanvasNode.HUMAN_INPUT: [("recipients_spec",), ("message_template",), ("debug_mode", "channels")],
+    CanvasNode.IF_ELSE: [("cases", 0, "conditions")],
+    CanvasNode.ITERATION: [("start_node_id",), ("iterator_selector",), ("output_selector",)],
+    CanvasNode.KNOWLEDGE_RETRIEVAL: [("dataset_ids",)],
+    CanvasNode.KNOWLEDGE_RETRIEVAL_V2: [("control_space_ids",)],
+    CanvasNode.LLM: [("model", "provider"), ("model", "name")],
+    CanvasNode.LOOP: [("start_node_id",)],
+    CanvasNode.PARAMETER_EXTRACTOR: [("model", "provider"), ("model", "name"), ("query",), ("parameters",)],
+    CanvasNode.QUESTION_CLASSIFIER: [
+        ("query_variable_selector",),
+        ("model", "provider"),
+        ("model", "name"),
+        ("classes", 0, "name"),
+        ("classes", 1, "name"),
+    ],
+    CanvasNode.TEMPLATE_TRANSFORM: [("template",)],
+    CanvasNode.VARIABLE_AGGREGATOR: [("variables",)],
+}
 
 
 @pytest.mark.parametrize("node", list(CanvasNode))
-def test_fill_never_hides_a_required_field_behind_an_empty_canvas_value(node: CanvasNode, dsl: DslCheckRequest) -> None:
-    seed = _plain_seed(node)
-    filled = with_canvas_defaults(seed)
+def test_a_bare_node_reports_its_missing_required_fields(node: CanvasNode, dsl: DslCheckRequest) -> None:
+    check = _check(dsl, [START, {"id": "node", "data": _plain_seed(node)}, END])
 
-    check = _check(dsl, [{"id": "node", "data": seed}])
-
-    reported = {
-        _field(issue.loc)
-        for issue in _issues_of(check, "node")
-        if issue.code in {IssueCode.NODE_DATA_INVALID, AuthoringIssueCode.FIELD_EMPTY}
-    }
-    unset = {
-        field for field in _missing_fields(seed) if (node, field) not in NONE_DEFAULTS if _holds_nothing(filled, field)
-    }
-    assert unset <= reported
-
-
-@pytest.mark.parametrize(
-    "fixture", sorted(path.name for path in FIXTURES.glob("*.y*ml") if path.name != UNPICKED_MODEL_EXPORT)
-)
-def test_purpose_issues_are_quiet_on_every_console_export_fixture(fixture: str, dsl: DslCheckRequest) -> None:
-    check = _check_text((FIXTURES / fixture).read_text(), dsl)
-
-    assert [issue for issue in check.issues if issue.code == AuthoringIssueCode.FIELD_EMPTY] == []
-
-
-def test_an_export_that_never_picked_a_model_reports_the_model_but_not_the_prompt(dsl: DslCheckRequest) -> None:
-    check = _check_text((FIXTURES / UNPICKED_MODEL_EXPORT).read_text(), dsl)
-
-    empty = [issue for issue in check.issues if issue.code == AuthoringIssueCode.FIELD_EMPTY]
-    assert sorted(issue.loc for issue in empty) == [_data("llm", "model", "name"), _data("llm", "model", "provider")]
-    assert _beyond_missing_models(check) == empty
+    invalid = [issue for issue in _issues_of(check, "node") if issue.code == IssueCode.NODE_DATA_INVALID]
+    assert sorted((issue.loc for issue in invalid), key=str) == sorted(
+        (_data("node", *loc) for loc in BARE_SEED_MISSING.get(node, [])), key=str
+    )
+    assert {issue.message for issue in invalid} <= {MISSING_MESSAGE}
 
 
 def test_new_codes_are_errors_but_a_small_note_and_only_manifest_issues_refuse_an_import() -> None:
@@ -826,7 +477,6 @@ def _check_keys(check: PackageCheck) -> set[_IssueKey]:
 
 _DSL_CHECKED_APPS = [
     *[pytest.param((FIXTURES / fixture).read_text(), id=fixture) for fixture in CLEAN_EXPORTS],
-    pytest.param((FIXTURES / UNPICKED_MODEL_EXPORT).read_text(), id=UNPICKED_MODEL_EXPORT),
     pytest.param((FIXTURES / ITERATION_AND_NOTES_EXPORT).read_text(), id=ITERATION_AND_NOTES_EXPORT),
     pytest.param(_skeleton_dsl(), id="skeleton-workflow"),
     pytest.param(_skeleton_dsl(AppMode.ADVANCED_CHAT), id="skeleton-chatflow"),
