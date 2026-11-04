@@ -26,6 +26,7 @@ from services.workflow.authoring import FillContext, PackageCheck, check_package
 from services.workflow.authoring.canvas_defaults import CanvasNode, with_canvas_defaults
 from services.workflow.authoring.checks import _CHECKS, AuthoringIssue, AuthoringIssueCode, Check, DslCheckRequest
 from services.workflow.authoring.fill import fill_graph_document
+from services.workflow.authoring.node_spec import FieldHint
 from services.workflow.authoring.package_io import PackageUnreadableError, new_manifest, read_package_entries
 from services.workflow.dsl_import import DslImportService, DslNotCheckableError
 from services.workflow.graph_check import CANVAS_NOTE_TYPE, IssueCode, IssueSeverity, check_graph, data_loc
@@ -324,6 +325,43 @@ def test_an_end_without_outputs_and_an_answer_without_text_are_reported(dsl: Dsl
 
     assert _empty_locs(workflow, "end") == {_data("end", "outputs")}
     assert _empty_locs(chatflow, "answer") == {_data("answer", "answer")}
+
+
+def _empty_hint(check: PackageCheck, node_id: str, *loc: str | int) -> FieldHint:
+    [hint] = [
+        issue.hint
+        for issue in _issues_of(check, node_id)
+        if issue.code == AuthoringIssueCode.FIELD_EMPTY and issue.loc == _data(node_id, *loc)
+    ]
+    assert hint is not None
+    return hint
+
+
+def test_an_end_without_outputs_is_hinted_with_the_output_item_fields(dsl: DslCheckRequest) -> None:
+    items = {item.loc: item for item in _empty_hint(_chain(dsl, START, BARE_END), "end", "outputs").items}
+
+    assert {("variable",), ("value_selector",)} <= items.keys()
+    assert items[("variable",)].required is True
+    assert items[("value_selector",)].type == "array"
+
+
+def test_an_if_else_case_without_conditions_is_hinted_with_the_condition_fields(dsl: DslCheckRequest) -> None:
+    branch = {
+        "id": "if",
+        "data": {
+            "type": BuiltinNodeTypes.IF_ELSE,
+            "cases": [{"case_id": "a", "logical_operator": "and", "conditions": _no_conditions()}],
+        },
+    }
+
+    hint = _empty_hint(
+        _check(dsl, [START, branch], [{"source": "start", "target": "if"}]), "if", "cases", 0, "conditions"
+    )
+
+    items = {item.loc: item for item in hint.items}
+    assert {("variable_selector",), ("comparison_operator",)} <= items.keys()
+    assert {"contains", "is", "empty"} <= set(items[("comparison_operator",)].options)
+    assert items[("comparison_operator",)].required is True
 
 
 @pytest.mark.parametrize(

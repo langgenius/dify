@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import operator
 from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated, Any, Final, Literal, Protocol, Self
+from typing import Annotated, Any, Final, Literal, Protocol, Self, override
 
 from pydantic import (
     BaseModel,
@@ -867,16 +868,18 @@ def _omitted_when_none(description: str, *, alias: str | None = None) -> Any:
     return Field(None, alias=alias, exclude_if=lambda value: value is None, description=description)
 
 
-class FieldHintRow(BaseModel):
+def _omitted_when_empty(description: str) -> Any:
+    """A list field that is left out of the response when it is empty."""
+    return Field(default_factory=list, exclude_if=operator.not_, description=description)
+
+
+class FieldHintItemRow(BaseModel):
     loc: list[str | int] = Field(description="Where the field sits in the node's data")
     type: str | None
     options: list[str]
     description: str | None
     required: bool
     default: Any = _omitted_without_default("The value the node runs with when the field is left out")
-    example: Any = _omitted_when_none(
-        "The value the web canvas gives a new node at this field; left out when the canvas has none"
-    )
 
     @classmethod
     def of(cls, hint: FieldHint) -> Self:
@@ -887,7 +890,24 @@ class FieldHintRow(BaseModel):
             description=hint.description,
             required=hint.required,
             default=hint.default,
+        )
+
+
+class FieldHintRow(FieldHintItemRow):
+    example: Any = _omitted_when_none(
+        "The value the web canvas gives a new node at this field; left out when the canvas has none"
+    )
+    items: list[FieldHintItemRow] = _omitted_when_empty(
+        "For a list of objects, each field of one item, located relative to the item; left out for any other field"
+    )
+
+    @override
+    @classmethod
+    def of(cls, hint: FieldHint) -> Self:
+        return cls(
+            **dict(FieldHintItemRow.of(hint)),
             example=hint.example,
+            items=[FieldHintItemRow.of(item) for item in hint.items],
         )
 
 
@@ -1153,9 +1173,7 @@ class NodeTypeFieldRow(BaseModel):
     type: str | None
     required: bool
     purpose: bool = Field(description="True when the web canvas rejects the node with this field left empty")
-    options: list[str] = Field(
-        default_factory=list, exclude_if=lambda value: not value, description="The values the field accepts"
-    )
+    options: list[str] = _omitted_when_empty("The values the field accepts")
     description: str | None = _omitted_when_none(
         "The first line of the field's description; include_schema=true has the whole text"
     )

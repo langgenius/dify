@@ -90,6 +90,44 @@ def test_field_hint_off_the_schema_still_locates_the_field() -> None:
     )
 
 
+def test_a_list_hint_carries_its_item_fields_required_ones_first() -> None:
+    hint = field_hint(_Tree, ("leaves",), required=False)
+
+    assert hint.items == (
+        FieldHint(
+            loc=("name",), type="string", options=(), description="The leaf's name", required=True, default=NO_DEFAULT
+        ),
+        FieldHint(
+            loc=("shade",), type="string", options=("light", "dark"), description=None, required=False, default="light"
+        ),
+    )
+
+
+def test_an_item_field_carries_no_items_of_its_own() -> None:
+    node = read_node({"id": "branch", "data": {"type": BuiltinNodeTypes.IF_ELSE}}, CTX)
+    assert node is not None
+
+    items = {item.loc: item for item in node.hint(("cases",), required=True).items}
+
+    assert ("conditions",) in items
+    assert items[("conditions",)].items == ()
+
+
+@pytest.mark.parametrize(
+    ("node_type", "loc"),
+    [
+        (BuiltinNodeTypes.END, ("outputs", 0, "value_selector")),
+        (BuiltinNodeTypes.END, ("outputs", 0, "variable")),
+        (BuiltinNodeTypes.LLM, ("model",)),
+    ],
+)
+def test_a_hint_for_a_scalar_list_or_a_non_list_has_no_items(node_type: str, loc: tuple[str | int, ...]) -> None:
+    node = read_node({"id": "n", "data": {"type": node_type}}, CTX)
+    assert node is not None
+
+    assert node.hint(loc, required=True).items == ()
+
+
 def _spec(raw_node: dict[str, object]) -> NodeSpec:
     node = read_node(raw_node, CTX)
     assert node is not None
