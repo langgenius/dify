@@ -37,27 +37,19 @@ import { DifyBuilderAttachmentScope } from './attachment-scope'
 
 const COMPOSITION_END_DELAY = 50
 
-const DifyBuilderPromptInput = ({
-  descriptionId,
-  hasFiles,
-}: {
-  descriptionId?: string
-  hasFiles: boolean
-}) => {
+const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) => {
   const locale = useDifyBuilderLocale()
   const { t } = useTranslation(['difyBuilder'], { lng: locale })
   const [draft, setDraft] = useAtom(difyBuilderDraftAtom)
   const canCompose = useAtomValue(difyBuilderCanComposeAtom)
-  const canAddMaterial = useAtomValue(difyBuilderCanAddMaterialAtom) && hasFiles
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
   const isComposingRef = useRef(false)
   const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const placeholder =
-    canCompose || canAddMaterial
-      ? t(($) => $.messagePlaceholder, { ns: 'difyBuilder' })
-      : interactionBusy
-        ? t(($) => $.workingPlaceholder, { ns: 'difyBuilder' })
-        : t(($) => $.inputUnavailable, { ns: 'difyBuilder' })
+  const placeholder = canCompose
+    ? t(($) => $.messagePlaceholder, { ns: 'difyBuilder' })
+    : interactionBusy
+      ? t(($) => $.workingPlaceholder, { ns: 'difyBuilder' })
+      : t(($) => $.inputUnavailable, { ns: 'difyBuilder' })
 
   useEffect(() => {
     return () => {
@@ -70,7 +62,7 @@ const DifyBuilderPromptInput = ({
       value={draft}
       minRows={2}
       maxRows={8}
-      disabled={!canCompose && !canAddMaterial}
+      disabled={!canCompose}
       aria-label={t(($) => $.messagePlaceholder, { ns: 'difyBuilder' })}
       aria-describedby={descriptionId}
       placeholder={placeholder}
@@ -193,11 +185,12 @@ const DraftFileList = ({
   editable: boolean
 }) => {
   const { handleRemoveFile, handleReUploadFile } = useFile(fileConfig)
+  const canAddMaterial = useAtomValue(difyBuilderCanAddMaterialAtom)
   return (
     <FileList
       files={files}
       onRemove={handleRemoveFile}
-      onReUpload={editable ? handleReUploadFile : undefined}
+      onReUpload={canAddMaterial ? handleReUploadFile : undefined}
       showDeleteAction={editable}
       showDownloadAction={false}
       canPreview={false}
@@ -341,24 +334,24 @@ const DifyBuilderComposerContent = ({ attachmentsOnly = false }: { attachmentsOn
               <DraftFileList files={files} fileConfig={fileConfig} editable={!material} />
             </div>
           )}
-          {!attachmentsOnly && (
-            <DifyBuilderPromptInput descriptionId={descriptionId} hasFiles={files.length > 0} />
-          )}
+          {!attachmentsOnly && <DifyBuilderPromptInput descriptionId={descriptionId} />}
           <div className="flex h-8 w-full shrink-0 items-center justify-between gap-2 ps-1">
-            <div className="flex min-w-0 items-center gap-1">
+            <div className="flex min-w-0 items-center">
+              {!attachmentsOnly && <DifyBuilderModelSelector {...modelState} />}
+            </div>
+            <div className="flex items-center gap-3">
               <FileUploaderInChatInput
                 fileConfig={fileConfig}
                 readonly={!canAddMaterial || !runtime?.fileUploadConfig}
               />
-              {!attachmentsOnly && <DifyBuilderModelSelector {...modelState} />}
+              <DifyBuilderComposerAction
+                hasModel={hasModel}
+                filesReady={filesReady}
+                hasFiles={files.length > 0}
+                attachmentsOnly={attachmentsOnly}
+                descriptionId={descriptionId}
+              />
             </div>
-            <DifyBuilderComposerAction
-              hasModel={hasModel}
-              filesReady={filesReady}
-              hasFiles={files.length > 0}
-              attachmentsOnly={attachmentsOnly}
-              descriptionId={descriptionId}
-            />
           </div>
         </div>
       </form>

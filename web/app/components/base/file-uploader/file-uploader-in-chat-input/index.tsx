@@ -25,7 +25,7 @@ const FileUploaderInChatInput = ({ fileConfig, readonly }: FileUploaderInChatInp
         )}
         disabled={readonly}
       >
-        <span className="i-ri-attachment-line size-5" aria-hidden="true" />
+        <span className="i-ri-attachment-line size-4" aria-hidden="true" />
       </button>
     )
   }, [readonly, t])
