@@ -798,12 +798,25 @@ export const zErrorDetail = z.object({
 export const zEventStreamResponse = z.string()
 
 /**
+ * FieldHintItemRow
+ */
+export const zFieldHintItemRow = z.object({
+  default: z.unknown().optional(),
+  description: z.string().nullable(),
+  loc: z.array(z.union([z.string(), z.int()])),
+  options: z.array(z.string()),
+  required: z.boolean(),
+  type: z.string().nullable(),
+})
+
+/**
  * FieldHintRow
  */
 export const zFieldHintRow = z.object({
   default: z.unknown().optional(),
   description: z.string().nullable(),
   example: z.unknown().optional(),
+  items: z.array(zFieldHintItemRow).optional(),
   loc: z.array(z.union([z.string(), z.int()])),
   options: z.array(z.string()),
   required: z.boolean(),
