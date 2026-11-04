@@ -32,6 +32,7 @@ from controllers.openapi._models import (
     PublishResponse,
     RestoreResponse,
     RunListQuery,
+    RunListResponse,
     VersionListQuery,
     VersionListResponse,
 )
@@ -39,6 +40,7 @@ from controllers.openapi._upload import UploadParts, file_fields
 from controllers.openapi.app_workflow import (
     AppEnvItemApi,
     AppPublishApi,
+    AppRunListApi,
     AppRunNodeListApi,
     AppVersionListApi,
     AppVersionRestoreApi,
@@ -52,13 +54,14 @@ from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_application_services import ApplicationServices
 from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
 from graphon.variables import SecretVariable, StringVariable, VariableBase
 from libs.oauth_bearer import AuthContext
 from models.account import Account, Tenant
-from models.enums import AppStatus
+from models.enums import AppStatus, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow, WorkflowRun, WorkflowType
 from services.workflow.graph_diff import draft_token
 from services.workflow_service import WorkflowService
 
@@ -692,3 +695,65 @@ def test_publish_refusal_is_a_bad_request(
     stored_app = sqlite_session.get(App, APP_ID)
     assert stored_app is not None
     assert stored_app.workflow_id is None
+
+
+def _add_run(session: Session, *, triggered_from: WorkflowRunTriggeredFrom) -> WorkflowRun:
+    run = WorkflowRun(
+        tenant_id=WORKSPACE_ID,
+        app_id=APP_ID,
+        workflow_id=VERSION_ID,
+        type=WorkflowType.WORKFLOW,
+        triggered_from=triggered_from,
+        version="1",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=ACCOUNT_ID,
+        graph="{}",
+        inputs="{}",
+    )
+    session.add(run)
+    session.commit()
+    return run
+
+
+def _listed_run_ids(
+    app: Flask, ctx: Context, monkeypatch: pytest.MonkeyPatch, services: ApplicationServices, *, query: RunListQuery
+) -> list[str]:
+    monkeypatch.setattr(app_workflow, "application_services", lambda: services)
+    api = AppRunListApi()
+    with app.test_request_context(f"/openapi/v1/apps/{APP_ID}/runs"):
+        response = cast(_EndpointView, api.get).__handler__(api, ctx, APP_ID, query=query)
+    return [row.id for row in cast(RunListResponse, response).data]
+
+
+@pytest.mark.parametrize(
+    "triggered_from",
+    [WorkflowRunTriggeredFrom.SCHEDULE, WorkflowRunTriggeredFrom.WEBHOOK, WorkflowRunTriggeredFrom.PLUGIN],
+)
+def test_run_list_lists_trigger_started_runs_only_when_asked(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    account_application_services: ApplicationServices,
+    triggered_from: WorkflowRunTriggeredFrom,
+) -> None:
+    ctx = _app_context(sqlite_session)
+    triggered = _add_run(sqlite_session, triggered_from=triggered_from)
+
+    asked = _listed_run_ids(
+        app,
+        ctx,
+        monkeypatch,
+        account_application_services,
+        query=RunListQuery.model_validate({"triggered_from": triggered_from}),
+    )
+    by_default = _listed_run_ids(app, ctx, monkeypatch, account_application_services, query=RunListQuery())
+
+    assert asked == [triggered.id]
+    assert by_default == []
+
+
+@pytest.mark.parametrize("triggered_from", [WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN, "unknown"])
+def test_run_list_refuses_a_trigger_source_outside_the_app_runs(triggered_from: str) -> None:
+    with pytest.raises(ValidationError):
+        RunListQuery.model_validate({"triggered_from": triggered_from})

@@ -1054,9 +1054,18 @@ class RunListQuery(BaseModel):
         ]
         | None
     ) = None
-    triggered_from: Literal[WorkflowRunTriggeredFrom.DEBUGGING, WorkflowRunTriggeredFrom.APP_RUN] = Field(
+    triggered_from: Literal[
         WorkflowRunTriggeredFrom.DEBUGGING,
-        description="debugging: draft test runs, as in the console; app-run: real use",
+        WorkflowRunTriggeredFrom.APP_RUN,
+        WorkflowRunTriggeredFrom.SCHEDULE,
+        WorkflowRunTriggeredFrom.WEBHOOK,
+        WorkflowRunTriggeredFrom.PLUGIN,
+    ] = Field(
+        WorkflowRunTriggeredFrom.DEBUGGING,
+        description=(
+            "debugging: draft test runs, as in the console; app-run: real use; "
+            "schedule, webhook, plugin: runs started by that kind of trigger"
+        ),
     )
 
 
