@@ -235,7 +235,6 @@ const ConfigPrompt: FC<Props> = ({
                           ? `${nodeId}-chat-workflow-llm-prompt-editor`
                           : `${nodeId}-chat-workflow-llm-prompt-editor-${index}`
                       }
-                      className={cn(canDrag && 'handle')}
                       headerClassName={cn(canDrag && 'cursor-grab')}
                       canNotChooseSystemRole={!canChooseSystemRole}
                       canRemove={
