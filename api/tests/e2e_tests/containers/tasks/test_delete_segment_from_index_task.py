@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -293,7 +294,7 @@ class TestDeleteSegmentFromIndexTask:
         processor = mock_index_processor["processor"]
         processor.clean.assert_called_once()
         clean_args, clean_kwargs = processor.clean.call_args
-        assert clean_args[0].id == dataset_id
+        assert inspect(clean_args[0]).identity == (dataset_id,)
         assert clean_args[1] == index_node_ids
         assert clean_kwargs["with_keywords"] is True
         assert clean_kwargs["delete_child_chunks"] is True

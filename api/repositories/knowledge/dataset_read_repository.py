@@ -123,8 +123,26 @@ def get_query_upload_files(query: DatasetQuery, file_ids: set[str], *, session: 
     return {file.id: file for file in rows}
 
 
-def get_dataset_keyword_table(dataset: Dataset, *, session: Session) -> DatasetKeywordTable | None:
-    return session.scalar(select(DatasetKeywordTable).where(DatasetKeywordTable.dataset_id == dataset.id))
+def get_dataset_keyword_table(
+    dataset: Dataset,
+    *,
+    session: Session,
+    current: bool = False,
+    shared: bool = False,
+) -> DatasetKeywordTable | None:
+    """Return the dataset's keyword row from the caller's transaction.
+
+    ``current=True`` performs a locking read so MySQL ``REPEATABLE READ`` sees
+    commits made after the caller established its snapshot. ``shared=True`` is
+    valid only for a current read and permits concurrent readers while still
+    waiting for keyword writers. Current reads refresh an identity already
+    present in the session.
+    """
+
+    statement = select(DatasetKeywordTable).where(DatasetKeywordTable.dataset_id == dataset.id)
+    if current:
+        statement = statement.with_for_update(read=shared).execution_options(populate_existing=True)
+    return session.scalar(statement)
 
 
 def get_dataset_creator(dataset: Dataset, *, session: Session) -> Account | None:

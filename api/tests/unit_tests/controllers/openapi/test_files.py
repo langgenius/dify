@@ -75,7 +75,8 @@ def test_upload_uses_injected_file_service(
         content_type="multipart/form-data",
     ):
         api = AppFileUploadApi()
-        result = api.post.__handler__(api, _context(caller, sqlite_session), app_id="app-1", body=_body())
+        handler = vars(AppFileUploadApi.post)["__handler__"]
+        result = handler(api, _context(caller, sqlite_session), app_id="app-1", body=_body())
 
     assert result.id == "00000000-0000-0000-0000-000000000001"
     service.upload_file.assert_called_once()
@@ -128,8 +129,9 @@ def test_upload_preserves_specific_file_errors(
         content_type="multipart/form-data",
     ):
         api = AppFileUploadApi()
+        handler = vars(AppFileUploadApi.post)["__handler__"]
         with pytest.raises(controller_error) as error_info:
-            api.post.__handler__(api, _context(_caller(), sqlite_session), app_id="app-1", body=_body())
+            handler(api, _context(_caller(), sqlite_session), app_id="app-1", body=_body())
 
     assert error_info.value.code == status
     assert error_info.value.error_code == error_code
@@ -151,8 +153,9 @@ def test_upload_maps_other_value_errors_to_bad_request(
         content_type="multipart/form-data",
     ):
         api = AppFileUploadApi()
+        handler = vars(AppFileUploadApi.post)["__handler__"]
         with pytest.raises(BadRequest) as error_info:
-            api.post.__handler__(api, _context(_caller(), sqlite_session), app_id="app-1", body=_body())
+            handler(api, _context(_caller(), sqlite_session), app_id="app-1", body=_body())
 
     assert error_info.value.description == str(service_error)
     assert error_info.value.__cause__ is service_error

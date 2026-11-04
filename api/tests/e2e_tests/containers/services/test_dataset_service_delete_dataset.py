@@ -164,7 +164,7 @@ class TestDatasetRepositoryDeleteDataset:
         assert db_session_with_containers.get(Dataset, dataset_id) is None
 
     def test_delete_empty_dataset_success(self, db_session_with_containers: Session) -> None:
-        """Return cleanup even for an empty dataset without indexing configuration."""
+        """Return cleanup with the fallback document form for an empty dataset."""
         # Arrange
         owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetDeleteIntegrationDataFactory.create_dataset(
@@ -189,7 +189,7 @@ class TestDatasetRepositoryDeleteDataset:
         db_session_with_containers.expire_all()
         assert result is not None
         assert result.id == dataset_id
-        assert result.doc_form is None
+        assert result.doc_form == "text_model"
         assert result.indexing_technique is None
         assert db_session_with_containers.get(Dataset, dataset_id) is None
 
@@ -223,10 +223,10 @@ class TestDatasetRepositoryDeleteDataset:
         assert result.indexing_technique is None
         assert db_session_with_containers.get(Dataset, dataset_id) is None
 
-    def test_delete_dataset_with_doc_form_none_indexing_technique_exists(
+    def test_delete_dataset_with_default_doc_form_and_indexing_technique(
         self, db_session_with_containers: Session
     ) -> None:
-        """Return cleanup when indexing exists but no document form can be resolved."""
+        """Return cleanup with the fallback document form when indexing is configured."""
         # Arrange
         owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetDeleteIntegrationDataFactory.create_dataset(
@@ -251,7 +251,7 @@ class TestDatasetRepositoryDeleteDataset:
         db_session_with_containers.expire_all()
         assert result is not None
         assert result.id == dataset_id
-        assert result.doc_form is None
+        assert result.doc_form == "text_model"
         assert result.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         assert db_session_with_containers.get(Dataset, dataset_id) is None
 

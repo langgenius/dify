@@ -24,6 +24,9 @@ class KeywordStorage:
             raise FileNotFoundError(key)
         return self.files[key]
 
+    def exists(self, key: str) -> bool:
+        return key in self.files
+
     def save(self, key: str, data: bytes) -> None:
         self.files[key] = data
 
@@ -214,7 +217,10 @@ def test_keyword_read_current_reads_after_repeatable_read_snapshot(
             assert [document.metadata["doc_id"] for document in keyword.search("beta", session=caller)] == ["node-2"]
         else:
             assert keyword.text_exists("node-2", session=caller)
-        assert stale_row.keyword_table != stale_data
+        if storage_type == "database":
+            assert stale_row.keyword_table != stale_data
+        else:
+            assert stale_row.keyword_table == stale_data
         caller.commit()
 
     assert locks.triggered is True

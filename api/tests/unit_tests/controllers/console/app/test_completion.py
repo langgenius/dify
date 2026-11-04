@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from inspect import unwrap
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
@@ -16,12 +17,15 @@ from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, S
 from core.entities.provider_configuration import ProviderConfigurations
 from core.plugin.impl.model_runtime_factory import PluginModelAssembly
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from libs.external_api import ExternalApi
 from models.model import AppMode, AppModelConfig
+from services.app_generate_service import AppGenerateService
 from tests.helpers.unit.model_factories import make_account, make_app
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 _TENANT_ID = "tenant-1"
 _PROVIDER_ID = "langgenius/openai/openai"
@@ -110,6 +114,9 @@ def test_chat_message_rejects_empty_agent_tool_as_invalid_param(
 
     http_app = Flask(__name__)
     http_app.config.update(TESTING=True)
+    services = create_autospec(ApplicationServices, instance=True)
+    services.app_generation = AppGenerateService(knowledge_retrieval=make_knowledge_retriever())
+    http_app.extensions["application_services"] = services
     ExternalApi(http_app).add_resource(ChatMessageHttpResource, "/chat-messages")
 
     response = http_app.test_client().post(

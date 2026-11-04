@@ -9,13 +9,11 @@ from sqlalchemy import delete, event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from machinery.context import RequestContext
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.metadata_repository import SQLAlchemyMetadataRepository
-from services.knowledge.dataset_access import AccessibleDataset, DatasetAccessSnapshot
-from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
-from services.knowledge.documents.application import DatasetDocumentApplicationService
 from services.knowledge.entities.resource_scope import DatasetRef
 
 
@@ -24,35 +22,6 @@ class _WorkerRole(local):
 
     def __init__(self) -> None:
         self.role = None
-
-
-class _MetadataDatasetAccessBoundary:
-    def __init__(self, *, tenant_id: str, dataset_id: str) -> None:
-        self._tenant_id = tenant_id
-        self._dataset_id = dataset_id
-
-    def require_accessible(self, context: RequestContext, dataset_id: str) -> AccessibleDataset:
-        assert context.active_workspace_id == self._tenant_id
-        assert dataset_id == self._dataset_id
-        return AccessibleDataset(dataset_id, self._tenant_id)
-
-    def check_access(self, context: RequestContext, snapshot: DatasetAccessSnapshot) -> AccessibleDataset:
-        del context, snapshot
-        raise AssertionError("metadata update uses require_accessible")
-
-
-class _UnexpectedActorCredentialsBoundary:
-    @staticmethod
-    def resolve(
-        *,
-        workspace_id: str,
-        actor_id: str,
-        credential_id: str,
-        provider: str,
-        plugin_id: str,
-    ) -> dict[str, object]:
-        del workspace_id, actor_id, credential_id, provider, plugin_id
-        raise AssertionError("metadata update must not resolve datasource credentials")
 
 
 def _repeatable_read_sessions(mysql_session: Session) -> tuple[Engine, sessionmaker[Session]]:
@@ -133,17 +102,8 @@ def test_document_metadata_and_schema_writer_serialize_on_current_dataset_lock(
         )
         seed.add_all([dataset, document, field, binding])
 
-    operations = SQLAlchemyDocumentOperations(
-        session_factory=sessions,
-        actor_credentials=_UnexpectedActorCredentialsBoundary(),
-    )
-    application = DatasetDocumentApplicationService(
-        dataset_access=_MetadataDatasetAccessBoundary(tenant_id=tenant_id, dataset_id=dataset_id),
-        operations=operations,
-        metadata_schema={"others": {}},
-    )
+    documents = SQLAlchemyDocumentRepository(session_factory=sessions)
     metadata = SQLAlchemyMetadataRepository(session_factory=sessions)
-    context = RequestContext(str(uuid4()), None, actor_id, tenant_id)
     dataset_ref = DatasetRef(tenant_id, dataset_id)
 
     first_locked = Event()
@@ -168,12 +128,11 @@ def test_document_metadata_and_schema_writer_serialize_on_current_dataset_lock(
     def update_document_metadata() -> None:
         try:
             worker.role = "document"
-            application.update_metadata(
-                context,
-                dataset_id=dataset_id,
-                document_id=document_id,
+            documents.update_metadata(
+                dataset_ref.document(document_id),
                 doc_type="others",
                 doc_metadata={"title": "Current title", "document_name": "stale built-in"},
+                updated_at=naive_utc_now(),
             )
         except BaseException as error:
             document_errors.append(error)

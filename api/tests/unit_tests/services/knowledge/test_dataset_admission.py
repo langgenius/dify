@@ -236,7 +236,7 @@ def test_missing_owner_is_rejected() -> None:
 
 
 def test_child_chunk_patch_uses_real_admission_to_require_a_paid_cloud_plan() -> None:
-    policy = DatasetChildChunkApi.patch.__dataset_admission_policy__
+    policy = vars(DatasetChildChunkApi.patch)["__dataset_admission_policy__"]
     assert policy.require_paid_segments is True
     store = AdmissionStore()
 
@@ -287,6 +287,8 @@ def test_existing_segment_update_is_allowed_for_sandbox_while_create_is_paid() -
         limits=_cloud_limits(CloudPlan.SANDBOX),
     )
 
+    update_policy = vars(DatasetSegmentApi.post)["__dataset_admission_policy__"]
+    create_policy = vars(SegmentApi.post)["__dataset_admission_policy__"]
     update_context = admission.admit(
         workspace_id="workspace",
         api_key_id="key",
@@ -295,7 +297,7 @@ def test_existing_segment_update_is_allowed_for_sandbox_while_create_is_paid() -
         request_id="update-request",
         trace_id=None,
         remote_ip=None,
-        policy=DatasetSegmentApi.post.__dataset_admission_policy__,
+        policy=update_policy,
     )
 
     assert update_context.active_workspace_id == "workspace"
@@ -308,5 +310,5 @@ def test_existing_segment_update_is_allowed_for_sandbox_while_create_is_paid() -
             request_id="create-request",
             trace_id=None,
             remote_ip=None,
-            policy=SegmentApi.post.__dataset_admission_policy__,
+            policy=create_policy,
         )

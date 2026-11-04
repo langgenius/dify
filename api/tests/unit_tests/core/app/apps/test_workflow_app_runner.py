@@ -6,7 +6,7 @@ from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
 from types import SimpleNamespace
-from typing import TypeIs, override
+from typing import Protocol, override, runtime_checkable
 from unittest.mock import MagicMock, PropertyMock, create_autospec, patch
 from urllib.parse import parse_qs, urlparse
 
@@ -133,18 +133,24 @@ def _workflow(graph: dict[str, object] | None = None) -> Workflow:
     )
 
 
+@runtime_checkable
+class _EventPublisher(Protocol):
+    def publish(self, event: AppQueueEvent, publish_from: PublishFrom) -> None: ...
+
+
 def _workflow_app_runner(
     *,
     queue_manager: object,
     app_id: str,
     variable_loader: VariableLoader | None = None,
 ) -> WorkflowBasedAppRunner:
-    def is_queue_manager(value: object) -> TypeIs[AppQueueManager]:
-        return callable(getattr(value, "publish", None))
-
-    if not is_queue_manager(queue_manager):
-        queue_manager = create_autospec(AppQueueManager, instance=True, spec_set=True)
-    queue = queue_manager
+    """Keep real queues and forward recording publishers through a queue autospec."""
+    if isinstance(queue_manager, AppQueueManager):
+        queue = queue_manager
+    else:
+        queue = create_autospec(AppQueueManager, instance=True, spec_set=True)
+        if isinstance(queue_manager, _EventPublisher):
+            queue.publish.side_effect = queue_manager.publish
     if variable_loader is None:
         return WorkflowBasedAppRunner(
             queue_manager=queue,

@@ -19,6 +19,7 @@ from repositories.knowledge.keyword_table_repository import (
     keyword_file_key,
     load_dataset_keyword_table,
     load_keyword_table,
+    lock_keyword_table_state,
     persist_keyword_table,
     save_keyword_table,
 )
@@ -108,13 +109,28 @@ class Jieba(BaseKeyword):
             write(storage_type, encoded, selected)
 
     def _read_keyword_record(self, session: Session) -> tuple[str, str | None]:
-        row = get_dataset_keyword_table(self.dataset, session=session)
-        return (row.data_source_type, row.keyword_table) if row else (dify_config.KEYWORD_DATA_SOURCE_TYPE, None)
+        state = lock_keyword_table_state(
+            session,
+            tenant_id=self.dataset.tenant_id,
+            dataset_id=self.dataset.id,
+        )
+        return state if state is not None else (dify_config.KEYWORD_DATA_SOURCE_TYPE, None)
+
+    def _load_current_keyword_table(self, session: Session) -> dict[str, Any] | None:
+        """Read committed keyword state after all earlier dataset writers finish."""
+
+        with redis_client.lock(f"keyword_indexing_lock_{self.dataset.id}", timeout=600):
+            return load_dataset_keyword_table(
+                self.dataset,
+                session=session,
+                storage=storage,
+                current=True,
+            )
 
     @override
     def text_exists(self, id: str, *, session: Session) -> bool:
         keyword_table = None
-        keyword_table_dict = load_dataset_keyword_table(self.dataset, session=session, storage=storage)
+        keyword_table_dict = self._load_current_keyword_table(session)
         if keyword_table_dict:
             data: Any = keyword_table_dict["__data__"]
             keyword_table = dict(data["table"])
@@ -142,7 +158,7 @@ class Jieba(BaseKeyword):
     @override
     def search(self, query: str, *, session: Session, **kwargs: Any) -> list[Document]:
         keyword_table = None
-        keyword_table_dict = load_dataset_keyword_table(self.dataset, session=session, storage=storage)
+        keyword_table_dict = self._load_current_keyword_table(session)
         if keyword_table_dict:
             data: Any = keyword_table_dict["__data__"]
             keyword_table = dict(data["table"])
@@ -195,7 +211,11 @@ class Jieba(BaseKeyword):
     def delete(self, *, session: Session):
         lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
-            dataset_keyword_table = get_dataset_keyword_table(self.dataset, session=session)
+            dataset_keyword_table = get_dataset_keyword_table(
+                self.dataset,
+                session=session,
+                current=True,
+            )
             if dataset_keyword_table:
                 session.delete(dataset_keyword_table)
                 session.commit()
