@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import io
 import json
+import time
 import zipfile
 from collections.abc import Callable, Generator, Mapping
+from datetime import datetime
 from types import SimpleNamespace
 from typing import cast, override
 from unittest.mock import patch
@@ -4141,3 +4143,66 @@ def test_overwrite_reuses_only_a_file_whose_stored_bytes_match_the_draft_claim(
     assert tool_files.stored[_tool_file_key(new_logo_id)] == _LOGO
     assert ids_before <= _tool_file_ids()
     assert stored_before.items() <= tool_files.stored.items()
+
+
+_RECORDED_AT = datetime(2026, 10, 16, 8, 0, 0)
+_RECORDED_AT_EPOCH = 1792137600
+
+
+def test_skill_timestamps_are_serialized_from_utc_not_host_time(
+    service: SkillManagementService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Persisted datetimes are naive UTC, so serialization must not apply the host offset."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("tzset is only available on POSIX platforms")
+
+    monkeypatch.setenv("TZ", "Asia/Shanghai")
+    time.tzset()
+    try:
+        skill_id = _new_skill(service)
+        service.replace_draft_tree(
+            tenant_id=TENANT,
+            user_id=USER,
+            skill_id=skill_id,
+            payload=SkillDraftTreePayload(
+                files=[
+                    {
+                        "path": "SKILL.md",
+                        "kind": "file",
+                        "storage": "text",
+                        "content": _skill_md(name="expense-sop", description="Expenses"),
+                    }
+                ]
+            ),
+        )
+        version = service.publish_skill(
+            tenant_id=TENANT, user_id=USER, skill_id=skill_id, payload=SkillPublishPayload()
+        )
+        service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[skill_id])
+
+        with session_factory.create_session() as session, session.begin():
+            session.execute(
+                update(Skill)
+                .where(Skill.id == skill_id)
+                .values(created_at=_RECORDED_AT, updated_at=_RECORDED_AT)
+            )
+            session.execute(
+                update(SkillVersion)
+                .where(SkillVersion.id == version["id"])
+                .values(created_at=_RECORDED_AT)
+            )
+
+        detail = service.get_skill(tenant_id=TENANT, skill_id=skill_id)
+        assert detail["created_at"] == _RECORDED_AT_EPOCH
+        assert detail["updated_at"] == _RECORDED_AT_EPOCH
+        assert detail["latest_published_at"] == _RECORDED_AT_EPOCH
+
+        versions = service.list_versions(tenant_id=TENANT, skill_id=skill_id)["data"]
+        assert versions[0]["created_at"] == _RECORDED_AT_EPOCH
+
+        binding = service.list_agent_bindings(tenant_id=TENANT, agent_id=AGENT)["data"][0]
+        assert binding["updated_at"] == _RECORDED_AT_EPOCH
+        assert binding["latest_published_at"] == _RECORDED_AT_EPOCH
+    finally:
+        monkeypatch.undo()
+        time.tzset()
