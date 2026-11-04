@@ -33,6 +33,14 @@ CONTAINER_NODE_TYPES: Final = frozenset({BuiltinNodeTypes.ITERATION, BuiltinNode
 CANVAS_NOTE_TYPE: Final = "custom-note"
 START_NODE_ID_KEY: Final = "start_node_id"
 EMPTY_SELECTOR_MESSAGE: Final = "A variable selector reads no variable"
+MISSING_NODE_TYPE_MESSAGE: Final = (
+    "The node has no data.type: write its node type there. "
+    f"If the node is a canvas note, it needs type: {CANVAS_NOTE_TYPE} on the node itself, beside data"
+)
+NOTE_TYPE_IN_DATA_MESSAGE: Final = (
+    f"{CANVAS_NOTE_TYPE} is the type of a canvas note's node, not of its data: "
+    f"write type: {CANVAS_NOTE_TYPE} on the node itself, beside data"
+)
 
 
 class IssueSeverity(StrEnum):
@@ -111,7 +119,7 @@ class _Node:
 
     @property
     def type(self) -> str:
-        return str(self.data.get("type", ""))
+        return _data_type(self.data)
 
 
 @dataclass(frozen=True)
@@ -148,18 +156,28 @@ def _read_known_node(node_id: str, raw_data: Mapping[str, Any], node_class: type
     return _Node(node_id, complete_sub_models(model, data), references=_references(node_class, config))
 
 
+# Data types no node has, each with where the author went wrong.
+_MISPLACED_TYPE_MESSAGES: Final[Mapping[str, str]] = {
+    "": MISSING_NODE_TYPE_MESSAGE,
+    CANVAS_NOTE_TYPE: NOTE_TYPE_IN_DATA_MESSAGE,
+}
+
+
 def _unknown_type_message(node_type: str) -> str:
-    if node_type:
-        return f"Unknown node type {node_type!r}"
-    return (
-        "The node has no data.type: write its node type there. "
-        f"A canvas note instead needs type: {CANVAS_NOTE_TYPE} on the node itself, beside data"
-    )
+    return _MISPLACED_TYPE_MESSAGES.get(node_type, f"Unknown node type {node_type!r}")
+
+
+def _data_type(data: Mapping[str, Any]) -> str:
+    """The data's node type as text; a null type is a missing one."""
+    node_type = data.get("type")
+    if node_type is None:
+        return ""
+    return str(node_type)
 
 
 def _read_node(node_id: str, raw: Mapping[str, Any]) -> _Node:
     raw_data: Mapping[str, Any] = raw["data"]
-    node_type = str(raw_data.get("type", ""))
+    node_type = _data_type(raw_data)
     try:
         node_class = resolve_workflow_node_class(
             node_type=node_type, node_version=str(raw_data.get("version", "1")), node_data=raw_data

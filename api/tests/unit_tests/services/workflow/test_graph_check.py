@@ -7,6 +7,8 @@ from models import AppMode
 from services.workflow.graph_check import (
     CANVAS_NOTE_TYPE,
     EMPTY_SELECTOR_MESSAGE,
+    MISSING_NODE_TYPE_MESSAGE,
+    NOTE_TYPE_IN_DATA_MESSAGE,
     IssueCode,
     IssueSeverity,
     check_graph,
@@ -120,14 +122,23 @@ def test_unknown_type_and_invalid_data_are_located() -> None:
     [
         pytest.param({"text": "Explains the start", "theme": "blue"}, id="no data type"),
         pytest.param({"type": "", "text": "Explains the start", "theme": "blue"}, id="empty data type"),
+        pytest.param({"type": None, "text": "Explains the start", "theme": "blue"}, id="null data type"),
     ],
 )
-def test_a_node_with_no_type_is_told_that_a_note_needs_the_note_type(data: dict[str, object]) -> None:
+def test_a_node_with_no_type_is_told_where_the_type_goes(data: dict[str, object]) -> None:
     [issue] = check_graph({"nodes": [START, _node("n", data)], "edges": []}, mode=AppMode.WORKFLOW)
 
     assert (issue.code, issue.node_id, issue.loc) == (IssueCode.UNKNOWN_NODE_TYPE, "n", data_loc("n", "type"))
-    assert "data.type" in issue.message
+    assert issue.message == MISSING_NODE_TYPE_MESSAGE
     assert f"type: {CANVAS_NOTE_TYPE}" in issue.message
+
+
+def test_the_note_type_written_in_data_is_told_to_go_on_the_node() -> None:
+    note = _node("n", {"type": CANVAS_NOTE_TYPE, "text": "Explains the start", "theme": "blue"})
+    [issue] = check_graph({"nodes": [START, note], "edges": []}, mode=AppMode.WORKFLOW)
+
+    assert (issue.code, issue.node_id, issue.loc) == (IssueCode.UNKNOWN_NODE_TYPE, "n", data_loc("n", "type"))
+    assert issue.message == NOTE_TYPE_IN_DATA_MESSAGE
 
 
 def test_a_named_unknown_type_is_named() -> None:
