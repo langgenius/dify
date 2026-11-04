@@ -34,11 +34,6 @@ LIST_ITEM = "*"
 GENERATED = json.loads(Path(canvas_defaults.__file__).with_name("canvas_defaults.json").read_text())
 EDITIONS = [(node, edition) for node in CanvasNode for edition in node.editions.values()]
 MISSING_ERROR_TYPE = "missing"
-# The engine types if-else `cases` as `list[Case] | None`, which the sub-model walk does not reach, so fill keeps the
-# canvas's empty conditions of a case.
-UNREACHED_REQUIRED_EMPTIES: dict[str, list[tuple[str | int, ...]]] = {
-    CanvasNode.IF_ELSE.value: [("cases", 0, "conditions")]
-}
 
 type _Loc = tuple[str | int, ...]
 
@@ -350,7 +345,7 @@ def test_an_edition_holds_no_empty_value_in_a_required_field(param: tuple[Canvas
 
     required = [loc for loc in _empty_locs(data) if loc in _missing_locs(model, _without_loc(data, loc))]
 
-    assert required == UNREACHED_REQUIRED_EMPTIES.get(edition.entry, [])
+    assert required == []
 
 
 @pytest.mark.parametrize("param", EDITIONS, ids=_edition_id)
@@ -370,12 +365,20 @@ class _Outer(BaseModel):
     required: _Inner
     optional: _Inner | None = None
     items: list[_Inner]
+    optional_items: list[_Inner] | None = None
+    either: _Inner | list[_Inner]
 
 
 def test_a_block_left_empty_by_the_pruning_goes_only_when_its_own_field_is_required() -> None:
     data = {"required": {"name": ""}, "optional": {"name": ""}, "items": [{"name": ""}], "extra": ""}
 
     assert _without_required_empties(_Outer, data) == {"optional": {}, "items": [{}], "extra": ""}
+
+
+def test_the_pruning_reaches_list_items_behind_an_optional_but_not_behind_another_union() -> None:
+    data = {"optional_items": [{"name": ""}], "either": [{"name": ""}]}
+
+    assert _without_required_empties(_Outer, data) == {"optional_items": [{}], "either": [{"name": ""}]}
 
 
 def test_a_bare_llm_keeps_the_empty_context_but_not_an_empty_model_name() -> None:
@@ -460,7 +463,7 @@ def test_old_shapes_are_rewritten_apart_from_the_empty_containers() -> None:
 def test_a_bare_if_else_fills_to_the_canvas_case() -> None:
     filled = _filled_data([{"id": "branch", "data": {"type": BuiltinNodeTypes.IF_ELSE}}])
 
-    assert filled["branch"]["cases"] == [{"case_id": "true", "conditions": [], "logical_operator": "and"}]
+    assert filled["branch"]["cases"] == [{"case_id": "true", "logical_operator": "and"}]
 
 
 def test_a_container_child_gets_canvas_defaults() -> None:
