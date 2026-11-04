@@ -1,5 +1,5 @@
 import type { Renderer } from './index'
-import { exitCodeFor, finishFold, foldEvent, newFoldResult } from '@/call/fold'
+import { exitCodeFor, finishFold, foldBrokenStream, foldEvent, newFoldResult } from '@/call/fold'
 import { parseSSE } from '@/call/sse'
 import { normalizeDifyStream } from '@/call/sse-dify'
 import { isBrokenPipe } from '@/errors/envelope'
@@ -8,6 +8,9 @@ import { isRecord } from '@/util/is-record'
 
 const dec = new TextDecoder()
 const STREAM_ENDED_EARLY_PREFIX = 'stream ended early: '
+// Bun appends this to its fetch errors; it tells the reader nothing about the failure.
+const RUNTIME_ADVICE =
+  /\.?\s*For more information, pass `verbose: true` in the second argument to fetch\(\)\s*$/
 
 function parseEventData(data: Uint8Array): Record<string, unknown> {
   try {
@@ -25,7 +28,7 @@ function matchesOnly(name: string, only: readonly string[] | undefined): boolean
 // A run that dies mid-stream still folds to whatever arrived: the events already
 // seen are real, so they are reported as an `incomplete` result rather than thrown
 // away behind a network error.
-export const sseRenderer: Renderer = async (res, io, options) => {
+export const sseRenderer: Renderer = async (res, io, options, { input }) => {
   const result = newFoldResult()
   const stream = options.stream ?? false
 
@@ -37,7 +40,8 @@ export const sseRenderer: Renderer = async (res, io, options) => {
       }
     } catch (err) {
       if (isBrokenPipe(err)) throw err
-      io.notice(`${STREAM_ENDED_EARLY_PREFIX}${errorMessage(err)}`)
+      io.notice(`${STREAM_ENDED_EARLY_PREFIX}${errorMessage(err).replace(RUNTIME_ADVICE, '')}`)
+      foldBrokenStream(result, input)
     }
   }
 

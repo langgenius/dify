@@ -183,7 +183,7 @@ it('a stale catalog is refreshed once and the op is retried', async () => {
   expect(await (await w2.ctx.get(commands)).run()).toBe(0)
 })
 
-it('a stream that dies mid-run folds as incomplete, exit 0, with one stderr notice', async () => {
+it('a stream that dies mid-run folds as incomplete, exit 1, with one stderr notice', async () => {
   const w = await world([
     'run',
     'console_app',
@@ -192,10 +192,12 @@ it('a stream that dies mid-run folds as incomplete, exit 0, with one stderr noti
     '{"app_id":"app-1","inputs":{},"query":"hi"}',
   ])
   w.mock.setScenario('broken-stream')
-  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(await (await w.ctx.get(commands)).run()).toBe(1)
   expect(JSON.parse(w.io.outBuf())).toMatchObject({
     status: 'incomplete',
     text: { answer: 'partial' },
+    message_id: 'msg-1',
+    hints: [expect.objectContaining({ op: 'get.run', input: { app_id: 'app-1' } })],
   })
   expect(w.io.errBuf().trim().split('\n')).toHaveLength(1)
   expect(w.io.errBuf()).toMatch(/^stream ended early: /)
