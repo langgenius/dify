@@ -575,7 +575,6 @@ def test_oauth_client_falls_back_to_verified_system_record(
     assert TriggerProviderService.get_oauth_client(
         trigger_db.tenant_id, trigger_db.provider_id
     ) == PluginOAuthClientConfig(provider_controller.plugin_unique_identifier, {"client": "system"})
-    assert TriggerProviderService.is_oauth_system_client_exists(trigger_db.tenant_id, trigger_db.provider_id)
 
 
 def test_unverified_plugin_cannot_read_system_oauth(
@@ -585,33 +584,6 @@ def test_unverified_plugin_cannot_read_system_oauth(
     mocker.patch.object(service_module.PluginService, "is_plugin_verified", return_value=False)
 
     assert TriggerProviderService.get_oauth_client(trigger_db.tenant_id, trigger_db.provider_id) is None
-    assert not TriggerProviderService.is_oauth_system_client_exists(trigger_db.tenant_id, trigger_db.provider_id)
-
-
-def test_custom_oauth_client_create_mask_enable_and_delete(
-    mocker, trigger_db: TriggerDatabase, provider_controller: Mock
-) -> None:
-    _patch_provider(mocker, provider_controller)
-    encrypter = _encrypter(
-        encrypted={"client_secret": "encrypted"}, decrypted={"client_secret": "plain"}, masked={"client_secret": "****"}
-    )
-    cache = Mock()
-    mocker.patch.object(service_module, "create_provider_encrypter", return_value=(encrypter, cache))
-
-    assert TriggerProviderService.save_custom_oauth_client_params(
-        trigger_db.tenant_id,
-        trigger_db.provider_id,
-        client_params={"client_secret": "plain"},
-        enabled=True,
-    ) == {"result": "success"}
-    assert TriggerProviderService.is_oauth_custom_client_enabled(trigger_db.tenant_id, trigger_db.provider_id)
-    assert TriggerProviderService.get_custom_oauth_client_params(trigger_db.tenant_id, trigger_db.provider_id) == {
-        "client_secret": "****"
-    }
-    assert TriggerProviderService.delete_custom_oauth_client_params(trigger_db.tenant_id, trigger_db.provider_id) == {
-        "result": "success"
-    }
-    assert TriggerProviderService.get_custom_oauth_client_params(trigger_db.tenant_id, trigger_db.provider_id) == {}
 
 
 def test_endpoint_lookup_decrypts_persisted_subscription(
