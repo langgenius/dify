@@ -21,6 +21,7 @@ from services.workflow.authoring.canvas_layout import (
 )
 from services.workflow.authoring.canvas_notes import NODE_HEIGHT, NODE_WIDTH, NoteSize
 from services.workflow.graph_check import CANVAS_NOTE_TYPE
+from tests.helpers.unit.services.canvas_boxes import assert_holds_its_children, overlapping, top_level_boxes
 
 LEFT = ORIGIN[NoteSize.WIDTH]
 TOP = ORIGIN[NoteSize.HEIGHT]
@@ -80,19 +81,6 @@ def _laid_out(nodes: Sequence[_Node], edges: Sequence[object]) -> dict[str, tupl
     return {node["id"]: (node["position"]["x"], node["position"]["y"]) for node in nodes if "position" in node}
 
 
-def _overlapping(nodes: Sequence[_Node]) -> list[tuple[str, str]]:
-    def box(node: _Node) -> tuple[float, float, float, float]:
-        x, y = node["position"]["x"], node["position"]["y"]
-        return x, y, x + node.get("width", NODE_WIDTH), y + node.get("height", NODE_HEIGHT)
-
-    placed = [node for node in nodes if node.get("type") != CANVAS_NOTE_TYPE and not node.get("parentId")]
-    return [
-        (a["id"], b["id"])
-        for a, b in itertools.combinations(placed, 2)
-        if (ba := box(a))[0] < (bb := box(b))[2] and bb[0] < ba[2] and ba[1] < bb[3] and bb[1] < ba[3]
-    ]
-
-
 def test_a_chain_runs_left_to_right_on_one_row() -> None:
     nodes = [_node(node_id) for node_id in ("start", "a", "b", "end")]
 
@@ -146,7 +134,7 @@ def test_a_node_inserted_mid_chain_overlaps_nothing() -> None:
 
     positions = _laid_out(nodes, edges)
 
-    assert _overlapping(nodes) == []
+    assert overlapping(top_level_boxes(nodes)) == []
     chain = ["trigger", "get_date", "search", "trim", "summarize", "check", "post", "end_post"]
     assert [positions[node_id][1] for node_id in chain] == [TOP] * len(chain)
     assert [positions[node_id][0] for node_id in chain] == sorted(positions[node_id][0] for node_id in chain)
@@ -217,7 +205,7 @@ def test_a_join_sits_right_of_its_deepest_branch_level_with_its_top_one() -> Non
     positions = _laid_out(nodes, edges)
 
     assert positions["join"] == (positions["b"][0] + COLUMN, TOP)
-    assert _overlapping(nodes) == []
+    assert overlapping(top_level_boxes(nodes)) == []
 
 
 def test_nodes_on_a_cycle_go_one_column_past_the_deepest() -> None:
@@ -227,7 +215,7 @@ def test_nodes_on_a_cycle_go_one_column_past_the_deepest() -> None:
     positions = _laid_out(nodes, edges)
 
     assert positions["ping"][0] == positions["pong"][0] == LEFT + 2 * COLUMN
-    assert _overlapping(nodes) == []
+    assert overlapping(top_level_boxes(nodes)) == []
 
 
 def test_notes_and_unreadable_nodes_keep_their_place() -> None:
@@ -262,53 +250,6 @@ def _container(
     return nodes, _chain(start, *children)
 
 
-_START_TYPES = {BuiltinNodeTypes.ITERATION_START, BuiltinNodeTypes.LOOP_START}
-
-
-def _extent(node: _Node) -> tuple[float, float]:
-    """The node's width and height as the layout takes them; an unmeasured start child is drawn small."""
-    data = node.get("data") or {}
-    start = data.get("type") in _START_TYPES
-    width = START_CHILD_SIZE[NoteSize.WIDTH] if start else NODE_WIDTH
-    height = START_CHILD_SIZE[NoteSize.HEIGHT] if start else NODE_HEIGHT
-    return node.get("width", width), node.get("height", height)
-
-
-def _boxes(nodes: Sequence[_Node], parent: str) -> dict[str, tuple[float, float, float, float]]:
-    """Each child's box inside `parent`, from the container's top-left corner: left, top, right, bottom."""
-    return {
-        node["id"]: (
-            node["position"]["x"],
-            node["position"]["y"],
-            node["position"]["x"] + _extent(node)[0],
-            node["position"]["y"] + _extent(node)[1],
-        )
-        for node in nodes
-        if node.get("parentId") == parent
-    }
-
-
-def _overlaps(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> bool:
-    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
-
-
-def _assert_holds_its_children(nodes: Sequence[_Node], container: _Node) -> None:
-    boxes = _boxes(nodes, container["id"])
-    assert boxes
-    assert not [pair for pair in itertools.combinations(boxes, 2) if _overlaps(boxes[pair[0]], boxes[pair[1]])]
-    width, height = container["width"], container["height"]
-    data = container["data"]
-    assert data is not None
-    assert (data["width"], data["height"]) == (width, height)
-    for left, top, right, bottom in boxes.values():
-        assert left >= 0
-        assert right <= width
-        assert top >= 0
-        assert bottom <= height
-    assert width >= max(box[2] for box in boxes.values()) + CONTAINER_PADDING[NoteSize.WIDTH]
-    assert height >= max(box[3] for box in boxes.values()) + CONTAINER_PADDING[NoteSize.HEIGHT]
-
-
 @pytest.mark.parametrize(("container_type", "start_type"), _CONTAINERS)
 def test_a_container_lays_out_its_children_inside_it_and_grows_to_hold_them(
     container_type: str, start_type: str
@@ -319,7 +260,7 @@ def test_a_container_lays_out_its_children_inside_it_and_grows_to_hold_them(
     positions = _laid_out(nodes, [*_chain("start", "box", "after"), *inner_edges])
 
     box = contained[0]
-    _assert_holds_its_children(nodes, box)
+    assert_holds_its_children(nodes, box)
     padding = (CONTAINER_PADDING[NoteSize.WIDTH], CONTAINER_PADDING[NoteSize.HEIGHT])
     assert positions["box_start"] == padding
     step = NODE_WIDTH + CHILD_COLUMN_GAP
@@ -328,7 +269,7 @@ def test_a_container_lays_out_its_children_inside_it_and_grows_to_hold_them(
     assert box["width"] == first + 2 * step + NODE_WIDTH + padding[0]
     assert box["height"] == NODE_HEIGHT + 2 * padding[1]
     assert positions["after"][0] == positions["box"][0] + box["width"] + COLUMN_GAP
-    assert _overlapping(nodes) == []
+    assert overlapping(top_level_boxes(nodes)) == []
 
 
 def test_a_container_branch_stacks_its_rows_with_the_child_row_gap() -> None:
@@ -342,19 +283,38 @@ def test_a_container_branch_stacks_its_rows_with_the_child_row_gap() -> None:
     positions = _laid_out(nodes, edges)
 
     assert positions["no"] == (positions["yes"][0], positions["yes"][1] + NODE_HEIGHT + CHILD_ROW_GAP)
-    _assert_holds_its_children(nodes, contained[0])
+    assert_holds_its_children(nodes, contained[0])
 
 
-def test_a_container_keeps_a_size_larger_than_its_children_need() -> None:
-    contained, inner_edges = _container(
-        "box", BuiltinNodeTypes.LOOP, BuiltinNodeTypes.LOOP_START, "a", width=2000, height=900
-    )
+@pytest.mark.parametrize(
+    ("wrapper", "data"),
+    [
+        pytest.param({"width": 2000, "height": 900}, {}, id="sized on the wrapper"),
+        pytest.param({}, {"width": 2000, "height": 900}, id="sized in the data"),
+        pytest.param({"width": 3000, "height": 1200}, {"width": 2000, "height": 900}, id="stale wrapper"),
+    ],
+)
+def test_a_container_keeps_the_drawn_size_when_larger_than_its_children_need(
+    wrapper: _Wrapper, data: dict[str, object]
+) -> None:
+    contained, inner_edges = _container("box", BuiltinNodeTypes.LOOP, BuiltinNodeTypes.LOOP_START, "a", **wrapper)
+    box_data = contained[0]["data"]
+    assert box_data is not None
+    box_data.update(data)
 
     lay_out_nodes({"nodes": contained, "edges": inner_edges})
 
     assert (contained[0]["width"], contained[0]["height"]) == (2000, 900)
-    assert contained[0]["data"] is not None
-    assert (contained[0]["data"]["width"], contained[0]["data"]["height"]) == (2000, 900)
+    assert (box_data["width"], box_data["height"]) == (2000, 900)
+
+
+def test_a_childless_container_sized_in_its_data_widens_its_column() -> None:
+    loop = _node("loop", BuiltinNodeTypes.LOOP, data={"width": 700}, width=300)
+    nodes = [_node("start"), loop, _node("end")]
+
+    positions = _laid_out(nodes, _chain("start", "loop", "end"))
+
+    assert positions["end"][0] == positions["loop"][0] + 700 + COLUMN_GAP
 
 
 def test_a_measured_start_child_keeps_its_measured_size() -> None:
@@ -391,8 +351,8 @@ def test_a_container_inside_a_container_is_laid_out_inside_out() -> None:
 
     positions = _laid_out(nodes, edges)
 
-    _assert_holds_its_children(nodes, inner[0])
-    _assert_holds_its_children(nodes, outer[0])
+    assert_holds_its_children(nodes, inner[0])
+    assert_holds_its_children(nodes, outer[0])
     assert positions["inner"][0] == positions["before"][0] + NODE_WIDTH + CHILD_COLUMN_GAP
     assert positions["after"][0] == positions["outer"][0] + outer[0]["width"] + COLUMN_GAP
     assert inner[3]["positionAbsolute"] == {
