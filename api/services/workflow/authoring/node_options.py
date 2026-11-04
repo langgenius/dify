@@ -111,14 +111,14 @@ def _tools(request: _Request) -> Iterable[NodeOption]:
         for provider in source.list_providers(tenant_id=request.ctx.tenant_id, user_id=request.ctx.account_id):
             for tool in provider.tools:
                 identity = ToolNodeIdentity.of(provider, tool, request.language)
-                names = {key: value for key, value in asdict(identity).items() if value is not None}
+                identity_fields = {key: value for key, value in asdict(identity).items() if value is not None}
                 yield NodeOption(
                     kind=NodeOptionKind.TOOL,
                     type=node_type,
                     version=version,
                     label=identity.tool_label,
                     description=localized(tool.description, request.language),
-                    seed={"type": node_type, **names, "tool_node_version": TOOL_NODE_VERSION},
+                    seed={"type": node_type, **identity_fields, "tool_node_version": TOOL_NODE_VERSION},
                     names=(identity.provider_name, identity.provider_id, identity.tool_name),
                 )
 
