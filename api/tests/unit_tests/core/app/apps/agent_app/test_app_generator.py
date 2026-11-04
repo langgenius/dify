@@ -1,22 +1,31 @@
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import inspect
+from collections.abc import Callable, Generator, Mapping
+from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
+from flask import Flask
+from pydantic_ai.messages import ModelMessagesTypeAdapter, ModelRequest, ModelResponse, TextPart, UserPromptPart
 from pytest_mock import MockerFixture
-from sqlalchemy import event, select
+from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session
 
 import core.app.apps.agent_app.app_generator as module
 import core.app.features.annotation_reply.annotation_reply as annotation_mod
 import core.moderation.input_moderation as input_moderation_mod
+from clients.agent_backend import AgentBackendRunEventAdapter, FakeAgentBackendRunClient
+from core.agent.workspace import WorkspaceOwnerScope
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.agent_app import app_generator
 from core.app.apps.agent_app.app_config_manager import AgentAppConfig
@@ -25,6 +34,13 @@ from core.app.apps.agent_app.app_generator import (
     AgentAppGeneratorError,
     AgentAppNotPublishedError,
 )
+from core.app.apps.agent_app.app_runner import AgentAppRunner
+from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
+from core.app.apps.agent_app.session_store import (
+    AgentAppDirectReplyTurn,
+    AgentAppSessionScope,
+    AgentAppWorkspaceStore,
+)
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
@@ -32,7 +48,9 @@ from core.app.entities.queue_entities import (
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
+from core.db.session_factory import session_factory
 from core.moderation.base import ModerationError
+from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from models import Account as _app_generator_Account
 from models import AppModelConfig
 from models.account import Account as _resolve_agent_Account
@@ -46,15 +64,18 @@ from models.agent import (
     AgentSource,
     AgentStatus,
     AgentWorkingResourceStatus,
+    AgentWorkspace,
     AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus, ConversationFromSource
-from models.model import App, AppMode, Conversation, Message, MessageAnnotation
+from models.model import App, AppAnnotationHitHistory, AppMode, Conversation, Message, MessageAnnotation
 from services.agent.workspace_service import (
     AgentWorkspaceBindingGenerationMismatchError,
     AgentWorkspaceService,
 )
+from services.annotation_service import AppAnnotationService
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
 
@@ -754,6 +775,36 @@ class TestInputGuardsCases:
             assert annotation_reply.id == "anno-1"
             assert qm.events == []
 
+        def test_build_chat_keeps_moderation_but_is_never_answered_by_annotations(
+            self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        ) -> None:
+            moderation_calls = _patch_moderation(monkeypatch, returns=(True, {}, "[redacted] refund window"))
+            annotation_calls: list[dict[str, Any]] = []
+
+            class _MatchingAnnotation:
+                def query(self, **kwargs: Any) -> MessageAnnotation:
+                    annotation_calls.append(kwargs)
+                    return MessageAnnotation(
+                        app_id="app-1", question="refund window", content="30 days.", account_id="account-1"
+                    )
+
+            monkeypatch.setattr(annotation_mod, "AnnotationReplyFeature", _MatchingAnnotation)
+            entity = _make_entity("secret refund window").model_copy(
+                update={"agent_config_version_kind": AgentConfigVersionKind.BUILD_DRAFT}
+            )
+
+            handled, query, annotation_reply = AgentAppGenerator()._run_input_guards(
+                session=sqlite_session,
+                application_generate_entity=entity,
+                app_model=_input_guards_app(),
+                message=_input_guards_message(),
+                queue_manager=_FakeQueueManager(),  # type: ignore[arg-type]
+            )
+
+            assert (handled, query, annotation_reply) == (False, "[redacted] refund window", None)
+            assert len(moderation_calls) == 1
+            assert annotation_calls == []
+
 
 """Unit tests for AgentAppGenerator agent/snapshot resolution.
 
@@ -1261,3 +1312,429 @@ class TestResolveAgentCases:
                     user=_resolve_agent_account(),
                     session=sqlite_session,
                 )
+
+
+"""Annotation replies across turns of one Agent App conversation.
+
+An annotation-answered turn never reaches the Agent backend. These tests run
+the worker with real persistence for every turn and capture the request the
+next backend turn sends, so they prove what the Agent actually remembers.
+Only the vector search, backend allocation and the backend run are replaced.
+"""
+
+
+_CONTINUITY_HOME_ID = "home-1"
+
+
+class _NoToolLayers:
+    def build_layers(self, **kwargs: Any) -> WorkflowAgentToolLayers:
+        del kwargs
+        return WorkflowAgentToolLayers()
+
+
+class _ContinuityQueueManager:
+    """Record each published event with what ``observe`` saw when it was published."""
+
+    def __init__(self, observe: Callable[[], list[tuple[str, str]]] | None = None) -> None:
+        self.events: list[Any] = []
+        self.timeline: list[tuple[str, list[tuple[str, str]]]] = []
+        self.errors: list[Exception] = []
+        self._observe = observe
+
+    def publish(self, event: Any, _from: Any) -> None:
+        if self._observe is not None:
+            self.timeline.append((type(event).__name__, self._observe()))
+        self.events.append(event)
+
+    def publish_error(self, error: Exception, _from: Any) -> None:
+        self.errors.append(error)
+
+    def is_stopped(self) -> bool:
+        return False
+
+
+def _continuity_rows(session: Session, *, conversation_binding_id: str | None) -> None:
+    session.add_all(
+        [
+            make_app(app_id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT, icon_type=None),
+            Agent(
+                id="agent-1",
+                tenant_id="tenant-1",
+                name="Agent",
+                scope=AgentScope.ROSTER,
+                source=AgentSource.AGENT_APP,
+                status=AgentStatus.ACTIVE,
+                app_id="app-1",
+                active_config_snapshot_id="snapshot-1",
+            ),
+            AgentConfigSnapshot(
+                id="snapshot-1",
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                version=1,
+                config_snapshot=AgentSoulConfig.model_validate(_SOUL_DICT),
+                home_snapshot_id=_CONTINUITY_HOME_ID,
+                created_by="creator-1",
+            ),
+            make_conversation(
+                conversation_id="conv-1",
+                app_id="app-1",
+                mode=AppMode.AGENT,
+                from_source=ConversationFromSource.API,
+                from_end_user_id="user-1",
+                agent_workspace_binding_id=conversation_binding_id,
+            ),
+        ]
+    )
+    session.commit()
+
+
+def _continuity_participant(*, workspace_id: str = "workspace-1") -> tuple[AgentWorkspace, AgentWorkspaceBinding]:
+    owner = WorkspaceOwnerScope(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+        owner_id="conv-1",
+    )
+    workspace = AgentWorkspace(
+        id=workspace_id,
+        tenant_id=owner.tenant_id,
+        app_id=owner.app_id,
+        owner_type=owner.owner_type,
+        owner_id=owner.owner_id,
+        owner_scope_key=owner.owner_scope_key,
+        backend_workspace_ref=f"{workspace_id}-ref",
+        status=AgentWorkingResourceStatus.ACTIVE,
+        active_guard=1,
+    )
+    binding = AgentWorkspaceBinding(
+        id="binding-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workspace_id=workspace_id,
+        agent_id="agent-1",
+        base_home_snapshot_id=_CONTINUITY_HOME_ID,
+        agent_config_version_id="snapshot-1",
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        backend_binding_ref="backend-binding-1",
+        status=AgentWorkingResourceStatus.ACTIVE,
+    )
+    return workspace, binding
+
+
+def _continuity_message(session: Session, *, message_id: str, query: str, minute: int) -> None:
+    message = make_message(
+        message_id=message_id,
+        app_id="app-1",
+        conversation_id="conv-1",
+        query=query,
+        message={"role": "user", "content": query},
+        answer="",
+        from_source=ConversationFromSource.API,
+        from_end_user_id="user-1",
+        created_at=datetime(2026, 11, 1, 10, minute),
+    )
+    session.add(message)
+    session.commit()
+
+
+def _transcript(snapshot: SessionSnapshot | None) -> list[tuple[str, str]]:
+    assert snapshot is not None
+    transcript: list[tuple[str, str]] = []
+    for message in ModelMessagesTypeAdapter.validate_python(snapshot.layers[DIFY_AGENT_HISTORY_LAYER_ID]["messages"]):
+        if isinstance(message, ModelRequest):
+            transcript.extend(("user", str(part.content)) for part in message.parts if isinstance(part, UserPromptPart))
+        else:
+            transcript.extend(("assistant", part.content) for part in message.parts if isinstance(part, TextPart))
+    return transcript
+
+
+def _binding_transcript() -> list[tuple[str, str]]:
+    with session_factory.create_session() as observer:
+        binding = observer.get(AgentWorkspaceBinding, "binding-1")
+        if binding is None or binding.session_snapshot is None:
+            return []
+        return _transcript(SessionSnapshot.model_validate_json(binding.session_snapshot))
+
+
+class TestAnnotationReplyContinuityCases:
+    @pytest.fixture(autouse=True)
+    def _bind_runtime(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        @contextlib.contextmanager
+        def preserve_flask_contexts(*args: object, **kwargs: object) -> Generator[None]:
+            yield
+
+        monkeypatch.setattr("libs.flask_utils.preserve_flask_contexts", preserve_flask_contexts)
+        monkeypatch.setattr(module.db, "session", sqlite_session)
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
+            lambda **_kwargs: None,
+        )
+
+    @pytest.fixture
+    def annotation(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> MessageAnnotation:
+        """Match one stored annotation without a vector store, recording the hit as the real feature does."""
+        stored = MessageAnnotation(
+            app_id="app-1",
+            question="What is the refund window?",
+            # Markdown with a trailing newline, so any rewrite of the reply shows up.
+            content="Refunds are accepted within **30 days** of delivery.\n\n- Sale items are final.\n",
+            account_id="account-1",
+        )
+        sqlite_session.add(stored)
+        sqlite_session.commit()
+
+        class _MatchedAnnotationReply:
+            def query(
+                self,
+                *,
+                app_record: App,
+                message: Message,
+                query: str,
+                user_id: str,
+                invoke_from: InvokeFrom,
+                session: Session,
+            ) -> MessageAnnotation | None:
+                del invoke_from
+                if query != stored.question:
+                    return None
+                AppAnnotationService.add_annotation_history(
+                    stored.id,
+                    app_record.id,
+                    stored.question_text,
+                    stored.content,
+                    query,
+                    user_id,
+                    message.id,
+                    ConversationFromSource.API,
+                    1.0,
+                    session=session,
+                )
+                return stored
+
+        monkeypatch.setattr(annotation_mod, "AnnotationReplyFeature", _MatchedAnnotationReply)
+        return stored
+
+    @staticmethod
+    def _turn(
+        generator: AgentAppGenerator,
+        queue_manager: _ContinuityQueueManager,
+        *,
+        message_id: str,
+        query: str,
+        entity_updates: Mapping[str, object] | None = None,
+    ) -> None:
+        # generate() scopes a published conversation to its immutable snapshot id.
+        entity = _make_entity(query).model_copy(
+            update={"agent_session_scope_config_version_id": "snapshot-1", **(entity_updates or {})}
+        )
+        generator._generate_worker(
+            flask_app=Flask(__name__),
+            context=contextvars.copy_context(),
+            application_generate_entity=entity,
+            queue_manager=queue_manager,  # type: ignore[arg-type]
+            conversation_id="conv-1",
+            message_id=message_id,
+            user_from=UserFrom.END_USER,
+        )
+        assert queue_manager.errors == []
+
+    @staticmethod
+    def _generator(sqlite_session: Session, client: FakeAgentBackendRunClient) -> AgentAppGenerator:
+        generator = AgentAppGenerator()
+        generator._get_conversation = lambda conversation_id: sqlite_session.get(Conversation, conversation_id)  # type: ignore[method-assign]
+        generator._get_message = lambda message_id: sqlite_session.get(Message, message_id)  # type: ignore[method-assign]
+        generator._build_runner = lambda: AgentAppRunner(  # type: ignore[method-assign]
+            request_builder=AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolLayers()),  # type: ignore[arg-type]
+            agent_backend_client=client,
+            event_adapter=AgentBackendRunEventAdapter(),
+            session_store=AgentAppWorkspaceStore(),
+            text_delta_debounce_seconds=0,
+        )
+        return generator
+
+    def test_next_backend_turn_receives_annotation_reply_from_existing_participant(
+        self, sqlite_session: Session, annotation: MessageAnnotation
+    ) -> None:
+        _continuity_rows(sqlite_session, conversation_binding_id="binding-1")
+        workspace, binding = _continuity_participant()
+        binding.session_snapshot = SessionSnapshot(
+            layers={
+                DIFY_AGENT_HISTORY_LAYER_ID: {
+                    "messages": ModelMessagesTypeAdapter.dump_python(
+                        [
+                            ModelRequest.user_text_prompt("Hi"),
+                            ModelResponse(parts=[TextPart(content="Hello, how can I help?")]),
+                        ],
+                        mode="json",
+                    )
+                }
+            }
+        ).model_dump_json()
+        sqlite_session.add_all([workspace, binding])
+        sqlite_session.commit()
+        _continuity_message(sqlite_session, message_id="msg-1", query=annotation.question, minute=0)
+        _continuity_message(sqlite_session, message_id="msg-2", query="Does that include sale items?", minute=1)
+        client = FakeAgentBackendRunClient()
+        generator = self._generator(sqlite_session, client)
+        hit_turn = _ContinuityQueueManager(observe=_binding_transcript)
+
+        self._turn(generator, hit_turn, message_id="msg-1", query=annotation.question)
+        assert client.request is None
+        self._turn(generator, _ContinuityQueueManager(), message_id="msg-2", query="Does that include sale items?")
+
+        assert client.request is not None
+        earlier = [("user", "Hi"), ("assistant", "Hello, how can I help?")]
+        assert _transcript(client.request.session_snapshot) == [
+            *earlier,
+            ("user", "What is the refund window?"),
+            ("assistant", "Refunds are accepted within **30 days** of delivery.\n\n- Sale items are final.\n"),
+        ]
+        # The reply text goes out before the history write, so the first token does
+        # not wait for it; message_end, after which clients send the next turn,
+        # goes out only once the history holds this turn.
+        assert hit_turn.timeline == [
+            ("QueueAnnotationReplyEvent", earlier),
+            ("QueueLLMChunkEvent", earlier),
+            ("QueueMessageEndEvent", _transcript(client.request.session_snapshot)),
+        ]
+
+    def test_first_backend_turn_receives_annotation_reply_answered_before_any_participant(
+        self, sqlite_session: Session, annotation: MessageAnnotation, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _continuity_rows(sqlite_session, conversation_binding_id=None)
+        _continuity_message(sqlite_session, message_id="msg-1", query=annotation.question, minute=0)
+        _continuity_message(sqlite_session, message_id="msg-2", query="Does that include sale items?", minute=1)
+
+        def create_binding(*, session: Session, **kwargs: object) -> AgentWorkspaceBinding:
+            del kwargs
+            workspace, binding = _continuity_participant(workspace_id="workspace-2")
+            session.add_all([workspace, binding])
+            return binding
+
+        monkeypatch.setattr(AgentWorkspaceService, "create_binding", create_binding)
+        client = FakeAgentBackendRunClient()
+        generator = self._generator(sqlite_session, client)
+
+        self._turn(generator, _ContinuityQueueManager(), message_id="msg-1", query=annotation.question)
+        self._turn(generator, _ContinuityQueueManager(), message_id="msg-2", query="Does that include sale items?")
+
+        assert client.request is not None
+        assert _transcript(client.request.session_snapshot) == [
+            ("user", "What is the refund window?"),
+            ("assistant", "Refunds are accepted within **30 days** of delivery.\n\n- Sale items are final.\n"),
+        ]
+
+    def test_backend_turn_without_annotation_reply_sends_stored_history_unchanged(
+        self, sqlite_session: Session, annotation: MessageAnnotation
+    ) -> None:
+        _continuity_rows(sqlite_session, conversation_binding_id="binding-1")
+        workspace, binding = _continuity_participant()
+        stored = SessionSnapshot(
+            layers={
+                DIFY_AGENT_HISTORY_LAYER_ID: {
+                    "messages": ModelMessagesTypeAdapter.dump_python(
+                        [
+                            ModelRequest.user_text_prompt("Hi"),
+                            ModelResponse(parts=[TextPart(content="Hello, how can I help?")]),
+                        ],
+                        mode="json",
+                    )
+                },
+                "shell": {"initialized": True},
+            }
+        )
+        binding.session_snapshot = stored.model_dump_json()
+        sqlite_session.add_all([workspace, binding])
+        sqlite_session.commit()
+        _continuity_message(sqlite_session, message_id="msg-1", query="Does that include sale items?", minute=0)
+        client = FakeAgentBackendRunClient()
+
+        self._turn(
+            self._generator(sqlite_session, client),
+            _ContinuityQueueManager(),
+            message_id="msg-1",
+            query="Does that include sale items?",
+        )
+
+        assert client.request is not None
+        assert client.request.session_snapshot == stored
+
+    def test_build_chat_reaches_agent_backend_even_when_an_annotation_matches(
+        self, sqlite_session: Session, annotation: MessageAnnotation, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _continuity_rows(sqlite_session, conversation_binding_id=None)
+        owner = WorkspaceOwnerScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+            owner_id="build-draft-1",
+        )
+        sqlite_session.add_all(
+            [
+                AgentConfigDraft(
+                    id="build-draft-1",
+                    tenant_id="tenant-1",
+                    agent_id="agent-1",
+                    draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                    draft_owner_key="account-1",
+                    home_snapshot_id=_CONTINUITY_HOME_ID,
+                    agent_workspace_binding_id="binding-build",
+                    config_snapshot=AgentSoulConfig.model_validate(_SOUL_DICT),
+                ),
+                AgentWorkspace(
+                    id="workspace-build",
+                    tenant_id=owner.tenant_id,
+                    app_id=owner.app_id,
+                    owner_type=owner.owner_type,
+                    owner_id=owner.owner_id,
+                    owner_scope_key=owner.owner_scope_key,
+                    backend_workspace_ref="workspace-build-ref",
+                    status=AgentWorkingResourceStatus.ACTIVE,
+                    active_guard=1,
+                ),
+                AgentWorkspaceBinding(
+                    id="binding-build",
+                    tenant_id="tenant-1",
+                    app_id="app-1",
+                    workspace_id="workspace-build",
+                    agent_id="agent-1",
+                    base_home_snapshot_id=_CONTINUITY_HOME_ID,
+                    agent_config_version_id="build-draft-1",
+                    agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+                    backend_binding_ref="backend-binding-build",
+                    status=AgentWorkingResourceStatus.ACTIVE,
+                ),
+            ]
+        )
+        sqlite_session.commit()
+        _continuity_message(sqlite_session, message_id="msg-1", query=annotation.question, minute=0)
+        appended: list[AgentAppDirectReplyTurn] = []
+        append_direct_reply = AgentAppWorkspaceStore.append_direct_reply
+
+        def record_append(
+            store: AgentAppWorkspaceStore, scope: AgentAppSessionScope, turn: AgentAppDirectReplyTurn
+        ) -> bool:
+            appended.append(turn)
+            return append_direct_reply(store, scope, turn)
+
+        monkeypatch.setattr(AgentAppWorkspaceStore, "append_direct_reply", record_append)
+        client = FakeAgentBackendRunClient()
+        queue_manager = _ContinuityQueueManager()
+
+        self._turn(
+            self._generator(sqlite_session, client),
+            queue_manager,
+            message_id="msg-1",
+            query=annotation.question,
+            entity_updates={
+                "agent_config_snapshot_id": "build-draft-1",
+                "agent_config_version_kind": AgentConfigVersionKind.BUILD_DRAFT,
+                "agent_session_scope_config_version_id": None,
+            },
+        )
+
+        assert client.request is not None
+        assert not any(isinstance(event, QueueAnnotationReplyEvent) for event in queue_manager.events)
+        assert appended == []
+        assert sqlite_session.scalar(select(func.count()).select_from(AppAnnotationHitHistory)) == 0

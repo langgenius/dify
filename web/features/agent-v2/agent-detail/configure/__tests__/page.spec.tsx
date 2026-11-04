@@ -2,6 +2,7 @@ import { focusManager, onlineManager } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
+import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
 import {
   api,
@@ -266,6 +267,66 @@ describe('Configure chat sessions', () => {
     expect(modeButton('preview')).toBeChecked()
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(api.discard).not.toHaveBeenCalled()
+  })
+
+  it("offers annotation reply in chat features for the agent's backing app", async () => {
+    const user = userEvent.setup({ skipHover: true })
+    const environment = createEnvironment({
+      agentOverrides: { backing_app_id: 'backing-app-1', hidden_app_backed: false },
+    })
+    environment.queryClient.setQueryData(
+      consoleQuery.apps.byAppId.annotationSetting.get.queryKey({
+        input: { params: { app_id: 'backing-app-1' } },
+      }),
+      { enabled: true, id: 'setting-1', score_threshold: 0.9 },
+    )
+    environment.render()
+    await user.click(await screen.findByRole('button', { name: `${prefix}.preview.chatFeatures` }))
+    const panel = within(
+      await screen.findByRole('dialog', { name: `${prefix}.chatFeatures.title` }),
+    )
+
+    expect(panel.getByRole('switch', { name: 'appDebug.feature.annotation.title' })).toBeChecked()
+    await user.hover(panel.getByText('appDebug.feature.annotation.title'))
+    expect(panel.getByRole('link', { name: /feature.annotation.cacheManagement/ })).toHaveAttribute(
+      'href',
+      '/app/backing-app-1/annotations',
+    )
+  })
+
+  it('does not offer annotation reply for an agent behind a hidden app', async () => {
+    const user = userEvent.setup()
+    createEnvironment({
+      agentOverrides: { backing_app_id: 'hidden-app-1', hidden_app_backed: true },
+    }).render()
+    await user.click(await screen.findByRole('button', { name: `${prefix}.preview.chatFeatures` }))
+    const panel = within(
+      await screen.findByRole('dialog', { name: `${prefix}.chatFeatures.title` }),
+    )
+
+    expect(
+      panel.getByRole('switch', { name: 'appDebug.feature.showThoughts.title' }),
+    ).toBeInTheDocument()
+    expect(
+      panel.queryByRole('switch', { name: 'appDebug.feature.annotation.title' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('does not request the annotation setting for members who cannot edit the agent', async () => {
+    const environment = createEnvironment({
+      permissions: [AgentPermission.Preview, AgentPermission.TestAndRun],
+      agentOverrides: { backing_app_id: 'backing-app-1', hidden_app_backed: false },
+    })
+    environment.render()
+    await screen.findByRole('textbox', { name: `${prefix}.prompt.label` })
+
+    expect(
+      environment.queryClient.getQueryState(
+        consoleQuery.apps.byAppId.annotationSetting.get.queryKey({
+          input: { params: { app_id: 'backing-app-1' } },
+        }),
+      ),
+    ).toBeUndefined()
   })
 
   it('shows active Build chat features as read-only using the build snapshot', async () => {
