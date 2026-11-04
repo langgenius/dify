@@ -842,12 +842,17 @@ class TestMcpToolSpans:
             for span in spans.values():
                 assert not span.attributes
                 assert not span.events
+            entry_context = spans[entry_name].context
+            assert entry_context is not None
             for name in ("connect_server", "invoke_tool", "cleanup"):
-                assert spans[prefix + name].parent is not None
-                assert spans[prefix + name].parent.span_id == spans[entry_name].context.span_id
-            assert spans[initialize].parent is not None
-            assert spans[prefix + "connect_server"].context is not None
-            assert spans[initialize].parent.span_id == spans[prefix + "connect_server"].context.span_id
+                stage_parent = spans[prefix + name].parent
+                assert stage_parent is not None
+                assert stage_parent.span_id == entry_context.span_id
+            initialize_parent = spans[initialize].parent
+            connect_context = spans[prefix + "connect_server"].context
+            assert initialize_parent is not None
+            assert connect_context is not None
+            assert initialize_parent.span_id == connect_context.span_id
         finally:
             outgoing.put(None)
             peer.join(timeout=5)

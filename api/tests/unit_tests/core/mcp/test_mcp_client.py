@@ -22,6 +22,7 @@ from core.mcp.types import (
     ErrorData,
     JSONRPCError,
     JSONRPCMessage,
+    JSONRPCNotification,
     JSONRPCRequest,
     JSONRPCResponse,
     ListToolsRequest,
@@ -1108,7 +1109,8 @@ def test_mcp_stage_spans(enabled: bool, config_overrides, monkeypatch: pytest.Mo
     def respond() -> None:
         while (message := outgoing.get(timeout=5)) is not None:
             request = message.message.root
-            methods.append(request.method)
+            if isinstance(request, JSONRPCRequest | JSONRPCNotification):
+                methods.append(request.method)
             if isinstance(request, JSONRPCRequest):
                 results = {
                     "initialize": {
@@ -1236,11 +1238,14 @@ def test_mcp_with_path_span_tree(config_overrides, monkeypatch: pytest.MonkeyPat
         initialize = "core.mcp.session.client_session.ClientSession.initialize"
         assert set(spans) == {prefix + "connect_server", prefix + "invoke_tool", prefix + "cleanup", initialize}
         for name in ("connect_server", "invoke_tool", "cleanup"):
-            assert spans[prefix + name].parent is not None
-            assert spans[prefix + name].parent.span_id == parent.get_span_context().span_id
-        assert spans[initialize].parent is not None
-        assert spans[prefix + "connect_server"].context is not None
-        assert spans[initialize].parent.span_id == spans[prefix + "connect_server"].context.span_id
+            stage_parent = spans[prefix + name].parent
+            assert stage_parent is not None
+            assert stage_parent.span_id == parent.get_span_context().span_id
+        initialize_parent = spans[initialize].parent
+        connect_context = spans[prefix + "connect_server"].context
+        assert initialize_parent is not None
+        assert connect_context is not None
+        assert initialize_parent.span_id == connect_context.span_id
     finally:
         outgoing.put(None)
         peer.join(timeout=5)
